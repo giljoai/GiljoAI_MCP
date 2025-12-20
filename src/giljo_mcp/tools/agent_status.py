@@ -1,5 +1,5 @@
 """
-MCP Tool for Agent Status Management (Handover 0073).
+MCP Tool for Agent Status Management (Handover 0073, 0366c).
 
 Provides set_agent_status tool for agents to update their own status
 in the orchestration grid with progress tracking and enhanced visibility.
@@ -10,6 +10,11 @@ Production-grade features:
 - State machine validation
 - WebSocket event broadcasting
 - Type validation and safety checks
+
+Handover 0366c Changes:
+- Refactored to use agent_id (executor UUID) instead of job_id
+- Queries AgentExecution table instead of Job/MCPAgentJob
+- Returns both agent_id and job_id in responses
 """
 
 import logging
@@ -18,7 +23,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy import select
 
-from ..models import Job
+from ..models.agent_identity import AgentExecution
 
 
 logger = logging.getLogger(__name__)
@@ -29,9 +34,26 @@ VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancel
 # Terminal states (cannot transition from these)
 TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
+# Module-level db_manager (initialized by register function or init_for_testing)
+_db_manager: Optional[Any] = None
+
+
+def init_for_testing(db_manager):
+    """
+    Initialize module-level database manager for testing.
+
+    This function is called by tests to initialize the module without going through
+    the full MCP registration process.
+
+    Args:
+        db_manager: Database manager instance for testing
+    """
+    global _db_manager
+    _db_manager = db_manager
+
 
 async def set_agent_status(
-    job_id: str,
+    agent_id: str,
     tenant_key: str,
     status: str,
     progress: Optional[int] = None,
@@ -43,7 +65,7 @@ async def set_agent_status(
     MCP tool for agents to update their own status in the orchestration grid.
 
     Args:
-        job_id: Agent job ID to update
+        agent_id: Agent execution ID to update (the WHO - specific executor instance)
         tenant_key: Tenant identifier for multi-tenant isolation
         status: One of ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned']
         progress: Optional[int] - Progress percentage (0-100), required for 'working' status
@@ -54,7 +76,8 @@ async def set_agent_status(
     Returns:
         dict: {
             "success": bool,
-            "job_id": str,
+            "agent_id": str,  # Executor identifier (the WHO)
+            "job_id": str,    # Work order context (the WHAT)
             "old_status": str,
             "new_status": str,
             "message": str
@@ -62,12 +85,12 @@ async def set_agent_status(
 
     Raises:
         ValueError: If invalid status, invalid progress range, or missing required fields
-        ValueError: If job doesn't exist or belongs to different tenant
+        ValueError: If agent execution doesn't exist or belongs to different tenant
         ValueError: If attempting invalid state transition
 
     Security:
         - Multi-tenant isolation enforced via tenant_key filtering
-        - Only jobs belonging to the specified tenant can be updated
+        - Only executions belonging to the specified tenant can be updated
         - No cross-tenant status updates possible
 
     State Machine (Handover 0113 - 7 State System):
@@ -78,8 +101,8 @@ async def set_agent_status(
     """
     try:
         # Validate input parameters
-        if not job_id or not job_id.strip():
-            raise ValueError("job_id cannot be empty")
+        if not agent_id or not agent_id.strip():
+            raise ValueError("agent_id cannot be empty")
 
         if not tenant_key or not tenant_key.strip():
             raise ValueError("tenant_key cannot be empty")
@@ -98,24 +121,33 @@ async def set_agent_status(
         if status in ("failed", "blocked") and not reason:
             raise ValueError(f"reason is required when status='{status}'")
 
-        # Import database manager and websocket manager
-        from api.websocket import websocket_manager
+        # Try to import websocket_manager, but make it optional for testing
+        try:
+            from api.websocket import websocket_manager
+        except (ImportError, AttributeError):
+            websocket_manager = None
 
-        from ..database import DatabaseManager
-
-        db_manager = DatabaseManager()
+        # Use module-level db_manager (injected by tests or register function)
+        if _db_manager is None:
+            from ..database import DatabaseManager
+            db_manager = DatabaseManager()
+        else:
+            db_manager = _db_manager
 
         async with db_manager.get_session_async() as session:
-            # Get job with tenant isolation
-            stmt = select(Job).where(Job.job_id == job_id, Job.tenant_key == tenant_key)
+            # Get execution with tenant isolation (Handover 0366c)
+            stmt = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key
+            )
             result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
+            execution = result.scalar_one_or_none()
 
-            if not job:
-                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+            if not execution:
+                raise ValueError(f"Agent execution {agent_id} not found for tenant {tenant_key}")
 
             # Store old status for response
-            old_status = job.status
+            old_status = execution.status
 
             # Validate state machine - cannot transition from terminal states
             if old_status in TERMINAL_STATES:
@@ -124,68 +156,71 @@ async def set_agent_status(
                     return {
                         "success": False,
                         "error": "AGENT_DECOMMISSIONED",
-                        "job_id": job_id,
+                        "agent_id": agent_id,
+                        "job_id": execution.job_id,
                         "old_status": old_status,
-                        "message": f"Agent {job_id} has been decommissioned (project closeout complete). Spawn a new agent if needed.",
-                        "decommissioned_at": job.decommissioned_at.isoformat() if job.decommissioned_at else None,
+                        "message": f"Agent {agent_id} has been decommissioned (project closeout complete). Spawn a new agent if needed.",
+                        "decommissioned_at": execution.decommissioned_at.isoformat() if execution.decommissioned_at else None,
                     }
                 raise ValueError(
-                    f"Cannot transition from terminal state '{old_status}'. Job is already in final state."
+                    f"Cannot transition from terminal state '{old_status}'. Execution is already in final state."
                 )
 
             # Update status
-            job.status = status
+            execution.status = status
 
             # Update progress if provided
             if progress is not None:
-                job.progress = progress
+                execution.progress = progress
 
             # Update current task if provided
             if current_task is not None:
-                job.current_task = current_task
+                execution.current_task = current_task
 
             # Update estimated completion if provided
             if estimated_completion is not None:
-                job.estimated_completion = estimated_completion
+                execution.estimated_completion = estimated_completion
 
             # Set block reason for blocked status
             if status == "blocked" and reason:
-                job.block_reason = reason
+                execution.block_reason = reason
             elif status != "blocked":
                 # Clear block reason if not blocked
-                job.block_reason = None
+                execution.block_reason = None
 
             # Set completed_at timestamp for complete status
-            if status == "complete" and not job.completed_at:
-                job.completed_at = datetime.now(timezone.utc)
+            if status == "complete" and not execution.completed_at:
+                execution.completed_at = datetime.now(timezone.utc)
 
             # Commit changes
             await session.commit()
-            await session.refresh(job)
+            await session.refresh(execution)
 
-            # Broadcast WebSocket event
-            try:
-                await websocket_manager.broadcast_agent_status_update(
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    old_status=old_status,
-                    new_status=status,
-                    progress=progress,
-                    current_task=current_task,
-                    block_reason=reason if status == "blocked" else None,
-                    estimated_completion=estimated_completion,
-                )
-            except Exception as ws_error:
-                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
-                # Non-critical - continue without WebSocket broadcast
+            # Broadcast WebSocket event (optional in test environments)
+            if websocket_manager:
+                try:
+                    await websocket_manager.broadcast_agent_status_update(
+                        job_id=execution.job_id,
+                        tenant_key=tenant_key,
+                        old_status=old_status,
+                        new_status=status,
+                        progress=progress,
+                        current_task=current_task,
+                        block_reason=reason if status == "blocked" else None,
+                        estimated_completion=estimated_completion,
+                    )
+                except Exception as ws_error:
+                    logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                    # Non-critical - continue without WebSocket broadcast
 
             logger.info(
-                f"[set_agent_status] Job {job_id} status updated: {old_status} -> {status}, tenant={tenant_key}"
+                f"[set_agent_status] Execution {agent_id} status updated: {old_status} -> {status}, tenant={tenant_key}"
             )
 
             return {
                 "success": True,
-                "job_id": job_id,
+                "agent_id": agent_id,
+                "job_id": execution.job_id,
                 "old_status": old_status,
                 "new_status": status,
                 "message": f"Status updated to '{status}' successfully",
@@ -200,7 +235,7 @@ async def set_agent_status(
 
 
 async def report_progress(
-    job_id: str,
+    agent_id: str,
     tenant_key: str,
     progress: dict,
 ) -> Dict[str, Any]:
@@ -208,32 +243,33 @@ async def report_progress(
     MCP tool for agents to report progress updates (Handover 0107).
 
     Updates the last_progress_at timestamp for health monitoring and stores
-    latest progress information in job metadata.
+    latest progress information in execution metadata.
 
     Args:
-        job_id: Agent job ID to update
+        agent_id: Agent execution ID to update (the WHO - specific executor instance)
         tenant_key: Tenant identifier for multi-tenant isolation
         progress: Progress data dict (step, details, percentage, etc.)
 
     Returns:
         dict: {
             "success": bool,
-            "job_id": str,
+            "agent_id": str,  # Executor identifier (the WHO)
+            "job_id": str,    # Work order context (the WHAT)
             "timestamp": str (ISO format),
             "message": str
         }
 
     Raises:
-        ValueError: If invalid parameters or job doesn't exist
+        ValueError: If invalid parameters or agent execution doesn't exist
 
     Security:
         - Multi-tenant isolation enforced via tenant_key filtering
-        - Only jobs belonging to the specified tenant can be updated
+        - Only executions belonging to the specified tenant can be updated
     """
     try:
         # Validate input parameters
-        if not job_id or not job_id.strip():
-            raise ValueError("job_id cannot be empty")
+        if not agent_id or not agent_id.strip():
+            raise ValueError("agent_id cannot be empty")
 
         if not tenant_key or not tenant_key.strip():
             raise ValueError("tenant_key cannot be empty")
@@ -241,62 +277,70 @@ async def report_progress(
         if not progress or not isinstance(progress, dict):
             raise ValueError("progress must be a non-empty dictionary")
 
-        # Import database manager and websocket manager
-        from api.websocket import websocket_manager
+        # Try to import websocket_manager, but make it optional for testing
+        try:
+            from api.websocket import websocket_manager
+        except (ImportError, AttributeError):
+            websocket_manager = None
 
-        from ..database import DatabaseManager
-        from ..models import MCPAgentJob
-
-        db_manager = DatabaseManager()
+        # Use module-level db_manager (injected by tests or register function)
+        if _db_manager is None:
+            from ..database import DatabaseManager
+            db_manager = DatabaseManager()
+        else:
+            db_manager = _db_manager
 
         async with db_manager.get_session_async() as session:
-            # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key
+            # Get execution with tenant isolation (Handover 0366c)
+            stmt = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
+            execution = result.scalar_one_or_none()
 
-            if not job:
-                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+            if not execution:
+                raise ValueError(f"Agent execution {agent_id} not found for tenant {tenant_key}")
 
             # Update last_progress_at timestamp
             now = datetime.now(timezone.utc)
-            job.last_progress_at = now
+            execution.last_progress_at = now
 
-            # Store progress in job_metadata
-            if job.job_metadata is None:
-                job.job_metadata = {}
-            job.job_metadata["latest_progress"] = progress
-            job.job_metadata["latest_progress_timestamp"] = now.isoformat()
+            # Store progress in execution_metadata (not job_metadata)
+            if execution.execution_metadata is None:
+                execution.execution_metadata = {}
+            execution.execution_metadata["latest_progress"] = progress
+            execution.execution_metadata["latest_progress_timestamp"] = now.isoformat()
 
             # Commit changes
             await session.commit()
-            await session.refresh(job)
+            await session.refresh(execution)
 
-            # Broadcast WebSocket event
-            try:
-                await websocket_manager.broadcast(
-                    {
-                        "type": "job:progress_update",
-                        "job_id": job_id,
-                        "tenant_key": tenant_key,
-                        "progress": progress,
-                        "timestamp": now.isoformat(),
-                    }
-                )
-            except Exception as ws_error:
-                logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
-                # Non-critical - continue without WebSocket broadcast
+            # Broadcast WebSocket event (optional in test environments)
+            if websocket_manager:
+                try:
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "job:progress_update",
+                            "agent_id": agent_id,
+                            "job_id": execution.job_id,
+                            "tenant_key": tenant_key,
+                            "progress": progress,
+                            "timestamp": now.isoformat(),
+                        }
+                    )
+                except Exception as ws_error:
+                    logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+                    # Non-critical - continue without WebSocket broadcast
 
             logger.info(
-                f"[report_progress] Job {job_id} progress updated, tenant={tenant_key}"
+                f"[report_progress] Execution {agent_id} progress updated, tenant={tenant_key}"
             )
 
             return {
                 "success": True,
-                "job_id": job_id,
+                "agent_id": agent_id,
+                "job_id": execution.job_id,
                 "timestamp": now.isoformat(),
                 "message": "Progress reported successfully",
             }
@@ -321,7 +365,7 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
 
     @server.tool()
     async def set_agent_status_tool(
-        job_id: str,
+        agent_id: str,
         tenant_key: str,
         status: str,
         progress: Optional[int] = None,
@@ -330,27 +374,27 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
         estimated_completion: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
-        Update agent job status with progress tracking.
+        Update agent execution status with progress tracking (Handover 0366c).
 
         Agents use this tool to report their current status to the orchestration grid,
         enabling real-time visibility and coordination.
 
         Args:
-            job_id: Agent job ID to update
+            agent_id: Agent execution ID to update (the WHO - specific executor instance)
             tenant_key: Tenant identifier for multi-tenant isolation
-            status: Status value (waiting, preparing, working, review, complete, failed, blocked)
+            status: Status value (waiting, working, blocked, complete, failed, cancelled, decommissioned)
             progress: Progress percentage 0-100 (required for 'working')
             reason: Reason for failed/blocked status (required for 'failed'/'blocked')
             current_task: Description of current task being executed
             estimated_completion: ISO datetime string for estimated completion
 
         Returns:
-            Status update result with old and new status
+            Status update result with agent_id, job_id, old and new status
 
         Examples:
             Update to working status:
             >>> set_agent_status_tool(
-            ...     job_id="abc-123",
+            ...     agent_id="agent-abc-123",
             ...     tenant_key="tenant-xyz",
             ...     status="working",
             ...     progress=45,
@@ -359,14 +403,14 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
 
             Report blocked status:
             >>> set_agent_status_tool(
-            ...     job_id="abc-123",
+            ...     agent_id="agent-abc-123",
             ...     tenant_key="tenant-xyz",
             ...     status="blocked",
             ...     reason="Waiting for API key configuration"
             ... )
         """
         return await set_agent_status(
-            job_id=job_id,
+            agent_id=agent_id,
             tenant_key=tenant_key,
             status=status,
             progress=progress,
@@ -377,29 +421,29 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
 
     @server.tool()
     async def report_progress_tool(
-        job_id: str,
+        agent_id: str,
         tenant_key: str,
         progress: dict,
     ) -> Dict[str, Any]:
         """
-        Report progress update for agent job (Handover 0107).
+        Report progress update for agent execution (Handover 0107, 0366c).
 
         Agents use this tool to report progress updates, which updates the
         last_progress_at timestamp for health monitoring and stores the
         latest progress information.
 
         Args:
-            job_id: Agent job ID
+            agent_id: Agent execution ID (the WHO - specific executor instance)
             tenant_key: Tenant identifier for multi-tenant isolation
             progress: Progress data dict (should contain keys like: step, details, percentage, etc.)
 
         Returns:
-            Progress update result with job_id and timestamp
+            Progress update result with agent_id, job_id and timestamp
 
         Examples:
             Report progress:
             >>> report_progress_tool(
-            ...     job_id="abc-123",
+            ...     agent_id="agent-abc-123",
             ...     tenant_key="tenant-xyz",
             ...     progress={
             ...         "step": "database_setup",
@@ -409,7 +453,7 @@ def register_agent_status_tools(server, db_manager, tenant_manager=None):
             ... )
         """
         return await report_progress(
-            job_id=job_id,
+            agent_id=agent_id,
             tenant_key=tenant_key,
             progress=progress,
         )

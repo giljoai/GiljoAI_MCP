@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import MCPAgentJob, Project, Session
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.tenant import TenantManager, current_tenant
 
 
@@ -28,6 +29,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         mission: str,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
+        auto_create_orchestrator_job: bool = False,
     ) -> dict[str, Any]:
         """
         Create a new project with mission
@@ -37,9 +39,11 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             mission: Project mission statement
             product_id: Optional product ID to associate the project with
             tenant_key: Optional tenant key to use (generates new one if not provided)
+            auto_create_orchestrator_job: If True, creates AgentJob and AgentExecution for orchestrator
 
         Returns:
-            Project creation details including ID and tenant key
+            Project creation details including ID and tenant key.
+            If auto_create_orchestrator_job=True, also includes job_id and agent_id.
         """
         try:
             async with db_manager.get_session_async() as session:
@@ -66,6 +70,49 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 initial_session = Session(project_id=project.id, started_at=datetime.now(timezone.utc), status="active")
                 session.add(initial_session)
 
+                result = {
+                    "success": True,
+                    "project_id": str(project.id),
+                    "name": name,
+                    "tenant_key": tenant_key,
+                    "product_id": product_id,
+                    "session_id": str(initial_session.id),
+                }
+
+                # Auto-create orchestrator job and execution if requested
+                if auto_create_orchestrator_job:
+                    # Create AgentJob
+                    agent_job = AgentJob(
+                        job_id=str(uuid4()),
+                        tenant_key=tenant_key,
+                        project_id=project.id,
+                        mission=mission,
+                        job_type="orchestrator",
+                        status="active",
+                        job_metadata={"auto_created": True},
+                    )
+                    session.add(agent_job)
+                    await session.flush()
+
+                    # Create AgentExecution
+                    agent_execution = AgentExecution(
+                        agent_id=str(uuid4()),
+                        job_id=agent_job.job_id,
+                        tenant_key=tenant_key,
+                        agent_type="orchestrator",
+                        instance_number=1,
+                        status="waiting",
+                        agent_name=f"{name} - Orchestrator #1",
+                        context_used=0,
+                        context_budget=150000,
+                        tool_type="claude-code",
+                    )
+                    session.add(agent_execution)
+
+                    # Add job and execution IDs to result
+                    result["job_id"] = agent_job.job_id
+                    result["agent_id"] = agent_execution.agent_id
+
                 await session.commit()
 
                 # Set as current project in tenant manager
@@ -74,16 +121,10 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 logger.info(
                     f"Created project '{name}' with ID {project.id}"
                     + (f" under product {product_id}" if product_id else "")
+                    + (f" with orchestrator job {result.get('job_id')}" if auto_create_orchestrator_job else "")
                 )
 
-                return {
-                    "success": True,
-                    "project_id": str(project.id),
-                    "name": name,
-                    "tenant_key": tenant_key,
-                    "product_id": product_id,
-                    "session_id": str(initial_session.id),
-                }
+                return result
 
         except Exception as e:
             logger.exception(f"Failed to create project: {e}")
@@ -98,7 +139,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             status: Optional status filter (active, completed, cancelled)
 
         Returns:
-            List of projects with details
+            List of projects with details including execution-level aggregates
         """
         try:
             async with db_manager.get_session_async() as session:
@@ -112,10 +153,25 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 project_list = []
                 for project in projects:
-                    # Get agent job count
-                    agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
-                    agent_result = await session.execute(agent_query)
-                    agents = agent_result.scalars().all()
+                    # Get job count (AgentJob records)
+                    job_query = select(AgentJob).where(AgentJob.project_id == project.id)
+                    job_result = await session.execute(job_query)
+                    jobs = job_result.scalars().all()
+                    job_count = len(jobs)
+
+                    # Get execution count (AgentExecution records)
+                    execution_count = 0
+                    active_agents = 0
+                    for job in jobs:
+                        exec_query = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
+                        exec_result = await session.execute(exec_query)
+                        executions = exec_result.scalars().all()
+                        execution_count += len(executions)
+
+                        # Count active agents (executions not completed/decommissioned)
+                        for execution in executions:
+                            if execution.status not in ["complete", "failed", "cancelled", "decommissioned"]:
+                                active_agents += 1
 
                     project_list.append(
                         {
@@ -123,7 +179,9 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             "name": project.name,
                             "status": project.status,
                             "tenant_key": project.tenant_key,
-                            "agent_count": len(agents),
+                            "job_count": job_count,
+                            "execution_count": execution_count,
+                            "active_agents": active_agents,
                             "context_usage": f"{project.context_used}/{project.context_budget}",
                             "created_at": (project.created_at.isoformat() if project.created_at else None),
                         }
@@ -245,16 +303,34 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 )
                 await session.execute(session_update)
 
-                # Decommission all agent jobs
-                agent_update = (
-                    update(MCPAgentJob)
+                # Update all AgentJob records to completed
+                job_update = (
+                    update(AgentJob)
                     .where(
-                        MCPAgentJob.project_id == project.id,
-                        MCPAgentJob.status.in_(["pending", "running", "waiting"]),
+                        AgentJob.project_id == project.id,
+                        AgentJob.status == "active",
                     )
-                    .values(status="decommissioned", decommissioned_at=datetime.now(timezone.utc))
+                    .values(status="completed", completed_at=datetime.now(timezone.utc))
                 )
-                await session.execute(agent_update)
+                await session.execute(job_update)
+
+                # Update all AgentExecution records to decommissioned
+                # First, get all job IDs for this project
+                job_query = select(AgentJob.job_id).where(AgentJob.project_id == project.id)
+                job_result = await session.execute(job_query)
+                job_ids = [row[0] for row in job_result.fetchall()]
+
+                # Update all executions for these jobs
+                if job_ids:
+                    exec_update = (
+                        update(AgentExecution)
+                        .where(
+                            AgentExecution.job_id.in_(job_ids),
+                            AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                        )
+                        .values(status="decommissioned", decommissioned_at=datetime.now(timezone.utc))
+                    )
+                    await session.execute(exec_update)
 
                 await session.commit()
 
@@ -393,7 +469,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             project_id: Optional project ID, uses current if not specified
 
         Returns:
-            Detailed project status including agents, tasks, and messages
+            Detailed project status including jobs and executions (nested structure)
         """
         try:
             async with db_manager.get_session_async() as session:
@@ -420,18 +496,51 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     return {"success": False, "error": "Project not found"}
 
                 # Get agent jobs
-                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
-                agent_result = await session.execute(agent_query)
-                agents = agent_result.scalars().all()
+                job_query = select(AgentJob).where(AgentJob.project_id == project.id)
+                job_result = await session.execute(job_query)
+                jobs = job_result.scalars().all()
 
-                agent_list = []
-                for agent in agents:
-                    agent_list.append(
+                job_list = []
+                total_execution_count = 0
+                total_active_agents = 0
+
+                for job in jobs:
+                    # Get executions for this job
+                    exec_query = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
+                    exec_result = await session.execute(exec_query)
+                    executions = exec_result.scalars().all()
+
+                    execution_list = []
+                    for execution in executions:
+                        execution_list.append(
+                            {
+                                "agent_id": str(execution.agent_id),
+                                "instance_number": execution.instance_number,
+                                "status": execution.status,
+                                "agent_type": execution.agent_type,
+                                "agent_name": execution.agent_name,
+                                "progress": execution.progress,
+                                "health_status": execution.health_status,
+                                "context_used": execution.context_used,
+                                "context_budget": execution.context_budget,
+                                "started_at": (execution.started_at.isoformat() if execution.started_at else None),
+                                "completed_at": (execution.completed_at.isoformat() if execution.completed_at else None),
+                            }
+                        )
+
+                        total_execution_count += 1
+                        if execution.status not in ["complete", "failed", "cancelled", "decommissioned"]:
+                            total_active_agents += 1
+
+                    job_list.append(
                         {
-                            "name": agent.agent_name,
-                            "role": agent.agent_type,
-                            "status": agent.status,
-                            "context_used": 0,  # MCPAgentJob doesn't track context_used
+                            "job_id": str(job.job_id),
+                            "job_type": job.job_type,
+                            "status": job.status,
+                            "mission": job.mission,
+                            "created_at": (job.created_at.isoformat() if job.created_at else None),
+                            "completed_at": (job.completed_at.isoformat() if job.completed_at else None),
+                            "executions": execution_list,
                         }
                     )
 
@@ -447,8 +556,10 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         "context_usage": f"{project.context_used}/{project.context_budget}",
                         "created_at": (project.created_at.isoformat() if project.created_at else None),
                     },
-                    "agents": agent_list,
-                    "agent_count": len(agent_list),
+                    "jobs": job_list,
+                    "job_count": len(job_list),
+                    "execution_count": total_execution_count,
+                    "active_agents": total_active_agents,
                 }
 
         except Exception as e:
