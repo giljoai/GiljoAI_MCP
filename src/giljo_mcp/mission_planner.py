@@ -1917,6 +1917,17 @@ Partial reading defeats the purpose of this configuration."""
             # Get depth configuration (default: type_only for token efficiency)
             agent_depth = depth_config.get("agent_templates", "type_only")
 
+            # Handover 0357: Trace incoming depth_config for debugging
+            logger.debug(
+                "[AGENT_TEMPLATES] Processing with depth configuration",
+                extra={
+                    "agent_templates_priority": agent_templates_priority,
+                    "agent_depth": agent_depth,
+                    "depth_config_input": depth_config,
+                    "effective_depth": agent_depth,
+                }
+            )
+
             # Fetch templates from database
             async with self.db_manager.get_session_async() as session:
                 full_templates = await self._get_full_agent_templates(product.tenant_key, session)
