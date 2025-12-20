@@ -1,12 +1,22 @@
 <template>
-  <v-card class="succession-timeline">
+  <v-card class="succession-timeline" data-testid="succession-timeline">
     <v-card-title>Orchestrator Succession Timeline</v-card-title>
 
     <v-card-text>
+      <!-- Job ID Display (shared across all executions) -->
+      <div v-if="instances.length > 0" class="mb-4">
+        <v-chip size="small" variant="outlined" prepend-icon="mdi-briefcase">
+          Job: <code class="ml-1" data-testid="job-id">{{ instances[0].job_id }}</code>
+        </v-chip>
+      </div>
+
       <v-timeline side="end">
         <v-timeline-item
           v-for="(instance, index) in instances"
-          :key="instance.id"
+          :key="instance.agent_id"
+          data-testid="execution-node"
+          :data-agent-id="instance.agent_id"
+          :data-job-id="instance.job_id"
           :dot-color="getStatusColor(instance)"
           :icon="index === instances.length - 1 ? 'mdi-account-circle' : 'mdi-check'"
           size="small"
@@ -20,7 +30,10 @@
               <v-chip :color="getStatusColor(instance)" size="small" class="mr-2">
                 {{ instance.status }}
               </v-chip>
-              {{ instance.agent_name }}
+              {{ instance.agent_type || 'Agent' }}
+              <div class="text-caption text-medium-emphasis mt-1">
+                Agent ID: <code data-testid="agent-id">{{ instance.agent_id }}</code>
+              </div>
             </v-card-title>
 
             <v-card-text>
@@ -83,21 +96,23 @@ import { format } from 'date-fns'
 import api from '@/services/api'
 
 /**
- * SuccessionTimeline.vue - Handover 0509
- * Displays orchestrator instance chain with context usage and handover summaries
+ * SuccessionTimeline.vue - Handover 0366d-3 (updated from 0509)
+ * Displays agent execution chain for a single job.
  *
  * Props:
- * - projectId: str - Project UUID to fetch succession history
+ * - jobId: str (REQUIRED) - Job UUID to fetch execution history
  *
- * Fetches all orchestrator instances for project, sorted by instance_number
+ * Fetches all executions for job via api.agentExecutions.list(jobId)
+ * Each execution shows: agent_id, instance_number, status, context usage, handover reason
  */
 export default {
   name: 'SuccessionTimeline',
 
   props: {
-    projectId: {
+    jobId: {
       type: String,
       required: true,
+      validator: (val) => /^[a-f0-9-]{36}$/.test(val), // UUID format
     },
   },
 
@@ -105,17 +120,16 @@ export default {
     const instances = ref([])
     const loading = ref(false)
 
-    // fetchSuccessionHistory() - Loads orchestrator instances from agentJobs.list API
-    // Filters for agent_type=orchestrator, sorts by instance_number ascending
+    // fetchSuccessionHistory() - Loads agent executions from agentExecutions.list API
+    // Fetches all executions for a single job, sorts by instance_number ascending
     // Returns: void (updates instances ref)
     const fetchSuccessionHistory = async () => {
       loading.value = true
       try {
-        const response = await api.agentJobs.list(props.projectId)
+        const response = await api.agentExecutions.list(props.jobId)
 
-        // Filter orchestrators and sort by instance_number
+        // Sort by instance_number ascending
         instances.value = response.data
-          .filter((job) => job.agent_type === 'orchestrator')
           .sort((a, b) => (a.instance_number || 1) - (b.instance_number || 1))
       } catch (error) {
         console.error('Failed to load succession history:', error)
@@ -205,5 +219,13 @@ export default {
 pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+code {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85rem;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 2px;
 }
 </style>
