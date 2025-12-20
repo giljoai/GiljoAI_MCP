@@ -460,7 +460,7 @@ class ToolAccessor:
 
         return await health_check()
 
-    async def get_orchestrator_instructions(self, orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Fetch orchestrator mission with framing-based context instructions (Handover 0350b).
 
@@ -480,8 +480,8 @@ class ToolAccessor:
                 from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
 
                 # Validate inputs
-                if not orchestrator_id or not orchestrator_id.strip():
-                    return {"error": "VALIDATION_ERROR", "message": "Orchestrator ID is required"}
+                if not job_id or not job_id.strip():
+                    return {"error": "VALIDATION_ERROR", "message": "Job ID is required"}
 
                 if not tenant_key or not tenant_key.strip():
                     return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
@@ -490,7 +490,7 @@ class ToolAccessor:
                 result = await session.execute(
                     select(MCPAgentJob).where(
                         and_(
-                            MCPAgentJob.job_id == orchestrator_id,
+                            MCPAgentJob.job_id == job_id,
                             MCPAgentJob.tenant_key == tenant_key,
                             MCPAgentJob.agent_type == "orchestrator",
                         )
@@ -499,7 +499,7 @@ class ToolAccessor:
                 orchestrator = result.scalar_one_or_none()
 
                 if not orchestrator:
-                    return {"error": "NOT_FOUND", "message": f"Orchestrator {orchestrator_id} not found"}
+                    return {"error": "NOT_FOUND", "message": f"Orchestrator {job_id} not found"}
 
                 # Get project and product
                 result = await session.execute(
@@ -534,14 +534,14 @@ class ToolAccessor:
                     depth_config = user_config["depth_config"]
                     logger.info(
                         "[USER_CONFIG] Fetched fresh user config for ToolAccessor",
-                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id}
+                        extra={"job_id": job_id, "user_id": user_id}
                     )
                 else:
                     field_priorities = metadata.get("field_priorities", {})
                     depth_config = metadata.get("depth_config", {})
                     logger.debug(
                         "[USER_CONFIG] No user_id, using frozen job_metadata config",
-                        extra={"orchestrator_id": orchestrator_id}
+                        extra={"job_id": job_id}
                     )
 
                 # Handover 0350b: Generate framing instructions (replaces inline context)
@@ -578,7 +578,7 @@ class ToolAccessor:
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
                     "identity": {
-                        "orchestrator_id": orchestrator_id,
+                        "job_id": job_id,
                         "project_id": str(project.id),
                         "project_name": project.name,
                         "tenant_key": tenant_key,
@@ -639,9 +639,9 @@ class ToolAccessor:
                     }
 
                     logger.info(
-                        f"[CLI_MODE_RULES] Added CLI mode rules for orchestrator {orchestrator_id}",
+                        f"[CLI_MODE_RULES] Added CLI mode rules for orchestrator {job_id}",
                         extra={
-                            "orchestrator_id": orchestrator_id,
+                            "job_id": job_id,
                             "execution_mode": execution_mode,
                             "allowed_names": allowed_agent_names,
                         }
@@ -650,7 +650,7 @@ class ToolAccessor:
                 logger.info(
                     f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
                     extra={
-                        "orchestrator_id": orchestrator_id,
+                        "job_id": job_id,
                         "critical_count": len(fetch_instructions.get("critical", [])),
                         "important_count": len(fetch_instructions.get("important", [])),
                         "reference_count": len(fetch_instructions.get("reference", [])),
@@ -700,19 +700,19 @@ class ToolAccessor:
         """Get pending jobs for agent type (delegates to OrchestrationService)"""
         return await self._orchestration_service.get_pending_jobs(agent_type=agent_type, tenant_key=tenant_key)
 
-    async def acknowledge_job(self, job_id: str, agent_id: str) -> dict[str, Any]:
+    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
         return await self._orchestration_service.acknowledge_job(job_id=job_id, agent_id=agent_id)
 
-    async def report_progress(self, job_id: str, progress: dict[str, Any]) -> dict[str, Any]:
+    async def report_progress(self, job_id: str, progress: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Report job progress (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_progress(job_id=job_id, progress=progress)
 
-    async def complete_job(self, job_id: str, result: dict[str, Any]) -> dict[str, Any]:
+    async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result)
 
-    async def report_error(self, job_id: str, error: str) -> dict[str, Any]:
+    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Report job error (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_error(job_id=job_id, error=error)
 
@@ -1209,14 +1209,14 @@ class ToolAccessor:
             logger.exception(f"Failed to generate personal agent templates download: {e}")
             return {"success": False, "error": str(e)}
 
-    async def gil_handover(self, current_job_id: str = None, reason: str = "manual") -> dict[str, Any]:
+    async def gil_handover(self, job_id: str = None, reason: str = "manual") -> dict[str, Any]:
         """
         Trigger orchestrator succession for context handover
 
         Wrapper for slash command handler that executes via MCP tool call.
 
         Args:
-            current_job_id: Current orchestrator job UUID
+            job_id: Current orchestrator job UUID (work order identifier)
             reason: Succession reason (context_limit, manual, phase_transition)
 
         Returns:
@@ -1235,7 +1235,7 @@ class ToolAccessor:
                     db_session=session,
                     tenant_key=self.tenant_manager.get_current_tenant(),
                     project_id=None,  # Not used by handover
-                    orchestrator_job_id=current_job_id,
+                    orchestrator_job_id=job_id,
                     reason=reason,
                 )
 

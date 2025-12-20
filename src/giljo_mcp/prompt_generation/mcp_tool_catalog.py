@@ -29,7 +29,7 @@ class MCPToolCatalogGenerator:
     TOOLS: ClassVar[dict] = {
         "orchestration": {
             "get_orchestrator_instructions": {
-                "params": ["orchestrator_id: str", "tenant_key: str"],
+                "params": ["job_id: str", "tenant_key: str"],
                 "description": "Fetch context for orchestrator to CREATE mission plan",
                 "returns": "Dict with project context, mission, agent templates, and field priorities",
                 "when": [
@@ -39,7 +39,7 @@ class MCPToolCatalogGenerator:
                 ],
                 "example": """# Orchestrator fetches mission
 instructions = await get_orchestrator_instructions(
-    orchestrator_id='orch-123',
+    job_id='orch-123',
     tenant_key='tenant-abc'
 )
 
@@ -611,7 +611,7 @@ Complete reference for all available MCP tools for orchestration, context manage
 ```python
 # Step 1: Orchestrator fetches mission and available agents
 instructions = await get_orchestrator_instructions(
-    orchestrator_id='orch-id',
+    job_id='orch-id',
     tenant_key='tenant-key'
 )
 

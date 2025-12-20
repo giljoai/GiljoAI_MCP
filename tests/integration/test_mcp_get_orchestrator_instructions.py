@@ -152,7 +152,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Call the tool
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
+            job_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Should return success structure
@@ -184,7 +184,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Call with non-existent orchestrator ID
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id="nonexistent-orchestrator-id", tenant_key=tenant_context["tenant_key"]
+            job_id="nonexistent-orchestrator-id", tenant_key=tenant_context["tenant_key"]
         )
 
         # Should return error structure
@@ -203,7 +203,7 @@ class TestGetOrchestratorInstructionsMCP:
 
         # Try to access orchestrator with wrong tenant key
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"], tenant_key="wrong_tenant_key"
+            job_id=tenant_context["orchestrator_id"], tenant_key="wrong_tenant_key"
         )
 
         # Should return NOT_FOUND (not expose existence to other tenants)
@@ -219,12 +219,12 @@ class TestGetOrchestratorInstructionsMCP:
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         # Test empty orchestrator_id
-        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="", tenant_key="some_tenant")
+        result = await tool_accessor.get_orchestrator_instructions(job_id="", tenant_key="some_tenant")
         assert "error" in result
         assert result["error"] == "VALIDATION_ERROR"
 
         # Test empty tenant_key
-        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="some_id", tenant_key="")
+        result = await tool_accessor.get_orchestrator_instructions(job_id="some_id", tenant_key="")
         assert "error" in result
         assert result["error"] == "VALIDATION_ERROR"
 
@@ -257,7 +257,7 @@ class TestGetOrchestratorInstructionsMCP:
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
+            job_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Mission should be condensed (not full vision)
@@ -284,7 +284,7 @@ class TestGetOrchestratorInstructionsMCP:
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
+            job_id=tenant_context["orchestrator_id"], tenant_key=tenant_context["tenant_key"]
         )
 
         # Should include agent templates
@@ -480,7 +480,7 @@ class TestGetOrchestratorInstructionsMCP:
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=orchestrator_id_str, tenant_key=tenant_key_str
+            job_id=orchestrator_id_str, tenant_key=tenant_key_str
         )
 
         # ASSERT: Should return success without errors
@@ -563,7 +563,7 @@ class TestErrorHandling:
             await session.commit()
 
         result = await tool_accessor.get_orchestrator_instructions(
-            orchestrator_id=orchestrator_id, tenant_key=tenant_key
+            job_id=orchestrator_id, tenant_key=tenant_key
         )
 
         # Should return error
@@ -581,7 +581,7 @@ class TestErrorHandling:
         # Close database connection to simulate error
         await db_manager.close()
 
-        result = await tool_accessor.get_orchestrator_instructions(orchestrator_id="test_id", tenant_key="test_key")
+        result = await tool_accessor.get_orchestrator_instructions(job_id="test_id", tenant_key="test_key")
 
         # Should return INTERNAL_ERROR
         assert "error" in result
