@@ -251,3 +251,24 @@ class UpdateMissionResponse(BaseModel):
     success: bool = Field(..., description="Whether update succeeded")
     job_id: str = Field(..., description="Job ID that was updated")
     mission: str = Field(..., description="Updated mission text")
+
+
+# ============================================================================
+# Agent Execution Models (Handover 0366d-1)
+# ============================================================================
+
+class AgentExecutionResponse(BaseModel):
+    """Response model for agent execution instance (Handover 0366d-1)."""
+
+    agent_id: str
+    job_id: str
+    instance_number: int
+    status: str
+    progress: int = 0
+    spawned_by: Optional[str] = None
+    succeeded_by: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
