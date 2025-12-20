@@ -15,7 +15,6 @@ from fastmcp import FastMCP
 from sqlalchemy import select
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
@@ -32,120 +31,91 @@ def register_succession_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_
     """Register orchestrator succession tools with the MCP server."""
 
     @mcp.tool()
-    async def create_successor_orchestrator(
-        current_job_id: str,
+    async def trigger_succession(
+        agent_id: str,
         tenant_key: str,
         reason: Literal["context_limit", "manual", "phase_transition"] = "context_limit",
     ) -> dict[str, Any]:
         """
-        Create successor orchestrator and perform handover.
+        Trigger succession for current agent execution.
 
-        This tool allows an orchestrator agent to spawn a successor when:
+        Handover 0366c: Updated to use agent_id (executor) instead of job_id (work order).
+
+        This tool allows an agent to spawn a successor when:
         - Context window approaches capacity (90%+)
         - Manual handover requested
         - Project phase transition requires fresh context
 
         The tool performs:
-        1. Creates new orchestrator job (instance_number + 1)
+        1. Creates new executor on SAME job (instance_number + 1)
         2. Generates compressed handover summary (<10K tokens)
-        3. Marks current orchestrator as complete
+        3. Marks current executor as complete
         4. Returns successor details for user launch
 
         Args:
-            current_job_id: UUID of current orchestrator job
+            agent_id: UUID of current agent execution (the WHO - executor)
             tenant_key: Tenant key for multi-tenant isolation
             reason: Succession reason ('context_limit', 'manual', 'phase_transition')
 
         Returns:
             Dict containing:
-            - successor_id: UUID of new orchestrator
+            - current_agent_id: Current executor's agent_id
+            - successor_agent_id: New executor's agent_id
+            - job_id: Work order UUID (persists across succession)
             - instance_number: New instance number
             - handover_summary: Compressed state transfer
             - status: "waiting" (requires manual launch)
 
         Raises:
-            ValueError: If current_job_id not found or not an orchestrator
+            ValueError: If agent_id not found or invalid
 
         Example:
-            >>> result = await create_successor_orchestrator(
-            ...     current_job_id="orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
+            >>> result = await trigger_succession(
+            ...     agent_id="exec-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
             ...     tenant_key="tenant-123",
             ...     reason="context_limit"
             ... )
-            >>> print(f"Successor created: {result['successor_id']}")
+            >>> print(f"Successor created: {result['successor_agent_id']}")
             >>> print(f"Instance number: {result['instance_number']}")
         """
-        with db_manager.get_session() as session:
-            # Retrieve current orchestrator job
-            query = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == current_job_id,
-                MCPAgentJob.tenant_key == tenant_key,  # Tenant isolation
+        async with db_manager.get_session_async() as session:
+            result = await _internal_trigger_succession(
+                session=session,
+                agent_id=agent_id,
+                tenant_key=tenant_key,
+                reason=reason,
             )
-            result = session.execute(query)
-            orchestrator = result.scalar_one_or_none()
-
-            if not orchestrator:
-                raise ValueError(f"Orchestrator job {current_job_id} not found for tenant {tenant_key}")
-
-            # Verify agent type is orchestrator
-            if orchestrator.agent_type != "orchestrator":
-                raise ValueError(f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})")
-
-            # Verify orchestrator is not already complete
-            if orchestrator.status == "complete":
-                raise ValueError(
-                    f"Orchestrator {current_job_id} is already complete. "
-                    f"Cannot trigger succession on completed orchestrator."
-                )
-
-            # Initialize succession manager
-            manager = OrchestratorSuccessionManager(session, tenant_key)
-
-            # Create successor
-            successor = manager.create_successor(orchestrator, reason=reason)
-
-            # Generate handover summary
-            handover_summary = manager.generate_handover_summary(orchestrator)
-
-            # Complete handover
-            manager.complete_handover(orchestrator, successor, handover_summary, reason)
-
-            # Refresh objects
-            session.refresh(orchestrator)
-            session.refresh(successor)
 
             logger.info(
-                f"Succession completed: {orchestrator.job_id} → {successor.job_id}, "
-                f"instance {orchestrator.instance_number} → {successor.instance_number}, "
+                f"Succession completed: agent {result['current_agent_id']} → {result['successor_agent_id']}, "
+                f"job_id: {result['job_id']}, "
+                f"instance {result['instance_number']}, "
                 f"reason: {reason}"
             )
 
-            # Return successor details
-            return {
-                "success": True,
-                "successor_id": successor.job_id,
-                "instance_number": successor.instance_number,
-                "status": successor.status,  # "waiting"
-                "handover_summary": handover_summary,
-                "message": (
-                    f"Successor orchestrator created (instance {successor.instance_number}). "
-                    f"Original orchestrator marked complete. "
-                    f"Launch successor manually from dashboard."
-                ),
-            }
+            # Add user-friendly message
+            result["message"] = (
+                f"Successor agent created (instance {result['instance_number']}). "
+                f"Original agent marked complete. "
+                f"Launch successor manually from dashboard."
+            )
+
+            return result
 
     @mcp.tool()
     async def check_succession_status(
-        job_id: str,
+        agent_id: str,
         tenant_key: str,
     ) -> dict[str, Any]:
         """
-        Check if orchestrator should trigger succession.
+        Check if agent execution should trigger succession.
+
+        Handover 0366c: Updated to use agent_id (executor) instead of job_id.
 
         Analyzes context usage and returns recommendation for succession.
 
         Args:
-            job_id: UUID of orchestrator job to check
+            agent_id: UUID of agent execution to check
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
@@ -155,37 +125,37 @@ def register_succession_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_
             - context_budget: Maximum context budget
             - usage_percentage: Percentage used
             - threshold_reached: True if >= 90%
+            - instance_number: Current instance number
             - recommendation: Human-readable recommendation
 
         Example:
-            >>> status = await check_succession_status(job_id, tenant_key)
+            >>> status = await check_succession_status(agent_id, tenant_key)
             >>> if status['should_trigger']:
             ...     print(status['recommendation'])
         """
-        with db_manager.get_session() as session:
-            # Retrieve orchestrator job
-            query = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key,
+        from giljo_mcp.models.agent_identity import AgentExecution
+
+        async with db_manager.get_session_async() as session:
+            # Retrieve agent execution
+            query = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
             )
-            result = session.execute(query)
-            orchestrator = result.scalar_one_or_none()
+            result = await session.execute(query)
+            execution = result.scalar_one_or_none()
 
-            if not orchestrator:
-                raise ValueError(f"Orchestrator job {job_id} not found")
-
-            if orchestrator.agent_type != "orchestrator":
-                raise ValueError(f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})")
+            if not execution:
+                raise ValueError(f"Agent execution {agent_id} not found for tenant {tenant_key}")
 
             # Initialize succession manager
             manager = OrchestratorSuccessionManager(session, tenant_key)
 
             # Check if succession should be triggered
-            should_trigger = manager.should_trigger_succession(orchestrator)
+            should_trigger = manager.should_trigger_succession(execution)
 
             # Calculate usage percentage
-            used = orchestrator.context_used
-            budget = orchestrator.context_budget
+            used = execution.context_used
+            budget = execution.context_budget
             usage_percentage = (used / budget * 100) if budget > 0 else 0
 
             # Generate recommendation
@@ -208,7 +178,7 @@ def register_succession_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_
                 "context_budget": budget,
                 "usage_percentage": round(usage_percentage, 2),
                 "threshold_reached": usage_percentage >= 90,
-                "instance_number": orchestrator.instance_number,
+                "instance_number": execution.instance_number,
                 "recommendation": recommendation,
             }
 
@@ -220,59 +190,68 @@ def register_succession_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_
 
 async def _internal_trigger_succession(
     session,
-    job_id: str,
+    agent_id: str,
     tenant_key: str,
     reason: str = "context_limit",
 ) -> dict[str, Any]:
     """
     Internal helper for triggering succession (used by API endpoints and tests).
 
+    Handover 0366c: Updated to use agent_id (executor UUID) instead of job_id.
+
     Args:
         session: Database session
-        job_id: Orchestrator job ID
+        agent_id: Agent ID (executor UUID) to hand over from
         tenant_key: Tenant key for isolation
         reason: Succession reason
 
     Returns:
-        Dict with successor details
+        Dict with successor details including:
+        - current_agent_id: Current executor's agent_id
+        - successor_agent_id: Successor executor's agent_id
+        - job_id: Work order UUID (persists across succession)
+        - instance_number: New instance number
     """
-    # Retrieve orchestrator job
-    query = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == job_id,
-        MCPAgentJob.tenant_key == tenant_key,
+    # Import new models
+    from giljo_mcp.models.agent_identity import AgentExecution
+
+    # Retrieve current execution by agent_id
+    query = select(AgentExecution).where(
+        AgentExecution.agent_id == agent_id,
+        AgentExecution.tenant_key == tenant_key,
     )
-    result = session.execute(query)
-    orchestrator = result.scalar_one_or_none()
+    result = await session.execute(query)
+    current_execution = result.scalar_one_or_none()
 
-    if not orchestrator:
-        raise ValueError(f"Orchestrator job {job_id} not found")
+    if not current_execution:
+        raise ValueError(f"Agent execution {agent_id} not found for tenant {tenant_key}")
 
-    if orchestrator.agent_type != "orchestrator":
-        raise ValueError(f"Job {job_id} is not an orchestrator (type: {orchestrator.agent_type})")
-
-    if orchestrator.status == "complete":
-        raise ValueError(f"Orchestrator {job_id} is already complete. Cannot trigger succession.")
+    if current_execution.status == "complete":
+        raise ValueError(f"Agent {agent_id} is already complete. Cannot trigger succession.")
 
     # Initialize succession manager
     manager = OrchestratorSuccessionManager(session, tenant_key)
 
-    # Create successor
-    successor = manager.create_successor(orchestrator, reason=reason)
+    # Create successor execution (on SAME job)
+    successor_execution = await manager.create_successor(current_execution, reason=reason)
 
     # Generate handover summary
-    handover_summary = manager.generate_handover_summary(orchestrator)
+    handover_summary = manager.generate_handover_summary(current_execution)
 
-    # Complete handover
-    manager.complete_handover(orchestrator, successor, handover_summary, reason)
+    # Store handover summary in successor
+    successor_execution.handover_summary = handover_summary
+    await session.commit()
 
     # Refresh objects
-    session.refresh(orchestrator)
-    session.refresh(successor)
+    await session.refresh(current_execution)
+    await session.refresh(successor_execution)
 
     return {
         "success": True,
-        "successor_id": successor.job_id,
-        "instance_number": successor.instance_number,
-        "status": successor.status,
+        "current_agent_id": current_execution.agent_id,
+        "successor_agent_id": successor_execution.agent_id,
+        "job_id": current_execution.job_id,  # SAME job persists
+        "instance_number": successor_execution.instance_number,
+        "status": successor_execution.status,
         "handover_summary": handover_summary,
     }

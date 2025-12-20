@@ -61,7 +61,7 @@ class AgentJob(Base):
     __tablename__ = "agent_jobs"
 
     job_id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False, index=True)
+    tenant_key = Column(String(50), nullable=False, index=True)
     project_id = Column(
         String(36),
         ForeignKey("projects.id"),
@@ -158,7 +158,7 @@ class AgentExecution(Base):
         index=True,
         comment="Foreign key to parent AgentJob",
     )
-    tenant_key = Column(String(36), nullable=False, index=True)
+    tenant_key = Column(String(50), nullable=False, index=True)
 
     # Executor identity
     agent_type = Column(
