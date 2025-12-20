@@ -1,18 +1,18 @@
-# Handover 0363: Orchestrator Handover Behavior Injection
+# Handover 0365: Orchestrator Handover Behavior Injection
 
 **Date**: 2025-12-19
 **Status**: READY FOR DISCUSSION
 **Priority**: Medium
 **Type**: Architecture Enhancement
 **Estimated Effort**: TBD (needs discussion)
-**Related Issues**: Discovered during 0355 implementation (Alpha Trial Remediation)
-**Depends On**: 0355 (Protocol Message Handling Fix) - ✅ COMPLETED 2025-12-19
+**Related Issues**: Discovered during 0364 implementation (Alpha Trial Remediation)
+**Depends On**: 0364 (Protocol Message Handling Fix) - ✅ COMPLETED 2025-12-19
 
 ---
 
 ## Executive Summary
 
-Orchestrator succession has an architectural gap: successor orchestrators do not receive execution-phase behavior instructions when taking over from a predecessor. The current handover mechanism successfully transfers project state and creates the successor job, but the successor only receives `get_orchestrator_instructions()` which is designed for the staging workflow. This means successor orchestrators miss the execution-phase monitoring guidance that would be added in Handover 0355.
+Orchestrator succession has an architectural gap: successor orchestrators do not receive execution-phase behavior instructions when taking over from a predecessor. The current handover mechanism successfully transfers project state and creates the successor job, but the successor only receives `get_orchestrator_instructions()` which is designed for the staging workflow. This means successor orchestrators miss the execution-phase monitoring guidance that would be added in Handover 0364.
 
 **Impact**: After handover, successor orchestrators lack guidance on:
 - How to monitor spawned agents during execution
@@ -74,7 +74,7 @@ successor = MCPAgentJob(
 # - Project already activated
 # - Context already prioritized
 
-# MISSING: Task 8 (Execution Phase Monitoring) from Handover 0355
+# MISSING: Task 8 (Execution Phase Monitoring) from Handover 0364
 # - Sequential/parallel execution patterns
 # - Message polling strategy
 # - Agent coordination patterns
@@ -92,7 +92,7 @@ successor = MCPAgentJob(
 7. Successor has NO guidance on execution-phase monitoring (what to do next)
 
 **What's Missing:**
-- Execution-phase behavior instructions (from Handover 0355 Task 8)
+- Execution-phase behavior instructions (from Handover 0364 Task 8)
 - Message polling patterns for active agents
 - Coordination patterns for sequential/parallel execution
 - Progress monitoring and milestone tracking
@@ -193,9 +193,9 @@ Lines 200+: `get_orchestrator_instructions()` implementation
 - Returns staging instructions + context framing
 - **Gap**: No awareness of "this is a successor orchestrator"
 
-### Handover 0355 Context
+### Handover 0364 Context
 
-**What 0355 Adds** (when implemented):
+**What 0364 Adds** (when implemented):
 - **Phase 1**: Enhanced agent protocol with message checks after each TodoWrite task
 - **Phase 2**: **Task 8: Execution Phase Monitoring** added to orchestrator staging prompt
   - Sequential execution pattern (spawn → poll → handoff → spawn next)
@@ -203,7 +203,7 @@ Lines 200+: `get_orchestrator_instructions()` implementation
   - Mandatory final message check before completion
 
 **Why Successors Need This**:
-- Handover 0355 adds Task 8 to `_build_staging_prompt()`
+- Handover 0364 adds Task 8 to `_build_staging_prompt()`
 - Staging prompt returned by `get_orchestrator_instructions()`
 - **BUT**: Successors SKIP staging (already done by predecessor)
 - **SO**: Successors never see Task 8 guidance
@@ -329,7 +329,7 @@ handover_mission = f"""
 ### Project State
 {handover_summary}
 
-### Execution Phase Instructions (Handover 0355 Task 8)
+### Execution Phase Instructions (Handover 0364 Task 8)
 
 You are continuing work from Orchestrator Instance {predecessor.instance_number}.
 Staging is COMPLETE. Agents are ALREADY SPAWNED. Your role is execution monitoring.
@@ -504,7 +504,7 @@ async def _build_staging_prompt(...):
     [Current 7-task workflow]
 
     ### EXECUTION PHASE (Task 8 - AFTER STAGING COMPLETE)
-    [Handover 0355 execution monitoring guidance]
+    [Handover 0364 execution monitoring guidance]
 
     ---
 
@@ -540,17 +540,17 @@ async def _build_staging_prompt(...):
 
 ## Implementation Dependencies
 
-### Handover 0355 (MUST BE COMPLETE FIRST)
+### Handover 0364 (MUST BE COMPLETE FIRST)
 
-This handover DEPENDS on 0355 being implemented because:
-1. **0355 defines Task 8**: Execution phase monitoring instructions
+This handover DEPENDS on 0364 being implemented because:
+1. **0364 defines Task 8**: Execution phase monitoring instructions
 2. **Without Task 8, there's nothing to inject**: No execution guidance exists yet
-3. **0355 adds agent protocol changes**: Message handling that orchestrators must understand
+3. **0364 adds agent protocol changes**: Message handling that orchestrators must understand
 
 **Sequence**:
-1. Implement 0355 (add Task 8 to `_build_staging_prompt()`)
+1. Implement 0364 (add Task 8 to `_build_staging_prompt()`)
 2. Verify first-time orchestrators use Task 8 successfully
-3. THEN implement 0363 (ensure successors also get Task 8)
+3. THEN implement 0365 (ensure successors also get Task 8)
 
 ### Related Handovers
 
@@ -558,7 +558,7 @@ This handover DEPENDS on 0355 being implemented because:
 - **0080a**: `/gil_handover` slash command (manual trigger)
 - **0246a**: Orchestrator Staging Workflow (7-task pipeline)
 - **0334**: HTTP-only MCP and full_protocol introduction
-- **0355**: Protocol Message Handling Fix (defines Task 8)
+- **0364**: Protocol Message Handling Fix (defines Task 8)
 
 ---
 
@@ -629,7 +629,7 @@ This handover DEPENDS on 0355 being implemented because:
 ### Functional Requirements
 
 1. **Successor Orchestrators Receive Execution Guidance**
-   - [ ] Successors get Task 8 instructions (from Handover 0355)
+   - [ ] Successors get Task 8 instructions (from Handover 0364)
    - [ ] Successors understand sequential vs parallel execution patterns
    - [ ] Successors know when to poll agent status
    - [ ] Successors apply message handling patterns correctly
@@ -826,7 +826,7 @@ This handover DEPENDS on 0355 being implemented because:
 ## Next Steps
 
 1. **Developer Review**: Discuss options and choose approach
-2. ~~**Wait for 0355**~~: ✅ 0355 is COMPLETE - Step 7 (Execution Phase Monitoring) now exists in `thin_prompt_generator.py` lines 1003-1009
+2. ~~**Wait for 0364**~~: ✅ 0364 is COMPLETE - Step 7 (Execution Phase Monitoring) now exists in `thin_prompt_generator.py` lines 1003-1009
 3. **Implement Chosen Option**: Follow rollout plan for selected approach
 4. **Test in Alpha Trial**: Verify successors monitor agents effectively
 5. **Update Documentation**: Close the loop on succession behavior docs
@@ -841,14 +841,14 @@ This handover DEPENDS on 0355 being implemented because:
 
 ## Session Context
 
-This handover originated from the **0355 Implementation Research Session** (2025-12-19) where we discovered that orchestrator succession has a behavioral gap distinct from the message handling issues being fixed in 0355.
+This handover originated from the **0364 Implementation Research Session** (2025-12-19) where we discovered that orchestrator succession has a behavioral gap distinct from the message handling issues being fixed in 0364.
 
 **Key Insight**: Agents get `full_protocol` with 5-phase lifecycle, but orchestrators get `staging_prompt` with 6-step workflow + Step 7 (execution monitoring). Successors need execution-phase guidance to complete the succession architecture.
 
-**0355 Implementation Reference** (completed 2025-12-19):
+**0364 Implementation Reference** (completed 2025-12-19):
 - Agent protocol enhanced: `src/giljo_mcp/services/orchestration_service.py` lines 153-227
 - Step 7 added: `src/giljo_mcp/thin_prompt_generator.py` lines 1003-1009
 - Tests: `tests/services/test_orchestration_service_agent_mission.py`, `tests/thin_prompt/test_thin_prompt_unit.py`
-- Commit: `484933e6 feat(0355): implement protocol message handling fix`
+- Commit: `484933e6 feat(0364): implement protocol message handling fix`
 
-**Related Discussion**: See `handovers/0355_protocol_message_handling_fix.md` (Status: COMPLETE) for full implementation details.
+**Related Discussion**: See `handovers/0364_protocol_message_handling_fix.md` (Status: COMPLETE) for full implementation details.
