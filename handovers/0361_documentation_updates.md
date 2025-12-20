@@ -1,1107 +1,291 @@
-# Handover 0361: Documentation Updates for Alpha Trial Feedback
+# Handover 0361: Documentation Updates for 0366 Identity Model & Alpha Trial Feedback
 
-**Date**: 2025-12-19
-**Status**: Ready for Implementation
-**Agent**: Documentation Manager
-**Estimated Effort**: 2 hours
+**Date**: 2025-12-20  
+**Status**: READY FOR IMPLEMENTATION  
+**Agent**: Documentation Manager  
+**Estimated Effort**: 2–3 hours  
+**Depends On**: 0350 series (context tools), 0345/0347 series (context depth), 0364 (protocol message handling), 0366a/b/c (identity refactor), 0356 (tenant/identity consistency)
 
 ---
 
 ## Context
 
-Alpha trial of GiljoAI MCP with external developers revealed documentation gaps and confusing examples that caused friction during onboarding and agent execution. This handover addresses specific issues identified in GitHub issues #13 and #15, plus additional clarity improvements discovered during trial observation.
+The original 0361 handover highlighted several documentation gaps:
+- Confusing `fetch_context` syntax (arrays vs single category strings).
+- Missing guidance on message polling frequency and patterns.
+- Lack of a central reference for which MCP tools require `tenant_key`.
+- No concise protocol quick reference for agents.
+- Undocumented message content conventions.
 
-**Key Pain Points Identified**:
-- Misleading `fetch_context` syntax showing array brackets when tool expects single category strings
-- No clear guidance on message polling frequency for agents
-- Unclear which MCP tools require `tenant_key` parameter and which don't
-- Missing quick reference guide for common MCP protocol patterns
-- Undocumented message content conventions (prefixes like READY:, BLOCKER:, COMPLETE:)
+Since then:
+- **0364** solidified the agent protocol and message handling behavior.
+- **0366a/b/c** introduced the **AgentJob/AgentExecution identity model** and standardized MCP tool parameters (`job_id` vs `agent_id`).
+- **0356** (this series) focuses on aligning tool signatures and schemas with that model.
 
-**Impact**: These gaps led to trial participants experiencing:
-- Runtime errors from incorrect `fetch_context` calls
-- Agents missing critical messages due to inconsistent polling
-- Authentication failures from missing tenant_key parameters
-- General confusion about communication patterns
-
----
-
-## Problem Statement
-
-### Issue #13: fetch_context Array Syntax Confusion
-
-**Current Documentation** (F:\GiljoAI_MCP\docs\api\context_tools.md):
-```python
-# Examples show array notation
-categories=["product_core", "tech_stack"]
-```
-
-**Actual Tool Signature** (MCP tool definition):
-```python
-# Tool expects individual category strings, not arrays
-fetch_context(category="product_core", ...)  # Correct
-fetch_context(categories=["product_core", ...])  # WRONG - causes error
-```
-
-**Result**: Trial participants copied examples verbatim and encountered runtime errors when tools rejected array parameters.
-
-### Issue #15: Message Polling Frequency Guidance Missing
-
-**Current State**: Documentation mentions `receive_messages()` tool exists but provides no guidance on:
-- When to check for messages (startup? every phase? continuous?)
-- How frequently to poll (every 5 seconds? every minute?)
-- Whether to use `receive_messages()` (auto-acknowledge) vs `list_messages()` (read-only)
-
-**Result**: Agents either:
-- Polled too frequently (wasting tokens on unnecessary calls)
-- Polled too infrequently (missing time-sensitive coordination messages)
-- Used wrong tool (`list_messages()` instead of `receive_messages()`)
-
-### Missing: tenant_key Requirements Documentation
-
-**Current State**: No centralized documentation showing which MCP tools require `tenant_key` parameter.
-
-**Reality**:
-- **ALWAYS Required**: `fetch_context`, `get_agent_mission`, `get_orchestrator_instructions`, `send_message`, `receive_messages`
-- **Never Required**: `health_check`, `get_available_agents` (implicit from auth context)
-- **Conditionally Required**: Some tools infer from API key context
-
-**Result**: Trial participants struggled with authentication errors, unsure which tools needed explicit tenant_key.
-
-### Missing: MCP Protocol Quick Reference
-
-**Current State**: Documentation is comprehensive but scattered across multiple files:
-- Context tools in `docs/api/context_tools.md`
-- Messaging in `docs/architecture/messaging_contract.md`
-- Orchestrator workflow in `docs/components/STAGING_WORKFLOW.md`
-
-**Need**: Single-page cheat sheet showing:
-- Common agent lifecycle patterns
-- Message checking protocol
-- Error handling conventions
-- Context fetching decision tree
-
-### Undocumented: Message Content Conventions
-
-**Current State**: No documentation on recommended message content prefixes.
-
-**Actual Practice** (observed in codebase):
-```python
-# Agents use prefixes for message categorization
-send_message(content="READY: Implementation complete, tests passing")
-send_message(content="BLOCKER: Database migration failed, need DBA assistance")
-send_message(content="COMPLETE: All tasks finished, handover document created")
-```
-
-**Result**: Trial participants created inconsistent message formats, making coordination harder to parse.
+This updated 0361 handover now has two jobs:
+1. **Fix the original alpha-trial documentation issues.**
+2. **Update all examples and reference docs to use the 0366 identity and tenant_key semantics.**
 
 ---
 
-## Investigation Findings
+## Documentation Problems (Updated View)
 
-### 1. fetch_context Syntax Analysis
+### 1. `fetch_context` Syntax & Semantics
 
-**File**: `F:\GiljoAI_MCP\src\giljo_mcp\tools\context_tools\fetch_context.py`
+Current reality (from the code):
 
-**Actual Tool Signature** (lines 15-25):
 ```python
-@tool
 async def fetch_context(
     product_id: str,
     tenant_key: str,
-    category: str,  # SINGULAR - not "categories: List[str]"
+    category: str,
     project_id: Optional[str] = None,
-    depth_config: Optional[Dict] = None,
+    depth_config: Optional[dict] = None,
     apply_user_config: bool = True,
     format: str = "structured",
-    db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+    db_manager: Optional[DatabaseManager] = None,
+) -> dict[str, Any]:
 ```
 
-**Key Finding**: Tool signature uses `category: str` (singular), but documentation shows `categories: List[str]` (plural array).
+Key points:
+- **`category` is singular** – one category per call (`"product_core"`, `"tech_stack"`, etc.).
+- `tenant_key` is always required for context access.
+- `project_id` is optional and scopes project‑level context when provided.
 
-**Root Cause**: Documentation was written based on early design spec that planned for batch category fetching. Implementation simplified to single-category calls for token budget control, but docs were never updated.
+The alpha trial docs still show:
+- Array notation (`categories=[...]`).
+- Ambiguous or missing `tenant_key` usage.
 
-### 2. Message Polling Best Practices Research
+### 2. Agent Lifecycle & Polling Guidance
 
-**Analysis of Existing Agent Templates** (`docs/agent-templates/*.md`):
+We now have:
+- A clear protocol from 0364 / `orchestration_service.py`:
+  - Initialization → mission fetch → work → progress → messaging → completion.
+- A developer guide (`docs/developer_guides/agent_monitoring_developer_guide.md`) that describes monitoring patterns.
 
-**Pattern Found**:
-```markdown
-# Common pattern across 5+ agent templates
-1. Check messages at startup
-2. Check messages after each major phase
-3. Check messages before completion
-4. DO NOT continuous polling (wastes tokens)
-```
+But:
+- Documentation is scattered across multiple files.
+- Examples still use pre‑0366 identifiers (`job_id` in places that should now be `agent_id`).
+- There is no single quick reference that shows recommended polling intervals and when to call `receive_messages()` vs `list_messages()`.
 
-**Frequency Analysis**:
-- Startup check: Always (0 extra cost if none pending)
-- Phase transitions: 3-5 times per session (reasonable token cost)
-- Continuous polling: Never (wasteful, 100+ token cost per hour)
+### 3. `tenant_key` Requirements
 
-**Tool Choice**:
-- `receive_messages()`: Preferred (auto-acknowledges, removes from queue)
-- `list_messages()`: Avoid (read-only, leaves messages pending)
+Post‑0366:
+- All stateful MCP tools should require `tenant_key` (0356).
+- Some legacy docs still imply it’s optional or rely on implicit context.
 
-**Recommendation**: Document "Check messages at startup, after each major phase, and before completion" as golden rule.
+We need a **canonical table** that says:
+- Tool name.
+- Identity parameters (`agent_id`, `job_id`, `project_id`).
+- Whether `tenant_key` is required.
+- Short description of what the tool does.
 
-### 3. tenant_key Requirements Audit
+### 4. Identity Semantics in Docs
 
-**Analysis of All MCP Tools** (`F:\GiljoAI_MCP\src\giljo_mcp\tools/*.py`):
+Many existing documents:
+- Use `job_id` ambiguously (sometimes work, sometimes worker).
+- Refer to `orchestrator_id` instead of `agent_id`.
 
-**Tool Categorization**:
-
-| Tool | tenant_key Required? | Reason |
-|------|---------------------|--------|
-| `fetch_context` | YES | Multi-tenant data isolation |
-| `get_agent_mission` | YES | Job-specific, tenant-scoped |
-| `get_orchestrator_instructions` | YES | Project-specific, tenant-scoped |
-| `send_message` | YES | Message scoping by tenant |
-| `receive_messages` | YES | Agent-specific, tenant-scoped |
-| `acknowledge_message` | YES | Message acknowledgment tracking |
-| `report_progress` | YES | Job-specific progress tracking |
-| `complete_job` | YES | Job lifecycle management |
-| `health_check` | NO | System-level, no tenant context |
-| `get_available_agents` | NO | Inferred from API key context |
-
-**Key Insight**: 90% of tools require explicit `tenant_key` parameter. Only system-level tools omit it.
-
-### 4. Documentation Structure Analysis
-
-**Current File Organization**:
-```
-docs/
-├── api/
-│   └── context_tools.md (6KB - comprehensive but verbose)
-├── architecture/
-│   └── messaging_contract.md (12KB - detailed taxonomy)
-├── components/
-│   └── STAGING_WORKFLOW.md (14KB - orchestrator-focused)
-└── guides/ (no quick reference exists)
-```
-
-**Gap Identified**: No single-page quick reference for agents to consult during execution.
-
-**Recommendation**: Create `docs/guides/mcp_protocol_quick_reference.md` (target: <3KB, ~750 tokens).
-
-### 5. Message Content Convention Discovery
-
-**Analysis of Existing Messages** (database query simulation):
-```sql
--- Common message prefixes found in production messages table
-SELECT DISTINCT SUBSTRING(content, 1, 10) AS prefix, COUNT(*)
-FROM messages
-GROUP BY prefix
-ORDER BY count DESC;
-```
-
-**Results** (simulated from codebase inspection):
-- `READY:` - 42% of messages (agent signaling readiness)
-- `BLOCKER:` - 18% of messages (agent reporting blocking issues)
-- `COMPLETE:` - 15% of messages (agent signaling task completion)
-- `QUESTION:` - 12% of messages (agent requesting clarification)
-- No prefix - 13% of messages (informal coordination)
-
-**Recommendation**: Document these prefixes as recommended conventions (not strict requirements).
+After 0366:
+- This is no longer acceptable – we must document:
+  - `job_id` = work order (AgentJob).
+  - `agent_id` = executor instance (AgentExecution).
 
 ---
 
-## Implementation Plan
+## Objectives
 
-### Phase 1: Fix fetch_context Documentation
+1. **Correct and clarify `fetch_context` documentation** (syntax + semantics).
+2. **Create or update the MCP protocol quick reference** to reflect:
+   - 0364 protocol phases.
+   - 0366 identity semantics (`agent_id` vs `job_id`).
+   - `tenant_key` requirements.
+3. **Provide a clear table of MCP tools and their required parameters** (including tenant_key).
+4. **Standardize message content conventions and polling guidance** in the docs.
 
-**File**: `F:\GiljoAI_MCP\docs\api\context_tools.md`
+---
 
-**Changes Required**:
+## Scope
 
-1. **Line 31** (framing example): Change array notation to single category
-   ```diff
-   - 3. Orchestrator calls fetch_context(categories=["product_core", "tech_stack", ...])
-   + 3. Orchestrator calls fetch_context(category="product_core"), then fetch_context(category="tech_stack"), etc.
-   ```
+### In Scope
 
-2. **Lines 94-103** (basic usage example): Remove array brackets
-   ```diff
-   - # Fetch specific categories
-   - result = await fetch_context(
-   -     product_id="123e4567-e89b-12d3-a456-426614174000",
-   -     tenant_key="tenant_abc",
-   -     categories=["product_core", "tech_stack"]
-   - )
-   + # Fetch specific category (single call per category)
-   + result = await fetch_context(
-   +     product_id="123e4567-e89b-12d3-a456-426614174000",
-   +     tenant_key="tenant_abc",
-   +     category="product_core"
-   + )
-   ```
+1. `docs/api/context_tools.md`
+   - Fix `fetch_context` examples to use:
+     - `category="product_core"` (singular).
+     - Explicit `tenant_key`.
+   - Add a short explanation of context categories and how they map to `field_priority_config`.
 
-3. **Lines 105-118** (depth config example): Fix categories parameter
-   ```diff
-   - result = await fetch_context(
-   -     product_id="123e4567-e89b-12d3-a456-426614174000",
-   -     tenant_key="tenant_abc",
-   -     categories=["vision_documents", "memory_360"],
-   -     depth_config={
-   -         "vision_documents": "light",
-   -         "memory_360": 3
-   -     }
-   - )
-   + # Fetch multiple categories with depth config (separate calls)
-   + vision_result = await fetch_context(
-   +     product_id="123e4567-e89b-12d3-a456-426614174000",
-   +     tenant_key="tenant_abc",
-   +     category="vision_documents",
-   +     depth_config={"vision_documents": "light"}
-   + )
-   +
-   + memory_result = await fetch_context(
-   +     product_id="123e4567-e89b-12d3-a456-426614174000",
-   +     tenant_key="tenant_abc",
-   +     category="memory_360",
-   +     depth_config={"memory_360": 3}
-   + )
-   ```
+2. `docs/architecture/messaging_contract.md`
+   - Update message routing examples to use `agent_id`.
+   - Document message types (`direct`, `progress`, `system`, etc.) and content conventions.
+   - Clarify how `send_message` and `receive_messages` behave post‑0366.
 
-4. **Lines 120-129** (fetch all example): Remove entirely or clarify
-   ```diff
-   - ### Fetch All Categories
-   -
-   - ```python
-   - # Fetch everything (use sparingly)
-   - result = await fetch_context(
-   -     product_id="123e4567-e89b-12d3-a456-426614174000",
-   -     tenant_key="tenant_abc",
-   -     categories=["all"]
-   - )
-   - ```
-   + ### Fetch Multiple Categories
-   +
-   + ```python
-   + # Fetch multiple categories (make separate calls)
-   + categories_to_fetch = ["product_core", "tech_stack", "architecture"]
-   + results = {}
-   +
-   + for cat in categories_to_fetch:
-   +     results[cat] = await fetch_context(
-   +         product_id="123e4567-e89b-12d3-a456-426614174000",
-   +         tenant_key="tenant_abc",
-   +         category=cat
-   +     )
-   + ```
-   ```
+3. `docs/components/STAGING_WORKFLOW.md`
+   - Update orchestrator examples to:
+     - Use `agent_id` for orchestrator executions.
+     - Reference the 0364 protocol for execution‑phase behavior.
 
-5. **Lines 131-141** (project context example): Fix categories parameter
-   ```diff
-   - result = await fetch_context(
-   -     product_id="123e4567-e89b-12d3-a456-426614174000",
-   -     tenant_key="tenant_abc",
-   -     project_id="9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-   -     categories=["project", "tech_stack", "architecture"]
-   - )
-   + # Fetch project-specific context (separate calls)
-   + project_result = await fetch_context(
-   +     product_id="123e4567-e89b-12d3-a456-426614174000",
-   +     tenant_key="tenant_abc",
-   +     project_id="9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-   +     category="project"
-   + )
-   ```
+4. **New Quick Reference**  
+   - `docs/guides/mcp_protocol_quick_reference.md` (new file)
+   - One‑page cheat sheet covering:
+     - Agent lifecycle phases.
+     - Common MCP calls and parameter sets.
+     - Polling recommendations.
+     - Identity semantics.
+     - `tenant_key` rules.
 
-6. **Lines 150-152** (response schema): Update to reflect single category
-   ```diff
-   - "categories_requested": ["product_core", "tech_stack"],
-   - "categories_returned": ["product_core", "tech_stack"],
-   + "category_requested": "product_core",
-   + "category_returned": "product_core",
-   ```
+5. `CLAUDE.md` (or equivalent root developer guide)
+   - Update snippets and references to:
+     - Clarify `agent_id` vs `job_id`.
+     - Link to the new quick reference.
 
-7. **Line 387** (priority framing example): Fix array notation
-   ```diff
-   - {"field": "product_core", "tool": "fetch_context", "framing": "REQUIRED: Call fetch_context(['product_core'])"}
-   + {"field": "product_core", "tool": "fetch_context", "framing": "REQUIRED: Call fetch_context(category='product_core')"}
-   ```
+### Out of Scope
 
-### Phase 2: Add Message Polling Guidance
+- Changing the underlying protocol behavior (covered by 0364).
+- Changing the MCP tools’ actual signatures (covered by 0356/0360/0366c).
 
-**File**: `F:\GiljoAI_MCP\docs\architecture\messaging_contract.md`
+---
 
-**Changes Required**:
+## Detailed Work Plan
 
-1. **After Line 70** (list_messages description): Add new section
-   ```markdown
+### 1. `fetch_context` Documentation Fix (30–45 min)
 
-   ### Message Polling Best Practices
+File: `docs/api/context_tools.md`
 
-   **When to Check Messages**:
-   - **Startup**: Always check for pending messages when agent starts work
-   - **Phase Transitions**: Check after completing each major phase of work
-   - **Before Completion**: Final check before calling `complete_job()`
-   - **Never**: Do NOT continuously poll (wastes tokens)
+Tasks:
+1. Replace all array‑style examples:
+   - From: `categories=["product_core", "tech_stack"]`
+   - To: separate examples with single `category` value:
 
-   **Polling Frequency Guidance**:
    ```python
-   # ✅ CORRECT: Strategic checkpoints
-   # 1. Startup
-   messages = await receive_messages(agent_id="implementer-1", limit=10)
-
-   # 2. After major phase
-   # ... complete implementation phase ...
-   messages = await receive_messages(agent_id="implementer-1", limit=10)
-
-   # 3. Before completion
-   messages = await receive_messages(agent_id="implementer-1", limit=10)
-   await complete_job(job_id="job-abc", result={...})
-
-   # ❌ WRONG: Continuous polling
-   while True:
-       messages = await receive_messages(agent_id="implementer-1")
-       time.sleep(5)  # Wastes ~20 tokens per minute
-   ```
-
-   **Tool Selection**:
-   - **Use `receive_messages()`**: Auto-acknowledges and removes from queue (preferred)
-   - **Use `list_messages()`**: Read-only, messages stay pending (rare use case)
-
-   **Golden Rule**: "Check messages at startup, after each major phase, and before completion."
-   ```
-
-2. **Update Line 64-69** (list_messages description): Clarify read-only behavior
-   ```diff
-   # List message history
-   list_messages(
-       project_id: Optional[str] = None,
-       status: Optional[str] = None,    # "pending" | "completed"
-       agent_id: Optional[str] = None,
-       limit: int = 50
-   )
-   +
-   + # NOTE: list_messages() is READ-ONLY. Messages stay in pending state.
-   + # Use receive_messages() for normal agent message checking (auto-acknowledges).
-   ```
-
-**File**: `F:\GiljoAI_MCP\docs\components\STAGING_WORKFLOW.md`
-
-**Changes Required**:
-
-1. **After Line 460** (activation complete): Add message polling reminder
-   ```markdown
-
-   ## Post-Activation: Agent Message Protocol
-
-   Once staging is complete and agents begin execution, follow this message checking protocol:
-
-   **Message Checking Frequency**:
-   1. **At Startup**: Check for any pending messages before beginning work
-   2. **After Each Major Phase**: Check for coordination messages after completing implementation, testing, review phases
-   3. **Before Completion**: Final check before calling `complete_job()` to ensure no blocking messages received
-
-   **Example Agent Flow**:
-   ```python
-   # Phase 1: Startup
-   messages = await receive_messages(agent_id=agent_id, limit=10)
-   for msg in messages:
-       print(f"Message from {msg['from_agent']}: {msg['content']}")
-
-   # Phase 2: Execute work
-   # ... implementation work ...
-
-   # Phase 3: Check messages after phase
-   messages = await receive_messages(agent_id=agent_id, limit=10)
-
-   # Phase 4: Complete
-   messages = await receive_messages(agent_id=agent_id, limit=10)  # Final check
-   await complete_job(job_id=job_id, result={...})
-   ```
-
-   **Token Budget**: ~10 tokens per check × 3 checks = ~30 tokens (minimal overhead)
-   ```
-
-### Phase 3: Document tenant_key Requirements
-
-**File**: `F:\GiljoAI_MCP\docs\api\context_tools.md`
-
-**Changes Required**:
-
-1. **After Line 45** (3-tier priority table): Add new section
-   ```markdown
-
-   ### tenant_key Parameter Requirements
-
-   **ALWAYS Required** (Multi-tenant Data Isolation):
-   - `fetch_context()` - Product/project data scoped by tenant
-   - `get_agent_mission()` - Job-specific mission retrieval
-   - `get_orchestrator_instructions()` - Orchestrator-specific instructions
-   - `send_message()` - Message scoping by tenant
-   - `receive_messages()` - Agent-specific message retrieval
-   - `acknowledge_message()` - Message acknowledgment tracking
-   - `report_progress()` - Job-specific progress tracking
-   - `complete_job()` - Job lifecycle management
-
-   **NEVER Required** (System-level or Inferred from Auth):
-   - `health_check()` - System-level health status
-   - `get_available_agents()` - Tenant inferred from API key context
-
-   **How to Get tenant_key**:
-   ```python
-   # In orchestrator/agent prompt, tenant_key is provided as variable
-   tenant_key = "{tenant_key}"  # Injected by thin prompt generator
-
-   # In MCP tool calls
-   result = await fetch_context(
-       product_id=product_id,
-       tenant_key=tenant_key,  # REQUIRED - do not omit
-       category="product_core"
+   # Example: get core product context
+   await fetch_context(
+       product_id=PRODUCT_ID,
+       tenant_key=TENANT_KEY,
+       category="product_core",
+       format="structured",
    )
    ```
 
-   **Security Note**: `tenant_key` enforces multi-tenant isolation. All data queries filter by this parameter to prevent cross-tenant data leakage.
-   ```
+2. Explicitly document parameters:
+   - `product_id`, `tenant_key`, `category`, `project_id`, `depth_config`, `apply_user_config`, `format`.
+   - Explain that multi‑category usage should be done by *multiple calls* or by dedicated orchestration helpers.
 
-### Phase 4: Create MCP Protocol Quick Reference
+3. Add a short “anti‑pattern” note:
+   - Calling `fetch_context` with arrays will result in validation errors.
 
-**New File**: `F:\GiljoAI_MCP\docs\guides\mcp_protocol_quick_reference.md`
+### 2. MCP Protocol Quick Reference (45–60 min)
 
-**Content**:
-```markdown
-# MCP Protocol Quick Reference
+File: `docs/guides/mcp_protocol_quick_reference.md` (NEW)
 
-**Version**: v3.2+
-**Last Updated**: 2025-12-19
-**Target Audience**: Agents during execution
+Content sections:
 
----
+1. **Identity Model**
+   - `job_id` (AgentJob) vs `agent_id` (AgentExecution).
+   - Short table mapping common tools to which identifier they require.
 
-## Agent Lifecycle Pattern
+2. **Core Lifecycle Calls**
+   - `get_agent_mission(agent_id, tenant_key)`
+   - `get_orchestrator_instructions(agent_id, tenant_key)`
+   - `report_progress(job_id or agent_id, progress, tenant_key)` – clarify which we are using in the current implementation and how it maps to job/execution.
+   - `receive_messages(agent_id, tenant_key, ...)`
+   - `send_message(to_agent_id, content, project_id, tenant_key, ...)`
 
-```
-1. STARTUP
-   ├─ Call get_agent_mission(job_id, tenant_key)
-   ├─ Check messages: receive_messages(agent_id)
-   └─ Report startup: report_progress(job_id, {"percent": 0, "message": "Initialized"})
+3. **Polling Guidance**
+   - Suggested pattern:
+     - On startup: `receive_messages()` once.
+     - Between major steps: `report_progress()` followed by `receive_messages()`.
+     - Avoid tight loops – recommend minimum intervals.
 
-2. EXECUTION (Repeat per phase)
-   ├─ Execute work (implementation/testing/review)
-   ├─ Report progress: report_progress(job_id, {"percent": 25/50/75})
-   └─ Check messages: receive_messages(agent_id)
+4. **Tenant Key Rules**
+   - Tools that **must** receive `tenant_key`.
+   - Reminder: all MCP HTTP traffic is per‑tenant; never omit `tenant_key` in user‑facing examples.
 
-3. COMPLETION
-   ├─ Final message check: receive_messages(agent_id)
-   ├─ Complete job: complete_job(job_id, result={...})
-   └─ Send completion message: send_message(to_agents=["orchestrator"], content="COMPLETE: ...")
-```
+5. **Message Content Conventions**
+   - Recommended prefixes:
+     - `READY:`, `BLOCKER:`, `COMPLETE:`, `QUESTION:`.
+   - Note they are conventions, not protocol‑enforced, but strongly recommended for human readability.
 
----
+### 3. Messaging Contract Update (30–45 min)
 
-## Common MCP Tool Patterns
+File: `docs/architecture/messaging_contract.md`
 
-### Context Fetching
+Tasks:
+1. Update identity references:
+   - Replace `job_id` used as “recipient” with `agent_id`.
+   - Clarify that message routing is via `MessageService0366b` and uses `AgentExecution.agent_id`.
+2. Clarify message types and counters:
+   - Describe “Messages Waiting/Sent/Read” in terms of the new identity model.
+   - Link to the alpha‑trial message counter fixes (0362) where appropriate.
+3. Add a small section on **team messaging**:
+   - Reference `get_team_agents()` (0360) once implemented.
 
-```python
-# Fetch single category (correct usage)
-result = await fetch_context(
-    product_id="{product_id}",
-    tenant_key="{tenant_key}",
-    category="product_core"  # SINGULAR - not categories=["..."]
-)
+### 4. Staging Workflow & Orchestrator Docs (30–45 min)
 
-# Fetch multiple categories (loop through separately)
-for category in ["product_core", "tech_stack", "architecture"]:
-    result = await fetch_context(
-        product_id="{product_id}",
-        tenant_key="{tenant_key}",
-        category=category
-    )
-```
+File: `docs/components/STAGING_WORKFLOW.md`
 
-### Message Communication
-
-```python
-# Check messages (use receive_messages, NOT list_messages)
-messages = await receive_messages(
-    agent_id="{agent_id}",
-    limit=10
-)
-
-# Send message with convention prefix
-await send_message(
-    to_agents=["tester"],
-    content="READY: Implementation complete, tests passing",
-    project_id="{project_id}",
-    message_type="direct",
-    from_agent="{agent_id}"
-)
-```
-
-### Progress Reporting
-
-```python
-# Report incremental progress
-await report_progress(
-    job_id="{job_id}",
-    progress={
-        "percent": 50,
-        "message": "Core implementation complete"
-    }
-)
-
-# Complete job
-await complete_job(
-    job_id="{job_id}",
-    result={
-        "status": "success",
-        "files_modified": ["api/auth.py"],
-        "tests_passed": 12
-    }
-)
-```
+Tasks:
+1. Update orchestrator references to:
+   - Use `agent_id` for orchestrator execution.
+   - Use `job_id` for the orchestrator job/work.
+2. Incorporate 0364’s “execution‑phase monitoring” step:
+   - Link to 0365 handover for orchestrator succession behavior.
+3. Ensure examples of thin prompts:
+   - Instruct orchestrators to call `get_orchestrator_instructions(agent_id, tenant_key)` with the correct IDs.
 
 ---
 
-## Message Content Conventions
-
-Use these prefixes for clear communication categorization:
-
-```python
-# Agent signals readiness
-send_message(content="READY: Implementation complete, tests passing")
-
-# Agent reports blocking issue
-send_message(content="BLOCKER: Database migration failed, need DBA assistance")
-
-# Agent signals completion
-send_message(content="COMPLETE: All tasks finished, handover document created")
-
-# Agent requests clarification
-send_message(content="QUESTION: Should we use bcrypt or argon2 for password hashing?")
-
-# Informal coordination (no prefix required)
-send_message(content="Starting work on authentication endpoints")
-```
-
-**Note**: Prefixes are conventions, not strict requirements. Use for clarity.
-
----
-
-## Message Polling Frequency
-
-**Golden Rule**: "Check messages at startup, after each major phase, and before completion."
-
-```python
-# ✅ CORRECT: Strategic checkpoints
-# Startup
-messages = await receive_messages(agent_id=agent_id)
-
-# After phase 1
-# ... work ...
-messages = await receive_messages(agent_id=agent_id)
-
-# After phase 2
-# ... work ...
-messages = await receive_messages(agent_id=agent_id)
-
-# Before completion
-messages = await receive_messages(agent_id=agent_id)
-await complete_job(job_id=job_id, result={...})
-
-# ❌ WRONG: Continuous polling
-while True:
-    messages = await receive_messages(agent_id=agent_id)
-    time.sleep(5)  # Wastes ~20 tokens/minute
-```
-
-**Frequency Analysis**:
-- Startup: Always (0 cost if no messages)
-- Phase transitions: 3-5 times per session
-- Continuous: Never (wasteful)
-
----
-
-## tenant_key Requirements
-
-**ALWAYS Include** (90% of tools):
-- `fetch_context()`
-- `get_agent_mission()`
-- `send_message()` / `receive_messages()`
-- `report_progress()` / `complete_job()`
-
-**NEVER Include** (System-level):
-- `health_check()`
-- `get_available_agents()` (inferred from auth)
-
-**How to Get It**:
-```python
-# Provided in agent prompt as variable
-tenant_key = "{tenant_key}"  # Injected by prompt generator
-
-# Use in tool calls
-await fetch_context(
-    product_id=product_id,
-    tenant_key=tenant_key,  # Required for multi-tenant isolation
-    category="product_core"
-)
-```
-
----
-
-## Error Handling
-
-```python
-# Handle missing context
-try:
-    result = await fetch_context(category="product_core", ...)
-    if "error" in result.get("metadata", {}):
-        # Handle gracefully
-        print(f"Context fetch failed: {result['metadata']['error']}")
-except Exception as e:
-    # Report error to orchestrator
-    await send_message(
-        to_agents=["orchestrator"],
-        content=f"BLOCKER: Context fetch failed - {str(e)}"
-    )
-```
-
----
-
-## Decision Trees
-
-### Should I Send a Message?
-
-```
-Is this communication between agents/user?
-├─ YES: Use send_message()
-└─ NO: Is this job status/progress?
-    ├─ YES: Use report_progress() or complete_job()
-    └─ NO: Is this mission/config delivery?
-        ├─ YES: Use get_agent_mission() or get_orchestrator_instructions()
-        └─ NO: Consult messaging_contract.md
-```
-
-### Which Message Tool?
-
-```
-Do I want to acknowledge and remove messages from queue?
-├─ YES: Use receive_messages() (preferred for agents)
-└─ NO: Use list_messages() (read-only, rare use case)
-```
-
----
-
-## Token Budget Estimates
-
-| Operation | Token Cost | Frequency | Total Cost |
-|-----------|-----------|-----------|------------|
-| `fetch_context(category="product_core")` | ~100 | 1x startup | ~100 |
-| `get_agent_mission()` | ~200 | 1x startup | ~200 |
-| `receive_messages()` | ~10 | 3x checkpoints | ~30 |
-| `report_progress()` | ~15 | 4x phases | ~60 |
-| `complete_job()` | ~20 | 1x completion | ~20 |
-| **Total per agent session** | | | **~410 tokens** |
-
-**Context Budget**: Most agents have 200,000 token budget. Protocol overhead (~410 tokens) is <0.3% of budget.
-
----
-
-## Related Documentation
-
-- **Comprehensive Context API**: [docs/api/context_tools.md](../api/context_tools.md)
-- **Messaging Contract**: [docs/architecture/messaging_contract.md](../architecture/messaging_contract.md)
-- **Orchestrator Workflow**: [docs/components/STAGING_WORKFLOW.md](../components/STAGING_WORKFLOW.md)
-- **Service Layer Patterns**: [docs/SERVICES.md](../SERVICES.md)
-
----
-
-**Last Updated**: 2025-12-19 (Handover 0361)
-```
-
-### Phase 5: Update CLAUDE.md Cross-References
-
-**File**: `F:\GiljoAI_MCP\CLAUDE.md`
-
-**Changes Required**:
-
-1. **After Line 345** (Context Management section): Add quick reference link
-   ```diff
-   **See**: [docs/api/context_tools.md](docs/api/context_tools.md) for complete API reference.
-   + **Quick Reference**: [docs/guides/mcp_protocol_quick_reference.md](docs/guides/mcp_protocol_quick_reference.md) for agent execution cheat sheet.
-   ```
-
-2. **After Line 465** (Orchestrator Workflow section): Add message polling reference
-   ```diff
-   **Documentation**: [ORCHESTRATOR.md](docs/ORCHESTRATOR.md) • [STAGING_WORKFLOW.md](docs/components/STAGING_WORKFLOW.md)
-   + **Message Protocol**: Check messages at startup, after each major phase, and before completion. See [MCP Protocol Quick Reference](docs/guides/mcp_protocol_quick_reference.md).
-   ```
-
----
-
-## Files to Modify
-
-### Core Documentation Updates
-1. **F:\GiljoAI_MCP\docs\api\context_tools.md** (8 edits)
-   - Fix `categories` → `category` parameter in all examples
-   - Remove array notation from framing examples
-   - Update response schema to reflect single category
-   - Add tenant_key requirements section
-
-2. **F:\GiljoAI_MCP\docs\architecture\messaging_contract.md** (2 edits)
-   - Add "Message Polling Best Practices" section after line 70
-   - Clarify `list_messages()` read-only behavior
-
-3. **F:\GiljoAI_MCP\docs\components\STAGING_WORKFLOW.md** (1 edit)
-   - Add "Post-Activation: Agent Message Protocol" section after line 460
-
-### New Documentation
-4. **F:\GiljoAI_MCP\docs\guides\mcp_protocol_quick_reference.md** (NEW)
-   - Create comprehensive quick reference guide
-   - Target: <3KB, ~750 tokens
-   - Include agent lifecycle, tool patterns, conventions, decision trees
-
-### Cross-Reference Updates
-5. **F:\GiljoAI_MCP\CLAUDE.md** (2 edits)
-   - Add quick reference link in Context Management section
-   - Add message protocol reminder in Orchestrator Workflow section
-
----
-
-## Testing Strategy
-
-### 1. Documentation Accuracy Verification
-
-**Method**: Manual review with developer checklist
-
-**Checklist**:
-- [ ] All `fetch_context()` examples use singular `category` parameter
-- [ ] No array notation (`categories=[...]`) remains in context_tools.md
-- [ ] Message polling guidance present in messaging_contract.md
-- [ ] tenant_key requirements documented with examples
-- [ ] Quick reference guide contains all critical patterns
-- [ ] All cross-references resolve correctly
-
-### 2. Code-to-Docs Alignment Verification
-
-**Method**: Compare documentation examples to actual tool signatures
-
-**Test Cases**:
-
-```python
-# Test 1: Verify fetch_context signature matches docs
-from src.giljo_mcp.tools.context_tools import fetch_context
-import inspect
-
-sig = inspect.signature(fetch_context)
-assert 'category' in sig.parameters  # PASS if singular
-assert 'categories' not in sig.parameters  # PASS if absent
-
-# Test 2: Verify message tools match documented API
-from src.giljo_mcp.tools.agent_communication import receive_messages, list_messages
-import inspect
-
-receive_sig = inspect.signature(receive_messages)
-list_sig = inspect.signature(list_messages)
-
-assert 'agent_id' in receive_sig.parameters
-assert 'limit' in receive_sig.parameters
-```
-
-### 3. External Developer Validation
-
-**Method**: Request alpha trial participants review updated docs
-
-**Validation Questions**:
-1. Is `fetch_context()` usage now clear? (Expected: YES)
-2. Do you understand when to check messages? (Expected: YES - "startup, phases, completion")
-3. Is tenant_key requirement clear? (Expected: YES - table shows which tools)
-4. Is quick reference helpful during execution? (Expected: YES - <3KB, scannable)
-5. Are message prefixes intuitive? (Expected: YES - READY:, BLOCKER:, COMPLETE:)
-
-### 4. Link Integrity Check
-
-**Method**: Automated link checker script
-
-```bash
-# Check all markdown links resolve
-python scripts/check_docs_links.py docs/
-
-# Expected output:
-# ✓ docs/api/context_tools.md: 12/12 links valid
-# ✓ docs/architecture/messaging_contract.md: 8/8 links valid
-# ✓ docs/components/STAGING_WORKFLOW.md: 15/15 links valid
-# ✓ docs/guides/mcp_protocol_quick_reference.md: 6/6 links valid
-# ✓ CLAUDE.md: 47/47 links valid
-```
-
-### 5. Token Budget Verification
-
-**Method**: Measure quick reference guide token count
-
-```python
-import tiktoken
-
-enc = tiktoken.encoding_for_model("gpt-4")
-with open("docs/guides/mcp_protocol_quick_reference.md") as f:
-    content = f.read()
-    tokens = len(enc.encode(content))
-
-assert tokens < 1000  # Target: <750 tokens, allow buffer
-print(f"Quick reference: {tokens} tokens")  # Expected: ~600-750
-```
+## Tool & Parameter Reference Table
+
+As part of this handover, create a concise table (in the quick reference) like:
+
+| Tool | Identity Params | Requires `tenant_key`? | Purpose |
+|------|-----------------|------------------------|---------|
+| `get_agent_mission` | `agent_id` | Yes | Fetch agent mission + protocol |
+| `get_orchestrator_instructions` | `agent_id` | Yes | Fetch orchestrator staging/execution instructions |
+| `report_progress` | `job_id` (current), `tenant_key` | Yes | Report job/execution progress (see notes) |
+| `receive_messages` | `agent_id` | Yes | Retrieve pending messages for an execution |
+| `send_message` | `to_agent_id`, `project_id` | Yes | Send message to one or more agents |
+| `fetch_context` | `product_id`, `category` | Yes | Fetch prioritized context slice |
+
+The exact list should be derived from the MCP schemas after 0356/0360/0366c alignment.
 
 ---
 
 ## Success Criteria
 
-### Primary Success Metrics
+1. All examples of `fetch_context` in the docs:
+   - Use `category` (singular).
+   - Pass `tenant_key`.
+   - Do not show array syntax.
 
-1. **Zero fetch_context Array Errors**
-   - **Metric**: GitHub issue #13 reports drop to zero after 1 week
-   - **Verification**: Monitor error logs for `TypeError: categories expects str, got list`
-   - **Target**: 0 errors/week (down from 8-12 errors/week during alpha trial)
+2. There is a **single quick reference page** that:
+   - Correctly describes the 0364 protocol and 0366 identity semantics.
+   - Shows recommended polling patterns and message conventions.
 
-2. **Consistent Message Polling Adoption**
-   - **Metric**: >80% of agent sessions follow "startup, phases, completion" pattern
-   - **Verification**: Analyze `receive_messages()` call timestamps in agent logs
-   - **Target**: 80%+ adherence to 3-checkpoint pattern
+3. Messaging docs (`messaging_contract.md`) align with:
+   - `MessageService0366b` behavior.
+   - The identity and tenant model from 0366.
 
-3. **Reduced tenant_key Authentication Errors**
-   - **Metric**: Drop in `401 Unauthorized` errors from missing tenant_key
-   - **Verification**: Monitor API error logs for auth failures
-   - **Target**: <5% of agent sessions encounter auth errors (down from ~20% in trial)
+4. Staging/orchestrator docs reference:
+   - `agent_id` vs `job_id` correctly.
+   - The execution‑phase monitoring behavior from 0364/0365.
 
-4. **Quick Reference Adoption**
-   - **Metric**: Survey alpha participants on quick reference usage
-   - **Verification**: Post-trial survey question: "Did you use quick reference guide?"
-   - **Target**: 70%+ of participants report using it
-
-### Secondary Success Metrics
-
-5. **Documentation Feedback Score**
-   - **Metric**: Alpha participant rating of documentation clarity (1-5 scale)
-   - **Verification**: Post-trial survey
-   - **Target**: Average >4.0/5.0 (up from ~3.2/5.0 before handover)
-
-6. **Onboarding Time Reduction**
-   - **Metric**: Time for new developer to successfully launch first agent
-   - **Verification**: Track from signup to first successful agent completion
-   - **Target**: <30 minutes (down from ~60-90 minutes in trial)
-
-### Acceptance Criteria
-
-**This handover is considered successful when**:
-- [ ] All 5 documentation files updated and committed
-- [ ] Quick reference guide created (<1000 tokens)
-- [ ] All examples verified against actual tool signatures
-- [ ] Cross-references resolve correctly
-- [ ] Link integrity check passes
-- [ ] Alpha trial participant confirms issue #13 resolved
-- [ ] Alpha trial participant confirms issue #15 resolved
-- [ ] Post-trial survey shows >4.0/5.0 documentation clarity rating
+5. No documentation remains that:
+   - Uses `categories=[...]` for `fetch_context`.
+   - Treats `job_id` as both work and worker.
+   - Omits `tenant_key` from MCP tool examples.
 
 ---
 
-## Risks and Mitigations
+## Developer Checklist
 
-### Risk 1: Breaking Changes to fetch_context Tool
+- [ ] Update `docs/api/context_tools.md` for `fetch_context`.
+- [ ] Create or update `docs/guides/mcp_protocol_quick_reference.md`.
+- [ ] Update `docs/architecture/messaging_contract.md` with identity & tenant semantics.
+- [ ] Update `docs/components/STAGING_WORKFLOW.md` to reference 0364/0365 and `agent_id`.
+- [ ] Sweep `CLAUDE.md` and other entry‑point docs for outdated examples.
+- [ ] Run a quick doc search (`rg "categories\[" docs` and `rg "orchestrator_id" docs`) to ensure no old patterns remain.
 
-**Likelihood**: Low
-**Impact**: High (would invalidate all documentation updates)
+Once implemented, the documentation will match the current server behavior, guiding alpha‑trial and production users toward the correct use of `fetch_context`, identity parameters, and tenant_key across the MCP toolset.
 
-**Scenario**: Development team changes `fetch_context()` to accept array parameters after we document singular usage.
-
-**Mitigation**:
-- Add code comment to `fetch_context.py` referencing this handover
-- Create unit test enforcing singular `category` parameter
-- Document design decision in ADR (Architecture Decision Record)
-
-**Example Code Comment**:
-```python
-# src/giljo_mcp/tools/context_tools/fetch_context.py
-@tool
-async def fetch_context(
-    product_id: str,
-    tenant_key: str,
-    category: str,  # CRITICAL: Must remain singular - see Handover 0361
-    ...
-):
-```
-
-### Risk 2: Message Polling Guidance Becomes Outdated
-
-**Likelihood**: Medium
-**Impact**: Medium (agents may over/under-poll)
-
-**Scenario**: Future optimization enables more efficient continuous polling, making "3-checkpoint" guidance obsolete.
-
-**Mitigation**:
-- Add versioning to quick reference guide ("Valid for v3.2+")
-- Include "Last Updated" timestamp
-- Review guidance quarterly during roadmap planning
-
-### Risk 3: Quick Reference Becomes Stale
-
-**Likelihood**: High
-**Impact**: Medium (reduces utility over time)
-
-**Scenario**: New MCP tools added, old tools deprecated, patterns evolve - quick reference not updated.
-
-**Mitigation**:
-- Add quick reference to documentation review checklist
-- Assign ownership to Documentation Manager agent
-- Trigger review on every MCP tool change (CI/CD hook)
-
-**CI/CD Hook Example**:
-```yaml
-# .github/workflows/mcp-tool-change-detector.yml
-on:
-  pull_request:
-    paths:
-      - 'src/giljo_mcp/tools/**'
-jobs:
-  check-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if quick reference updated
-        run: |
-          if git diff origin/master --name-only | grep -q "mcp_protocol_quick_reference.md"; then
-            echo "✓ Quick reference updated"
-          else
-            echo "⚠️  MCP tools changed but quick reference not updated"
-            exit 1
-          fi
-```
-
-### Risk 4: tenant_key Requirements Change
-
-**Likelihood**: Low
-**Impact**: High (security implications)
-
-**Scenario**: Refactoring moves tenant_key from explicit parameter to authentication context for all tools.
-
-**Mitigation**:
-- Version documentation ("Valid for v3.2+")
-- Create migration guide if this occurs
-- Notify alpha participants of breaking change
-
----
-
-## Follow-Up Tasks
-
-### Immediate (Handover 0362)
-- [ ] Create ADR documenting `fetch_context(category=str)` design decision
-- [ ] Add unit test enforcing singular category parameter
-- [ ] Set up CI/CD hook for quick reference staleness detection
-
-### Short-Term (Next Sprint)
-- [ ] Survey alpha trial participants on updated documentation clarity
-- [ ] Analyze agent logs for message polling pattern adoption
-- [ ] Monitor error logs for reduction in fetch_context array errors
-
-### Long-Term (Quarterly)
-- [ ] Review quick reference guide for accuracy (every 3 months)
-- [ ] Update token budget estimates based on actual usage data
-- [ ] Expand quick reference with new patterns as they emerge
-
----
-
-## Related Documentation
-
-### Impacted by This Handover
-- [docs/api/context_tools.md](../docs/api/context_tools.md) - Context API reference
-- [docs/architecture/messaging_contract.md](../docs/architecture/messaging_contract.md) - Communication taxonomy
-- [docs/components/STAGING_WORKFLOW.md](../docs/components/STAGING_WORKFLOW.md) - Orchestrator workflow
-- [CLAUDE.md](../CLAUDE.md) - Developer quick reference
-
-### New Documentation Created
-- [docs/guides/mcp_protocol_quick_reference.md](../docs/guides/mcp_protocol_quick_reference.md) - Agent execution cheat sheet (NEW)
-
-### Related Handovers
-- **Handover 0350a-c**: On-demand context fetch architecture (introduced `fetch_context` tool)
-- **Handover 0295**: Messaging contract and communication taxonomy
-- **Handover 0246a-c**: Orchestrator staging workflow and agent coordination
-
-### GitHub Issues Resolved
-- **Issue #13**: fetch_context array syntax confusion
-- **Issue #15**: Message check frequency guidance missing
-
----
-
-## Appendix: Alpha Trial Feedback (Raw)
-
-### Issue #13 Comments
-
-**Participant A** (2025-12-15):
-> "I copied the example from context_tools.md showing `categories=["product_core", "tech_stack"]` and got a TypeError. Took me 30 minutes to debug. The actual tool signature uses `category` (singular)."
-
-**Participant B** (2025-12-16):
-> "Documentation shows array notation everywhere but the tool rejects arrays. Very confusing for new users."
-
-### Issue #15 Comments
-
-**Participant C** (2025-12-17):
-> "When should I check messages? Continuously? Once per session? The docs mention receive_messages() exists but don't say when to call it."
-
-**Participant D** (2025-12-18):
-> "I ended up polling every 5 seconds which burned through my token budget fast. Needed guidance on polling frequency."
-
-**Participant E** (2025-12-18):
-> "Used list_messages() instead of receive_messages() because I didn't understand the difference. Messages stayed in pending state forever."
-
-### General Feedback
-
-**Participant F** (2025-12-19):
-> "Would love a single-page cheat sheet I can keep open while agents execute. Current docs are comprehensive but too verbose to scan quickly."
-
-**Participant G** (2025-12-19):
-> "Which tools require tenant_key? I kept getting auth errors and couldn't figure out which parameters were required."
-
----
-
-## ⚠️ DEVELOPER DISCUSSION REQUIRED
-
-**Before implementing this handover, discuss the following with the developer:**
-
-### Options to Review
-
-1. **Quick Reference Format**
-   - Option A: Single markdown file (~750 tokens) (proposed)
-   - Option B: Interactive web page in dashboard
-   - Option C: Embed in agent spawn prompt (larger token cost)
-   - **Trade-offs**: Accessibility vs token budget vs maintainability
-
-2. **Documentation Location**
-   - Option A: `docs/guides/mcp_protocol_quick_reference.md` (proposed)
-   - Option B: In-app help modal
-   - Option C: Claude Code slash command (/protocol-help)
-   - **Trade-offs**: Discoverability vs integration vs maintenance
-
-3. **tenant_key Documentation Scope**
-   - Option A: Table of all 30+ tools with requirements (proposed)
-   - Option B: General rule explanation only
-   - Option C: Auto-generated from tool schemas
-   - **Trade-offs**: Completeness vs maintenance burden vs accuracy
-
-4. **Message Convention Standardization**
-   - Should READY:, BLOCKER:, COMPLETE: be enforced or just recommended?
-   - Should we add more prefixes (QUESTION:, WARNING:, etc.)?
-
-### Questions for Developer
-
-- [ ] Where should the quick reference live for best discoverability?
-- [ ] Should we auto-generate the tenant_key table from code?
-- [ ] Are there other documentation gaps not captured here?
-
-### Alpha Trial Reference
-
-Review agent feedback for real-world context:
-- `F:\TinyContacts\analyzer_feedback.md` - Lines 264-316 (Documentation Suggestions)
-- `F:\TinyContacts\documenter_feedback.md` - Lines 104-114 (Documentation Gaps)
-- Issue #13 and #15 comments in this document (Raw Alpha Feedback section)
-
-### Session Context
-
-This handover originated from the **Alpha Trial Remediation Session** (2025-12-19).
-See: `handovers/alpha_trial_remediation_roadmap.md` for full context and prioritization rationale.
-
----
-
-**End of Handover Document**
