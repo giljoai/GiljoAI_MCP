@@ -205,6 +205,20 @@ class UnifiedInstaller:
                 self._print_info("Continuing installation - manual migration may be required")
             result["steps"].append("migrations_applied")
 
+            # Step 6.6: Seed demo AgentJob and AgentExecution data (Handover 0366d-4)
+            if migration_result["success"]:
+                self._print_info("Seeding demo data for agent succession...")
+                try:
+                    import asyncio
+
+                    demo_seeded = asyncio.run(self._seed_agent_job_demo_data())
+                    if demo_seeded:
+                        self._print_success("Demo data seeded successfully")
+                    else:
+                        self._print_warning("Demo data seeding skipped (already exists or failed)")
+                except Exception as e:
+                    self._print_warning(f"Failed to seed demo data: {e}")
+
             # Step 7: Install frontend dependencies (NEW - using production-grade npm system)
             self._print_header("Installing Frontend Dependencies")
             frontend_result = self.install_frontend_dependencies()
@@ -842,6 +856,17 @@ class UnifiedInstaller:
                 result["success"] = False
                 return result
 
+            # STEP 6.5: Seed demo AgentJob and AgentExecution data (Handover 0366d-4)
+            self._print_info("Seeding demo data for agent succession...")
+            try:
+                demo_seeded = asyncio.run(self._seed_agent_job_demo_data(default_tenant_key))
+                if demo_seeded:
+                    self._print_success("Demo data seeded successfully")
+                else:
+                    self._print_info("Demo data seeding skipped (already exists)")
+            except Exception as e:
+                self._print_warning(f"Failed to seed demo data: {e}")
+
             return result
 
         except Exception as e:
@@ -850,6 +875,144 @@ class UnifiedInstaller:
             self._print_error(f"Database setup failed: {e}")
             traceback.print_exc()
             return {"success": False, "errors": [str(e)]}
+
+    async def _seed_agent_job_demo_data(self, tenant_key: str = "default") -> bool:
+        """
+        Seed sample AgentJob and AgentExecution records to demonstrate succession.
+
+        Creates a demo orchestrator job with two executions showing succession chain:
+        - First execution: completed at 85% context usage (triggered succession)
+        - Second execution: active, continuing work from predecessor
+
+        Args:
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            bool - True if seeding succeeded, False otherwise
+
+        Note:
+            Idempotent - checks for existing demo data before inserting.
+        """
+        try:
+            import sys
+            from pathlib import Path
+
+            # Add src to path
+            sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+            from datetime import datetime, timedelta, timezone
+            from uuid import uuid4
+
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+            from sqlalchemy import select
+
+            # Get database URL from environment
+            import os
+
+            from dotenv import load_dotenv
+
+            load_dotenv(override=True)
+            db_url = os.getenv("DATABASE_URL")
+
+            if not db_url:
+                self._print_warning("DATABASE_URL not found - skipping demo data seeding")
+                return False
+
+            db_manager = DatabaseManager(db_url, is_async=True)
+
+            async with db_manager.get_session_async() as session:
+                # Check if demo data already exists (idempotent)
+                stmt = select(AgentJob).where(
+                    AgentJob.tenant_key == tenant_key,
+                    AgentJob.mission.contains("Demo: Orchestrator with Succession"),
+                )
+                result = await session.execute(stmt)
+                existing_job = result.scalar_one_or_none()
+
+                if existing_job:
+                    self._print_info("Demo data already exists - skipping seed")
+                    return True
+
+                # Create demo AgentJob
+                job_id = str(uuid4())
+                demo_job = AgentJob(
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    project_id=None,  # Not associated with a project
+                    mission="Demo: Orchestrator with Succession - This is a sample job showing how orchestrator succession works when context limits are approached.",
+                    job_type="orchestrator",
+                    status="active",
+                    created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+                    job_metadata={
+                        "demo": True,
+                        "description": "Demonstrates succession workflow",
+                    },
+                )
+                session.add(demo_job)
+
+                # Create first execution (completed after reaching 85% context)
+                first_agent_id = str(uuid4())
+                first_execution = AgentExecution(
+                    agent_id=first_agent_id,
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    agent_type="orchestrator",
+                    instance_number=1,
+                    status="complete",
+                    started_at=datetime.now(timezone.utc) - timedelta(hours=2),
+                    completed_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                    progress=100,
+                    current_task="Completed initial project analysis and spawned implementation agents",
+                    context_used=85000,
+                    context_budget=100000,
+                    succession_reason="Approaching context limit (85%)",
+                    health_status="healthy",
+                    agent_name="Orchestrator Instance #1",
+                    handover_summary={
+                        "phase": "implementation",
+                        "agents_spawned": ["implementer", "tester"],
+                        "decisions": ["Chose microservices architecture", "Selected PostgreSQL for database"],
+                    },
+                )
+                session.add(first_execution)
+
+                # Create second execution (active, successor)
+                second_agent_id = str(uuid4())
+                second_execution = AgentExecution(
+                    agent_id=second_agent_id,
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    agent_type="orchestrator",
+                    instance_number=2,
+                    status="working",
+                    started_at=datetime.now(timezone.utc) - timedelta(hours=1),
+                    completed_at=None,
+                    spawned_by=first_agent_id,  # Links to first execution
+                    progress=35,
+                    current_task="Monitoring implementation agents and coordinating integration testing",
+                    context_used=35000,
+                    context_budget=100000,
+                    health_status="healthy",
+                    last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+                    agent_name="Orchestrator Instance #2",
+                )
+                session.add(second_execution)
+
+                # Update first execution to point to successor
+                first_execution.succeeded_by = second_agent_id
+
+                await session.commit()
+
+            await db_manager.close_async()
+            return True
+
+        except Exception as e:
+            self._print_warning(f"Failed to seed demo data: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
 
     def generate_configs(self) -> Dict[str, Any]:
         """
