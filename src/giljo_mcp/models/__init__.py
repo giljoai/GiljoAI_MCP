@@ -92,6 +92,12 @@ from .agents import (
     Job,
 )
 
+# Agent Identity models (Handover 0366a)
+from .agent_identity import (
+    AgentJob,
+    AgentExecution,
+)
+
 # Template models
 from .templates import (
     AgentTemplate,
@@ -151,6 +157,9 @@ __all__ = [
     "MCPAgentJob",
     "AgentInteraction",
     "Job",
+    # Agent Identity (Handover 0366a)
+    "AgentJob",
+    "AgentExecution",
     # Templates
     "AgentTemplate",
     "TemplateArchive",
