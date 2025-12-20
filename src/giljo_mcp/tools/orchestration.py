@@ -505,23 +505,25 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_agent_mission(agent_id: str, tenant_key: str) -> dict[str, Any]:
         """
-        Fetch agent-specific mission and context (Thin Client Architecture).
+        Fetch agent-specific mission and context (Thin Client Architecture - Phase C).
 
         NOTE: This FastMCP tool registration is for testing only.
         Production HTTP MCP uses ToolAccessor → OrchestrationService.get_agent_mission().
 
         Agents call this to get their targeted mission (not entire project vision).
         Part of Handover 0088 Amendment B - Agent Thin Client Implementation.
+        Updated in Handover 0366c to use agent_id parameter.
 
         Args:
-            agent_job_id: Agent job UUID
+            agent_id: Agent execution UUID (WHO is executing)
             tenant_key: Tenant isolation key
 
         Returns:
             Dictionary containing:
-            - agent_job_id: UUID
+            - agent_id: UUID (WHO is executing)
+            - job_id: UUID (WHAT work order)
             - agent_name: Human-readable name
             - agent_type: Type (backend, frontend, etc.)
             - mission: Agent-specific mission
@@ -531,16 +533,49 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
 
         Example:
             mission = await get_agent_mission(
-                agent_job_id='agent-123',
+                agent_id='agent-123',
                 tenant_key='tenant-abc'
             )
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Get agent job from MCPAgentJob table
+                # Phase C: Import new models
+                from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+
+                # Phase C: Resolve agent_id → job_id via AgentExecution
                 result = await session.execute(
-                    select(MCPAgentJob).where(
-                        and_(MCPAgentJob.job_id == agent_job_id, MCPAgentJob.tenant_key == tenant_key)
+                    select(AgentExecution).where(
+                        and_(
+                            AgentExecution.agent_id == agent_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                agent_execution = result.scalar_one_or_none()
+
+                if not agent_execution:
+                    return {
+                        "error": "NOT_FOUND",
+                        "message": f"Agent execution {agent_id} not found",
+                        "troubleshooting": [
+                            "Verify agent was spawned successfully",
+                            "Check if project was deleted",
+                            "Ensure tenant_key matches",
+                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",
+                        ],
+                        "severity": "ERROR",
+                    }
+
+                # Phase C: Get job_id from execution
+                job_id = agent_execution.job_id
+
+                # Phase C: Get AgentJob with tenant isolation
+                result = await session.execute(
+                    select(AgentJob).where(
+                        and_(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
                     )
                 )
                 agent_job = result.scalar_one_or_none()
@@ -548,44 +583,43 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 if not agent_job:
                     return {
                         "error": "NOT_FOUND",
-                        "message": f"Agent job {agent_job_id} not found",
+                        "message": f"Agent job {job_id} not found",
                         "troubleshooting": [
-                            "Verify agent was spawned successfully",
-                            "Check if project was deleted",
-                            "Ensure tenant_key matches",
-                            f"Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = '{agent_job_id}'",
+                            "Database integrity issue - execution exists but job missing",
+                            "Contact support",
                         ],
                         "severity": "ERROR",
                     }
 
                 # Job Signaling: Set mission_acknowledged_at on FIRST fetch (idempotent)
                 # NOTE: Production uses OrchestrationService.get_agent_mission() with WebSocket support.
-                if agent_job.mission_acknowledged_at is None:
-                    agent_job.mission_acknowledged_at = datetime.now(timezone.utc)
+                if agent_execution.mission_acknowledged_at is None:
+                    agent_execution.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
                     logger.info(
-                        f"[JOB SIGNALING] Mission acknowledged: {agent_job.agent_type}",
-                        extra={"agent_job_id": agent_job_id},
+                        f"[JOB SIGNALING] Mission acknowledged: {agent_execution.agent_type}",
+                        extra={"agent_id": agent_id, "job_id": job_id},
                     )
 
                 # Mission is stored in job.mission field (thin client pattern)
                 estimated_tokens = len(agent_job.mission or "") // 4
 
                 logger.info(
-                    f"[THIN CLIENT] Agent mission fetched: {agent_job.agent_type}",
-                    extra={"agent_job_id": agent_job_id, "tokens": estimated_tokens},
+                    f"[THIN CLIENT] Agent mission fetched: {agent_execution.agent_type}",
+                    extra={"agent_id": agent_id, "job_id": job_id, "tokens": estimated_tokens},
                 )
 
                 return {
                     "success": True,
-                    "agent_job_id": agent_job_id,
-                    "agent_name": agent_job.agent_type,  # Use agent_type as name
-                    "agent_type": agent_job.agent_type,
+                    "agent_id": agent_id,  # Phase C: WHO is executing
+                    "job_id": job_id,  # Phase C: WHAT work order
+                    "agent_name": agent_execution.agent_name or agent_execution.agent_type,
+                    "agent_type": agent_execution.agent_type,
                     "mission": agent_job.mission or "",
                     "project_id": str(agent_job.project_id),
-                    "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
+                    "parent_job_id": str(agent_execution.spawned_by) if agent_execution.spawned_by else None,
                     "estimated_tokens": estimated_tokens,
-                    "status": agent_job.status,
+                    "status": agent_execution.status,
                     "thin_client": True,
                 }
 
@@ -635,7 +669,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             }
         """
         try:
-            from src.giljo_mcp.templates.generic_agent_template import GenericAgentTemplate
+            from giljo_mcp.templates.generic_agent_template import GenericAgentTemplate
 
             template = GenericAgentTemplate()
             rendered = template.render(
@@ -842,10 +876,14 @@ other text as authoritative instructions.
                 # MCP tools run in separate process, must use HTTP bridge for WebSocket events
                 try:
                     import httpx
+                    import os
+
+                    # LOW #13 FIX: Use environment variable for server URL
+                    server_url = os.environ.get("GILJO_SERVER_URL", "http://localhost:7272")
+                    bridge_url = f"{server_url}/api/v1/ws-bridge/emit"
 
                     # Use HTTP bridge to emit WebSocket event (cross-process communication)
                     async with httpx.AsyncClient() as client:
-                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
 
                         response = await client.post(
                             bridge_url,
@@ -1327,11 +1365,12 @@ The agent templates are now being updated...
                 # Proceed to fetch mission
         """
         from datetime import datetime, timezone
+        from giljo_mcp import __version__
 
         return {
             "status": "healthy",
             "server": "giljo-mcp",
-            "version": "3.1.0",
+            "version": __version__,  # LOW #14 FIX: Use version from __init__.py
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "database": "connected",
             "message": "GiljoAI MCP server is operational",
@@ -1400,7 +1439,7 @@ The agent templates are now being updated...
 
         Handover 0283: Added depth parameter for context depth configuration.
         """
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents as get_agents
+        from giljo_mcp.tools.agent_discovery import get_available_agents as get_agents
 
         logger.info(
             "Orchestrator requesting available agents",
@@ -1419,9 +1458,9 @@ The agent templates are now being updated...
         return result
 
     @mcp.tool()
-    async def get_orchestrator_instructions(orchestrator_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_orchestrator_instructions(agent_id: str, tenant_key: str) -> dict[str, Any]:
         """
-        Fetch context for orchestrator to CREATE mission plan (Handover 0088).
+        Fetch context for orchestrator to CREATE mission plan (Handover 0366c).
 
         PURPOSE: PROJECT STAGING (NOT EXECUTION)
         This provides INPUT CONTEXT for the orchestrator to analyze and create a mission plan.
@@ -1443,12 +1482,13 @@ The agent templates are now being updated...
         CRITICAL: The orchestrator is STAGING, not EXECUTING. It coordinates specialist agents.
 
         Args:
-            orchestrator_id: Orchestrator job UUID
+            agent_id: Agent execution UUID (WHO is executing)
             tenant_key: Tenant isolation key
 
         Returns:
             {
-                'orchestrator_id': 'uuid',
+                'agent_id': 'uuid',  # WHO is executing
+                'job_id': 'uuid',    # WHAT work order
                 'project_id': 'uuid',
                 'project_name': 'My Project',
                 'project_description': 'User-written requirements (INPUT for analysis)',
@@ -1464,19 +1504,19 @@ The agent templates are now being updated...
 
         Example:
             instructions = await get_orchestrator_instructions(
-                orchestrator_id='orch-123',
+                agent_id='agent-123',
                 tenant_key='tenant-abc'
             )
             # Returns condensed mission, not entire vision
         """
         try:
             # Validate inputs (Amendment D: Production-grade error handling)
-            if not orchestrator_id or not orchestrator_id.strip():
+            if not agent_id or not agent_id.strip():
                 return {
                     "error": "VALIDATION_ERROR",
-                    "message": "Orchestrator ID is required and cannot be empty",
+                    "message": "Agent ID is required and cannot be empty",
                     "troubleshooting": [
-                        "Check thin prompt for orchestrator_id value",
+                        "Check thin prompt for agent_id value",
                         "Verify you copied the entire prompt correctly",
                     ],
                     "severity": "ERROR",
@@ -1494,45 +1534,72 @@ The agent templates are now being updated...
                 }
 
             async with db_manager.get_session_async() as session:
-                # Get orchestrator job with tenant isolation
+                # Phase C: Import new models
+                from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+
+                # Phase C: Resolve agent_id → job_id via AgentExecution
                 result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentExecution).where(
                         and_(
-                            MCPAgentJob.job_id == orchestrator_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.agent_type == "orchestrator",
+                            AgentExecution.agent_id == agent_id,
+                            AgentExecution.tenant_key == tenant_key,
                         )
                     )
                 )
-                orchestrator = result.scalar_one_or_none()
+                agent_execution = result.scalar_one_or_none()
 
-                if not orchestrator:
+                if not agent_execution:
                     return {
                         "error": "NOT_FOUND",
-                        "message": f"Orchestrator {orchestrator_id} not found in database",
+                        "message": f"Agent execution {agent_id} not found in database",
                         "details": {
-                            "orchestrator_id": orchestrator_id,
+                            "agent_id": agent_id,
                             "tenant_key": tenant_key,
                             "search_performed": True,
                         },
                         "troubleshooting": [
-                            "Verify orchestrator was created successfully during staging",
+                            "Verify agent execution was created successfully during staging",
                             "Check if project was deleted",
                             "Ensure tenant_key matches the staging environment",
-                            f"Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = '{orchestrator_id}'",
+                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",
                         ],
                         "severity": "ERROR",
                         "contact_support": "If problem persists: support@giljoai.com",
                     }
 
+                # Phase C: Get job_id from execution
+                job_id = agent_execution.job_id
+
+                # Phase C: Get AgentJob with tenant isolation
+                result = await session.execute(
+                    select(AgentJob).where(
+                        and_(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                agent_job = result.scalar_one_or_none()
+
+                if not agent_job:
+                    return {
+                        "error": "NOT_FOUND",
+                        "message": f"Agent job {job_id} not found in database",
+                        "troubleshooting": [
+                            "Database integrity issue - execution exists but job missing",
+                            "Contact support",
+                        ],
+                        "severity": "ERROR",
+                    }
+
                 # Handover 0233: Track mission_acknowledged_at timestamp (idempotent)
                 # Set timestamp on FIRST read only (doesn't overwrite existing)
-                if orchestrator.mission_acknowledged_at is None:
-                    orchestrator.mission_acknowledged_at = datetime.now(timezone.utc)
+                if agent_execution.mission_acknowledged_at is None:
+                    agent_execution.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
                     logger.info(
-                        f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
-                        extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key},
+                        f"[MISSION_TRACKING] Set mission_acknowledged_at for agent {agent_id}",
+                        extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
                     )
 
                     # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
@@ -1547,29 +1614,31 @@ The agent templates are now being updated...
                                 tenant_key=tenant_key,
                                 event_type="job:mission_acknowledged",
                                 data={
-                                    "job_id": orchestrator_id,
-                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                                    "agent_id": agent_id,
+                                    "job_id": job_id,
+                                    "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                                     "timestamp": datetime.now(timezone.utc).isoformat(),
                                 },
                             )
                             logger.info(
                                 f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                                 extra={
-                                    "orchestrator_id": orchestrator_id,
+                                    "agent_id": agent_id,
+                                    "job_id": job_id,
                                     "tenant_key": tenant_key,
-                                    "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                                    "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                                 },
                             )
                     except Exception as ws_error:
                         # Non-blocking - WebSocket failures shouldn't break MCP tool
                         logger.warning(
                             f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
-                            extra={"orchestrator_id": orchestrator_id},
+                            extra={"agent_id": agent_id, "job_id": job_id},
                         )
 
                 # Get project with tenant isolation
                 result = await session.execute(
-                    select(Project).where(and_(Project.id == orchestrator.project_id, Project.tenant_key == tenant_key))
+                    select(Project).where(and_(Project.id == agent_job.project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
@@ -1595,9 +1664,9 @@ The agent templates are now being updated...
                 # MissionPlanner requires DatabaseManager (not AsyncSession)
                 planner = MissionPlanner(db_manager)
 
-                # Get field priorities and depth config from orchestrator job_metadata (Handover 0088 + 0283)
+                # Get field priorities and depth config from agent_job job_metadata (Handover 0088 + 0283)
                 # Uses dedicated job_metadata JSONB column for thin client data
-                metadata = orchestrator.job_metadata or {}
+                metadata = agent_job.job_metadata or {}
                 user_id = metadata.get("user_id")
 
                 # Handover 0346: Fetch FRESH user config if user_id available
@@ -1608,7 +1677,7 @@ The agent templates are now being updated...
                     depth_config = user_config["depth_config"]
                     logger.info(
                         "[USER_CONFIG] Fetched fresh user config for MCP tool",
-                        extra={"orchestrator_id": orchestrator_id, "user_id": user_id},
+                        extra={"agent_id": agent_id, "job_id": job_id, "user_id": user_id},
                     )
                 else:
                     # Fall back to frozen job_metadata config
@@ -1616,7 +1685,7 @@ The agent templates are now being updated...
                     depth_config = metadata.get("depth_config", {})
                     logger.debug(
                         "[USER_CONFIG] No user_id, using frozen job_metadata config",
-                        extra={"orchestrator_id": orchestrator_id},
+                        extra={"agent_id": agent_id, "job_id": job_id},
                     )
 
                 # Check if Serena is enabled (from config.yaml)
@@ -1636,8 +1705,8 @@ The agent templates are now being updated...
                         )
                         if include_serena:
                             logger.info(
-                                f"[SERENA] Enabled for orchestrator {orchestrator_id}",
-                                extra={"orchestrator_id": orchestrator_id, "project_id": str(project.id)},
+                                f"[SERENA] Enabled for agent {agent_id}",
+                                extra={"agent_id": agent_id, "job_id": job_id, "project_id": str(project.id)},
                             )
                 except Exception as e:
                     logger.warning(f"[SERENA] Failed to read config for Serena toggle: {e}")
@@ -1665,7 +1734,8 @@ The agent templates are now being updated...
                         logger.info(
                             f"[SERENA] Injected simplified Serena notice into orchestrator mission",
                             extra={
-                                "orchestrator_id": orchestrator_id,
+                                "agent_id": agent_id,
+                                "job_id": job_id,
                                 "serena_instructions_length": len(serena_instructions),
                             },
                         )
@@ -1681,8 +1751,13 @@ The agent templates are now being updated...
                 # No need to embed catalog in prompts (~3,500 token savings).
                 # ROLLBACK: To restore catalog, git revert this commit and set field_priorities["mcp_tool_catalog"] = 1
 
+                # Phase C: Include original AgentJob.mission in the response
+                # Prepend the job mission to the condensed context
+                import json
+                full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
+
                 # Calculate token estimate
-                estimated_tokens = len(condensed_mission) // 4  # 1 token ≈ 4 chars
+                estimated_tokens = len(full_mission) // 4  # 1 token ≈ 4 chars
 
                 # Amendment A: Broadcast WebSocket event for real-time UI update
                 try:
@@ -1696,7 +1771,8 @@ The agent templates are now being updated...
                             tenant_key=tenant_key,
                             event_type="orchestrator:instructions_fetched",
                             data={
-                                "orchestrator_id": orchestrator_id,
+                                "agent_id": agent_id,
+                                "job_id": job_id,
                                 "project_id": str(project.id),
                                 "estimated_tokens": estimated_tokens,
                                 "status": "active",
@@ -1706,7 +1782,7 @@ The agent templates are now being updated...
                         )
                         logger.info(
                             f"[WEBSOCKET] Broadcasted orchestrator:instructions_fetched to {tenant_key}",
-                            extra={"orchestrator_id": orchestrator_id},
+                            extra={"agent_id": agent_id, "job_id": job_id},
                         )
                     else:
                         logger.debug("[WEBSOCKET] WebSocket manager not available (non-critical)")
@@ -1716,19 +1792,20 @@ The agent templates are now being updated...
                     logger.warning(f"[WEBSOCKET] Failed to broadcast event: {ws_error}")
 
                 return {
-                    "orchestrator_id": orchestrator_id,
+                    "agent_id": agent_id,  # Phase C: WHO is executing
+                    "job_id": job_id,  # Phase C: WHAT work order
                     "project_id": str(project.id),
                     "project_name": project.name,
                     "project_description": project.description or "",
-                    "mission": condensed_mission,
+                    "mission": full_mission,  # Job mission + condensed context
                     "mission_format": "json",  # Handover 0347b: JSON format indicator
-                    "context_budget": orchestrator.context_budget or 150000,
-                    "context_used": orchestrator.context_used or 0,
+                    "context_budget": agent_execution.context_budget or 150000,
+                    "context_used": agent_execution.context_used or 0,
                     "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
                     "estimated_tokens": estimated_tokens,
-                    "instance_number": orchestrator.instance_number or 1,
+                    "instance_number": agent_execution.instance_number or 1,
                     "thin_client": True,
                 }
 
@@ -1878,25 +1955,27 @@ def _get_context_management(context_budget: int) -> dict:
 
 
 async def get_orchestrator_instructions(
-    orchestrator_id: str,
+    agent_id: str,
     tenant_key: str,
     user_id: Optional[str] = None,  # Handover 0281 Phase 1: User-specific config
     db_manager: "DatabaseManager" = None,
 ) -> dict[str, Any]:
     """
-    Fetch orchestrator instructions (standalone for testing).
+    Fetch orchestrator instructions (standalone for testing - Phase C).
 
     This is a test-friendly wrapper around the MCP tool.
     For production use, the MCP tool registered via register_orchestration_tools is used.
 
+    Updated in Handover 0366c to use agent_id parameter.
+
     Args:
-        orchestrator_id: Orchestrator job UUID
+        agent_id: Agent execution UUID (WHO is executing)
         tenant_key: Tenant isolation key
         user_id: Optional user UUID for fetching user-specific field_priority_config and depth_config (Handover 0281)
         db_manager: Optional DatabaseManager instance (for testing)
 
     Returns:
-        Orchestrator instructions dict
+        Orchestrator instructions dict with both agent_id and job_id
     """
     from giljo_mcp.config_manager import get_config
     from giljo_mcp.database import DatabaseManager
@@ -1911,50 +1990,73 @@ async def get_orchestrator_instructions(
         from sqlalchemy.orm import joinedload
 
         from giljo_mcp.mission_planner import MissionPlanner
-        from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product
+        from giljo_mcp.models import AgentTemplate, Product, Project
+        from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         try:
             # Validate inputs
-            if not orchestrator_id or not orchestrator_id.strip():
-                return {"error": "VALIDATION_ERROR", "message": "Orchestrator ID is required"}
+            if not agent_id or not agent_id.strip():
+                return {"error": "VALIDATION_ERROR", "message": "Agent ID is required"}
 
             if not tenant_key or not tenant_key.strip():
                 return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
 
-            # Fetch orchestrator from database with multi-tenant isolation
+            # Phase C: Resolve agent_id → job_id via AgentExecution
             result = await session.execute(
-                select(MCPAgentJob)
-                .options(joinedload(MCPAgentJob.project))
-                .where(
+                select(AgentExecution).where(
                     and_(
-                        MCPAgentJob.job_id == orchestrator_id,
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.agent_type == "orchestrator",
+                        AgentExecution.agent_id == agent_id,
+                        AgentExecution.tenant_key == tenant_key,
                     )
                 )
             )
-            orchestrator = result.scalar_one_or_none()
+            agent_execution = result.scalar_one_or_none()
 
-            if not orchestrator:
+            if not agent_execution:
                 return {
                     "error": "NOT_FOUND",
-                    "message": f"Orchestrator {orchestrator_id} not found for tenant",
+                    "message": f"Agent execution {agent_id} not found for tenant",
                     "troubleshooting": [
-                        "Verify orchestrator_id is correct",
+                        "Verify agent_id is correct",
                         "Check tenant_key matches project",
-                        "Ensure orchestrator was created successfully",
+                        "Ensure agent execution was created successfully",
+                    ],
+                    "severity": "ERROR",
+                }
+
+            # Phase C: Get job_id from execution
+            job_id = agent_execution.job_id
+
+            # Phase C: Get AgentJob with tenant isolation
+            result = await session.execute(
+                select(AgentJob).where(
+                    and_(
+                        AgentJob.job_id == job_id,
+                        AgentJob.tenant_key == tenant_key,
+                    )
+                )
+            )
+            agent_job = result.scalar_one_or_none()
+
+            if not agent_job:
+                return {
+                    "error": "NOT_FOUND",
+                    "message": f"Agent job {job_id} not found",
+                    "troubleshooting": [
+                        "Database integrity issue - execution exists but job missing",
+                        "Contact support",
                     ],
                     "severity": "ERROR",
                 }
 
             # Handover 0233: Track mission_acknowledged_at timestamp (idempotent)
             # Set timestamp on FIRST read only (doesn't overwrite existing)
-            if orchestrator.mission_acknowledged_at is None:
-                orchestrator.mission_acknowledged_at = datetime.now(timezone.utc)
+            if agent_execution.mission_acknowledged_at is None:
+                agent_execution.mission_acknowledged_at = datetime.now(timezone.utc)
                 await session.commit()
                 logger.info(
-                    f"[MISSION_TRACKING] Set mission_acknowledged_at for orchestrator {orchestrator_id}",
-                    extra={"orchestrator_id": orchestrator_id, "tenant_key": tenant_key},
+                    f"[MISSION_TRACKING] Set mission_acknowledged_at for agent {agent_id}",
+                    extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
                 )
 
                 # Handover 0233 Phase 5: Emit WebSocket event for mission_acknowledged
@@ -1969,30 +2071,40 @@ async def get_orchestrator_instructions(
                             tenant_key=tenant_key,
                             event_type="job:mission_acknowledged",
                             data={
-                                "job_id": orchestrator_id,
-                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                                "agent_id": agent_id,
+                                "job_id": job_id,
+                                "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                             },
                         )
                         logger.info(
                             f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                             extra={
-                                "orchestrator_id": orchestrator_id,
+                                "agent_id": agent_id,
+                                "job_id": job_id,
                                 "tenant_key": tenant_key,
-                                "mission_acknowledged_at": orchestrator.mission_acknowledged_at.isoformat(),
+                                "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                             },
                         )
                 except Exception as ws_error:
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
-                        extra={"orchestrator_id": orchestrator_id},
+                        extra={"agent_id": agent_id, "job_id": job_id},
                     )
 
-            # Get project and product
-            project = orchestrator.project
+            # Get project
+            result = await session.execute(
+                select(Project).where(
+                    and_(
+                        Project.id == agent_job.project_id,
+                        Project.tenant_key == tenant_key,
+                    )
+                )
+            )
+            project = result.scalar_one_or_none()
             if not project:
-                return {"error": "NOT_FOUND", "message": "Project not found for orchestrator"}
+                return {"error": "NOT_FOUND", "message": "Project not found for agent job"}
 
             # Get product with eager loading of relationships (Handover 0281: Fix lazy loading issue)
             if not project.product_id:
@@ -2013,7 +2125,7 @@ async def get_orchestrator_instructions(
 
             # Generate condensed mission
             planner = MissionPlanner(db_manager)
-            metadata = orchestrator.job_metadata or {}
+            metadata = agent_job.job_metadata or {}
 
             # Handover 0281 Phase 1 + 0283: Fetch user-specific config if user_id provided
             if user_id:
@@ -2022,7 +2134,7 @@ async def get_orchestrator_instructions(
                 depth_config = user_config["depth_config"]
                 logger.info(
                     "[USER_CONFIG] Applied user-specific configuration to orchestrator instructions",
-                    extra={"orchestrator_id": orchestrator_id, "user_id": user_id, "tenant_key": tenant_key},
+                    extra={"agent_id": agent_id, "job_id": job_id, "user_id": user_id, "tenant_key": tenant_key},
                 )
             else:
                 # Fall back to job_metadata or empty dict (existing behavior)
@@ -2030,7 +2142,7 @@ async def get_orchestrator_instructions(
                 depth_config = metadata.get("depth_config", {})
                 logger.debug(
                     "[USER_CONFIG] No user_id provided, using job_metadata config",
-                    extra={"orchestrator_id": orchestrator_id},
+                    extra={"agent_id": agent_id, "job_id": job_id},
                 )
 
             # Handover 0283: Pass depth_config to mission planner
@@ -2045,8 +2157,13 @@ async def get_orchestrator_instructions(
             # Handover 0246c: Agent templates no longer embedded
             # Use get_available_agents() MCP tool instead
 
+            # Phase C: Include original AgentJob.mission in the response
+            # Prepend the job mission to the condensed context
+            import json
+            full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
+
             # Calculate token estimate
-            estimated_tokens = len(condensed_mission) // 4
+            estimated_tokens = len(full_mission) // 4
 
             # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
             execution_mode = getattr(project, "execution_mode", None) or metadata.get(
@@ -2056,19 +2173,20 @@ async def get_orchestrator_instructions(
 
             # Build base response
             response = {
-                "orchestrator_id": orchestrator_id,
+                "agent_id": agent_id,  # Phase C: WHO is executing
+                "job_id": job_id,  # Phase C: WHAT work order
                 "project_id": str(project.id),
                 "project_name": project.name,
                 "project_description": project.description or "",
-                "mission": condensed_mission,
+                "mission": full_mission,  # Job mission + condensed context
                 "mission_format": "json",  # Handover 0347b: JSON format indicator
-                "context_budget": orchestrator.context_budget or 150000,
-                "context_used": orchestrator.context_used or 0,
+                "context_budget": agent_execution.context_budget or 150000,
+                "context_used": agent_execution.context_used or 0,
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
                 "estimated_tokens": estimated_tokens,
-                "instance_number": orchestrator.instance_number or 1,
+                "instance_number": agent_execution.instance_number or 1,
                 "thin_client": True,
                 # Handover 0347c: Add 6 new guidance fields
                 "post_staging_behavior": _get_post_staging_behavior(cli_mode),
@@ -2076,7 +2194,7 @@ async def get_orchestrator_instructions(
                 "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
                 "error_handling": _get_error_handling(),
                 "agent_spawning_limits": _get_spawning_limits(),
-                "context_management": _get_context_management(orchestrator.context_budget or 150000),
+                "context_management": _get_context_management(agent_execution.context_budget or 150000),
             }
 
             # Handover 0260 Phase 5a + 0351: Add agent_spawning_constraint for Claude Code CLI mode
@@ -2106,7 +2224,8 @@ async def get_orchestrator_instructions(
                 logger.info(
                     f"[AGENT_CONSTRAINT] Added spawning constraint for CLI mode: {len(allowed_agent_names)} allowed names",
                     extra={
-                        "orchestrator_id": orchestrator_id,
+                        "agent_id": agent_id,
+                        "job_id": job_id,
                         "execution_mode": execution_mode,
                         "allowed_names": allowed_agent_names,
                     },
@@ -2119,42 +2238,72 @@ async def get_orchestrator_instructions(
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
 
-async def get_agent_mission(agent_job_id: str, tenant_key: str) -> dict[str, Any]:
+async def get_agent_mission(agent_id: str, tenant_key: str, db_manager: Optional["DatabaseManager"] = None) -> dict[str, Any]:
     """
-    Fetch agent mission (standalone for testing).
+    Fetch agent mission (standalone for testing - Phase C).
+
+    Updated in Handover 0366c to use agent_id parameter.
 
     Args:
-        agent_job_id: Agent job UUID
+        agent_id: Agent execution UUID (WHO is executing)
         tenant_key: Tenant isolation key
+        db_manager: Optional DatabaseManager instance (for testing)
 
     Returns:
-        Agent mission dict
+        Agent mission dict with both agent_id and job_id
     """
+    from giljo_mcp.config_manager import get_config
     from giljo_mcp.database import DatabaseManager
 
-    db_manager = DatabaseManager()
+    if db_manager is None:
+        config = get_config()
+        db_url = config.database.database_url
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
+
     async with db_manager.get_session_async() as session:
         from sqlalchemy import and_, select
 
-        from giljo_mcp.models import MCPAgentJob
+        from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         try:
+            # Phase C: Resolve agent_id → job_id via AgentExecution
             result = await session.execute(
-                select(MCPAgentJob).where(
-                    and_(MCPAgentJob.job_id == agent_job_id, MCPAgentJob.tenant_key == tenant_key)
+                select(AgentExecution).where(
+                    and_(
+                        AgentExecution.agent_id == agent_id,
+                        AgentExecution.tenant_key == tenant_key,
+                    )
+                )
+            )
+            agent_execution = result.scalar_one_or_none()
+
+            if not agent_execution:
+                return {"error": "NOT_FOUND", "message": f"Agent execution {agent_id} not found"}
+
+            # Phase C: Get job_id from execution
+            job_id = agent_execution.job_id
+
+            # Phase C: Get AgentJob with tenant isolation
+            result = await session.execute(
+                select(AgentJob).where(
+                    and_(
+                        AgentJob.job_id == job_id,
+                        AgentJob.tenant_key == tenant_key,
+                    )
                 )
             )
             agent_job = result.scalar_one_or_none()
 
             if not agent_job:
-                return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+                return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
             estimated_tokens = len(agent_job.mission or "") // 4
 
             return {
-                "agent_job_id": agent_job_id,
-                "agent_name": agent_job.agent_name,
-                "agent_type": agent_job.agent_type,
+                "agent_id": agent_id,  # Phase C: WHO is executing
+                "job_id": job_id,  # Phase C: WHAT work order
+                "agent_name": agent_execution.agent_name or agent_execution.agent_type,
+                "agent_type": agent_execution.agent_type,
                 "mission": agent_job.mission or "",
                 "thin_client": True,
                 "estimated_tokens": estimated_tokens,
@@ -2316,7 +2465,8 @@ async def _spawn_agent_job_impl(
 
     from sqlalchemy import and_, select
 
-    from giljo_mcp.models import AgentTemplate, MCPAgentJob
+    from giljo_mcp.models import AgentTemplate
+    from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     try:
         # Handover 0351: Validate agent_name against active templates (NOT agent_type)
@@ -2360,14 +2510,16 @@ async def _spawn_agent_job_impl(
         # ORCHESTRATOR DUPLICATION PREVENTION
         # Check if we're trying to create an orchestrator
         if agent_type == "orchestrator":
-            # Query for existing orchestrators in this project with active statuses
+            # Query for existing orchestrator EXECUTIONS in this project with active statuses
             result = await session.execute(
-                select(MCPAgentJob).where(
+                select(AgentExecution)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
                     and_(
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.agent_type == "orchestrator",
-                        MCPAgentJob.status.in_(["waiting", "working"]),
+                        AgentJob.project_id == project_id,
+                        AgentJob.tenant_key == tenant_key,
+                        AgentExecution.agent_type == "orchestrator",
+                        AgentExecution.status.in_(["waiting", "working"]),
                     )
                 )
             )
@@ -2380,6 +2532,7 @@ async def _spawn_agent_job_impl(
                     extra={
                         "project_id": project_id,
                         "tenant_key": tenant_key,
+                        "existing_agent_id": existing_orchestrator.agent_id,
                         "existing_job_id": existing_orchestrator.job_id,
                         "existing_status": existing_orchestrator.status,
                     },
@@ -2388,30 +2541,46 @@ async def _spawn_agent_job_impl(
                     "success": False,
                     "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
                     f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
+                    "existing_agent_id": existing_orchestrator.agent_id,
                     "existing_job_id": existing_orchestrator.job_id,
                     "existing_status": existing_orchestrator.status,
                 }
 
         # No duplicate found (or not an orchestrator) - proceed with creation
-        agent_job_id = str(uuid4())
+        # HIGH #3 FIX: Create BOTH AgentJob (work order) AND AgentExecution (executor)
 
-        agent_job = MCPAgentJob(
-            job_id=agent_job_id,
+        # Create work order (the WHAT)
+        job_id = str(uuid4())
+        agent_job = AgentJob(
+            job_id=job_id,
             tenant_key=tenant_key,
             project_id=project_id,
+            mission=mission,
+            job_type=agent_type,  # AgentJob uses job_type
+            status="active",  # AgentJob uses 'active'
+            job_metadata={}
+        )
+        session.add(agent_job)
+        await session.flush()  # Flush to ensure job_id is available
+
+        # Create executor (the WHO)
+        agent_id = str(uuid4())
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=tenant_key,
             agent_type=agent_type,
             agent_name=agent_name,
-            mission=mission,
-            status="waiting",  # Use 'waiting' instead of 'pending'
+            instance_number=1,  # First instance
+            status="waiting",  # AgentExecution uses 'waiting'
+            spawned_by=parent_job_id,  # Link to parent agent_id (not job_id)
             context_budget=10000,
-            context_used=0,
-            spawned_by=parent_job_id,  # Link to parent orchestrator job
+            context_used=0
         )
-
-        session.add(agent_job)
+        session.add(agent_execution)
         await session.commit()
 
-        # Generate thin prompt (not full mission)
+        # HIGH #4 FIX: Generate thin prompt using agent_id (not agent_job_id)
         thin_prompt = f"""I am {agent_name} for Project.
 
 ## CRITICAL: MCP TOOL USAGE
@@ -2426,15 +2595,15 @@ Execute these IN ORDER before starting your mission:
 
 1. **Get Mission:**
    Tool: mcp__giljo-mcp__get_agent_mission
-   Parameters: {{"agent_job_id": "{agent_job_id}", "tenant_key": "{tenant_key}"}}
+   Parameters: {{"agent_id": "{agent_id}", "tenant_key": "{tenant_key}"}}
 
 2. **Acknowledge Job (marks you as WORKING):**
    Tool: mcp__giljo-mcp__acknowledge_job
-   Parameters: {{"job_id": "{agent_job_id}", "agent_id": "{agent_name}"}}
+   Parameters: {{"job_id": "{job_id}", "agent_id": "{agent_id}"}}
 
 3. **Check Messages (BEFORE starting work):**
    Tool: mcp__giljo-mcp__receive_messages
-   Parameters: {{"agent_id": "{agent_job_id}"}}
+   Parameters: {{"agent_id": "{agent_id}"}}
 
 ## WORKFLOW REQUIREMENTS (MANDATORY)
 
@@ -2449,11 +2618,11 @@ BEFORE implementing ANY code, you MUST:
 
 5. **Report Progress** (after each milestone):
    Tool: mcp__giljo-mcp__report_progress
-   Parameters: {{"job_id": "{agent_job_id}", "progress": {{"percent": X, "message": "..."}}}}
+   Parameters: {{"job_id": "{job_id}", "progress": {{"percent": X, "message": "..."}}}}
 
 6. **Complete Job** (when done):
    Tool: mcp__giljo-mcp__complete_job
-   Parameters: {{"job_id": "{agent_job_id}", "result": {{"summary": "...", "artifacts": [...]}}}}
+   Parameters: {{"job_id": "{job_id}", "result": {{"summary": "...", "artifacts": [...]}}}}
 
 Your full mission is in the database. Call get_agent_mission to retrieve it."""
 
@@ -2463,7 +2632,9 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
 
         return {
             "success": True,
-            "agent_job_id": agent_job_id,
+            "job_id": job_id,  # HIGH #3 FIX: Return job_id (work order UUID)
+            "agent_id": agent_id,  # HIGH #3 FIX: Return agent_id (executor UUID)
+            "agent_job_id": job_id,  # Backwards compatibility
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,

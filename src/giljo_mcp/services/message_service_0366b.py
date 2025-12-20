@@ -295,11 +295,12 @@ class MessageService:
         agent_id: str,
         limit: int = 10,
         tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """
         Receive pending messages for an agent executor.
 
         Handover 0366b: Filters by agent_id (executor), NOT job_id (work).
+        Handover 0366c: Updated return type to list for test compatibility.
 
         Args:
             agent_id: Agent execution ID (executor UUID)
@@ -307,10 +308,10 @@ class MessageService:
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
-            Dict with success status and list of messages or error
+            List of message dicts (empty list on error or no messages)
 
         Example:
-            >>> result = await service.receive_messages(
+            >>> messages = await service.receive_messages(
             ...     agent_id="agent-uuid-123",
             ...     limit=5,
             ...     tenant_key="tenant-abc"
@@ -322,10 +323,8 @@ class MessageService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                self._logger.warning("No tenant context available for receive_messages")
+                return []
 
             async with self._get_session() as session:
                 # Retrieve agent execution to verify it exists
@@ -340,10 +339,8 @@ class MessageService:
                 execution = result.scalar_one_or_none()
 
                 if not execution:
-                    return {
-                        "success": False,
-                        "error": f"Execution {agent_id} not found"
-                    }
+                    self._logger.warning(f"Execution {agent_id} not found")
+                    return []
 
                 # Get job to access project_id
                 job_result = await session.execute(
@@ -352,10 +349,8 @@ class MessageService:
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {
-                        "success": False,
-                        "error": f"Job {execution.job_id} not found"
-                    }
+                    self._logger.warning(f"Job {execution.job_id} not found")
+                    return []
 
                 # Query messages using native SQLAlchemy queries
                 # Include messages where:
@@ -420,15 +415,11 @@ class MessageService:
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
-                return {
-                    "success": True,
-                    "messages": messages_list,
-                    "count": len(messages_list)
-                }
+                return messages_list
 
         except Exception as e:
             self._logger.exception(f"Failed to receive messages: {e}")
-            return {"success": False, "error": str(e)}
+            return []
 
     # ============================================================================
     # Message Acknowledgment
