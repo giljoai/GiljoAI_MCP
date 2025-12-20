@@ -277,3 +277,210 @@ class TestGetAgentMissionFullProtocol:
         assert "receive_messages()" in protocol
         assert "list_messages()" in protocol
         assert "auto-acknowledges" in protocol or "auto-acknowledge" in protocol
+
+
+class TestAgentProtocolMessageHandlingEnhancements:
+    """Test suite for Handover 0355 - Protocol Message Handling enhancements."""
+
+    @pytest.mark.asyncio
+    async def test_agent_protocol_phase2_includes_message_check_after_tasks(
+        self, orchestration_service, mock_db_manager, mock_agent_job
+    ):
+        """Phase 2 EXECUTION should instruct agents to check messages after each TodoWrite task.
+
+        This ensures agents check for orchestrator instructions during long-running work,
+        not just at startup and completion.
+        """
+        db_manager, session = mock_db_manager
+        job = mock_agent_job
+
+        # Mock database query
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=job)
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("httpx.AsyncClient") as MockHttpxClient:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            MockHttpxClient.return_value = mock_client
+
+            response = await orchestration_service.get_agent_mission(
+                agent_job_id=job.job_id,
+                tenant_key="tenant-test"
+            )
+
+        protocol = response.get("full_protocol", "")
+
+        # Extract Phase 2 section
+        phase2_start = protocol.find("### Phase 2")
+        phase2_end = protocol.find("### Phase 3")
+        phase2_section = protocol[phase2_start:phase2_end] if phase2_start != -1 and phase2_end != -1 else ""
+
+        # BEHAVIOR: Phase 2 must include message check instruction
+        assert "receive_messages()" in phase2_section, \
+            "Phase 2 EXECUTION must instruct agents to check messages after each task"
+
+        # BEHAVIOR: Instruction should mention checking after tasks/TodoWrite
+        assert ("after" in phase2_section.lower() or "completing" in phase2_section.lower()), \
+            "Phase 2 must specify WHEN to check messages (after each task)"
+
+    @pytest.mark.asyncio
+    async def test_agent_protocol_phase3_checks_messages_before_reporting(
+        self, orchestration_service, mock_db_manager, mock_agent_job
+    ):
+        """Phase 3 PROGRESS should check messages BEFORE reporting progress.
+
+        This prevents agents from reporting progress without incorporating
+        orchestrator feedback first.
+        """
+        db_manager, session = mock_db_manager
+        job = mock_agent_job
+
+        # Mock database query
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=job)
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("httpx.AsyncClient") as MockHttpxClient:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            MockHttpxClient.return_value = mock_client
+
+            response = await orchestration_service.get_agent_mission(
+                agent_job_id=job.job_id,
+                tenant_key="tenant-test"
+            )
+
+        protocol = response.get("full_protocol", "")
+
+        # Extract Phase 3 section
+        phase3_start = protocol.find("### Phase 3")
+        phase3_end = protocol.find("### Phase 4")
+        phase3_section = protocol[phase3_start:phase3_end] if phase3_start != -1 and phase3_end != -1 else ""
+
+        # BEHAVIOR: receive_messages() must come BEFORE report_progress() in Phase 3
+        receive_pos = phase3_section.find("receive_messages()")
+        report_pos = phase3_section.find("report_progress(")
+
+        assert receive_pos != -1, "Phase 3 must include receive_messages() call"
+        assert report_pos != -1, "Phase 3 must include report_progress() call"
+        assert receive_pos < report_pos, \
+            "Phase 3 must check messages BEFORE reporting progress (receive_messages before report_progress)"
+
+        # BEHAVIOR: Should emphasize this is MANDATORY/BEFORE
+        assert ("before" in phase3_section.lower() or "mandatory" in phase3_section.lower()), \
+            "Phase 3 must clearly state messages should be checked BEFORE reporting"
+
+    @pytest.mark.asyncio
+    async def test_agent_protocol_phase4_requires_empty_queue_before_completion(
+        self, orchestration_service, mock_db_manager, mock_agent_job
+    ):
+        """Phase 4 COMPLETION should require empty message queue before complete_job().
+
+        This prevents agents from completing while orchestrator has pending instructions.
+        """
+        db_manager, session = mock_db_manager
+        job = mock_agent_job
+
+        # Mock database query
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=job)
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("httpx.AsyncClient") as MockHttpxClient:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            MockHttpxClient.return_value = mock_client
+
+            response = await orchestration_service.get_agent_mission(
+                agent_job_id=job.job_id,
+                tenant_key="tenant-test"
+            )
+
+        protocol = response.get("full_protocol", "")
+
+        # Extract Phase 4 section
+        phase4_start = protocol.find("### Phase 4")
+        phase4_end = protocol.find("### Phase 5")
+        phase4_section = protocol[phase4_start:phase4_end] if phase4_start != -1 and phase4_end != -1 else ""
+
+        # BEHAVIOR: Phase 4 must include receive_messages() instruction
+        assert "receive_messages()" in phase4_section, \
+            "Phase 4 COMPLETION must instruct agents to check messages before completing"
+
+        # BEHAVIOR: Should mention queue must be empty or similar gate language
+        queue_gate_indicators = ["queue", "empty", "no pending", "clear", "before completing"]
+        has_gate_language = any(indicator in phase4_section.lower() for indicator in queue_gate_indicators)
+
+        assert has_gate_language, \
+            "Phase 4 must include gate language requiring empty queue before completion"
+
+    @pytest.mark.asyncio
+    async def test_agent_protocol_includes_when_to_check_messages_guidance(
+        self, orchestration_service, mock_db_manager, mock_agent_job
+    ):
+        """Protocol should have clear guidance on WHEN to check messages in each phase.
+
+        This ensures agents understand the complete message checking pattern across
+        all phases of execution.
+        """
+        db_manager, session = mock_db_manager
+        job = mock_agent_job
+
+        # Mock database query
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=job)
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("httpx.AsyncClient") as MockHttpxClient:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            MockHttpxClient.return_value = mock_client
+
+            response = await orchestration_service.get_agent_mission(
+                agent_job_id=job.job_id,
+                tenant_key="tenant-test"
+            )
+
+        protocol = response.get("full_protocol", "")
+
+        # BEHAVIOR: Protocol should have guidance section about when to check messages
+        guidance_indicators = [
+            "when to check",
+            "message checking",
+            "check messages in each phase",
+            "across phases"
+        ]
+
+        has_guidance = any(indicator in protocol.lower() for indicator in guidance_indicators)
+
+        assert has_guidance, \
+            "Protocol must include clear guidance on WHEN to check messages across phases"
+
+        # BEHAVIOR: Should reference all phases in message handling context
+        # Not just Phase 1 startup check - should cover ongoing checking pattern
+        phases_mentioned = sum([
+            "phase 1" in protocol.lower() and "message" in protocol.lower(),
+            "phase 2" in protocol.lower() and "message" in protocol.lower(),
+            "phase 3" in protocol.lower() and "message" in protocol.lower(),
+            "phase 4" in protocol.lower() and "message" in protocol.lower()
+        ])
+
+        assert phases_mentioned >= 3, \
+            "Message handling guidance should reference at least 3 phases (startup, execution, completion)"

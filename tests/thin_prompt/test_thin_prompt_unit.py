@@ -5,6 +5,8 @@ Simple unit tests that don't require full database schema.
 Tests the core logic of thin prompt generation.
 """
 
+import pytest
+from unittest.mock import AsyncMock, MagicMock
 from src.giljo_mcp.thin_prompt_generator import ThinPromptResponse
 
 
@@ -120,3 +122,176 @@ class TestPromptProfessionalism:
 
         # That's reasonable for professional UX
         assert max_words < 200, "Prompt should be quickly copy-pasteable"
+
+
+class TestStagingPromptStep7:
+    """
+    Test Step 7: EXECUTION PHASE MONITORING in staging prompt.
+
+    TDD RED Phase (Handover 0355) - These tests MUST FAIL initially.
+    Step 7 documents execution phase patterns for orchestrators.
+    """
+
+    @pytest.mark.asyncio
+    async def test_staging_prompt_includes_step7_execution_monitoring(self):
+        """
+        Staging prompt should include Step 7: EXECUTION PHASE MONITORING.
+
+        BEHAVIOR: After Step 6 (SIGNAL COMPLETE), there should be a Step 7
+        that documents execution phase monitoring patterns.
+
+        This test will FAIL until implementation adds Step 7 to the staging prompt.
+        """
+        # Import here to avoid circular dependencies
+        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+        # Mock database and dependencies
+        mock_db = MagicMock()
+        generator = ThinClientPromptGenerator(db=mock_db, tenant_key="test_tenant")
+
+        # Mock the async methods
+        mock_project = MagicMock(name="Test Project", id="test_proj_456")
+        mock_product = MagicMock(name="Test Product", id="test_prod_789")
+
+        generator._fetch_project = AsyncMock(return_value=mock_project)
+        generator._fetch_product = AsyncMock(return_value=mock_product)
+        generator._get_external_host = MagicMock(return_value="localhost")
+
+        # Build staging prompt
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id="test_orch_123",
+            project_id="test_proj_456"
+        )
+
+        # EXPECTED: Step 7 should exist
+        assert "Step 7" in staging_prompt or "7." in staging_prompt, \
+            "Staging prompt should include Step 7 after Step 6 (SIGNAL COMPLETE)"
+
+        # EXPECTED: Step 7 should reference execution monitoring
+        assert "EXECUTION PHASE MONITORING" in staging_prompt or \
+               "execution phase" in staging_prompt.lower(), \
+            "Step 7 should document execution phase monitoring"
+
+    @pytest.mark.asyncio
+    async def test_staging_prompt_step7_includes_sequential_pattern(self):
+        """
+        Step 7 should document sequential execution pattern for orchestrators.
+
+        BEHAVIOR: Step 7 should explain sequential agent execution (spawn → poll → complete).
+
+        This test will FAIL until implementation adds sequential pattern documentation.
+        """
+        # Import here to avoid circular dependencies
+        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+        # Mock database and dependencies
+        mock_db = MagicMock()
+        generator = ThinClientPromptGenerator(db=mock_db, tenant_key="test_tenant")
+
+        # Mock the async methods
+        mock_project = MagicMock(name="Test Project", id="test_proj_456")
+        mock_product = MagicMock(name="Test Product", id="test_prod_789")
+
+        generator._fetch_project = AsyncMock(return_value=mock_project)
+        generator._fetch_product = AsyncMock(return_value=mock_product)
+        generator._get_external_host = MagicMock(return_value="localhost")
+
+        # Build staging prompt
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id="test_orch_123",
+            project_id="test_proj_456"
+        )
+
+        # EXPECTED: Sequential execution pattern should be documented
+        assert "sequential" in staging_prompt.lower() or "one at a time" in staging_prompt.lower(), \
+            "Step 7 should document sequential execution pattern"
+
+        # EXPECTED: Spawn → Poll → Complete flow should be described
+        assert ("spawn" in staging_prompt.lower() and "poll" in staging_prompt.lower()) or \
+               "workflow_status" in staging_prompt, \
+            "Step 7 should describe spawn → poll → completion workflow"
+
+    @pytest.mark.asyncio
+    async def test_staging_prompt_step7_includes_parallel_pattern(self):
+        """
+        Step 7 should document parallel execution pattern for orchestrators.
+
+        BEHAVIOR: Step 7 should explain parallel agent execution (spawn all → poll all).
+
+        This test will FAIL until implementation adds parallel pattern documentation.
+        """
+        # Import here to avoid circular dependencies
+        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+        # Mock database and dependencies
+        mock_db = MagicMock()
+        generator = ThinClientPromptGenerator(db=mock_db, tenant_key="test_tenant")
+
+        # Mock the async methods
+        mock_project = MagicMock(name="Test Project", id="test_proj_456")
+        mock_product = MagicMock(name="Test Product", id="test_prod_789")
+
+        generator._fetch_project = AsyncMock(return_value=mock_project)
+        generator._fetch_product = AsyncMock(return_value=mock_product)
+        generator._get_external_host = MagicMock(return_value="localhost")
+
+        # Build staging prompt
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id="test_orch_123",
+            project_id="test_proj_456"
+        )
+
+        # EXPECTED: Parallel execution pattern should be documented
+        assert "parallel" in staging_prompt.lower() or "all agents" in staging_prompt.lower(), \
+            "Step 7 should document parallel execution pattern"
+
+        # EXPECTED: Poll all agents flow should be described
+        assert "poll all" in staging_prompt.lower() or \
+               ("get_workflow_status" in staging_prompt and "all" in staging_prompt.lower()), \
+            "Step 7 should describe polling all agents pattern"
+
+    @pytest.mark.asyncio
+    async def test_staging_prompt_step7_requires_message_check_before_completion(self):
+        """
+        Step 7 should require orchestrator to check messages before completing.
+
+        BEHAVIOR: Step 7 should mandate calling receive_messages() before complete_job().
+        This prevents orchestrators from completing without checking for agent messages.
+
+        This test will FAIL until implementation adds mandatory message check requirement.
+        """
+        # Import here to avoid circular dependencies
+        from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+
+        # Mock database and dependencies
+        mock_db = MagicMock()
+        generator = ThinClientPromptGenerator(db=mock_db, tenant_key="test_tenant")
+
+        # Mock the async methods
+        mock_project = MagicMock(name="Test Project", id="test_proj_456")
+        mock_product = MagicMock(name="Test Product", id="test_prod_789")
+
+        generator._fetch_project = AsyncMock(return_value=mock_project)
+        generator._fetch_product = AsyncMock(return_value=mock_product)
+        generator._get_external_host = MagicMock(return_value="localhost")
+
+        # Build staging prompt
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id="test_orch_123",
+            project_id="test_proj_456"
+        )
+
+        # EXPECTED: receive_messages() should be mentioned
+        assert "receive_messages" in staging_prompt, \
+            "Step 7 should instruct orchestrator to call receive_messages()"
+
+        # EXPECTED: Should emphasize this is mandatory/required before completion
+        assert ("mandatory" in staging_prompt.lower() or
+                "required" in staging_prompt.lower() or
+                "before complete" in staging_prompt.lower() or
+                "MUST" in staging_prompt), \
+            "Step 7 should emphasize message check is MANDATORY before completing job"
+
+        # EXPECTED: Should mention complete_job() or completion
+        assert "complete_job" in staging_prompt or "completion" in staging_prompt.lower(), \
+            "Step 7 should reference completing the orchestrator job"
