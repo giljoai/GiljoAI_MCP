@@ -38,9 +38,21 @@
       />
     </template>
 
-    <!-- Agent ID Column (Handover 0240b) -->
+    <!-- Instance Number Column (Handover 0366d-1) -->
+    <template #item.instance_number="{ item }">
+      <v-chip size="small" color="blue-grey" label data-testid="instance-chip">
+        #{{ item.instance_number || 1 }}
+      </v-chip>
+    </template>
+
+    <!-- Agent ID Column (Handover 0240b; Handover 0366d-1: display agent_id not job_id) -->
     <template #item.agent_id="{ item }">
-      <code class="agent-id">{{ item.job_id ? item.job_id.slice(0, 8) : '—' }}</code>
+      <code class="agent-id" data-testid="agent-id">{{ item.agent_id ? item.agent_id.slice(0, 8) : '—' }}</code>
+    </template>
+
+    <!-- Job ID Column (Handover 0366d-1: NEW) -->
+    <template #item.job_id="{ item }">
+      <code class="agent-id" data-testid="job-id">{{ item.job_id ? item.job_id.slice(0, 8) : '—' }}</code>
     </template>
 
 
@@ -201,10 +213,12 @@ useStalenessMonitor(
   emitStaleWarning,
 )
 
-// Table headers configuration (Handover 0240b, updated for Steps column)
+// Table headers configuration (Handover 0240b, updated for Steps column; Handover 0366d-1: Added Instance and Job ID)
 const headers = [
   { title: 'Agent Type', key: 'agent_type', sortable: true },
+  { title: 'Instance', key: 'instance_number', sortable: true, align: 'center' },
   { title: 'Agent ID', key: 'agent_id', sortable: false },
+  { title: 'Job ID', key: 'job_id', sortable: false },
   { title: 'Job Acknowledged', key: 'job_acknowledged', sortable: false, align: 'center' },
   { title: 'Agent Status', key: 'status', sortable: true },
   { title: 'Steps', key: 'steps', sortable: false, align: 'center' },
@@ -382,5 +396,11 @@ function canCopyPrompt(agent) {
   background: rgba(0, 0, 0, 0.2);
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+/* Handover 0366d-1: Instance chip styling */
+.agent-table-view :deep(.instance-chip) {
+  min-width: 40px;
+  justify-content: center;
 }
 </style>
