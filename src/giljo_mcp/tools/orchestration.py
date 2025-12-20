@@ -126,6 +126,36 @@ DEFAULT_DEPTH_CONFIG = {
 }
 
 
+def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, int]:
+    """
+    Normalize field_priorities from nested format to integer format.
+
+    Handover 0357: DEFAULT_FIELD_PRIORITIES uses {"field": {"toggle": True, "priority": X}} format
+    but mission_planner expects {"field": X} (just integers).
+
+    Args:
+        field_priorities: Dict with either nested or integer priority values
+
+    Returns:
+        Dict with integer priority values (1-4)
+    """
+    normalized = {}
+    for field_key, value in field_priorities.items():
+        if isinstance(value, dict) and "priority" in value:
+            # Extract priority from nested format, respecting toggle
+            if value.get("toggle", True):
+                normalized[field_key] = value["priority"]
+            else:
+                normalized[field_key] = 4  # EXCLUDED if toggle is off
+        elif isinstance(value, int):
+            # Already in integer format
+            normalized[field_key] = value
+        else:
+            # Unknown format, default to IMPORTANT
+            normalized[field_key] = 2
+    return normalized
+
+
 async def _get_user_config(
     user_id: str, tenant_key: str, session: Any  # AsyncSession type hint would create circular import
 ) -> Dict[str, Any]:
@@ -160,7 +190,9 @@ async def _get_user_config(
                 f"[USER_CONFIG] User {user_id} not found or inactive for tenant {tenant_key}, using defaults",
                 extra={"user_id": user_id, "tenant_key": tenant_key},
             )
-            return {"field_priorities": DEFAULT_FIELD_PRIORITIES.copy(), "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+            # Handover 0357: Normalize default priorities to integer format
+            normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
+            return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
         # Get user's custom configs or fall back to defaults
         # Handover 0346: Handle nested v2.0 format {"version": "2.0", "priorities": {...}}
@@ -173,6 +205,9 @@ async def _get_user_config(
                 field_priorities = raw_field_priorities
         else:
             field_priorities = DEFAULT_FIELD_PRIORITIES.copy()
+
+        # Handover 0357: Normalize field_priorities to integer format for mission_planner
+        field_priorities = _normalize_field_priorities(field_priorities)
 
         # Get depth config and normalize keys from UI format to internal format
         raw_depth_config = user.depth_config
@@ -226,8 +261,9 @@ async def _get_user_config(
             extra={"user_id": user_id, "tenant_key": tenant_key},
             exc_info=True,
         )
-        # Fall back to defaults on error
-        return {"field_priorities": DEFAULT_FIELD_PRIORITIES.copy(), "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+        # Fall back to defaults on error (Handover 0357: normalize to integer format)
+        normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
+        return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
 
 def _infer_execution_mode_from_tool(tool_type: str | None) -> str:
@@ -1675,9 +1711,17 @@ The agent templates are now being updated...
                     user_config = await _get_user_config(user_id, tenant_key, session)
                     field_priorities = user_config["field_priorities"]
                     depth_config = user_config["depth_config"]
+                    # Handover 0357: Enhanced logging for depth config debugging
                     logger.info(
-                        "[USER_CONFIG] Fetched fresh user config for MCP tool",
-                        extra={"agent_id": agent_id, "job_id": job_id, "user_id": user_id},
+                        "[DEPTH_CONFIG] Fetched fresh user config for MCP tool",
+                        extra={
+                            "agent_id": agent_id,
+                            "job_id": job_id,
+                            "user_id": user_id,
+                            "agent_templates_depth": depth_config.get("agent_templates"),
+                            "has_custom_config": user_config.get("has_custom_config", False),
+                            "depth_config_keys": list(depth_config.keys()) if depth_config else [],
+                        },
                     )
                 else:
                     # Fall back to frozen job_metadata config
