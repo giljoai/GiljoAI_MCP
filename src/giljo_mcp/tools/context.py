@@ -713,11 +713,12 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     }
 
                 # Get session stats
-                from giljo_mcp.models import MCPAgentJob, Message
+                from giljo_mcp.models.agent_identity import AgentJob
+                from giljo_mcp.models import Message
                 from giljo_mcp.models import Session as DBSession
 
                 # Count agent jobs (active agents)
-                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                agent_query = select(AgentJob).where(AgentJob.tenant_key == tenant_key)
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
 
@@ -786,10 +787,10 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 return {
                     "success": True,
                     "project_id": project_id,
-                        "agents_notified": broadcast_result["broadcast_to"],
-                        "summary": changes_summary,
-                    }
-                return broadcast_result
+                    "agents_notified": broadcast_result["broadcast_to"],
+                    "summary": changes_summary,
+                }
+            return broadcast_result
 
         except Exception as e:
             logger.exception(f"Failed to recalibrate mission: {e}")
@@ -1263,6 +1264,245 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             logger.exception(f"Failed to get help documentation: {e}")
             return {"success": False, "error": str(e)}
 
+    @mcp.tool()
+    async def fetch_context(
+        agent_id: str,
+        tenant_key: str,
+        categories: list[str],
+    ) -> dict[str, Any]:
+        """
+        Fetch context for an agent execution (executor-specific context window).
+
+        Args:
+            agent_id: Executor UUID (WHO is executing)
+            tenant_key: Tenant key for multi-tenant isolation
+            categories: List of context categories to fetch
+
+        Returns:
+            Agent execution context with current usage metrics
+        """
+        try:
+            from giljo_mcp.models.agent_identity import AgentExecution
+            from sqlalchemy import select
+
+            async with db_manager.get_session_async() as session:
+                # Query AgentExecution by agent_id + tenant_key
+                query = select(AgentExecution).where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
+                result = await session.execute(query)
+                execution = result.scalar_one_or_none()
+
+                if not execution:
+                    return {
+                        "success": False,
+                        "error": "Agent execution not found or unauthorized",
+                    }
+
+                # Build context data based on categories
+                context_data = {}
+                for category in categories:
+                    # Placeholder - in real implementation, would fetch actual context
+                    context_data[category] = {"data": f"Context for {category}"}
+
+                return {
+                    "success": True,
+                    "agent_id": execution.agent_id,
+                    "job_id": execution.job_id,
+                    "context_used": execution.context_used,
+                    "context_budget": execution.context_budget,
+                    "context": context_data,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to fetch context: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def update_context_usage(
+        agent_id: str,
+        tenant_key: str,
+        tokens_used: int,
+    ) -> dict[str, Any]:
+        """
+        Update context usage for an agent execution incrementally.
+
+        Args:
+            agent_id: Executor UUID
+            tenant_key: Tenant key for multi-tenant isolation
+            tokens_used: Number of tokens consumed (added to current usage)
+
+        Returns:
+            Updated context usage metrics
+        """
+        try:
+            from giljo_mcp.models.agent_identity import AgentExecution
+            from sqlalchemy import select
+
+            async with db_manager.get_session_async() as session:
+                # Query AgentExecution by agent_id + tenant_key
+                query = select(AgentExecution).where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
+                result = await session.execute(query)
+                execution = result.scalar_one_or_none()
+
+                if not execution:
+                    return {
+                        "success": False,
+                        "error": "Agent execution not found or unauthorized",
+                    }
+
+                # Update context usage incrementally
+                execution.context_used += tokens_used
+                execution.last_progress_at = datetime.now(timezone.utc)
+
+                await session.commit()
+
+                return {
+                    "success": True,
+                    "agent_id": execution.agent_id,
+                    "context_used": execution.context_used,
+                    "context_budget": execution.context_budget,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to update context usage: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_context_history(
+        agent_id: str,
+        tenant_key: str,
+    ) -> dict[str, Any]:
+        """
+        Get context usage history for an agent execution.
+
+        Args:
+            agent_id: Executor UUID
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            Context history with agent and job metadata
+        """
+        try:
+            from giljo_mcp.models.agent_identity import AgentExecution
+            from sqlalchemy import select
+
+            async with db_manager.get_session_async() as session:
+                # Query AgentExecution by agent_id + tenant_key
+                query = select(AgentExecution).where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
+                result = await session.execute(query)
+                execution = result.scalar_one_or_none()
+
+                if not execution:
+                    return {
+                        "success": False,
+                        "error": "Agent execution not found or unauthorized",
+                    }
+
+                # Build context history (placeholder - real implementation would track history)
+                context_history = [
+                    {
+                        "timestamp": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
+                        "tokens_used": execution.context_used,
+                        "tokens_budget": execution.context_budget,
+                    }
+                ]
+
+                return {
+                    "success": True,
+                    "agent_id": execution.agent_id,
+                    "job_id": execution.job_id,
+                    "agent_type": execution.agent_type,
+                    "instance_number": execution.instance_number,
+                    "context_history": context_history,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to get context history: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_succession_context(
+        agent_id: str,
+        tenant_key: str,
+    ) -> dict[str, Any]:
+        """
+        Get full succession chain with context windows for an agent execution.
+
+        Traces the spawned_by chain to find all executors in the succession.
+
+        Args:
+            agent_id: Executor UUID (current agent)
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            Succession chain with all executor context windows
+        """
+        try:
+            from giljo_mcp.models.agent_identity import AgentExecution
+            from sqlalchemy import select
+
+            async with db_manager.get_session_async() as session:
+                # Query current AgentExecution
+                query = select(AgentExecution).where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
+                result = await session.execute(query)
+                current_execution = result.scalar_one_or_none()
+
+                if not current_execution:
+                    return {
+                        "success": False,
+                        "error": "Agent execution not found or unauthorized",
+                    }
+
+                # Build succession chain by following spawned_by links
+                succession_chain = []
+                visited = set()  # Prevent infinite loops
+
+                # Start from instance 1 (trace back to find all executors)
+                # Get all executions for this job
+                all_executions_query = select(AgentExecution).where(
+                    AgentExecution.job_id == current_execution.job_id,
+                    AgentExecution.tenant_key == tenant_key,
+                ).order_by(AgentExecution.instance_number)
+
+                all_result = await session.execute(all_executions_query)
+                all_executions = all_result.scalars().all()
+
+                # Build chain in order
+                for execution in all_executions:
+                    succession_chain.append({
+                        "agent_id": execution.agent_id,
+                        "instance_number": execution.instance_number,
+                        "agent_type": execution.agent_type,
+                        "status": execution.status,
+                        "context_used": execution.context_used,
+                        "context_budget": execution.context_budget,
+                        "spawned_by": execution.spawned_by,
+                        "succeeded_by": execution.succeeded_by,
+                    })
+
+                return {
+                    "success": True,
+                    "agent_id": current_execution.agent_id,
+                    "job_id": current_execution.job_id,
+                    "instance_number": current_execution.instance_number,
+                    "succession_chain": succession_chain,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to get succession context: {e}")
+            return {"success": False, "error": str(e)}
+
     logger.info("Context and discovery tools registered")
 
 
@@ -1480,4 +1720,265 @@ async def get_vision_index() -> dict[str, Any]:
 
     except Exception as e:
         logger.exception(f"Failed to get vision index: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def fetch_context(
+    agent_id: str,
+    tenant_key: str,
+    categories: list[str],
+) -> dict[str, Any]:
+    """
+    Fetch context for an agent execution (executor-specific context window).
+
+    Args:
+        agent_id: Executor UUID (WHO is executing)
+        tenant_key: Tenant key for multi-tenant isolation
+        categories: List of context categories to fetch
+
+    Returns:
+        Agent execution context with current usage metrics
+    """
+    try:
+        import giljo_mcp.database as db_module
+        from giljo_mcp.models.agent_identity import AgentExecution
+        from sqlalchemy import select
+
+        # Use existing database manager (NO hardcoded test URL!)
+        if db_module._db_manager is None:
+            raise RuntimeError("Database manager not initialized")
+        db_manager = db_module._db_manager
+
+        async with db_manager.get_session_async() as session:
+            # Query AgentExecution by agent_id + tenant_key
+            query = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            result = await session.execute(query)
+            execution = result.scalar_one_or_none()
+
+            if not execution:
+                return {
+                    "success": False,
+                    "error": "Agent execution not found or unauthorized",
+                }
+
+            # Build context data based on categories
+            context_data = {}
+            for category in categories:
+                # Placeholder - in real implementation, would fetch actual context
+                context_data[category] = {"data": f"Context for {category}"}
+
+            return {
+                "success": True,
+                "agent_id": execution.agent_id,
+                "job_id": execution.job_id,
+                "context_used": execution.context_used,
+                "context_budget": execution.context_budget,
+                "context": context_data,
+            }
+
+    except Exception as e:
+        logger.exception(f"Failed to fetch context: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def update_context_usage(
+    agent_id: str,
+    tenant_key: str,
+    tokens_used: int,
+) -> dict[str, Any]:
+    """
+    Update context usage for an agent execution incrementally.
+
+    Args:
+        agent_id: Executor UUID
+        tenant_key: Tenant key for multi-tenant isolation
+        tokens_used: Number of tokens consumed (added to current usage)
+
+    Returns:
+        Updated context usage metrics
+    """
+    try:
+        import giljo_mcp.database as db_module
+        from giljo_mcp.models.agent_identity import AgentExecution
+        from sqlalchemy import select
+
+        # Use existing database manager (NO hardcoded test URL!)
+        if db_module._db_manager is None:
+            raise RuntimeError("Database manager not initialized")
+        db_manager = db_module._db_manager
+
+        async with db_manager.get_session_async() as session:
+            # Query AgentExecution by agent_id + tenant_key
+            query = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            result = await session.execute(query)
+            execution = result.scalar_one_or_none()
+
+            if not execution:
+                return {
+                    "success": False,
+                    "error": "Agent execution not found or unauthorized",
+                }
+
+            # Update context usage incrementally
+            execution.context_used += tokens_used
+            execution.last_progress_at = datetime.now(timezone.utc)
+
+            await session.commit()
+
+            return {
+                "success": True,
+                "agent_id": execution.agent_id,
+                "context_used": execution.context_used,
+                "context_budget": execution.context_budget,
+            }
+
+    except Exception as e:
+        logger.exception(f"Failed to update context usage: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_context_history(
+    agent_id: str,
+    tenant_key: str,
+) -> dict[str, Any]:
+    """
+    Get context usage history for an agent execution.
+
+    Args:
+        agent_id: Executor UUID
+        tenant_key: Tenant key for multi-tenant isolation
+
+    Returns:
+        Context history with agent and job metadata
+    """
+    try:
+        import giljo_mcp.database as db_module
+        from giljo_mcp.models.agent_identity import AgentExecution
+        from sqlalchemy import select
+
+        # Use existing database manager (NO hardcoded test URL!)
+        if db_module._db_manager is None:
+            raise RuntimeError("Database manager not initialized")
+        db_manager = db_module._db_manager
+
+        async with db_manager.get_session_async() as session:
+            # Query AgentExecution by agent_id + tenant_key
+            query = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            result = await session.execute(query)
+            execution = result.scalar_one_or_none()
+
+            if not execution:
+                return {
+                    "success": False,
+                    "error": "Agent execution not found or unauthorized",
+                }
+
+            # Build context history (placeholder - real implementation would track history)
+            context_history = [
+                {
+                    "timestamp": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
+                    "tokens_used": execution.context_used,
+                    "tokens_budget": execution.context_budget,
+                }
+            ]
+
+            return {
+                "success": True,
+                "agent_id": execution.agent_id,
+                "job_id": execution.job_id,
+                "agent_type": execution.agent_type,
+                "instance_number": execution.instance_number,
+                "context_history": context_history,
+            }
+
+    except Exception as e:
+        logger.exception(f"Failed to get context history: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_succession_context(
+    agent_id: str,
+    tenant_key: str,
+) -> dict[str, Any]:
+    """
+    Get full succession chain with context windows for an agent execution.
+
+    Traces the spawned_by chain to find all executors in the succession.
+
+    Args:
+        agent_id: Executor UUID (current agent)
+        tenant_key: Tenant key for multi-tenant isolation
+
+    Returns:
+        Succession chain with all executor context windows
+    """
+    try:
+        import giljo_mcp.database as db_module
+        from giljo_mcp.models.agent_identity import AgentExecution
+        from sqlalchemy import select
+
+        # Use existing database manager (NO hardcoded test URL!)
+        if db_module._db_manager is None:
+            raise RuntimeError("Database manager not initialized")
+        db_manager = db_module._db_manager
+
+        async with db_manager.get_session_async() as session:
+            # Query current AgentExecution
+            query = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            result = await session.execute(query)
+            current_execution = result.scalar_one_or_none()
+
+            if not current_execution:
+                return {
+                    "success": False,
+                    "error": "Agent execution not found or unauthorized",
+                }
+
+            # Build succession chain by following spawned_by links
+            succession_chain = []
+
+            # Get all executions for this job
+            all_executions_query = select(AgentExecution).where(
+                AgentExecution.job_id == current_execution.job_id,
+                AgentExecution.tenant_key == tenant_key,
+            ).order_by(AgentExecution.instance_number)
+
+            all_result = await session.execute(all_executions_query)
+            all_executions = all_result.scalars().all()
+
+            # Build chain in order
+            for execution in all_executions:
+                succession_chain.append({
+                    "agent_id": execution.agent_id,
+                    "instance_number": execution.instance_number,
+                    "agent_type": execution.agent_type,
+                    "status": execution.status,
+                    "context_used": execution.context_used,
+                    "context_budget": execution.context_budget,
+                    "spawned_by": execution.spawned_by,
+                    "succeeded_by": execution.succeeded_by,
+                })
+
+            return {
+                "success": True,
+                "agent_id": current_execution.agent_id,
+                "job_id": current_execution.job_id,
+                "instance_number": current_execution.instance_number,
+                "succession_chain": succession_chain,
+            }
+
+    except Exception as e:
+        logger.exception(f"Failed to get succession context: {e}")
         return {"success": False, "error": str(e)}
