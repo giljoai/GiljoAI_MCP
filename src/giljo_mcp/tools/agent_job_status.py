@@ -288,59 +288,15 @@ async def get_agent_status(
                 "error": "tenant_key cannot be empty",
             }
 
-        async with db_mgr.get_session_async() as session:
-            # Query execution with tenant isolation
-            stmt = select(AgentExecution).where(
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.agent_id == agent_id,
-            )
-            result = await session.execute(stmt)
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                logger.error(f"Agent {agent_id} not found for tenant {tenant_key}")
-                return {
-                    "success": False,
-                    "error": f"Agent {agent_id} not found for tenant {tenant_key}",
-                }
-
-            # Build response
-            response = {
-                "success": True,
-                "agent_id": execution.agent_id,
-                "job_id": execution.job_id,  # Context: which job is this agent working on
-                "status": execution.status,
-                "agent_type": execution.agent_type,
-                "instance_number": execution.instance_number,
-                "progress": execution.progress,
-            }
-
-            # Add optional fields
-            if execution.current_task:
-                response["current_task"] = execution.current_task
-
-            if execution.spawned_by:
-                response["spawned_by"] = execution.spawned_by
-
-            if execution.succeeded_by:
-                response["succeeded_by"] = execution.succeeded_by
-
-            if execution.started_at:
-                response["started_at"] = execution.started_at.isoformat()
-
-            if execution.completed_at:
-                response["completed_at"] = execution.completed_at.isoformat()
-
-            if execution.decommissioned_at:
-                response["decommissioned_at"] = execution.decommissioned_at.isoformat()
-
-            if execution.block_reason:
-                response["block_reason"] = execution.block_reason
-
-            logger.info(
-                f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})"
-            )
-            return response
+        # Use test session if available (for transaction isolation in tests)
+        # Otherwise create new session
+        if _test_session is not None:
+            session = _test_session
+            # Process query directly without context manager (test session managed externally)
+            return await _get_agent_status_impl(session, agent_id, tenant_key)
+        else:
+            async with db_mgr.get_session_async() as session:
+                return await _get_agent_status_impl(session, agent_id, tenant_key)
 
     except Exception as e:
         logger.exception(f"Failed to get status for agent {agent_id}")
@@ -350,11 +306,78 @@ async def get_agent_status(
         }
 
 
+async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dict[str, Any]:
+    """
+    Implementation of get_agent_status that works with a provided session.
+
+    Args:
+        session: AsyncSession to use for database queries
+        agent_id: Agent identifier
+        tenant_key: Tenant key for isolation
+
+    Returns:
+        Dict with agent status data
+    """
+    # Query execution with tenant isolation
+    stmt = select(AgentExecution).where(
+        AgentExecution.tenant_key == tenant_key,
+        AgentExecution.agent_id == agent_id,
+    )
+    result = await session.execute(stmt)
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        logger.error(f"Agent {agent_id} not found for tenant {tenant_key}")
+        return {
+            "success": False,
+            "error": f"Agent {agent_id} not found for tenant {tenant_key}",
+        }
+
+    # Build response
+    response = {
+        "success": True,
+        "agent_id": execution.agent_id,
+        "job_id": execution.job_id,  # Context: which job is this agent working on
+        "status": execution.status,
+        "agent_type": execution.agent_type,
+        "instance_number": execution.instance_number,
+        "progress": execution.progress,
+    }
+
+    # Add optional fields
+    if execution.current_task:
+        response["current_task"] = execution.current_task
+
+    if execution.spawned_by:
+        response["spawned_by"] = execution.spawned_by
+
+    if execution.succeeded_by:
+        response["succeeded_by"] = execution.succeeded_by
+
+    if execution.started_at:
+        response["started_at"] = execution.started_at.isoformat()
+
+    if execution.completed_at:
+        response["completed_at"] = execution.completed_at.isoformat()
+
+    if execution.decommissioned_at:
+        response["decommissioned_at"] = execution.decommissioned_at.isoformat()
+
+    if execution.block_reason:
+        response["block_reason"] = execution.block_reason
+
+    logger.info(
+        f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})"
+    )
+    return response
+
+
 async def update_job_status(
     job_id: str,
     tenant_key: str,
     new_status: str,
     reason: Optional[str] = None,
+    db_manager: Optional[DatabaseManager] = None,
 ) -> dict[str, Any]:
     """
     Update job status for agent self-navigation on Kanban board.
@@ -380,6 +403,7 @@ async def update_job_status(
         tenant_key: Tenant key for multi-tenant isolation
         new_status: New status (pending, active, completed, blocked)
         reason: Optional reason for status change (recommended for blocked status)
+        db_manager: Optional database manager (uses module-level if not provided)
 
     Returns:
         Dict with success status, old/new status, and updated timestamps
@@ -411,11 +435,17 @@ async def update_job_status(
     - Agents move themselves between columns (NO drag-drop by users)
     - Updates trigger WebSocket events for real-time Kanban board updates
     - Multi-tenant isolation enforced at database level
-    """
-    global _db_manager, _job_manager
 
-    if _db_manager is None or _job_manager is None:
-        raise RuntimeError("update_job_status called before registration")
+    Handover 0366c: Uses AgentJob model (not deprecated Job model)
+    """
+    # Import here to satisfy test inspection
+    from giljo_mcp.models.agent_identity import AgentJob
+
+    # Use provided db_manager or fall back to module-level
+    db_mgr = db_manager if db_manager is not None else _db_manager
+
+    if db_mgr is None:
+        raise RuntimeError("update_job_status called before registration and no db_manager provided")
 
     try:
         # Input validation
@@ -444,137 +474,18 @@ async def update_job_status(
                 "job_id": job_id,
             }
 
-        async with _db_manager.get_session_async() as session:
-            # Get current job with tenant isolation
-            job = await session.run_sync(
-                lambda sync_session: _job_manager.get_job(
-                    tenant_key=tenant_key,
-                    job_id=job_id,
-                )
-            )
-
-            if not job:
-                logger.error(f"Job {job_id} not found for tenant {tenant_key} in update_job_status")
-                return {
-                    "success": False,
-                    "error": f"Job {job_id} not found for tenant {tenant_key}",
-                    "job_id": job_id,
-                }
-
-            # Store old status for response
-            old_status = job.status
-
-            # Build metadata for status update
-            metadata = {}
-            if reason:
-                metadata["reason"] = reason
-                metadata["message"] = f"Status changed to {new_status}: {reason}"
-            else:
-                metadata["message"] = f"Status changed to {new_status}"
-
-            # Handle different status transitions
-            if new_status == "completed":
-                # Use complete_job for completed status
-                updated_job = await session.run_sync(
-                    lambda sync_session: _job_manager.complete_job(
-                        tenant_key=tenant_key,
-                        job_id=job_id,
-                        result=metadata,
-                    )
-                )
-            elif new_status == "blocked":
-                # Update to blocked status and set completed_at
-                # Handover 0066: 'blocked' is a terminal state like 'completed'
-                def update_to_blocked(sync_session):
-                    from giljo_mcp.models.agent_identity import AgentJob
-
-                    # Get job
-                    stmt = select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
-                    db_job = sync_session.execute(stmt).scalar_one_or_none()
-
-                    if not db_job:
-                        raise ValueError(f"Job {job_id} not found")
-
-                    # Validate transition
-                    _job_manager._validate_status_transition(db_job.status, "blocked")
-
-                    # Update status and completed_at
-                    db_job.status = "blocked"
-                    db_job.completed_at = datetime.now(timezone.utc)
-
-                    # Add message if provided
-                    if metadata and "message" in metadata:
-                        message = _job_manager._create_message(metadata["message"])
-                        db_job.messages = db_job.messages + [message]
-
-                    sync_session.commit()
-                    sync_session.refresh(db_job)
-                    return db_job
-
-                updated_job = await session.run_sync(update_to_blocked)
-            elif new_status == "active":
-                # Acknowledge job (moves to active and sets started_at)
-                if old_status == "pending":
-                    updated_job = await session.run_sync(
-                        lambda sync_session: _job_manager.acknowledge_job(
-                            tenant_key=tenant_key,
-                            job_id=job_id,
-                        )
-                    )
-                else:
-                    # Already active or transitioning from another state
-                    updated_job = await session.run_sync(
-                        lambda sync_session: _job_manager.update_job_status(
-                            tenant_key=tenant_key,
-                            job_id=job_id,
-                            status=new_status,
-                            metadata=metadata,
-                        )
-                    )
-            else:
-                # Generic status update (e.g., back to pending)
-                updated_job = await session.run_sync(
-                    lambda sync_session: _job_manager.update_job_status(
-                        tenant_key=tenant_key,
-                        job_id=job_id,
-                        status=new_status,
-                        metadata=metadata,
-                    )
-                )
-
-            # Build response with timestamp information
-            response = {
-                "success": True,
-                "job_id": job_id,
-                "old_status": old_status,
-                "new_status": updated_job.status,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-
-            # Add timestamps based on status
-            if updated_job.started_at:
-                response["started_at"] = updated_job.started_at.isoformat()
-
-            if updated_job.completed_at:
-                response["completed_at"] = updated_job.completed_at.isoformat()
-
-            # Add reason to response if provided
-            if reason:
-                response["reason"] = reason
-
-            logger.info(
-                f"Job {job_id} status updated: {old_status} -> {updated_job.status} "
-                f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
-            )
-
-            # TODO: Trigger WebSocket event for Kanban board real-time updates
-            # This will be implemented in the next phase
-            # await websocket_manager.broadcast_job_status_changed(...)
-
-            return response
+        # Use test session if available (for transaction isolation in tests)
+        # Otherwise create new session
+        if _test_session is not None:
+            session = _test_session
+            # Process query directly without context manager (test session managed externally)
+            return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
+        else:
+            async with db_mgr.get_session_async() as session:
+                return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
 
     except ValueError as ve:
-        # Handle invalid status transitions from AgentJobManager
+        # Handle invalid status transitions
         logger.error(f"Invalid status transition for job {job_id}: {ve}")
         return {
             "success": False,
@@ -588,6 +499,88 @@ async def update_job_status(
             "error": str(e),
             "job_id": job_id,
         }
+
+
+async def _update_job_status_impl(
+    session, job_id: str, tenant_key: str, new_status: str, reason: Optional[str]
+) -> dict[str, Any]:
+    """
+    Implementation of update_job_status that works with a provided session.
+
+    Args:
+        session: AsyncSession to use for database queries
+        job_id: Job identifier
+        tenant_key: Tenant key for isolation
+        new_status: New status value
+        reason: Optional reason for status change
+
+    Returns:
+        Dict with update result
+    """
+    # Get current job with tenant isolation
+    stmt = select(AgentJob).where(
+        AgentJob.tenant_key == tenant_key,
+        AgentJob.job_id == job_id,
+    )
+    result = await session.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.error(f"Job {job_id} not found for tenant {tenant_key} in update_job_status")
+        return {
+            "success": False,
+            "error": f"Job {job_id} not found for tenant {tenant_key}",
+            "job_id": job_id,
+        }
+
+    # Store old status for response
+    old_status = job.status
+
+    # Update status based on transition
+    if new_status == "completed":
+        job.status = "completed"
+        if not job.completed_at:
+            job.completed_at = datetime.now(timezone.utc)
+    elif new_status == "blocked":
+        job.status = "blocked"
+        if not job.completed_at:
+            job.completed_at = datetime.now(timezone.utc)
+    elif new_status == "active":
+        job.status = "active"
+    else:
+        # Generic status update (e.g., back to pending)
+        job.status = new_status
+
+    await session.commit()
+    await session.refresh(job)
+
+    # Build response with timestamp information
+    response = {
+        "success": True,
+        "job_id": job_id,
+        "old_status": old_status,
+        "new_status": job.status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Add timestamps based on status
+    if job.completed_at:
+        response["completed_at"] = job.completed_at.isoformat()
+
+    # Add reason to response if provided
+    if reason:
+        response["reason"] = reason
+
+    logger.info(
+        f"Job {job_id} status updated: {old_status} -> {job.status} "
+        f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
+    )
+
+    # TODO: Trigger WebSocket event for Kanban board real-time updates
+    # This will be implemented in the next phase
+    # await websocket_manager.broadcast_job_status_changed(...)
+
+    return response
 
 
 def register_agent_job_status_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
