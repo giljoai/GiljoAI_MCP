@@ -21,10 +21,11 @@
 
 ## Active Handovers (In Root Folder)
 
-### Alpha Trial Remediation Series (0355-0362) - HIGH PRIORITY
+### Alpha Trial Remediation Series (0356-0362, 0364-0365) - HIGH PRIORITY
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
-| 0355 | Protocol Message Handling Fix | Ready | HIGH | 4-6h |
+| 0364 | Protocol Message Handling Fix | **COMPLETE** | HIGH | 3h actual |
+| 0365 | Orchestrator Handover Behavior Injection | Ready | MEDIUM | TBD |
 | 0356 | MCP Tool Parameter Consistency | Ready | HIGH | 3-4h |
 | 0357 | Agent Template Context Loading | Ready | HIGH | 2-3h |
 | 0358 | WebSocket & UI State Overhaul | Ready | HIGH | 10-14h |
@@ -33,7 +34,7 @@
 | 0361 | Documentation Updates | Ready | LOW | 2h |
 | 0362 | WebSocket Message Counter Fixes | Ready | HIGH | 3-4h |
 
-> **Recommended Order**: 0355 → 0356 → 0359 → 0357 → 0358 → 0360 → 0361
+> **Recommended Order**: 0356 → 0359 → 0357 → 0358 → 0360 → 0361 (0364 DONE, 0365 after discussion)
 > See `alpha_trial_remediation_roadmap.md` for full context from TinyContacts alpha trial.
 
 ### Ready for Implementation
@@ -98,6 +99,7 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0364 | Protocol Message Handling Fix | **COMPLETE** (2025-12-19) |
 | 0117 | Agent Role Refactor (8-Role System) | **SUPERSEDED** by 0515 |
 | 0256 | Task Templates Cleanup Followup | **COMPLETE** |
 | 0331 | Message Audit Modal | **COMPLETE** |
@@ -313,7 +315,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0363 (includes Alpha Trial 0355-0362)
+**0301-0400** (Services): 0300-0316, 0318-0365 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
@@ -323,7 +325,7 @@ completed/reference/
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
-- **0364+**: Next sequential after current development
+- **0366+**: Next sequential after current development
 
 ### Naming Format
 ```
