@@ -2,18 +2,24 @@
 Orchestrator Succession Manager for GiljoAI MCP Server.
 
 Handover 0080: Manages orchestrator succession lifecycle for unlimited project duration.
+Handover 0366b: Updated to use dual-model architecture (AgentJob + AgentExecution).
 
 Responsibilities:
 - Context threshold detection (90% trigger point)
-- Successor orchestrator creation with instance numbering
+- Successor EXECUTION creation (not new job) with instance numbering
 - Handover summary generation with compression (<10K tokens target)
-- State transfer between orchestrator instances
+- State transfer between execution instances
 - Multi-tenant isolation enforcement
 
 Valid succession reasons:
 - context_limit: Context usage >= 90% of budget
 - manual: User-requested handover
 - phase_transition: Project phase change
+
+Key Change (0366b):
+- Succession creates new AgentExecution on SAME job (job_id persists)
+- Mission stored in AgentJob (not duplicated in executions)
+- Handover summary stored in AgentExecution (execution-specific state)
 """
 
 import json
@@ -23,7 +29,11 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
+# Handover 0366b: Import dual-model architecture
+from .models.agent_identity import AgentJob, AgentExecution
+# Keep MCPAgentJob for backward compatibility during migration
 from .models import MCPAgentJob
 
 
@@ -35,25 +45,27 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-def calculate_context_usage(orchestrator: MCPAgentJob) -> tuple[int, int]:
+def calculate_context_usage(execution: AgentExecution) -> tuple[int, int]:
     """
-    Calculate context window usage for an orchestrator.
+    Calculate context window usage for an agent execution.
 
-    For now: Returns (context_used, context_budget) from job record.
+    Handover 0366b: Now uses AgentExecution (context tracking is executor-specific).
+
+    For now: Returns (context_used, context_budget) from execution record.
     Future: Integrate with actual LLM token counting via API.
 
     Args:
-        orchestrator: MCPAgentJob instance (must be orchestrator type)
+        execution: AgentExecution instance (executor context tracking)
 
     Returns:
         Tuple of (context_used, context_budget) in tokens
 
     Example:
-        >>> used, budget = calculate_context_usage(orchestrator)
+        >>> used, budget = calculate_context_usage(execution)
         >>> percentage = (used / budget) * 100
         >>> print(f"Context usage: {percentage:.1f}%")
     """
-    return (orchestrator.context_used, orchestrator.context_budget)
+    return (execution.context_used, execution.context_budget)
 
 
 # ============================================================================
@@ -107,25 +119,27 @@ class OrchestratorSuccessionManager:
 
     def should_trigger_succession(
         self,
-        orchestrator: MCPAgentJob,
+        execution: AgentExecution,
         manual_request: bool = False,
     ) -> bool:
         """
-        Check if orchestrator should trigger succession.
+        Check if execution should trigger succession.
+
+        Handover 0366b: Now checks AgentExecution (context is executor-specific).
 
         Triggers when:
         - Context usage >= 90% of context budget
         - OR manual handover requested (manual_request=True)
 
         Args:
-            orchestrator: MCPAgentJob instance to check
+            execution: AgentExecution instance to check
             manual_request: True if manual succession requested
 
         Returns:
             True if succession should be triggered, False otherwise
 
         Example:
-            >>> if manager.should_trigger_succession(orchestrator):
+            >>> if manager.should_trigger_succession(execution):
             >>>     print("Succession threshold reached!")
         """
         # Manual request always triggers
@@ -133,11 +147,11 @@ class OrchestratorSuccessionManager:
             return True
 
         # Calculate context usage percentage
-        used, budget = calculate_context_usage(orchestrator)
+        used, budget = calculate_context_usage(execution)
 
         # Avoid division by zero
         if budget == 0:
-            logger.warning(f"Orchestrator {orchestrator.job_id} has zero context budget")
+            logger.warning(f"Execution {execution.agent_id} has zero context budget")
             return False
 
         usage_percentage = used / budget
@@ -145,34 +159,36 @@ class OrchestratorSuccessionManager:
         # Trigger if >= 90% threshold
         return usage_percentage >= self.CONTEXT_THRESHOLD
 
-    def create_successor(
+    async def create_successor(
         self,
-        orchestrator: MCPAgentJob,
+        current_execution: AgentExecution,
         reason: str,
-    ) -> MCPAgentJob:
+    ) -> AgentExecution:
         """
-        Create successor orchestrator for handover.
+        Create successor execution for handover.
 
-        Creates new MCPAgentJob with:
+        Handover 0366b: Creates new AgentExecution on SAME job (not new job).
+
+        Creates new AgentExecution with:
+        - SAME job_id (work order persists)
+        - NEW agent_id (new executor)
         - Incremented instance_number
         - Fresh context window (context_used = 0)
         - Status = 'waiting' (for manual launch)
-        - Same tenant_key and project_id
-        - Linkage via spawned_by field
-        - Preserved execution_mode from parent (Handover 0247 Gap 4)
+        - Linkage via spawned_by/succeeded_by fields
 
         Args:
-            orchestrator: Parent orchestrator job
+            current_execution: Current execution to hand over from
             reason: Succession reason ('context_limit', 'manual', 'phase_transition')
 
         Returns:
-            New MCPAgentJob instance (successor)
+            New AgentExecution instance (successor)
 
         Raises:
             ValueError: If reason is invalid
 
         Example:
-            >>> successor = manager.create_successor(orchestrator, "context_limit")
+            >>> successor = await manager.create_successor(current_execution, "context_limit")
             >>> print(f"Created successor instance {successor.instance_number}")
         """
         # Validate reason
@@ -180,69 +196,63 @@ class OrchestratorSuccessionManager:
             raise ValueError(f"Invalid succession reason: {reason}. Must be one of: {', '.join(self.VALID_REASONS)}")
 
         # Verify tenant isolation
-        if orchestrator.tenant_key != self.tenant_key:
+        if current_execution.tenant_key != self.tenant_key:
             raise ValueError(
-                f"Tenant mismatch: orchestrator belongs to {orchestrator.tenant_key}, "
+                f"Tenant mismatch: execution belongs to {current_execution.tenant_key}, "
                 f"manager initialized for {self.tenant_key}"
             )
 
-        # Generate handover mission
-        handover_mission = self._generate_handover_mission(orchestrator)
+        # Get parent job (via relationship or query)
+        if hasattr(current_execution, 'job') and current_execution.job is not None:
+            job = current_execution.job
+        else:
+            # Load job if not already loaded
+            result = await self.db_session.execute(
+                select(AgentJob).where(AgentJob.job_id == current_execution.job_id)
+            )
+            job = result.scalar_one()
 
-        # Handover 0247 Gap 4: Preserve execution_mode from parent orchestrator
-        # Extract execution_mode from parent's job_metadata (default: "multi-terminal")
-        parent_metadata = orchestrator.job_metadata or {}
-        execution_mode = parent_metadata.get("execution_mode", "multi-terminal")
-        
-        # Build successor metadata preserving execution_mode and other critical fields
-        successor_metadata = {
-            "execution_mode": execution_mode,
-            "predecessor_id": orchestrator.job_id,
-            "succession_reason": reason,
-            "field_priorities": parent_metadata.get("field_priorities", {}),
-            "depth_config": parent_metadata.get("depth_config", {}),
-            "user_id": parent_metadata.get("user_id"),
-            "tool": parent_metadata.get("tool", "universal"),
-            "created_via": "orchestrator_succession"
-        }
-
-        # Create successor job
-        successor = MCPAgentJob(
+        # Create NEW execution on SAME job
+        successor_execution = AgentExecution(
+            agent_id=str(uuid4()),  # New executor ID
+            job_id=job.job_id,  # SAME work order
             tenant_key=self.tenant_key,
-            job_id=str(uuid4()),
-            agent_type="orchestrator",
-            mission=handover_mission,
+            agent_type=current_execution.agent_type,
+            instance_number=current_execution.instance_number + 1,
             status="waiting",  # Manual launch required
-            instance_number=orchestrator.instance_number + 1,
-            spawned_by=orchestrator.job_id,
-            project_id=orchestrator.project_id,
+            spawned_by=current_execution.agent_id,  # Points to agent, not job
             context_used=0,  # Fresh context window
-            context_budget=orchestrator.context_budget,  # Same budget
-            context_chunks=[],  # Will be populated from handover summary
-            messages=[],  # Fresh message queue
-            job_metadata=successor_metadata,  # Handover 0247 Gap 4: Preserve metadata
+            context_budget=current_execution.context_budget,  # Same budget
+            tool_type=current_execution.tool_type,  # Preserve tool assignment
         )
+
+        # Update current execution succession chain
+        current_execution.succeeded_by = successor_execution.agent_id
+        current_execution.succession_reason = reason
+        current_execution.status = "complete"  # Mark current as complete
+        current_execution.completed_at = datetime.now(timezone.utc)
 
         # Add to session and commit
-        self.db_session.add(successor)
-        self.db_session.commit()
-        self.db_session.refresh(successor)
+        self.db_session.add(successor_execution)
+        await self.db_session.commit()
+        await self.db_session.refresh(successor_execution)
 
         logger.info(
-            f"Created successor orchestrator {successor.job_id} "
-            f"(instance {successor.instance_number}) for {orchestrator.job_id}, "
-            f"reason: {reason}, execution_mode: {execution_mode}"
+            f"Created successor execution {successor_execution.agent_id} "
+            f"(instance {successor_execution.instance_number}) for {current_execution.agent_id}, "
+            f"job_id: {job.job_id}, reason: {reason}"
         )
 
-        return successor
+        return successor_execution
 
-    def generate_handover_summary(self, orchestrator: MCPAgentJob) -> dict[str, Any]:
+    def generate_handover_summary(self, execution: AgentExecution) -> dict[str, Any]:
         """
         Generate compressed handover summary for successor.
 
+        Handover 0366b: Now generates summary from AgentExecution (execution-specific state).
+
         Compression strategy:
         - Extract only actionable state
-        - Reference context chunks (not full text)
         - Summarize completed work (not replay)
         - Highlight pending decisions only
         - Target: <10K tokens for handover
@@ -252,28 +262,24 @@ class OrchestratorSuccessionManager:
         - active_agents: List of active sub-agents
         - completed_phases: Summary of completed work
         - pending_decisions: Open questions requiring attention
-        - critical_context_refs: Context chunk IDs to load
         - message_count: Number of messages in history
         - unresolved_blockers: Current blocking issues
         - next_steps: Recommended next actions
 
         Args:
-            orchestrator: Orchestrator job to summarize
+            execution: AgentExecution to summarize
 
         Returns:
             Compressed handover summary dict
 
         Example:
-            >>> summary = manager.generate_handover_summary(orchestrator)
+            >>> summary = manager.generate_handover_summary(execution)
             >>> print(f"Project status: {summary['project_status']}")
             >>> print(f"Messages: {summary['message_count']}")
         """
         # Extract messages for analysis
-        messages = orchestrator.messages or []
+        messages = execution.messages or []
         message_count = len(messages)
-
-        # Extract context chunk references
-        critical_context_refs = orchestrator.context_chunks or []
 
         # Analyze message history for project status
         # (Simple implementation - can be enhanced with NLP)
@@ -290,17 +296,16 @@ class OrchestratorSuccessionManager:
             "active_agents": active_agents,
             "completed_phases": completed_phases,
             "pending_decisions": pending_decisions,
-            "critical_context_refs": critical_context_refs,
             "message_count": message_count,
             "unresolved_blockers": unresolved_blockers,
             "next_steps": next_steps,
-            "instance_number": orchestrator.instance_number,
+            "instance_number": execution.instance_number,
             "context_usage": {
-                "used": orchestrator.context_used,
-                "budget": orchestrator.context_budget,
+                "used": execution.context_used,
+                "budget": execution.context_budget,
                 "percentage": round(
-                    (orchestrator.context_used / orchestrator.context_budget * 100)
-                    if orchestrator.context_budget > 0
+                    (execution.context_used / execution.context_budget * 100)
+                    if execution.context_budget > 0
                     else 0,
                     2,
                 ),
@@ -312,33 +317,34 @@ class OrchestratorSuccessionManager:
         estimated_tokens = len(summary_str) / 4  # Rough approximation
 
         logger.info(
-            f"Generated handover summary for {orchestrator.job_id}: "
+            f"Generated handover summary for execution {execution.agent_id}: "
             f"~{estimated_tokens:.0f} tokens, {message_count} messages"
         )
 
         return summary
 
-    def complete_handover(
+    async def complete_handover(
         self,
-        orchestrator: MCPAgentJob,
-        successor: MCPAgentJob,
+        current_execution: AgentExecution,
+        successor_execution: AgentExecution,
         handover_summary: dict[str, Any],
         reason: str = "context_limit",
     ) -> None:
         """
-        Complete handover from orchestrator to successor.
+        Complete handover from current execution to successor.
 
-        Updates orchestrator job:
+        Handover 0366b: Stores handover summary in AgentExecution (execution-specific state).
+
+        Updates current execution:
         - Status → 'complete'
-        - handover_to → successor.job_id
-        - handover_summary → compressed summary
-        - handover_context_refs → context chunk IDs
+        - succeeded_by → successor.agent_id
+        - handover_summary → compressed summary (JSONB field)
         - succession_reason → reason code
         - completed_at → current timestamp
 
         Args:
-            orchestrator: Parent orchestrator job
-            successor: Successor orchestrator job
+            current_execution: Current execution handing over
+            successor_execution: Successor execution taking over
             handover_summary: Generated handover summary
             reason: Succession reason (default: 'context_limit')
 
@@ -346,51 +352,35 @@ class OrchestratorSuccessionManager:
             ValueError: If reason is invalid
 
         Example:
-            >>> manager.complete_handover(orchestrator, successor, summary, "manual")
-            >>> print(f"Handover complete: {orchestrator.job_id} → {successor.job_id}")
+            >>> await manager.complete_handover(current_exec, successor_exec, summary, "manual")
+            >>> print(f"Handover complete: {current_exec.agent_id} → {successor_exec.agent_id}")
         """
         # Validate reason
         if reason not in self.VALID_REASONS:
             raise ValueError(f"Invalid succession reason: {reason}. Must be one of: {', '.join(self.VALID_REASONS)}")
 
-        # Update orchestrator job
-        orchestrator.status = "complete"
-        orchestrator.handover_to = successor.job_id
-        orchestrator.handover_summary = handover_summary
-        orchestrator.handover_context_refs = handover_summary.get("critical_context_refs", [])
-        orchestrator.succession_reason = reason
-        orchestrator.completed_at = datetime.now(timezone.utc)
+        # Update current execution
+        current_execution.status = "complete"
+        current_execution.succeeded_by = successor_execution.agent_id
+        current_execution.handover_summary = handover_summary
+        current_execution.succession_reason = reason
+        current_execution.completed_at = datetime.now(timezone.utc)
 
         # Commit changes
-        self.db_session.commit()
-        self.db_session.refresh(orchestrator)
+        await self.db_session.commit()
+        await self.db_session.refresh(current_execution)
 
         logger.info(
-            f"Completed handover: {orchestrator.job_id} (instance {orchestrator.instance_number}) "
-            f"→ {successor.job_id} (instance {successor.instance_number}), "
-            f"reason: {reason}"
+            f"Completed handover: {current_execution.agent_id} (instance {current_execution.instance_number}) "
+            f"→ {successor_execution.agent_id} (instance {successor_execution.instance_number}), "
+            f"job_id: {current_execution.job_id}, reason: {reason}"
         )
 
     # ========================================================================
     # Private Helper Methods
     # ========================================================================
-
-    def _generate_handover_mission(self, orchestrator: MCPAgentJob) -> str:
-        """
-        Generate mission text for successor orchestrator.
-
-        Args:
-            orchestrator: Parent orchestrator job
-
-        Returns:
-            Mission string for successor
-        """
-        return (
-            f"Continue orchestration from instance {orchestrator.instance_number}.\n\n"
-            f"Previous orchestrator reached context capacity. "
-            f"Review handover summary and continue project coordination.\n\n"
-            f"Original mission:\n{orchestrator.mission}"
-        )
+    # Note: _generate_handover_mission() removed (Handover 0366b)
+    # Mission is stored in AgentJob and shared by all executions (no regeneration needed)
 
     def _estimate_project_status(self, messages: list[dict]) -> str:
         """
