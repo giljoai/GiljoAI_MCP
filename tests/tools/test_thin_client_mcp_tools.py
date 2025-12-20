@@ -194,7 +194,7 @@ async def test_get_orchestrator_instructions_success(
     from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
     # Call the MCP tool
-    result = await get_orchestrator_instructions(orchestrator_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
 
     # Verify success
     assert "error" not in result, f"Unexpected error: {result.get('error')}"
@@ -252,7 +252,7 @@ async def test_get_orchestrator_instructions_not_found(db_session, tenant_key):
     fake_orchestrator_id = str(uuid4())
 
     # Call with non-existent orchestrator
-    result = await get_orchestrator_instructions(orchestrator_id=fake_orchestrator_id, tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id=fake_orchestrator_id, tenant_key=tenant_key)
 
     # Verify error structure
     assert "error" in result
@@ -289,7 +289,7 @@ async def test_get_orchestrator_instructions_multi_tenant_isolation(db_session, 
 
     # Attempt cross-tenant access
     result = await get_orchestrator_instructions(
-        orchestrator_id=test_orchestrator_job.job_id,
+        agent_id=test_orchestrator_job.job_id,
         tenant_key=tenant2_key,  # WRONG tenant key
     )
 
@@ -329,7 +329,7 @@ async def test_get_orchestrator_instructions_token_reduction(
     original_tokens = original_vision_size // 4  # Rough estimate
 
     # Call MCP tool
-    result = await get_orchestrator_instructions(orchestrator_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
 
     # Verify success
     assert "error" not in result
@@ -377,7 +377,7 @@ async def test_get_orchestrator_instructions_websocket_broadcast(db_session, ten
     mocker.patch("giljo_mcp.tools.orchestration.get_websocket_manager", return_value=mock_ws_manager)
 
     # Call MCP tool
-    result = await get_orchestrator_instructions(orchestrator_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id=test_orchestrator_job.job_id, tenant_key=tenant_key)
 
     # Verify success
     assert "error" not in result
@@ -546,7 +546,7 @@ async def test_error_handling_structured_responses(db_session, tenant_key):
     from giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
     # Test 1: Missing orchestrator_id
-    result = await get_orchestrator_instructions(orchestrator_id="", tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id="", tenant_key=tenant_key)
 
     assert "error" in result
     assert (
@@ -555,13 +555,13 @@ async def test_error_handling_structured_responses(db_session, tenant_key):
     )
 
     # Test 2: Missing tenant_key
-    result = await get_orchestrator_instructions(orchestrator_id=str(uuid4()), tenant_key="")
+    result = await get_orchestrator_instructions(agent_id=str(uuid4()), tenant_key="")
 
     assert "error" in result
     assert "tenant" in result.get("error", "").lower() or "tenant" in result.get("message", "").lower()
 
     # Test 3: Orchestrator not found
-    result = await get_orchestrator_instructions(orchestrator_id=str(uuid4()), tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id=str(uuid4()), tenant_key=tenant_key)
 
     assert "error" in result
     # Should have troubleshooting guidance (Amendment D)
@@ -588,12 +588,12 @@ async def test_input_validation_sanitization(db_session, tenant_key):
     from giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
     # Test whitespace-only orchestrator_id
-    result = await get_orchestrator_instructions(orchestrator_id="   ", tenant_key=tenant_key)
+    result = await get_orchestrator_instructions(agent_id="   ", tenant_key=tenant_key)
 
     assert "error" in result
 
     # Test whitespace-only tenant_key
-    result = await get_orchestrator_instructions(orchestrator_id=str(uuid4()), tenant_key="   ")
+    result = await get_orchestrator_instructions(agent_id=str(uuid4()), tenant_key="   ")
 
     assert "error" in result
 
@@ -636,7 +636,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
     await db_session.refresh(orchestrator)
 
     # Step 2: Orchestrator fetches instructions
-    orch_result = await get_orchestrator_instructions(orchestrator_id=orchestrator.job_id, tenant_key=tenant_key)
+    orch_result = await get_orchestrator_instructions(agent_id=orchestrator.job_id, tenant_key=tenant_key)
 
     assert "error" not in orch_result
     assert orch_result["estimated_tokens"] < 10000
