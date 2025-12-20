@@ -29,6 +29,79 @@ GiljoAI MCP provides comprehensive agent monitoring and graceful cancellation ca
 
 ---
 
+## Understanding Agent IDs vs Job IDs
+
+GiljoAI MCP uses a **dual-model architecture** that separates persistent work orders from individual agent execution instances. This enables **orchestrator succession**, where one agent can hand off work to another while preserving context and mission continuity.
+
+### Key Concepts
+
+| **Concept** | **What It Represents** | **Persistence** | **Example** |
+|------------|------------------------|-----------------|-------------|
+| **Agent Job** | Logical unit of work with defined mission and objectives | Persists across agent succession | "Refactor Backend" (job_12345) |
+| **Agent Execution** | Single agent instance working on a job | Created fresh for each agent | Agent A (agent_a1b2c3d4) → Agent B (agent_e5f6g7h8) |
+
+### Agent Job (The WHAT)
+
+An **Agent Job** represents the **work order** that needs to be done. It contains:
+
+- **Mission**: The instructions and objectives for the work
+- **Job Type**: orchestrator, implementer, tester, etc.
+- **Status**: active, completed, cancelled
+- **Project**: Which project this job belongs to
+
+**Key Point**: The job persists even when agents change. If Agent A hands over to Agent B, the same job continues with a new executor.
+
+### Agent Execution (The WHO)
+
+An **Agent Execution** represents a **specific agent instance** working on a job. It contains:
+
+- **Agent ID**: Unique identifier for this executor (agent_a1b2c3d4)
+- **Instance Number**: Sequential number (1, 2, 3) showing succession order
+- **Status**: waiting, working, blocked, complete, failed, cancelled
+- **Context Tracking**: Context used/budget for orchestrators
+- **Succession Chain**: Links to previous/next agents (spawned_by, succeeded_by)
+
+**Key Point**: Each time an agent hands over work, a new execution is created while the job remains the same.
+
+### When Do Agents Succeed Each Other?
+
+Orchestrator agents automatically trigger succession in these scenarios:
+
+1. **Context Threshold (90% capacity)**: When an orchestrator approaches its context window limit (e.g., 135K/150K tokens), it automatically spawns a successor to prevent context truncation.
+
+2. **Manual Handover**: User or orchestrator triggers succession via:
+   - `/gil_handover` slash command in CLI
+   - "Hand Over" button in dashboard UI
+
+3. **Phase Transition**: Some agents may choose to hand off when transitioning between major phases (e.g., planning → implementation).
+
+**Typical Timeline**: Succession takes 2-5 minutes (handover summary generation, new agent spawn, context transfer).
+
+### Viewing Succession Timeline
+
+The dashboard displays the full succession history for each job, showing how work progressed through different agent instances:
+
+```
+Job: "Refactor Backend Services" (job_12345abc)
+├─ Agent A (agent_a1b2c3d4) - Instance #1 - Complete
+│  Agent Type: orchestrator
+│  Context: 135K/150K used (90% - triggered succession)
+│  Reason: "Approaching context limit"
+│  Duration: 90 minutes
+│  Started: 2025-12-20 10:00 AM
+│  Completed: 2025-12-20 11:30 AM
+│
+└─ Agent B (agent_e5f6g7h8) - Instance #2 - Active
+   Agent Type: orchestrator
+   Context: 35K/150K used (23%)
+   Started: 2025-12-20 11:32 AM
+   Duration: 30 minutes (ongoing)
+```
+
+**Navigation**: Go to Projects → Jobs Tab → Click job row → View "Execution History" panel
+
+---
+
 ## Understanding Agent Health Indicators
 
 ### Health Status Colors
@@ -192,6 +265,24 @@ An agent that hasn't checked in for **10+ minutes**.
 
 ## Frequently Asked Questions
 
+### Q: What's the difference between agent_id and job_id?
+
+**A**:
+- **job_id**: Identifies the **work order** (the mission, objectives, and scope). This persists across agent succession.
+- **agent_id**: Identifies a **specific agent instance** working on that job. Changes when agents succeed each other.
+
+**Example**: Job "Refactor Backend" (job_12345) may have Agent A (agent_a1b2) complete 90% of work, then hand over to Agent B (agent_e5f6) who finishes the remaining 10%. Same job, different agents.
+
+### Q: Can I see which agent is currently working on a job?
+
+**A**: Yes. In the dashboard Jobs Tab:
+1. Look at the **Agent ID** column - shows the current executor
+2. Click the job row to see the **Execution History** panel
+3. The most recent execution with status "working" is the current agent
+4. Previous executions show the succession chain (who worked before, why they handed over)
+
+**WebSocket Events**: Real-time updates via `execution:created` and `execution:status_changed` events keep the UI synchronized.
+
 ### Q: Why doesn't force stop actually kill the agent process?
 
 **A**: Agents run in external terminals (Claude Code, Codex, Gemini) outside GiljoAI MCP's control. Force stop updates the database status but cannot terminate the external process. You must manually close the terminal.
@@ -268,9 +359,38 @@ An agent that hasn't checked in for **10+ minutes**.
 
 ### Database Fields
 
+#### AgentJob Table (Persistent Work Orders)
+
+- **`job_id`**: Unique identifier for the work order (e.g., "job_12345abc")
+- **`mission`**: Agent mission/instructions (stored once, shared by all executions)
+- **`job_type`**: Job type (orchestrator, implementer, tester, etc.)
+- **`status`**: Job status (active, completed, cancelled)
+- **`project_id`**: Project this job belongs to
+- **`template_id`**: Template used to create this job (optional)
+- **`created_at`**: When job was created
+- **`completed_at`**: When job finished (all executions complete)
+
+#### AgentExecution Table (Individual Agent Instances)
+
+- **`agent_id`**: Unique identifier for this agent instance (e.g., "agent_a1b2c3d4")
+- **`job_id`**: Foreign key to parent AgentJob
+- **`instance_number`**: Sequential succession number (1, 2, 3, ...)
+- **`agent_type`**: Agent type for this executor
+- **`status`**: Execution status (waiting, working, blocked, complete, failed, cancelled, decommissioned)
+- **`spawned_by`**: Agent ID of parent executor (succession chain)
+- **`succeeded_by`**: Agent ID of successor executor (succession chain)
+- **`progress`**: Execution completion progress (0-100%)
+- **`current_task`**: Description of current task
+- **`context_used`**: Current context window usage in tokens (orchestrators)
+- **`context_budget`**: Maximum context window budget (orchestrators)
+- **`succession_reason`**: Why succession occurred (context_limit, manual, phase_transition)
+- **`handover_summary`**: Compressed state transfer for successor
 - **`last_progress_at`**: Timestamp of most recent progress report
 - **`last_message_check_at`**: Timestamp of most recent message check
-- **`status`**: Includes new "cancelling" state
+- **`mission_acknowledged_at`**: When agent first fetched mission
+- **`started_at`**: When this execution started
+- **`completed_at`**: When this execution finished
+- **`decommissioned_at`**: When this execution was retired (after succession)
 
 ### WebSocket Events
 
