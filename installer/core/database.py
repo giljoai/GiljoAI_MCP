@@ -587,7 +587,7 @@ Write-Host "  Owner Role: $OwnerRole" -ForegroundColor Gray
 Write-Host "  User Role: $UserRole" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Credentials have been saved to:" -ForegroundColor Yellow
-Write-Host "  installer\\credentials\\db_credentials_*.txt" -ForegroundColor Gray
+Write-Host "  installer\\credentials\\db_credentials.txt" -ForegroundColor Gray
 Write-Host ""
 Write-Host "You can now return to the installer and press Enter to continue." -ForegroundColor Cyan
 Write-Host ""
@@ -743,7 +743,7 @@ echo "  Owner Role: $OWNER_ROLE"
 echo "  User Role: $USER_ROLE"
 echo ""
 echo "Credentials have been saved to:"
-echo "  installer/credentials/db_credentials_*.txt"
+echo "  installer/credentials/db_credentials.txt"
 echo ""
 echo "You can now return to the installer and press Enter to continue."
 echo ""
@@ -920,12 +920,13 @@ echo ""
             return result
 
     def save_credentials(self):
-        """Save database credentials securely"""
+        """Save database credentials securely (single file, overwrites previous)"""
         credentials_dir = Path("installer/credentials")
         credentials_dir.mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.credentials_file = credentials_dir / f"db_credentials_{timestamp}.txt"
+        # Use single fixed filename - overwrites on each install
+        # Note: Credentials are also saved in .env, this is just a backup
+        self.credentials_file = credentials_dir / "db_credentials.txt"
 
         content = f"""# GiljoAI MCP Database Credentials
 # Generated: {datetime.now().isoformat()}
