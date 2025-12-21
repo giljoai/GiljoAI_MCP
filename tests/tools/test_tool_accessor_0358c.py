@@ -143,14 +143,15 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
 
 
 @pytest_asyncio.fixture
-async def tool_accessor(db_manager, tenant_key):
-    """Create ToolAccessor instance."""
+async def tool_accessor(db_manager, db_session, tenant_key):
+    """Create ToolAccessor instance with test session for transaction sharing."""
     # Create tenant manager for testing (no validation)
     from src.giljo_mcp.tenant import TenantManager
     tenant_manager = TenantManager()
     # Override get_current_tenant to return test tenant
     tenant_manager.get_current_tenant = lambda: tenant_key
-    return ToolAccessor(db_manager, tenant_manager)
+    # Pass test_session for transaction sharing (Handover 0358c)
+    return ToolAccessor(db_manager, tenant_manager, test_session=db_session)
 
 
 # ========================================================================
@@ -240,10 +241,12 @@ async def test_spawn_agent_job_returns_agent_id(
     Will FAIL initially: tool_accessor.py uses MCPAgentJob, doesn't return agent_id.
     """
     result = await tool_accessor.spawn_agent_job(
-        current_job_id=orchestrator_job.job_id,
         agent_type="implementer",
+        agent_name="impl-auth",
         mission="Implement user authentication",
+        project_id=test_project.id,
         tenant_key=tenant_key,
+        parent_job_id=orchestrator_job.job_id,
     )
 
     # Verify success
@@ -283,7 +286,8 @@ async def test_get_agent_mission_via_agentjob_mission(
 
     # Verify mission returned
     assert "mission" in result, "Missing mission in response"
-    assert result["mission"] == orchestrator_job.mission
+    # Mission may have team context header (Handover 0353), so check if original mission is in the response
+    assert orchestrator_job.mission in result["mission"], "Original mission not found in response"
 
     # Verify both IDs returned (API contract)
     assert "job_id" in result
@@ -297,7 +301,7 @@ async def test_get_agent_mission_via_agentjob_mission(
 
 @pytest.mark.asyncio
 async def test_get_workflow_status_creates_both_models(
-    tool_accessor, tenant_key, test_project
+    tool_accessor, tenant_key, test_product, db_session
 ):
     """
     Test that get_workflow_status() creates BOTH AgentJob and AgentExecution
@@ -311,42 +315,53 @@ async def test_get_workflow_status_creates_both_models(
 
     Will FAIL initially: tool_accessor.py creates only MCPAgentJob.
     """
+    # Create inactive project for activation test
+    inactive_project = Project(
+        id=str(uuid4()),
+        tenant_key=tenant_key,
+        product_id=test_product.id,
+        name="Inactive Test Project",
+        description="Project to be activated",
+        mission="Test activation",
+        status="inactive",
+    )
+    db_session.add(inactive_project)
+    await db_session.commit()
+    await db_session.refresh(inactive_project)
+
     result = await tool_accessor.gil_activate(
-        project_id=test_project.id,
+        project_id=inactive_project.id,
     )
 
     # Verify success
     assert result.get("success") is True
 
-    # Now fetch workflow status to verify both models created
+    # Verify both models created in the same session (test transaction)
     from sqlalchemy import select
-    from src.giljo_mcp.db_manager import DatabaseManager
 
-    db_manager = tool_accessor.db_manager
-    async with db_manager.get_session_async() as session:
-        # Verify AgentJob created
-        job_result = await session.execute(
-            select(AgentJob).where(
-                AgentJob.project_id == test_project.id,
-                AgentJob.tenant_key == tenant_key,
-                AgentJob.job_type == "orchestrator",
-            )
+    # Verify AgentJob created
+    job_result = await db_session.execute(
+        select(AgentJob).where(
+            AgentJob.project_id == inactive_project.id,
+            AgentJob.tenant_key == tenant_key,
+            AgentJob.job_type == "orchestrator",
         )
-        job = job_result.scalar_one_or_none()
-        assert job is not None, "AgentJob not created"
+    )
+    job = job_result.scalar_one_or_none()
+    assert job is not None, "AgentJob not created"
 
-        # Verify AgentExecution created
-        exec_result = await session.execute(
-            select(AgentExecution).where(
-                AgentExecution.job_id == job.job_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
+    # Verify AgentExecution created
+    exec_result = await db_session.execute(
+        select(AgentExecution).where(
+            AgentExecution.job_id == job.job_id,
+            AgentExecution.tenant_key == tenant_key,
         )
-        execution = exec_result.scalar_one_or_none()
-        assert execution is not None, "AgentExecution not created"
+    )
+    execution = exec_result.scalar_one_or_none()
+    assert execution is not None, "AgentExecution not created"
 
-        # Verify relationship
-        assert execution.job_id == job.job_id
+    # Verify relationship
+    assert execution.job_id == job.job_id
 
 
 # ========================================================================
@@ -525,35 +540,34 @@ async def test_succession_preserves_job_id_changes_agent_id(
     assert "successor_id" in result  # This might be agent_id
     assert "instance_number" in result
 
-    # Verify new execution created
+    # Verify new execution created (use test session to see uncommitted changes)
     from sqlalchemy import select
 
-    db_manager = tool_accessor.db_manager
-    async with db_manager.get_session_async() as session:
-        # Query all executions for this job
-        exec_result = await session.execute(
-            select(AgentExecution)
-            .where(
-                AgentExecution.job_id == orchestrator_job.job_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
-            .order_by(AgentExecution.instance_number)
+    # Need to use tool_accessor's test session to see the changes
+    # Query all executions for this job
+    exec_result = await tool_accessor._test_session.execute(
+        select(AgentExecution)
+        .where(
+            AgentExecution.job_id == orchestrator_job.job_id,
+            AgentExecution.tenant_key == tenant_key,
         )
-        executions = exec_result.scalars().all()
+        .order_by(AgentExecution.instance_number)
+    )
+    executions = exec_result.scalars().all()
 
-        # Should have 2 executions now
-        assert len(executions) == 2
+    # Should have 2 executions now
+    assert len(executions) == 2, f"Expected 2 executions, got {len(executions)}"
 
-        # Verify job_id same, agent_id different
-        assert executions[0].job_id == executions[1].job_id
-        assert executions[0].agent_id != executions[1].agent_id
+    # Verify job_id same, agent_id different
+    assert executions[0].job_id == executions[1].job_id
+    assert executions[0].agent_id != executions[1].agent_id
 
-        # Verify instance numbers
-        assert executions[0].instance_number == 1
-        assert executions[1].instance_number == 2
+    # Verify instance numbers
+    assert executions[0].instance_number == 1
+    assert executions[1].instance_number == 2
 
-        # Verify succession chain
-        assert executions[1].spawned_by == executions[0].agent_id
+    # Verify succession chain
+    assert executions[1].spawned_by == executions[0].agent_id
 
 
 # ========================================================================
@@ -607,10 +621,11 @@ async def test_get_agent_mission_handles_succession(
         tenant_key=tenant_key,
     )
 
-    # Verify both return same mission
-    assert result1.get("mission") == orchestrator_job.mission
-    assert result2.get("mission") == orchestrator_job.mission
-    assert result1.get("mission") == result2.get("mission")
+    # Verify both return same mission (may have team context header from Handover 0353)
+    assert orchestrator_job.mission in result1.get("mission", ""), "Original mission not in result1"
+    assert orchestrator_job.mission in result2.get("mission", ""), "Original mission not in result2"
+    # Both should return the exact same mission (including team context)
+    assert result1.get("mission") == result2.get("mission"), "Missions should be identical"
 
 
 # ========================================================================
