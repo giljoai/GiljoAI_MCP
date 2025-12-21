@@ -7,11 +7,13 @@ These tests WILL FAIL initially - they define the expected behavior.
 Handover 0360 Feature 3: File Existence Utility
 """
 
-import pytest
+import tempfile
 from pathlib import Path
 from uuid import uuid4
-import tempfile
-import os
+
+import pytest
+
+from src.giljo_mcp.tools.file_utils import file_exists
 
 
 @pytest.mark.asyncio
@@ -21,8 +23,6 @@ async def test_file_exists_returns_true_for_existing_file(db_manager):
 
     Semantic: Simple existence check without reading file contents.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     # Create temporary file in workspace
@@ -52,8 +52,6 @@ async def test_file_exists_returns_true_for_existing_directory(db_manager):
 
     Semantic: Distinguish between files and directories.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     # Create temporary directory in workspace
@@ -82,8 +80,6 @@ async def test_file_exists_returns_false_for_missing_path(db_manager):
 
     Semantic: Graceful handling of missing paths without errors.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     with tempfile.TemporaryDirectory() as workspace:
@@ -108,8 +104,6 @@ async def test_file_exists_respects_workspace_sandbox(db_manager):
 
     Semantic: Sandbox security - prevent path traversal attacks.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     with tempfile.TemporaryDirectory() as workspace:
@@ -133,8 +127,6 @@ async def test_file_exists_handles_absolute_paths_within_workspace(db_manager):
 
     Semantic: Allow absolute paths if they resolve to workspace.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     with tempfile.TemporaryDirectory() as workspace:
@@ -161,8 +153,6 @@ async def test_file_exists_handles_nested_directories(db_manager):
 
     Semantic: Support deep directory paths within workspace.
     """
-    from src.giljo_mcp.tools.file_utils import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     with tempfile.TemporaryDirectory() as workspace:
@@ -202,8 +192,6 @@ async def test_file_exists_cross_platform_paths(db_manager):
 
     Semantic: Cross-platform compatibility using pathlib.
     """
-    from src.giljo_mcp.tools.file_exists import file_exists
-
     tenant_key = f"tenant_{uuid4()}"
 
     with tempfile.TemporaryDirectory() as workspace:
