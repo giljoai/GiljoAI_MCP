@@ -8,7 +8,7 @@ and generate orchestrator prompts that can spawn the appropriate sub-agents.
 from typing import Dict
 
 from ..database import DatabaseManager
-from ..models import MCPAgentJob, Project
+from ..models import AgentJob, AgentExecution, Project
 
 
 # Mapping of MCP agent roles to Claude Code agent types
@@ -77,20 +77,29 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
         if not project:
             return {"error": "Project not found"}
 
-        # Get all active agent jobs for this project (migrated from Agent to MCPAgentJob - Handover 0116)
+        # Get all active agent jobs for this project (dual-model: AgentJob + AgentExecution - Handover 0358c)
         result = session.execute(
-            select(MCPAgentJob).filter_by(project_id=project_id, tenant_key=tenant_key, status="active")
+            select(AgentJob).filter_by(project_id=project_id, tenant_key=tenant_key, status="active")
         )
         agent_jobs = list(result.scalars().all())
 
         agent_instructions = []
         for job in agent_jobs:
+            # Get the latest execution for this job to retrieve agent_id (executor UUID)
+            exec_result = session.execute(
+                select(AgentExecution)
+                .filter_by(job_id=job.id, tenant_key=tenant_key)
+                .order_by(AgentExecution.created_at.desc())
+            )
+            latest_execution = exec_result.scalars().first()
+
             claude_type = get_claude_code_agent_type(job.agent_type)
 
             agent_instructions.append(
                 {
-                    "mcp_agent_id": job.job_id,
-                    "mcp_agent_name": job.agent_type,  # MCPAgentJob uses agent_type instead of name
+                    "mcp_agent_id": str(job.id),  # job_id = work order UUID (persistent)
+                    "agent_execution_id": str(latest_execution.agent_id) if latest_execution else None,  # agent_id = executor UUID
+                    "mcp_agent_name": job.agent_type,
                     "mcp_role": job.agent_type,
                     "claude_code_type": claude_type,
                     "mission": job.mission or f"Work on {project.name} as {job.agent_type}",
