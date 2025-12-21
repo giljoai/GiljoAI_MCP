@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.dependencies import get_db
 from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 router = APIRouter()
 
@@ -61,17 +61,18 @@ async def get_filter_options(
     Multi-tenant isolation ensures users only see options from their own jobs.
     """
 
-    # Base query with tenant isolation
+    # Base query with tenant isolation (query AgentExecution joined to AgentJob)
     base_conditions = and_(
-        MCPAgentJob.tenant_key == current_user.tenant_key,
-        MCPAgentJob.project_id == project_id,
+        AgentExecution.tenant_key == current_user.tenant_key,
     )
 
     # Get distinct statuses
     status_query = (
-        select(MCPAgentJob.status)
+        select(AgentExecution.status)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
-        .where(MCPAgentJob.status.is_not(None))
+        .where(AgentJob.project_id == project_id)
+        .where(AgentExecution.status.is_not(None))
         .distinct()
     )
     status_result = await db.execute(status_query)
@@ -79,9 +80,11 @@ async def get_filter_options(
 
     # Get distinct agent types
     agent_type_query = (
-        select(MCPAgentJob.agent_type)
+        select(AgentExecution.agent_type)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
-        .where(MCPAgentJob.agent_type.is_not(None))
+        .where(AgentJob.project_id == project_id)
+        .where(AgentExecution.agent_type.is_not(None))
         .distinct()
     )
     agent_type_result = await db.execute(agent_type_query)
@@ -89,9 +92,11 @@ async def get_filter_options(
 
     # Get distinct health statuses
     health_query = (
-        select(MCPAgentJob.health_status)
+        select(AgentExecution.health_status)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
-        .where(MCPAgentJob.health_status.is_not(None))
+        .where(AgentJob.project_id == project_id)
+        .where(AgentExecution.health_status.is_not(None))
         .distinct()
     )
     health_result = await db.execute(health_query)
@@ -99,9 +104,11 @@ async def get_filter_options(
 
     # Get distinct tool types
     tool_query = (
-        select(MCPAgentJob.tool_type)
+        select(AgentExecution.tool_type)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
-        .where(MCPAgentJob.tool_type.is_not(None))
+        .where(AgentJob.project_id == project_id)
+        .where(AgentExecution.tool_type.is_not(None))
         .distinct()
     )
     tool_result = await db.execute(tool_query)
@@ -109,11 +116,13 @@ async def get_filter_options(
 
     # Check if any jobs have unread messages
     unread_query = (
-        select(MCPAgentJob.job_id)
+        select(AgentExecution.agent_id)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
+        .where(AgentJob.project_id == project_id)
         .where(
             func.jsonb_path_exists(
-                MCPAgentJob.messages,
+                AgentExecution.messages,
                 '$[*] ? (@.status == "pending")'
             )
         )

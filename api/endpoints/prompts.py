@@ -11,12 +11,14 @@ All endpoints enforce multi-tenant isolation and authentication.
 """
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from api.schemas.prompt import (
@@ -27,7 +29,8 @@ from api.schemas.prompt import (
     TokenEstimateRequest,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.models import Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -70,9 +73,15 @@ async def generate_orchestrator_prompt(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
         )
 
-    # Count agents in project
-    agent_count_stmt = select(func.count(MCPAgentJob.id)).where(
-        MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
+    # Count agents in project (via AgentExecution)
+    agent_count_stmt = select(func.count(AgentExecution.id)).where(
+        AgentExecution.tenant_key == current_user.tenant_key
+    ).join(
+        AgentJob,
+        (AgentJob.job_id == AgentExecution.job_id) &
+        (AgentJob.tenant_key == AgentExecution.tenant_key)
+    ).where(
+        AgentJob.project_id == project_id
     )
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
@@ -135,26 +144,26 @@ async def generate_orchestrator_prompt_thin(
 ) -> OrchestratorPromptResponse:
     """
     Generate a thin orchestrator prompt for GiljoMCP Agent Orchestration.
-    
+
     Handover 0088: Thin Client Architecture
     - Prompt is only ~300 tokens (down from ~3500)
     - Mission fetched via get_orchestrator_instructions() MCP tool
     - Field priorities applied at MCP tool call time, not prompt generation
     - Context size tracking built into thin client flow
-    
+
     Handover 0246a (Nov 2025): Further optimizations
     - Staging prompt reduced from ~1600 to 931 tokens (42% reduction)
     - 7-task standardized workflow
     - Clean separation between staging/execution
-    
+
     Args:
         request: Request containing project_id, tool, and instance_number
         current_user: Currently authenticated user
         db: Database session
-        
+
     Returns:
         OrchestratorPromptResponse with thin prompt
-    
+
     Raises:
         HTTPException: If project not found or error occurs
     """
@@ -162,16 +171,16 @@ async def generate_orchestrator_prompt_thin(
         project_id = request.project_id
         tool = request.tool or "universal"
         instance_number = request.instance_number or 1
-        
+
         # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
-        
+
         # BUG FIX: Fetch user's field priority configuration from database
         # Extract 'priorities' dict from user's field_priority_config JSONB column
         # Fixed: Was looking for "fields" but should be "priorities"
         user_field_config = current_user.field_priority_config or {}
         field_priorities = user_field_config.get("priorities", {})
-        
+
         # Generate thin prompt with user field priorities
         result = await generator.generate(
             project_id=project_id,
@@ -180,7 +189,7 @@ async def generate_orchestrator_prompt_thin(
             instance_number=instance_number,
             field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
-        
+
         # Broadcast WebSocket event for real-time UI update
         if ws_dep.is_available():
             await ws_dep.broadcast_to_tenant(
@@ -195,7 +204,7 @@ async def generate_orchestrator_prompt_thin(
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             )
-        
+
         return OrchestratorPromptResponse(
             success=True,
             orchestrator_id=result["orchestrator_id"],
@@ -207,7 +216,7 @@ async def generate_orchestrator_prompt_thin(
             thin_client=True,
             status="ready"
         )
-        
+
     except ValueError as e:
         logger.error(f"Validation error generating thin orchestrator prompt: {e}")
         raise HTTPException(
@@ -246,8 +255,15 @@ async def generate_agent_prompt(
         404: Agent not found or not accessible
         403: User not authorized to access agent
     """
-    # Get agent job with project relationship and tenant isolation
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_id, MCPAgentJob.tenant_key == current_user.tenant_key)
+    # Get agent execution with job relationship and tenant isolation
+    stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.agent_id == agent_id,
+            AgentExecution.tenant_key == current_user.tenant_key
+        )
+    )
     result = await db.execute(stmt)
     agent = result.scalar_one_or_none()
 
@@ -256,11 +272,11 @@ async def generate_agent_prompt(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found or not accessible"
         )
 
-    # Get project for path information
+    # Get project for path information (from job relationship)
     project_path = "."
-    if agent.project_id:
+    if agent.job and agent.job.project_id:
         project_stmt = select(Project).where(
-            Project.id == agent.project_id, Project.tenant_key == current_user.tenant_key
+            Project.id == agent.job.project_id, Project.tenant_key == current_user.tenant_key
         )
         project_result = await db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
@@ -270,51 +286,55 @@ async def generate_agent_prompt(
     # Generate agent display name if not set
     agent_display_name = agent.agent_name or f"{agent.agent_type.title()} Agent"
 
-    # Truncate mission for preview (first 200 chars)
-    mission_preview = agent.mission[:200] + "..." if len(agent.mission) > 200 else agent.mission
+    # Truncate mission for preview (first 200 chars) - mission is in job
+    mission = agent.job.mission if agent.job else ""
+    mission_preview = mission[:200] + "..." if len(mission) > 200 else mission
 
     # Create missions directory if needed
     missions_dir = Path(project_path) / ".missions"
 
+    # Get tool type from agent execution metadata (default to "claude-code")
+    tool_type = agent.metadata.get("tool_type", "claude-code") if agent.metadata else "claude-code"
+
     # Generate universal prompt
     prompt = f"""# Agent: {agent_display_name}
 # Type: {agent.agent_type}
-# Tool: {agent.tool_type}
+# Tool: {tool_type}
 # Mission: {mission_preview}
 
 cd {project_path}
-export AGENT_ID={agent.job_id}
+export AGENT_ID={agent.agent_id}
 export AGENT_TYPE={agent.agent_type}
-export PROJECT_ID={agent.project_id or "none"}
+export PROJECT_ID={agent.job.project_id if agent.job else "none"}
 
 # Create mission file
 mkdir -p .missions
-cat > .missions/{agent.job_id}.md << 'EOF'
-{agent.mission}
+cat > .missions/{agent.agent_id}.md << 'EOF'
+{mission}
 EOF
 
 # Execute agent mission
-{agent.tool_type.lower()}-agent execute --mission-file=.missions/{agent.job_id}.md"""
+{tool_type.lower()}-agent execute --mission-file=.missions/{agent.agent_id}.md"""
 
     instructions = f"""Copy the commands above to your terminal to start this agent.
 
 Agent Details:
 - Name: {agent_display_name}
 - Type: {agent.agent_type}
-- Tool: {agent.tool_type}
+- Tool: {tool_type}
 - Status: {agent.status}
 
 Prerequisites:
-- {agent.tool_type} must be installed and configured
-- Agent will read mission from .missions/{agent.job_id}.md
+- {tool_type} must be installed and configured
+- Agent will read mission from .missions/{agent.agent_id}.md
 - Environment variables provide context to the agent"""
 
     return AgentPromptResponse(
         prompt=prompt,
-        agent_id=agent.job_id,
+        agent_id=agent.agent_id,
         agent_name=agent_display_name,
         agent_type=agent.agent_type,
-        tool_type=agent.tool_type,
+        tool_type=tool_type,
         instructions=instructions,
         mission_preview=mission_preview,
     )
@@ -543,12 +563,12 @@ async def get_execution_prompt(
 ):
     """
     Generate execution phase prompt for orchestrator (Handover 0109).
-    
+
     DEPRECATED (Handover 0253): Use /api/prompts/staging/{project_id} instead.
-    
+
     This endpoint returns scenario-specific prompts (Scenario A).
     The new universal prompt (/staging) works in ALL scenarios using fetch-first pattern.
-    
+
     This endpoint will be removed in v4.0.
 
     This endpoint generates ready-to-paste prompts for the execution phase,
@@ -601,29 +621,40 @@ async def get_execution_prompt(
         # Initialize thin client generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # Fetch orchestrator job to determine project_id and validate type/tenant
-        job_stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == orchestrator_job_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key,
+        # Fetch orchestrator execution to determine project_id and validate type/tenant
+        exec_stmt = (
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .where(
+                AgentExecution.agent_id == orchestrator_job_id,
+                AgentExecution.tenant_key == current_user.tenant_key,
+            )
         )
-        job_result = await db.execute(job_stmt)
-        job = job_result.scalar_one_or_none()
+        exec_result = await db.execute(exec_stmt)
+        execution = exec_result.scalar_one_or_none()
 
-        if not job:
+        if not execution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible",
             )
 
-        if (job.agent_type or '').lower() != 'orchestrator':
+        if (execution.agent_type or '').lower() != 'orchestrator':
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Execution prompt is only available for orchestrator jobs",
             )
 
+        # Get project_id from job relationship
+        if not execution.job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Orchestrator job not linked to a work order",
+            )
+
         # Fetch project for metadata
         proj_stmt = select(Project).where(
-            Project.id == job.project_id,
+            Project.id == execution.job.project_id,
             Project.tenant_key == current_user.tenant_key,
         )
         proj_result = await db.execute(proj_stmt)
@@ -632,14 +663,24 @@ async def get_execution_prompt(
         if not project:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project {job.project_id} not found",
+                detail=f"Project {execution.job.project_id} not found",
             )
 
         # Count specialist agents (exclude orchestrator)
-        agent_count_stmt = select(func.count(MCPAgentJob.id)).where(
-            MCPAgentJob.project_id == job.project_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key,
-            MCPAgentJob.agent_type != 'orchestrator',
+        agent_count_stmt = (
+            select(func.count(AgentExecution.id))
+            .where(
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.agent_type != 'orchestrator',
+            )
+            .join(
+                AgentJob,
+                (AgentJob.job_id == AgentExecution.job_id) &
+                (AgentJob.tenant_key == AgentExecution.tenant_key)
+            )
+            .where(
+                AgentJob.project_id == execution.job.project_id
+            )
         )
         agent_count_result = await db.execute(agent_count_stmt)
         agent_count = int(agent_count_result.scalar() or 0)
@@ -647,7 +688,7 @@ async def get_execution_prompt(
         # Use universal prompt generator (Handover 0253)
         prompt_text = await generator.generate_staging_prompt(
             orchestrator_id=orchestrator_job_id,
-            project_id=job.project_id,
+            project_id=execution.job.project_id,
             claude_code_mode=claude_code_mode
         )
 
@@ -655,7 +696,7 @@ async def get_execution_prompt(
         response = {
             "success": True,
             "orchestrator_job_id": orchestrator_job_id,
-            "project_id": str(job.project_id),
+            "project_id": str(execution.job.project_id),
             "project_name": project.name if hasattr(project, 'name') else None,
             "claude_code_mode": bool(claude_code_mode),
             "prompt": prompt_text,
@@ -768,47 +809,76 @@ async def get_implementation_prompt(
                 detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode."
             )
 
-        # 3. Fetch orchestrator job (waiting after staging, or working during execution)
-        orchestrator_stmt = select(MCPAgentJob).where(
-            MCPAgentJob.project_id == project_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key,
-            MCPAgentJob.agent_type == 'orchestrator',
-            MCPAgentJob.status.in_(['waiting', 'working'])
-        ).order_by(MCPAgentJob.created_at.desc())
+        # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
+        orchestrator_stmt = (
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .where(
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.agent_type == 'orchestrator',
+                AgentExecution.status.in_(['waiting', 'working'])
+            )
+            .join(
+                AgentJob,
+                (AgentJob.job_id == AgentExecution.job_id) &
+                (AgentJob.tenant_key == AgentExecution.tenant_key)
+            )
+            .where(
+                AgentJob.project_id == project_id
+            )
+            .order_by(AgentExecution.created_at.desc())
+        )
 
         orchestrator_result = await db.execute(orchestrator_stmt)
-        orchestrator_job = orchestrator_result.scalar_one_or_none()
+        orchestrator_execution = orchestrator_result.scalar_one_or_none()
 
-        if not orchestrator_job:
+        if not orchestrator_execution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No orchestrator found for this project. Please ensure staging has been completed."
             )
 
-        # 4. Fetch spawned agent jobs (waiting or working status)
-        # First try by spawned_by, then fallback to project_id for legacy data
-        agent_jobs_stmt = select(MCPAgentJob).where(
-            MCPAgentJob.spawned_by == orchestrator_job.job_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key,
-            MCPAgentJob.status.in_(['waiting', 'working'])
-        ).order_by(MCPAgentJob.created_at)
+        # 4. Fetch spawned agent executions (waiting or working status)
+        # First try by spawned_by (agent_id now), then fallback to project_id for legacy data
+        agent_executions_stmt = (
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .where(
+                AgentExecution.spawned_by == orchestrator_execution.agent_id,
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.status.in_(['waiting', 'working'])
+            )
+            .order_by(AgentExecution.created_at)
+        )
 
-        agent_jobs_result = await db.execute(agent_jobs_stmt)
-        agent_jobs = agent_jobs_result.scalars().all()
+        agent_executions_result = await db.execute(agent_executions_stmt)
+        agent_executions = agent_executions_result.scalars().all()
 
         # Fallback: Query by project_id for agents without spawned_by set (legacy data)
-        if not agent_jobs:
-            fallback_stmt = select(MCPAgentJob).where(
-                MCPAgentJob.project_id == project_id,
-                MCPAgentJob.tenant_key == current_user.tenant_key,
-                MCPAgentJob.agent_type != 'orchestrator',  # Exclude orchestrator itself
-                MCPAgentJob.status.in_(['waiting', 'working'])
-            ).order_by(MCPAgentJob.created_at)
+        if not agent_executions:
+            fallback_stmt = (
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .where(
+                    AgentExecution.tenant_key == current_user.tenant_key,
+                    AgentExecution.agent_type != 'orchestrator',  # Exclude orchestrator itself
+                    AgentExecution.status.in_(['waiting', 'working'])
+                )
+                .join(
+                    AgentJob,
+                    (AgentJob.job_id == AgentExecution.job_id) &
+                    (AgentJob.tenant_key == AgentExecution.tenant_key)
+                )
+                .where(
+                    AgentJob.project_id == project_id
+                )
+                .order_by(AgentExecution.created_at)
+            )
 
             fallback_result = await db.execute(fallback_stmt)
-            agent_jobs = fallback_result.scalars().all()
+            agent_executions = fallback_result.scalars().all()
 
-        if not agent_jobs:
+        if not agent_executions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No agent jobs spawned yet. Please run staging first to create agent jobs."
@@ -817,36 +887,36 @@ async def get_implementation_prompt(
         # 5. Generate implementation prompt using existing generator method
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # Build agent jobs list for prompt generator
+        # Build agent jobs list for prompt generator (using executions + jobs)
         agent_jobs_list = [
             {
-                'job_id': agent.job_id,
-                'agent_type': agent.agent_type,
-                'agent_name': agent.agent_name or agent.agent_type,
-                'status': agent.status,
-                'mission': agent.mission or '(No mission assigned)'
+                'job_id': agent_exec.job_id,
+                'agent_type': agent_exec.agent_type,
+                'agent_name': agent_exec.agent_name or agent_exec.agent_type,
+                'status': agent_exec.status,
+                'mission': agent_exec.job.mission if agent_exec.job else '(No mission assigned)'
             }
-            for agent in agent_jobs
+            for agent_exec in agent_executions
         ]
 
         # Call the existing implementation prompt generator
         prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_job.job_id,
+            orchestrator_id=orchestrator_execution.agent_id,
             project=project,
-            agent_jobs=agent_jobs
+            agent_jobs=agent_executions
         )
 
         logger.info(
             f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "
-            f"orchestrator={orchestrator_job.job_id}, agents={len(agent_jobs)}, "
+            f"orchestrator={orchestrator_execution.agent_id}, agents={len(agent_executions)}, "
             f"user={current_user.username}"
         )
 
         # 6. Return implementation prompt response
         return {
             "prompt": prompt,
-            "orchestrator_job_id": orchestrator_job.job_id,
-            "agent_count": len(agent_jobs)
+            "orchestrator_job_id": orchestrator_execution.agent_id,
+            "agent_count": len(agent_executions)
         }
 
     except HTTPException:

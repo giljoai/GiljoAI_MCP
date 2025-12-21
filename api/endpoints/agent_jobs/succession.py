@@ -22,7 +22,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import MCPAgentJob, User
+from src.giljo_mcp.models import User
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.schemas import SuccessionRequest, SuccessionResponse, SuccessionStatusResponse
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
@@ -107,14 +108,7 @@ async def trigger_succession(
             result = await db.execute(stmt)
             successor = result.scalar_one_or_none()
 
-        if not successor:
-            # Fallback: old MCPAgentJob path
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == successor_job_id,
-                MCPAgentJob.tenant_key == current_user.tenant_key
-            )
-            result = await db.execute(stmt)
-            successor = result.scalar_one_or_none()
+        # Note: Removed MCPAgentJob fallback - only use AgentExecution
 
         if not successor:
             raise HTTPException(
@@ -122,21 +116,30 @@ async def trigger_succession(
                 detail="Successor created but could not be retrieved"
             )
 
-        # Get current job for handover summary
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == job_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key
+        # Get current execution for handover summary (job_id param could be agent_id)
+        stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == job_id,
+            AgentExecution.tenant_key == current_user.tenant_key
         )
         result = await db.execute(stmt)
-        current_job = result.scalar_one_or_none()
+        current_execution = result.scalar_one_or_none()
 
-        # Generate handover summary from current job
+        # Fallback: try job_id if not found by agent_id
+        if not current_execution:
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == current_user.tenant_key
+            ).order_by(AgentExecution.instance_number.desc())
+            result = await db.execute(stmt)
+            current_execution = result.scalar_one_or_none()
+
+        # Generate handover summary from current execution
         handover_summary_str = "Succession triggered - handover context available"
-        if current_job and current_job.handover_summary:
-            if isinstance(current_job.handover_summary, dict):
-                handover_summary_str = json.dumps(current_job.handover_summary, indent=2)
+        if current_execution and current_execution.handover_summary:
+            if isinstance(current_execution.handover_summary, dict):
+                handover_summary_str = json.dumps(current_execution.handover_summary, indent=2)
             else:
-                handover_summary_str = str(current_job.handover_summary)
+                handover_summary_str = str(current_execution.handover_summary)
 
         # Generate thin-client launch prompt for successor
         prompt_generator = ThinClientPromptGenerator(
@@ -238,30 +241,39 @@ async def check_succession_status(
     logger.debug(f"User {current_user.username} checking succession status for job {job_id}")
 
     try:
-        # Get job with tenant isolation
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == job_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key
+        # Get execution with tenant isolation (job_id could be agent_id)
+        stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == job_id,
+            AgentExecution.tenant_key == current_user.tenant_key
         )
         result = await db.execute(stmt)
-        job = result.scalar_one_or_none()
+        execution = result.scalar_one_or_none()
 
-        if not job:
+        # Fallback: try job_id
+        if not execution:
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == current_user.tenant_key
+            ).order_by(AgentExecution.instance_number.desc())
+            result = await db.execute(stmt)
+            execution = result.scalar_one_or_none()
+
+        if not execution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found"
             )
 
         # Validate: must be orchestrator
-        if job.agent_type != "orchestrator":
+        if execution.agent_type != "orchestrator":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Can only check succession for orchestrators"
             )
 
         # Calculate context usage
-        context_used = job.context_used or 0
-        context_budget = job.context_budget or 200000  # Default Sonnet 4.5 budget
+        context_used = execution.context_used or 0
+        context_budget = execution.context_budget or 200000  # Default Sonnet 4.5 budget
 
         context_usage_pct = 0.0
         if context_budget > 0:
@@ -277,14 +289,14 @@ async def check_succession_status(
         )
 
         return SuccessionStatusResponse(
-            job_id=job_id,
+            job_id=execution.job_id,
             needs_succession=needs_succession,
             context_used=context_used,
             context_budget=context_budget,
             context_usage_pct=round(context_usage_pct, 2),
-            handover_to=job.handover_to,
-            succession_reason=job.succession_reason,
-            instance_number=job.instance_number or 1
+            handover_to=execution.succeeded_by,
+            succession_reason=execution.succession_reason,
+            instance_number=execution.instance_number
         )
 
     except HTTPException:

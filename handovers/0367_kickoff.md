@@ -3,8 +3,8 @@
 **Living Document** - Each agent team updates this after completing their phase.
 
 **Last Updated**: 2025-12-21
-**Current Phase**: 0367a COMPLETE - Ready for 0367b/0367c
-**Overall Progress**: 1/4 phases complete
+**Current Phase**: 0367b COMPLETE - Ready for 0367c
+**Overall Progress**: 2/4 phases complete
 
 ---
 
@@ -318,7 +318,7 @@ UNION ALL SELECT 'mcp_agent_jobs', COUNT(*) FROM mcp_agent_jobs;
 | Layer | Refs | Phase |
 |-------|------|-------|
 | Services | **0** ✅ | 0367a DONE |
-| API Endpoints | 112 | 0367b |
+| API Endpoints | **10** ✅ | 0367b DONE (7 files migrated, 10 refs remain in orchestration.py + templates/crud.py) |
 | Monitoring | 23 | 0367c |
 | Tools | 14 | 0367c |
 | Other src/ | 58 | 0367c |
@@ -328,25 +328,53 @@ UNION ALL SELECT 'mcp_agent_jobs', COUNT(*) FROM mcp_agent_jobs;
 ---
 
 ### Phase 0367b Handover Notes
-**Status**: NOT STARTED
-**Completed By**: [Agent ID]
-**Date**: [Date]
-**Duration**: [Hours]
+**Status**: ✅ COMPLETE
+**Completed By**: Claude Opus 4.5 (TDD with 4 parallel subagents)
+**Date**: 2025-12-21
+**Duration**: ~1 hour (parallelized via subagents)
 
 **What was done**:
-- [ ] TBD
+- [x] Created TDD test file: `tests/api/test_0367b_mcpagentjob_removal.py` (18 tests)
+- [x] Migrated all 7 target API endpoint files from MCPAgentJob to AgentJob + AgentExecution
+- [x] Replaced 103 MCPAgentJob references with new dual-model queries
+- [x] All 18 TDD tests pass (GREEN phase verified)
 
 **Files modified**:
-- TBD
+- `api/endpoints/prompts.py` - Removed import, replaced 28 query patterns with AgentExecution + joinedload
+- `api/endpoints/statistics.py` - Removed 3 local imports, replaced 21 count/aggregation queries
+- `api/endpoints/agent_jobs/filters.py` - Removed import, updated 13 filter queries
+- `api/endpoints/agent_jobs/table_view.py` - Removed import, updated 12 table data queries
+- `api/endpoints/agent_jobs/succession.py` - Removed import & fallback code, updated 11 succession queries
+- `api/endpoints/agent_jobs/operations.py` - Removed import, updated 10 CRUD operations
+- `api/endpoints/projects/status.py` - Removed import & backward compat shim, updated 8 orchestrator queries
 
 **Breaking changes**:
-- TBD
+- Response DTOs now use `agent_id` (UUID str) instead of `job_id` (int) as primary identifier
+- Frontend StatusBoard components already expect `agent_id: str` from 0358 migration
+- `spawned_by` field now references `agent_id` (not `job_id`)
 
 **Issues encountered**:
-- TBD
+- None significant - 0367a service layer migration provided clean foundation
+- Some files had local imports inside functions (statistics.py) - all migrated
+- backward compat shim in projects/status.py removed (was creating legacy MCPAgentJob objects)
 
 **Notes for next phase**:
-- TBD
+- Remaining MCPAgentJob refs in api/endpoints/: orchestration.py (4), templates/crud.py (5)
+- orchestration.py is part of 0367c scope (tools/monitoring cleanup)
+- templates/crud.py handles template deletion with historical data - may need special consideration
+- 0367c can now proceed (no dependencies on 0367b files)
+
+**MCPAgentJob Reference Counts (post-0367b)**:
+| Layer | Refs | Phase |
+|-------|------|-------|
+| Services | **0** ✅ | 0367a DONE |
+| API Endpoints (in-scope) | **0** ✅ | 0367b DONE |
+| API Endpoints (out-of-scope) | 9 | orchestration.py + templates/crud.py → 0367c/0367d |
+| Monitoring | 23 | 0367c |
+| Tools | 14 | 0367c |
+| Other src/ | 58 | 0367c |
+
+**Verification command**: `grep -rn "MCPAgentJob" api/endpoints/ --include="*.py" | grep -v __pycache__ | wc -l`
 
 ---
 
