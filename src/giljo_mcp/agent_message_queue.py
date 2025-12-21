@@ -31,7 +31,8 @@ from .database import DatabaseManager
 
 # Import from centralized exceptions
 from .exceptions import ConsistencyError, QueueException
-from .models import MCPAgentJob, Message
+from .models import Message
+from .models.agent_identity import AgentJob, AgentExecution
 from .tenant import TenantManager
 
 
@@ -396,7 +397,7 @@ class AgentMessageQueue:
             priority_str = priority_map[priority]
 
             # Retrieve job to get project_id
-            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(AgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -466,7 +467,7 @@ class AgentMessageQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(AgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -543,7 +544,7 @@ class AgentMessageQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(AgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -633,7 +634,7 @@ class AgentMessageQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(AgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -688,7 +689,7 @@ class AgentMessageQueue:
         """
         try:
             # Retrieve job
-            result = await session.execute(select(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
+            result = await session.execute(select(AgentJob).filter_by(job_id=job_id, tenant_key=tenant_key))
             job = result.scalar_one_or_none()
 
             if not job:
@@ -766,13 +767,13 @@ class RoutingEngine:
         # Broadcast messages go to all agents
         self._routing_rules.append(TypeRoutingRule("broadcast", ["*"]))
 
-    async def route_message(self, message: Message, available_agents: list[MCPAgentJob]) -> list[str]:
+    async def route_message(self, message: Message, available_agents: list[AgentExecution]) -> list[str]:
         """
         Determine optimal agent(s) for message delivery.
 
         Args:
             message: Message to route
-            available_agents: List of available agents
+            available_agents: List of available agent executions
 
         Returns:
             List of agent names in priority order
@@ -815,7 +816,7 @@ class RoutingEngine:
 
         return healthy_agents
 
-    def _can_handle(self, agent: MCPAgentJob, message: Message) -> bool:
+    def _can_handle(self, agent: AgentExecution, message: Message) -> bool:
         """Check if agent can handle message type"""
         agent_capabilities = self._agent_capabilities.get(agent.agent_name, [])
 
@@ -824,7 +825,7 @@ class RoutingEngine:
             return True
 
         # Check if agent is in to_agents list
-        return agent.name in (message.to_agents or [])
+        return agent.agent_name in (message.to_agents or [])
 
     def _calculate_agent_score(self, agent_name: str, message: Message) -> float:
         """
