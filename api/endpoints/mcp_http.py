@@ -178,7 +178,7 @@ async def handle_tools_list(
                 "required": ["project_id"],
             },
         },
-        
+
         {
             "name": "update_project_mission",
             "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
@@ -241,12 +241,31 @@ async def handle_tools_list(
         },
         {
             "name": "receive_messages",
-            "description": "Receive pending messages for current agent",
+            "description": "Receive pending messages for current agent with optional filtering (Handover 0360)",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "agent_id": {"type": "string", "description": "Receiving agent ID"},
-                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum messages to retrieve (default: 10)",
+                        "default": 10
+                    },
+                    "exclude_self": {
+                        "type": "boolean",
+                        "description": "Filter out messages from same agent_id (default: true)",
+                        "default": True
+                    },
+                    "exclude_progress": {
+                        "type": "boolean",
+                        "description": "Filter out progress-type messages (default: true)",
+                        "default": True
+                    },
+                    "message_types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional allow-list of message types (e.g., ['direct', 'broadcast']). If not provided, all types (except filtered) are included."
+                    },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["tenant_key"],
@@ -546,6 +565,29 @@ async def handle_tools_list(
                 "required": ["product_id", "tenant_key"]
             }
         },
+        # File Utilities (Handover 0360 Feature 3)
+        {
+            "name": "file_exists",
+            "description": "Check whether a file or directory exists within the allowed workspace. Prevents token waste from reading entire files just to check existence. Returns exists, is_file, is_dir flags. Respects workspace sandbox - blocks path traversal attacks.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to check (relative or absolute within workspace)"
+                    },
+                    "tenant_key": {
+                        "type": "string",
+                        "description": "Tenant isolation key"
+                    },
+                    "workspace_root": {
+                        "type": "string",
+                        "description": "Optional workspace root (defaults to product workspace)"
+                    }
+                },
+                "required": ["path", "tenant_key"]
+            }
+        },
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
@@ -630,6 +672,8 @@ async def handle_tools_call(
         "gil_launch": state.tool_accessor.gil_launch,
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
+        # File Utilities (Handover 0360 Feature 3)
+        "file_exists": state.tool_accessor.file_exists,
     }
 
     if tool_name not in tool_map:
