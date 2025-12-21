@@ -12,7 +12,8 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentInteraction, Job, MCPAgentJob, Message, Project, Task
+from giljo_mcp.models import AgentInteraction, Job, Message, Project, Task
+from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.websocket_client import broadcast_sub_agent_event
 
@@ -36,7 +37,7 @@ async def launch_agent(
     This is a standalone helper function for testing activate_agent logic.
 
     Args:
-        agent_id: Agent job ID to launch
+        agent_id: Agent execution UUID to launch (executor identity)
         tenant_key: Tenant isolation key
         session: Database session
 
@@ -44,11 +45,11 @@ async def launch_agent(
         Success/error dictionary
     """
     try:
-        # Get the agent with TENANT ISOLATION
-        agent_query = select(MCPAgentJob).where(
+        # Get the agent execution with TENANT ISOLATION
+        agent_query = select(AgentExecution).where(
             and_(
-                MCPAgentJob.job_id == agent_id,
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key
             )
         )
         agent_result = await session.execute(agent_query)
@@ -57,15 +58,15 @@ async def launch_agent(
         if not agent:
             return {"success": False, "error": "Agent not found or tenant mismatch"}
 
-        # Update agent status to active
-        agent.status = "active"
-        agent.last_active = datetime.now(timezone.utc)
+        # Update agent execution status to working
+        agent.status = "working"
+        agent.last_progress_at = datetime.now(timezone.utc)
         await session.commit()
 
         return {
             "success": True,
-            "agent_id": str(agent.job_id),
-            "status": "active",
+            "agent_id": str(agent.agent_id),
+            "status": "working",
         }
 
     except Exception as e:
@@ -113,10 +114,10 @@ async def log_interaction_legacy(
 
         # Verify parent agent belongs to tenant (if specified)
         if parent_agent_id:
-            parent_query = select(MCPAgentJob).where(
+            parent_query = select(AgentExecution).where(
                 and_(
-                    MCPAgentJob.job_id == parent_agent_id,
-                    MCPAgentJob.tenant_key == tenant_key
+                    AgentExecution.agent_id == parent_agent_id,
+                    AgentExecution.tenant_key == tenant_key
                 )
             )
             parent_result = await session.execute(parent_query)
@@ -151,7 +152,9 @@ async def _ensure_agent(
 async def _ensure_agent_with_session(
     session, project_id: str, agent_name: str, mission: Optional[str] = None
 ) -> dict[str, Any]:
-    """Internal helper with session for ensure_agent - Now uses MCPAgentJob"""
+    """Internal helper with session for ensure_agent - Creates AgentJob + AgentExecution"""
+    from uuid import uuid4
+
     # Check if project exists
     project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
@@ -163,39 +166,77 @@ async def _ensure_agent_with_session(
             "error": f"Project {project_id} not found",
         }
 
-    # Check if agent job already exists
-    agent_query = select(MCPAgentJob).where(
-        and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name)
+    # Check if agent job already exists (by project_id + job_type)
+    job_query = select(AgentJob).where(
+        and_(
+            AgentJob.project_id == project_id,
+            AgentJob.job_type == agent_name,
+            AgentJob.tenant_key == project.tenant_key
+        )
     )
-    agent_result = await session.execute(agent_query)
-    existing_agent = agent_result.scalar_one_or_none()
+    job_result = await session.execute(job_query)
+    existing_job = job_result.scalar_one_or_none()
 
-    if existing_agent:
-        return {
-            "success": True,
-            "agent": agent_name,
-            "agent_id": str(existing_agent.job_id),
-            "status": existing_agent.status,
-            "is_new": False,
-            "message": "Returning existing agent job",
-        }
+    if existing_job:
+        # Return existing job with latest execution
+        execution_query = select(AgentExecution).where(
+            and_(
+                AgentExecution.job_id == existing_job.job_id,
+                AgentExecution.tenant_key == project.tenant_key
+            )
+        ).order_by(AgentExecution.instance_number.desc())
+        execution_result = await session.execute(execution_query)
+        existing_execution = execution_result.first()
 
-    # Create new agent job using AgentJobManager
-    from giljo_mcp.agent_job_manager import AgentJobManager
+        if existing_execution:
+            execution = existing_execution[0]
+            return {
+                "success": True,
+                "agent": agent_name,
+                "job_id": str(existing_job.job_id),
+                "agent_id": str(execution.agent_id),
+                "status": existing_job.status,
+                "is_new": False,
+                "message": "Returning existing agent job",
+            }
 
-    job_manager = AgentJobManager(tenant_key=project.tenant_key)
-    agent_job = await job_manager.create_job(
-        agent_type=agent_name,
-        mission=mission or f"Agent: {agent_name}",
+    # Create new agent job (work order)
+    job_id = str(uuid4())
+    agent_id = str(uuid4())
+
+    agent_job = AgentJob(
+        job_id=job_id,
+        tenant_key=project.tenant_key,
         project_id=project_id,
-        spawned_by=None,  # Human-initiated
-        context_chunks=[],
+        mission=mission or f"Agent: {agent_name}",
+        job_type=agent_name,
+        status="active",
+        job_metadata={}
     )
+    session.add(agent_job)
+    await session.flush()
+
+    # Create agent execution (executor instance)
+    agent_execution = AgentExecution(
+        agent_id=agent_id,
+        job_id=job_id,
+        tenant_key=project.tenant_key,
+        agent_type=agent_name,
+        instance_number=1,
+        status="waiting",
+        agent_name=f"{agent_name} #1",
+        context_used=0,
+        context_budget=50000,
+        tool_type="claude-code"
+    )
+    session.add(agent_execution)
+    await session.commit()
 
     return {
         "success": True,
         "agent": agent_name,
-        "agent_id": str(agent_job.job_id),
+        "job_id": job_id,
+        "agent_id": agent_id,
         "status": agent_job.status,
         "is_new": True,
         "message": "Agent job created successfully",
@@ -219,22 +260,8 @@ async def _decommission_agent(
 async def _decommission_agent_with_session(
     session, agent_name: str, project_id: str, reason: str = "completed"
 ) -> dict[str, Any]:
-    """Internal helper with session for decommission_agent - Now uses MCPAgentJob"""
-    agent_query = select(MCPAgentJob).where(
-        and_(MCPAgentJob.agent_name == agent_name, MCPAgentJob.project_id == project_id)
-    )
-    agent_result = await session.execute(agent_query)
-    agent = agent_result.scalar_one_or_none()
-
-    if not agent:
-        return {
-            "success": False,
-            "error": f"Agent job '{agent_name}' not found in project {project_id}",
-        }
-
-    # Use AgentJobManager to decommission properly
-    from giljo_mcp.agent_job_manager import AgentJobManager
-
+    """Internal helper with session for decommission_agent - Updates AgentExecution status"""
+    # Get project for tenant isolation
     project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
     project = project_result.scalar_one_or_none()
@@ -245,13 +272,53 @@ async def _decommission_agent_with_session(
             "error": f"Project {project_id} not found",
         }
 
-    job_manager = AgentJobManager(tenant_key=project.tenant_key)
-    # Decommission requires job to be in 'complete' status first
-    if agent.status != "complete":
-        agent.status = "complete"
-        await session.commit()
+    # Find agent execution by agent_name pattern (matches agent_type or agent_name)
+    execution_query = select(AgentExecution).where(
+        and_(
+            AgentExecution.tenant_key == project.tenant_key,
+            AgentExecution.agent_name.like(f"{agent_name}%")
+        )
+    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
+        AgentJob.project_id == project_id
+    )
+    execution_result = await session.execute(execution_query)
+    execution = execution_result.scalar_one_or_none()
 
-    await job_manager.decommission_job(str(agent.job_id))
+    if not execution:
+        return {
+            "success": False,
+            "error": f"Agent execution '{agent_name}' not found in project {project_id}",
+        }
+
+    # Update execution status to decommissioned
+    execution.status = "decommissioned"
+
+    # Get the parent job
+    job_query = select(AgentJob).where(
+        and_(
+            AgentJob.job_id == execution.job_id,
+            AgentJob.tenant_key == project.tenant_key
+        )
+    )
+    job_result = await session.execute(job_query)
+    agent_job = job_result.scalar_one_or_none()
+
+    # Check if all executions for this job are done
+    if agent_job:
+        all_executions_query = select(AgentExecution).where(
+            and_(
+                AgentExecution.job_id == agent_job.job_id,
+                AgentExecution.tenant_key == project.tenant_key
+            )
+        )
+        all_executions_result = await session.execute(all_executions_query)
+        all_executions = all_executions_result.scalars().all()
+
+        # If all executions are decommissioned, mark job as completed
+        if all(ex.status == "decommissioned" for ex in all_executions):
+            agent_job.status = "completed"
+
+    await session.commit()
 
     return {
         "success": True,
@@ -274,39 +341,50 @@ async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> d
 
 
 async def _get_agent_health_with_session(session, agent_name: Optional[str] = None) -> dict[str, Any]:
-    """Internal helper with session for agent_health - Now uses MCPAgentJob"""
+    """Internal helper with session for agent_health - Queries AgentExecution table"""
     if agent_name:
-        agent_query = select(MCPAgentJob).where(MCPAgentJob.agent_name == agent_name)
-        agent_result = await session.execute(agent_query)
-        agent = agent_result.scalar_one_or_none()
+        # Query AgentExecution by agent_name
+        execution_query = select(AgentExecution).where(
+            AgentExecution.agent_name.like(f"{agent_name}%")
+        )
+        execution_result = await session.execute(execution_query)
+        execution = execution_result.scalar_one_or_none()
 
-        if not agent:
-            return {"success": False, "error": f"Agent job '{agent_name}' not found"}
+        if not execution:
+            return {"success": False, "error": f"Agent execution '{agent_name}' not found"}
 
         return {
             "success": True,
             "agent": agent_name,
-            "status": agent.status,
-            "context_used": 0,  # MCPAgentJob doesn't track context_used
-            "last_activity": agent.updated_at.isoformat() if agent.updated_at else None,
+            "status": execution.status,
+            "context_used": execution.context_used or 0,
+            "last_activity": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
+            "job_id": str(execution.job_id),
         }
-    # Return health for all agent jobs
-    agents_query = select(MCPAgentJob)
-    agents_result = await session.execute(agents_query)
-    agents = agents_result.scalars().all()
+
+    # Return health for all agent executions
+    executions_query = select(AgentExecution)
+    executions_result = await session.execute(executions_query)
+    executions = executions_result.scalars().all()
+
+    # Get associated jobs for project_id
+    agents_data = []
+    for execution in executions:
+        job_query = select(AgentJob).where(AgentJob.job_id == execution.job_id)
+        job_result = await session.execute(job_query)
+        job = job_result.scalar_one_or_none()
+
+        agents_data.append({
+            "name": execution.agent_name,
+            "status": execution.status,
+            "context_used": execution.context_used or 0,
+            "project_id": str(job.project_id) if job else None,
+        })
 
     return {
         "success": True,
-        "total_agents": len(agents),
-        "agents": [
-            {
-                "name": agent.agent_name,
-                "status": agent.status,
-                "context_used": agent.context_used,
-                "project_id": str(agent.project_id),
-            }
-            for agent in agents
-        ],
+        "total_agents": len(executions),
+        "agents": agents_data,
     }
 
 
@@ -327,25 +405,53 @@ async def _handoff_agent_work(
 async def _handoff_agent_work_with_session(
     session, from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]
 ) -> dict[str, Any]:
-    """Internal helper with session for handoff"""
-    # Check both agents exist
-    from_query = select(MCPAgentJob).where(and_(MCPAgentJob.agent_name == from_agent, MCPAgentJob.project_id == project_id))
+    """Internal helper with session for handoff - Creates successor AgentExecution"""
+    # Get project for tenant isolation
+    project_query = select(Project).where(Project.id == project_id)
+    project_result = await session.execute(project_query)
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        return {"success": False, "error": f"Project {project_id} not found"}
+
+    # Find from_agent execution (match exact agent_name)
+    from_query = select(AgentExecution).where(
+        and_(
+            AgentExecution.agent_name == from_agent,
+            AgentExecution.tenant_key == project.tenant_key
+        )
+    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
+        AgentJob.project_id == project_id
+    )
     from_result = await session.execute(from_query)
-    from_agent_obj = from_result.scalar_one_or_none()
+    from_execution = from_result.scalar_one_or_none()
 
-    to_query = select(MCPAgentJob).where(and_(MCPAgentJob.agent_name == to_agent, MCPAgentJob.project_id == project_id))
-    to_result = await session.execute(to_query)
-    to_agent_obj = to_result.scalar_one_or_none()
-
-    if not from_agent_obj:
+    if not from_execution:
         return {"success": False, "error": f"From agent '{from_agent}' not found"}
 
-    if not to_agent_obj:
+    # Find to_agent execution (match exact agent_name)
+    to_query = select(AgentExecution).where(
+        and_(
+            AgentExecution.agent_name == to_agent,
+            AgentExecution.tenant_key == project.tenant_key
+        )
+    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
+        AgentJob.project_id == project_id
+    )
+    to_result = await session.execute(to_query)
+    to_execution = to_result.scalar_one_or_none()
+
+    if not to_execution:
         return {"success": False, "error": f"To agent '{to_agent}' not found"}
 
-    # Update agent statuses
-    from_agent_obj.status = "handed_off"
-    to_agent_obj.status = "active"
+    # Update execution statuses and track succession
+    from_execution.status = "complete"
+    from_execution.succeeded_by = to_execution.agent_id
+    from_execution.completed_at = datetime.now(timezone.utc)
+
+    to_execution.status = "working"
+    to_execution.spawned_by = from_execution.agent_id
+    to_execution.started_at = datetime.now(timezone.utc)
 
     await session.commit()
 
@@ -389,53 +495,8 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         "error": f"Project {project_id} not found",
                     }
 
-                # Check if agent already exists with TENANT ISOLATION
-                # Use tenant_key from the project we just fetched
-                agent_query = select(MCPAgentJob).where(
-                    and_(
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_name == agent_name,
-                        MCPAgentJob.tenant_key == project.tenant_key  # TENANT ISOLATION
-                    )
-                )
-                agent_result = await session.execute(agent_query)
-                existing_agent = agent_result.scalar_one_or_none()
-
-                if existing_agent:
-                    # Agent exists, return it
-                    logger.info(f"Agent '{agent_name}' already exists in project {project_id}")
-                    return {
-                        "success": True,
-                        "agent": agent_name,
-                        "agent_id": str(existing_agent.job_id),
-                        "status": existing_agent.status,
-                        "is_new": False,
-                        "message": "Returning existing agent",
-                    }
-
-                # Create new agent
-                agent = Agent(
-                    project_id=project.id,
-                    name=agent_name,
-                    role=agent_name,
-                    status="idle",
-                    mission=mission,
-                    context_used=0,
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(agent)
-                await session.commit()
-
-                logger.info(f"Created agent '{agent_name}' for project {project_id}")
-
-                return {
-                    "success": True,
-                    "agent": agent_name,
-                    "agent_id": str(agent.job_id),
-                    "status": "idle",
-                    "is_new": True,
-                    "message": "Agent created successfully",
-                }
+                # Use internal helper to create or return agent
+                return await _ensure_agent_with_session(session, project_id, agent_name, mission)
 
         except Exception as e:
             logger.exception(f"Failed to ensure agent: {e}")
@@ -477,27 +538,27 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
 
                 agent_id = ensure_result["agent_id"]
 
-                # Get the agent with TENANT ISOLATION
-                agent_query = select(MCPAgentJob).where(
+                # Get the agent execution with TENANT ISOLATION
+                execution_query = select(AgentExecution).where(
                     and_(
-                        MCPAgentJob.job_id == agent_id,
-                        MCPAgentJob.tenant_key == tenant_key  # TENANT ISOLATION
+                        AgentExecution.agent_id == agent_id,
+                        AgentExecution.tenant_key == tenant_key  # TENANT ISOLATION
                     )
                 )
-                agent_result = await session.execute(agent_query)
-                agent = agent_result.scalar_one_or_none()
+                execution_result = await session.execute(execution_query)
+                execution = execution_result.scalar_one_or_none()
 
-                if not agent:
-                    return {"success": False, "error": "Agent not found after creation or tenant mismatch"}
+                if not execution:
+                    return {"success": False, "error": "Agent execution not found after creation or tenant mismatch"}
 
-                # Update agent status to active
-                agent.status = "active"
-                agent.last_active = datetime.now(timezone.utc)
+                # Update execution status to working
+                execution.status = "working"
+                execution.last_progress_at = datetime.now(timezone.utc)
 
                 # Create discovery job for orchestrator
                 if agent_name.lower() == "orchestrator":
                     discovery_job = Job(
-                        agent_id=agent.job_id,
+                        agent_id=execution.agent_id,
                         type="discovery",
                         status="active",
                         created_at=datetime.now(timezone.utc),
@@ -520,8 +581,8 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 return {
                     "success": True,
                     "agent": agent_name,
-                    "agent_id": str(agent.job_id),
-                    "status": "active",
+                    "agent_id": str(execution.agent_id),
+                    "status": "working",
                     "workflow": ("discovery" if agent_name.lower() == "orchestrator" else "ready"),
                     "message": f"Agent activated and {'started discovery' if agent_name.lower() == 'orchestrator' else 'ready for work'}",
                 }
@@ -557,26 +618,41 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Find the agent
-                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
-                agent_result = await session.execute(agent_query)
-                agent = agent_result.scalar_one_or_none()
+                # Get project for tenant isolation
+                project_query = select(Project).where(Project.id == project_id)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
 
-                if not agent:
+                if not project:
+                    return {"success": False, "error": f"Project {project_id} not found"}
+
+                # Find the agent execution
+                execution_query = select(AgentExecution).where(
+                    and_(
+                        AgentExecution.agent_name.like(f"{agent_name}%"),
+                        AgentExecution.tenant_key == project.tenant_key
+                    )
+                ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
+                    AgentJob.project_id == project_id
+                )
+                execution_result = await session.execute(execution_query)
+                execution = execution_result.scalar_one_or_none()
+
+                if not execution:
                     # Try to create the agent first
                     ensure_result = await ensure_agent(project_id, agent_name)
                     if not ensure_result["success"]:
                         return ensure_result
 
-                    # Re-fetch the agent
-                    agent_result = await session.execute(agent_query)
-                    agent = agent_result.scalar_one_or_none()
+                    # Re-fetch the execution
+                    execution_result = await session.execute(execution_query)
+                    execution = execution_result.scalar_one_or_none()
 
-                    if not agent:
+                    if not execution:
                         return {"success": False, "error": "Failed to create agent"}
 
                 # Check for existing active job
-                job_query = select(Job).where(and_(Job.agent_id == agent.job_id, Job.status == "active"))
+                job_query = select(Job).where(and_(Job.agent_id == execution.agent_id, Job.status == "active"))
                 job_result = await session.execute(job_query)
                 existing_job = job_result.scalar_one_or_none()
 
@@ -590,7 +666,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 else:
                     # Create new job
                     job = Job(
-                        agent_id=agent.job_id,
+                        agent_id=execution.agent_id,
                         type=job_type,
                         status="active",
                         scope_boundary=scope_boundary,
@@ -615,9 +691,9 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         await session.flush()
                         task_ids.append(str(task.id))
 
-                # Update agent status
-                agent.status = "active"
-                agent.last_active = datetime.now(timezone.utc)
+                # Update execution status
+                execution.status = "working"
+                execution.last_progress_at = datetime.now(timezone.utc)
 
                 await session.commit()
 
@@ -652,69 +728,8 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Find both agents
-                from_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == from_agent))
-                from_result = await session.execute(from_query)
-                from_agent_obj = from_result.scalar_one_or_none()
-
-                if not from_agent_obj:
-                    return {
-                        "success": False,
-                        "error": f"Source agent '{from_agent}' not found",
-                    }
-
-                # Ensure target agent exists
-                ensure_result = await ensure_agent(project_id, to_agent)
-                if not ensure_result["success"]:
-                    return ensure_result
-
-                to_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == to_agent))
-                to_result = await session.execute(to_query)
-                to_agent_obj = to_result.scalar_one_or_none()
-
-                if not to_agent_obj:
-                    return {
-                        "success": False,
-                        "error": f"Target agent '{to_agent}' not found",
-                    }
-
-                # Create handoff message
-                handoff_message = Message(
-                    project_id=project_id,
-                    from_agent=from_agent,
-                    to_agent=to_agent,
-                    type="handoff",
-                    subject=f"Handoff from {from_agent} to {to_agent}",
-                    content=json.dumps(
-                        {
-                            "handoff_from": from_agent,
-                            "handoff_to": to_agent,
-                            "context": context,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        }
-                    ),
-                    priority="high",
-                    status="pending",
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(handoff_message)
-
-                # Update agent statuses
-                from_agent_obj.status = "idle"
-                to_agent_obj.status = "active"
-                to_agent_obj.last_active = datetime.now(timezone.utc)
-
-                await session.commit()
-
-                logger.info(f"Handoff from '{from_agent}' to '{to_agent}' completed")
-
-                return {
-                    "success": True,
-                    "from_agent": from_agent,
-                    "to_agent": to_agent,
-                    "message_id": str(handoff_message.id),
-                    "context_transferred": True,
-                }
+                # Use internal helper for handoff logic
+                return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
 
         except Exception as e:
             logger.exception(f"Failed to perform handoff: {e}")
@@ -749,43 +764,50 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Build agent query
-                agent_query = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                # Build execution query
+                execution_query = select(AgentExecution).join(
+                    AgentJob, AgentExecution.job_id == AgentJob.job_id
+                ).where(
+                    and_(
+                        AgentJob.project_id == project.id,
+                        AgentExecution.tenant_key == tenant_key
+                    )
+                )
 
                 if agent_name:
-                    agent_query = agent_query.where(Agent.name == agent_name)
+                    execution_query = execution_query.where(AgentExecution.agent_name.like(f"{agent_name}%"))
 
-                agent_result = await session.execute(agent_query)
-                agents = agent_result.scalars().all()
+                execution_result = await session.execute(execution_query)
+                executions = execution_result.scalars().all()
 
-                if not agents:
+                if not executions:
                     return {
                         "success": False,
                         "error": f"No agents found{f' with name {agent_name}' if agent_name else ''}",
                     }
 
                 health_data = []
-                for agent in agents:
+                for execution in executions:
                     # Count pending messages
                     message_query = select(Message).where(
-                        and_(Message.to_agent == agent.agent_name, Message.status == "pending")
+                        and_(Message.to_agent == execution.agent_name, Message.status == "pending")
                     )
                     message_result = await session.execute(message_query)
                     pending_messages = len(message_result.scalars().all())
 
                     # Get active job
-                    job_query = select(Job).where(and_(Job.agent_id == agent.job_id, Job.status == "active"))
+                    job_query = select(Job).where(and_(Job.agent_id == execution.agent_id, Job.status == "active"))
                     job_result = await session.execute(job_query)
                     active_job = job_result.scalar_one_or_none()
 
                     health_data.append(
                         {
-                            "name": agent.agent_name,
-                            "status": agent.status,
-                            "context_used": agent.context_used,
+                            "name": execution.agent_name,
+                            "status": execution.status,
+                            "context_used": execution.context_used or 0,
                             "pending_messages": pending_messages,
                             "active_job": active_job.type if active_job else None,
-                            "last_active": (agent.last_active.isoformat() if agent.last_active else None),
+                            "last_active": (execution.last_progress_at.isoformat() if execution.last_progress_at else None),
                         }
                     )
 
@@ -814,43 +836,8 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Find the agent
-                agent_query = select(MCPAgentJob).where(and_(MCPAgentJob.project_id == project_id, MCPAgentJob.agent_name == agent_name))
-                agent_result = await session.execute(agent_query)
-                agent = agent_result.scalar_one_or_none()
-
-                if not agent:
-                    return {
-                        "success": False,
-                        "error": f"Agent '{agent_name}' not found in project",
-                    }
-
-                # Complete any active jobs
-                job_update = (
-                    update(Job)
-                    .where(Job.agent_id == agent.job_id, Job.status == "active")
-                    .values(
-                        status="completed" if reason == "completed" else reason,
-                        completed_at=datetime.now(timezone.utc),
-                    )
-                )
-                await session.execute(job_update)
-
-                # Update agent status
-                agent.status = "decommissioned"
-                agent.decommission_reason = reason
-
-                await session.commit()
-
-                logger.info(f"Decommissioned agent '{agent_name}' (reason: {reason})")
-
-                return {
-                    "success": True,
-                    "agent": agent_name,
-                    "status": "decommissioned",
-                    "reason": reason,
-                    "context_used": agent.context_used,
-                }
+                # Use internal helper for decommission logic
+                return await _decommission_agent_with_session(session, agent_name, project_id, reason)
 
         except Exception as e:
             logger.exception(f"Failed to decommission agent: {e}")
@@ -880,32 +867,6 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Find the parent agent
-                parent_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == parent_agent_name)
-                )
-                parent_result = await session.execute(parent_query)
-                parent_agent = parent_result.scalar_one_or_none()
-
-                if not parent_agent:
-                    # Try to create the parent agent first
-                    ensure_result = await ensure_agent(project_id, parent_agent_name)
-                    if not ensure_result["success"]:
-                        return {
-                            "success": False,
-                            "error": f"Parent agent '{parent_agent_name}' not found and could not be created",
-                        }
-
-                    # Re-fetch the parent agent
-                    parent_result = await session.execute(parent_query)
-                    parent_agent = parent_result.scalar_one_or_none()
-
-                    if not parent_agent:
-                        return {
-                            "success": False,
-                            "error": "Failed to create parent agent",
-                        }
-
                 # Get project for tenant key
                 project_query = select(Project).where(Project.id == project_id)
                 project_result = await session.execute(project_query)
@@ -917,11 +878,42 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         "error": f"Project {project_id} not found",
                     }
 
-                # Create the interaction record
+                # Find the parent agent execution
+                parent_query = select(AgentExecution).where(
+                    and_(
+                        AgentExecution.agent_name.like(f"{parent_agent_name}%"),
+                        AgentExecution.tenant_key == project.tenant_key
+                    )
+                ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
+                    AgentJob.project_id == project_id
+                )
+                parent_result = await session.execute(parent_query)
+                parent_execution = parent_result.scalar_one_or_none()
+
+                if not parent_execution:
+                    # Try to create the parent agent first
+                    ensure_result = await ensure_agent(project_id, parent_agent_name)
+                    if not ensure_result["success"]:
+                        return {
+                            "success": False,
+                            "error": f"Parent agent '{parent_agent_name}' not found and could not be created",
+                        }
+
+                    # Re-fetch the parent execution
+                    parent_result = await session.execute(parent_query)
+                    parent_execution = parent_result.scalar_one_or_none()
+
+                    if not parent_execution:
+                        return {
+                            "success": False,
+                            "error": "Failed to create parent agent",
+                        }
+
+                # Create the interaction record (using agent_id for parent)
                 interaction = AgentInteraction(
                     tenant_key=project.tenant_key,
                     project_id=project_id,
-                    parent_agent_id=parent_agent.job_id,
+                    parent_agent_id=parent_execution.agent_id,
                     sub_agent_name=sub_agent_name,
                     interaction_type="SPAWN",
                     mission=mission,
@@ -930,8 +922,8 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 )
                 session.add(interaction)
 
-                # Update parent agent context usage (estimate)
-                parent_agent.context_used += 500  # Estimate for spawn overhead
+                # Update parent execution context usage (estimate)
+                parent_execution.context_used = (parent_execution.context_used or 0) + 500
 
                 await session.commit()
 
@@ -1025,20 +1017,20 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                     existing_meta.update(meta_data)
                     interaction.meta_data = existing_meta
 
-                # Update parent agent context usage if tokens provided
+                # Update parent execution context usage if tokens provided
                 if tokens_used and interaction.parent_agent_id:
                     # TENANT ISOLATION: Filter by tenant_key from interaction
-                    parent_query = select(MCPAgentJob).where(
+                    parent_query = select(AgentExecution).where(
                         and_(
-                            MCPAgentJob.job_id == interaction.parent_agent_id,
-                            MCPAgentJob.tenant_key == interaction.tenant_key
+                            AgentExecution.agent_id == interaction.parent_agent_id,
+                            AgentExecution.tenant_key == interaction.tenant_key
                         )
                     )
                     parent_result = await session.execute(parent_query)
-                    parent_agent = parent_result.scalar_one_or_none()
+                    parent_execution = parent_result.scalar_one_or_none()
 
-                    if parent_agent:
-                        parent_agent.context_used += tokens_used
+                    if parent_execution:
+                        parent_execution.context_used = (parent_execution.context_used or 0) + tokens_used
 
                         # Also update project context usage with TENANT ISOLATION
                         project_query = select(Project).where(
@@ -1051,7 +1043,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                         project = project_result.scalar_one_or_none()
 
                         if project:
-                            project.context_used += tokens_used
+                            project.context_used = (project.context_used or 0) + tokens_used
 
                 await session.commit()
 
@@ -1061,16 +1053,16 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 # Get parent agent name for WebSocket event with TENANT ISOLATION
                 parent_agent_name = "unknown"
                 if interaction.parent_agent_id:
-                    parent_query = select(MCPAgentJob).where(
+                    parent_query = select(AgentExecution).where(
                         and_(
-                            MCPAgentJob.job_id == interaction.parent_agent_id,
-                            MCPAgentJob.tenant_key == interaction.tenant_key
+                            AgentExecution.agent_id == interaction.parent_agent_id,
+                            AgentExecution.tenant_key == interaction.tenant_key
                         )
                     )
                     parent_result = await session.execute(parent_query)
-                    parent_agent = parent_result.scalar_one_or_none()
-                    if parent_agent:
-                        parent_agent_name = parent_agent.agent_name
+                    parent_execution = parent_result.scalar_one_or_none()
+                    if parent_execution:
+                        parent_agent_name = parent_execution.agent_name
 
                 # Broadcast WebSocket event
                 await broadcast_sub_agent_event(

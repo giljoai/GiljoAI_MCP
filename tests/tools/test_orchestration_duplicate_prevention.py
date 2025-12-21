@@ -13,7 +13,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -43,17 +44,34 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
     db_session.add(project)
     await db_session.commit()
 
-    # Create existing orchestrator with 'waiting' status
-    existing_orchestrator = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create existing orchestrator with 'waiting' status (dual model)
+    existing_job_id = str(uuid4())
+    existing_agent_id = str(uuid4())
+
+    # Create work order
+    existing_job = AgentJob(
+        job_id=existing_job_id,
         project_id=project_id,
+        tenant_key=tenant_key,
+        job_type="orchestrator",
+        status="active",
+        mission="Existing orchestrator mission"
+    )
+    db_session.add(existing_job)
+
+    # Create executor
+    existing_execution = AgentExecution(
+        agent_id=existing_agent_id,
+        job_id=existing_job_id,
         tenant_key=tenant_key,
         agent_type="orchestrator",
         agent_name="Orchestrator",
+        instance_number=1,
         status="waiting",  # Staging status
-        mission="Existing orchestrator mission"
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(existing_orchestrator)
+    db_session.add(existing_execution)
     await db_session.commit()
 
     # Attempt to create duplicate orchestrator (should fail)
@@ -70,8 +88,9 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
     assert result.get("success") is False
     assert "error" in result
     assert "orchestrator already exists" in result["error"].lower()
-    assert "existing_job_id" in result
-    assert result["existing_job_id"] == existing_orchestrator.job_id
+    assert "existing_agent_id" in result
+    assert result["existing_agent_id"] == existing_agent_id
+    assert result["existing_job_id"] == existing_job_id
 
 
 @pytest.mark.asyncio
@@ -100,17 +119,34 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
     db_session.add(project)
     await db_session.commit()
 
-    # Create existing orchestrator with 'working' status
-    existing_orchestrator = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create existing orchestrator with 'working' status (dual model)
+    existing_job_id = str(uuid4())
+    existing_agent_id = str(uuid4())
+
+    # Create work order
+    existing_job = AgentJob(
+        job_id=existing_job_id,
         project_id=project_id,
+        tenant_key=tenant_key,
+        job_type="orchestrator",
+        status="active",
+        mission="Working orchestrator mission"
+    )
+    db_session.add(existing_job)
+
+    # Create executor
+    existing_execution = AgentExecution(
+        agent_id=existing_agent_id,
+        job_id=existing_job_id,
         tenant_key=tenant_key,
         agent_type="orchestrator",
         agent_name="Orchestrator",
+        instance_number=1,
         status="working",  # Already running
-        mission="Working orchestrator mission"
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(existing_orchestrator)
+    db_session.add(existing_execution)
     await db_session.commit()
 
     # Attempt to create duplicate orchestrator (should fail)
@@ -154,18 +190,34 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
     db_session.add(project)
     await db_session.commit()
 
-    # Create existing orchestrator with 'complete' status
-    completed_orchestrator = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create existing orchestrator with 'complete' status (dual model)
+    completed_job_id = str(uuid4())
+    completed_agent_id = str(uuid4())
+
+    # Create work order
+    completed_job = AgentJob(
+        job_id=completed_job_id,
         project_id=project_id,
+        tenant_key=tenant_key,
+        job_type="orchestrator",
+        status="completed",  # Finished
+        mission="Completed orchestrator mission"
+    )
+    db_session.add(completed_job)
+
+    # Create executor
+    completed_execution = AgentExecution(
+        agent_id=completed_agent_id,
+        job_id=completed_job_id,
         tenant_key=tenant_key,
         agent_type="orchestrator",
         agent_name="Orchestrator #1",
+        instance_number=1,
         status="complete",  # Finished, succession allowed
-        mission="Completed orchestrator mission",
-        instance_number=1
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(completed_orchestrator)
+    db_session.add(completed_execution)
     await db_session.commit()
 
     # Attempt to create successor orchestrator (should succeed)
@@ -175,7 +227,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         mission="Successor orchestrator mission",
         project_id=project_id,
         tenant_key=tenant_key,
-        parent_job_id=completed_orchestrator.job_id,  # Link to parent
+        parent_job_id=completed_agent_id,  # Link to parent agent_id (not job_id)
         session=db_session
     )
 
@@ -228,29 +280,55 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
     db_session.add(implementer_template)
     await db_session.commit()
 
-    # Create existing orchestrator
-    orchestrator = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create existing orchestrator (dual model)
+    orch_job_id = str(uuid4())
+    orch_agent_id = str(uuid4())
+    orch_job = AgentJob(
+        job_id=orch_job_id,
         project_id=project_id,
+        tenant_key=tenant_key,
+        job_type="orchestrator",
+        status="active",
+        mission="Orchestrator mission"
+    )
+    db_session.add(orch_job)
+    orch_execution = AgentExecution(
+        agent_id=orch_agent_id,
+        job_id=orch_job_id,
         tenant_key=tenant_key,
         agent_type="orchestrator",
         agent_name="Orchestrator",
+        instance_number=1,
         status="working",
-        mission="Orchestrator mission"
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(orchestrator)
+    db_session.add(orch_execution)
 
-    # Create existing implementer
-    implementer1 = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create existing implementer (dual model)
+    impl1_job_id = str(uuid4())
+    impl1_agent_id = str(uuid4())
+    impl1_job = AgentJob(
+        job_id=impl1_job_id,
         project_id=project_id,
+        tenant_key=tenant_key,
+        job_type="worker",
+        status="active",
+        mission="First implementer"
+    )
+    db_session.add(impl1_job)
+    impl1_execution = AgentExecution(
+        agent_id=impl1_agent_id,
+        job_id=impl1_job_id,
         tenant_key=tenant_key,
         agent_type="worker",  # agent_type for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)
+        instance_number=1,
         status="working",
-        mission="First implementer"
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(implementer1)
+    db_session.add(impl1_execution)
     await db_session.commit()
 
     # Attempt to create second implementer (should succeed)
@@ -312,17 +390,30 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
     # Use project_b's ID for tenant_b test
     project_b_id = project_b.id
 
-    # Create orchestrator in tenant_a
-    orchestrator_a = MCPAgentJob(
-        job_id=str(uuid4()),
+    # Create orchestrator in tenant_a (dual model)
+    orch_a_job_id = str(uuid4())
+    orch_a_agent_id = str(uuid4())
+    orch_a_job = AgentJob(
+        job_id=orch_a_job_id,
         project_id=project_id,
+        tenant_key=tenant_a,
+        job_type="orchestrator",
+        status="active",
+        mission="Tenant A orchestrator"
+    )
+    db_session.add(orch_a_job)
+    orch_a_execution = AgentExecution(
+        agent_id=orch_a_agent_id,
+        job_id=orch_a_job_id,
         tenant_key=tenant_a,
         agent_type="orchestrator",
         agent_name="Orchestrator A",
+        instance_number=1,
         status="working",
-        mission="Tenant A orchestrator"
+        context_budget=10000,
+        context_used=0
     )
-    db_session.add(orchestrator_a)
+    db_session.add(orch_a_execution)
     await db_session.commit()
 
     # Attempt to create orchestrator in tenant_b (should succeed due to isolation)
