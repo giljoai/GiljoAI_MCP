@@ -18,6 +18,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -28,7 +29,7 @@ from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
-from .models import MCPAgentJob, AgentTemplate, Job, Message, Product, Project
+from .models import MCPAgentJob, AgentTemplate, Job, Message, Product, Project, AgentJob, AgentExecution
 from .agent_message_queue import AgentMessageQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
@@ -194,11 +195,13 @@ class ProjectOrchestrator:
 
     async def _spawn_claude_code_agent(
         self,
+        session,
         project: Project,
         role: AgentRole,
         template: AgentTemplate,
         custom_mission: Optional[str] = None,
         additional_instructions: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
     ) -> MCPAgentJob:
         """
         Spawn Claude Code agent for project execution.
@@ -263,8 +266,52 @@ class ProjectOrchestrator:
                 logger.warning(f"[_spawn_claude_code_agent] Failed to inject Serena optimization: {e}")
                 # Continue with original mission
 
-        # 3. Create Agent record with mode='claude'
-        agent = MCPAgentJob(
+        # 3. Create AgentJob (work order) and AgentExecution (executor instance)
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            project_id=project.id,
+            mission=mission,
+            job_type=role.value,
+            status="active",
+        )
+        session.add(agent_job)
+
+        # Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            agent_type=role.value,
+            agent_name=role.value,
+            instance_number=1,
+            status="waiting",
+            progress=0,
+            tool_type="claude",
+            messages=[],
+            spawned_by=parent_agent_id,
+            meta_data={
+                "template_id": template.id,
+                "template_name": template.name,
+                "tool": template.tool,
+            },
+        )
+        session.add(agent_execution)
+        await session.commit()
+        await session.refresh(agent_execution)
+
+        logger.info(
+            f"[_spawn_claude_code_agent] Created Claude Code agent: role={role.value}, "
+            f"template={template.name}, project={project.id}, job_id={job_id}, agent_id={agent_id}"
+        )
+
+        # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
+        # TODO: Update callers to use AgentExecution directly
+        legacy_agent = MCPAgentJob(
             tenant_key=project.tenant_key,
             project_id=project.id,
             name=role.value,
@@ -273,20 +320,15 @@ class ProjectOrchestrator:
             status="active",
             context_used=0,
             mode="claude",
-            job_id=None,  # No job for Claude Code agents
+            job_id=job_id,
             meta_data={
                 "template_id": template.id,
                 "template_name": template.name,
                 "tool": template.tool,
+                "agent_id": agent_id,
             },
         )
-
-        logger.info(
-            f"[_spawn_claude_code_agent] Created Claude Code agent: role={role.value}, "
-            f"template={template.name}, project={project.id}"
-        )
-
-        return agent
+        return legacy_agent
 
     # ========================================================================
     # Messaging helpers (Handover 0118)
@@ -458,11 +500,13 @@ class ProjectOrchestrator:
 
     async def _spawn_generic_agent(
         self,
+        session,
         project: Project,
         role: AgentRole,
         template: AgentTemplate,
         custom_mission: Optional[str] = None,
         additional_instructions: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
     ) -> MCPAgentJob:
         """
         Spawn generic agent (Codex/Gemini with job queue).
@@ -503,30 +547,74 @@ class ProjectOrchestrator:
         mcp_instructions = self._generate_mcp_instructions(project.tenant_key, role.value, mission)
         full_mission = f"{mission}\n\n{mcp_instructions}"
 
-        # 2. Create MCP job via AgentJobManager
-        job = self.agent_job_manager.create_job(
+        # 2. Create AgentJob (work order) and AgentExecution (executor instance)
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            project_id=project.id,
+            mission=full_mission,
+            job_type=role.value,
+            status="active",
+        )
+        session.add(agent_job)
+
+        # Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
             tenant_key=project.tenant_key,
             agent_type=role.value,
-            mission=full_mission,
-            spawned_by=None,  # Could track parent orchestrator if needed
-            context_chunks=[],  # Could include relevant context chunk IDs
+            agent_name=role.value,
+            instance_number=1,
+            status="waiting_acknowledgment",
+            progress=0,
+            tool_type=template.tool,  # 'codex' or 'gemini'
+            messages=[],
+            spawned_by=parent_agent_id,
+            meta_data={
+                "template_id": template.id,
+                "template_name": template.name,
+                "tool": template.tool,
+            },
         )
+        session.add(agent_execution)
+        await session.commit()
+        await session.refresh(agent_execution)
 
         logger.info(
-            f"[_spawn_generic_agent] Created MCP job: job_id={job.job_id}, "
-            f"agent_type={role.value}, tenant={project.tenant_key}"
+            f"[_spawn_generic_agent] Created {template.tool} agent: role={role.value}, "
+            f"job_id={job_id}, agent_id={agent_id}, project={project.id}"
         )
 
-        # 3. Generate CLI prompt with MCP tool examples
+        # 3. Generate CLI prompt (using a temporary Job-like object for backward compatibility)
+        class JobCompat:
+            def __init__(self, job_id, agent_type, mission, status):
+                self.job_id = job_id
+                self.agent_type = agent_type
+                self.mission = mission
+                self.status = status
+
+        job_compat = JobCompat(job_id, role.value, full_mission, "waiting_acknowledgment")
         cli_prompt = self._generate_cli_prompt(
-            job=job,
+            job=job_compat,
             template=template,
             project=project,
             tenant_key=project.tenant_key,
         )
 
-        # 4. Create Agent record linked to job
-        agent = MCPAgentJob(
+        # Update agent_execution with CLI prompt
+        if not agent_execution.meta_data:
+            agent_execution.meta_data = {}
+        agent_execution.meta_data["cli_prompt"] = cli_prompt
+        await session.commit()
+
+        # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
+        # TODO: Update callers to use AgentExecution directly
+        legacy_agent = MCPAgentJob(
             tenant_key=project.tenant_key,
             project_id=project.id,
             name=role.value,
@@ -535,22 +623,16 @@ class ProjectOrchestrator:
             status="waiting_acknowledgment",
             context_used=0,
             mode=template.tool,  # 'codex' or 'gemini'
-            job_id=job.job_id,
+            job_id=job_id,
             meta_data={
                 "template_id": template.id,
                 "template_name": template.name,
                 "tool": template.tool,
                 "cli_prompt": cli_prompt,
-                "mcp_job_id": job.job_id,
+                "agent_id": agent_id,
             },
         )
-
-        logger.info(
-            f"[_spawn_generic_agent] Created {template.tool} agent: role={role.value}, "
-            f"job_id={job.job_id}, project={project.id}"
-        )
-
-        return agent
+        return legacy_agent
 
     def _generate_mcp_instructions(self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None) -> str:
         """
@@ -1004,6 +1086,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 if template.tool == "claude":
                     # Claude Code mode: Auto-export template + create agent
                     agent = await self._spawn_claude_code_agent(
+                        session=session,
                         project=project,
                         role=role,
                         template=template,
@@ -1013,6 +1096,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 elif template.tool in ["codex", "gemini"]:
                     # Generic mode: Create job + link agent
                     agent = await self._spawn_generic_agent(
+                        session=session,
                         project=project,
                         role=role,
                         template=template,
@@ -1024,13 +1108,9 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                     # Fallback to original logic
                     template = None  # Force fallback
 
-                # If routing succeeded, persist and return agent
+                # If routing succeeded, return agent (already persisted by spawn methods)
                 if template:
-                    session.add(agent)
-                    await session.commit()
-                    await session.refresh(agent)
-
-                    logger.info(f"[spawn_agent] Spawned {agent.mode} agent {agent.id} for project {project_id}")
+                    logger.info(f"[spawn_agent] Spawned {agent.mode} agent for project {project_id}")
                     return agent
 
             # FALLBACK: Original spawn logic (no template or unknown tool)
@@ -1079,8 +1159,47 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 logger.warning(f"Failed to inject Serena optimization rules: {e}")
                 # Continue with original mission if optimization fails
 
-            # Create agent with optimized mission
-            agent = MCPAgentJob(
+            # Create AgentJob (work order) and AgentExecution (executor instance)
+            job_id = str(uuid4())
+            agent_id = str(uuid4())
+
+            # Create AgentJob (work order)
+            agent_job = AgentJob(
+                job_id=job_id,
+                tenant_key=project.tenant_key,
+                project_id=project_id,
+                mission=mission,
+                job_type=role.value,
+                status="active",
+            )
+            session.add(agent_job)
+
+            # Create AgentExecution (executor instance)
+            agent_execution = AgentExecution(
+                agent_id=agent_id,
+                job_id=job_id,
+                tenant_key=project.tenant_key,
+                agent_type=role.value,
+                agent_name=role.value,
+                instance_number=1,
+                status="waiting",
+                progress=0,
+                tool_type="claude",  # Default to claude for legacy
+                messages=[],
+                spawned_by=None,  # No parent in fallback path
+            )
+            session.add(agent_execution)
+            await session.commit()
+            await session.refresh(agent_execution)
+
+            logger.info(
+                f"Spawned optimized {role.value} agent (fallback): job_id={job_id}, "
+                f"agent_id={agent_id}, project={project_id}"
+            )
+
+            # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
+            # TODO: Update callers to use AgentExecution directly
+            legacy_agent = MCPAgentJob(
                 tenant_key=project.tenant_key,
                 project_id=project_id,
                 name=role.value,
@@ -1089,15 +1208,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 status="active",
                 context_used=0,
                 mode="claude",  # Default to claude for legacy
-                job_id=None,
+                job_id=job_id,
+                meta_data={"agent_id": agent_id},
             )
-
-            session.add(agent)
-            await session.commit()
-            await session.refresh(agent)
-
-            logger.info(f"Spawned optimized {role.value} agent {agent.id} for project {project_id}")
-            return agent
+            return legacy_agent
 
     async def spawn_agents_parallel(
         self,
