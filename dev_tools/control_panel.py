@@ -452,7 +452,7 @@ class GiljoDevControlPanel:
         # Row 2: Descriptions
         ttk.Label(
             section,
-            text="Remove venv, configs (keeps data)",
+            text="Reset admin password to 'admin'",
             font=("Arial", 8),
         ).grid(row=2, column=0, sticky="w", padx=5)
 
@@ -622,11 +622,14 @@ class GiljoDevControlPanel:
         Raises:
             FileNotFoundError if the interpreter cannot be located.
         """
-        venv_dir = self.project_root / "venv"
+        # Check for .venv (preferred) or venv (legacy fallback)
+        venv_dir = self.project_root / ".venv"
+        if not venv_dir.exists():
+            venv_dir = self.project_root / "venv"  # Legacy fallback
 
         if not venv_dir.exists():
             raise FileNotFoundError(
-                f"Virtual environment not found at {venv_dir}. "
+                f"Virtual environment not found at {self.project_root / '.venv'} or {self.project_root / 'venv'}. "
                 "Run the installer to create the environment before using the control panel."
             )
 
@@ -1889,8 +1892,9 @@ pg_restore -l {backup_file.name} | head -20
         """
         checks = {}
 
-        # Check venv deleted
-        checks["venv"] = not (self.project_root / "venv").exists()
+        # Check venv deleted (check both .venv and venv)
+        venv_exists = (self.project_root / ".venv").exists() or (self.project_root / "venv").exists()
+        checks["venv"] = not venv_exists
 
         # Check config files deleted
         checks["config.yaml"] = not (self.project_root / "config.yaml").exists()
@@ -1991,8 +1995,8 @@ pg_restore -l {backup_file.name} | head -20
         Reset to fresh state for testing setup flow.
 
         Resets the admin user to default password (admin/admin) and
-        sets default_password_active=True so you can test the complete
-        setup flow without reinstalling.
+        sets must_change_password=True so you can test the password
+        change flow without reinstalling.
 
         Does NOT delete venv or configs - only resets authentication state.
         """
@@ -2001,12 +2005,13 @@ pg_restore -l {backup_file.name} | head -20
             "Confirm Reset to Fresh State",
             "This will reset the admin user for testing setup flow:\n\n"
             "- Reset admin password to 'admin'\n"
-            "- Set default_password_active = True\n"
-            "- Set password_changed_at = NULL\n\n"
+            "- Set must_change_password = True\n"
+            "- Set must_set_pin = True\n"
+            "- Clear recovery PIN\n\n"
             "This allows you to test:\n"
-            "1. Password change flow (/change-password)\n"
-            "2. Setup wizard (/setup)\n"
-            "3. Complete installation experience\n\n"
+            "1. Password change flow (forced on login)\n"
+            "2. Recovery PIN setup flow\n"
+            "3. Complete onboarding experience\n\n"
             "WITHOUT reinstalling the application!\n\n"
             "Continue?",
             icon="question",
@@ -2037,28 +2042,28 @@ pg_restore -l {backup_file.name} | head -20
             conn.autocommit = True
 
             with conn.cursor() as cur:
-                # Step 1: Reset admin user password to 'admin' (bcrypt hash)
+                # Step 1: Reset admin user password to 'admin' and set flags
                 self.update_status_message("Resetting admin password to 'admin'...")
-                # This is the bcrypt hash for 'admin' - same hash used in install.py
+                # This is the bcrypt hash for 'admin'
                 admin_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPfL0fJLKZ9S"
 
                 cur.execute(
                     """
                     UPDATE users
-                    SET password_hash = %s
+                    SET password_hash = %s,
+                        must_change_password = TRUE,
+                        must_set_pin = TRUE,
+                        recovery_pin_hash = NULL,
+                        failed_pin_attempts = 0,
+                        pin_lockout_until = NULL
                     WHERE username = 'admin'
                 """,
                     (admin_hash,),
                 )
 
-                # Step 2: Reset setup_state to default_password_active=True
-                self.update_status_message("Setting default_password_active = True...")
-                cur.execute("""
-                    UPDATE setup_state
-                    SET default_password_active = TRUE,
-                        password_changed_at = NULL
-                    WHERE tenant_key = 'default'
-                """)
+                # Check if update was successful
+                if cur.rowcount == 0:
+                    raise Exception("Admin user not found in database")
 
             conn.close()
 
@@ -2070,7 +2075,7 @@ pg_restore -l {backup_file.name} | head -20
                 "1. Visit http://localhost:7274\n"
                 "2. Login with admin/admin\n"
                 "3. Change password (forced)\n"
-                "4. Complete setup wizard\n\n"
+                "4. Set recovery PIN (forced)\n\n"
                 "No reinstallation needed!",
             )
 
@@ -2091,7 +2096,7 @@ pg_restore -l {backup_file.name} | head -20
 
         Deletes:
         - Configuration files (config.yaml, .env, install_config.yaml)
-        - Virtual environment (venv/)
+        - Virtual environment (.venv/ or venv/)
         - Database (giljo_mcp) with all tables and roles
         - Logs directory (logs/)
         - Data directory (data/)
@@ -2105,7 +2110,7 @@ pg_restore -l {backup_file.name} | head -20
             "Confirm Pristine Reset",
             "This will DELETE everything to simulate a fresh GitHub download:\n\n"
             "Configuration & Environment:\n"
-            "- Virtual environment (venv/)\n"
+            "- Virtual environment (.venv/ or venv/)\n"
             "- Configuration files (config.yaml, .env)\n"
             "- Installer config (install_config.yaml)\n\n"
             "Database & Data:\n"
@@ -2138,7 +2143,8 @@ pg_restore -l {backup_file.name} | head -20
             self.update_status_message("Step 1/6: Deleting configuration files and venv...")
 
             targets = [
-                (self.project_root / "venv", "Virtual environment"),
+                (self.project_root / ".venv", "Virtual environment (.venv)"),
+                (self.project_root / "venv", "Virtual environment (venv)"),  # Legacy fallback
                 (self.project_root / "config.yaml", "Configuration file"),
                 (self.project_root / ".env", "Environment file"),
                 (self.project_root / "install_config.yaml", "Installer config"),
@@ -2148,7 +2154,7 @@ pg_restore -l {backup_file.name} | head -20
                 if target.exists():
                     try:
                         if target.is_dir():
-                            if target.name == "venv":
+                            if target.name in ("venv", ".venv"):
                                 success = self._aggressive_delete_venv(target)
                                 if success:
                                     deleted.append(desc)
