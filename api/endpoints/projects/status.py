@@ -119,7 +119,12 @@ async def get_project_orchestrator(
 
     Returns the orchestrator MCPAgentJob assigned to this project.
     Supports orchestrator succession (Handover 0080) - returns latest instance.
-    If no orchestrator exists, creates one automatically.
+    If no orchestrator exists, creates one automatically using the dual-model pattern.
+
+    WRITE Path Pattern (Handover 0366+):
+    - Creates BOTH AgentJob (work order) + AgentExecution (executor instance)
+    - Creates legacy MCPAgentJob for backward compatibility with response model
+    - This allows old READ paths to work while new code queries AgentExecution
 
     Args:
         project_id: Project UUID or alias
@@ -138,7 +143,8 @@ async def get_project_orchestrator(
         The orchestrator is essential for project launch flow.
     """
     from sqlalchemy import select
-    from src.giljo_mcp.models import MCPAgentJob, Project
+    from uuid import uuid4
+    from src.giljo_mcp.models import MCPAgentJob, Project, AgentJob, AgentExecution
 
     logger.debug(
         f"User {current_user.username} getting orchestrator for project {project_id}"
@@ -176,29 +182,66 @@ async def get_project_orchestrator(
 
     if not orchestrator:
         # Auto-create orchestrator if missing (backward compatibility)
-        orchestrator = MCPAgentJob(
+        # Following pattern from tool_accessor.py:1477-1510
+        # Create both AgentJob (work order) and AgentExecution (executor instance)
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Step 1: Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
             tenant_key=current_user.tenant_key,
             project_id=project_id,
-            agent_type="orchestrator",
-            agent_name="Orchestrator",
             mission=(
                 "I am ready to create the project mission based on product context "
                 "and project description. I will write the mission in the mission window "
                 "and select the proper agents below."
             ),
+            job_type="orchestrator",
+            status="active",
+        )
+        db.add(agent_job)
+
+        # Step 2: Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,  # FK to AgentJob
+            tenant_key=current_user.tenant_key,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            instance_number=1,
             status="waiting",
-            tool_type="universal",
             progress=0,
+            tool_type="universal",
+            messages=[],
+        )
+        db.add(agent_execution)
+        await db.commit()
+        await db.refresh(agent_execution)
+        await db.refresh(agent_job)
+
+        # Create legacy MCPAgentJob for backward compatibility with response model
+        # This allows existing READ paths to continue working while new code uses AgentJob/AgentExecution
+        orchestrator = MCPAgentJob(
+            job_id=job_id,  # Same job_id links to new AgentJob
+            tenant_key=current_user.tenant_key,
+            project_id=project_id,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            mission=agent_job.mission,
+            status=agent_execution.status,
+            tool_type=agent_execution.tool_type,
+            progress=agent_execution.progress,
+            instance_number=agent_execution.instance_number,
             context_chunks=[],
             messages=[],
         )
-
         db.add(orchestrator)
         await db.commit()
         await db.refresh(orchestrator)
 
         logger.info(
-            f"Auto-created orchestrator {orchestrator.job_id} for project {project_id} "
+            f"Auto-created orchestrator {job_id} (agent_id: {agent_id}) for project {project_id} "
             f"(user: {current_user.username})"
         )
 

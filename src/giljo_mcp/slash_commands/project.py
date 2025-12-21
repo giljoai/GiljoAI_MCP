@@ -2,16 +2,19 @@
 Slash command handlers for project actions (/gil_activate, /gil_launch)
 """
 
-from typing import Any, Optional
 from datetime import datetime, timezone
+from typing import Any, Optional
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Project, Product, MCPAgentJob
+from ..models import AgentExecution, AgentJob, Product, Project
 
 
-async def handle_gil_activate(db_session: AsyncSession, tenant_key: str, project_id: Optional[str] = None, **_: Any) -> dict[str, Any]:
+async def handle_gil_activate(
+    db_session: AsyncSession, tenant_key: str, project_id: Optional[str] = None, **_: Any
+) -> dict[str, Any]:
     if not project_id:
         return {"success": False, "error": "project_id is required"}
 
@@ -38,41 +41,61 @@ async def handle_gil_activate(db_session: AsyncSession, tenant_key: str, project
 
     # Ensure orchestrator job exists
     orch_res = await db_session.execute(
-        select(MCPAgentJob).where(
-            MCPAgentJob.project_id == project_id,
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.agent_type == "orchestrator",
+        select(AgentJob).where(
+            AgentJob.project_id == project_id,
+            AgentJob.tenant_key == tenant_key,
+            AgentJob.job_type == "orchestrator",
         )
     )
-    orchestrator = orch_res.scalar_one_or_none()
-    if not orchestrator:
-        orchestrator = MCPAgentJob(
+    agent_job = orch_res.scalar_one_or_none()
+    if not agent_job:
+        # Create both AgentJob and AgentExecution
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Step 1: Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
             tenant_key=tenant_key,
             project_id=project_id,
-            agent_type="orchestrator",
-            agent_name="Orchestrator",
             mission=(
                 "I am ready to create the project mission based on product context and project description. "
                 "I will write the mission in the mission window and select the proper agents below."
             ),
+            job_type="orchestrator",
+            status="active",
+        )
+        db_session.add(agent_job)
+
+        # Step 2: Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=tenant_key,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            instance_number=1,
             status="waiting",
-            tool_type="universal",
             progress=0,
-            context_chunks=[],
+            tool_type="universal",
             messages=[],
         )
-        db_session.add(orchestrator)
+        db_session.add(agent_execution)
         await db_session.commit()
 
     return {"success": True, "message": f"Project {project.name} activated", "project_id": project_id}
 
 
-async def handle_gil_launch(db_session: AsyncSession, tenant_key: str, project_id: Optional[str] = None, **_: Any) -> dict[str, Any]:
+async def handle_gil_launch(
+    db_session: AsyncSession, tenant_key: str, project_id: Optional[str] = None, **_: Any
+) -> dict[str, Any]:
     if not project_id:
         return {"success": False, "error": "project_id is required"}
 
     # Validate project
-    proj_res = await db_session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
+    proj_res = await db_session.execute(
+        select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
+    )
     project = proj_res.scalar_one_or_none()
     if not project:
         return {"success": False, "error": "Project not found"}
@@ -80,13 +103,16 @@ async def handle_gil_launch(db_session: AsyncSession, tenant_key: str, project_i
     if not project.mission or not project.mission.strip():
         return {"success": False, "error": "Project mission has not been created. Please complete staging first."}
 
-    # Ensure agents spawned exist
+    # Ensure agents spawned exist (check via AgentJob)
     agents_res = await db_session.execute(
-        select(MCPAgentJob).where(MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == tenant_key)
+        select(AgentJob).where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
     )
     agents = agents_res.scalars().all()
     if not agents:
-        return {"success": False, "error": "No agents have been spawned for this project. Please complete staging first."}
+        return {
+            "success": False,
+            "error": "No agents have been spawned for this project. Please complete staging first.",
+        }
 
     # staging_status tracking (if present on Project)
     try:
@@ -103,4 +129,3 @@ async def handle_gil_launch(db_session: AsyncSession, tenant_key: str, project_i
         "project_id": project_id,
         "agent_count": len(agents),
     }
-
