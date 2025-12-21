@@ -20,7 +20,7 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, Job, MCPAgentJob, Product, Project
+from giljo_mcp.models import AgentTemplate, Job, Product, Project
 from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.orchestrator import ProjectOrchestrator
 
@@ -221,7 +221,7 @@ async def _get_user_config(
                 "agent_templates": "agent_templates",
                 "vision_documents": "vision_documents",
             }
-            
+
             depth_config = {}
             for db_key, value in raw_depth_config.items():
                 # Map to internal key if mapping exists, otherwise keep original
@@ -598,7 +598,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                             "Verify agent was spawned successfully",
                             "Check if project was deleted",
                             "Ensure tenant_key matches",
-                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",
+                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",  # nosec B608
                         ],
                         "severity": "ERROR",
                     }
@@ -776,7 +776,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         4. Each agent receives portion of overall mission as their job
 
         AGENT'S ROLE (after spawning):
-        - Agent calls get_agent_mission() to fetch their job (MCPAgentJob.mission)
+        - Agent calls get_agent_mission() to fetch their job (AgentJob.mission)
         - Agent EXECUTES their assigned work (writes code, runs tests, etc.)
         - Agent reports progress back via MCP tools
 
@@ -786,7 +786,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         - This tool creates the bridge: orchestrator assigns work → agent executes it
 
         THIN CLIENT ARCHITECTURE:
-        - Mission stored in MCPAgentJob.mission database field
+        - Mission stored in AgentJob.mission database field
         - Returned prompt is ~10 lines (agent identity only)
         - Agent calls get_agent_mission() to fetch full mission
         - WebSocket broadcast updates UI (agent appears in grid)
@@ -810,7 +810,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 'agent_job_id': 'uuid',
                 'agent_prompt': '~10 line thin prompt for agent to paste',
                 'prompt_tokens': 50,
-                'mission_stored': True,  # Mission saved to MCPAgentJob.mission
+                'mission_stored': True,  # Mission saved to AgentJob.mission
                 'mission_tokens': 2000,
                 'thin_client': True
             }
@@ -1175,7 +1175,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
 Your project has been analyzed and the following workflow has been prepared:
 
 1. **Orchestrator Agent** - Coordinates all activities
-2. **Implementer Agents** - Build features according to specifications  
+2. **Implementer Agents** - Build features according to specifications
 3. **Tester Agents** - Validate functionality and quality
 4. **Reviewer Agents** - Ensure code quality and best practices
 
@@ -1298,7 +1298,7 @@ The orchestration workflow is now starting...
 
 ## Installation Process
 
-I will help you install the standard GiljoAI agent templates to enable 
+I will help you install the standard GiljoAI agent templates to enable
 subagent orchestration capabilities.
 
 ### Step 1: Create agents directory
@@ -1312,7 +1312,7 @@ cd ~/.claude/agents
 
 # Download core agent templates
 curl -o orchestrator.md {server_url}/api/agents/templates/orchestrator.md
-curl -o implementer.md {server_url}/api/agents/templates/implementer.md  
+curl -o implementer.md {server_url}/api/agents/templates/implementer.md
 curl -o tester.md {server_url}/api/agents/templates/tester.md
 curl -o reviewer.md {server_url}/api/agents/templates/reviewer.md
 curl -o documenter.md {server_url}/api/agents/templates/documenter.md
@@ -1635,7 +1635,7 @@ The agent templates are now being updated...
                             "Verify agent execution was created successfully during staging",
                             "Check if project was deleted",
                             "Ensure tenant_key matches the staging environment",
-                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",
+                            f"Check database: SELECT * FROM agent_executions WHERE agent_id = '{agent_id}'",  # nosec B608
                         ],
                         "severity": "ERROR",
                         "contact_support": "If problem persists: support@giljoai.com",
