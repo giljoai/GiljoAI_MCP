@@ -84,15 +84,20 @@ class ConfigManager:
                 self.logger.warning(f"Credentials directory not found: {credentials_dir}")
                 return None
 
-            # Find all credential files
-            credential_files = list(credentials_dir.glob("db_credentials_*.txt"))
+            # Look for the standard credential file first
+            credential_file = credentials_dir / "db_credentials.txt"
 
-            if not credential_files:
-                self.logger.warning("No credential files found in installer/credentials/")
-                return None
+            if not credential_file.exists():
+                # Fallback: check for legacy timestamped files
+                legacy_files = list(credentials_dir.glob("db_credentials_*.txt"))
+                if legacy_files:
+                    credential_file = max(legacy_files, key=lambda p: p.stat().st_mtime)
+                    self.logger.info(f"Using legacy credential file: {credential_file}")
+                else:
+                    self.logger.warning("No credential files found in installer/credentials/")
+                    return None
 
-            # Get the most recent file (by modification time)
-            latest_file = max(credential_files, key=lambda p: p.stat().st_mtime)
+            latest_file = credential_file
             self.logger.info(f"Reading credentials from: {latest_file}")
 
             # Parse the credentials file
