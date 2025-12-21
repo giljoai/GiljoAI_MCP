@@ -30,7 +30,8 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Message, Project
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.tenant import TenantManager
 
 
@@ -166,9 +167,9 @@ class MessageService:
                     else:
                         # Agent type string (e.g., "orchestrator") - resolve to job_id
                         agent_result = await session.execute(
-                            select(MCPAgentJob).where(
-                                MCPAgentJob.project_id == project_id,
-                                MCPAgentJob.agent_type == agent_ref
+                            select(AgentJob).where(
+                                AgentJob.project_id == project_id,
+                                AgentJob.job_type == agent_ref
                             ).limit(1)
                         )
                         agent_job = agent_result.scalar_one_or_none()
@@ -242,14 +243,14 @@ class MessageService:
                         if to_agents[0] == 'all':
                             # Broadcast: Get ALL agent job IDs in the project, EXCLUDING sender
                             result = await session.execute(
-                                select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                                select(AgentJob).where(AgentJob.project_id == project.id)
                             )
                             all_agents = result.scalars().all()
                             # Exclude sender from recipients to prevent self-notification
                             sender_agent_type = from_agent or "orchestrator"
                             recipient_job_ids = [
                                 agent.job_id for agent in all_agents
-                                if agent.agent_type != sender_agent_type
+                                if agent.job_type != sender_agent_type
                             ]
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients "
@@ -268,9 +269,9 @@ class MessageService:
                                 else:
                                     # Looks like an agent_type - resolve to job_id
                                     agent_result = await session.execute(
-                                        select(MCPAgentJob).where(
-                                            MCPAgentJob.project_id == project.id,
-                                            MCPAgentJob.agent_type == agent_ref
+                                        select(AgentJob).where(
+                                            AgentJob.project_id == project.id,
+                                            AgentJob.job_type == agent_ref
                                         ).limit(1)
                                     )
                                     agent_job = agent_result.scalar_one_or_none()
@@ -371,7 +372,7 @@ class MessageService:
             async with self.db_manager.get_session_async() as session:
                 # Get all agent jobs in project
                 result = await session.execute(
-                    select(MCPAgentJob).where(MCPAgentJob.project_id == project_id)
+                    select(AgentJob).where(AgentJob.project_id == project_id)
                 )
                 agent_jobs = result.scalars().all()
 
@@ -381,7 +382,7 @@ class MessageService:
                         "error": "No agent jobs found in project"
                     }
 
-                agent_types = [job.agent_type for job in agent_jobs]
+                agent_types = [job.job_type for job in agent_jobs]
 
                 # Get tenant_key from first agent job for WebSocket broadcast
                 tenant_key = agent_jobs[0].tenant_key if agent_jobs else None
@@ -524,10 +525,10 @@ class MessageService:
             async with self.db_manager.get_session_async() as session:
                 # Retrieve agent job to get project context
                 result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentJob).where(
                         and_(
-                            MCPAgentJob.job_id == agent_id,
-                            MCPAgentJob.tenant_key == tenant_key
+                            AgentJob.job_id == agent_id,
+                            AgentJob.tenant_key == tenant_key
                         )
                     )
                 )
@@ -564,7 +565,7 @@ class MessageService:
                                 func.coalesce(
                                     Message.meta_data.op('->')('_from_agent').astext,
                                     func.cast('', String)
-                                ) != job.agent_type
+                                ) != job.job_type
                             )
                         )
                     )
@@ -595,7 +596,7 @@ class MessageService:
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
                     # Update JSONB messages array status for UI counter (Handover 0326)
-                    # The dashboard reads from MCPAgentJob.messages JSONB, not Message table
+                    # The dashboard reads from AgentJob.messages JSONB, not Message table
                     await self._update_jsonb_message_status(
                         session=session,
                         agent_job_id=agent_id,
@@ -697,12 +698,12 @@ class MessageService:
                 if agent_id:
                     # Get agent job to verify it exists and get project context
                     # Build WHERE conditions
-                    conditions = [MCPAgentJob.job_id == agent_id]
+                    conditions = [AgentJob.job_id == agent_id]
                     if tenant_key:
-                        conditions.append(MCPAgentJob.tenant_key == tenant_key)
+                        conditions.append(AgentJob.tenant_key == tenant_key)
 
                     result = await session.execute(
-                        select(MCPAgentJob).where(and_(*conditions))
+                        select(AgentJob).where(and_(*conditions))
                     )
                     job = result.scalar_one_or_none()
 
@@ -931,7 +932,7 @@ class MessageService:
         tenant_key: str,
     ) -> None:
         """
-        Persist message to mcp_agent_jobs.messages JSONB column for counter persistence.
+        Persist message to agent_jobs.messages JSONB column for counter persistence.
 
         This ensures message counters survive page refreshes by storing messages
         in the PostgreSQL JSONB column that the frontend reads on load.
@@ -948,7 +949,6 @@ class MessageService:
             tenant_key: Tenant key for multi-tenant isolation (Handover 0325)
         """
         from sqlalchemy.orm.attributes import flag_modified
-        from src.giljo_mcp.models.agents import MCPAgentJob
 
         try:
             timestamp = datetime.now(timezone.utc).isoformat()
@@ -959,13 +959,13 @@ class MessageService:
             # CRITICAL: Must filter by tenant_key AND project_id for proper isolation (Handover 0325)
             from sqlalchemy import and_, or_
             sender_result = await session.execute(
-                select(MCPAgentJob).where(
+                select(AgentJob).where(
                     and_(
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.project_id == project_id,
+                        AgentJob.tenant_key == tenant_key,
+                        AgentJob.project_id == project_id,
                         or_(
-                            MCPAgentJob.job_id == from_agent,
-                            MCPAgentJob.agent_type == from_agent
+                            AgentJob.job_id == from_agent,
+                            AgentJob.job_type == from_agent
                         )
                     )
                 ).limit(1)
@@ -1006,11 +1006,11 @@ class MessageService:
 
                 # Tenant + project isolation on recipient lookup (Handover 0325)
                 recipient_result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentJob).where(
                         and_(
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.job_id == recipient_job_id
+                            AgentJob.tenant_key == tenant_key,
+                            AgentJob.project_id == project_id,
+                            AgentJob.job_id == recipient_job_id
                         )
                     )
                 )
@@ -1034,7 +1034,7 @@ class MessageService:
                     flag_modified(recipient_agent, "messages")
 
                     self._logger.info(
-                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_type} "
+                        f"[PERSISTENCE] Added inbound message to {recipient_agent.job_type} "
                         f"({recipient_job_id}) JSONB column (flagged modified)"
                     )
 
@@ -1054,7 +1054,7 @@ class MessageService:
         new_status: str,
     ) -> None:
         """
-        Update status of messages in MCPAgentJob.messages JSONB column.
+        Update status of messages in AgentJob.messages JSONB column.
 
         This syncs the JSONB message status with the Message table status,
         ensuring the dashboard counters (Messages Waiting, Messages Read) are accurate.
@@ -1066,12 +1066,11 @@ class MessageService:
             new_status: New status value (e.g., 'acknowledged', 'read')
         """
         from sqlalchemy.orm.attributes import flag_modified
-        from src.giljo_mcp.models.agents import MCPAgentJob
 
         try:
             # Get the agent job
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job_id)
+                select(AgentJob).where(AgentJob.job_id == agent_job_id)
             )
             agent_job = result.scalar_one_or_none()
 

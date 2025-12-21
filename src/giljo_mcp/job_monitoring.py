@@ -26,7 +26,7 @@ from typing import Optional
 from sqlalchemy import select
 
 from .database import DatabaseManager
-from .models import MCPAgentJob
+from .models.agent_identity import AgentJob, AgentExecution
 
 
 logger = logging.getLogger(__name__)
@@ -83,41 +83,41 @@ async def monitor_agent_health(
                 now = datetime.now(timezone.utc)
                 stale_cutoff = now - timedelta(seconds=stale_threshold)
 
-                # Find active/working jobs with no recent progress
-                # Query for jobs that are:
+                # Find active/working agent executions with no recent progress
+                # Query for agent executions that are:
                 # 1. In active states (working, preparing)
                 # 2. Have NULL last_progress_at OR last_progress_at older than threshold
-                stmt = select(MCPAgentJob).where(
-                    MCPAgentJob.status.in_(["working", "preparing"]),
+                stmt = select(AgentExecution).where(
+                    AgentExecution.status.in_(["working", "preparing"]),
                     # Check for NULL or stale timestamp
                     (
-                        (MCPAgentJob.last_progress_at.is_(None))
-                        | (MCPAgentJob.last_progress_at < stale_cutoff)
+                        (AgentExecution.last_progress_at.is_(None))
+                        | (AgentExecution.last_progress_at < stale_cutoff)
                     ),
                 )
 
                 result = await session.execute(stmt)
-                stale_jobs = result.scalars().all()
+                stale_executions = result.scalars().all()
 
-                if stale_jobs:
-                    logger.info(f"[monitor_agent_health] Found {len(stale_jobs)} potentially stale jobs")
+                if stale_executions:
+                    logger.info(f"[monitor_agent_health] Found {len(stale_executions)} potentially stale agent executions")
 
                     # Import websocket manager for broadcasting
                     try:
                         from api.websocket import websocket_manager
 
-                        for job in stale_jobs:
-                            # Calculate how stale the job is
-                            if job.last_progress_at:
-                                time_since_progress = now - job.last_progress_at
+                        for execution in stale_executions:
+                            # Calculate how stale the execution is
+                            if execution.last_progress_at:
+                                time_since_progress = now - execution.last_progress_at
                                 minutes_stale = int(time_since_progress.total_seconds() / 60)
-                                last_progress_iso = job.last_progress_at.isoformat()
+                                last_progress_iso = execution.last_progress_at.isoformat()
                             else:
-                                # No progress ever reported - use job start time or creation time
-                                if job.started_at:
-                                    time_since_progress = now - job.started_at
+                                # No progress ever reported - use execution start time or creation time
+                                if execution.started_at:
+                                    time_since_progress = now - execution.started_at
                                 else:
-                                    time_since_progress = now - job.created_at
+                                    time_since_progress = now - execution.created_at
                                 minutes_stale = int(time_since_progress.total_seconds() / 60)
                                 last_progress_iso = None
 
@@ -128,26 +128,26 @@ async def monitor_agent_health(
                                     await websocket_manager.broadcast(
                                         {
                                             "type": "job:stale_warning",
-                                            "job_id": job.job_id,
-                                            "tenant_key": job.tenant_key,
+                                            "job_id": execution.job_id,
+                                            "tenant_key": execution.tenant_key,
                                             "minutes_stale": minutes_stale,
                                             "last_progress_at": last_progress_iso,
-                                            "current_status": job.status,
-                                            "agent_type": job.agent_type,
-                                            "agent_name": job.agent_name,
+                                            "current_status": execution.status,
+                                            "agent_type": execution.agent_type,
+                                            "agent_name": execution.agent_name,
                                             "timestamp": now.isoformat(),
                                         }
                                     )
 
                                     logger.warning(
-                                        f"[monitor_agent_health] Job {job.job_id} is stale "
+                                        f"[monitor_agent_health] Agent {execution.agent_id} (job {execution.job_id}) is stale "
                                         f"(no progress for {minutes_stale} minutes), "
-                                        f"status={job.status}, tenant={job.tenant_key}"
+                                        f"status={execution.status}, tenant={execution.tenant_key}"
                                     )
 
                                 except Exception as ws_error:
                                     logger.warning(
-                                        f"Failed to broadcast stale warning for job {job.job_id}: {ws_error}"
+                                        f"Failed to broadcast stale warning for agent {execution.agent_id}: {ws_error}"
                                     )
                                     # Non-critical - continue monitoring
 
@@ -200,41 +200,41 @@ async def get_job_health_status(
         db_manager = DatabaseManager()
 
         async with db_manager.get_session_async() as session:
-            # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.job_id == job_id,
-            )
+            # Get active agent execution for this job with tenant isolation
+            stmt = select(AgentExecution).where(
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.job_id == job_id,
+            ).order_by(AgentExecution.instance_number.desc()).limit(1)
             result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
+            execution = result.scalar_one_or_none()
 
-            if not job:
-                raise ValueError(f"Job {job_id} not found for tenant {tenant_key}")
+            if not execution:
+                raise ValueError(f"No active execution found for job {job_id} and tenant {tenant_key}")
 
             now = datetime.now(timezone.utc)
 
             # Terminal states are always "healthy" (no monitoring needed)
-            if job.status in ("complete", "failed"):
+            if execution.status in ("complete", "failed", "decommissioned"):
                 return {
                     "job_id": job_id,
-                    "status": job.status,
+                    "status": execution.status,
                     "is_stale": False,
                     "minutes_since_progress": None,
-                    "last_progress_at": job.last_progress_at.isoformat() if job.last_progress_at else None,
+                    "last_progress_at": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
                     "health_status": "terminal",
                 }
 
             # Calculate staleness
-            if job.last_progress_at:
-                time_since_progress = now - job.last_progress_at
+            if execution.last_progress_at:
+                time_since_progress = now - execution.last_progress_at
                 minutes_since_progress = int(time_since_progress.total_seconds() / 60)
                 is_stale = time_since_progress.total_seconds() > stale_threshold
             else:
                 # No progress reported - use started_at or created_at
-                if job.started_at:
-                    time_since_progress = now - job.started_at
+                if execution.started_at:
+                    time_since_progress = now - execution.started_at
                 else:
-                    time_since_progress = now - job.created_at
+                    time_since_progress = now - execution.created_at
                 minutes_since_progress = int(time_since_progress.total_seconds() / 60)
                 is_stale = time_since_progress.total_seconds() > stale_threshold
 
@@ -248,10 +248,10 @@ async def get_job_health_status(
 
             return {
                 "job_id": job_id,
-                "status": job.status,
+                "status": execution.status,
                 "is_stale": is_stale,
                 "minutes_since_progress": minutes_since_progress,
-                "last_progress_at": job.last_progress_at.isoformat() if job.last_progress_at else None,
+                "last_progress_at": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
                 "health_status": health_status,
             }
 

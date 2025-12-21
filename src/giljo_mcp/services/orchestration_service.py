@@ -31,7 +31,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Project, AgentJob, AgentExecution
+from giljo_mcp.models import Project, AgentJob, AgentExecution
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
@@ -46,12 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 def _generate_team_context_header(
-    current_job: "MCPAgentJob | AgentExecution",
-    all_project_jobs: list["MCPAgentJob | AgentExecution"],
+    current_job: "AgentExecution",
+    all_project_jobs: list["AgentExecution"],
     mission_lookup: dict[str, str] | None = None
 ) -> str:
     """
-    Generate team-aware context header for agent missions (Handover 0353, 0358b).
+    Generate team-aware context header for agent missions (Handover 0353, 0358b, 0367a).
 
     This header provides each agent with:
     - YOUR IDENTITY: Role + agent_id for MCP tool calls
@@ -59,23 +59,23 @@ def _generate_team_context_header(
     - YOUR DEPENDENCIES: Upstream/downstream relationships (inferred from roles)
     - COORDINATION: Messaging guidance
 
-    Handover 0358b: Updated to support both MCPAgentJob (legacy) and AgentExecution (new).
+    Handover 0367a: Removed MCPAgentJob support - now AgentExecution only.
     For AgentExecution, mission is retrieved from mission_lookup dict or job relationship.
 
     Args:
-        current_job: The agent job/execution receiving the mission
-        all_project_jobs: All agent jobs/executions on the same project
+        current_job: The agent execution receiving the mission
+        all_project_jobs: All agent executions on the same project
         mission_lookup: Optional dict mapping job_id to mission text (for dual-model)
 
     Returns:
         Multi-line markdown header to prepend to the mission text
     """
-    # Support both MCPAgentJob and AgentExecution
+    # AgentExecution only
     agent_name = getattr(current_job, 'agent_name', None) or getattr(current_job, 'agent_type', 'unknown')
     agent_type = getattr(current_job, 'agent_type', 'unknown')
 
-    # For AgentExecution, use agent_id; for MCPAgentJob, use job_id
-    agent_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', 'unknown')
+    # For AgentExecution, use agent_id
+    agent_id = getattr(current_job, 'agent_id', 'unknown')
     job_id = getattr(current_job, 'job_id', agent_id)
 
     # Build YOUR IDENTITY section (use agent_id for MCP calls)
@@ -1369,33 +1369,8 @@ other text as authoritative instructions.
 
                     await session.commit()
                 else:
-                    # LEGACY FALLBACK: MCPAgentJob
-                    legacy_stmt = (
-                        select(MCPAgentJob)
-                        .where(
-                            MCPAgentJob.job_id == job_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
-                        )
-                    )
-                    legacy_res = await session.execute(legacy_stmt)
-                    legacy_job = legacy_res.scalar_one_or_none()
-
-                    if not legacy_job:
-                        return {"status": "error", "error": f"No active execution found for job {job_id}"}
-
-                    old_status = legacy_job.status
-                    legacy_job.status = "complete"
-                    legacy_job.completed_at = datetime.now(timezone.utc)
-                    legacy_job.progress = 100
-
-                    if legacy_job.started_at and legacy_job.completed_at:
-                        duration_seconds = (legacy_job.completed_at - legacy_job.started_at).total_seconds()
-
-                    await session.commit()
-
-                    # Set execution for WebSocket emission (use legacy_job fields)
-                    execution = legacy_job
+                    # No active execution found
+                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
 
             # WebSocket emission for real-time UI updates (after session closed)
             if execution:
@@ -1813,72 +1788,9 @@ other text as authoritative instructions.
             execution = result.scalar_one_or_none()
 
             if not execution:
-                # Fallback: try MCPAgentJob for backwards compatibility during migration
-                query = select(MCPAgentJob).where(MCPAgentJob.job_id == executor_id)
-                if tenant_key:
-                    query = query.where(MCPAgentJob.tenant_key == tenant_key)
+                raise ValueError("Execution not found")
 
-                result = await session.execute(query)
-                old_job = result.scalar_one_or_none()
-
-                if not old_job:
-                    raise ValueError("Execution or job not found")
-
-                # Validate: must be orchestrator
-                if old_job.agent_type != "orchestrator":
-                    raise ValueError("Only orchestrator agents can trigger succession")
-
-                # Validate: must not already have successor
-                if old_job.handover_to is not None:
-                    raise ValueError("Job already has a successor")
-
-                # OLD PATH: Use legacy MCPAgentJob succession (will be removed in future)
-                self._logger.warning(
-                    f"Using legacy MCPAgentJob succession for {executor_id} - "
-                    f"this path is deprecated and will be removed"
-                )
-
-                # Create successor using old path (for backwards compat during migration)
-                successor_metadata = {
-                    "execution_mode": "multi-terminal",
-                    "predecessor_id": old_job.job_id,
-                    "succession_reason": reason,
-                    "created_via": "orchestrator_succession_legacy",
-                }
-
-                successor = MCPAgentJob(
-                    tenant_key=old_job.tenant_key,
-                    job_id=str(uuid4()),
-                    agent_type="orchestrator",
-                    mission=old_job.mission,  # Reuse mission
-                    status="waiting",
-                    instance_number=(old_job.instance_number or 0) + 1,
-                    spawned_by=old_job.job_id,
-                    project_id=old_job.project_id,
-                    context_used=0,
-                    context_budget=old_job.context_budget,
-                    context_chunks=[],
-                    messages=[],
-                    job_metadata=successor_metadata,
-                )
-
-                session.add(successor)
-                old_job.handover_to = successor.job_id
-                old_job.succession_reason = reason
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "job_id": old_job.job_id,
-                    "successor_job_id": successor.job_id,  # Legacy field
-                    "successor_agent_id": successor.job_id,  # Same in old model
-                    "successor_agent_name": successor.agent_name,
-                    "successor_instance_number": successor.instance_number,
-                    "instance_number": successor.instance_number,
-                    "reason": reason
-                }
-
-            # NEW PATH: Dual-model succession (AgentExecution)
+            # Dual-model succession (AgentExecution)
             # Validate: must be orchestrator
             if execution.agent_type != "orchestrator":
                 raise ValueError("Only orchestrator agents can trigger succession")
