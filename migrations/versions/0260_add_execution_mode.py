@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = '0260_execution_mode'
-down_revision = None  # Set to latest migration revision
+down_revision = 'c972fded3b0e'  # Branch from same parent as d5a6385e1ff2
 branch_labels = None
 depends_on = None
 
