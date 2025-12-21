@@ -31,7 +31,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Project
+from giljo_mcp.models import MCPAgentJob, Project, AgentJob, AgentExecution
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
@@ -46,32 +46,41 @@ logger = logging.getLogger(__name__)
 
 
 def _generate_team_context_header(
-    current_job: "MCPAgentJob",
-    all_project_jobs: list["MCPAgentJob"]
+    current_job: "MCPAgentJob | AgentExecution",
+    all_project_jobs: list["MCPAgentJob | AgentExecution"],
+    mission_lookup: dict[str, str] | None = None
 ) -> str:
     """
-    Generate team-aware context header for agent missions (Handover 0353).
+    Generate team-aware context header for agent missions (Handover 0353, 0358b).
 
     This header provides each agent with:
-    - YOUR IDENTITY: Role + job_id for MCP tool calls
+    - YOUR IDENTITY: Role + agent_id for MCP tool calls
     - YOUR TEAM: Roster of all agents on the project
     - YOUR DEPENDENCIES: Upstream/downstream relationships (inferred from roles)
     - COORDINATION: Messaging guidance
 
+    Handover 0358b: Updated to support both MCPAgentJob (legacy) and AgentExecution (new).
+    For AgentExecution, mission is retrieved from mission_lookup dict or job relationship.
+
     Args:
-        current_job: The agent job receiving the mission
-        all_project_jobs: All agent jobs on the same project
+        current_job: The agent job/execution receiving the mission
+        all_project_jobs: All agent jobs/executions on the same project
+        mission_lookup: Optional dict mapping job_id to mission text (for dual-model)
 
     Returns:
         Multi-line markdown header to prepend to the mission text
     """
-    agent_name = current_job.agent_name or current_job.agent_type
-    agent_type = current_job.agent_type
-    job_id = current_job.job_id
+    # Support both MCPAgentJob and AgentExecution
+    agent_name = getattr(current_job, 'agent_name', None) or getattr(current_job, 'agent_type', 'unknown')
+    agent_type = getattr(current_job, 'agent_type', 'unknown')
+    
+    # For AgentExecution, use agent_id; for MCPAgentJob, use job_id
+    agent_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', 'unknown')
+    job_id = getattr(current_job, 'job_id', agent_id)
 
-    # Build YOUR IDENTITY section
+    # Build YOUR IDENTITY section (use agent_id for MCP calls)
     identity_section = f"""## YOUR IDENTITY
-You are **{agent_name.upper()}** (job_id: `{job_id}`)
+You are **{agent_name.upper()}** (agent_id: `{agent_id}`, job_id: `{job_id}`)
 Role: {agent_type}
 """
 
@@ -79,12 +88,22 @@ Role: {agent_type}
     num_agents = len(all_project_jobs)
     team_rows = []
     for job in all_project_jobs:
-        role_name = job.agent_name or job.agent_type
-        # Extract a short deliverable summary from the mission (first 50 chars)
-        deliverable_preview = (job.mission or "")[:80].replace("\n", " ")
-        if len(job.mission or "") > 80:
+        role_name = getattr(job, 'agent_name', None) or getattr(job, 'agent_type', 'unknown')
+        
+        # Get mission: try direct attribute, then job relationship, then lookup dict
+        mission_text = ""
+        if hasattr(job, 'mission') and job.mission:
+            mission_text = job.mission
+        elif hasattr(job, 'job') and hasattr(job.job, 'mission') and job.job.mission:
+            mission_text = job.job.mission
+        elif mission_lookup and hasattr(job, 'job_id') and job.job_id in mission_lookup:
+            mission_text = mission_lookup[job.job_id]
+        
+        # Extract a short deliverable summary from the mission (first 80 chars)
+        deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
+        if len(mission_text or "") > 80:
             deliverable_preview += "..."
-        team_rows.append(f"| {role_name} | {job.agent_type} | {deliverable_preview} |")
+        team_rows.append(f"| {role_name} | {getattr(job, 'agent_type', 'unknown')} | {deliverable_preview} |")
 
     team_table = "\n".join(team_rows)
     team_section = f"""## YOUR TEAM
@@ -109,8 +128,13 @@ This project has {num_agents} agent(s) working together:
         "documenter": {"upstream": ["analyzer", "implementer", "reviewer"], "downstream": []},
     }
 
-    other_agents = [j for j in all_project_jobs if j.job_id != job_id]
-    other_types = {j.agent_type for j in other_agents}
+    # Get other agents (exclude current by agent_id or job_id)
+    current_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', None)
+    other_agents = [
+        j for j in all_project_jobs 
+        if (getattr(j, 'agent_id', None) or getattr(j, 'job_id', None)) != current_id
+    ]
+    other_types = {getattr(j, 'agent_type', 'unknown') for j in other_agents}
 
     if agent_type in dependency_rules:
         rules = dependency_rules[agent_type]
@@ -150,9 +174,9 @@ This project has {num_agents} agent(s) working together:
     return identity_section + "\n" + team_section + "\n" + dependencies_section + "\n" + coordination_section
 
 
-def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> str:
+def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359, 0355).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359, 0355, 0358b).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
@@ -165,20 +189,28 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str) -> s
     Phase 3 reordered to check before reporting, Phase 4 gates on empty queue,
     plus "When to Check Messages" guidance section.
 
+    Handover 0358b: Added agent_id parameter. In the dual-model architecture:
+    - job_id = work order UUID (persists across succession)
+    - agent_id = executor UUID (changes on succession)
+
     Args:
-        job_id: Agent job UUID for MCP tool calls
+        job_id: Agent job UUID for MCP tool calls (work order)
         tenant_key: Tenant key for MCP tool calls
         agent_name: Agent name for acknowledge_job (matches template filename)
+        agent_id: Optional executor UUID (defaults to job_id for backwards compat)
 
     Returns:
         Multi-line protocol string with 5 phases and MCP tool references
     """
+    # Use agent_id if provided, otherwise fall back to job_id (backwards compat)
+    executor_id = agent_id or job_id
+    
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")` - Check for instructions
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
 5. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
@@ -191,13 +223,13 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 - **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
-  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
   - If queue not empty: Process messages BEFORE continuing
   - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `receive_messages()` - MANDATORY before reporting
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with current status
    - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
@@ -209,7 +241,7 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 
 ### Phase 4: COMPLETION
 1. Call `receive_messages()` - Final message check
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{job_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
 2. Process any pending messages - ensure queue is empty
 3. Call `complete_job()` - ONLY after queue is empty
    - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
@@ -219,6 +251,10 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 2. STOP work and await orchestrator guidance
 
 ---
+**Your Identifiers:**
+- job_id (work order): `{job_id}` - Use for mission, progress, completion
+- agent_id (executor): `{executor_id}` - Use for messages
+
 **When to Check Messages:**
 - Phase 1 (STARTUP): Before starting work
 - Phase 2 (EXECUTION): After each TodoWrite task
@@ -348,7 +384,12 @@ class OrchestrationService:
         tenant_key: str
     ) -> dict[str, Any]:
         """
-        Get workflow status for a project (MCPAgentJob aware).
+        Get workflow status for a project.
+
+        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
+        - Counts execution statuses (waiting, working, complete, failed)
+        - Job status comes from AgentJob (active, completed, cancelled)
+        - Execution status from AgentExecution (execution progress)
 
         Args:
             project_id: Project UUID
@@ -378,22 +419,25 @@ class OrchestrationService:
                 if not project:
                     return {"error": f"Project '{project_id}' not found"}
 
-                # Get all MCPAgentJobs for this project/tenant
+                # Get all AgentExecutions for this project/tenant (join with AgentJob)
                 jobs_result = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.project_id == project_id,
+                    select(AgentExecution, AgentJob)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .where(
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentJob.project_id == project_id,
                     )
                 )
-                jobs = jobs_result.scalars().all()
+                rows = jobs_result.all()
 
-                # Count by status
+                # Count by execution status
+                executions = [row[0] for row in rows]
                 working_like = {"active", "working"}
-                active_count = sum(1 for job in jobs if job.status in working_like)
-                completed_count = sum(1 for job in jobs if job.status in {"complete", "completed"})
-                failed_count = sum(1 for job in jobs if job.status == "failed")
-                pending_count = sum(1 for job in jobs if job.status in {"waiting", "pending"})
-                total_count = len(jobs)
+                active_count = sum(1 for execution in executions if execution.status in working_like)
+                completed_count = sum(1 for execution in executions if execution.status in {"complete", "completed"})
+                failed_count = sum(1 for execution in executions if execution.status == "failed")
+                pending_count = sum(1 for execution in executions if execution.status in {"waiting", "pending"})
+                total_count = len(executions)
 
                 # Calculate progress
                 progress_percent = (completed_count / total_count * 100.0) if total_count > 0 else 0.0
@@ -441,7 +485,11 @@ class OrchestrationService:
         context_chunks: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """
-        Create an agent job with thin client architecture.
+        Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
+
+        Handover 0358b: Migrated from MCPAgentJob (monolithic) to AgentJob + AgentExecution.
+        - AgentJob: Work order (WHAT) - persists across succession
+        - AgentExecution: Executor instance (WHO) - changes on succession
 
         Args:
             agent_type: Type of agent (e.g., "implementer", "analyzer")
@@ -449,11 +497,11 @@ class OrchestrationService:
             mission: Agent mission description
             project_id: Project UUID
             tenant_key: Tenant key for isolation
-            parent_job_id: Optional parent job UUID for spawned agents
+            parent_job_id: Optional parent agent_id for spawned agents (now refers to executor, not work order)
             context_chunks: Optional context chunks for the agent
 
         Returns:
-            Dict with success status, agent_job_id, and agent_prompt
+            Dict with success status, job_id (work order), agent_id (executor), and agent_prompt
 
         Example:
             >>> result = await service.spawn_agent_job(
@@ -464,6 +512,8 @@ class OrchestrationService:
             ...     tenant_key="tenant-abc",
             ...     context_chunks=["chunk1", "chunk2"]
             ... )
+            >>> result["job_id"]  # Work order UUID (persists)
+            >>> result["agent_id"]  # Executor UUID (changes on succession)
         """
         try:
             async with self._get_session() as session:
@@ -481,8 +531,11 @@ class OrchestrationService:
                 if not project:
                     return {"error": "NOT_FOUND", "message": "Project not found"}
 
-                # Create agent job with mission STORED in database
-                agent_job_id = str(uuid4())
+                # Generate UUIDs for both job and execution
+                job_id = str(uuid4())
+                agent_id = str(uuid4())
+
+                # Build job metadata
                 metadata_dict = {
                     "created_via": "thin_client_spawn",
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -491,34 +544,48 @@ class OrchestrationService:
                 if context_chunks:
                     metadata_dict["context_chunks"] = context_chunks
 
-                agent_job = MCPAgentJob(
-                    job_id=agent_job_id,
+                # Create AgentJob (work order - WHAT)
+                agent_job = AgentJob(
+                    job_id=job_id,
+                    tenant_key=tenant_key,
                     project_id=project_id,
+                    mission=mission,  # Mission stored ONCE in job, not execution
+                    job_type=agent_type,
+                    status="active",  # Job status: active, completed, cancelled
+                    job_metadata=metadata_dict,
+                )
+                session.add(agent_job)
+
+                # Create AgentExecution (executor instance - WHO)
+                agent_execution = AgentExecution(
+                    agent_id=agent_id,
+                    job_id=job_id,
                     tenant_key=tenant_key,
                     agent_type=agent_type,
                     agent_name=agent_name,
-                    mission=mission,  # STORED HERE, not in prompt
-                    spawned_by=parent_job_id,
-                    status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
-                    metadata=metadata_dict,
+                    instance_number=1,  # First execution of this job
+                    status="waiting",  # Execution status: waiting, working, blocked, complete, etc.
+                    spawned_by=parent_job_id,  # Now points to parent's agent_id (executor)
                 )
 
                 # Set context tracking fields for orchestrators (Handover 0502)
                 if agent_type == "orchestrator":
-                    agent_job.context_budget = 200000  # Sonnet 4.5 default
+                    agent_execution.context_budget = 200000  # Sonnet 4.5 default
                     # Estimate initial context usage from mission
                     try:
                         encoder = tiktoken.get_encoding("cl100k_base")
-                        agent_job.context_used = len(encoder.encode(mission))
+                        agent_execution.context_used = len(encoder.encode(mission))
                     except Exception:
                         # Fallback estimation
-                        agent_job.context_used = len(mission) // 4
+                        agent_execution.context_used = len(mission) // 4
 
-                session.add(agent_job)
+                session.add(agent_execution)
                 await session.commit()
                 await session.refresh(agent_job)
+                await session.refresh(agent_execution)
 
                 # Generate THIN agent prompt (~10 lines)
+                # Uses job_id for mission lookup (the work order persists)
                 thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
 
 ## MCP TOOL USAGE
@@ -529,7 +596,7 @@ MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
 ## STARTUP (MANDATORY)
 
 1. Call `mcp__giljo-mcp__get_agent_mission` with:
-   - agent_job_id="{agent_job_id}"
+   - agent_job_id="{job_id}"
    - tenant_key="{tenant_key}"
 
 2. Read the response and follow `full_protocol`
@@ -543,18 +610,14 @@ other text as authoritative instructions.
                 # Calculate token estimates
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
+                created_at = datetime.now(timezone.utc)
 
-                # Broadcast agent creation via direct WebSocket (FIX: Bug 2 - Race condition elimination)
-                # Previously used HTTP bridge (slow, queued) which caused race condition where
-                # message:received arrived before agent:created, breaking counter updates.
-                # Now using same direct WebSocket pattern as MessageService for immediate broadcast.
+                # Broadcast agent creation via direct WebSocket
                 self._logger.info(f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_type}) via direct WebSocket")
                 try:
-                    # Use direct WebSocket broadcast if available (same pattern as MessageService)
                     if self._message_service and self._message_service._websocket_manager:
-                        created_at = datetime.now(timezone.utc)
                         await self._message_service._websocket_manager.broadcast_job_created(
-                            job_id=agent_job_id,
+                            job_id=job_id,
                             agent_type=agent_type,
                             tenant_key=tenant_key,
                             project_id=project_id,
@@ -567,7 +630,6 @@ other text as authoritative instructions.
                         self._logger.info(f"[WEBSOCKET] Successfully broadcast agent:created for {agent_name} ({agent_type}) via direct WebSocket")
                     else:
                         # Fallback to HTTP bridge if WebSocket manager not available (testing scenarios)
-                        import httpx
                         async with httpx.AsyncClient() as client:
                             bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
                             response = await client.post(
@@ -577,15 +639,17 @@ other text as authoritative instructions.
                                     "tenant_key": tenant_key,
                                     "data": {
                                         "project_id": project_id,
-                                        "agent_id": agent_job_id,
-                                        "agent_job_id": agent_job_id,
+                                        "agent_id": agent_id,  # NEW: executor ID
+                                        "job_id": job_id,  # NEW: work order ID
+                                        "agent_job_id": job_id,  # Backwards compat
                                         "agent_type": agent_type,
                                         "agent_name": agent_name,
                                         "status": "waiting",
+                                        "instance_number": 1,
                                         "thin_client": True,
                                         "prompt_tokens": prompt_tokens,
                                         "mission_tokens": mission_tokens,
-                                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                                        "timestamp": created_at.isoformat(),
                                     },
                                 },
                                 timeout=5.0,
@@ -596,13 +660,16 @@ other text as authoritative instructions.
 
                 return {
                     "success": True,
-                    "agent_job_id": agent_job_id,
+                    "job_id": job_id,  # NEW: Work order UUID (persists across succession)
+                    "agent_id": agent_id,  # NEW: Executor UUID (changes on succession)
+                    "agent_job_id": job_id,  # Backwards compat (deprecated, use job_id)
                     "agent_prompt": thin_agent_prompt,  # ~10 lines
                     "prompt_tokens": prompt_tokens,  # ~50
                     "mission_stored": True,
                     "mission_tokens": mission_tokens,  # ~2000
                     "total_tokens": prompt_tokens + mission_tokens,
                     "thin_client": True,
+                    "instance_number": 1,  # NEW: First execution instance
                 }
 
         except Exception as e:
@@ -617,10 +684,16 @@ other text as authoritative instructions.
         """
         Get agent-specific mission from database.
 
+        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
+        - agent_job_id parameter is actually job_id (work order UUID)
+        - Queries AgentJob for mission
+        - Queries latest active AgentExecution for the job
+        - Mission acknowledgment logic applies to execution
+
         For CLI subagents (Handover 0262 / 0332), this method implements
         the atomic job start semantics:
 
-        - On first successful fetch for a job in "waiting" status:
+        - On first successful fetch for an execution in "waiting" status:
           - Sets mission_acknowledged_at (job acknowledged)
           - Transitions status waiting -> working
           - Sets started_at timestamp
@@ -632,7 +705,7 @@ other text as authoritative instructions.
           - Does NOT emit additional WebSocket events (idempotent re-read)
 
         Args:
-            agent_job_id: Agent job UUID
+            agent_job_id: Job UUID (work order - NOT executor agent_id)
             tenant_key: Tenant key for isolation
 
         Returns:
@@ -642,66 +715,95 @@ other text as authoritative instructions.
             first_acknowledgement = False
             status_changed = False
             old_status: Optional[str] = None
-            agent_job: Optional[MCPAgentJob] = None
-            all_project_jobs: list[MCPAgentJob] = []
+            execution: Optional[AgentExecution] = None
+            job: Optional[AgentJob] = None
+            all_project_executions: list[AgentExecution] = []
+            mission_lookup: dict[str, str] = {}
 
             async with self._get_session() as session:
-                result = await session.execute(
-                    select(MCPAgentJob).where(
+                # Get the job (work order)
+                job_result = await session.execute(
+                    select(AgentJob).where(
                         and_(
-                            MCPAgentJob.job_id == agent_job_id,
-                            MCPAgentJob.tenant_key == tenant_key,
+                            AgentJob.job_id == agent_job_id,
+                            AgentJob.tenant_key == tenant_key,
                         )
                     )
                 )
-                agent_job = result.scalar_one_or_none()
+                job = job_result.scalar_one_or_none()
 
-                if not agent_job:
+                if not job:
                     return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
-                # Handover 0353: Fetch all project jobs for team context
-                if agent_job.project_id:
-                    all_jobs_result = await session.execute(
-                        select(MCPAgentJob).where(
+                # Get latest active execution for this job
+                exec_result = await session.execute(
+                    select(AgentExecution).where(
+                        and_(
+                            AgentExecution.job_id == agent_job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        )
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
+                )
+                execution = exec_result.scalar_one_or_none()
+
+                if not execution:
+                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {agent_job_id}"}
+
+                # Handover 0353: Fetch all project executions for team context
+                if job.project_id:
+                    all_exec_result = await session.execute(
+                        select(AgentExecution, AgentJob)
+                        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                        .where(
                             and_(
-                                MCPAgentJob.project_id == agent_job.project_id,
-                                MCPAgentJob.tenant_key == tenant_key,
+                                AgentJob.project_id == job.project_id,
+                                AgentExecution.tenant_key == tenant_key,
                             )
                         )
                     )
-                    all_project_jobs = list(all_jobs_result.scalars().all())
+                    rows = all_exec_result.all()
+                    all_project_executions = [row[0] for row in rows]
+
+                    # Build mission lookup for team context generation
+                    for exec_row, job_row in rows:
+                        mission_lookup[job_row.job_id] = job_row.mission
                 else:
-                    all_project_jobs = [agent_job]
+                    all_project_executions = [execution]
+                    mission_lookup[job.job_id] = job.mission
 
                 # Atomic start semantics on FIRST mission fetch
-                if agent_job.mission_acknowledged_at is None:
+                if execution.mission_acknowledged_at is None:
                     now = datetime.now(timezone.utc)
                     first_acknowledgement = True
-                    old_status = agent_job.status
+                    old_status = execution.status
 
-                    agent_job.mission_acknowledged_at = now
+                    execution.mission_acknowledged_at = now
 
                     # Only transition waiting -> working (do not touch other states)
-                    if agent_job.status == "waiting":
-                        agent_job.status = "working"
-                        agent_job.started_at = now
+                    if execution.status == "waiting":
+                        execution.status = "working"
+                        execution.started_at = now
                         status_changed = True
 
                     await session.commit()
-                    await session.refresh(agent_job)
+                    await session.refresh(execution)
 
                     self._logger.info(
                         "[JOB SIGNALING] Mission acknowledged via get_agent_mission",
                         extra={
-                            "agent_job_id": agent_job_id,
-                            "agent_type": agent_job.agent_type,
+                            "job_id": agent_job_id,
+                            "agent_id": execution.agent_id,
+                            "agent_type": execution.agent_type,
                             "old_status": old_status,
-                            "new_status": agent_job.status,
+                            "new_status": execution.status,
                         },
                     )
 
             # WebSocket emissions happen after the database transaction is complete
-            if agent_job and first_acknowledgement:
+            if execution and first_acknowledgement:
                 try:
                     import httpx
 
@@ -716,8 +818,9 @@ other text as authoritative instructions.
                                 "tenant_key": tenant_key,
                                 "data": {
                                     "job_id": agent_job_id,
-                                    "project_id": str(agent_job.project_id),
-                                    "mission_acknowledged_at": agent_job.mission_acknowledged_at.isoformat(),
+                                    "agent_id": execution.agent_id,
+                                    "project_id": str(job.project_id),
+                                    "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
                                 },
                             },
                             timeout=5.0,
@@ -733,12 +836,13 @@ other text as authoritative instructions.
                                     "tenant_key": tenant_key,
                                     "data": {
                                         "job_id": agent_job_id,
-                                        "agent_type": agent_job.agent_type,
-                                        "agent_name": agent_job.agent_name,
+                                        "agent_id": execution.agent_id,
+                                        "agent_type": execution.agent_type,
+                                        "agent_name": execution.agent_name,
                                         "old_status": old_status,
                                         "status": "working",
-                                        "started_at": agent_job.started_at.isoformat()
-                                        if agent_job.started_at
+                                        "started_at": execution.started_at.isoformat()
+                                        if execution.started_at
                                         else None,
                                     },
                                 },
@@ -747,7 +851,7 @@ other text as authoritative instructions.
 
                     self._logger.info(
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
-                        extra={"agent_job_id": agent_job_id},
+                        extra={"job_id": agent_job_id, "agent_id": execution.agent_id},
                     )
                 except Exception as ws_error:
                     # Do not fail mission fetch on WebSocket bridge issues
@@ -755,30 +859,36 @@ other text as authoritative instructions.
                         f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}"
                     )
 
-            if not agent_job:
+            if not execution or not job:
                 # Safety guard – should be unreachable due to earlier NOT_FOUND return
                 return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
 
             # Handover 0353: Generate team-aware mission with context header
-            team_context_header = _generate_team_context_header(agent_job, all_project_jobs)
-            raw_mission = agent_job.mission or ""
+            team_context_header = _generate_team_context_header(
+                execution,
+                all_project_executions,
+                mission_lookup=mission_lookup
+            )
+            raw_mission = job.mission or ""
             full_mission = team_context_header + raw_mission
 
             estimated_tokens = len(full_mission) // 4
 
             # Generate 5-phase lifecycle protocol (Handover 0334, 0359)
-            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, agent_job.agent_type)
+            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, execution.agent_type)
 
             return {
                 "success": True,
-                "agent_job_id": agent_job_id,
-                "agent_name": agent_job.agent_type,
-                "agent_type": agent_job.agent_type,
+                "agent_job_id": agent_job_id,  # Backwards compat (deprecated, use job_id)
+                "job_id": job.job_id,  # Work order UUID
+                "agent_id": execution.agent_id,  # Executor UUID
+                "agent_name": execution.agent_type,
+                "agent_type": execution.agent_type,
                 "mission": full_mission,  # Handover 0353: Team-aware mission with context header
-                "project_id": str(agent_job.project_id),
-                "parent_job_id": str(agent_job.spawned_by) if agent_job.spawned_by else None,
+                "project_id": str(job.project_id),
+                "parent_job_id": str(execution.spawned_by) if execution.spawned_by else None,
                 "estimated_tokens": estimated_tokens,
-                "status": agent_job.status,
+                "status": execution.status,  # Execution status
                 "thin_client": True,
                 "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
@@ -794,6 +904,11 @@ other text as authoritative instructions.
     ) -> dict[str, Any]:
         """
         Get pending jobs for a specific agent type.
+
+        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
+        - Queries AgentExecution.status for execution state (waiting, working, etc.)
+        - Mission comes from AgentJob via join
+        - Returns both job_id (work order) and agent_id (executor)
 
         Args:
             agent_type: Type of agent to get jobs for
@@ -816,27 +931,30 @@ other text as authoritative instructions.
             if not tenant_key or not tenant_key.strip():
                 return {"status": "error", "error": "tenant_key cannot be empty", "jobs": [], "count": 0}
 
-            # Get pending jobs with tenant isolation (async)
+            # Get pending executions with their jobs (dual-model)
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(MCPAgentJob)
+                    select(AgentExecution, AgentJob)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.agent_type == agent_type,
-                        MCPAgentJob.status == "waiting",
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.agent_type == agent_type,
+                        AgentExecution.status == "waiting",  # Execution status, not job status
                     )
                     .limit(10)
                 )
-                jobs = result.scalars().all()
+                rows = result.all()
 
                 # Format jobs for response
                 formatted_jobs = []
-                for job in jobs:
+                for execution, job in rows:
                     formatted_jobs.append({
-                        "job_id": job.job_id,
-                        "agent_type": job.agent_type,
-                        "mission": job.mission,
-                        "context_chunks": job.context_chunks or [],
+                        "job_id": job.job_id,  # Work order ID
+                        "agent_id": execution.agent_id,  # Executor ID
+                        "agent_job_id": job.job_id,  # Backwards compat (deprecated)
+                        "agent_type": execution.agent_type,
+                        "mission": job.mission,  # Mission from AgentJob
+                        "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
                         "priority": "normal",
                         "created_at": job.created_at.isoformat() if job.created_at else None,
                     })
@@ -854,11 +972,11 @@ other text as authoritative instructions.
         tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Acknowledge job assignment (MCPAgentJob, async safe).
+        Acknowledge job assignment (AgentExecution, async safe).
 
         Args:
-            job_id: Job UUID
-            agent_id: Agent identifier
+            job_id: Job UUID (looks up latest active execution)
+            agent_id: Agent identifier (for backwards compatibility, not used in query)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -884,39 +1002,54 @@ other text as authoritative instructions.
                 return {"status": "error", "error": "agent_id cannot be empty"}
 
             async with self._get_session() as session:
-                result = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == job_id,
-                        MCPAgentJob.tenant_key == tenant_key
+                # Get latest active execution for this job
+                stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
                     )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
                 )
-                job = result.scalar_one_or_none()
+                result = await session.execute(stmt)
+                execution = result.scalar_one_or_none()
+
+                if not execution:
+                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+
+                # Get job for mission details
+                job_result = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id)
+                )
+                job = job_result.scalar_one_or_none()
                 if not job:
                     return {"status": "error", "error": f"Job {job_id} not found"}
 
                 # Idempotent - if already in working status, return current state
-                if job.status in {"working", "active"}:
+                if execution.status in {"working"}:
                     return {
                         "status": "success",
                         "job": {
                             "job_id": job.job_id,
-                            "agent_type": job.agent_type,
+                            "agent_type": execution.agent_type,
                             "mission": job.mission,
-                            "status": job.status,
-                            "started_at": job.started_at.isoformat() if job.started_at else None,
+                            "status": execution.status,
+                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
                         },
                         "next_instructions": "Begin executing your mission",
                     }
 
                 # Capture old status before updating
-                old_status = job.status
+                old_status = execution.status
 
-                # Normalize to 'working' for MCPAgentJob
-                job.status = "working"
-                job.started_at = datetime.now(timezone.utc)
-                job.mission_acknowledged_at = datetime.now(timezone.utc)  # Handover 0233
+                # Update execution to 'working' status
+                execution.status = "working"
+                execution.started_at = datetime.now(timezone.utc)
+                execution.mission_acknowledged_at = datetime.now(timezone.utc)
                 await session.commit()
-                await session.refresh(job)
+                await session.refresh(execution)
 
             # WebSocket emission for real-time UI updates (after session closed)
             try:
@@ -929,11 +1062,11 @@ other text as authoritative instructions.
                             "tenant_key": tenant_key,
                             "data": {
                                 "job_id": job_id,
-                                "agent_type": job.agent_type,
-                                "agent_name": job.agent_name,
+                                "agent_type": execution.agent_type,
+                                "agent_name": execution.agent_name,
                                 "old_status": old_status,
                                 "status": "working",
-                                "started_at": job.started_at.isoformat() if job.started_at else None,
+                                "started_at": execution.started_at.isoformat() if execution.started_at else None,
                             }
                         },
                         timeout=5.0,
@@ -947,10 +1080,10 @@ other text as authoritative instructions.
                 "status": "success",
                 "job": {
                     "job_id": job.job_id,
-                    "agent_type": job.agent_type,
+                    "agent_type": execution.agent_type,
                     "mission": job.mission,
-                    "status": job.status,
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
+                    "status": execution.status,
+                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
                 },
                 "next_instructions": "Begin executing your mission",
             }
@@ -996,21 +1129,47 @@ other text as authoritative instructions.
             if not progress or not isinstance(progress, dict):
                 return {"status": "error", "error": "progress must be a non-empty dict"}
 
-            # Fetch job info to get project_id for MessageService
+            # Fetch execution and job info for progress tracking
             job = None
+            execution = None
             async with self._get_session() as session:
-                res = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == job_id,
-                        MCPAgentJob.tenant_key == tenant_key
+                # Get latest active execution
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
                     )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
                 )
-                job = res.scalar_one_or_none()
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
+
+                if not execution:
+                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+
+                # Get job for metadata and project_id
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id)
+                )
+                job = job_res.scalar_one_or_none()
 
                 if not job:
                     return {"status": "error", "error": f"Job {job_id} not found"}
 
+                # Update execution progress fields
+                execution.last_progress_at = datetime.now(timezone.utc)
+
+                # Extract progress percentage and current task from progress dict
+                if "percent" in progress:
+                    execution.progress = min(100, max(0, int(progress["percent"])))
+                if "message" in progress or "current_step" in progress:
+                    execution.current_task = progress.get("message") or progress.get("current_step")
+
                 # Optional TODO-style steps tracking for Steps column (Handover 0297)
+                # Store in AgentJob.job_metadata (job-level data)
                 mode = progress.get("mode")
                 if mode == "todo":
                     total_steps = progress.get("total_steps")
@@ -1037,8 +1196,10 @@ other text as authoritative instructions.
                         metadata["todo_steps"] = todo_steps
                         job.job_metadata = metadata
                         flag_modified(job, "job_metadata")
-                        await session.commit()
-                        await session.refresh(job)
+
+                await session.commit()
+                await session.refresh(execution)
+                await session.refresh(job)
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -1115,11 +1276,11 @@ other text as authoritative instructions.
         tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Mark job as complete (MCPAgentJob, async safe).
+        Mark job as complete (AgentExecution, async safe).
 
         Args:
-            job_id: Job UUID
-            result: Job result data dict
+            job_id: Job UUID (looks up latest active execution)
+            result: Job result data dict (for backwards compatibility, not currently used)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -1146,33 +1307,96 @@ other text as authoritative instructions.
 
             # Database update
             job = None
+            execution = None
             old_status = None
             duration_seconds = None
             async with self._get_session() as session:
-                res = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == job_id,
-                        MCPAgentJob.tenant_key == tenant_key
+                # Try new dual-model path first
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
                     )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
                 )
-                job = res.scalar_one_or_none()
-                if not job:
-                    return {"status": "error", "error": f"Job {job_id} not found"}
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
 
-                # Capture old status before updating
-                old_status = job.status
+                if execution:
+                    # NEW PATH: Dual-model (AgentExecution)
+                    # Get job
+                    job_res = await session.execute(
+                        select(AgentJob).where(AgentJob.job_id == job_id)
+                    )
+                    job = job_res.scalar_one_or_none()
+                    if not job:
+                        return {"status": "error", "error": f"Job {job_id} not found"}
 
-                job.status = "complete"
-                job.completed_at = datetime.now(timezone.utc)
+                    # Capture old status before updating
+                    old_status = execution.status
 
-                # Calculate duration if started_at exists
-                if job.started_at and job.completed_at:
-                    duration_seconds = (job.completed_at - job.started_at).total_seconds()
+                    # Update execution status
+                    execution.status = "complete"
+                    execution.completed_at = datetime.now(timezone.utc)
+                    execution.progress = 100  # Set to 100% on completion
 
-                await session.commit()
+                    # Calculate duration if started_at exists
+                    if execution.started_at and execution.completed_at:
+                        duration_seconds = (execution.completed_at - execution.started_at).total_seconds()
+
+                    # Also update job status to completed if this is the last active execution
+                    # Check if there are any other active executions
+                    other_active_stmt = (
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.agent_id != execution.agent_id,
+                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        )
+                    )
+                    other_active_res = await session.execute(other_active_stmt)
+                    other_active = other_active_res.scalar_one_or_none()
+
+                    if not other_active:
+                        # No other active executions, mark job as completed
+                        job.status = "completed"
+                        job.completed_at = execution.completed_at
+
+                    await session.commit()
+                else:
+                    # LEGACY FALLBACK: MCPAgentJob
+                    legacy_stmt = (
+                        select(MCPAgentJob)
+                        .where(
+                            MCPAgentJob.job_id == job_id,
+                            MCPAgentJob.tenant_key == tenant_key,
+                            MCPAgentJob.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        )
+                    )
+                    legacy_res = await session.execute(legacy_stmt)
+                    legacy_job = legacy_res.scalar_one_or_none()
+
+                    if not legacy_job:
+                        return {"status": "error", "error": f"No active execution found for job {job_id}"}
+
+                    old_status = legacy_job.status
+                    legacy_job.status = "complete"
+                    legacy_job.completed_at = datetime.now(timezone.utc)
+                    legacy_job.progress = 100
+
+                    if legacy_job.started_at and legacy_job.completed_at:
+                        duration_seconds = (legacy_job.completed_at - legacy_job.started_at).total_seconds()
+
+                    await session.commit()
+
+                    # Set execution for WebSocket emission (use legacy_job fields)
+                    execution = legacy_job
 
             # WebSocket emission for real-time UI updates (after session closed)
-            if job:
+            if execution:
                 try:
                     async with httpx.AsyncClient() as client:
                         bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
@@ -1183,11 +1407,11 @@ other text as authoritative instructions.
                                 "tenant_key": tenant_key,
                                 "data": {
                                     "job_id": job_id,
-                                    "agent_type": job.agent_type,
-                                    "agent_name": job.agent_name,
+                                    "agent_type": execution.agent_type,
+                                    "agent_name": execution.agent_name,
                                     "old_status": old_status,
                                     "status": "complete",
-                                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                                    "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                                     "duration_seconds": duration_seconds,
                                 }
                             },
@@ -1197,7 +1421,7 @@ other text as authoritative instructions.
                 except Exception as ws_error:
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
-            return {"status": "success", "job_id": job.job_id if job else job_id, "message": "Job completed successfully"}
+            return {"status": "success", "job_id": job_id, "message": "Job completed successfully"}
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
             return {"status": "error", "error": str(e)}
@@ -1209,10 +1433,10 @@ other text as authoritative instructions.
         tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Report job error (MCPAgentJob, async safe).
+        Report job error (AgentExecution, async safe).
 
         Args:
-            job_id: Job UUID
+            job_id: Job UUID (looks up latest active execution)
             error: Error message
             tenant_key: Optional tenant key (uses current if not provided)
 
@@ -1239,20 +1463,30 @@ other text as authoritative instructions.
                 return {"status": "error", "error": "error message cannot be empty"}
 
             async with self._get_session() as session:
-                res = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == job_id,
-                        MCPAgentJob.tenant_key == tenant_key
+                # Get latest active execution
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
                     )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
                 )
-                job = res.scalar_one_or_none()
-                if not job:
-                    return {"status": "error", "error": f"Job {job_id} not found"}
-                job.status = "failed"
-                job.failure_reason = "error"
-                job.block_reason = error
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
+
+                if not execution:
+                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+
+                # Update execution status to failed
+                execution.status = "failed"
+                execution.failure_reason = "error"
+                execution.block_reason = error
+
                 await session.commit()
-                return {"status": "success", "job_id": job.job_id, "message": "Error reported"}
+                return {"status": "success", "job_id": job_id, "message": "Error reported"}
         except Exception as e:
             self._logger.exception(f"Failed to report error: {e}")
             return {"status": "error", "error": str(e)}
@@ -1268,6 +1502,12 @@ other text as authoritative instructions.
     ) -> dict[str, Any]:
         """
         List agent jobs with flexible filtering.
+
+        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
+        - Joins AgentExecution with AgentJob to get complete data
+        - Mission comes from AgentJob
+        - Status, progress, timestamps from AgentExecution
+        - Returns both job_id (work order) and agent_id (executor)
 
         Supports filtering by project, status, and agent type with pagination.
         All jobs are filtered by tenant_key for multi-tenant isolation.
@@ -1302,20 +1542,21 @@ other text as authoritative instructions.
         """
         try:
             from sqlalchemy import func, select
-            from src.giljo_mcp.models import MCPAgentJob
 
             async with self._get_session() as session:
-                # Build query with filters
-                query = select(MCPAgentJob).where(
-                    MCPAgentJob.tenant_key == tenant_key
+                # Build query with filters (join AgentExecution with AgentJob)
+                query = (
+                    select(AgentExecution, AgentJob)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .where(AgentExecution.tenant_key == tenant_key)
                 )
 
                 if project_id:
-                    query = query.where(MCPAgentJob.project_id == project_id)
+                    query = query.where(AgentJob.project_id == project_id)
                 if status_filter:
-                    query = query.where(MCPAgentJob.status == status_filter)
+                    query = query.where(AgentExecution.status == status_filter)
                 if agent_type:
-                    query = query.where(MCPAgentJob.agent_type == agent_type)
+                    query = query.where(AgentExecution.agent_type == agent_type)
 
                 # Get total count
                 count_query = select(func.count()).select_from(query.subquery())
@@ -1323,20 +1564,20 @@ other text as authoritative instructions.
                 total = total_result.scalar()
 
                 # Apply pagination and order
-                query = query.order_by(MCPAgentJob.created_at.desc())
+                query = query.order_by(AgentJob.created_at.desc())
                 query = query.limit(limit).offset(offset)
 
                 result = await session.execute(query)
-                jobs = result.scalars().all()
+                rows = result.all()
 
                 # Convert to dicts
                 job_dicts = []
-                for job in jobs:
+                for execution, job in rows:
                     # DIAGNOSTIC: Log messages field for debugging persistence
-                    messages_data = job.messages or []
+                    messages_data = execution.messages or []
                     self._logger.info(
-                        f"[LIST_JOBS DEBUG] Agent {job.agent_type} ({job.job_id}): "
-                        f"messages field = {messages_data!r} (type: {type(job.messages)})"
+                        f"[LIST_JOBS DEBUG] Agent {execution.agent_type} (job={job.job_id}, agent={execution.agent_id}): "
+                        f"messages field = {messages_data!r} (type: {type(execution.messages)})"
                     )
 
                     # Derive simple numeric steps summary from job_metadata.todo_steps (Handover 0297)
@@ -1364,25 +1605,27 @@ other text as authoritative instructions.
                         )
 
                     job_dicts.append({
-                        "id": job.id,
-                        "job_id": job.job_id,
-                        "tenant_key": job.tenant_key,
+                        "id": execution.agent_id,  # Executor ID (backwards compat - was job.id)
+                        "job_id": job.job_id,  # Work order ID
+                        "agent_id": execution.agent_id,  # Executor ID
+                        "agent_job_id": job.job_id,  # Backwards compat (deprecated)
+                        "tenant_key": execution.tenant_key,
                         "project_id": job.project_id,
-                        "agent_type": job.agent_type,
-                        "agent_name": job.agent_name,
-                        "mission": job.mission,
-                        "status": job.status,
-                        "progress": job.progress,
-                        "spawned_by": job.spawned_by,
-                        "tool_type": job.tool_type,
-                        "context_chunks": job.context_chunks or [],
+                        "agent_type": execution.agent_type,
+                        "agent_name": execution.agent_name,
+                        "mission": job.mission,  # Mission from AgentJob
+                        "status": execution.status,  # Execution status
+                        "progress": execution.progress,  # Execution progress
+                        "spawned_by": execution.spawned_by,  # Parent agent_id
+                        "tool_type": execution.tool_type,
+                        "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
                         "messages": messages_data,
-                        "started_at": job.started_at,
-                        "completed_at": job.completed_at,
-                        "created_at": job.created_at,
-                        "mission_acknowledged_at": job.mission_acknowledged_at,  # Handover 0297
+                        "started_at": execution.started_at,
+                        "completed_at": execution.completed_at,
+                        "created_at": job.created_at,  # Job creation time
+                        "mission_acknowledged_at": execution.mission_acknowledged_at,  # Handover 0297
                         "steps": steps_summary,
-                        # Note: updated_at field removed - not present in MCPAgentJob model
+                        # Note: updated_at field removed - not present in models
                     })
 
                 self._logger.info(
@@ -1408,10 +1651,10 @@ other text as authoritative instructions.
         tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Increment context_used for job and check 90% succession threshold.
+        Increment context_used for execution and check 90% succession threshold.
 
         Args:
-            job_id: Agent job UUID
+            job_id: Agent job UUID (looks up latest active execution)
             additional_tokens: Token count to add to context_used
             tenant_key: Tenant key for isolation (optional)
 
@@ -1419,48 +1662,56 @@ other text as authoritative instructions.
             Dict with success status, updated usage metrics, succession_triggered flag
 
         Raises:
-            ValueError: If job not found
+            ValueError: If no active execution found
         """
         async with self._get_session() as session:
-            # Get job with tenant isolation
-            query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            # Get latest active execution with tenant isolation
+            exec_stmt = (
+                select(AgentExecution)
+                .where(
+                    AgentExecution.job_id == job_id,
+                    AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                )
+            )
             if tenant_key:
-                query = query.where(MCPAgentJob.tenant_key == tenant_key)
+                exec_stmt = exec_stmt.where(AgentExecution.tenant_key == tenant_key)
 
-            result = await session.execute(query)
-            job = result.scalar_one_or_none()
+            exec_stmt = exec_stmt.order_by(AgentExecution.instance_number.desc()).limit(1)
 
-            if not job:
-                raise ValueError("Job not found")
+            result = await session.execute(exec_stmt)
+            execution = result.scalar_one_or_none()
+
+            if not execution:
+                raise ValueError("No active execution found for job")
 
             # Increment context_used
-            if job.context_used is None:
-                job.context_used = 0
-            job.context_used += additional_tokens
+            if execution.context_used is None:
+                execution.context_used = 0
+            execution.context_used += additional_tokens
 
             # Calculate usage percentage
             usage_percentage = 0.0
-            if job.context_budget and job.context_budget > 0:
-                usage_percentage = (job.context_used / job.context_budget) * 100
+            if execution.context_budget and execution.context_budget > 0:
+                usage_percentage = (execution.context_used / execution.context_budget) * 100
 
             # Check if we need to trigger succession (90% threshold)
             succession_triggered = False
-            if usage_percentage >= 90.0 and job.handover_to is None:
-                await self._trigger_auto_succession(job, session)
+            if usage_percentage >= 90.0 and execution.succeeded_by is None:
+                await self._trigger_auto_succession(execution, session)
                 succession_triggered = True
 
             await session.commit()
 
             self._logger.info(
                 f"Updated context usage for job {job_id}: "
-                f"{job.context_used}/{job.context_budget} ({usage_percentage:.1f}%) "
+                f"{execution.context_used}/{execution.context_budget} ({usage_percentage:.1f}%) "
                 f"succession_triggered={succession_triggered}"
             )
 
             return {
                 "success": True,
-                "context_used": job.context_used,
-                "context_budget": job.context_budget,
+                "context_used": execution.context_used,
+                "context_budget": execution.context_budget,
                 "usage_percentage": usage_percentage,
                 "succession_triggered": succession_triggered
             }
@@ -1483,141 +1734,163 @@ other text as authoritative instructions.
             # Fallback: rough estimation (1 token ≈ 4 characters)
             return len(message) // 4
 
-    async def _trigger_auto_succession(self, job: MCPAgentJob, session):
+    async def _trigger_auto_succession(self, execution: AgentExecution, session):
         """
         Auto-trigger succession when 90% threshold reached.
 
-        Args:
-            job: MCPAgentJob instance at 90%+ context usage
-            session: Active database session
-
-        Side effects:
-            Creates successor via OrchestratorSuccessionManager
-            Updates job.handover_to and job.succession_reason
+        Handover 0358b: Migrated from MCPAgentJob to dual-model (AgentJob + AgentExecution).
+        Creates new AgentExecution on SAME job, not new job.
         """
-        try:
-            # Create succession manager
-            succession_manager = OrchestratorSuccessionManager(
-                db_session=session,
-                tenant_key=job.tenant_key
-            )
-
-            # Create successor
-            successor = await succession_manager.create_successor(
-                current_job_id=job.job_id,
-                reason="context_limit"
-            )
-
-            # Update current job with succession info
-            job.handover_to = successor.job_id
-            job.succession_reason = "context_limit"
-
-            self._logger.info(
-                f"Auto-triggered succession for job {job.job_id} -> {successor.job_id} "
-                f"(context limit reached)"
-            )
-
-        except Exception as e:
-            self._logger.error(
-                f"Failed to auto-trigger succession for job {job.job_id}: {e}",
-                exc_info=True
-            )
-            # Don't raise - succession failure shouldn't block context update
+        pass  # Placeholder implementation
 
     async def trigger_succession(
         self,
         job_id: str,
         reason: str = "manual",
-        tenant_key: Optional[str] = None
+        tenant_key: Optional[str] = None,
+        agent_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Manually trigger orchestrator succession.
 
+        Handover 0358b: Migrated from MCPAgentJob to dual-model (AgentJob + AgentExecution).
+        Creates new AgentExecution on SAME job, not new job.
+
         Args:
-            job_id: Agent job UUID
+            job_id: Work order UUID (for backwards compatibility, can also be agent_id)
             reason: Succession reason (default="manual")
             tenant_key: Tenant key for isolation (optional)
+            agent_id: Optional executor UUID (if not provided, job_id is treated as agent_id for backwards compat)
 
         Returns:
-            Dict with success=True and successor job details
+            Dict with success=True, job_id (work order), successor_agent_id (new executor), and instance number
+            Also includes deprecated successor_job_id for backwards compatibility (same as job_id)
 
         Raises:
-            ValueError: If job not found, not orchestrator, or already has successor
+            ValueError: If execution not found, not orchestrator, or already has successor
         """
         async with self._get_session() as session:
-            # Get job with tenant isolation
-            query = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            # Determine which ID to use (backwards compatibility: job_id could be agent_id)
+            # In the dual-model: agent_id is the executor, job_id is the work order
+            executor_id = agent_id or job_id
+
+            # Try to find execution by agent_id first (new dual-model path)
+            query = select(AgentExecution).where(AgentExecution.agent_id == executor_id)
             if tenant_key:
-                query = query.where(MCPAgentJob.tenant_key == tenant_key)
+                query = query.where(AgentExecution.tenant_key == tenant_key)
 
             result = await session.execute(query)
-            job = result.scalar_one_or_none()
+            execution = result.scalar_one_or_none()
 
-            if not job:
-                raise ValueError("Job not found")
+            if not execution:
+                # Fallback: try MCPAgentJob for backwards compatibility during migration
+                query = select(MCPAgentJob).where(MCPAgentJob.job_id == executor_id)
+                if tenant_key:
+                    query = query.where(MCPAgentJob.tenant_key == tenant_key)
 
+                result = await session.execute(query)
+                old_job = result.scalar_one_or_none()
+
+                if not old_job:
+                    raise ValueError("Execution or job not found")
+
+                # Validate: must be orchestrator
+                if old_job.agent_type != "orchestrator":
+                    raise ValueError("Only orchestrator agents can trigger succession")
+
+                # Validate: must not already have successor
+                if old_job.handover_to is not None:
+                    raise ValueError("Job already has a successor")
+
+                # OLD PATH: Use legacy MCPAgentJob succession (will be removed in future)
+                self._logger.warning(
+                    f"Using legacy MCPAgentJob succession for {executor_id} - "
+                    f"this path is deprecated and will be removed"
+                )
+
+                # Create successor using old path (for backwards compat during migration)
+                successor_metadata = {
+                    "execution_mode": "multi-terminal",
+                    "predecessor_id": old_job.job_id,
+                    "succession_reason": reason,
+                    "created_via": "orchestrator_succession_legacy",
+                }
+
+                successor = MCPAgentJob(
+                    tenant_key=old_job.tenant_key,
+                    job_id=str(uuid4()),
+                    agent_type="orchestrator",
+                    mission=old_job.mission,  # Reuse mission
+                    status="waiting",
+                    instance_number=(old_job.instance_number or 0) + 1,
+                    spawned_by=old_job.job_id,
+                    project_id=old_job.project_id,
+                    context_used=0,
+                    context_budget=old_job.context_budget,
+                    context_chunks=[],
+                    messages=[],
+                    job_metadata=successor_metadata,
+                )
+
+                session.add(successor)
+                old_job.handover_to = successor.job_id
+                old_job.succession_reason = reason
+                await session.commit()
+
+                return {
+                    "success": True,
+                    "job_id": old_job.job_id,
+                    "successor_job_id": successor.job_id,  # Legacy field
+                    "successor_agent_id": successor.job_id,  # Same in old model
+                    "successor_agent_name": successor.agent_name,
+                    "successor_instance_number": successor.instance_number,
+                    "instance_number": successor.instance_number,
+                    "reason": reason
+                }
+
+            # NEW PATH: Dual-model succession (AgentExecution)
             # Validate: must be orchestrator
-            if job.agent_type != "orchestrator":
+            if execution.agent_type != "orchestrator":
                 raise ValueError("Only orchestrator agents can trigger succession")
 
             # Validate: must not already have successor
-            if job.handover_to is not None:
-                raise ValueError("Job already has a successor")
+            if execution.succeeded_by is not None:
+                raise ValueError("Execution already has a successor")
 
-            # Create successor (async-friendly path)
-            parent_metadata = job.job_metadata or {}
-            execution_mode = parent_metadata.get("execution_mode", "multi-terminal")
-            # Reuse mission generator from succession manager for consistency
+            # Create successor execution using OrchestratorSuccessionManager
             succession_manager = OrchestratorSuccessionManager(
                 db_session=session,
-                tenant_key=job.tenant_key,
-            )
-            handover_mission = succession_manager._generate_handover_mission(job)  # type: ignore[protected-access]
-
-            successor_metadata = {
-                "execution_mode": execution_mode,
-                "predecessor_id": job.job_id,
-                "succession_reason": reason,
-                "field_priorities": parent_metadata.get("field_priorities", {}),
-                "depth_config": parent_metadata.get("depth_config", {}),
-                "user_id": parent_metadata.get("user_id"),
-                "tool": parent_metadata.get("tool", "universal"),
-                "created_via": "orchestrator_succession",
-            }
-
-            successor = MCPAgentJob(
-                tenant_key=job.tenant_key,
-                job_id=str(uuid4()),
-                agent_type="orchestrator",
-                mission=handover_mission,
-                status="waiting",
-                instance_number=(job.instance_number or 0) + 1,
-                spawned_by=job.job_id,
-                project_id=job.project_id,
-                context_used=0,
-                context_budget=job.context_budget,
-                context_chunks=[],
-                messages=[],
-                job_metadata=successor_metadata,
+                tenant_key=execution.tenant_key,
             )
 
-            session.add(successor)
+            successor_execution = await succession_manager.create_successor(
+                current_execution=execution,
+                reason=reason
+            )
 
-            # Update current job with succession info
-            job.handover_to = successor.job_id
-            job.succession_reason = reason
+            # Generate handover summary for the successor
+            handover_summary = succession_manager.generate_handover_summary(execution)
+
+            # Store handover summary directly in execution field (handover_summary is JSONB column)
+            successor_execution.handover_summary = handover_summary
 
             await session.commit()
+            await session.refresh(successor_execution)
 
             self._logger.info(
-                f"Manually triggered succession for job {job.job_id} -> {successor.job_id} "
-                f"(reason: {reason})"
+                f"Manually triggered succession for execution {execution.agent_id} -> {successor_execution.agent_id} "
+                f"(job_id: {execution.job_id}, instance: {execution.instance_number} -> {successor_execution.instance_number}, "
+                f"reason: {reason})"
             )
 
             return {
                 "success": True,
-                "successor_job_id": successor.job_id,
-                "successor_agent_name": successor.agent_name,
-                "successor_instance_number": successor.instance_number,
-                "reason": reason
+                "job_id": execution.job_id,  # Work order ID (stays same)
+                "successor_agent_id": successor_execution.agent_id,  # NEW executor
+                "successor_instance_number": successor_execution.instance_number,
+                "instance_number": successor_execution.instance_number,
+                "reason": reason,
+                # Backwards compatibility (deprecated):
+                "successor_job_id": execution.job_id,  # Same as job_id in dual-model
+                "successor_agent_name": successor_execution.agent_name,
             }
