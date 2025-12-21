@@ -231,6 +231,17 @@ if status['percentage_used'] >= 0.9:
 | `MCPAgentJob.mission` | Orchestrator (AI) | Agent-specific work | "backend-tester: Test authentication endpoints with invalid tokens..." |
 | `Task.description` | Human (form/MCP) | Task details | "Research Redis caching strategies" |
 
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
+
 **DO NOT**:
 - ❌ Call `update_project_mission()` with user input (that's `description`)
 - ❌ Confuse `Task.description` with `Project.mission`
@@ -451,6 +462,17 @@ async def get_products(self):
 **Raw SQLAlchemy Pattern** (for advanced use cases):
 ```python
 # Direct database queries also require tenant_key filtering
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
+
 from src.giljo_mcp.models import MCPAgentJob
 
 jobs = session.query(MCPAgentJob).filter(

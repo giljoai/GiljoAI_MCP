@@ -87,7 +87,7 @@ from .projects import (
 
 # Agent models
 from .agents import (
-    MCPAgentJob,
+    MCPAgentJob as _MCPAgentJob,  # Import with underscore to allow wrapper
     AgentInteraction,
     Job,
 )
@@ -186,3 +186,29 @@ __all__ = [
     # Settings
     "Settings",
 ]
+
+
+# Handover 0358d: Deprecation warnings for MCPAgentJob
+# Use lazy evaluation via __getattr__ to emit warning on import
+_DEPRECATED_MODELS = {
+    "MCPAgentJob": _MCPAgentJob,
+}
+
+
+def __getattr__(name):
+    """Module-level __getattr__ for deprecation warnings on import.
+
+    Handover 0358d: Emit deprecation warning when MCPAgentJob is imported
+    via "from src.giljo_mcp.models import MCPAgentJob".
+    """
+    if name in _DEPRECATED_MODELS:
+        import warnings
+        warnings.warn(
+            f"{name} is deprecated. Use AgentJob and AgentExecution instead. "
+            "See Handover 0358 for migration guide. Will be removed in v4.0.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return _DEPRECATED_MODELS[name]
+
+    raise AttributeError(f"module 'src.giljo_mcp.models' has no attribute '{name}'")
