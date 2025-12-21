@@ -165,7 +165,8 @@ class TestLaunchProjectWithFullAgentTemplates:
         - Orchestrator must call fetch_context(categories=["agent_templates"]) to get full content
         - Minimal inline templates still present in agent_templates list
         """
-        from src.giljo_mcp.models import Product, Project, MCPAgentJob, AgentTemplate
+        from src.giljo_mcp.models import Product, Project, AgentTemplate
+        from src.giljo_mcp.models.agent_identity import AgentJob
         from src.giljo_mcp.auth.jwt_manager import JWTManager
         from sqlalchemy import update
 
@@ -244,12 +245,12 @@ class TestLaunchProjectWithFullAgentTemplates:
 
         orchestrator_job_id = data["orchestrator_job_id"]
 
-        # Verify orchestrator job was created
+        # Verify orchestrator job was created (Handover 0358a: Use AgentJob instead of MCPAgentJob)
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_job_id)
+                select(AgentJob).where(AgentJob.job_id == orchestrator_job_id)
             )
             orchestrator_job = result.scalar_one_or_none()
 
@@ -340,7 +341,7 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
         - context_fetch_instructions does NOT include agent_templates
         - Minimal inline templates still present (sufficient for type_only)
         """
-        from src.giljo_mcp.models import Product, Project, MCPAgentJob, AgentTemplate
+        from src.giljo_mcp.models import Product, Project, AgentTemplate
         from src.giljo_mcp.auth.jwt_manager import JWTManager
         from sqlalchemy import update
 
