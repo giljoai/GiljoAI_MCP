@@ -156,7 +156,7 @@ async def list_messages(
     """List all messages with optional filters
 
     Messages are retrieved from MessageService which handles both
-    Message table and legacy mcp_agent_jobs.messages JSONB.
+    Message table and agent_executions.messages JSONB.
     """
     from api.app import state
 
