@@ -142,7 +142,8 @@ async def get_call_counts(request: Request):
 async def get_system_statistics(request: Request):
     """Get overall system statistics"""
     from api.app import state
-    from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
+    from src.giljo_mcp.models import Message, Project, Task
+    from src.giljo_mcp.models.agent_identity import AgentExecution
 
     tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
@@ -160,9 +161,9 @@ async def get_system_statistics(request: Request):
                 select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "completed")
             )
 
-            # Get agent stats (using MCPAgentJob)
-            total_agents = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.tenant_key == tenant_key))
-            active_agents = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.tenant_key == tenant_key, MCPAgentJob.status.in_(['waiting', 'working'])))
+            # Get agent stats (using AgentExecution)
+            total_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
+            active_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(['waiting', 'working'])))
 
             # Get message stats
             total_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
@@ -182,9 +183,9 @@ async def get_system_statistics(request: Request):
             # Calculate uptime
             uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
 
-            # New metrics (using MCPAgentJob)
-            total_agents_spawned = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.tenant_key == tenant_key))
-            total_jobs_completed = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.tenant_key == tenant_key, MCPAgentJob.status == "complete"))
+            # New metrics (using AgentExecution)
+            total_agents_spawned = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
+            total_jobs_completed = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status == "complete"))
 
             return SystemStatsResponse(
                 total_projects=total_projects or 0,
@@ -222,7 +223,8 @@ async def get_project_statistics(
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
+            from src.giljo_mcp.models import Message, Project, Task
+            from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
             # Build query
             query = select(Project)
@@ -235,8 +237,16 @@ async def get_project_statistics(
 
             stats = []
             for project in projects:
-                # Get related counts (using MCPAgentJob)
-                agent_count = await session.scalar(select(func.count(MCPAgentJob.job_id)).where(MCPAgentJob.project_id == project.id))
+                # Get related counts (using AgentExecution joined to AgentJob)
+                agent_count = await session.scalar(
+                    select(func.count(AgentExecution.agent_id))
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .where(
+                        AgentJob.project_id == project.id,
+                        AgentJob.tenant_key == project.tenant_key,
+                        AgentExecution.tenant_key == project.tenant_key
+                    )
+                )
 
                 message_count = await session.scalar(
                     select(func.count(Message.id)).where(Message.project_id == project.id)
@@ -309,45 +319,50 @@ async def get_agent_statistics(
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.models import MCPAgentJob, Message
+            from src.giljo_mcp.models import Message
+            from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
-            # Build query (using MCPAgentJob)
-            query = select(MCPAgentJob)
+            # Build query (using AgentExecution)
+            query = select(AgentExecution)
+
+            # If filtering by project, need to join through AgentJob
             if project_id:
-                query = query.where(MCPAgentJob.project_id == project_id)
+                query = query.join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                query = query.where(AgentJob.project_id == project_id)
+
             if status:
-                # Map legacy status to MCPAgentJob status
+                # Map legacy status to AgentExecution status
                 if status == "active":
-                    query = query.where(MCPAgentJob.status.in_(['waiting', 'working']))
+                    query = query.where(AgentExecution.status.in_(['waiting', 'working']))
                 elif status == "idle":
-                    query = query.where(MCPAgentJob.status == 'waiting')
+                    query = query.where(AgentExecution.status == 'waiting')
                 elif status == "working":
-                    query = query.where(MCPAgentJob.status == 'working')
+                    query = query.where(AgentExecution.status == 'working')
                 elif status == "decommissioned":
-                    query = query.where(MCPAgentJob.status == 'decommissioned')
+                    query = query.where(AgentExecution.status == 'decommissioned')
                 else:
-                    query = query.where(MCPAgentJob.status == status)
+                    query = query.where(AgentExecution.status == status)
             query = query.limit(limit)
 
             result = await session.execute(query)
-            agent_jobs = result.scalars().all()
+            agent_executions = result.scalars().all()
 
             stats = []
-            for agent_job in agent_jobs:
-                # Get message counts (using agent_name from MCPAgentJob)
+            for agent_execution in agent_executions:
+                # Get message counts (using agent_name from AgentExecution)
                 sent_count = await session.scalar(
-                    select(func.count(Message.id)).where(Message.from_agent == agent_job.agent_name)
+                    select(func.count(Message.id)).where(Message.from_agent == agent_execution.agent_name)
                 )
 
                 received_count = await session.scalar(
-                    select(func.count(Message.id)).where(Message.to_agents.contains([agent_job.agent_name]))
+                    select(func.count(Message.id)).where(Message.to_agents.contains([agent_execution.agent_name]))
                 )
 
-                # Get task counts from job_metadata
+                # Get task counts from messages array
                 task_count = 0
                 completed_count = 0
-                if agent_job.job_metadata and isinstance(agent_job.job_metadata, dict):
-                    tasks = agent_job.job_metadata.get("tasks", [])
+                if agent_execution.messages and isinstance(agent_execution.messages, list):
+                    tasks = agent_execution.messages
                     if isinstance(tasks, list):
                         task_count = len(tasks)
                         completed_count = sum(1 for t in tasks if isinstance(t, dict) and t.get("status") == "completed")
@@ -357,23 +372,28 @@ async def get_agent_statistics(
 
                 # Get last activity
                 last_sent = await session.scalar(
-                    select(func.max(Message.created_at)).where(Message.from_agent == agent_job.agent_name)
+                    select(func.max(Message.created_at)).where(Message.from_agent == agent_execution.agent_name)
+                )
+
+                # Get project_id by joining to AgentJob
+                agent_job = await session.scalar(
+                    select(AgentJob).where(AgentJob.job_id == agent_execution.job_id)
                 )
 
                 stats.append(
                     AgentStatsResponse(
-                        agent_id=str(agent_job.job_id),
-                        name=agent_job.agent_name,
-                        role=agent_job.agent_type,
-                        status=agent_job.status,
-                        project_id=str(agent_job.project_id),
-                        created_at=agent_job.assigned_at,
+                        agent_id=str(agent_execution.agent_id),
+                        name=agent_execution.agent_name,
+                        role=agent_execution.agent_type,
+                        status=agent_execution.status,
+                        project_id=str(agent_job.project_id) if agent_job else "unknown",
+                        created_at=agent_execution.created_at,
                         messages_sent=sent_count or 0,
                         messages_received=received_count or 0,
                         tasks_assigned=task_count,
                         tasks_completed=completed_count,
                         average_response_time_seconds=avg_response_time,
-                        last_activity=last_sent or agent_job.assigned_at,
+                        last_activity=last_sent or agent_execution.created_at,
                     )
                 )
 
