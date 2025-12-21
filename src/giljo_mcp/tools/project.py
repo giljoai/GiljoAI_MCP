@@ -12,7 +12,7 @@ from fastmcp import FastMCP
 from sqlalchemy import select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Project, Session
+from giljo_mcp.models import Project, Session
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.tenant import TenantManager, current_tenant
 
