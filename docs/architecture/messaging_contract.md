@@ -1,7 +1,7 @@
 # Messaging Contract & Communication Taxonomy
 
-**Version**: v3.2+ (Handover 0295)
-**Last Updated**: 2025-12-04
+**Version**: v3.3+ (Handovers 0295, 0360, 0366)
+**Last Updated**: 2025-12-21
 
 ## Overview
 
@@ -38,40 +38,55 @@ Handover 0295 establishes clear boundaries between these three categories.
 
 **Public API Tools** (HTTP MCP):
 ```python
-# Send message
+# Send message (Handover 0366: Uses agent_id for routing)
 send_message(
-    to_agents: list[str],           # ["implementer", "tester"] or ["all"]
+    to_agent_id: str,                # Agent executor UUID (AgentExecution.agent_id)
     content: str,                    # Message body
     project_id: str,                 # UUID
+    tenant_key: str,                 # Multi-tenant isolation
     message_type: str = "direct",    # "direct" | "broadcast" | "system"
-    priority: str = "normal",        # "low" | "normal" | "high"
-    from_agent: Optional[str] = None # Sender identifier
+    priority: str = "normal"         # "low" | "normal" | "high"
 )
 
-# Receive pending messages
+# Receive pending messages (Handover 0360: Auto-acknowledge & remove from queue)
 receive_messages(
-    agent_id: str,                   # Agent identifier
+    agent_id: str,                   # Agent executor UUID (AgentExecution.agent_id)
+    tenant_key: str,                 # Multi-tenant isolation
     limit: int = 10                  # Max messages to retrieve
 )
 
-# Acknowledge receipt
-acknowledge_message(
-    message_id: str,                 # UUID
-    agent_name: str                  # Acknowledging agent
-)
-
-# List message history
+# List message history (read-only, no removal)
 list_messages(
     project_id: Optional[str] = None,
     status: Optional[str] = None,    # "pending" | "completed"
     agent_id: Optional[str] = None,
+    tenant_key: str,                 # Multi-tenant isolation
     limit: int = 50
+)
+
+# Discover team members (Handover 0360: Find agents on same job)
+get_team_agents(
+    job_id: str,                     # Work order UUID (AgentJob.id)
+    tenant_key: str                  # Multi-tenant isolation
 )
 ```
 
+**Identity Model (Handover 0366)**:
+Messages use **agent_id** (executor UUID) for routing, NOT job_id:
+- `job_id` = Work order UUID (AgentJob) - the **WHAT** (task definition)
+- `agent_id` = Executor UUID (AgentExecution) - the **WHO** (running agent instance)
+- Message routing: `send_message(to_agent_id=...)` → `receive_messages(agent_id=...)`
+- Database field: `Message.recipient_agent_id` stores the executor UUID
+
+**Team Discovery (Handover 0360)**:
+Use `get_team_agents(job_id, tenant_key)` to discover all agent executors working on the same job:
+- Returns list of agent_id values for team members
+- Filter by status (e.g., active agents only)
+- Use returned agent_id values in `send_message()` calls
+
 **Message Types**:
-- `"direct"` - Specific recipients in `to_agents` list
-- `"broadcast"` - Logical broadcast to all agents (`to_agents: ["all"]`)
+- `"direct"` - Specific recipient via `to_agent_id` parameter
+- `"broadcast"` - Logical broadcast to all agents (future feature)
 - `"system"` - System-level notifications (use sparingly)
 
 **Message Status**:
@@ -261,24 +276,26 @@ elif status["failed_agents"] > 0:
 **Public API Tools** (MCP):
 ```python
 # Orchestrator fetches instructions
+# NOTE (0366): orchestrator_id is a job_id (work order), not agent_id (executor)
 get_orchestrator_instructions(
-    orchestrator_id: str,  # Orchestrator job UUID
-    tenant_key: str
+    orchestrator_id: str,  # Orchestrator job UUID (work order)
+    tenant_key: str        # Multi-tenant isolation
 )
 
 # Agent fetches mission
-# NOTE (0262 / 0332): In CLI subagent mode, this is the ATOMIC JOB START:
+# NOTE (0262/0332): In CLI subagent mode, this is the ATOMIC JOB START:
 # - First call sets mission_acknowledged_at and transitions waiting → working
 # - Subsequent calls are idempotent re-reads
+# NOTE (0366): job_id is work order UUID, agent_id is executor UUID
 get_agent_mission(
-    job_id: str,           # Agent job UUID
-    tenant_key: str
+    job_id: str,           # Work order UUID (AgentJob.id)
+    tenant_key: str        # Multi-tenant isolation
 )
 
 # Agent fetches next instruction (multi-phase workflows)
 get_next_instruction(
-    job_id: str,
-    tenant_key: str
+    job_id: str,           # Work order UUID (AgentJob.id)
+    tenant_key: str        # Multi-tenant isolation
 )
 ```
 
@@ -330,22 +347,82 @@ See [SERVICES.md - Database Field Naming Conventions](../SERVICES.md#database-fi
 
 ---
 
+## Team Messaging & Agent Discovery (Handover 0360)
+
+**Purpose**: Enable agents to discover and communicate with teammates working on the same job.
+
+**Key Tool**: `get_team_agents(job_id, tenant_key)`
+
+**Workflow**:
+1. Agent calls `get_team_agents(job_id, tenant_key)` to discover teammates
+2. Filter results by role, status, or other criteria
+3. Extract `agent_id` values from team members
+4. Use `send_message(to_agent_id=...)` to communicate with specific teammates
+
+**Example**:
+```python
+# Step 1: Discover team
+team = await get_team_agents(
+    job_id="job-abc",
+    tenant_key="user_alice"
+)
+# Returns: [
+#   {"agent_id": "agent-123", "role": "implementer", "status": "working"},
+#   {"agent_id": "agent-456", "role": "tester", "status": "working"},
+#   {"agent_id": "agent-789", "role": "reviewer", "status": "waiting"}
+# ]
+
+# Step 2: Filter active team members
+active_team = [a for a in team if a["status"] == "working"]
+
+# Step 3: Send message to all active teammates
+for teammate in active_team:
+    await send_message(
+        to_agent_id=teammate["agent_id"],
+        content="Phase 1 complete. Ready for next phase.",
+        project_id="proj-456",
+        tenant_key="user_alice",
+        message_type="direct"
+    )
+```
+
+**Use Cases**:
+- **Status broadcasts**: Notify all team members of milestone completion
+- **Handoffs**: Pass work between sequential agents (implementer → tester)
+- **Collaboration**: Coordinate parallel work across multiple agents
+- **Escalation**: Alert specific roles when blockers occur
+
+**Identity Model**:
+- `job_id` identifies the work order (task definition)
+- `agent_id` identifies individual executors (running instances)
+- Multiple agents can work on the same job (parallel execution)
+- Message routing always uses `agent_id` (executor), never `job_id`
+
+---
+
 ## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ MESSAGES (Communication)                                        │
-│ ┌─────────────┐      ┌─────────────────┐      ┌──────────────┐ │
-│ │   Agent A   │──1──▶│ MessageService  │──2──▶│  messages    │ │
-│ └─────────────┘      │                 │      │  (table)     │ │
-│                      │  - send()       │      └──────────────┘ │
-│                      │  - acknowledge()│             │          │
-│                      │  - list()       │             │          │
-│ ┌─────────────┐      └─────────────────┘             ▼          │
-│ │   Agent B   │◀─3───────────────────────────┐  JSONB Mirror   │
-│ └─────────────┘                              │  (counters)     │
-│                                               │                 │
-│ ┌─────────────────────────────────────────────▼───────────────┐ │
+│ MESSAGES (Communication) - Handover 0360/0366                   │
+│ ┌─────────────────┐    ┌─────────────────┐    ┌──────────────┐ │
+│ │  Agent A        │─1─▶│ send_message()  │─2─▶│  messages    │ │
+│ │ (agent-123)     │    │                 │    │  (table)     │ │
+│ │                 │    │ to_agent_id=456 │    │ recipient_   │ │
+│ │                 │    │ tenant_key="x"  │    │ agent_id=456 │ │
+│ └─────────────────┘    └─────────────────┘    └──────┬───────┘ │
+│                                                       │         │
+│ ┌─────────────────┐    ┌─────────────────┐          │         │
+│ │  Agent B        │◀3──│ receive_        │◀─────────┘         │
+│ │ (agent-456)     │    │ messages()      │                    │
+│ │                 │    │ agent_id=456    │  Auto-acknowledge  │
+│ │                 │    │ tenant_key="x"  │  & remove from     │
+│ └─────────────────┘    └─────────────────┘  queue (0360)      │
+│                                                                 │
+│ Team Discovery (get_team_agents):                              │
+│ job_id → [agent_id_1, agent_id_2, ...] → send_message()        │
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
 │ │ WebSocket Events: message:sent, message:received            │ │
 │ └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
@@ -398,29 +475,41 @@ See [SERVICES.md - Database Field Naming Conventions](../SERVICES.md#database-fi
 **Scenario**: Implementer notifies tester that code is ready.
 
 ```python
-# Implementer sends message
+# Step 1: Discover team members (Handover 0360)
+team = await get_team_agents(
+    job_id="job-abc",
+    tenant_key="user_alice"
+)
+# Returns: [{"agent_id": "agent-123", "role": "tester", "status": "working"}, ...]
+
+# Step 2: Find tester agent_id
+tester_agent = next(a for a in team if a["role"] == "tester")
+tester_agent_id = tester_agent["agent_id"]  # "agent-123"
+
+# Step 3: Send message using agent_id (Handover 0366)
 await send_message(
-    to_agents=["tester"],
+    to_agent_id=tester_agent_id,  # Agent executor UUID, NOT job_id
     content="Authentication implementation complete. Ready for testing. See: api/endpoints/auth.py",
     project_id="proj-456",
+    tenant_key="user_alice",
     message_type="direct",
-    priority="high",
-    from_agent="implementer-1"
+    priority="high"
 )
 
-# Tester receives messages
-messages = await receive_messages(agent_id="tester-1", limit=10)
+# Step 4: Tester receives messages (auto-acknowledged, removed from queue)
+messages = await receive_messages(
+    agent_id=tester_agent_id,  # Own agent_id
+    tenant_key="user_alice",
+    limit=10
+)
 # Returns: [{"id": "msg-789", "content": "Authentication implementation...", ...}]
-
-# Tester acknowledges
-for msg in messages:
-    await acknowledge_message(message_id=msg["id"], agent_name="tester-1")
+# NOTE: Messages are automatically acknowledged and removed from queue
 ```
 
 **Result**:
-- Message stored in `messages` table
-- JSONB counters updated (implementer: +1 sent, tester: +1 waiting → +1 read)
-- WebSocket events: `message:sent`, `message:received`, `message:acknowledged`
+- Message stored in `messages` table with `recipient_agent_id=agent-123`
+- Message auto-acknowledged and removed from pending queue
+- WebSocket events: `message:sent`, `message:received`
 
 ---
 
@@ -479,13 +568,13 @@ await complete_job(
 **Scenario**: Agent starts work and fetches mission from server.
 
 ```python
-# Agent receives thin prompt with job_id
+# Agent receives thin prompt with job_id and tenant_key
 # Thin prompt: "Call get_agent_mission(job_id='job-abc', tenant_key='user_alice')"
 
-# Agent fetches mission
+# Agent fetches mission (Handover 0262/0332: Atomic job start)
 mission_data = await get_agent_mission(
-    job_id="job-abc",
-    tenant_key="user_alice"
+    job_id="job-abc",           # Work order UUID
+    tenant_key="user_alice"     # Multi-tenant isolation
 )
 
 # Returns:
@@ -676,22 +765,26 @@ async def test_send_message_creates_message_and_updates_jsonb():
 ```python
 @pytest.mark.asyncio
 async def test_send_message_mcp_tool():
-    # Call MCP tool
+    # Call MCP tool (Handover 0366: Uses agent_id routing)
     result = await send_message(
-        to_agents=["tester"],
+        to_agent_id="agent-tester-123",  # Agent executor UUID
         content="Ready for testing",
         project_id="proj-456",
-        message_type="direct",
-        from_agent="implementer-1"
+        tenant_key="test_tenant",
+        message_type="direct"
     )
 
     # Verify response
     assert result["success"] is True
 
     # Verify message persisted
-    messages = await list_messages(project_id="proj-456")
+    messages = await list_messages(
+        project_id="proj-456",
+        tenant_key="test_tenant"
+    )
     assert len(messages) == 1
     assert messages[0]["content"] == "Ready for testing"
+    assert messages[0]["recipient_agent_id"] == "agent-tester-123"
 ```
 
 ---
@@ -797,22 +890,30 @@ async def test_get_agent_mission():
 
 ## Summary: Which Tool When?
 
-| Scenario | Category | Tool to Use | Store |
-|----------|----------|-------------|-------|
-| Agent notifies another agent | MESSAGES | `send_message()` | `messages` table |
-| User sends instruction to agent | MESSAGES | `send_message()` | `messages` table |
-| Agent reports progress | SIGNALS | `report_progress()` | `MCPAgentJob.progress` |
-| Agent changes status | SIGNALS | `complete_job()`, `report_error()` | `MCPAgentJob.status` |
-| Agent fetches work assignment | INSTRUCTIONS | `get_agent_mission()` | `MCPAgentJob.mission` |
-| Orchestrator fetches context | INSTRUCTIONS | `get_orchestrator_instructions()` | `Project.mission` |
-| Check workflow completion | SIGNALS | `get_workflow_status()` | `MCPAgentJob` aggregation |
-| Acknowledge message receipt | MESSAGES | `acknowledge_message()` | `Message.acknowledged_by` |
+| Scenario | Category | Tool to Use | Store | Identity |
+|----------|----------|-------------|-------|----------|
+| Discover team members | MESSAGES | `get_team_agents()` | `AgentJob` query | Uses `job_id` |
+| Agent notifies another agent | MESSAGES | `send_message()` | `messages` table | Uses `agent_id` (executor) |
+| User sends instruction to agent | MESSAGES | `send_message()` | `messages` table | Uses `agent_id` (executor) |
+| Agent receives messages | MESSAGES | `receive_messages()` | `messages` table | Uses `agent_id` (executor) |
+| Agent reports progress | SIGNALS | `report_progress()` | `MCPAgentJob.progress` | Uses `job_id` (work order) |
+| Agent changes status | SIGNALS | `complete_job()`, `report_error()` | `MCPAgentJob.status` | Uses `job_id` (work order) |
+| Agent fetches work assignment | INSTRUCTIONS | `get_agent_mission()` | `MCPAgentJob.mission` | Uses `job_id` (work order) |
+| Orchestrator fetches context | INSTRUCTIONS | `get_orchestrator_instructions()` | `Project.mission` | Uses `orchestrator_id` (work order) |
+| Check workflow completion | SIGNALS | `get_workflow_status()` | `MCPAgentJob` aggregation | Uses `project_id` |
 
 **Golden Rule**: If you're unsure which category, ask:
-1. Is this **communication** between entities? → MESSAGES
-2. Is this **status or progress** tracking? → SIGNALS
-3. Is this **mission or configuration** delivery? → INSTRUCTIONS
+1. Is this **communication** between entities? → MESSAGES (use `agent_id` for routing)
+2. Is this **status or progress** tracking? → SIGNALS (use `job_id` for work orders)
+3. Is this **mission or configuration** delivery? → INSTRUCTIONS (use `job_id` for work orders)
+
+**Identity Model Quick Reference (Handover 0366)**:
+- **job_id**: Work order UUID (AgentJob) - the WHAT (task definition)
+- **agent_id**: Executor UUID (AgentExecution) - the WHO (running instance)
+- **Message routing**: Always use `agent_id` (executor), never `job_id`
+- **Job signals**: Always use `job_id` (work order)
+- **Team discovery**: Input `job_id` → Output list of `agent_id` values
 
 ---
 
-**Last Updated**: 2025-12-04 (Handover 0295)
+**Last Updated**: 2025-12-21 (Handovers 0295, 0360, 0366)

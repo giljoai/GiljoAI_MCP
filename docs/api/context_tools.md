@@ -1,8 +1,8 @@
 # Context Tools API Reference
 
 **Version**: v3.0 (On-Demand Fetch Architecture)
-**Last Updated**: 2025-12-15
-**Implementation**: Handover 0350a-c
+**Last Updated**: 2025-12-21 (Corrected for Handover 0351 single-category enforcement)
+**Implementation**: Handover 0350a-c, 0351 (single-category enforcement)
 
 ## Overview
 
@@ -28,7 +28,10 @@ GiljoAI uses an on-demand context fetch architecture with a **single unified `fe
      }
    }
            ↓
-3. Orchestrator calls fetch_context(categories=["product_core", "tech_stack", ...])
+3. Orchestrator calls fetch_context SEPARATELY for each category:
+   - fetch_context(categories=["product_core"])
+   - fetch_context(categories=["tech_stack"])
+   - fetch_context(categories=["memory_360"])
            ↓
 4. Context assembled without truncation risk
 ```
@@ -53,13 +56,15 @@ async def fetch_context(
     product_id: str,              # Product UUID (required)
     tenant_key: str,              # Tenant isolation key (required)
     project_id: Optional[str],    # Project UUID (required for 'project' category)
-    categories: List[str],        # Categories to fetch, or ["all"]
+    categories: List[str],        # MUST contain exactly ONE category (enforced in code)
     depth_config: Optional[Dict], # Override depth settings
     apply_user_config: bool,      # Apply saved priority/depth settings (default: True)
     format: str,                  # "structured" (nested) or "flat" (merged)
     db_manager: Optional[...]     # Database manager instance
 ) -> Dict[str, Any]
 ```
+
+**CRITICAL (Handover 0351)**: The `categories` parameter is an array type, but the implementation **enforces exactly ONE category per call**. Multi-category calls will return an error. This is code-level enforcement for token budget control in SaaS environments.
 
 ### Available Categories
 
@@ -91,52 +96,94 @@ async def fetch_context(
 
 ## Usage Examples
 
-### Basic Usage
+> **ANTI-PATTERN WARNING (Handover 0351)**
+>
+> The `categories` parameter is **array-typed** but **MUST contain exactly ONE category**. Multi-category calls will fail with `SINGLE_CATEGORY_REQUIRED` error.
+>
+> ❌ **WRONG**: `categories=["product_core", "tech_stack"]` - Will return error
+> ❌ **WRONG**: `categories=["all"]` - Not allowed
+> ✅ **CORRECT**: `categories=["product_core"]` - One category per call
+>
+> To fetch multiple categories, make **multiple separate calls**.
+
+### Basic Usage (Single Category)
 
 ```python
-# Fetch specific categories
+# Fetch core product context
 result = await fetch_context(
     product_id="123e4567-e89b-12d3-a456-426614174000",
     tenant_key="tenant_abc",
-    categories=["product_core", "tech_stack"]
+    categories=["product_core"]  # Exactly ONE category
+)
+
+# Fetch tech stack (separate call)
+result = await fetch_context(
+    product_id="123e4567-e89b-12d3-a456-426614174000",
+    tenant_key="tenant_abc",
+    categories=["tech_stack"]  # Exactly ONE category
 )
 ```
 
 ### With Depth Configuration
 
 ```python
-# Fetch with custom depth settings
+# Fetch vision documents with light depth
 result = await fetch_context(
     product_id="123e4567-e89b-12d3-a456-426614174000",
     tenant_key="tenant_abc",
-    categories=["vision_documents", "memory_360"],
-    depth_config={
-        "vision_documents": "light",   # Summaries only
-        "memory_360": 3                # Last 3 projects
-    }
+    categories=["vision_documents"],  # Exactly ONE category
+    depth_config={"vision_documents": "light"}  # Summaries only
 )
-```
 
-### Fetch All Categories
-
-```python
-# Fetch everything (use sparingly)
+# Fetch 360 memory (last 3 projects)
 result = await fetch_context(
     product_id="123e4567-e89b-12d3-a456-426614174000",
     tenant_key="tenant_abc",
-    categories=["all"]
+    categories=["memory_360"],  # Exactly ONE category
+    depth_config={"memory_360": 3}
 )
 ```
 
 ### With Project Context
 
 ```python
-# Include project-specific data
+# Fetch project-specific data
 result = await fetch_context(
     product_id="123e4567-e89b-12d3-a456-426614174000",
     tenant_key="tenant_abc",
     project_id="9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    categories=["project", "tech_stack", "architecture"]
+    categories=["project"]  # Exactly ONE category
+)
+```
+
+### Multiple Categories Requires Multiple Calls
+
+```python
+# CORRECT: Call fetch_context separately for each category
+product_core = await fetch_context(
+    product_id=PRODUCT_ID,
+    tenant_key=TENANT_KEY,
+    categories=["product_core"]
+)
+
+tech_stack = await fetch_context(
+    product_id=PRODUCT_ID,
+    tenant_key=TENANT_KEY,
+    categories=["tech_stack"]
+)
+
+# WRONG: Multi-category call will fail with error
+result = await fetch_context(
+    product_id=PRODUCT_ID,
+    tenant_key=TENANT_KEY,
+    categories=["product_core", "tech_stack"]  # ❌ ERROR: SINGLE_CATEGORY_REQUIRED
+)
+
+# WRONG: categories=["all"] is not allowed
+result = await fetch_context(
+    product_id=PRODUCT_ID,
+    tenant_key=TENANT_KEY,
+    categories=["all"]  # ❌ ERROR: ALL_NOT_ALLOWED
 )
 ```
 
@@ -149,35 +196,27 @@ result = await fetch_context(
 ```json
 {
   "source": "fetch_context",
-  "categories_requested": ["product_core", "tech_stack"],
-  "categories_returned": ["product_core", "tech_stack"],
+  "categories_requested": ["product_core"],
+  "categories_returned": ["product_core"],
   "data": {
     "product_core": {
       "product_name": "GiljoAI MCP",
       "product_description": "Multi-tenant server orchestrating...",
       "core_features": ["Feature 1", "Feature 2"]
-    },
-    "tech_stack": {
-      "languages": ["Python", "JavaScript"],
-      "frameworks": {
-        "backend": ["FastAPI", "SQLAlchemy"],
-        "frontend": ["Vue 3", "Vuetify"]
-      },
-      "databases": ["PostgreSQL"]
     }
   },
   "metadata": {
     "product_id": "uuid",
     "tenant_key": "tenant_abc",
-    "estimated_tokens": 450,
+    "estimated_tokens": 100,
     "format": "structured",
     "apply_user_config": true,
-    "depth_config_applied": {
-      "tech_stack": "all"
-    }
+    "depth_config_applied": {}
   }
 }
 ```
+
+**Note**: Since only one category is allowed per call, the `data` object will always contain exactly one key.
 
 ### Individual Category Schemas
 
@@ -337,6 +376,37 @@ stmt = select(Product).where(
 
 ## Error Handling
 
+### Single-Category Enforcement Errors (Handover 0351)
+
+```json
+// Error: categories parameter missing or None
+{
+  "error": "SINGLE_CATEGORY_REQUIRED",
+  "message": "fetch_context requires exactly ONE category per call. Call multiple times for multiple categories.",
+  "valid_categories": ["product_core", "vision_documents", "tech_stack", "architecture", "testing", "memory_360", "git_history", "agent_templates", "project"],
+  "example": "fetch_context(categories=['tech_stack'], ...)",
+  "metadata": {"estimated_tokens": 0}
+}
+
+// Error: categories=["all"] not allowed
+{
+  "error": "ALL_NOT_ALLOWED",
+  "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
+  "valid_categories": ["product_core", "vision_documents", ...],
+  "example": "fetch_context(categories=['vision_documents'], ...)",
+  "metadata": {"estimated_tokens": 0}
+}
+
+// Error: Multiple categories in array
+{
+  "error": "SINGLE_CATEGORY_REQUIRED",
+  "message": "Only ONE category per call allowed. You requested 2: ['product_core', 'tech_stack']",
+  "valid_categories": ["product_core", "vision_documents", ...],
+  "example": "Call fetch_context separately for each category",
+  "metadata": {"estimated_tokens": 0}
+}
+```
+
 ### Common Error Responses
 
 ```json
@@ -353,6 +423,8 @@ stmt = select(Product).where(
 ```
 
 **Error Codes**:
+- `SINGLE_CATEGORY_REQUIRED`: Missing category, or multiple categories in array (code-enforced)
+- `ALL_NOT_ALLOWED`: categories=["all"] not permitted (code-enforced)
 - `product_not_found`: Product ID + tenant key combination invalid
 - `project_not_found`: Project ID not found for tenant
 - `invalid_category`: Category name not recognized
@@ -399,25 +471,40 @@ When `get_orchestrator_instructions()` returns framing, it includes priority ind
 ### Orchestrator Decision Logic
 
 ```python
-# Example orchestrator logic
-context_to_fetch = []
+# Example orchestrator logic - ONE category per call
+context_data = {}
 
-# CRITICAL: Always fetch
-for field in context_fetch_instructions["critical"]:
-    context_to_fetch.append(field["field"])
+# CRITICAL: Always fetch (one call per category)
+for field_info in context_fetch_instructions["critical"]:
+    category = field_info["field"]
+    result = await fetch_context(
+        product_id=PRODUCT_ID,
+        tenant_key=TENANT_KEY,
+        categories=[category]  # Exactly ONE category
+    )
+    context_data[category] = result["data"][category]
 
-# IMPORTANT: Fetch if budget allows
+# IMPORTANT: Fetch if budget allows (one call per category)
 if tokens_remaining > 10000:
-    for field in context_fetch_instructions["important"]:
-        context_to_fetch.append(field["field"])
+    for field_info in context_fetch_instructions["important"]:
+        category = field_info["field"]
+        result = await fetch_context(
+            product_id=PRODUCT_ID,
+            tenant_key=TENANT_KEY,
+            categories=[category]  # Exactly ONE category
+        )
+        context_data[category] = result["data"][category]
 
-# REFERENCE: Fetch only if specifically needed
-for field in context_fetch_instructions["reference"]:
-    if mission_requires(field["field"]):
-        context_to_fetch.append(field["field"])
-
-# Single call with all categories
-result = await fetch_context(categories=context_to_fetch, ...)
+# REFERENCE: Fetch only if specifically needed (one call per category)
+for field_info in context_fetch_instructions["reference"]:
+    category = field_info["field"]
+    if mission_requires(category):
+        result = await fetch_context(
+            product_id=PRODUCT_ID,
+            tenant_key=TENANT_KEY,
+            categories=[category]  # Exactly ONE category
+        )
+        context_data[category] = result["data"][category]
 ```
 
 ---
@@ -427,10 +514,14 @@ result = await fetch_context(categories=context_to_fetch, ...)
 The `fetch_context()` tool internally dispatches to specialized helper functions (not exposed via MCP):
 
 ```
-fetch_context(categories=["product_core", "tech_stack"])
+fetch_context(categories=["product_core"])  # Single category only (Handover 0351)
     ↓
 ┌─────────────────────────────────────────────────┐
-│ Internal Dispatch (NOT MCP-exposed)             │
+│ Single-Category Enforcement (Code-Level)        │
+│                                                 │
+│  1. Validate categories array has exactly ONE   │
+│  2. Reject ["all"] and multi-category calls     │
+│  3. Dispatch to internal helper function:       │
 │                                                 │
 │  get_product_context()  → product_core          │
 │  get_vision_document()  → vision_documents      │
@@ -443,10 +534,11 @@ fetch_context(categories=["product_core", "tech_stack"])
 │  get_project()          → project               │
 └─────────────────────────────────────────────────┘
     ↓
-Aggregated response
+Single-category response
 ```
 
 **Token Savings**: ~720 tokens (9 tool schemas × ~80 tokens vs 1 schema × ~180 tokens)
+**Security**: Code-level enforcement prevents LLM from bypassing single-category rule via prompt injection
 
 ---
 
