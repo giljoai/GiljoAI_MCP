@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-19 (Numbering cleanup: renumbered 0354←0359, 0342←0361, 0363←0353; added Alpha Trial series 0355-0362)
+**Last Updated:** 2025-12-21 (Alpha Trial Remediation 0356-0361 COMPLETE, moved to completed/)
 
 ---
 
@@ -21,21 +21,22 @@
 
 ## Active Handovers (In Root Folder)
 
-### Alpha Trial Remediation Series (0356-0362, 0364-0365) - HIGH PRIORITY
+### Alpha Trial Remediation Series (0356-0362, 0364-0366) - MOSTLY COMPLETE
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
-| 0364 | Protocol Message Handling Fix | **COMPLETE** | HIGH | 3h actual |
-| 0365 | Orchestrator Handover Behavior Injection | Ready | MEDIUM | TBD |
-| 0356 | MCP Tool Parameter Consistency | Ready | HIGH | 3-4h |
-| 0357 | Agent Template Context Loading | Ready | HIGH | 2-3h |
-| 0358 | WebSocket & UI State Overhaul | Ready | HIGH | 10-14h |
-| 0359 | Steps/Progress Tracking Fix | Ready | HIGH | 3-4h |
-| 0360 | Medium Priority Tool Enhancements | Ready | MEDIUM | 4-5h |
-| 0361 | Documentation Updates | Ready | LOW | 2h |
+| 0356 | MCP Tool Parameter Consistency | **COMPLETE** | HIGH | - |
+| 0357 | Agent Template Context Loading | **COMPLETE** | HIGH | - |
+| 0358 | WebSocket & UI State Overhaul (+ a/b/c/d) | **COMPLETE** | HIGH | - |
+| 0359 | Steps/Progress Tracking Fix | **COMPLETE** | HIGH | - |
+| 0360 | Medium Priority Tool Enhancements | **COMPLETE** | MEDIUM | - |
+| 0361 | Documentation Updates | **COMPLETE** | LOW | - |
 | 0362 | WebSocket Message Counter Fixes | Ready | HIGH | 3-4h |
+| 0364 | Protocol Message Handling Fix | **COMPLETE** | HIGH | - |
+| 0365 | Orchestrator Handover Behavior Injection | Ready | MEDIUM | TBD |
+| 0366 | Agent Identity Refactor (a/b/c/d) | **COMPLETE** | HIGH | - |
 
-> **Recommended Order**: 0356 → 0359 → 0357 → 0358 → 0360 → 0361 (0364 DONE, 0365 after discussion)
-> See `alpha_trial_remediation_roadmap.md` for full context from TinyContacts alpha trial.
+> **Status**: 8/10 COMPLETE. Remaining: 0362 (WebSocket counters), 0365 (handover behavior)
+> See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
 
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
@@ -99,7 +100,22 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0356 | MCP Tool Parameter Consistency | **COMPLETE** (2025-12-21) |
+| 0357 | Agent Template Context Loading | **COMPLETE** (2025-12-21) |
+| 0358 | WebSocket & UI State Overhaul | **COMPLETE** (2025-12-21) |
+| 0358a | Launch Project Migration | **COMPLETE** (2025-12-21) |
+| 0358b | Orchestration Service Migration | **COMPLETE** (2025-12-21) |
+| 0358c | Tool Layer Migration | **COMPLETE** (2025-12-21) |
+| 0358d | MCPAgentJob Deprecation | **COMPLETE** (2025-12-21) |
+| 0359 | Steps/Progress Tracking Fix | **COMPLETE** (2025-12-21) |
+| 0360 | Medium Priority Tool Enhancements | **COMPLETE** (2025-12-21) |
+| 0361 | Documentation Updates (0366 Identity Model) | **COMPLETE** (2025-12-21) |
 | 0364 | Protocol Message Handling Fix | **COMPLETE** (2025-12-19) |
+| 0366 | Agent Identity Refactor Roadmap | **COMPLETE** (2025-12-20) |
+| 0366a | Schema and Models | **COMPLETE** (2025-12-20) |
+| 0366b | Service Layer Updates | **COMPLETE** (2025-12-20) |
+| 0366c | MCP Tool Standardization | **COMPLETE** (2025-12-20) |
+| 0366d | Frontend Updates (4 parts) | **COMPLETE** (2025-12-20) |
 | 0117 | Agent Role Refactor (8-Role System) | **SUPERSEDED** by 0515 |
 | 0256 | Task Templates Cleanup Followup | **COMPLETE** |
 | 0331 | Message Audit Modal | **COMPLETE** |
@@ -160,6 +176,19 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### Alpha Trial Remediation Series (0356-0361, 0364, 0366)
+**Status:** 80% Complete (8/10 handovers, December 2025)
+- 0356: MCP Tool Parameter Consistency (tenant_key, agent_id fixes)
+- 0357: Agent Template Context Loading (user settings)
+- 0358: WebSocket & UI State Overhaul (+ a/b/c/d sub-handovers)
+- 0359: Steps/Progress Tracking Fix (protocol field alignment)
+- 0360: Medium Priority Tool Enhancements (message filtering, get_team_agents)
+- 0361: Documentation Updates (identity model, fetch_context patterns)
+- 0364: Protocol Message Handling Fix
+- 0366: Agent Identity Refactor (a/b/c/d - AgentJob/AgentExecution model)
+- **Remaining**: 0362 (WebSocket counters), 0365 (handover behavior)
+- See: `completed/alpha_trial_remediation_roadmap-C.md`
 
 ### Agent Name Single Source of Truth (0351)
 **Status:** 100% Complete (December 2025)
