@@ -33,8 +33,6 @@ from sqlalchemy import select
 
 # Handover 0366b: Import dual-model architecture
 from .models.agent_identity import AgentJob, AgentExecution
-# Keep MCPAgentJob for backward compatibility during migration
-from .models import MCPAgentJob
 
 
 logger = logging.getLogger(__name__)

@@ -17,7 +17,9 @@ from typing import List, Optional
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Project
+from sqlalchemy.orm import joinedload
 from src.giljo_mcp.database import DatabaseManager
 from api.websocket import WebSocketManager
 from src.giljo_mcp.monitoring.health_config import HealthCheckConfig, AgentHealthStatus
@@ -161,15 +163,17 @@ class AgentHealthMonitor:
 
         # Filter out jobs from deleted projects using LEFT JOIN
         query = (
-            select(MCPAgentJob)
-            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
-                    MCPAgentJob.tenant_key == tenant_key,
-                    MCPAgentJob.status == "waiting",
-                    MCPAgentJob.created_at < timeout_threshold,
+                    AgentExecution.tenant_key == tenant_key,
+                    AgentExecution.status == "waiting",
+                    AgentExecution.created_at < timeout_threshold,
                     or_(
-                        MCPAgentJob.project_id.is_(None),
+                        AgentJob.project_id.is_(None),
                         Project.deleted_at.is_(None)
                     )
                 )
@@ -177,20 +181,20 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        jobs = result.scalars().all()
+        executions = result.scalars().all()
 
         return [
             AgentHealthStatus(
-                job_id=job.job_id,
-                agent_type=job.agent_type,
+                job_id=execution.job_id,
+                agent_type=execution.job.agent_type,
                 current_status="waiting",
                 health_state="critical",
-                last_update=job.created_at,
-                minutes_since_update=(datetime.now(timezone.utc) - job.created_at).total_seconds() / 60,
+                last_update=execution.created_at,
+                minutes_since_update=(datetime.now(timezone.utc) - execution.created_at).total_seconds() / 60,
                 issue_description=f"Job never acknowledged after {self.config.waiting_timeout_minutes} minutes",
                 recommended_action="Check if agent received job, manual intervention may be required"
             )
-            for job in jobs
+            for execution in executions
         ]
 
     async def _detect_stalled_jobs(
@@ -214,14 +218,16 @@ class AgentHealthMonitor:
 
         # Query active jobs, filtering out jobs from deleted projects
         query = (
-            select(MCPAgentJob)
-            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
-                    MCPAgentJob.tenant_key == tenant_key,
-                    MCPAgentJob.status == "active",
+                    AgentExecution.tenant_key == tenant_key,
+                    AgentExecution.status == "active",
                     or_(
-                        MCPAgentJob.project_id.is_(None),
+                        AgentJob.project_id.is_(None),
                         Project.deleted_at.is_(None)
                     )
                 )
@@ -229,11 +235,11 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        jobs = result.scalars().all()
+        executions = result.scalars().all()
 
         stalled = []
-        for job in jobs:
-            last_progress = self._get_last_progress_time(job)
+        for execution in executions:
+            last_progress = self._get_last_progress_time(execution)
             if last_progress < timeout_threshold:
                 minutes_stalled = (datetime.now(timezone.utc) - last_progress).total_seconds() / 60
 
@@ -246,8 +252,8 @@ class AgentHealthMonitor:
                     health_state = "warning"
 
                 stalled.append(AgentHealthStatus(
-                    job_id=job.job_id,
-                    agent_type=job.agent_type,
+                    job_id=execution.job_id,
+                    agent_type=execution.job.agent_type,
                     current_status="active",
                     health_state=health_state,
                     last_update=last_progress,
@@ -275,14 +281,16 @@ class AgentHealthMonitor:
         """
         # Query waiting and active jobs, filtering out jobs from deleted projects
         query = (
-            select(MCPAgentJob)
-            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
-                    MCPAgentJob.tenant_key == tenant_key,
-                    MCPAgentJob.status.in_(["waiting", "active"]),
+                    AgentExecution.tenant_key == tenant_key,
+                    AgentExecution.status.in_(["waiting", "active"]),
                     or_(
-                        MCPAgentJob.project_id.is_(None),
+                        AgentJob.project_id.is_(None),
                         Project.deleted_at.is_(None)
                     )
                 )
@@ -290,22 +298,22 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        jobs = result.scalars().all()
+        executions = result.scalars().all()
 
         failures = []
-        for job in jobs:
+        for execution in executions:
             # Apply agent-type-specific timeouts
-            timeout_minutes = self.config.get_timeout_for_agent(job.agent_type)
+            timeout_minutes = self.config.get_timeout_for_agent(execution.job.agent_type)
             threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
-            last_activity = self._get_last_activity_time(job)
+            last_activity = self._get_last_activity_time(execution)
 
             if last_activity < threshold:
                 minutes_silent = (datetime.now(timezone.utc) - last_activity).total_seconds() / 60
 
                 failures.append(AgentHealthStatus(
-                    job_id=job.job_id,
-                    agent_type=job.agent_type,
-                    current_status=job.status,
+                    job_id=execution.job_id,
+                    agent_type=execution.job.agent_type,
+                    current_status=execution.status,
                     health_state="timeout",
                     last_update=last_activity,
                     minutes_since_update=minutes_silent,
@@ -339,25 +347,27 @@ class AgentHealthMonitor:
             }
         )
 
-        # Get job from database (query by job_id UUID, not integer id)
+        # Get execution from database (query by job_id UUID, not integer id)
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == health_status.job_id)
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .where(AgentExecution.job_id == health_status.job_id)
         )
-        job = result.scalar_one_or_none()
-        if not job:
-            logger.error(f"Job {health_status.job_id} not found in database")
+        execution = result.scalar_one_or_none()
+        if not execution:
+            logger.error(f"Execution {health_status.job_id} not found in database")
             return
 
-        # Update job health fields
-        job.health_status = health_status.health_state
-        job.health_failure_count += 1
-        job.last_health_check = datetime.now(timezone.utc)
+        # Update execution health fields
+        execution.health_status = health_status.health_state
+        execution.health_failure_count += 1
+        execution.last_health_check = datetime.now(timezone.utc)
 
         # Auto-fail on timeout (if configured)
         if health_status.health_state == "timeout" and self.config.auto_fail_on_timeout:
-            job.status = "failed"
-            job.completed_at = datetime.now(timezone.utc)
-            job.result_summary = f"Auto-failed: {health_status.issue_description}"
+            execution.status = "failed"
+            execution.completed_at = datetime.now(timezone.utc)
+            execution.result_summary = f"Auto-failed: {health_status.issue_description}"
 
             # Broadcast auto-fail event
             await self.ws.broadcast_agent_auto_failed(
@@ -377,17 +387,17 @@ class AgentHealthMonitor:
 
         await session.commit()
 
-    def _get_last_progress_time(self, job: MCPAgentJob) -> datetime:
+    def _get_last_progress_time(self, execution: AgentExecution) -> datetime:
         """
-        Extract last progress update time from job metadata.
+        Extract last progress update time from execution metadata.
 
         Args:
-            job: Agent job to check
+            execution: Agent execution to check
 
         Returns:
             Datetime of last progress update
         """
-        metadata = job.job_metadata or {}
+        metadata = execution.execution_metadata or {}
         last_progress_str = metadata.get("last_progress_update")
 
         if last_progress_str:
@@ -397,29 +407,29 @@ class AgentHealthMonitor:
                 pass
 
         # Fallback to started_at or created_at
-        return job.started_at or job.created_at
+        return execution.started_at or execution.created_at
 
-    def _get_last_activity_time(self, job: MCPAgentJob) -> datetime:
+    def _get_last_activity_time(self, execution: AgentExecution) -> datetime:
         """
         Get most recent activity timestamp.
 
         Args:
-            job: Agent job to check
+            execution: Agent execution to check
 
         Returns:
             Most recent activity timestamp
         """
         candidates = [
-            job.created_at,
-            job.started_at,
-            job.last_progress_at,
-            job.last_message_check_at,
-            self._get_last_progress_time(job)
+            execution.created_at,
+            execution.started_at,
+            execution.last_progress_at,
+            execution.last_message_check_at,
+            self._get_last_progress_time(execution)
         ]
 
         # Filter out None values and return max
         valid_timestamps = [ts for ts in candidates if ts is not None]
-        return max(valid_timestamps) if valid_timestamps else job.created_at
+        return max(valid_timestamps) if valid_timestamps else execution.created_at
 
     async def _get_all_tenants(self, session: AsyncSession) -> List[str]:
         """
@@ -431,14 +441,15 @@ class AgentHealthMonitor:
         Returns:
             List of unique tenant keys from non-deleted projects
         """
-        # Only get tenant keys from jobs that don't belong to deleted projects
+        # Only get tenant keys from executions that don't belong to deleted projects
         query = (
-            select(MCPAgentJob.tenant_key)
+            select(AgentExecution.tenant_key)
             .distinct()
-            .outerjoin(Project, MCPAgentJob.project_id == Project.id)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 or_(
-                    MCPAgentJob.project_id.is_(None),
+                    AgentJob.project_id.is_(None),
                     Project.deleted_at.is_(None)
                 )
             )
