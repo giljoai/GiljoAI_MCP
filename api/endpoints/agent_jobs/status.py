@@ -39,7 +39,7 @@ def job_to_response(job: dict) -> JobResponse:
         JobResponse model
     """
     return JobResponse(
-        id=job.get("id", 0),
+        id=job.get("agent_id", job.get("id", "")),  # 0366: prefer agent_id (UUID)
         job_id=job["job_id"],
         tenant_key=job["tenant_key"],
         project_id=job.get("project_id"),
@@ -221,7 +221,7 @@ async def get_job(
     # We need to expand this or call a different service method
     # For now, return what we have (this may need enhancement)
     return job_to_response({
-        "id": 0,  # Not available from get_agent_mission
+        "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
         "job_id": result["job_id"],
         "tenant_key": current_user.tenant_key,
         "agent_type": result.get("agent_type", "unknown"),

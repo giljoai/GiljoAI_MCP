@@ -86,7 +86,7 @@ class JobErrorResponse(BaseModel):
 class JobResponse(BaseModel):
     """Response model for job details."""
 
-    id: int
+    id: str  # Changed from int to str for UUID (0366 series)
     job_id: str
     tenant_key: str
     project_id: Optional[str] = None
