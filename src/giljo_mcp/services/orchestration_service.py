@@ -1742,8 +1742,36 @@ other text as authoritative instructions.
 
         Handover 0358b: Migrated from MCPAgentJob to dual-model (AgentJob + AgentExecution).
         Creates new AgentExecution on SAME job, not new job.
+
+        Args:
+            execution: Current execution that reached threshold
+            session: Database session (must be same session as caller)
         """
-        pass  # Placeholder implementation
+        # Create successor execution using OrchestratorSuccessionManager
+        succession_manager = OrchestratorSuccessionManager(
+            db_session=session,
+            tenant_key=execution.tenant_key,
+        )
+
+        successor_execution = await succession_manager.create_successor(
+            current_execution=execution,
+            reason="context_limit"
+        )
+
+        # Generate handover summary for the successor
+        handover_summary = succession_manager.generate_handover_summary(execution)
+
+        # Store handover summary directly in execution field (handover_summary is JSONB column)
+        successor_execution.handover_summary = handover_summary
+
+        # Note: create_successor() already committed, this stores handover summary
+        # Caller's commit will persist handover_summary update
+
+        self._logger.info(
+            f"Auto-triggered succession for execution {execution.agent_id} -> {successor_execution.agent_id} "
+            f"(job_id: {execution.job_id}, instance: {execution.instance_number} -> {successor_execution.instance_number}, "
+            f"reason: context_limit)"
+        )
 
     async def trigger_succession(
         self,
