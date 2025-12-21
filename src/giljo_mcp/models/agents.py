@@ -26,12 +26,31 @@ from .base import Base, generate_uuid
 
 class MCPAgentJob(Base):
     """
-    MCP Agent Job model - tracks agent jobs separately from user tasks.
+    DEPRECATED: This model is deprecated as of v3.2 (2025-12-21).
+    Use AgentJob + AgentExecution dual-model architecture instead.
 
-    .. deprecated:: 3.3.0
-        Use :class:`AgentJob` and :class:`AgentExecution` instead.
-        See Handover 0358 for migration guide.
-        Will be removed in v4.0.
+    Migration Timeline:
+    - v3.2: Marked deprecated, production code migrated (Handover 0367a-d)
+    - v3.3: Test code migrated (future handover 0368 series)
+    - v3.4: Model removed, table archived (future handover)
+
+    Historical Context:
+    MCPAgentJob conflated two concepts into a single entity:
+    1. Work Order (what needs to be done) -> now AgentJob
+    2. Executor Instance (who is doing it) -> now AgentExecution
+
+    The dual-model architecture provides:
+    - Better semantics (clear separation of concerns)
+    - Retry support (reuse work order across attempts)
+    - Lineage tracking (spawned_by/succeeded_by use agent_id UUIDs)
+
+    See: handovers/0367_kickoff.md
+    See: handovers/Reference_docs/0358_model_mapping_reference.md
+
+    ---
+    Legacy Documentation (preserved for reference):
+
+    MCP Agent Job model - tracks agent jobs separately from user tasks.
 
     Handover 0017: Enables agent-to-agent job coordination for agentic orchestration.
     Handover 0073: Enhanced with progress tracking, tool assignment, and expanded status states.
@@ -43,7 +62,7 @@ class MCPAgentJob(Base):
 
     Message Tracking (Auto-implemented):
     - messages (JSONB): Message array with status tracking
-      - Status transition: "pending" (unread) → "acknowledged" (read)
+      - Status transition: "pending" (unread) -> "acknowledged" (read)
       - Auto-tracking: MessageService marks messages as acknowledged
     - last_message_check_at (DateTime): Auto-updated when agent reads messages
 

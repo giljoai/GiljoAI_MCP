@@ -14,11 +14,11 @@ Messaging: send_message, receive_messages, list_messages
 
 Jobs: acknowledge_job, report_progress, complete_job, report_error
   - Implemented in: api/endpoints/mcp_http.py via AgentJobManager
-  - Database: MCPAgentJob table
+  - Database: AgentJob (work orders) + AgentExecution (executors)
 
 Orchestration: get_orchestrator_instructions, spawn_agent_job, etc.
   - Implemented in: api/endpoints/mcp_http.py via OrchestrationService
-  - Database: MCPAgentJob, Project, Product tables
+  - Database: AgentJob, AgentExecution, Project, Product tables
 
 Projects: create_project, activate_project, etc.
   - Implemented in: api/endpoints/mcp_http.py via ProjectService
