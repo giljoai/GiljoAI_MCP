@@ -156,9 +156,9 @@ GiljoAI uses an on-demand context fetch architecture to prevent token truncation
 
 **Problem Solved**: Previous monolithic approach embedded all context in orchestrator instructions, causing truncation when vision documents exceeded 50K tokens.
 
-**Solution (Handover 0350a-c)**:
+**Solution (Handover 0350a-c, updated 0351)**:
 1. `get_orchestrator_instructions()` returns framing (~500 tokens) with priority indicators
-2. Orchestrator calls unified `fetch_context(categories=[...])` based on priority tier
+2. Orchestrator calls `fetch_context(categories=["category"])` once per category based on priority tier
 3. Context is fetched on-demand, never truncated
 
 ### 3-Tier Priority System
@@ -179,12 +179,16 @@ GiljoAI uses an on-demand context fetch architecture to prevent token truncation
 Single MCP tool replaces 9 individual tools (~720 tokens saved in schema overhead):
 
 ```python
+# One category per call (Handover 0351 enforcement)
 fetch_context(
-    categories=["product_core", "tech_stack", "vision_documents"],
     product_id="uuid",
     tenant_key="tenant_abc",
-    depth_config={"vision_documents": "light", "memory_360": 5}
+    categories=["product_core"],  # Exactly ONE category
+    depth_config={"product_core": "full"}
 )
+# Make separate calls for each category
+fetch_context(categories=["tech_stack"], product_id=..., tenant_key=...)
+fetch_context(categories=["vision_documents"], product_id=..., tenant_key=...)
 ```
 
 **Available Categories**: `product_core`, `vision_documents`, `tech_stack`, `architecture`, `testing`, `memory_360`, `git_history`, `agent_templates`, `project`

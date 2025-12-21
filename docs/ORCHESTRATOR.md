@@ -121,7 +121,7 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
 
 5. CONTEXT PRIORITIZATION & MISSION
    ├─ Apply user's context priority settings (3-tier: CRITICAL/IMPORTANT/REFERENCE)
-   ├─ Call fetch_context(categories=[...]) based on priority tier
+   ├─ Call fetch_context(category=...) once per category based on priority tier
    ├─ CRITICAL fields: MUST fetch (product_core, project)
    ├─ IMPORTANT fields: SHOULD fetch if budget allows (tech_stack, vision_documents)
    ├─ REFERENCE fields: MAY fetch if project requires (memory_360, git_history)
