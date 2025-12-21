@@ -502,6 +502,17 @@ When activating a project (PATCH status to "active"), validates:
 #### Agent Job Management Tables (Handover 0019)
 
 **MCPAgentJob Table** - Core agent job tracking:
+
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
 ```sql
 CREATE TABLE mcp_agent_jobs (
     id VARCHAR(36) PRIMARY KEY,

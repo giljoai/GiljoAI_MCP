@@ -102,6 +102,17 @@ repos:
         types_or: [yaml] # Removed markdown - not needed for docs
         exclude: ^(frontend/|node_modules/)
 
+  # Deprecated model detection (Handover 0358d)
+  - repo: local
+    hooks:
+      - id: no-deprecated-models
+        name: Check for deprecated model usage
+        entry: python scripts/check_deprecated_models.py
+        language: system
+        files: \.py$
+        exclude: ^(tests/|migrations/|handovers/)
+        pass_filenames: true
+
 # Configuration for specific file types
 files: |
   (?x)^(

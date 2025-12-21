@@ -96,6 +96,17 @@ The orchestration system follows a clean 4-layer architecture:
 | **AgentMessageQueue** | ACID message queue, priority routing, circuit breakers, DLQ, crash recovery | 1,308 | DatabaseManager, TenantManager, Message/MCPAgentJob models | Message, MCPAgentJob | ACTIVE |
 | **MissionPlanner** | Mission generation with context prioritization and orchestration, field priorities, dependency detection | 1,564 | DatabaseManager, ContextRepository, Product/Project/User, tiktoken, Serena | Product, Project, User, Context chunks | ACTIVE |
 | **JobCoordinator** | Multi-agent coordination (parallel, chains, trees), result aggregation | 498 | AgentJobManager, AgentJobRepository, MessageQueue | Job | ACTIVE |
+
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model referenced in the table above is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
 | **WorkflowEngine** | Workflow execution (waterfall/parallel), retry logic, failure recovery | 463 | AgentJobManager, JobCoordinator, AgentJobRepository | Job | ACTIVE |
 
 ---
