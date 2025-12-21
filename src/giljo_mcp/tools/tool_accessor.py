@@ -276,9 +276,36 @@ class ToolAccessor:
         """Broadcast message to all agents in project (delegates to MessageService)"""
         return await self._message_service.broadcast(content=content, project_id=project_id, priority=priority)
 
-    async def receive_messages(self, agent_id: str, limit: int = 10) -> dict[str, Any]:
-        """Receive pending messages for an agent by job_id (delegates to MessageService)"""
-        return await self._message_service.receive_messages(agent_id=agent_id, limit=limit)
+    async def receive_messages(
+        self,
+        agent_id: str,
+        limit: int = 10,
+        exclude_self: bool = True,
+        exclude_progress: bool = True,
+        message_types: Optional[list[str]] = None
+    ) -> dict[str, Any]:
+        """
+        Receive pending messages for an agent with optional filtering (delegates to MessageService).
+
+        Handover 0360: Added filtering parameters for better message control.
+
+        Args:
+            agent_id: Agent execution ID
+            limit: Maximum messages to retrieve
+            exclude_self: Filter out messages from same agent_id (default: True)
+            exclude_progress: Filter out progress-type messages (default: True)
+            message_types: Optional allow-list of message types (default: None = all types)
+
+        Returns:
+            List of message dicts
+        """
+        return await self._message_service.receive_messages(
+            agent_id=agent_id,
+            limit=limit,
+            exclude_self=exclude_self,
+            exclude_progress=exclude_progress,
+            message_types=message_types
+        )
 
     async def list_messages(
         self,
@@ -819,6 +846,49 @@ class ToolAccessor:
         except Exception as e:
             logger.exception(f"Failed to get next instruction: {e}")
             return {"status": "error", "error": str(e)}
+
+    async def get_team_agents(
+        self,
+        job_id: str,
+        tenant_key: str,
+        include_inactive: bool = False,
+    ) -> dict[str, Any]:
+        """
+        List agent executions (teammates) associated with this job.
+
+        Handover 0360 Feature 2: Team Discovery Tool.
+
+        Enables agents to discover teammates working on the same job/project.
+
+        Args:
+            job_id: Job ID to get teammates for
+            tenant_key: Tenant key for multi-tenant isolation
+            include_inactive: If True, include completed/decommissioned executions
+
+        Returns:
+            dict: {
+                "success": True,
+                "team": [
+                    {
+                        "agent_id": str,
+                        "job_id": str,
+                        "agent_type": str,
+                        "status": str,
+                        "instance_number": int,
+                        "agent_name": str,
+                        "tenant_key": str
+                    },
+                    ...
+                ]
+            }
+        """
+        from giljo_mcp.tools.agent_coordination import get_team_agents as coordination_get_team_agents
+
+        return await coordination_get_team_agents(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            include_inactive=include_inactive,
+        )
 
     # Succession Tools (Handover 0080)
 
@@ -1672,4 +1742,49 @@ class ToolAccessor:
             apply_user_config=apply_user_config,
             format=format,
             db_manager=self.db_manager
+        )
+
+    # File Utilities (Handover 0360 Feature 3)
+
+    async def file_exists(
+        self,
+        path: str,
+        tenant_key: str,
+        workspace_root: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Check whether a file or directory exists within the allowed workspace.
+
+        Handover 0360 Feature 3: Lightweight file existence checking without
+        reading entire file contents. Prevents token waste and improves performance.
+
+        Args:
+            path: Path to check (relative or absolute)
+            tenant_key: Tenant isolation key
+            workspace_root: Optional workspace root (defaults to product workspace)
+
+        Returns:
+            Dict with:
+                - success: bool
+                - path: str (normalized path)
+                - exists: bool
+                - is_file: bool
+                - is_dir: bool
+                - error: str (if failed)
+
+        Example response:
+            {
+                "success": true,
+                "path": "src/app.py",
+                "exists": true,
+                "is_file": true,
+                "is_dir": false
+            }
+        """
+        from giljo_mcp.tools.file_utils import file_exists
+
+        return await file_exists(
+            path=path,
+            tenant_key=tenant_key,
+            workspace_root=workspace_root,
         )

@@ -411,6 +411,120 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
         }
 
 
+async def get_team_agents(
+    job_id: str,
+    tenant_key: str,
+    include_inactive: bool = False,
+) -> Dict[str, Any]:
+    """
+    List agent executions (teammates) associated with this job.
+
+    Handover 0360 Feature 2: Team Discovery Tool.
+
+    Enables agents to discover teammates working on the same job/project.
+    Useful for coordination, status checking, and understanding team composition.
+
+    Semantic Contract:
+    - job_id = Work order UUID (the WHAT - identifies the work)
+    - Returns list of agent executions (the WHO - all executors for this job)
+    - Filtered by active status by default (waiting, working, blocked)
+
+    Args:
+        job_id: Job ID to get teammates for
+        tenant_key: Tenant key for multi-tenant isolation
+        include_inactive: If True, include completed/decommissioned executions
+
+    Returns:
+        dict: {
+            "success": True,
+            "team": [
+                {
+                    "agent_id": str (executor UUID),
+                    "job_id": str (work order UUID),
+                    "agent_type": str (agent role),
+                    "status": str (execution status),
+                    "instance_number": int (succession tracking),
+                    "agent_name": str (display name),
+                    "tenant_key": str
+                },
+                ...
+            ]
+        }
+
+    Security:
+        - Only returns executions for jobs owned by tenant
+        - Validates tenant_key matches job's tenant
+        - No cross-tenant execution visibility
+
+    Use Cases:
+        - Check who else is working on this job
+        - Identify orchestrator vs specialist agents
+        - Track succession history (all instances)
+        - Coordinate with specific teammates
+
+    Example:
+        >>> result = await get_team_agents(
+        ...     job_id="job-uuid-123",
+        ...     tenant_key="tenant-abc",
+        ...     include_inactive=False
+        ... )
+        >>> for member in result["team"]:
+        ...     print(f"{member['agent_type']}: {member['status']}")
+    """
+    try:
+        # Validate input parameters
+        if not job_id or not job_id.strip():
+            return {
+                "success": False,
+                "error": "job_id cannot be empty",
+            }
+
+        if not tenant_key or not tenant_key.strip():
+            return {
+                "success": False,
+                "error": "tenant_key cannot be empty",
+            }
+
+        # Import service and models
+        from ..services.agent_job_manager import AgentJobManager
+        from ..tenant import TenantManager
+
+        # Get database manager
+        db_manager = _get_db_manager()
+
+        # Create AgentJobManager instance
+        tenant_manager = TenantManager()
+        job_manager = AgentJobManager(
+            db_manager=db_manager,
+            tenant_manager=tenant_manager,
+            test_session=_test_session,  # Use test session if available
+        )
+
+        # Call service method
+        team_members = await job_manager.list_team_agents(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            include_inactive=include_inactive,
+        )
+
+        logger.info(
+            f"[get_team_agents] Retrieved {len(team_members)} teammates for job {job_id}, "
+            f"include_inactive={include_inactive}, tenant={tenant_key}"
+        )
+
+        return {
+            "success": True,
+            "team": team_members,
+        }
+
+    except Exception as e:
+        logger.error(f"[get_team_agents] Error: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
 def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) -> None:
     """
     Register agent coordination tools with MCP server.
@@ -1186,7 +1300,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    # Register all tools (including module-level spawn_agent and get_agent_status)
+    # Register all tools (including module-level spawn_agent, get_agent_status, get_team_agents)
     tools["get_pending_jobs"] = get_pending_jobs
     tools["acknowledge_job"] = acknowledge_job
     tools["report_progress"] = report_progress
@@ -1196,5 +1310,6 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
     tools["send_message"] = send_message
     tools["spawn_agent"] = spawn_agent
     tools["get_agent_status"] = get_agent_status
+    tools["get_team_agents"] = get_team_agents  # Handover 0360 Feature 2
 
-    logger.info("[agent_coordination] Registered 9 agent coordination tools for multi-tool orchestration")
+    logger.info("[agent_coordination] Registered 10 agent coordination tools for multi-tool orchestration")

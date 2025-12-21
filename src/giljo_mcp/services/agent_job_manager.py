@@ -602,3 +602,91 @@ class AgentJobManager:
         except Exception as e:
             self._logger.exception(f"Failed to get active executions for project: {e}")
             return []
+
+    async def list_team_agents(
+        self,
+        job_id: str,
+        tenant_key: str,
+        include_inactive: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        List agent executions (teammates) associated with this job.
+
+        Handover 0360 Feature 2: Team Discovery Tool.
+
+        Enables agents to discover teammates working on the same job/project.
+        Returns execution details (agent_id, job_id, agent_type, status).
+
+        Args:
+            job_id: Job ID to get teammates for
+            tenant_key: Tenant key for multi-tenant isolation
+            include_inactive: If True, include completed/decommissioned executions
+
+        Returns:
+            List of dict with team member details:
+            [
+                {
+                    "agent_id": "ae-001",
+                    "job_id": "job-abc",
+                    "agent_type": "orchestrator",
+                    "status": "working",
+                    "instance_number": 1,
+                    "agent_name": "Orchestrator Instance 1",
+                    "tenant_key": "tenant-abc"
+                },
+                ...
+            ]
+
+        Example:
+            >>> teammates = await manager.list_team_agents(
+            ...     job_id="job-uuid-123",
+            ...     tenant_key="tenant-abc",
+            ...     include_inactive=False
+            ... )
+            >>> for member in teammates:
+            ...     print(f"{member['agent_type']}: {member['status']}")
+        """
+        try:
+            async with self._get_session() as session:
+                # Build query
+                query = select(AgentExecution).where(
+                    and_(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key
+                    )
+                )
+
+                # Filter by status unless include_inactive is True
+                if not include_inactive:
+                    # Only return active statuses (waiting, working, blocked)
+                    query = query.where(
+                        AgentExecution.status.in_(["waiting", "working", "blocked"])
+                    )
+
+                # Execute query
+                result = await session.execute(query.order_by(AgentExecution.instance_number))
+                executions = result.scalars().all()
+
+                # Convert to dict format
+                team_members = []
+                for execution in executions:
+                    team_members.append({
+                        "agent_id": execution.agent_id,
+                        "job_id": execution.job_id,
+                        "agent_type": execution.agent_type,
+                        "status": execution.status,
+                        "instance_number": execution.instance_number,
+                        "agent_name": execution.agent_name,
+                        "tenant_key": execution.tenant_key,
+                    })
+
+                self._logger.info(
+                    f"Found {len(team_members)} teammates for job {job_id} "
+                    f"(include_inactive={include_inactive})"
+                )
+
+                return team_members
+
+        except Exception as e:
+            self._logger.exception(f"Failed to list team agents: {e}")
+            return []

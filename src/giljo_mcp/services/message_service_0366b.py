@@ -294,26 +294,42 @@ class MessageService:
         self,
         agent_id: str,
         limit: int = 10,
-        tenant_key: Optional[str] = None
+        tenant_key: Optional[str] = None,
+        exclude_self: bool = True,
+        exclude_progress: bool = True,
+        message_types: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         """
-        Receive pending messages for an agent executor.
+        Receive pending messages for an agent executor with optional filtering.
 
         Handover 0366b: Filters by agent_id (executor), NOT job_id (work).
         Handover 0366c: Updated return type to list for test compatibility.
+        Handover 0360: Added filtering capabilities (exclude_self, exclude_progress, message_types).
 
         Args:
             agent_id: Agent execution ID (executor UUID)
             limit: Maximum number of messages to retrieve (default: 10)
             tenant_key: Optional tenant key (uses current if not provided)
+            exclude_self: Filter out messages from same agent_id (default: True)
+            exclude_progress: Filter out progress-type messages (default: True)
+            message_types: Optional allow-list of message types (default: None = all types)
 
         Returns:
             List of message dicts (empty list on error or no messages)
 
         Example:
+            >>> # Basic usage (with default filters)
             >>> messages = await service.receive_messages(
             ...     agent_id="agent-uuid-123",
             ...     limit=5,
+            ...     tenant_key="tenant-abc"
+            ... )
+            >>> # With custom filters
+            >>> messages = await service.receive_messages(
+            ...     agent_id="agent-uuid-123",
+            ...     exclude_self=False,
+            ...     exclude_progress=False,
+            ...     message_types=["direct", "broadcast"],
             ...     tenant_key="tenant-abc"
             ... )
         """
@@ -360,16 +376,44 @@ class MessageService:
                 from sqlalchemy import func
                 from sqlalchemy.dialects.postgresql import JSONB
 
-                query = select(Message).where(
-                    and_(
-                        Message.tenant_key == tenant_key,
-                        Message.project_id == job.project_id,
-                        Message.status == "pending",  # Only unread messages
-                        # Direct message: JSONB array contains agent_id
-                        # Use PostgreSQL JSONB containment operator @>
-                        func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB))
+                # Build base query conditions
+                conditions = [
+                    Message.tenant_key == tenant_key,
+                    Message.project_id == job.project_id,
+                    Message.status == "pending",  # Only unread messages
+                    # Direct message: JSONB array contains agent_id
+                    # Use PostgreSQL JSONB containment operator @>
+                    func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB))
+                ]
+
+                # HANDOVER 0360: Apply filtering conditions
+
+                # Filter: exclude_self - Filter out messages from the same agent
+                if exclude_self:
+                    # Meta_data._from_agent should not equal current agent_id
+                    # Use PostgreSQL JSONB ->> operator to extract _from_agent field
+                    conditions.append(
+                        func.coalesce(
+                            Message.meta_data.op('->>')('_from_agent'),
+                            ''
+                        ) != agent_id
                     )
-                ).order_by(Message.created_at)
+
+                # Filter: exclude_progress - Filter out progress-type messages
+                if exclude_progress:
+                    conditions.append(Message.message_type != "progress")
+
+                # Filter: message_types - Allow-list of message types
+                if message_types is not None:
+                    if len(message_types) == 0:
+                        # Empty allow-list means no messages should pass
+                        # Add impossible condition to return no results
+                        conditions.append(Message.id == None)  # noqa: E711
+                    else:
+                        # Only allow specified message types
+                        conditions.append(Message.message_type.in_(message_types))
+
+                query = select(Message).where(and_(*conditions)).order_by(Message.created_at)
 
                 # Apply limit
                 if isinstance(limit, int) and limit > 0:
