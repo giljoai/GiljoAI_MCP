@@ -187,12 +187,13 @@ predecessor.status = "decommissioned"
 
 | Phase | Handover | Focus | Est. Time | Status |
 |-------|----------|-------|-----------|--------|
-| **0367a** | `0367a_service_layer_cleanup.md` | Services (206 refs) | 8-12 hrs | PENDING |
-| **0367b** | `0367b_api_endpoint_migration.md` | API endpoints (103 refs) | 6-8 hrs | PENDING |
-| **0367c** | `0367c_tools_monitoring_cleanup.md` | Tools & monitoring (102 refs) | 6-8 hrs | PENDING |
+| **0367a** | `0367a_service_layer_cleanup.md` | Services (206 refs) | 8-12 hrs | ✅ COMPLETE |
+| **0367b** | `0367b_api_endpoint_migration.md` | API endpoints (103 refs) | 6-8 hrs | ✅ COMPLETE |
+| **0367c-1** | `0367c-1_monitoring_orchestrator_cleanup.md` | Monitoring + Orchestrator (46 refs) | 2-3 hrs | PENDING |
+| **0367c-2** | `0367c-2_tools_prompt_cleanup.md` | Tools + Prompts (49 refs) | 2-3 hrs | PENDING |
 | **0367d** | `0367d_validation_and_deprecation.md` | Validation & cleanup | 2-4 hrs | PENDING |
 
-**Dependency**: 0367a must complete first. 0367b and 0367c can run in parallel after 0367a. 0367d runs last.
+**Dependency**: 0367a ✅ → 0367b ✅ → 0367c-1 → 0367c-2 → 0367d (sequential for safety).
 
 ---
 
@@ -219,15 +220,25 @@ predecessor.status = "decommissioned"
 | `api/endpoints/projects/status.py` | 11 | P1 |
 | `api/endpoints/agent_jobs/operations.py` | 7 | P2 |
 
-### 0367c: Tools & Monitoring
+### 0367c-1: Monitoring & Orchestrator
 | File | Refs | Priority |
 |------|------|----------|
 | `src/giljo_mcp/monitoring/agent_health_monitor.py` | 23 | P0 |
 | `src/giljo_mcp/orchestrator.py` | 21 | P0 |
-| `src/giljo_mcp/staging_rollback.py` | 18 | P1 |
-| `src/giljo_mcp/thin_prompt_generator.py` | 17 | P1 |
-| `src/giljo_mcp/slash_commands/handover.py` | 10 | P2 |
-| `src/giljo_mcp/tools/*.py` | ~15 | P2 |
+| `src/giljo_mcp/orchestrator_succession.py` | 2 | P1 |
+
+### 0367c-2: Tools & Prompt Generation
+| File | Refs | Priority |
+|------|------|----------|
+| `src/giljo_mcp/staging_rollback.py` | 18 | P0 |
+| `src/giljo_mcp/thin_prompt_generator.py` | 17 | P0 |
+| `src/giljo_mcp/tools/orchestration.py` | 4 | P1 |
+| `src/giljo_mcp/tools/agent_coordination.py` | 3 | P1 |
+| `src/giljo_mcp/tools/__init__.py` | 2 | P1 |
+| `src/giljo_mcp/tools/tool_accessor.py` | 2 | P1 |
+| `src/giljo_mcp/tools/agent_status.py` | 1 | P2 |
+| `src/giljo_mcp/tools/optimization.py` | 1 | P2 |
+| `src/giljo_mcp/tools/project.py` | 1 | P2 |
 
 ### 0367d: Validation
 - Verify zero MCPAgentJob refs in production
@@ -378,11 +389,16 @@ UNION ALL SELECT 'mcp_agent_jobs', COUNT(*) FROM mcp_agent_jobs;
 
 ---
 
-### Phase 0367c Handover Notes
+### Phase 0367c-1 Handover Notes
 **Status**: NOT STARTED
 **Completed By**: [Agent ID]
 **Date**: [Date]
 **Duration**: [Hours]
+
+**Scope**: Monitoring + Orchestrator (46 refs across 3 files)
+- `agent_health_monitor.py` (23 refs)
+- `orchestrator.py` (21 refs)
+- `orchestrator_succession.py` (2 refs)
 
 **What was done**:
 - [ ] TBD
@@ -390,10 +406,26 @@ UNION ALL SELECT 'mcp_agent_jobs', COUNT(*) FROM mcp_agent_jobs;
 **Files modified**:
 - TBD
 
-**Breaking changes**:
+**Notes for next phase**:
 - TBD
 
-**Issues encountered**:
+---
+
+### Phase 0367c-2 Handover Notes
+**Status**: NOT STARTED
+**Completed By**: [Agent ID]
+**Date**: [Date]
+**Duration**: [Hours]
+
+**Scope**: Tools + Prompt Generation (49 refs across 9 files)
+- `staging_rollback.py` (18 refs)
+- `thin_prompt_generator.py` (17 refs)
+- `tools/*.py` (14 refs across 7 files)
+
+**What was done**:
+- [ ] TBD
+
+**Files modified**:
 - TBD
 
 **Notes for next phase**:
@@ -450,9 +482,10 @@ git revert <commit>   # Or git reset --hard <commit> if safe
 - `handovers/Reference_docs/0358_model_mapping_reference.md` - Complete field mapping
 - `handovers/completed/0366a_schema_and_models-C.md` - Schema definitions
 - `handovers/completed/0358d_mcpagentjob_deprecation-C.md` - Deprecation approach
-- `handovers/0367a_service_layer_cleanup.md` - Phase A details
-- `handovers/0367b_api_endpoint_migration.md` - Phase B details
-- `handovers/0367c_tools_monitoring_cleanup.md` - Phase C details
+- `handovers/0367a_service_layer_cleanup.md` - Phase A details ✅ COMPLETE
+- `handovers/0367b_api_endpoint_migration.md` - Phase B details ✅ COMPLETE
+- `handovers/0367c-1_monitoring_orchestrator_cleanup.md` - Phase C-1 details (Monitoring + Orchestrator)
+- `handovers/0367c-2_tools_prompt_cleanup.md` - Phase C-2 details (Tools + Prompts)
 - `handovers/0367d_validation_and_deprecation.md` - Phase D details
 
 ---
