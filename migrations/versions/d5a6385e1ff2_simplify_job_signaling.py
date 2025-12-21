@@ -32,12 +32,24 @@ def upgrade() -> None:
     Remove deprecated job signaling columns from mcp_agent_jobs table.
 
     These columns are no longer used in the simplified job lifecycle.
-    """
-    # Drop acknowledged column
-    op.drop_column('mcp_agent_jobs', 'acknowledged')
 
-    # Drop mission_read_at column
-    op.drop_column('mcp_agent_jobs', 'mission_read_at')
+    Note: Uses raw SQL with IF EXISTS for idempotency - handles cases where
+    columns may not exist (e.g., fresh install from baseline that already
+    reflects the final schema state).
+    """
+    # Use raw SQL with IF EXISTS for idempotency
+    # This handles fresh installs where baseline already omits these columns
+    conn = op.get_bind()
+
+    # Drop acknowledged column if it exists
+    conn.execute(sa.text(
+        "ALTER TABLE mcp_agent_jobs DROP COLUMN IF EXISTS acknowledged"
+    ))
+
+    # Drop mission_read_at column if it exists
+    conn.execute(sa.text(
+        "ALTER TABLE mcp_agent_jobs DROP COLUMN IF EXISTS mission_read_at"
+    ))
 
 
 def downgrade() -> None:
