@@ -117,14 +117,14 @@ async def get_project_orchestrator(
     """
     Get the orchestrator job for a project.
 
-    Returns the orchestrator MCPAgentJob assigned to this project.
+    Returns the orchestrator AgentExecution (executor) with AgentJob (work order) data.
     Supports orchestrator succession (Handover 0080) - returns latest instance.
     If no orchestrator exists, creates one automatically using the dual-model pattern.
 
-    WRITE Path Pattern (Handover 0366+):
+    Migration (Handover 0367b):
+    - Queries AgentExecution joined with AgentJob (legacy model removed)
     - Creates BOTH AgentJob (work order) + AgentExecution (executor instance)
-    - Creates legacy MCPAgentJob for backward compatibility with response model
-    - This allows old READ paths to work while new code queries AgentExecution
+    - Response maps from AgentExecution fields + AgentJob.mission
 
     Args:
         project_id: Project UUID or alias
@@ -143,8 +143,10 @@ async def get_project_orchestrator(
         The orchestrator is essential for project launch flow.
     """
     from sqlalchemy import select
+    from sqlalchemy.orm import joinedload
     from uuid import uuid4
-    from src.giljo_mcp.models import MCPAgentJob, Project, AgentJob, AgentExecution
+    from src.giljo_mcp.models import Project
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     logger.debug(
         f"User {current_user.username} getting orchestrator for project {project_id}"
@@ -167,20 +169,23 @@ async def get_project_orchestrator(
     # Find orchestrator - support succession (get latest ACTIVE instance)
     # FIX: Filter by active statuses to avoid returning cancelled/failed orchestrators
     # Bug: Previously returned cancelled orchestrators causing "Project not ready to launch" error
+    # MIGRATION: Query AgentExecution joined with AgentJob (Handover 0367b)
     orch_stmt = (
-        select(MCPAgentJob)
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(
-            MCPAgentJob.project_id == project_id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == current_user.tenant_key,
-            MCPAgentJob.status.in_(["waiting", "working", "blocked"]),  # Only active statuses
+            AgentJob.project_id == project_id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Only active statuses
         )
-        .order_by(MCPAgentJob.instance_number.desc())
+        .order_by(AgentExecution.instance_number.desc())
     )
     orch_result = await db.execute(orch_stmt)
-    orchestrator = orch_result.scalars().first()
+    orchestrator_execution = orch_result.scalars().first()
 
-    if not orchestrator:
+    if not orchestrator_execution:
         # Auto-create orchestrator if missing (backward compatibility)
         # Following pattern from tool_accessor.py:1477-1510
         # Create both AgentJob (work order) and AgentExecution (executor instance)
@@ -203,7 +208,7 @@ async def get_project_orchestrator(
         db.add(agent_job)
 
         # Step 2: Create AgentExecution (executor instance)
-        agent_execution = AgentExecution(
+        orchestrator_execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,  # FK to AgentJob
             tenant_key=current_user.tenant_key,
@@ -215,56 +220,42 @@ async def get_project_orchestrator(
             tool_type="universal",
             messages=[],
         )
-        db.add(agent_execution)
+        db.add(orchestrator_execution)
         await db.commit()
-        await db.refresh(agent_execution)
+        await db.refresh(orchestrator_execution)
         await db.refresh(agent_job)
 
-        # Create legacy MCPAgentJob for backward compatibility with response model
-        # This allows existing READ paths to continue working while new code uses AgentJob/AgentExecution
-        orchestrator = MCPAgentJob(
-            job_id=job_id,  # Same job_id links to new AgentJob
-            tenant_key=current_user.tenant_key,
-            project_id=project_id,
-            agent_type="orchestrator",
-            agent_name="Orchestrator",
-            mission=agent_job.mission,
-            status=agent_execution.status,
-            tool_type=agent_execution.tool_type,
-            progress=agent_execution.progress,
-            instance_number=agent_execution.instance_number,
-            context_chunks=[],
-            messages=[],
-        )
-        db.add(orchestrator)
-        await db.commit()
-        await db.refresh(orchestrator)
+        # Set the job relationship for response mapping
+        orchestrator_execution.job = agent_job
 
         logger.info(
             f"Auto-created orchestrator {job_id} (agent_id: {agent_id}) for project {project_id} "
             f"(user: {current_user.username})"
         )
 
-    logger.info(f"Retrieved orchestrator {orchestrator.job_id} for project {project_id}")
+    logger.info(
+        f"Retrieved orchestrator execution {orchestrator_execution.agent_id} "
+        f"(job: {orchestrator_execution.job_id}) for project {project_id}"
+    )
 
-    # Return orchestrator data
+    # Return orchestrator data - map from AgentExecution + AgentJob
     from .models import OrchestratorJobResponse
 
     return OrchestratorResponse(
         success=True,
         orchestrator=OrchestratorJobResponse(
-            id=orchestrator.id,
-            job_id=orchestrator.job_id,
-            agent_id=orchestrator.job_id,  # Alias for backward compatibility
-            agent_type=orchestrator.agent_type,
-            agent_name=orchestrator.agent_name,
-            mission=orchestrator.mission,
-            status=orchestrator.status,
-            progress=orchestrator.progress,
-            tool_type=orchestrator.tool_type,
-            created_at=orchestrator.created_at,
-            started_at=orchestrator.started_at,
-            completed_at=orchestrator.completed_at,
-            instance_number=orchestrator.instance_number or 1,
+            id=orchestrator_execution.id,  # AgentExecution.id (row ID)
+            job_id=orchestrator_execution.job_id,  # AgentJob.job_id
+            agent_id=orchestrator_execution.agent_id,  # AgentExecution.agent_id (executor UUID)
+            agent_type=orchestrator_execution.agent_type,  # From AgentExecution
+            agent_name=orchestrator_execution.agent_name,  # From AgentExecution
+            mission=orchestrator_execution.job.mission,  # From AgentJob
+            status=orchestrator_execution.status,  # From AgentExecution
+            progress=orchestrator_execution.progress,  # From AgentExecution
+            tool_type=orchestrator_execution.tool_type,  # From AgentExecution
+            created_at=orchestrator_execution.created_at,  # From AgentExecution
+            started_at=orchestrator_execution.started_at,  # From AgentExecution
+            completed_at=orchestrator_execution.completed_at,  # From AgentExecution
+            instance_number=orchestrator_execution.instance_number or 1,  # From AgentExecution
         ),
     )
