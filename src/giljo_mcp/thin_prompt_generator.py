@@ -50,7 +50,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
@@ -182,9 +182,9 @@ class ThinClientPromptGenerator:
 
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
-        # Handover 0366: Check AgentExecution first, fallback to MCPAgentJob for backward compat
+        # Handover 0367c-2: Use AgentExecution only (no fallback to MCPAgentJob)
 
-        # Check new model first (AgentExecution)
+        # Check for existing active orchestrator (AgentExecution)
         existing_exec_stmt = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))  # Eager load for job_metadata access
@@ -201,58 +201,17 @@ class ThinClientPromptGenerator:
         existing_exec_result = await self.db.execute(existing_exec_stmt)
         existing_execution = existing_exec_result.scalars().first()
 
-        # Fallback to MCPAgentJob (for backward compatibility during transition)
-        if not existing_execution:
-            existing_mcp_stmt = (
-                select(MCPAgentJob)
-                .where(
-                    and_(
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_type == "orchestrator",
-                        MCPAgentJob.tenant_key == self.tenant_key,
-                        MCPAgentJob.status.in_(["waiting", "working"]),
-                    )
-                )
-                .order_by(MCPAgentJob.created_at.desc())
-            )
-            existing_mcp_result = await self.db.execute(existing_mcp_stmt)
-            existing_mcp = existing_mcp_result.scalars().first()
-
-            # If found in MCPAgentJob, use it
-            if existing_mcp:
-                existing_orchestrator = existing_mcp
-            else:
-                existing_orchestrator = None
-        else:
-            # Map AgentExecution to compatible interface
-            existing_orchestrator = type('obj', (object,), {
-                'job_id': existing_execution.job_id,
-                'instance_number': existing_execution.instance_number,
-                'job_metadata': existing_execution.job.job_metadata if existing_execution.job else {},
-            })()
-
-        if existing_orchestrator:
+        if existing_execution:
             # Reuse existing active orchestrator
-            orchestrator_id = existing_orchestrator.job_id
-            instance_number = existing_orchestrator.instance_number
+            orchestrator_id = existing_execution.job_id
+            instance_number = existing_execution.instance_number
 
             # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
-            # Handover 0366: Update AgentJob.job_metadata (persistent work order metadata)
-            # Note: For AgentExecution case, we need to update the parent AgentJob
+            # Handover 0367c-2: Update AgentJob.job_metadata (persistent work order metadata)
 
-            # Fetch AgentJob to update metadata
-            job_stmt = select(AgentJob).where(
-                and_(
-                    AgentJob.job_id == orchestrator_id,
-                    AgentJob.tenant_key == self.tenant_key
-                )
-            )
-            job_result = await self.db.execute(job_stmt)
-            agent_job = job_result.scalar_one_or_none()
-
-            if agent_job:
-                # Update AgentJob metadata (new model)
-                agent_job.job_metadata = {
+            # Update parent AgentJob metadata
+            if existing_execution.job:
+                existing_execution.job.job_metadata = {
                     "field_priorities": field_priorities or {},
                     "depth_config": depth_config,
                     "user_id": user_id,
@@ -261,18 +220,6 @@ class ThinClientPromptGenerator:
                     "reused_at": str(datetime.now()),
                 }
                 await self.db.commit()
-            elif hasattr(existing_orchestrator, 'job_metadata'):
-                # Fallback: Update MCPAgentJob metadata (old model)
-                existing_orchestrator.job_metadata = {
-                    "field_priorities": field_priorities or {},
-                    "depth_config": depth_config,
-                    "user_id": user_id,
-                    "tool": tool,
-                    "created_via": "thin_client_generator",
-                    "reused_at": str(datetime.now()),
-                }
-                await self.db.commit()
-                await self.db.refresh(existing_orchestrator)
 
             logger.info(
                 f"[ThinPromptGenerator] Reusing existing orchestrator {orchestrator_id} "
@@ -292,9 +239,9 @@ class ThinClientPromptGenerator:
             placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
 
             # If instance_number not provided, calculate next in sequence
-            # Handover 0366: Check both AgentExecution and MCPAgentJob for instance number
+            # Handover 0367c-2: Check AgentExecution only (no fallback)
             if instance_number is None or instance_number == 1:
-                # Check AgentExecution first
+                # Check AgentExecution for max instance number
                 exec_instance_stmt = (
                     select(func.coalesce(func.max(AgentExecution.instance_number), 0))
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -305,21 +252,9 @@ class ThinClientPromptGenerator:
                     )
                 )
                 exec_instance_result = await self.db.execute(exec_instance_stmt)
-                exec_max = exec_instance_result.scalar() or 0
+                max_instance = exec_instance_result.scalar() or 0
 
-                # Check MCPAgentJob for backward compat
-                mcp_instance_stmt = select(func.coalesce(func.max(MCPAgentJob.instance_number), 0)).where(
-                    and_(
-                        MCPAgentJob.tenant_key == self.tenant_key,
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_type == "orchestrator",
-                    )
-                )
-                mcp_instance_result = await self.db.execute(mcp_instance_stmt)
-                mcp_max = mcp_instance_result.scalar() or 0
-
-                # Use the higher of the two
-                instance_number = max(exec_max, mcp_max) + 1
+                instance_number = max_instance + 1
 
             # Generate orchestrator_id (full UUID for consistency)
             orchestrator_id = str(uuid4())
