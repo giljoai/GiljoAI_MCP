@@ -414,10 +414,10 @@ async def delete_template(
     - TemplateAugmentation records
     - TemplateUsageStats records
     - TemplateArchive records (version history)
-    - Sets MCPAgentJob.template_id to NULL for historical jobs
+    - Sets AgentJob.template_id to NULL for historical jobs
     - The template itself
     """
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob
     from src.giljo_mcp.models.templates import TemplateArchive, TemplateAugmentation, TemplateUsageStats
     from sqlalchemy import update, delete as sql_delete
 
@@ -441,10 +441,10 @@ async def delete_template(
 
         template_name = template.name
 
-        # 1. Set MCPAgentJob.template_id to NULL for historical jobs
+        # 1. Set AgentJob.template_id to NULL for historical jobs
         await session.execute(
-            update(MCPAgentJob)
-            .where(MCPAgentJob.template_id == template_id)
+            update(AgentJob)
+            .where(AgentJob.template_id == template_id)
             .values(template_id=None)
         )
 
