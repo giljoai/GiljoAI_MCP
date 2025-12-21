@@ -28,6 +28,11 @@ class MCPAgentJob(Base):
     """
     MCP Agent Job model - tracks agent jobs separately from user tasks.
 
+    .. deprecated:: 3.3.0
+        Use :class:`AgentJob` and :class:`AgentExecution` instead.
+        See Handover 0358 for migration guide.
+        Will be removed in v4.0.
+
     Handover 0017: Enables agent-to-agent job coordination for agentic orchestration.
     Handover 0073: Enhanced with progress tracking, tool assignment, and expanded status states.
     Handover 0080: Orchestrator succession architecture for unlimited project duration.
@@ -61,6 +66,23 @@ class MCPAgentJob(Base):
     """
 
     __tablename__ = "mcp_agent_jobs"
+
+    def __init__(self, *args, **kwargs):
+        """Initialize MCPAgentJob with deprecation warning.
+
+        .. deprecated:: 3.3.0
+            Use :class:`AgentJob` and :class:`AgentExecution` instead.
+            See Handover 0358 for migration guide.
+            Will be removed in v4.0.
+        """
+        import warnings
+        warnings.warn(
+            "MCPAgentJob is deprecated. Use AgentJob and AgentExecution instead. "
+            "See Handover 0358 for migration guide. Will be removed in v4.0.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(*args, **kwargs)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)

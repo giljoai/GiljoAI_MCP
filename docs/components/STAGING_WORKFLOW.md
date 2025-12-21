@@ -362,6 +362,17 @@ Tech Stack Requirements: Python 3.11+, FastAPI, Vue3, PostgreSQL 18
 
 ### Task 6: Agent Job Spawning
 
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
+
 **Purpose**: Create MCPAgentJob records for discovered agents
 
 **Actions**:
@@ -561,6 +572,13 @@ Before calling `complete_job()`, orchestrators MUST:
 ## Staging Result Storage
 
 After successful completion, staging results are stored in `MCPAgentJob.staging_result` (JSONB column):
+
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
 
 ```json
 {
