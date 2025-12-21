@@ -73,7 +73,7 @@ def _generate_team_context_header(
     # Support both MCPAgentJob and AgentExecution
     agent_name = getattr(current_job, 'agent_name', None) or getattr(current_job, 'agent_type', 'unknown')
     agent_type = getattr(current_job, 'agent_type', 'unknown')
-    
+
     # For AgentExecution, use agent_id; for MCPAgentJob, use job_id
     agent_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', 'unknown')
     job_id = getattr(current_job, 'job_id', agent_id)
@@ -89,7 +89,7 @@ Role: {agent_type}
     team_rows = []
     for job in all_project_jobs:
         role_name = getattr(job, 'agent_name', None) or getattr(job, 'agent_type', 'unknown')
-        
+
         # Get mission: try direct attribute, then job relationship, then lookup dict
         mission_text = ""
         if hasattr(job, 'mission') and job.mission:
@@ -98,7 +98,7 @@ Role: {agent_type}
             mission_text = job.job.mission
         elif mission_lookup and hasattr(job, 'job_id') and job.job_id in mission_lookup:
             mission_text = mission_lookup[job.job_id]
-        
+
         # Extract a short deliverable summary from the mission (first 80 chars)
         deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
         if len(mission_text or "") > 80:
@@ -131,7 +131,7 @@ This project has {num_agents} agent(s) working together:
     # Get other agents (exclude current by agent_id or job_id)
     current_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', None)
     other_agents = [
-        j for j in all_project_jobs 
+        j for j in all_project_jobs
         if (getattr(j, 'agent_id', None) or getattr(j, 'job_id', None)) != current_id
     ]
     other_types = {getattr(j, 'agent_type', 'unknown') for j in other_agents}
@@ -176,14 +176,15 @@ This project has {num_agents} agent(s) working together:
 
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0359, 0355, 0358b).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
 
-    Handover 0359: Added agent_name parameter for acknowledge_job, fixed
-    receive_messages to use job_id (UUID), mandatory TodoWrite in Phase 2,
-    and steps_completed/steps_total in progress.
+    Handover 0359: Fixed progress format to match backend implementation.
+    Protocol now instructs mode="todo", completed_steps, total_steps, current_step
+    instead of old steps_completed/steps_total format. This fixes Steps column
+    tracking in Jobs table.
 
     Handover 0355: Enhanced message checking - Phase 2 checks after each task,
     Phase 3 reordered to check before reporting, Phase 4 gates on empty queue,
@@ -204,7 +205,7 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
     """
     # Use agent_id if provided, otherwise fall back to job_id (backwards compat)
     executor_id = agent_id or job_id
-    
+
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
@@ -232,7 +233,8 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
    - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with current status
-   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"percent": X, "message": "current task", "steps_completed": Y, "steps_total": Z}})`
+   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
+   - Optional: Include "message" field for additional context
 
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
 - ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
@@ -306,7 +308,7 @@ class OrchestrationService:
         """
         Get a session, preferring an injected test session when provided.
         This keeps service methods compatible with test transaction fixtures.
-        
+
         Returns:
             Context manager for database session
         """
@@ -316,7 +318,7 @@ class OrchestrationService:
             async def _test_session_wrapper():
                 yield self._test_session
             return _test_session_wrapper()
-        
+
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
 
