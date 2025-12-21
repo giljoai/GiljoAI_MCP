@@ -1,9 +1,23 @@
 # ADR-0108: Unified Agent State Architecture
 
-**Status:** Proposed
+**Status:** Superseded by Handover 0366a
 **Date:** 2025-01-07
+**Superseded:** 2025-12-21 (Handover 0366a - AgentJob + AgentExecution architecture)
 **Architect:** System Architect Agent
 **Related:** Handover 0107 (Cancellation), Handover 0106 (Health Monitoring)
+
+> **⚠️ SUPERSEDED (Dec 2025 - Handover 0366a)**
+>
+> This ADR described the MCPAgentJob unified state model, which has been replaced by
+> the AgentJob (work order) + AgentExecution (executor instance) architecture.
+>
+> **New Architecture:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> **Migration:** MCPAgentJob is deprecated as of v3.3.0, will be removed in v4.0.
+>
+> See Handover 0366 series for the new architecture.
 
 ## Decision
 
