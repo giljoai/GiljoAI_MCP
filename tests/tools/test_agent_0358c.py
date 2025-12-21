@@ -168,8 +168,8 @@ async def test_launch_agent_uses_agent_execution(db_session, tenant_key, test_ag
     Expected behavior (NEW semantic contract):
     - Takes agent_id (executor UUID) as input
     - Queries AgentExecution table (not MCPAgentJob)
-    - Updates AgentExecution.status to "active"
-    - Updates AgentExecution.last_active timestamp
+    - Updates AgentExecution.status to "working"
+    - Updates AgentExecution.last_progress_at timestamp
     - Enforces tenant isolation via tenant_key
 
     Will FAIL because:
@@ -194,12 +194,12 @@ async def test_launch_agent_uses_agent_execution(db_session, tenant_key, test_ag
     assert result["agent_id"] == test_agent_execution.agent_id, "agent_id should match input"
 
     # Verify status updated
-    assert result["status"] == "active", "Status should be 'active' after launch"
+    assert result["status"] == "working", "Status should be 'working' after launch"
 
     # Verify database updated
     await db_session.refresh(test_agent_execution)
-    assert test_agent_execution.status == "active", "AgentExecution.status should be updated in DB"
-    assert test_agent_execution.last_active is not None, "AgentExecution.last_active should be set"
+    assert test_agent_execution.status == "working", "AgentExecution.status should be updated in DB"
+    assert test_agent_execution.last_progress_at is not None, "AgentExecution.last_progress_at should be set"
 
 
 # ========================================================================
@@ -448,8 +448,8 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
     - Creates NEW AgentExecution for "to_agent"
     - Sets new_execution.spawned_by = from_agent.agent_id (executor UUID)
     - Sets from_execution.succeeded_by = new_agent_id
-    - Sets from_execution.status = "handed_off"
-    - Sets new_execution.status = "active"
+    - Sets from_execution.status = "complete"
+    - Sets new_execution.status = "working"
     - Both executions reference SAME job_id (work order persistence)
 
     Will FAIL because:
@@ -493,12 +493,12 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
 
     # Verify from_execution updated
     await db_session.refresh(test_agent_execution)
-    assert test_agent_execution.status == "handed_off", "From executor status should be 'handed_off'"
+    assert test_agent_execution.status == "complete", "From executor status should be 'complete'"
     assert test_agent_execution.succeeded_by == to_execution.agent_id, "succeeded_by should track successor agent_id"
 
     # Verify to_execution updated
     await db_session.refresh(to_execution)
-    assert to_execution.status == "active", "To executor status should be 'active'"
+    assert to_execution.status == "working", "To executor status should be 'working'"
     assert to_execution.spawned_by == test_agent_execution.agent_id, "spawned_by should track predecessor agent_id"
 
     # Verify both executions reference same job
@@ -671,7 +671,7 @@ async def test_full_agent_lifecycle_workflow(db_session, tenant_key, test_projec
     )
 
     assert launch_result.get("success") is True
-    assert launch_result["status"] == "active"
+    assert launch_result["status"] == "working"
 
     # Step 3: Get health (query AgentExecution)
     health_result = await _get_agent_health_with_session(
@@ -680,7 +680,7 @@ async def test_full_agent_lifecycle_workflow(db_session, tenant_key, test_projec
     )
 
     assert health_result.get("success") is True
-    assert health_result["status"] == "active"
+    assert health_result["status"] == "working"
 
     # Step 4: Decommission agent (update both models)
     decommission_result = await _decommission_agent_with_session(
