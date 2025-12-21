@@ -1522,7 +1522,8 @@ class ToolAccessor:
             if not project_id:
                 return {"success": False, "error": "project_id is required"}
             from sqlalchemy import select
-            from giljo_mcp.models import Project, MCPAgentJob
+            from giljo_mcp.models import Project
+            from giljo_mcp.models.agent_identity import AgentJob
             from datetime import datetime, timezone
             async with self.get_session_async() as session:
                 pr = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
@@ -1532,7 +1533,7 @@ class ToolAccessor:
                 if not project.mission or not project.mission.strip():
                     return {"success": False, "error": "Project mission has not been created. Please complete staging first."}
                 ag = await session.execute(
-                    select(MCPAgentJob).where(MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == tenant_key)
+                    select(AgentJob).where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
                 )
                 agents = ag.scalars().all()
                 if not agents:

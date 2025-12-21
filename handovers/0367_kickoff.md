@@ -3,8 +3,8 @@
 **Living Document** - Each agent team updates this after completing their phase.
 
 **Last Updated**: 2025-12-21
-**Current Phase**: 0367c-1 COMPLETE - Ready for 0367c-2
-**Overall Progress**: 3/5 phases complete (0367a ✅, 0367b ✅, 0367c-1 ✅, 0367c-2 pending, 0367d pending)
+**Current Phase**: 0367c-2 COMPLETE - Ready for 0367d
+**Overall Progress**: 4/5 phases complete (0367a ✅, 0367b ✅, 0367c-1 ✅, 0367c-2 ✅, 0367d pending)
 
 ---
 
@@ -190,10 +190,10 @@ predecessor.status = "decommissioned"
 | **0367a** | `0367a_service_layer_cleanup.md` | Services (206 refs) | 8-12 hrs | ✅ COMPLETE |
 | **0367b** | `0367b_api_endpoint_migration.md` | API endpoints (103 refs) | 6-8 hrs | ✅ COMPLETE |
 | **0367c-1** | `0367c-1_monitoring_orchestrator_cleanup.md` | Monitoring + Orchestrator (46 refs) | 2-3 hrs | ✅ COMPLETE |
-| **0367c-2** | `0367c-2_tools_prompt_cleanup.md` | Tools + Prompts (49 refs) | 2-3 hrs | PENDING |
+| **0367c-2** | `0367c-2_tools_prompt_cleanup.md` | Tools + Prompts (49 refs) | 2-3 hrs | ✅ COMPLETE |
 | **0367d** | `0367d_validation_and_deprecation.md` | Validation & cleanup | 2-4 hrs | PENDING |
 
-**Dependency**: 0367a ✅ → 0367b ✅ → 0367c-1 ✅ → 0367c-2 → 0367d (sequential for safety).
+**Dependency**: 0367a ✅ → 0367b ✅ → 0367c-1 ✅ → 0367c-2 ✅ → 0367d (sequential for safety).
 
 ---
 
@@ -445,24 +445,57 @@ UNION ALL SELECT 'mcp_agent_jobs', COUNT(*) FROM mcp_agent_jobs;
 ---
 
 ### Phase 0367c-2 Handover Notes
-**Status**: NOT STARTED
-**Completed By**: [Agent ID]
-**Date**: [Date]
-**Duration**: [Hours]
+**Status**: ✅ COMPLETE
+**Completed By**: Claude Opus 4.5 (TDD with tdd-implementor subagent)
+**Date**: 2025-12-21
+**Duration**: ~1.5 hours
 
 **Scope**: Tools + Prompt Generation (49 refs across 9 files)
-- `staging_rollback.py` (18 refs)
-- `thin_prompt_generator.py` (17 refs)
-- `tools/*.py` (14 refs across 7 files)
+- `staging_rollback.py` (18 refs) ✅
+- `thin_prompt_generator.py` (17 refs) ✅
+- `tools/*.py` (14 refs across 7 files) ✅
 
 **What was done**:
-- [ ] TBD
+- [x] Created TDD test file: `tests/migration/test_0367c2_mcpagentjob_removal.py` (22 tests)
+- [x] Migrated staging_rollback.py to use AgentExecution with soft delete pattern
+- [x] Removed MCPAgentJob fallback logic in thin_prompt_generator.py
+- [x] Updated tools/orchestration.py, tools/tool_accessor.py, tools/project.py imports
+- [x] All 22 TDD tests pass (GREEN phase verified)
 
 **Files modified**:
-- TBD
+- `src/giljo_mcp/staging_rollback.py` - Replaced MCPAgentJob with AgentExecution, soft delete pattern
+- `src/giljo_mcp/thin_prompt_generator.py` - Removed fallback logic, single AgentExecution code path
+- `src/giljo_mcp/tools/orchestration.py` - Updated imports (removed MCPAgentJob)
+- `src/giljo_mcp/tools/tool_accessor.py` - Updated gil_launch to use AgentJob
+- `src/giljo_mcp/tools/project.py` - Updated import (removed MCPAgentJob)
+
+**Key changes**:
+- **Soft Delete Pattern**: staging_rollback now sets status="cancelled" instead of hard deleting
+- **No Fallback Logic**: thin_prompt_generator uses AgentExecution only (no MCPAgentJob lookup)
+- **UUID Parameters**: All functions now accept agent_id (UUID string) instead of job_id (int)
+
+**Remaining MCPAgentJob references (8 total)**:
+- All 8 are in **comments only** (not actual code imports/usage)
+- AST parsing verification confirms ZERO actual imports/usage
+- Comments preserved for historical documentation
 
 **Notes for next phase**:
-- TBD
+- 0367d (Validation & Deprecation) can now proceed
+- Remaining MCPAgentJob refs in production: only in models/agents.py (definition itself)
+- Test fixtures still use MCPAgentJob (deferred to 0368)
+- Deprecation warnings expected from test fixtures until 0368
+
+**MCPAgentJob Reference Counts (post-0367c-2)**:
+| Layer | Refs | Phase |
+|-------|------|-------|
+| Services | **0** ✅ | 0367a DONE |
+| API Endpoints | **0** ✅ | 0367b DONE |
+| Monitoring | **0** ✅ | 0367c-1 DONE |
+| Orchestrator | **0** ✅ | 0367c-1 DONE |
+| Tools | **0** ✅ | 0367c-2 DONE |
+| Prompts | **0** ✅ | 0367c-2 DONE |
+
+**Verification command**: `grep -r "MCPAgentJob" src/giljo_mcp/staging_rollback.py src/giljo_mcp/thin_prompt_generator.py src/giljo_mcp/tools/ --include="*.py" | grep -v __pycache__ | grep -v "#"`
 
 ---
 

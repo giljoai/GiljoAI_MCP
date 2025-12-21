@@ -25,7 +25,8 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import DatabaseManager
-from .models import MCPAgentJob, Project
+from .models import Project
+from .models.agent_identity import AgentJob, AgentExecution
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class StagingRollbackManager:
                 )
 
                 logger.info(
-                    f"[StagingRollback] Found orchestrator: job_id={orchestrator.job_id}, "
+                    f"[StagingRollback] Found orchestrator: agent_id={orchestrator.agent_id}, "
                     f"status={orchestrator.status}, agent_type={orchestrator.agent_type}"
                 )
 
@@ -203,7 +204,7 @@ class StagingRollbackManager:
                     "rollback_reason": reason,
                     "tenant_key": tenant_key,
                     "deleted_agent_ids": deleted_agent_ids,
-                    "protected_agent_ids": [agent.job_id for agent in protected_agents],
+                    "protected_agent_ids": [str(agent.agent_id) for agent in protected_agents],
                 }
 
                 logger.info(
@@ -231,27 +232,36 @@ class StagingRollbackManager:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> MCPAgentJob:
+    ) -> AgentExecution:
         """
-        Get orchestrator job or raise ValueError if not found.
+        Get orchestrator execution or raise ValueError if not found.
 
         CRITICAL: Enforces multi-tenant isolation.
 
         Args:
             session: Database session
             tenant_key: Tenant key for isolation
-            job_id: Orchestrator job_id
+            job_id: Orchestrator job_id (UUID)
 
         Returns:
-            MCPAgentJob instance (orchestrator)
+            AgentExecution instance (orchestrator)
 
         Raises:
             ValueError: If orchestrator not found for this tenant
         """
-        stmt = select(MCPAgentJob).where(
-            and_(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.job_id == job_id,
+        from sqlalchemy.orm import joinedload
+
+        # Query AgentExecution with eager-loaded job
+        stmt = (
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                and_(
+                    AgentJob.job_id == job_id,
+                    AgentJob.tenant_key == tenant_key,
+                    AgentExecution.agent_type == "orchestrator",
+                )
             )
         )
 
@@ -270,9 +280,9 @@ class StagingRollbackManager:
         session: AsyncSession,
         tenant_key: str,
         orchestrator_job_id: str,
-    ) -> list[MCPAgentJob]:
+    ) -> list[AgentExecution]:
         """
-        Get all child agents spawned by orchestrator.
+        Get all child agent executions spawned by orchestrator.
 
         CRITICAL: Enforces multi-tenant isolation.
         Filters by spawned_by field to only get direct children.
@@ -280,20 +290,24 @@ class StagingRollbackManager:
         Args:
             session: Database session
             tenant_key: Tenant key for isolation
-            orchestrator_job_id: Orchestrator job_id
+            orchestrator_job_id: Orchestrator job_id (UUID)
 
         Returns:
-            List of MCPAgentJob instances (child agents)
+            List of AgentExecution instances (child agents)
         """
+        from sqlalchemy.orm import joinedload
+
         stmt = (
-            select(MCPAgentJob)
+            select(AgentExecution)
+            .options(joinedload(AgentExecution.job))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 and_(
-                    MCPAgentJob.tenant_key == tenant_key,
-                    MCPAgentJob.spawned_by == orchestrator_job_id,
+                    AgentJob.tenant_key == tenant_key,
+                    AgentExecution.spawned_by == orchestrator_job_id,
                 )
             )
-            .order_by(MCPAgentJob.created_at)
+            .order_by(AgentExecution.created_at)
         )
 
         result = await session.execute(stmt)
@@ -304,29 +318,29 @@ class StagingRollbackManager:
     async def _hard_delete_agents(
         self,
         session: AsyncSession,
-        agents: list[MCPAgentJob],
+        agents: list[AgentExecution],
     ) -> list[str]:
         """
-        Permanently delete agents from database (HARD DELETE).
+        Permanently delete agent executions from database (HARD DELETE).
 
         WARNING: Cannot be undone. Only use when storage is critical.
 
         Args:
             session: Database session
-            agents: List of MCPAgentJob instances to delete
+            agents: List of AgentExecution instances to delete
 
         Returns:
-            List of deleted job_ids
+            List of deleted agent_ids
         """
         deleted_ids = []
 
         for agent in agents:
-            job_id = agent.job_id
+            agent_id = str(agent.agent_id)
             await session.delete(agent)
-            deleted_ids.append(job_id)
+            deleted_ids.append(agent_id)
 
             logger.info(
-                f"[StagingRollback] HARD DELETE: agent={job_id}, "
+                f"[StagingRollback] HARD DELETE: agent={agent_id}, "
                 f"status={agent.status}, type={agent.agent_type}"
             )
 
@@ -335,54 +349,46 @@ class StagingRollbackManager:
     async def _soft_delete_agents(
         self,
         session: AsyncSession,
-        agents: list[MCPAgentJob],
+        agents: list[AgentExecution],
         reason: str,
     ) -> list[str]:
         """
-        Soft delete agents by marking status='failed' with rollback metadata.
+        Soft delete agents by marking status='cancelled' with rollback metadata.
 
         RECOMMENDED: Maintains audit trail and allows potential recovery.
 
         Soft delete strategy:
-        - Set status to 'failed'
-        - Add rollback metadata to job_metadata JSONB field
+        - Set status to 'cancelled' (one of 7 AgentExecution statuses)
+        - Set failure_reason with rollback details
         - Set completed_at timestamp
         - Preserve all other data for debugging
 
         Args:
             session: Database session
-            agents: List of MCPAgentJob instances to soft delete
-            reason: Reason for deletion (stored in metadata)
+            agents: List of AgentExecution instances to soft delete
+            reason: Reason for deletion (stored in failure_reason)
 
         Returns:
-            List of soft-deleted job_ids
+            List of soft-deleted agent_ids
         """
         deleted_ids = []
         rollback_timestamp = datetime.now(timezone.utc)
 
         for agent in agents:
-            job_id = agent.job_id
+            agent_id = str(agent.agent_id)
             old_status = agent.status
 
-            # Update status to 'failed'
-            agent.status = "failed"
+            # Update status to 'cancelled' (AgentExecution has 7-value status)
+            agent.status = "cancelled"
             agent.completed_at = rollback_timestamp
 
-            # Add rollback metadata to job_metadata JSONB field
-            if agent.job_metadata is None:
-                agent.job_metadata = {}
+            # Set failure reason with rollback metadata
+            agent.failure_reason = f"Rollback: {reason} (original_status={old_status})"
 
-            agent.job_metadata["rollback_info"] = {
-                "reason": reason,
-                "original_status": old_status,
-                "rollback_timestamp": rollback_timestamp.isoformat(),
-                "rollback_type": "staging_cancellation",
-            }
-
-            deleted_ids.append(job_id)
+            deleted_ids.append(agent_id)
 
             logger.info(
-                f"[StagingRollback] SOFT DELETE: agent={job_id}, "
+                f"[StagingRollback] SOFT DELETE: agent={agent_id}, "
                 f"old_status={old_status}, type={agent.agent_type}, "
                 f"reason={reason}"
             )
@@ -438,19 +444,19 @@ class StagingRollbackManager:
     async def _update_orchestrator_status(
         self,
         session: AsyncSession,
-        orchestrator: MCPAgentJob,
+        orchestrator: AgentExecution,
         reason: str,
         agents_deleted: int,
     ) -> bool:
         """
-        Update orchestrator status to 'failed' with rollback metadata.
+        Update orchestrator status to 'cancelled' with rollback metadata.
 
-        Marks orchestrator as failed so it doesn't continue executing.
-        Stores rollback metadata for audit trail.
+        Marks orchestrator as cancelled so it doesn't continue executing.
+        Stores rollback metadata in failure_reason field.
 
         Args:
             session: Database session
-            orchestrator: MCPAgentJob instance (orchestrator)
+            orchestrator: AgentExecution instance (orchestrator)
             reason: Reason for failure
             agents_deleted: Count of agents deleted
 
@@ -459,24 +465,19 @@ class StagingRollbackManager:
         """
         rollback_timestamp = datetime.now(timezone.utc)
 
-        # Update status to 'failed'
-        orchestrator.status = "failed"
+        # Update status to 'cancelled' (AgentExecution status)
+        orchestrator.status = "cancelled"
         orchestrator.completed_at = rollback_timestamp
 
-        # Add rollback metadata
-        if orchestrator.job_metadata is None:
-            orchestrator.job_metadata = {}
-
-        orchestrator.job_metadata["rollback_info"] = {
-            "reason": reason,
-            "rollback_timestamp": rollback_timestamp.isoformat(),
-            "agents_deleted": agents_deleted,
-            "rollback_type": "staging_cancellation",
-        }
+        # Set failure reason with rollback metadata
+        orchestrator.failure_reason = (
+            f"Rollback: {reason} (agents_deleted={agents_deleted}, "
+            f"timestamp={rollback_timestamp.isoformat()})"
+        )
 
         logger.info(
-            f"[StagingRollback] Updated orchestrator: job_id={orchestrator.job_id}, "
-            f"status=failed, agents_deleted={agents_deleted}"
+            f"[StagingRollback] Updated orchestrator: agent_id={orchestrator.agent_id}, "
+            f"status=cancelled, agents_deleted={agents_deleted}"
         )
 
         return True
