@@ -1787,6 +1787,29 @@ class UnifiedInstaller:
                         self._print_info(f"  {migration}")
                 else:
                     self._print_info("No new migrations to apply (database already up to date)")
+
+                # CRITICAL: Verify essential tables were actually created
+                # This catches the case where migrations "succeed" but no tables exist
+                # (e.g., empty migrations/versions folder)
+                self._print_info("Verifying database schema...")
+                verification_result = asyncio.run(self._verify_essential_tables())
+
+                if not verification_result["success"]:
+                    self._print_error("Schema verification failed!")
+                    self._print_error("Migrations ran but essential tables are missing.")
+                    for missing in verification_result.get("missing_tables", []):
+                        self._print_error(f"  Missing: {missing}")
+                    self._print_error("")
+                    self._print_error("This usually means:")
+                    self._print_error("  1. migrations/versions/ folder is empty")
+                    self._print_error("  2. Migration files are corrupted or orphaned")
+                    self._print_error("")
+                    self._print_error("Solution: Ensure baseline migration exists in migrations/versions/")
+                    result["success"] = False
+                    result["error"] = f"Missing tables: {', '.join(verification_result.get('missing_tables', []))}"
+                    return result
+
+                self._print_success(f"Schema verified: {verification_result['tables_found']} essential tables present")
             else:
                 self._print_error("Database migration failed")
                 self._print_error(f"STDOUT: {proc.stdout}")
@@ -1805,6 +1828,79 @@ class UnifiedInstaller:
             result["error"] = str(e)
 
         return result
+
+    async def _verify_essential_tables(self) -> Dict[str, Any]:
+        """
+        Verify that essential tables were created by migrations.
+
+        This catches the scenario where alembic upgrade succeeds but no tables
+        were actually created (e.g., empty migrations/versions folder).
+
+        Essential tables checked:
+        - setup_state: Required for installation tracking
+        - users: Required for authentication
+        - products: Core business entity
+        - projects: Core business entity
+        - messages: Agent communication
+
+        Returns:
+            Dict with success status and details about missing tables
+        """
+        result = {"success": False, "tables_found": 0, "missing_tables": []}
+
+        # Essential tables that MUST exist for a valid installation
+        essential_tables = [
+            "setup_state",
+            "users",
+            "products",
+            "projects",
+            "messages",
+            "mcp_agent_jobs",
+            "agent_executions",
+        ]
+
+        try:
+            import os
+
+            from giljo_mcp.database import DatabaseManager
+            from sqlalchemy import text
+
+            db_url = os.getenv("DATABASE_URL")
+            if not db_url:
+                result["error"] = "DATABASE_URL not found"
+                return result
+
+            db_manager = DatabaseManager(db_url, is_async=True)
+
+            async with db_manager.get_session_async() as session:
+                # Query information_schema for existing tables
+                check_query = text("""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_type = 'BASE TABLE'
+                """)
+                query_result = await session.execute(check_query)
+                existing_tables = {row[0] for row in query_result.fetchall()}
+
+            await db_manager.close_async()
+
+            # Check which essential tables exist
+            for table in essential_tables:
+                if table in existing_tables:
+                    result["tables_found"] += 1
+                else:
+                    result["missing_tables"].append(table)
+
+            # Success if all essential tables exist
+            result["success"] = len(result["missing_tables"]) == 0
+            result["existing_tables"] = list(existing_tables)
+
+            return result
+
+        except Exception as e:
+            result["error"] = str(e)
+            return result
 
     def _is_port_available(self, port: int, host: str = "127.0.0.1") -> bool:
         """Check if port is available"""
