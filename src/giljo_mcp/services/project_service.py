@@ -32,6 +32,7 @@ from giljo_mcp.database import DatabaseManager
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.agents import MCPAgentJob
 from giljo_mcp.models.projects import Project
 from giljo_mcp.models.tasks import Message, Task
@@ -1773,42 +1774,76 @@ class ProjectService:
                     }
 
                 # Calculate next instance number for orchestrator
-                instance_stmt = select(func.coalesce(func.max(MCPAgentJob.instance_number), 0)).where(
-                    and_(
-                        MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_type == "orchestrator"
+                # Query from BOTH AgentExecution AND MCPAgentJob for backward compat (Handover 0358a)
+                tenant_key = self.tenant_manager.get_current_tenant()
+
+                # Query from new AgentExecution table
+                new_instance_stmt = (
+                    select(func.coalesce(func.max(AgentExecution.instance_number), 0))
+                    .select_from(AgentExecution)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .where(
+                        and_(
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentJob.project_id == project_id,
+                            AgentExecution.agent_type == "orchestrator",
+                        )
                     )
                 )
-                instance_result = await session.execute(instance_stmt)
-                instance_number = instance_result.scalar() + 1
+                new_instance_result = await session.execute(new_instance_stmt)
+                new_max = new_instance_result.scalar() or 0
 
-                # Create orchestrator agent job directly (not via AgentJobManager which is broken)
-                from uuid import uuid4
+                # Query from legacy MCPAgentJob table for transition period
+                legacy_instance_stmt = select(
+                    func.coalesce(func.max(MCPAgentJob.instance_number), 0)
+                ).where(
+                    and_(
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.project_id == project_id,
+                        MCPAgentJob.agent_type == "orchestrator",
+                    )
+                )
+                legacy_instance_result = await session.execute(legacy_instance_stmt)
+                legacy_max = legacy_instance_result.scalar() or 0
 
+                # Use the higher of the two for continuity
+                instance_number = max(new_max, legacy_max) + 1
+
+                # Create AgentJob (work order) - stores mission ONCE (Handover 0358a)
                 orchestrator_job_id = str(uuid4())
-                orchestrator_job = MCPAgentJob(
-                    tenant_key=self.tenant_manager.get_current_tenant(),
-                    project_id=project_id,
+                agent_job = AgentJob(
                     job_id=orchestrator_job_id,
-                    agent_name=f"Orchestrator #{instance_number}",
-                    agent_type="orchestrator",
-                    status="waiting",
+                    tenant_key=tenant_key,
+                    project_id=project_id,
                     mission=project.mission or f"Orchestrator mission for project: {project.name}",
-                    instance_number=instance_number,
-                    context_budget=project.context_budget or 150000,
-                    context_used=0,
-                    # CRITICAL: Pass field_priorities and depth_config to job_metadata
+                    job_type="orchestrator",
+                    status="active",
                     job_metadata={
                         "field_priorities": field_priorities,
                         "depth_config": depth_config,
                         "user_id": user_id,
-                        "created_via": "project_service_launch"
-                    }
+                        "created_via": "project_service_launch",
+                    },
                 )
+                session.add(agent_job)
 
-                session.add(orchestrator_job)
-                await session.flush()  # Get the ID without committing
+                # Create AgentExecution (executor) - first instance (Handover 0358a)
+                agent_execution = AgentExecution(
+                    agent_id=str(uuid4()),
+                    job_id=orchestrator_job_id,
+                    tenant_key=tenant_key,
+                    agent_type="orchestrator",
+                    agent_name=f"Orchestrator #{instance_number}",
+                    instance_number=instance_number,
+                    status="waiting",
+                    context_budget=project.context_budget or 150000,
+                    context_used=0,
+                    progress=0,
+                    health_status="unknown",
+                )
+                session.add(agent_execution)
+
+                await session.flush()  # Get the IDs without committing
 
                 # Generate thin-client launch prompt
                 launch_prompt = f"""Launch orchestrator for project: {project.name}
