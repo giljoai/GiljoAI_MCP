@@ -33,7 +33,6 @@ from giljo_mcp.database import DatabaseManager
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.agents import MCPAgentJob
 from giljo_mcp.models.projects import Project
 from giljo_mcp.models.tasks import Message, Task
 from giljo_mcp.tenant import TenantManager
@@ -82,7 +81,7 @@ class ProjectService:
         """
         Get a session, preferring an injected test session when provided.
         This keeps service methods compatible with test transaction fixtures.
-        
+
         Returns:
             Context manager for database session
         """
@@ -92,7 +91,7 @@ class ProjectService:
             async def _test_session_wrapper():
                 yield self._test_session
             return _test_session_wrapper()
-        
+
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
 
@@ -217,28 +216,29 @@ class ProjectService:
                 if not project:
                     return {"success": False, "error": "Project not found or access denied"}
 
-                # Get agent jobs for this project (following get_active_project pattern)
-                from src.giljo_mcp.models import MCPAgentJob
-
+                # Get agent jobs for this project (migrated to AgentJob + AgentExecution - Handover 0367a)
                 agent_query = (
-                    select(MCPAgentJob).where(MCPAgentJob.project_id == project_id).order_by(MCPAgentJob.created_at)
+                    select(AgentJob, AgentExecution)
+                    .join(AgentExecution, AgentJob.id == AgentExecution.agent_job_id)
+                    .where(AgentJob.project_id == project_id)
+                    .order_by(AgentJob.created_at)
                 )
                 agent_result = await session.execute(agent_query)
-                agents = agent_result.scalars().all()
+                agent_pairs = agent_result.all()
 
                 # Convert agents to simple dicts (matching AgentSimple schema)
                 # Include messages for JobsTab WebSocket refresh fix (Handover 0358)
                 agent_dicts = [
                     {
-                        "id": agent.job_id,
-                        "job_id": agent.job_id,
-                        "agent_type": agent.agent_type,
-                        "agent_name": agent.agent_name,
-                        "status": agent.status,
-                        "messages": agent.messages or [],
+                        "id": job.id,
+                        "job_id": job.id,
+                        "agent_type": job.agent_type,
+                        "agent_name": job.agent_name,
+                        "status": execution.status,
+                        "messages": job.messages or [],
                         "thin_client": True,
                     }
-                    for agent in agents
+                    for job, execution in agent_pairs
                 ]
 
                 self._logger.info(f"Retrieved project {project.name} with {len(agent_dicts)} agents")
@@ -300,8 +300,6 @@ class ProjectService:
 
             async with self._get_session() as session:
                 # Query for active project (tenant-isolated)
-                from src.giljo_mcp.models import MCPAgentJob, Message
-
                 stmt = (
                     select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active")).limit(1)
                 )
@@ -313,8 +311,8 @@ class ProjectService:
                     self._logger.info(f"No active project found for tenant {tenant_key}")
                     return {"success": True, "project": None}
 
-                # Get agent job and message counts
-                agent_job_stmt = select(func.count(MCPAgentJob.id)).where(MCPAgentJob.project_id == project.id)
+                # Get agent job and message counts (migrated to AgentJob - Handover 0367a)
+                agent_job_stmt = select(func.count(AgentJob.id)).where(AgentJob.project_id == project.id)
                 agent_count_result = await session.execute(agent_job_stmt)
                 agent_count = agent_count_result.scalar() or 0
 
@@ -723,23 +721,26 @@ class ProjectService:
                 project.updated_at = datetime.utcnow()
                 project.closeout_executed_at = datetime.utcnow()
 
-                # Decommission associated agents
+                # Decommission associated agents (migrated to AgentExecution - Handover 0367a)
+                # Query AgentExecution records via join with AgentJob
                 agent_result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentExecution)
+                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .where(
                         and_(
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.status.notin_(["complete", "failed", "cancelled"]),
+                            AgentJob.project_id == project_id,
+                            AgentJob.tenant_key == tenant_key,
+                            AgentExecution.status.notin_(["complete", "failed", "cancelled"]),
                         )
                     )
                 )
-                agents_to_decommission = agent_result.scalars().all()
+                executions_to_decommission = agent_result.scalars().all()
                 decommissioned_ids = []
 
-                for agent in agents_to_decommission:
-                    agent.status = "decommissioned"
-                    agent.updated_at = datetime.utcnow()
-                    decommissioned_ids.append(agent.job_id)
+                for execution in executions_to_decommission:
+                    execution.status = "decommissioned"
+                    execution.updated_at = datetime.utcnow()
+                    decommissioned_ids.append(execution.agent_job_id)
 
                 await session.commit()
 
@@ -814,23 +815,25 @@ class ProjectService:
                 project.completed_at = None
                 project.updated_at = datetime.utcnow()
 
-                # Resume decommissioned agents
+                # Resume decommissioned agents (migrated to AgentExecution - Handover 0367a)
                 agent_result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentExecution)
+                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .where(
                         and_(
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.status == "decommissioned",
+                            AgentJob.project_id == project_id,
+                            AgentJob.tenant_key == tenant_key,
+                            AgentExecution.status == "decommissioned",
                         )
                     )
                 )
-                agents_to_resume = agent_result.scalars().all()
+                executions_to_resume = agent_result.scalars().all()
                 resumed_ids = []
 
-                for agent in agents_to_resume:
-                    agent.status = "waiting"
-                    agent.updated_at = datetime.utcnow()
-                    resumed_ids.append(agent.job_id)
+                for execution in executions_to_resume:
+                    execution.status = "waiting"
+                    execution.updated_at = datetime.utcnow()
+                    resumed_ids.append(execution.agent_job_id)
 
                 await session.commit()
 
@@ -1181,16 +1184,17 @@ class ProjectService:
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Get job counts by status
+                # Get job counts by status (migrated to AgentExecution - Handover 0367a)
                 job_counts_result = await session.execute(
-                    select(MCPAgentJob.status, func.count(MCPAgentJob.id).label("count"))
+                    select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
+                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
                     .where(
                         and_(
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
+                            AgentJob.project_id == project_id,
+                            AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
                         )
                     )
-                    .group_by(MCPAgentJob.status)
+                    .group_by(AgentExecution.status)
                 )
                 job_counts_raw = job_counts_result.all()
 
@@ -1208,18 +1212,21 @@ class ProjectService:
                 if total_jobs > 0:
                     completion_percentage = (completed_jobs / total_jobs) * 100.0
 
-                # Get last activity timestamp (most recent of completed_at, started_at, or last_progress_at)
+                # Get last activity timestamp (migrated to AgentExecution - Handover 0367a)
                 last_activity_result = await session.execute(
                     select(
                         func.greatest(
-                            func.max(MCPAgentJob.completed_at),
-                            func.max(MCPAgentJob.started_at),
-                            func.max(MCPAgentJob.last_progress_at),
+                            func.max(AgentExecution.completed_at),
+                            func.max(AgentExecution.started_at),
+                            func.max(AgentExecution.last_progress_at),
                         )
-                    ).where(
+                    )
+                    .select_from(AgentExecution)
+                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .where(
                         and_(
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
+                            AgentJob.project_id == project_id,
+                            AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
                         )
                     )
                 )
@@ -1538,17 +1545,18 @@ class ProjectService:
 
     async def _aggregate_agent_statuses(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
         """
-        Aggregate agent status counts for closeout operations.
+        Aggregate agent status counts for closeout operations (migrated to AgentExecution - Handover 0367a).
         """
         job_counts_result = await session.execute(
-            select(MCPAgentJob.status, func.count(MCPAgentJob.id).label("count"))
+            select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
+            .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
             .where(
                 and_(
-                    MCPAgentJob.project_id == project_id,
-                    MCPAgentJob.tenant_key == tenant_key,
+                    AgentJob.project_id == project_id,
+                    AgentJob.tenant_key == tenant_key,
                 )
             )
-            .group_by(MCPAgentJob.status)
+            .group_by(AgentExecution.status)
         )
         job_counts = {status: count for status, count in job_counts_result.all()}
 
@@ -1773,12 +1781,10 @@ class ProjectService:
                         "architecture_depth": "overview"
                     }
 
-                # Calculate next instance number for orchestrator
-                # Query from BOTH AgentExecution AND MCPAgentJob for backward compat (Handover 0358a)
+                # Calculate next instance number for orchestrator (migrated to AgentExecution - Handover 0367a)
                 tenant_key = self.tenant_manager.get_current_tenant()
 
-                # Query from new AgentExecution table
-                new_instance_stmt = (
+                instance_stmt = (
                     select(func.coalesce(func.max(AgentExecution.instance_number), 0))
                     .select_from(AgentExecution)
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -1790,24 +1796,8 @@ class ProjectService:
                         )
                     )
                 )
-                new_instance_result = await session.execute(new_instance_stmt)
-                new_max = new_instance_result.scalar() or 0
-
-                # Query from legacy MCPAgentJob table for transition period
-                legacy_instance_stmt = select(
-                    func.coalesce(func.max(MCPAgentJob.instance_number), 0)
-                ).where(
-                    and_(
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.agent_type == "orchestrator",
-                    )
-                )
-                legacy_instance_result = await session.execute(legacy_instance_stmt)
-                legacy_max = legacy_instance_result.scalar() or 0
-
-                # Use the higher of the two for continuity
-                instance_number = max(new_max, legacy_max) + 1
+                instance_result = await session.execute(instance_stmt)
+                instance_number = (instance_result.scalar() or 0) + 1
 
                 # Create AgentJob (work order) - stores mission ONCE (Handover 0358a)
                 orchestrator_job_id = str(uuid4())
@@ -1967,11 +1957,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 if not project:
                     return {"success": False, "error": "Project not found"}
 
-                # Get agent jobs (migrated from Agent to MCPAgentJob - Handover 0116)
+                # Get agent jobs (migrated to AgentJob + AgentExecution - Handover 0367a)
                 agent_job_result = await session.execute(
-                    select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+                    select(AgentJob, AgentExecution)
+                    .join(AgentExecution, AgentJob.id == AgentExecution.agent_job_id)
+                    .where(AgentJob.project_id == project.id)
                 )
-                agent_jobs = agent_job_result.scalars().all()
+                agent_pairs = agent_job_result.all()
 
                 # Get pending messages
                 message_result = await session.execute(
@@ -1995,7 +1987,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "context_used": project.context_used,
                     },
                     "agents": [
-                        {"name": job.agent_type, "status": job.status, "role": job.agent_type} for job in agent_jobs
+                        {"name": job.agent_type, "status": execution.status, "role": job.agent_type}
+                        for job, execution in agent_pairs
                     ],
                     "pending_messages": pending_messages,
                 }
@@ -2088,7 +2081,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         Immediately and permanently delete a project and ALL related data (nuclear delete).
 
         This method performs complete cascade deletion of:
-        - Agent jobs (MCPAgentJob)
+        - Agent jobs (AgentJob + AgentExecution)
         - Tasks
         - Messages
         - Context indexes (ContextIndex)
@@ -2164,11 +2157,12 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 from giljo_mcp.models.products import Vision
                 from giljo_mcp.models.projects import Session as ProjectSession
 
-                # Delete agent jobs
-                agent_job_stmt = select(MCPAgentJob).where(
+                # Delete agent jobs (migrated to AgentJob - Handover 0367a)
+                # Note: AgentExecution records will cascade delete via FK relationship
+                agent_job_stmt = select(AgentJob).where(
                     and_(
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.tenant_key == tenant_key,
+                        AgentJob.project_id == project_id,
+                        AgentJob.tenant_key == tenant_key,
                     )
                 )
                 agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
@@ -2299,7 +2293,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
         }
 
-        agent_job_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == project.id)
+        # Delete agent jobs (migrated to AgentJob - Handover 0367a)
+        agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)
         agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
         for job in agent_jobs:
             await session.delete(job)
@@ -2355,25 +2350,26 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 project.deleted_at = now
                 project.updated_at = now
 
-                # Cascade soft delete to agent jobs - cancel all jobs for this project
-                agent_jobs_stmt = (
-                    select(MCPAgentJob)
+                # Cascade soft delete to agent jobs - cancel all executions for this project (migrated to AgentExecution - Handover 0367a)
+                executions_stmt = (
+                    select(AgentExecution)
+                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
                     .where(
                         and_(
-                            MCPAgentJob.project_id == project_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.status.notin_(["completed", "failed", "cancelled"])
+                            AgentJob.project_id == project_id,
+                            AgentJob.tenant_key == tenant_key,
+                            AgentExecution.status.notin_(["completed", "failed", "cancelled"])
                         )
                     )
                 )
-                agent_jobs_result = await session.execute(agent_jobs_stmt)
-                agent_jobs = agent_jobs_result.scalars().all()
+                executions_result = await session.execute(executions_stmt)
+                executions = executions_result.scalars().all()
 
                 cancelled_jobs_count = 0
-                for job in agent_jobs:
-                    job.status = "cancelled"
-                    job.decommissioned_at = now
-                    job.completed_at = now
+                for execution in executions:
+                    execution.status = "cancelled"
+                    execution.decommissioned_at = now
+                    execution.completed_at = now
                     cancelled_jobs_count += 1
 
                 await session.commit()
@@ -2477,7 +2473,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         Uses nuclear_delete_project to ensure complete removal of expired projects.
         This function performs COMPLETE cascade deletion:
         1. Deactivates if active
-        2. Deletes ALL child agents (MCPAgentJob)
+        2. Deletes ALL child agents (AgentJob + AgentExecution)
         3. Deletes ALL tasks
         4. Deletes ALL messages
         5. Deletes ALL context indexes
