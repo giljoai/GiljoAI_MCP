@@ -130,6 +130,18 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
 
 6. AGENT JOB SPAWNING
    ├─ Create MCPAgentJob records for each agent
+
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> **Key Changes:**
+> - `job_id` = The work to be done (persists across succession)
+> - `agent_id` = The executor doing the work (changes on succession)
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
+
    ├─ Assign execution mode (claude-code or multi-terminal)
    ├─ Set initial status to 'waiting'
    └─ Store staging result in database
@@ -267,6 +279,13 @@ After successful staging, results are stored in `MCPAgentJob.staging_result`:
 ```
 
 **Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob.staging_result`
+
+> **Migration Note (Handover 0366a - Dec 2025)**
+>
+> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
+> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+>
+> See Handover 0366 series for migration details. Will be removed in v4.0.
 
 ---
 
