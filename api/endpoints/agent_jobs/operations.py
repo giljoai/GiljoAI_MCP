@@ -21,7 +21,7 @@ from src.giljo_mcp.agent_job_manager import force_fail_job, request_job_cancella
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from sqlalchemy import select
 
 from .dependencies import get_db_manager
@@ -221,15 +221,25 @@ async def get_job_health(
 
     try:
         async with db_manager.get_session_async() as session:
-            # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == current_user.tenant_key,
-                MCPAgentJob.job_id == job_id,
+            # Get execution with tenant isolation (job_id could be agent_id or job_id)
+            # Try agent_id first (new model)
+            stmt = select(AgentExecution).where(
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.agent_id == job_id,
             )
             result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
+            execution = result.scalar_one_or_none()
 
-            if not job:
+            # Fallback to job_id if not found by agent_id
+            if not execution:
+                stmt = select(AgentExecution).where(
+                    AgentExecution.tenant_key == current_user.tenant_key,
+                    AgentExecution.job_id == job_id,
+                )
+                result = await session.execute(stmt)
+                execution = result.scalar_one_or_none()
+
+            if not execution:
                 raise HTTPException(
                     status_code=http_status.HTTP_404_NOT_FOUND,
                     detail=f"Job {job_id} not found"
@@ -239,22 +249,22 @@ async def get_job_health(
             minutes_since_progress: Optional[float] = None
             is_stale = False
 
-            if job.last_progress_at:
-                time_delta = datetime.now(timezone.utc) - job.last_progress_at
+            if execution.last_progress_at:
+                time_delta = datetime.now(timezone.utc) - execution.last_progress_at
                 minutes_since_progress = time_delta.total_seconds() / 60.0
 
                 # Job is stale if no progress in 10+ minutes and not in terminal state
                 is_stale = (
                     minutes_since_progress >= 10.0
-                    and job.status not in ("complete", "failed", "cancelled", "decommissioned")
+                    and execution.status not in ("complete", "failed", "cancelled", "decommissioned")
                 )
 
             # Return health metrics
             return JobHealthResponse(
-                job_id=job.job_id,
-                status=job.status,
-                last_progress_at=job.last_progress_at,
-                last_message_check_at=job.last_message_check_at,
+                job_id=execution.job_id,
+                status=execution.status,
+                last_progress_at=execution.last_progress_at,
+                last_message_check_at=execution.last_message_check_at,
                 minutes_since_progress=minutes_since_progress,
                 is_stale=is_stale,
             )
@@ -304,10 +314,10 @@ async def update_agent_mission(
 
     try:
         async with db_manager.get_session_async() as session:
-            # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == current_user.tenant_key,
-                MCPAgentJob.job_id == job_id,
+            # Get AgentJob with tenant isolation (mission is stored on job, not execution)
+            stmt = select(AgentJob).where(
+                AgentJob.tenant_key == current_user.tenant_key,
+                AgentJob.job_id == job_id,
             )
             result = await session.execute(stmt)
             job = result.scalar_one_or_none()
@@ -318,9 +328,8 @@ async def update_agent_mission(
                     detail=f"Agent job {job_id} not found"
                 )
 
-            # Update mission and timestamp
+            # Update mission (stored on AgentJob, not AgentExecution)
             job.mission = request.mission
-            job.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
             await session.refresh(job)
@@ -330,6 +339,14 @@ async def update_agent_mission(
                 f"New length: {len(request.mission)} chars"
             )
 
+            # Get current execution for WebSocket event
+            exec_stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == current_user.tenant_key,
+            ).order_by(AgentExecution.instance_number.desc())
+            exec_result = await session.execute(exec_stmt)
+            current_execution = exec_result.scalar_one_or_none()
+
             # Emit WebSocket event for real-time updates
             from api.websocket_manager import manager as websocket_manager
 
@@ -338,8 +355,8 @@ async def update_agent_mission(
                 "agent:mission_updated",
                 {
                     "job_id": job_id,
-                    "agent_type": job.agent_type,
-                    "agent_name": job.agent_name,
+                    "agent_type": current_execution.agent_type if current_execution else job.job_type,
+                    "agent_name": current_execution.agent_name if current_execution else None,
                     "mission": job.mission,
                     "project_id": job.project_id,
                 },
