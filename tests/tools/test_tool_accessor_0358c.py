@@ -97,6 +97,7 @@ async def test_project(db_session, tenant_key, test_product):
         product_id=test_product.id,
         name="Test Project 0358c",
         description="Test project for tool_accessor migration",
+        mission="Test mission for tool_accessor migration",
         status="active",
     )
     db_session.add(project)
@@ -142,10 +143,13 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
 
 
 @pytest_asyncio.fixture
-async def tool_accessor(db_manager, tenant_manager, tenant_key):
+async def tool_accessor(db_manager, tenant_key):
     """Create ToolAccessor instance."""
-    # Set current tenant
-    tenant_manager.set_current_tenant(tenant_key)
+    # Create tenant manager for testing (no validation)
+    from src.giljo_mcp.tenant import TenantManager
+    tenant_manager = TenantManager()
+    # Override get_current_tenant to return test tenant
+    tenant_manager.get_current_tenant = lambda: tenant_key
     return ToolAccessor(db_manager, tenant_manager)
 
 
@@ -476,7 +480,7 @@ async def test_multi_tenant_isolation_for_mcp_tools(
     await db_session.commit()
 
     # Try to access from tenant B
-    tool_accessor.tenant_manager.set_current_tenant(tenant_b)
+    tool_accessor.tenant_manager.get_current_tenant = lambda: tenant_b
 
     result = await tool_accessor.get_orchestrator_instructions(
         job_id=job_a.job_id,
