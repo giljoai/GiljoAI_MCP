@@ -182,11 +182,13 @@ class SuccessionResponse(BaseModel):
     """
     Response for manual succession trigger.
 
-    Returns successor job details and handover summary for launching new instance.
+    Handover 0358b: Updated for dual-model architecture (AgentJob + AgentExecution).
+    Returns successor execution details and handover summary for launching new instance.
     """
 
-    current_job_id: str = Field(..., description="Current orchestrator job UUID")
-    successor_job_id: str = Field(..., description="New successor orchestrator job UUID")
+    current_job_id: str = Field(..., description="Current orchestrator UUID (could be agent_id or job_id)")
+    successor_job_id: str = Field(..., description="Work order UUID (same across succession in dual-model)")
+    successor_agent_id: Optional[str] = Field(None, description="NEW executor agent_id (dual-model)")
     instance_number: int = Field(..., description="Successor instance number")
     launch_prompt: str = Field(..., description="Thin-client launch prompt for successor")
     handover_summary: Optional[str] = Field(None, description="Compressed handover summary")
