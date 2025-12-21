@@ -512,7 +512,7 @@ async def test_succession_preserves_job_id_changes_agent_id(
     Will FAIL initially: tool_accessor.py succession uses MCPAgentJob.
     """
     # Trigger succession
-    result = await tool_accessor.spawn_successor(
+    result = await tool_accessor.create_successor_orchestrator(
         current_job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
         reason="Testing succession workflow",
