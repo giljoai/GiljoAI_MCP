@@ -6,14 +6,18 @@ Provides direct access to MCP tool functions for API endpoints
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 import yaml
 from sqlalchemy import and_, select, update
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
+from giljo_mcp.models import Message, Product, Project, Task
+from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.services.template_service import TemplateService
 from giljo_mcp.services.task_service import TaskService
@@ -108,11 +112,13 @@ class ToolAccessor:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None
+        websocket_manager: Optional[Any] = None,
+        test_session: Optional["AsyncSession"] = None
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._websocket_manager = websocket_manager
+        self._test_session = test_session
 
         # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
         self._project_service = ProjectService(db_manager, tenant_manager)
@@ -127,8 +133,24 @@ class ToolAccessor:
         self._orchestration_service = OrchestrationService(
             db_manager,
             tenant_manager,
-            message_service=self._message_service  # Pass MessageService for WebSocket-enabled messaging
+            message_service=self._message_service,  # Pass MessageService for WebSocket-enabled messaging
+            test_session=test_session  # Pass test session for transaction sharing (Handover 0358c)
         )
+
+    def get_session_async(self):
+        """
+        Get async session context manager.
+
+        Uses test_session when available for transaction sharing in tests (Handover 0358c).
+        """
+        if self._test_session is not None:
+            # Return async context manager that yields test session
+            import contextlib
+            @contextlib.asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._test_session
+            return _test_session_wrapper()
+        return self.db_manager.get_session_async()
 
     # Project Tools
 
@@ -473,11 +495,12 @@ class ToolAccessor:
         avoiding the 50K+ token truncation risk of inline context.
         """
         try:
-            async with self.db_manager.get_session_async() as session:
+            async with self.get_session_async() as session:
                 from sqlalchemy import and_
+                from sqlalchemy.orm import selectinload, joinedload
 
                 from giljo_mcp.mission_planner import MissionPlanner
-                from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+                from giljo_mcp.models import AgentTemplate, Product, Project
 
                 # Validate inputs
                 if not job_id or not job_id.strip():
@@ -486,24 +509,36 @@ class ToolAccessor:
                 if not tenant_key or not tenant_key.strip():
                     return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
 
-                # Get orchestrator job with tenant isolation
+                # Phase C: Query AgentExecution and join to AgentJob
+                # Get current execution for this job (latest instance)
                 result = await session.execute(
-                    select(MCPAgentJob).where(
+                    select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
+                    .where(
                         and_(
-                            MCPAgentJob.job_id == job_id,
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.agent_type == "orchestrator",
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
                         )
                     )
+                    .order_by(AgentExecution.instance_number.desc())
                 )
-                orchestrator = result.scalar_one_or_none()
+                execution = result.scalars().first()
 
-                if not orchestrator:
-                    return {"error": "NOT_FOUND", "message": f"Orchestrator {job_id} not found"}
+                if not execution:
+                    return {"error": "NOT_FOUND", "message": f"Orchestrator execution for job {job_id} not found"}
+
+                # Get the associated AgentJob
+                agent_job = execution.job
+                if not agent_job:
+                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
+
+                # Verify it's an orchestrator
+                if agent_job.job_type != "orchestrator":
+                    return {"error": "VALIDATION_ERROR", "message": f"Job {job_id} is not an orchestrator"}
 
                 # Get project and product
                 result = await session.execute(
-                    select(Project).where(and_(Project.id == orchestrator.project_id, Project.tenant_key == tenant_key))
+                    select(Project).where(and_(Project.id == agent_job.project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
@@ -512,8 +547,6 @@ class ToolAccessor:
 
                 product = None
                 if project.product_id:
-                    from sqlalchemy.orm import selectinload
-
                     result = await session.execute(
                         select(Product)
                         .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
@@ -523,7 +556,7 @@ class ToolAccessor:
 
                 # Get user configuration
                 planner = MissionPlanner(self.db_manager)
-                metadata = orchestrator.job_metadata or {}
+                metadata = agent_job.job_metadata or {}
                 user_id = metadata.get("user_id")
 
                 # Handover 0346: Fetch FRESH user config if user_id available
@@ -574,19 +607,20 @@ class ToolAccessor:
                     # It is returned verbatim so agents know where the codebase lives locally.
                     project_path = getattr(product, "project_path", None)
 
-                # Build framing-based response (Handover 0350b)
+                # Build framing-based response (Handover 0350b + Phase C)
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
                     "identity": {
                         "job_id": job_id,
+                        "agent_id": execution.agent_id,  # Phase C: Add executor UUID
                         "project_id": str(project.id),
                         "project_name": project.name,
                         "tenant_key": tenant_key,
-                        "instance_number": orchestrator.instance_number or 1,
+                        "instance_number": execution.instance_number or 1,
                     },
                     "project_description_inline": {
                         "description": project.description or "",
-                        "mission": orchestrator.mission or "",
+                        "mission": agent_job.mission or "",  # Phase C: Mission from AgentJob
                         "project_path": project_path,
                     },
                     "context_fetch_instructions": fetch_instructions,
@@ -601,11 +635,17 @@ class ToolAccessor:
                         "report_progress",
                         "complete_job",
                     ],
-                    "context_budget": orchestrator.context_budget or 150000,
-                    "context_used": orchestrator.context_used or 0,
+                    "context_budget": execution.context_budget or 150000,  # Phase C: From AgentExecution
+                    "context_used": execution.context_used or 0,  # Phase C: From AgentExecution
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
+                    # Backward compatibility
+                    "agent_job_id": job_id,  # Alias for job_id
+                    "job_id": job_id,  # Phase C: Top-level for backward compatibility
+                    "agent_id": execution.agent_id,  # Phase C: Top-level for backward compatibility
+                    "mission": agent_job.mission or "",  # Phase C: Top-level for backward compatibility
+                    "fetch_instructions": fetch_instructions,  # Phase C: Top-level for backward compatibility
                 }
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
@@ -682,9 +722,9 @@ class ToolAccessor:
             parent_job_id=parent_job_id
         )
 
-    async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Get agent-specific mission (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_agent_mission(agent_job_id=agent_job_id, tenant_key=tenant_key)
+        return await self._orchestration_service.get_agent_mission(agent_job_id=job_id, tenant_key=tenant_key)
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Full project orchestration workflow (delegates to OrchestrationService)"""
@@ -785,71 +825,103 @@ class ToolAccessor:
     async def create_successor_orchestrator(
         self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
     ) -> dict[str, Any]:
-        """Create successor orchestrator for context handover (Handover 0080)"""
+        """Create successor orchestrator for context handover (Handover 0080 + Phase C)"""
         try:
-            from giljo_mcp.models import MCPAgentJob
-            from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
+            from datetime import datetime, timezone
+            from sqlalchemy.orm import joinedload
 
-            async with self.db_manager.get_session_async() as session:
-                # Retrieve current orchestrator job
+            async with self.get_session_async() as session:
+                # Phase C: Get current execution (latest instance for this job)
                 result = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.job_id == current_job_id, MCPAgentJob.tenant_key == tenant_key
+                    select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
+                    .where(
+                        and_(
+                            AgentExecution.job_id == current_job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
                     )
+                    .order_by(AgentExecution.instance_number.desc())
                 )
-                orchestrator = result.scalar_one_or_none()
+                current_execution = result.scalars().first()
 
-                if not orchestrator:
+                if not current_execution:
                     return {
                         "success": False,
-                        "error": f"Orchestrator job {current_job_id} not found for tenant {tenant_key}",
+                        "error": f"Orchestrator execution for job {current_job_id} not found for tenant {tenant_key}",
                     }
 
-                # Verify agent type is orchestrator
-                if orchestrator.agent_type != "orchestrator":
+                # Get the associated AgentJob
+                agent_job = current_execution.job
+                if not agent_job:
+                    return {"success": False, "error": f"Agent job {current_job_id} not found"}
+
+                # Verify it's an orchestrator
+                if agent_job.job_type != "orchestrator":
                     return {
                         "success": False,
-                        "error": f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})",
+                        "error": f"Job {current_job_id} is not an orchestrator (type: {agent_job.job_type})",
                     }
 
-                # Verify orchestrator is not already complete
-                if orchestrator.status == "complete":
-                    return {"success": False, "error": f"Orchestrator {current_job_id} is already complete"}
+                # Verify job is not already completed
+                if agent_job.status == "completed":
+                    return {"success": False, "error": f"Job {current_job_id} is already completed"}
 
-                # Initialize succession manager
-                manager = OrchestratorSuccessionManager(session, tenant_key)
+                # Phase C: Create successor execution (SAME job_id, NEW agent_id)
+                successor_agent_id = str(uuid4())
+                successor_instance = (current_execution.instance_number or 1) + 1
 
-                # Create successor
-                successor = manager.create_successor(orchestrator, reason=reason)
+                # Generate simple handover summary
+                handover_summary = (
+                    f"Succession from instance {current_execution.instance_number} to {successor_instance}. "
+                    f"Reason: {reason}. "
+                    f"Context used: {current_execution.context_used or 0}/{current_execution.context_budget or 150000}."
+                )
 
-                # Generate handover summary
-                handover_summary = manager.generate_handover_summary(orchestrator)
+                # Create new execution
+                successor_execution = AgentExecution(
+                    agent_id=successor_agent_id,
+                    job_id=current_job_id,  # SAME job_id (work order persists)
+                    tenant_key=tenant_key,
+                    agent_type="orchestrator",
+                    agent_name=current_execution.agent_name or "Orchestrator",
+                    instance_number=successor_instance,
+                    status="waiting",
+                    spawned_by=current_execution.agent_id,  # Track previous executor
+                    succession_reason=reason,
+                    handover_summary=handover_summary,
+                    progress=0,
+                    context_used=0,
+                    context_budget=current_execution.context_budget or 150000,
+                )
 
-                # Complete handover
-                manager.complete_handover(orchestrator, successor, handover_summary, reason)
+                session.add(successor_execution)
+
+                # Mark current execution as decommissioned
+                current_execution.status = "decommissioned"
+                current_execution.succeeded_by = successor_agent_id
+                current_execution.completed_at = datetime.now(timezone.utc)
 
                 # Commit changes
                 await session.commit()
-
-                # Refresh objects
-                await session.refresh(orchestrator)
-                await session.refresh(successor)
+                await session.refresh(successor_execution)
 
                 logger.info(
-                    f"Succession completed: {orchestrator.job_id} → {successor.job_id}, "
-                    f"instance {orchestrator.instance_number} → {successor.instance_number}, "
-                    f"reason: {reason}"
+                    f"Succession completed: agent {current_execution.agent_id} → {successor_agent_id}, "
+                    f"instance {current_execution.instance_number} → {successor_instance}, "
+                    f"job {current_job_id} (persistent), reason: {reason}"
                 )
 
                 return {
                     "success": True,
-                    "successor_id": successor.job_id,
-                    "instance_number": successor.instance_number,
-                    "status": successor.status,
+                    "successor_id": successor_agent_id,  # NEW: agent_id of successor
+                    "job_id": current_job_id,  # SAME: work order persists
+                    "instance_number": successor_instance,
+                    "status": successor_execution.status,
                     "handover_summary": handover_summary,
                     "message": (
-                        f"Successor orchestrator created (instance {successor.instance_number}). "
-                        f"Original orchestrator marked complete. "
+                        f"Successor orchestrator created (instance {successor_instance}). "
+                        f"Previous orchestrator marked decommissioned. "
                         f"Launch successor manually from dashboard."
                     ),
                 }
@@ -859,23 +931,28 @@ class ToolAccessor:
             return {"success": False, "error": str(e)}
 
     async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Check if orchestrator should trigger succession (Handover 0080)"""
+        """Check if orchestrator should trigger succession (Handover 0080 + Phase C)"""
         try:
-            from giljo_mcp.models import MCPAgentJob
-
-            async with self.db_manager.get_session_async() as session:
-                # Retrieve orchestrator job
+            async with self.get_session_async() as session:
+                # Phase C: Get current execution (latest instance)
                 result = await session.execute(
-                    select(MCPAgentJob).where(MCPAgentJob.job_id == job_id, MCPAgentJob.tenant_key == tenant_key)
+                    select(AgentExecution)
+                    .where(
+                        and_(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
                 )
-                orchestrator = result.scalar_one_or_none()
+                execution = result.scalars().first()
 
-                if not orchestrator:
+                if not execution:
                     return {"should_trigger": False, "error": f"Job {job_id} not found"}
 
-                # Calculate context usage percentage
-                context_used = orchestrator.context_used or 0
-                context_budget = orchestrator.context_budget or 200000
+                # Calculate context usage percentage (from execution)
+                context_used = execution.context_used or 0
+                context_budget = execution.context_budget or 200000
                 usage_percentage = (context_used / context_budget) * 100 if context_budget > 0 else 0
 
                 # Determine if succession should be triggered (90% threshold)
@@ -1291,9 +1368,9 @@ class ToolAccessor:
             if not project_id:
                 return {"success": False, "error": "project_id is required"}
             from sqlalchemy import select
-            from giljo_mcp.models import Project, Product, MCPAgentJob
+            from giljo_mcp.models import Project, Product
             from datetime import datetime, timezone
-            async with self.db_manager.get_session_async() as session:
+            async with self.get_session_async() as session:
                 res = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
                 project = res.scalar_one_or_none()
                 if not project:
@@ -1316,32 +1393,52 @@ class ToolAccessor:
                 project.status = "active"
                 project.updated_at = datetime.now(timezone.utc)
                 await session.commit()
-                orch = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.project_id == project_id,
-                        MCPAgentJob.tenant_key == tenant_key,
-                        MCPAgentJob.agent_type == "orchestrator",
+
+                # Phase C: Check if orchestrator job exists
+                job_result = await session.execute(
+                    select(AgentJob).where(
+                        AgentJob.project_id == project_id,
+                        AgentJob.tenant_key == tenant_key,
+                        AgentJob.job_type == "orchestrator",
                     )
                 )
-                orchestrator = orch.scalar_one_or_none()
-                if not orchestrator:
-                    orchestrator = MCPAgentJob(
+                agent_job = job_result.scalar_one_or_none()
+
+                if not agent_job:
+                    # Create both AgentJob and AgentExecution
+                    job_id = str(uuid4())
+                    agent_id = str(uuid4())
+
+                    # Create AgentJob (work order)
+                    agent_job = AgentJob(
+                        job_id=job_id,
                         tenant_key=tenant_key,
                         project_id=project_id,
-                        agent_type="orchestrator",
-                        agent_name="Orchestrator",
                         mission=(
                             "I am ready to create the project mission based on product context and project description. "
                             "I will write the mission in the mission window and select the proper agents below."
                         ),
+                        job_type="orchestrator",
+                        status="active",
+                    )
+                    session.add(agent_job)
+
+                    # Create AgentExecution (executor instance)
+                    agent_execution = AgentExecution(
+                        agent_id=agent_id,
+                        job_id=job_id,
+                        tenant_key=tenant_key,
+                        agent_type="orchestrator",
+                        agent_name="Orchestrator",
+                        instance_number=1,
                         status="waiting",
-                        tool_type="universal",
                         progress=0,
-                        context_chunks=[],
+                        tool_type="universal",
                         messages=[],
                     )
-                    session.add(orchestrator)
+                    session.add(agent_execution)
                     await session.commit()
+
             return {"success": True, "project_id": project_id}
         except Exception as e:
             logger.exception(f"gil_activate failed: {e}")
@@ -1357,7 +1454,7 @@ class ToolAccessor:
             from sqlalchemy import select
             from giljo_mcp.models import Project, MCPAgentJob
             from datetime import datetime, timezone
-            async with self.db_manager.get_session_async() as session:
+            async with self.get_session_async() as session:
                 pr = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
                 project = pr.scalar_one_or_none()
                 if not project:
