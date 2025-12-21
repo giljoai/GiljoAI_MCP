@@ -89,16 +89,32 @@ async def trigger_succession(
             tenant_key=current_user.tenant_key
         )
 
-        successor_job_id = succession_result["successor_job_id"]
+        # Extract results (dual-model aware)
+        work_order_id = succession_result["job_id"]  # The work order (persists)
+        successor_agent_id = succession_result.get("successor_agent_id")  # NEW executor
+        successor_job_id = succession_result["successor_job_id"]  # Backwards compat (same as job_id in new model)
         instance_number = succession_result["successor_instance_number"]
 
-        # Get successor job for additional details
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == successor_job_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key
-        )
-        result = await db.execute(stmt)
-        successor = result.scalar_one_or_none()
+        # Get successor for additional details (backwards compat: check both models)
+        successor = None
+        if successor_agent_id:
+            # New dual-model path: look up by agent_id
+            from src.giljo_mcp.models import AgentExecution
+            stmt = select(AgentExecution).where(
+                AgentExecution.agent_id == successor_agent_id,
+                AgentExecution.tenant_key == current_user.tenant_key
+            )
+            result = await db.execute(stmt)
+            successor = result.scalar_one_or_none()
+
+        if not successor:
+            # Fallback: old MCPAgentJob path
+            stmt = select(MCPAgentJob).where(
+                MCPAgentJob.job_id == successor_job_id,
+                MCPAgentJob.tenant_key == current_user.tenant_key
+            )
+            result = await db.execute(stmt)
+            successor = result.scalar_one_or_none()
 
         if not successor:
             raise HTTPException(
@@ -144,8 +160,10 @@ async def trigger_succession(
                     tenant_key=current_user.tenant_key,
                     event_type="orchestrator:succession_triggered",
                     data={
-                        "current_job_id": job_id,
-                        "successor_job_id": successor_job_id,
+                        "current_job_id": job_id,  # Original request parameter (could be agent_id or job_id)
+                        "work_order_id": work_order_id,  # The work order (persists across succession)
+                        "successor_agent_id": successor_agent_id,  # NEW executor agent_id
+                        "successor_job_id": successor_job_id,  # Backwards compat
                         "instance_number": instance_number,
                         "reason": request.reason,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -162,6 +180,7 @@ async def trigger_succession(
         return SuccessionResponse(
             current_job_id=job_id,
             successor_job_id=successor_job_id,
+            successor_agent_id=successor_agent_id,  # NEW field for dual-model
             instance_number=instance_number,
             launch_prompt=launch_prompt,
             handover_summary=handover_summary_str,
