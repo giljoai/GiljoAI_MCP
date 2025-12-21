@@ -19,10 +19,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
@@ -362,10 +364,15 @@ async def launch_project(
             detail="Project mission has not been created. Please complete staging first."
         )
 
-    # Fetch spawned agents
-    agent_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id_str,
-        MCPAgentJob.tenant_key == current_user.tenant_key,
+    # Fetch spawned agents (executions with job data)
+    agent_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            AgentJob.project_id == project_id_str,
+            AgentExecution.tenant_key == current_user.tenant_key,
+        )
     )
     agent_result = await db.execute(agent_stmt)
     agents = agent_result.scalars().all()
@@ -397,12 +404,12 @@ async def launch_project(
     # Build agent info response
     agent_info_list = [
         AgentInfo(
-            agent_id=str(agent.id),
+            agent_id=str(agent.agent_id),
             job_id=agent.job_id,
             agent_type=agent.agent_type,
             agent_name=agent.agent_name,
             status=agent.status,
-            mission=agent.mission,
+            mission=agent.job.mission,  # Mission is on the job, not execution
             tool_type=agent.tool_type,
             progress=agent.progress,
         )

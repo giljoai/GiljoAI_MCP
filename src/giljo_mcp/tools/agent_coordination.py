@@ -688,7 +688,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
 
             # Agent status sync removed (Handover 0116) - Agent model eliminated
             # Previously synced job acknowledgment to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
+            # AgentJob status is authoritative and updated via AgentJobManager
 
             logger.info(f"[acknowledge_job] Job {job_id} acknowledged by {agent_id} for tenant {tenant_key}")
 
@@ -1011,7 +1011,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
 
             # Agent status sync removed (Handover 0116) - Agent model eliminated
             # Previously synced job completion to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
+            # AgentJob status is authoritative and updated via AgentJobManager
 
             # Check for next job (optional chaining)
             next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=job.agent_type, limit=1)
@@ -1146,7 +1146,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
 
             # Agent status sync removed (Handover 0116) - Agent model eliminated
             # Previously synced job failure to legacy agents table
-            # MCPAgentJob status is authoritative and updated via AgentJobManager
+            # AgentJob status is authoritative and updated via AgentJobManager
 
             # Store error in message queue for orchestrator visibility
             async with db_manager.get_session_async() as session:

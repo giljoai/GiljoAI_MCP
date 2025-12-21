@@ -15,8 +15,8 @@ class GenericAgentTemplate:
     Generic template providing unified wiring for multi-terminal agent execution.
 
     Variable Injection (by Orchestrator):
-    - {agent_id}: UUID of this agent instance
-    - {job_id}: UUID of this job (MCPAgentJob)
+    - {agent_id}: UUID of this agent execution (AgentExecution.agent_id)
+    - {job_id}: UUID of this job (AgentJob.job_id)
     - {product_id}: UUID of the product context
     - {project_id}: UUID of the project context
     - {tenant_key}: Tenant isolation key
@@ -45,7 +45,7 @@ class GenericAgentTemplate:
 
         Args:
             agent_id: UUID of agent instance (must be non-empty)
-            job_id: UUID of job (MCPAgentJob record, must be non-empty)
+            job_id: UUID of job (AgentJob work order, must be non-empty)
             product_id: UUID of product context (must be non-empty)
             project_id: UUID of project context (must be non-empty)
             tenant_key: Tenant isolation key (must be non-empty)
@@ -90,7 +90,7 @@ MCP tools are **native tools** (like Read/Write/Bash/Glob), already connected in
 - WRONG: Use of `curl`, raw HTTP requests, SDKs, or custom clients
 
 Key tools used by this agent:
-- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Fetches mission + protocol
+- `mcp__giljo-mcp__get_agent_mission(agent_id, tenant_key)` – Fetches mission + protocol
 - `mcp__giljo-mcp__report_progress(job_id, progress)` – Progress and check-ins
 - `mcp__giljo-mcp__complete_job(job_id, result)` – Completion
 - `mcp__giljo-mcp__report_error(job_id, error)` – Blocking errors
@@ -106,7 +106,7 @@ returned with your mission.
    Call:
    ```python
    result = mcp__giljo-mcp__get_agent_mission(
-       agent_job_id="{job_id}",
+       agent_id="{agent_id}",
        tenant_key="{tenant_key}"
    )
    ```
@@ -160,4 +160,3 @@ Regardless of agent type (implementer, tester, reviewer, analyzer, documenter):
 """
 
         return template
-
