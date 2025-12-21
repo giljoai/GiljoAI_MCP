@@ -47,6 +47,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
@@ -186,6 +187,7 @@ class ThinClientPromptGenerator:
         # Check new model first (AgentExecution)
         existing_exec_stmt = (
             select(AgentExecution)
+            .options(joinedload(AgentExecution.job))  # Eager load for job_metadata access
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 AgentJob.project_id == project_id,
@@ -226,7 +228,7 @@ class ThinClientPromptGenerator:
             existing_orchestrator = type('obj', (object,), {
                 'job_id': existing_execution.job_id,
                 'instance_number': existing_execution.instance_number,
-                'job_metadata': existing_execution.execution_metadata or {},
+                'job_metadata': existing_execution.job.job_metadata if existing_execution.job else {},
             })()
 
         if existing_orchestrator:
