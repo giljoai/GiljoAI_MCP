@@ -146,7 +146,8 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
 ✓ Project name: "User Authentication System"
 ✓ Product ID: f47ac10b-58cc-4372-a567-0e02b2c3d479
 ✓ Tenant key: user_alice_tenant_001
-✓ Orchestrator ID: 7e57d004-2b97-0e7a-b45f-5387367791cd
+✓ Agent ID (Execution): 7e57d004-2b97-0e7a-b45f-5387367791cd
+✓ Job ID (Work Order): a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ✓ WebSocket: Connected (ws://localhost:7272/ws)
 ```
 
@@ -465,7 +466,8 @@ WebSocket Events:
 
 Orchestration Start:
 - Timestamp: 2025-11-24T14:23:17Z
-- Orchestrator ID: 7e57d004-2b97-0e7a-b45f-5387367791cd
+- Agent ID (Execution): 7e57d004-2b97-0e7a-b45f-5387367791cd
+- Job ID (Work Order): a1b2c3d4-e5f6-7890-abcd-ef1234567890
 - Execution mode: claude_code_cli
 - Expected duration: 4-8 hours
 
@@ -474,9 +476,15 @@ Orchestration Start:
 
 ---
 
-### Task 8: Execution Phase Monitoring (Handover 0355)
+### Task 8: Execution Phase Monitoring (Handovers 0355, 0364)
 
 **Purpose**: Actively monitor spawned agents, coordinate handoffs, and handle real-time issues during project execution.
+
+**Identity Model (Handover 0366)**:
+- `job_id` = Work order UUID (persists across succession, identifies WHAT work)
+- `agent_id` = Executor UUID (changes on succession, identifies WHO is working)
+- Use `agent_id` for execution-specific operations (fetch instructions, report progress)
+- Use `job_id` for work-specific operations (complete job, update status)
 
 **Actions**:
 1. Enter execution monitoring mode after activation (Task 7)
