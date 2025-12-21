@@ -175,11 +175,16 @@ Orchestrators now fetch context on-demand using the unified `fetch_context()` to
 
 ```python
 # Orchestrator calls get_orchestrator_instructions() and receives framing
-# Then fetches context based on priority tier:
-result = await fetch_context(
-    categories=["product_core", "tech_stack", "vision_documents"],
+# Then fetches context based on priority tier (one category per call):
+product_core = await fetch_context(
     product_id=product_id,
-    tenant_key=tenant_key
+    tenant_key=tenant_key,
+    categories=["product_core"]  # Array with ONE category (Handover 0351)
+)
+tech_stack = await fetch_context(
+    product_id=product_id,
+    tenant_key=tenant_key,
+    categories=["tech_stack"]  # Separate call for each category
 )
 ```
 
