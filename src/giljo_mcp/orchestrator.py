@@ -21,7 +21,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from .agent_job_manager import AgentJobManager
 from .agent_selector import AgentSelector
@@ -29,7 +29,8 @@ from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
-from .models import MCPAgentJob, AgentTemplate, Job, Message, Product, Project, AgentJob, AgentExecution
+from .models import AgentTemplate, Job, Message, Product, Project
+from .models.agent_identity import AgentJob, AgentExecution
 from .agent_message_queue import AgentMessageQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
@@ -202,7 +203,7 @@ class ProjectOrchestrator:
         custom_mission: Optional[str] = None,
         additional_instructions: Optional[str] = None,
         parent_agent_id: Optional[str] = None,
-    ) -> MCPAgentJob:
+    ) -> AgentExecution:
         """
         Spawn Claude Code agent for project execution.
 
@@ -309,26 +310,7 @@ class ProjectOrchestrator:
             f"template={template.name}, project={project.id}, job_id={job_id}, agent_id={agent_id}"
         )
 
-        # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
-        # TODO: Update callers to use AgentExecution directly
-        legacy_agent = MCPAgentJob(
-            tenant_key=project.tenant_key,
-            project_id=project.id,
-            name=role.value,
-            role=role.value,
-            mission=mission,
-            status="active",
-            context_used=0,
-            mode="claude",
-            job_id=job_id,
-            meta_data={
-                "template_id": template.id,
-                "template_name": template.name,
-                "tool": template.tool,
-                "agent_id": agent_id,
-            },
-        )
-        return legacy_agent
+        return agent_execution
 
     # ========================================================================
     # Messaging helpers (Handover 0118)
@@ -507,7 +489,7 @@ class ProjectOrchestrator:
         custom_mission: Optional[str] = None,
         additional_instructions: Optional[str] = None,
         parent_agent_id: Optional[str] = None,
-    ) -> MCPAgentJob:
+    ) -> AgentExecution:
         """
         Spawn generic agent (Codex/Gemini with job queue).
 
@@ -612,27 +594,7 @@ class ProjectOrchestrator:
         agent_execution.meta_data["cli_prompt"] = cli_prompt
         await session.commit()
 
-        # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
-        # TODO: Update callers to use AgentExecution directly
-        legacy_agent = MCPAgentJob(
-            tenant_key=project.tenant_key,
-            project_id=project.id,
-            name=role.value,
-            role=role.value,
-            mission=full_mission,
-            status="waiting_acknowledgment",
-            context_used=0,
-            mode=template.tool,  # 'codex' or 'gemini'
-            job_id=job_id,
-            meta_data={
-                "template_id": template.id,
-                "template_name": template.name,
-                "tool": template.tool,
-                "cli_prompt": cli_prompt,
-                "agent_id": agent_id,
-            },
-        )
-        return legacy_agent
+        return agent_execution
 
     def _generate_mcp_instructions(self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None) -> str:
         """
@@ -1027,7 +989,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         custom_mission: Optional[str] = None,
         project_type: Optional[ProjectType] = None,
         additional_instructions: Optional[str] = None,
-    ) -> MCPAgentJob:
+    ) -> AgentExecution:
         """
         Spawn a new agent with intelligent routing to Claude Code OR Codex/Gemini.
 
@@ -1197,28 +1159,14 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 f"agent_id={agent_id}, project={project_id}"
             )
 
-            # Return MCPAgentJob for backward compatibility (deprecated, will be removed)
-            # TODO: Update callers to use AgentExecution directly
-            legacy_agent = MCPAgentJob(
-                tenant_key=project.tenant_key,
-                project_id=project_id,
-                name=role.value,
-                role=role.value,
-                mission=mission,
-                status="active",
-                context_used=0,
-                mode="claude",  # Default to claude for legacy
-                job_id=job_id,
-                meta_data={"agent_id": agent_id},
-            )
-            return legacy_agent
+            return agent_execution
 
     async def spawn_agents_parallel(
         self,
         project_id: str,
         agents: list[tuple[AgentRole, Optional[str]]],
         project_type: Optional[ProjectType] = None,
-    ) -> list[MCPAgentJob]:
+    ) -> list[AgentExecution]:
         """
         Spawn multiple agents in parallel with coordination instructions.
 
@@ -1270,29 +1218,34 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             Context limit message if needed
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == agent_id))
-            agent = result.scalar_one_or_none()
+            result = await session.execute(
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .where(AgentExecution.agent_id == agent_id)
+            )
+            execution = result.scalar_one_or_none()
 
-            if not agent:
+            if not execution:
                 raise ValueError(f"Agent {agent_id} not found")
 
             # Check if approaching limit
-            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
+            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
+            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
             if usage_ratio < 0.7:
                 return None
 
             # Generate context limit instructions
             instructions = self.template_generator.generate_context_limit_instructions(
-                current_agent=agent.agent_name,
+                current_agent=execution.agent_name,
                 next_agent="orchestrator",
-                reason=f"Context usage at {agent.context_used}/{self.DEFAULT_AGENT_CONTEXT_BUDGET} tokens",
+                reason=f"Context usage at {context_used}/{self.DEFAULT_AGENT_CONTEXT_BUDGET} tokens",
             )
 
             # Create message with instructions
             message = Message(
-                tenant_key=agent.tenant_key,
-                project_id=agent.project_id,
-                to_agents=[agent.agent_name],
+                tenant_key=execution.tenant_key,
+                project_id=execution.job.project_id,
+                to_agents=[execution.agent_name],
                 message_type="system",
                 content=instructions,
                 priority="high",
@@ -1303,7 +1256,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             await session.commit()
             await session.refresh(message)
 
-            logger.warning(f"Agent {agent.agent_name} approaching context limit: {usage_ratio:.1%}")
+            logger.warning(f"Agent {execution.agent_name} approaching context limit: {usage_ratio:.1%}")
             return message
 
     async def handoff(self, from_agent_id: str, to_agent_id: str, context: dict[str, Any]) -> Message:
@@ -1320,46 +1273,57 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         """
         async with self.db_manager.get_session_async() as session:
             # Get both agents
-            from_result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == from_agent_id))
-            from_agent = from_result.scalar_one_or_none()
+            from_result = await session.execute(
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .where(AgentExecution.agent_id == from_agent_id)
+            )
+            from_execution = from_result.scalar_one_or_none()
 
-            to_result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == to_agent_id))
-            to_agent = to_result.scalar_one_or_none()
+            to_result = await session.execute(
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .where(AgentExecution.agent_id == to_agent_id)
+            )
+            to_execution = to_result.scalar_one_or_none()
 
-            if not from_agent or not to_agent:
+            if not from_execution or not to_execution:
                 raise ValueError("Agent not found")
 
-            if from_agent.project_id != to_agent.project_id:
+            if from_execution.job.project_id != to_execution.job.project_id:
                 raise ValueError("Agents must be in same project")
 
             # Generate handoff instructions
-            AgentRole(from_agent.role)
-            AgentRole(to_agent.role)
+            AgentRole(from_execution.agent_type)
+            AgentRole(to_execution.agent_type)
             context.get("summary", "Work completed by previous agent")
 
             handoff_instructions = self.template_generator.generate_handoff_instructions(
-                from_agent=from_agent.agent_name,
-                to_agent=to_agent.agent_name,
+                from_agent=from_execution.agent_name,
+                to_agent=to_execution.agent_name,
                 handoff_context=context,
             )
 
+            # Get context_used from metadata
+            from_context_used = from_execution.meta_data.get("context_used", 0) if from_execution.meta_data else 0
+
             # Package handoff context
             handoff_context = {
-                "from_agent": from_agent.agent_name,
-                "to_agent": to_agent.agent_name,
-                "context_used": from_agent.context_used,
+                "from_agent": from_execution.agent_name,
+                "to_agent": to_execution.agent_name,
+                "context_used": from_context_used,
                 "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
-                "handoff_reason": self._get_handoff_reason(from_agent),
+                "handoff_reason": self._get_handoff_reason(from_execution),
                 "transfer_data": context,
                 "handoff_instructions": handoff_instructions,
             }
-            handoff_context["_from_agent_id"] = from_agent.id  # Store sender in context
+            handoff_context["_from_agent_id"] = from_execution.agent_id  # Store sender in context
 
             # Create handoff message
             message = Message(
-                tenant_key=from_agent.tenant_key,
-                project_id=from_agent.project_id,
-                                to_agents=[to_agent.agent_name],
+                tenant_key=from_execution.tenant_key,
+                project_id=from_execution.job.project_id,
+                to_agents=[to_execution.agent_name],
                 message_type="handoff",
                 content=str(handoff_context),
                 priority="high",
@@ -1367,14 +1331,14 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             )
 
             # Update agent states
-            from_agent.status = "handed_off"
-            to_agent.status = "active"
+            from_execution.status = "handed_off"
+            to_execution.status = "active"
 
             session.add(message)
             await session.commit()
             await session.refresh(message)
 
-            logger.info(f"Handoff from {from_agent.agent_name} to {to_agent.agent_name}")
+            logger.info(f"Handoff from {from_execution.agent_name} to {to_execution.agent_name}")
             return message
 
     async def check_handoff_needed(self, agent_id: str) -> tuple[bool, Optional[str]]:
@@ -1388,13 +1352,16 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             Tuple of (needs_handoff, reason)
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == agent_id))
-            agent = result.scalar_one_or_none()
+            result = await session.execute(
+                select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+            )
+            execution = result.scalar_one_or_none()
 
-            if not agent:
+            if not execution:
                 return False, None
 
-            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
+            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
+            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
 
             if usage_ratio >= 0.8:
                 return True, "Context usage above 80% threshold"
@@ -1420,7 +1387,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             return ContextStatus.YELLOW
         return ContextStatus.RED
 
-    async def update_context_usage(self, agent_id: str, tokens_used: int) -> MCPAgentJob:
+    async def update_context_usage(self, agent_id: str, tokens_used: int) -> AgentExecution:
         """
         Update agent's context usage.
 
@@ -1429,33 +1396,40 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             tokens_used: Additional tokens used
 
         Returns:
-            Updated Agent instance
+            Updated AgentExecution instance
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == agent_id))
-            agent = result.scalar_one_or_none()
+            result = await session.execute(
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .where(AgentExecution.agent_id == agent_id)
+            )
+            execution = result.scalar_one_or_none()
 
-            if not agent:
+            if not execution:
                 raise ValueError(f"Agent {agent_id} not found")
 
-            # Update agent context
-            agent.context_used += tokens_used
+            # Update execution context in metadata
+            if not execution.meta_data:
+                execution.meta_data = {}
+            current_context = execution.meta_data.get("context_used", 0)
+            execution.meta_data["context_used"] = current_context + tokens_used
 
             # Also update project context
-            project_result = await session.execute(select(Project).where(Project.id == agent.project_id))
+            project_result = await session.execute(select(Project).where(Project.id == execution.job.project_id))
             project = project_result.scalar_one_or_none()
             if project:
                 project.context_used += tokens_used
 
             await session.commit()
-            await session.refresh(agent)
+            await session.refresh(execution)
 
             # Check if handoff needed
             needs_handoff, reason = await self.check_handoff_needed(agent_id)
             if needs_handoff:
-                logger.warning(f"Agent {agent.agent_name} needs handoff: {reason}")
+                logger.warning(f"Agent {execution.agent_name} needs handoff: {reason}")
 
-            return agent
+            return execution
 
     async def get_active_projects(self, tenant_key: Optional[str] = None) -> list[Project]:
         """
@@ -1473,10 +1447,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             if tenant_key:
                 query = query.where(Project.tenant_key == tenant_key)
 
-            result = await session.execute(query.options(selectinload(Project.agents)))
+            result = await session.execute(query.options(selectinload(Project.agent_jobs_v2)))
             return result.scalars().all()
 
-    async def get_project_agents(self, project_id: str) -> list[MCPAgentJob]:
+    async def get_project_agents(self, project_id: str) -> list[AgentExecution]:
         """
         Get all agents for a project.
 
@@ -1484,10 +1458,15 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             project_id: Project UUID
 
         Returns:
-            List of Agent instances
+            List of AgentExecution instances
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.project_id == project_id))
+            result = await session.execute(
+                select(AgentExecution)
+                .options(joinedload(AgentExecution.job))
+                .join(AgentJob)
+                .where(AgentJob.project_id == project_id)
+            )
             return result.scalars().all()
 
     async def get_agent_context_status(self, agent_id: str) -> dict[str, Any]:
@@ -1501,19 +1480,22 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             Dict with context status details
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(MCPAgentJob).where(MCPAgentJob.id == agent_id))
-            agent = result.scalar_one_or_none()
+            result = await session.execute(
+                select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+            )
+            execution = result.scalar_one_or_none()
 
-            if not agent:
+            if not execution:
                 raise ValueError(f"Agent {agent_id} not found")
 
-            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
-            status = self.get_context_status(agent.context_used, self.DEFAULT_AGENT_CONTEXT_BUDGET)
+            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
+            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
+            status = self.get_context_status(context_used, self.DEFAULT_AGENT_CONTEXT_BUDGET)
 
             return {
-                "agent_id": agent.id,
-                "agent_name": agent.agent_name,
-                "context_used": agent.context_used,
+                "agent_id": execution.agent_id,
+                "agent_name": execution.agent_name,
+                "context_used": context_used,
                 "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
                 "usage_ratio": usage_ratio,
                 "usage_percentage": round(usage_ratio * 100, 2),
@@ -1547,19 +1529,19 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 async with self.db_manager.get_session_async() as session:
                     # Get project and agents
                     result = await session.execute(
-                        select(Project).where(Project.id == project_id).options(selectinload(Project.agents))
+                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
                     )
                     project = result.scalar_one_or_none()
 
                     if not project or project.status != ProjectStatus.ACTIVE.value:
                         break
 
-                    # Check each agent
-                    for agent in project.agents:
-                        if agent.status == "active":
-                            needs_handoff, reason = await self.check_handoff_needed(agent.id)
+                    # Check each agent execution
+                    for execution in project.agent_jobs_v2:
+                        if execution.status == "active":
+                            needs_handoff, reason = await self.check_handoff_needed(execution.agent_id)
                             if needs_handoff:
-                                logger.warning(f"Agent {agent.agent_name} in project {project.name} needs handoff: {reason}")
+                                logger.warning(f"Agent {execution.agent_name} in project {project.name} needs handoff: {reason}")
 
             except asyncio.CancelledError:
                 break
@@ -1567,13 +1549,14 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 logger.exception(f"Error monitoring project {project_id}: {e}")
                 await asyncio.sleep(60)  # Back off on error
 
-    def _get_handoff_reason(self, agent: MCPAgentJob) -> str:
+    def _get_handoff_reason(self, execution: AgentExecution) -> str:
         """Get the reason for handoff based on agent state."""
-        usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
+        context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
+        usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
 
         if usage_ratio >= 0.8:
             return f"Context usage at {round(usage_ratio * 100)}%"
-        if agent.status == "error":
+        if execution.status == "error":
             return "Agent encountered error"
         return "Manual handoff requested"
 
@@ -1589,7 +1572,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         """
         async with self.db_manager.get_session_async() as session:
             result = await session.execute(
-                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agents))
+                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agent_jobs_v2))
             )
             return result.scalars().all()
 
@@ -1648,7 +1631,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         async with self.db_manager.get_session_async() as session:
             # Get project and agents
             project_result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agents))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
             )
             project = project_result.scalar_one_or_none()
 
@@ -1658,17 +1641,17 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             # Get optimizer for tenant
             optimizer = self._get_serena_optimizer(project.tenant_key)
 
-            # Generate reports for each agent
+            # Generate reports for each agent execution
             agent_reports = {}
             total_operations = 0
             total_tokens_saved = 0
 
-            for agent in project.agents:
+            for execution in project.agent_jobs_v2:
                 try:
-                    agent_report = await optimizer.generate_savings_report(agent.id)
-                    agent_reports[agent.id] = {
-                        "agent_name": agent.agent_name,
-                        "agent_role": agent.role,
+                    agent_report = await optimizer.generate_savings_report(execution.agent_id)
+                    agent_reports[execution.agent_id] = {
+                        "agent_name": execution.agent_name,
+                        "agent_role": execution.agent_type,
                         "report": agent_report,
                     }
 
@@ -1676,10 +1659,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                     total_tokens_saved += agent_report.get("total_tokens_saved", 0)
 
                 except Exception as e:
-                    logger.warning(f"Failed to get optimization report for agent {agent.id}: {e}")
-                    agent_reports[agent.id] = {
-                        "agent_name": agent.agent_name,
-                        "agent_role": agent.role,
+                    logger.warning(f"Failed to get optimization report for agent {execution.agent_id}: {e}")
+                    agent_reports[execution.agent_id] = {
+                        "agent_name": execution.agent_name,
+                        "agent_role": execution.agent_type,
                         "report": {"error": str(e)},
                     }
 
