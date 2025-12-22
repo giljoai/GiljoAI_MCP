@@ -66,8 +66,9 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ["-ll", "--skip", "B101,B601,B104"]
+        args: ["-c", "pyproject.toml", "-r", "src/", "api/", "-f", "csv"]
         exclude: ^(tests/|examples/|installer/|installers/|scripts/|uninstall\.py|monitor.*\.py)
+        pass_filenames: false
 
   # TEMPORARILY DISABLED - bash not found on Windows, causing failures
   # - repo: local

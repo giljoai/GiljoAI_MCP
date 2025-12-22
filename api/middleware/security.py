@@ -54,10 +54,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """
         response = await call_next(request)
 
-        # HSTS: Force HTTPS for 1 year (default)
-        response.headers["Strict-Transport-Security"] = (
-            f"max-age={self.hsts_max_age}; includeSubDomains; preload"
-        )
+        # HSTS: Only add for HTTPS connections (meaningless for HTTP)
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = (
+                f"max-age={self.hsts_max_age}; includeSubDomains; preload"
+            )
 
         # CSP: Strict policy preventing XSS
         # Note: Vue needs 'unsafe-inline' and 'unsafe-eval' for development
