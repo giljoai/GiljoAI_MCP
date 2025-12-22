@@ -380,6 +380,8 @@ async def get_agent_statistics(
                     select(AgentJob).where(AgentJob.job_id == agent_execution.job_id)
                 )
 
+                created_ts = agent_execution.started_at or agent_execution.job.created_at if agent_job else agent_execution.started_at
+
                 stats.append(
                     AgentStatsResponse(
                         agent_id=str(agent_execution.agent_id),
@@ -387,13 +389,13 @@ async def get_agent_statistics(
                         role=agent_execution.agent_type,
                         status=agent_execution.status,
                         project_id=str(agent_job.project_id) if agent_job else "unknown",
-                        created_at=agent_execution.created_at,
+                        created_at=created_ts,
                         messages_sent=sent_count or 0,
                         messages_received=received_count or 0,
                         tasks_assigned=task_count,
                         tasks_completed=completed_count,
                         average_response_time_seconds=avg_response_time,
-                        last_activity=last_sent or agent_execution.created_at,
+                        last_activity=last_sent or created_ts,
                     )
                 )
 

@@ -253,7 +253,7 @@ async def get_project_orchestrator(
             status=orchestrator_execution.status,  # From AgentExecution
             progress=orchestrator_execution.progress,  # From AgentExecution
             tool_type=orchestrator_execution.tool_type,  # From AgentExecution
-            created_at=orchestrator_execution.created_at,  # From AgentExecution
+            created_at=orchestrator_execution.started_at or orchestrator_execution.job.created_at,
             started_at=orchestrator_execution.started_at,  # From AgentExecution
             completed_at=orchestrator_execution.completed_at,  # From AgentExecution
             instance_number=orchestrator_execution.instance_number or 1,  # From AgentExecution
