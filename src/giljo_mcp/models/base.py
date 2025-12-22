@@ -34,4 +34,4 @@ def generate_project_alias():
     import string
 
     chars = string.ascii_uppercase + string.digits
-    return "".join(random.choices(chars, k=6))
+    return "".join(random.choices(chars, k=6))  # nosec B311 - non-crypto ID suffix

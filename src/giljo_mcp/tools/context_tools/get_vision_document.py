@@ -330,7 +330,7 @@ async def get_vision_document(
         # Handover 0352: Depth-based source selection
         # For "light" and "medium" depths, use summary fields (no pagination)
         if chunking == "light":
-            return await _get_summary_response(
+            return await _get_summary_response(  # nosec B106
                 active_docs=active_docs,
                 depth="light",
                 summary_field="summary_light",
@@ -341,7 +341,7 @@ async def get_vision_document(
             )
 
         if chunking == "medium":
-            return await _get_summary_response(
+            return await _get_summary_response(  # nosec B106
                 active_docs=active_docs,
                 depth="medium",
                 summary_field="summary_medium",
