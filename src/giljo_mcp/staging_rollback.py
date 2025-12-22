@@ -307,7 +307,7 @@ class StagingRollbackManager:
                     AgentExecution.spawned_by == orchestrator_job_id,
                 )
             )
-            .order_by(AgentExecution.created_at)
+            .order_by(AgentExecution.started_at)
         )
 
         result = await session.execute(stmt)

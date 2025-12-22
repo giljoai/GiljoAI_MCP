@@ -346,7 +346,7 @@ async def download_proxy_wheel(current_user: Optional[User] = Depends(get_curren
     dist_dir = project_root / "dist"
 
     # NOTE: Keep this in sync with the version in pyproject.toml / build pipeline.
-    wheel_name = "giljo_mcp-1.0.0-py3-none-any.whl"
+    wheel_name = "giljo_mcp-1.0.2-py3-none-any.whl"
     wheel_path = dist_dir / wheel_name
 
     if not wheel_path.exists():
