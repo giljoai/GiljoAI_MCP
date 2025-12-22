@@ -42,7 +42,7 @@ def get_max_tokens(chunking: str) -> int:
 
     Handles both new-style depth values and summary-based values:
     - Standard style: light, medium, full
-    - Summary style (with Sumy): summary_light, summary_moderate, full
+    - Summary style (with Sumy): summary_light, summary_medium, full
     - Backward compat: moderate -> medium, heavy -> medium
     """
     # Backward compatibility mapping (Handover 0246b)
@@ -57,7 +57,7 @@ def get_max_tokens(chunking: str) -> int:
         "full": 24000,  # Safe margin below 25K Claude Code limit
         # Summary style - summary + chunks
         "summary_light": 2500,  # ~500 tokens (summary) + ~2000 tokens (light chunks)
-        "summary_moderate": 5000,  # ~500 tokens (summary) + ~4500 tokens (moderate chunks)
+        "summary_medium": 5000,  # ~500 tokens (summary) + ~4500 tokens (medium chunks)
     }
     return mapping.get(chunking, 17500)
 
@@ -80,7 +80,7 @@ def get_max_chunks(chunking: str) -> int:
         "full": 100,  # Effectively unlimited
         # Summary style - summary + chunks (chunk counts for the chunks portion only)
         "summary_light": 1,  # Just 1 chunk after summary (light)
-        "summary_moderate": 2,  # 2 chunks after summary (moderate)
+        "summary_medium": 2,  # 2 chunks after summary (medium)
     }
     return mapping.get(chunking, 4)
 

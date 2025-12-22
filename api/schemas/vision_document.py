@@ -94,11 +94,6 @@ class VisionDocumentResponse(BaseModel):
     summary_light_tokens: Optional[int] = Field(None, description="Token count for light summary")
     summary_medium_tokens: Optional[int] = Field(None, description="Token count for medium summary")
     original_token_count: Optional[int] = Field(None, description="Original document token count")
-    # Deprecated fields (kept for backward compatibility)
-    summary_moderate: Optional[str] = Field(None, description="DEPRECATED: Use summary_medium")
-    summary_heavy: Optional[str] = Field(None, description="DEPRECATED: Removed in 0246b")
-    summary_moderate_tokens: Optional[int] = Field(None, description="DEPRECATED: Use summary_medium_tokens")
-    summary_heavy_tokens: Optional[int] = Field(None, description="DEPRECATED: Removed in 0246b")
     has_summaries: bool = Field(False, description="Whether summaries have been generated (computed)")
 
     model_config = ConfigDict(from_attributes=True)
