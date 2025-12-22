@@ -10,7 +10,6 @@ Module Structure:
 - crud.py: CRUD operations (create, list, get, update, list deleted)
 - lifecycle.py: Lifecycle management (activate, deactivate, delete, restore, cascade impact, token estimate)
 - vision.py: Vision document operations (upload, get chunks)
-- github.py: GitHub integration settings (Handover 0137 - DEPRECATED)
 - git_integration.py: Simplified Git integration (Handover 013B - ACTIVE)
 
 All routers use /api/v1/products prefix and Products tag.
@@ -18,7 +17,7 @@ All routers use /api/v1/products prefix and Products tag.
 
 from fastapi import APIRouter
 
-from . import crud, git_integration, github, lifecycle, vision
+from . import crud, git_integration, lifecycle, vision
 
 
 # Create main router for products module
@@ -31,7 +30,6 @@ router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 router.include_router(lifecycle.router)  # Has /refresh-active, /deleted, /active/token-estimate
 router.include_router(crud.router)  # Has /{product_id} - must come after specific routes
 router.include_router(vision.router)
-router.include_router(github.router)  # DEPRECATED - kept for backward compatibility
 router.include_router(git_integration.router)  # NEW - Handover 013B
 
 __all__ = ["router"]
