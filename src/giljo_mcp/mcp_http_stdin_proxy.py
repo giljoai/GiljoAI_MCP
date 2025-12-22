@@ -78,7 +78,7 @@ async def list_tools() -> List[types.Tool]:
 
 
 @server.call_tool()
-async def call_tool(name: str, arguments: Optional[Dict[str, Any]] = None) -> List[types.ToolResult]:
+async def call_tool(name: str, arguments: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Proxy tools/call to HTTP /mcp."""
     server_url = _get_server_url()
     async with httpx.AsyncClient(base_url=server_url, timeout=60.0) as client:
@@ -95,20 +95,21 @@ async def call_tool(name: str, arguments: Optional[Dict[str, Any]] = None) -> Li
             raise RuntimeError(f"Backend MCP error during tools/call: {body['error']}")
         result = body.get("result") or {}
 
-        return [
-            types.ToolResult(
-                tool_name=name,
-                content=result.get("content", []),
-                is_error=result.get("isError", False),
-            )
-        ]
+        # For the current MCP SDK, @server.call_tool expects a list of Content items
+        # (TextContent/ImageContent/AudioContent/etc.). The host wraps these in a
+        # CallToolResult on the wire. Therefore we just return the backend's `content`
+        # list directly, and let the SDK handle wrapping.
+        content = result.get("content", []) or []
+        if not isinstance(content, list):
+            content = []
+        return content
 
 
 async def _main() -> None:
     """Entry point for `python -m giljo_mcp.mcp_http_stdin_proxy`."""
     init_options = InitializationOptions(
         server_name="giljo-mcp-http-proxy",
-        server_version="1.0.0",
+        server_version="1.0.2",
         capabilities=types.ServerCapabilities(
             tools=types.ToolsCapability(listChanged=False),
         ),
@@ -124,4 +125,3 @@ async def _main() -> None:
 
 if __name__ == "__main__":
     anyio.run(_main)
-
