@@ -252,3 +252,34 @@ pytest tests/ --cov=api/endpoints/auth -v
 - [x] Checked config.yaml structure for security section
 - [x] Identified config loading pattern in auth.py
 - [x] Assessed cascade risk (VERY LOW)
+
+---
+
+## Completion Summary
+
+**Date Completed**: 2025-12-22
+**Status**: ✅ COMPLETED
+
+### What Was Done
+- Added `security.cookies.secure` configuration option to `config.yaml`
+- Updated 4 `set_cookie()` calls in `auth.py` to use configurable `secure` flag
+- Default value is `false` (maintains backward compatibility)
+
+### Files Modified
+- `api/endpoints/auth.py` (lines 366, 384, 803, 821)
+- `config.yaml.example` (added security.cookies section)
+
+### Implementation
+```python
+secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
+response.set_cookie(..., secure=secure_cookies, ...)
+```
+
+### Verification
+- HTTP development environments work unchanged (default secure=false)
+- HTTPS production deployments can enable via config
+- No API contract changes
+
+### Notes
+- Part of 1000 series Greptile Security Remediation
+- Enables HTTPS production deployments without code changes

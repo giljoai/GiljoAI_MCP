@@ -170,3 +170,27 @@ pytest tests/endpoints/test_statistics.py -v
 - Research: 5 minutes (verify logger import, locate exact line)
 - Implementation: 5 minutes (apply fix)
 - Verification: 5 minutes (run tests, manual check)
+
+---
+
+## Completion Summary
+
+**Date Completed**: 2025-12-22
+**Status**: ✅ COMPLETED
+
+### What Was Done
+- Replaced bare `except:` with `except Exception:` in `api/endpoints/statistics.py`
+- Added `logger.exception("Database health check failed")` for traceback visibility
+- Verified logger import was present at module level
+
+### Files Modified
+- `api/endpoints/statistics.py` (line ~530)
+
+### Verification
+- No bare except clauses remain in statistics.py
+- Health endpoint functionality preserved
+- Exceptions now logged with full traceback
+
+### Notes
+- Part of 1000 series Greptile Security Remediation
+- Executed as part of parallel safe batch (7 tasks)

@@ -77,7 +77,7 @@ class ProductService:
         """
         Get a session, preferring an injected test session when provided.
         This keeps service methods compatible with test transaction fixtures.
-        
+
         Returns:
             Context manager for database session
         """
@@ -87,7 +87,7 @@ class ProductService:
             async def _test_session_wrapper():
                 yield self._test_session
             return _test_session_wrapper()
-        
+
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
 
@@ -912,113 +912,6 @@ class ProductService:
             self._logger.exception(f"Failed to get cascade impact: {e}")
             return {"success": False, "error": str(e)}
 
-    async def update_github_settings(
-        self,
-        product_id: str,
-        enabled: bool,
-        repo_url: Optional[str] = None,
-        auto_commit: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        DEPRECATED: Use update_git_integration() instead (Handover 013B).
-
-        This method is kept for backward compatibility but should not be used.
-        It will be removed in a future version.
-
-        Update GitHub integration settings for a product.
-
-        Settings are stored in product_memory.github field with structure:
-        {
-            "enabled": bool,
-            "repo_url": str | None,
-            "auto_commit": bool,
-            "last_sync": ISO timestamp (optional)
-        }
-
-        Args:
-            product_id: Product UUID
-            enabled: Whether GitHub integration is enabled
-            repo_url: GitHub repository URL (HTTPS or SSH format)
-            auto_commit: Whether to auto-commit changes
-
-        Returns:
-            Dict with success status and settings or error
-
-        Validation:
-            - repo_url is required when enabled=True
-            - repo_url must be valid GitHub URL (HTTPS or SSH)
-            - When disabled, repo_url is set to None
-
-        Example:
-            >>> result = await service.update_github_settings(
-            ...     product_id="abc-123",
-            ...     enabled=True,
-            ...     repo_url="https://github.com/user/repo",
-            ...     auto_commit=True
-            ... )
-        """
-        try:
-            async with self._get_session() as session:
-                # Verify product exists
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
-                )
-                result = await session.execute(stmt)
-                product = result.scalar_one_or_none()
-
-                if not product:
-                    return {"success": False, "error": "Product not found"}
-
-                # Validate repo_url when integration is enabled
-                if enabled:
-                    if not repo_url:
-                        return {"success": False, "error": "repo_url is required when enabling GitHub integration"}
-
-                        # URL validation removed (Handover 013B - handled by CLI agents)
-
-                # Ensure product_memory exists
-                if not product.product_memory:
-                    product.product_memory = {"github": {}, "sequential_history": [], "context": {}}
-
-                # Update GitHub settings
-                if enabled:
-                    product.product_memory["github"] = {
-                        "enabled": True,
-                        "repo_url": repo_url,
-                        "auto_commit": auto_commit,
-                        "last_sync": datetime.now(timezone.utc).isoformat(),
-                    }
-                else:
-                    # Disable integration
-                    product.product_memory["github"] = {"enabled": False, "repo_url": None, "auto_commit": False}
-
-                product.updated_at = datetime.now(timezone.utc)
-
-                # Force SQLAlchemy to detect JSONB change (skip in tests with mock objects)
-                try:
-                    from sqlalchemy.orm.attributes import flag_modified
-
-                    flag_modified(product, "product_memory")
-                except AttributeError:
-                    # Mock object in tests - flag_modified will fail
-                    pass
-
-                await session.commit()
-                await session.refresh(product)
-
-                self._logger.info(f"Updated GitHub settings for product {product_id}: enabled={enabled}")
-
-                # Handover 0139a: Emit WebSocket event for GitHub settings change
-                await self._emit_websocket_event(
-                    event_type="product:github:settings:changed",
-                    data={"product_id": product_id, "settings": product.product_memory["github"]},
-                )
-
-                return {"success": True, "settings": product.product_memory["github"]}
-
-        except Exception as e:
-            self._logger.exception(f"Failed to update GitHub settings: {e}")
-            return {"success": False, "error": str(e)}
 
     async def update_git_integration(
         self,
@@ -1327,10 +1220,12 @@ class ProductService:
 
             # Check if path exists and is a directory
             if not path.exists():
-                raise HTTPException(status_code=400, detail=f"Project path does not exist: {path}")
+                logger.warning(f"Project path validation failed - does not exist: {path}")
+                raise HTTPException(status_code=400, detail="Project path does not exist")
 
             if not path.is_dir():
-                raise HTTPException(status_code=400, detail=f"Project path is not a directory: {path}")
+                logger.warning(f"Project path validation failed - not a directory: {path}")
+                raise HTTPException(status_code=400, detail="Project path is not a directory")
 
             # Check if path is writable (for .claude/agents creation)
             try:
@@ -1338,14 +1233,16 @@ class ProductService:
                 test_dir.mkdir(exist_ok=True)
                 test_dir.rmdir()
             except (PermissionError, OSError):
-                raise HTTPException(status_code=400, detail=f"Project path is not writable: {path}")
+                logger.warning(f"Project path validation failed - not writable: {path}")
+                raise HTTPException(status_code=400, detail="Project path is not writable")
 
             return True
 
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid project path: {e}")
+            logger.warning(f"Project path validation failed - invalid path: {project_path}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid project path")
 
     # ============================================================================
     # WebSocket Event Emission (Handover 0139a)

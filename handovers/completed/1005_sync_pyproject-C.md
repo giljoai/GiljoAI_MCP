@@ -58,3 +58,28 @@ Low. Only affects `pip install -e .` behavior.
 - pyproject.toml versions match requirements.txt
 - `pip install -e .` works correctly
 - No dependency conflicts
+
+---
+
+## Completion Summary
+
+**Date Completed**: 2025-12-22
+**Status**: ✅ COMPLETED
+
+### What Was Done
+- Fixed `mcp` version constraint: `mcp>=1.0.0` → `mcp==1.12.3`
+- Synchronized version constraints with requirements.txt
+
+### Files Modified
+- `pyproject.toml`
+
+### Key Fix
+The mcp package required exact version pinning (1.12.3) due to API stability requirements.
+
+### Verification
+- pyproject.toml versions aligned with requirements.txt
+- No dependency conflicts on `pip install -e .`
+
+### Notes
+- Part of 1000 series Greptile Security Remediation
+- Also included Bandit configuration as part of 1012
