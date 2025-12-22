@@ -109,6 +109,9 @@ class MessageService:
         """
         Send a message to one or more agents.
 
+        Handover 0372: Routes by agent_id (executor) instead of job_id (work order).
+        This enables succession support - messages route to NEW executor after handover.
+
         Args:
             to_agents: List of agent names to send to
             content: Message content
@@ -154,38 +157,41 @@ class MessageService:
                         "error": "Project not found or access denied"
                     }
 
-                # Resolve agent_type strings to job_id UUIDs before storing
-                # This ensures receive_messages (MCP over HTTP) can find messages by job_id
+                # Resolve agent_type strings to agent_id UUIDs (executor, not work order)
+                # Handover 0372: This enables succession - messages route to NEW executor after handover
                 resolved_to_agents = []
                 for agent_ref in to_agents:
                     if agent_ref == 'all':
-                        # Broadcast - keep as-is, receive_messages handles 'all' specially
                         resolved_to_agents.append('all')
                     elif len(agent_ref) == 36 and '-' in agent_ref:
-                        # Already a UUID (job_id) - use directly
+                        # Already a UUID (agent_id) - use directly
                         resolved_to_agents.append(agent_ref)
                     else:
-                        # Agent type string (e.g., "orchestrator") - resolve to job_id
-                        agent_result = await session.execute(
-                            select(AgentJob).where(
-                                AgentJob.project_id == project_id,
-                                AgentJob.job_type == agent_ref
-                            ).limit(1)
+                        # Agent type string (e.g., "orchestrator") - resolve to active execution agent_id
+                        exec_result = await session.execute(
+                            select(AgentExecution).join(AgentJob).where(
+                                and_(
+                                    AgentJob.project_id == project_id,
+                                    AgentExecution.agent_type == agent_ref,
+                                    AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Active statuses
+                                    AgentExecution.tenant_key == tenant_key
+                                )
+                            ).order_by(AgentExecution.instance_number.desc()).limit(1)  # Latest instance
                         )
-                        agent_job = agent_result.scalar_one_or_none()
-                        if agent_job:
-                            resolved_to_agents.append(agent_job.job_id)
+                        execution = exec_result.scalar_one_or_none()
+                        if execution:
+                            resolved_to_agents.append(execution.agent_id)
                             self._logger.info(
-                                f"[RESOLVER] Resolved '{agent_ref}' to job_id '{agent_job.job_id}'"
+                                f"[RESOLVER] Resolved agent_type '{agent_ref}' to agent_id '{execution.agent_id}'"
                             )
                         else:
                             # Could not resolve - keep original (will fail to deliver)
                             resolved_to_agents.append(agent_ref)
                             self._logger.warning(
-                                f"[RESOLVER] Could not resolve agent_type '{agent_ref}' in project {project_id}"
+                                f"[RESOLVER] Could not resolve agent_type '{agent_ref}' to active execution in project {project_id}"
                             )
 
-                # Create message with resolved job_ids
+                # Create message with resolved agent_ids
                 message = Message(
                     project_id=project.id,
                     tenant_key=project.tenant_key,
@@ -238,81 +244,56 @@ class MessageService:
                         self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
 
                         # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
-                        # Determine recipient job IDs
-                        recipient_job_ids = []
+                        # Determine recipient agent IDs (now using agent_id, not job_id)
+                        recipient_agent_ids = []
                         if to_agents[0] == 'all':
-                            # Broadcast: Get ALL agent job IDs in the project, EXCLUDING sender
+                            # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
                             result = await session.execute(
-                                select(AgentJob).where(AgentJob.project_id == project.id)
+                                select(AgentExecution).join(AgentJob).where(
+                                    and_(
+                                        AgentJob.project_id == project.id,
+                                        AgentExecution.status.in_(["waiting", "working", "blocked"])
+                                    )
+                                )
                             )
-                            all_agents = result.scalars().all()
+                            all_executions = result.scalars().all()
                             # Exclude sender from recipients to prevent self-notification
                             sender_agent_type = from_agent or "orchestrator"
-                            recipient_job_ids = [
-                                agent.job_id for agent in all_agents
-                                if agent.job_type != sender_agent_type
+                            recipient_agent_ids = [
+                                exec.agent_id for exec in all_executions
+                                if exec.agent_type != sender_agent_type
                             ]
                             self._logger.info(
-                                f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_job_ids)} recipients "
+                                f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
                                 f"(excluded sender: {sender_agent_type})"
                             )
                         else:
-                            # Direct message: Resolve agent_type to job_id if needed
-                            # to_agents can contain job_ids (UUIDs) or agent_types (like "analyzer")
-                            resolved_job_ids = []
-                            for agent_ref in to_agents:
-                                # Check if this looks like a UUID (job_id) or an agent_type
-                                # UUIDs contain hyphens and are 36 chars, agent_types are short names
-                                if len(agent_ref) == 36 and '-' in agent_ref:
-                                    # Looks like a job_id UUID - use directly
-                                    resolved_job_ids.append(agent_ref)
-                                else:
-                                    # Looks like an agent_type - resolve to job_id
-                                    agent_result = await session.execute(
-                                        select(AgentJob).where(
-                                            AgentJob.project_id == project.id,
-                                            AgentJob.job_type == agent_ref
-                                        ).limit(1)
-                                    )
-                                    agent_job = agent_result.scalar_one_or_none()
-                                    if agent_job:
-                                        resolved_job_ids.append(agent_job.job_id)
-                                        self._logger.info(
-                                            f"[WEBSOCKET DEBUG] Resolved agent_type '{agent_ref}' "
-                                            f"to job_id '{agent_job.job_id}'"
-                                        )
-                                    else:
-                                        # Couldn't resolve - keep original for logging
-                                        resolved_job_ids.append(agent_ref)
-                                        self._logger.warning(
-                                            f"[WEBSOCKET DEBUG] Could not resolve agent_type '{agent_ref}' "
-                                            f"to job_id in project {project.id}"
-                                        )
-                            recipient_job_ids = resolved_job_ids
-                            self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_job_ids}")
+                            # Direct message: resolved_to_agents already contains agent_ids
+                            recipient_agent_ids = resolved_to_agents
+                            self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_agent_ids}")
 
                         # Emit message:received event to recipients
-                        if recipient_job_ids:
+                        if recipient_agent_ids:
                             await self._websocket_manager.broadcast_message_received(
                                 message_id=message_id,
                                 job_id=message.meta_data.get("job_id", ""),
                                 project_id=project.id,
                                 tenant_key=project.tenant_key,
                                 from_agent=from_agent or "orchestrator",
-                                to_agent_ids=recipient_job_ids,
+                                to_agent_ids=recipient_agent_ids,
                                 message_type=message_type,
                                 content_preview=content[:200] if content else "",
                                 priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
                             )
-                            self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_job_ids)} recipient(s)")
+                            self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)")
 
-                        # CRITICAL: Persist messages to agent_jobs.messages JSONB column for counter persistence
-                        # This ensures counters survive page refresh
+                        # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
+                        # Handover 0372: Now persists to agent_executions, not agent_jobs
                         await self._persist_message_to_agent_jsonb(
                             session=session,
                             message_id=message_id,
                             from_agent=from_agent or "orchestrator",
-                            recipient_job_ids=recipient_job_ids,
+                            recipient_job_ids=recipient_agent_ids,  # Now contains agent_ids, not job_ids
                             content=content,
                             message_type=message_type,
                             priority=priority,
@@ -421,6 +402,77 @@ class MessageService:
             self._logger.exception(f"Failed to broadcast message: {e}")
             return {"success": False, "error": str(e)}
 
+    async def broadcast_to_project(
+        self,
+        project_id: str,
+        content: str,
+        from_agent: str = "orchestrator",
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Broadcast a message to all active executions in a project.
+
+        Handover 0372: Added from 0366b for agent-level broadcasting.
+        Differs from broadcast() which sends to agent types, not active executors.
+
+        Args:
+            project_id: Project ID to broadcast to
+            content: Message content
+            from_agent: Sender agent_id or agent_type (default: "orchestrator")
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            Dict with success status and message details or error
+
+        Example:
+            >>> result = await service.broadcast_to_project(
+            ...     project_id="project-123",
+            ...     content="Project status update",
+            ...     tenant_key="tenant-abc"
+            ... )
+        """
+        try:
+            async with self._get_session() as session:
+                # Get all active executions in project
+                result = await session.execute(
+                    select(AgentExecution).join(AgentJob).where(
+                        and_(
+                            AgentJob.project_id == project_id,
+                            AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                            AgentExecution.tenant_key == tenant_key
+                        )
+                    )
+                )
+                executions = result.scalars().all()
+
+                if not executions:
+                    return {
+                        "success": False,
+                        "error": "No active executions found in project"
+                    }
+
+                agent_ids = [exec.agent_id for exec in executions]
+
+                # Send message to all active executors
+                result = await self.send_message(
+                    to_agents=agent_ids,
+                    content=content,
+                    project_id=project_id,
+                    message_type="broadcast",
+                    priority="normal",
+                    from_agent=from_agent,
+                    tenant_key=tenant_key,
+                )
+
+                if result.get("success"):
+                    result["count"] = len(agent_ids)
+
+                return result
+
+        except Exception as e:
+            self._logger.exception(f"Failed to broadcast message to project: {e}")
+            return {"success": False, "error": str(e)}
+
     # ============================================================================
     # Message Retrieval
     # ============================================================================
@@ -490,25 +542,33 @@ class MessageService:
         self,
         agent_id: str,
         limit: int = 10,
-        tenant_key: Optional[str] = None
+        tenant_key: Optional[str] = None,
+        exclude_self: bool = True,
+        exclude_progress: bool = True,
+        message_types: Optional[list[str]] = None
     ) -> dict[str, Any]:
         """
-        Receive pending messages for an agent by job_id.
+        Receive pending messages for an agent executor with optional filtering.
 
-        Uses native Message queries (NOT AgentMessageQueue which has broken SQL).
+        Handover 0372: Added filtering parameters from 0366b for noise reduction.
 
         Args:
-            agent_id: Agent job ID
+            agent_id: Agent execution ID (executor UUID)
             limit: Maximum number of messages to retrieve (default: 10)
             tenant_key: Optional tenant key (uses current if not provided)
+            exclude_self: Filter out messages from same agent_id (default: True)
+            exclude_progress: Filter out progress-type messages (default: True)
+            message_types: Optional allow-list of message types (default: None = all types)
 
         Returns:
             Dict with success status and list of messages or error
 
         Example:
             >>> result = await service.receive_messages(
-            ...     agent_id="job-123",
-            ...     limit=5
+            ...     agent_id="agent-123",
+            ...     limit=5,
+            ...     exclude_self=True,
+            ...     exclude_progress=True
             ... )
         """
         try:
@@ -523,21 +583,33 @@ class MessageService:
                 }
 
             async with self.db_manager.get_session_async() as session:
-                # Retrieve agent job to get project context
+                # Handover 0372: Look up AgentExecution by agent_id, then get job
                 result = await session.execute(
-                    select(AgentJob).where(
+                    select(AgentExecution).where(
                         and_(
-                            AgentJob.job_id == agent_id,
-                            AgentJob.tenant_key == tenant_key
+                            AgentExecution.agent_id == agent_id,
+                            AgentExecution.tenant_key == tenant_key
                         )
                     )
                 )
-                job = result.scalar_one_or_none()
+                execution = result.scalar_one_or_none()
+
+                if not execution:
+                    return {
+                        "success": False,
+                        "error": f"Agent execution {agent_id} not found"
+                    }
+
+                # Get the job to access project_id
+                job_result = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == execution.job_id)
+                )
+                job = job_result.scalar_one_or_none()
 
                 if not job:
                     return {
                         "success": False,
-                        "error": f"Job {agent_id} not found"
+                        "error": f"Job not found for execution {agent_id}"
                     }
 
                 # Query messages using native SQLAlchemy queries
@@ -548,28 +620,51 @@ class MessageService:
                 from sqlalchemy import or_, func, String
                 from sqlalchemy.dialects.postgresql import JSONB
 
-                query = select(Message).where(
-                    and_(
-                        Message.tenant_key == tenant_key,
-                        Message.project_id == job.project_id,
-                        Message.status == "pending",  # Only unread messages
-                        or_(
-                            # Direct message: JSONB array contains agent_id
-                            # Use PostgreSQL JSONB containment operator @>
-                            # Cast both sides to JSONB to avoid type mismatch
-                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
-                            # Broadcast: JSONB array contains 'all' BUT exclude sender (Issue 0361-3)
-                            # Filter: from_agent != current agent's type to prevent self-delivery
-                            and_(
-                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB)),
-                                func.coalesce(
-                                    Message.meta_data.op('->')('_from_agent').astext,
-                                    func.cast('', String)
-                                ) != job.job_type
-                            )
+                # Build query conditions (Handover 0372: Agent-ID filtering from 0366b)
+                conditions = [
+                    Message.tenant_key == tenant_key,
+                    Message.project_id == job.project_id,
+                    Message.status == "pending",  # Only unread messages
+                    or_(
+                        # Direct message: JSONB array contains agent_id
+                        func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
+                        # Broadcast: JSONB array contains 'all' BUT exclude sender (Issue 0361-3)
+                        and_(
+                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB)),
+                            func.coalesce(
+                                Message.meta_data.op('->')('_from_agent').astext,
+                                func.cast('', String)
+                            ) != job.job_type
                         )
                     )
-                ).order_by(Message.created_at)
+                ]
+
+                # HANDOVER 0372: Apply filtering conditions from 0366b
+
+                # Filter: exclude_self - Filter out messages from the same agent
+                if exclude_self:
+                    # Meta_data._from_agent should not equal current agent_id
+                    conditions.append(
+                        func.coalesce(
+                            Message.meta_data.op('->>')('_from_agent'),
+                            ''
+                        ) != agent_id
+                    )
+
+                # Filter: exclude_progress - Filter out progress-type messages
+                if exclude_progress:
+                    conditions.append(Message.message_type != "progress")
+
+                # Filter: message_types - Allow-list of message types
+                if message_types is not None:
+                    if len(message_types) == 0:
+                        # Empty allow-list means no messages should pass
+                        conditions.append(Message.id == None)  # noqa: E711
+                    else:
+                        # Only allow specified message types
+                        conditions.append(Message.message_type.in_(message_types))
+
+                query = select(Message).where(and_(*conditions)).order_by(Message.created_at)
 
                 # Apply limit
                 if isinstance(limit, int) and limit > 0:
@@ -915,6 +1010,107 @@ class MessageService:
             self._logger.exception(f"Failed to complete message: {e}")
             return {"success": False, "error": str(e)}
 
+    async def acknowledge_message(
+        self,
+        message_id: str,
+        agent_id: str,
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Explicitly acknowledge a message using agent_id (executor).
+
+        Handover 0372: Added from 0366b for explicit acknowledgment workflow.
+        Note: receive_messages() auto-acknowledges, so this is optional.
+
+        Args:
+            message_id: Message UUID
+            agent_id: Agent execution ID (executor UUID)
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            Dict with success status or error
+
+        Example:
+            >>> result = await service.acknowledge_message(
+            ...     message_id="msg-123",
+            ...     agent_id="agent-uuid-123",
+            ...     tenant_key="tenant-abc"
+            ... )
+        """
+        try:
+            # Use provided tenant_key or get from context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+
+            if not tenant_key:
+                return {
+                    "success": False,
+                    "error": "No tenant context available"
+                }
+
+            async with self._get_session() as session:
+                # Get message
+                msg_result = await session.execute(
+                    select(Message).where(
+                        and_(
+                            Message.id == message_id,
+                            Message.tenant_key == tenant_key
+                        )
+                    )
+                )
+                message = msg_result.scalar_one_or_none()
+
+                if not message:
+                    return {
+                        "success": False,
+                        "error": "Message not found or access denied"
+                    }
+
+                # Update message
+                message.status = "acknowledged"
+                message.acknowledged_at = datetime.now(timezone.utc)
+                if not message.acknowledged_by:
+                    message.acknowledged_by = []
+                if agent_id not in message.acknowledged_by:
+                    message.acknowledged_by.append(agent_id)
+
+                await session.commit()
+
+                self._logger.info(
+                    f"Message {message_id} acknowledged by agent {agent_id}"
+                )
+
+                # Update JSONB for UI counter sync
+                await self._update_jsonb_message_status(
+                    session=session,
+                    agent_job_id=agent_id,
+                    message_ids=[message_id],
+                    new_status="acknowledged"
+                )
+
+                # Emit WebSocket event if manager available
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_message_acknowledged(
+                            message_id=message_id,
+                            agent_id=agent_id,
+                            tenant_key=tenant_key,
+                            project_id=message.project_id,
+                            message_ids=[message_id],
+                        )
+                    except Exception as ws_error:
+                        self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
+
+                return {
+                    "success": True,
+                    "acknowledged": True,
+                    "message_id": message_id,
+                }
+
+        except Exception as e:
+            self._logger.exception(f"Failed to acknowledge message: {e}")
+            return {"success": False, "error": str(e)}
+
     # ============================================================================
     # Message Persistence to Agent JSONB Column
     # ============================================================================
@@ -924,7 +1120,7 @@ class MessageService:
         session: AsyncSession,
         message_id: str,
         from_agent: str,
-        recipient_job_ids: list[str],
+        recipient_job_ids: list[str],  # Handover 0372: Now contains agent_ids, not job_ids
         content: str,
         message_type: str,
         priority: str,
@@ -932,7 +1128,9 @@ class MessageService:
         tenant_key: str,
     ) -> None:
         """
-        Persist message to agent_jobs.messages JSONB column for counter persistence.
+        Persist message to agent_executions.messages JSONB column for counter persistence.
+
+        Handover 0372: Updated to use AgentExecution instead of AgentJob.
 
         This ensures message counters survive page refreshes by storing messages
         in the PostgreSQL JSONB column that the frontend reads on load.
@@ -941,7 +1139,7 @@ class MessageService:
             session: Active database session
             message_id: Unique message ID
             from_agent: Sender agent name
-            recipient_job_ids: List of recipient agent job IDs
+            recipient_job_ids: List of recipient agent IDs (now agent_ids, not job_ids)
             content: Message content
             message_type: Type of message (direct, broadcast)
             priority: Message priority (low, normal, high)
@@ -954,18 +1152,16 @@ class MessageService:
             timestamp = datetime.now(timezone.utc).isoformat()
 
             # Add message to SENDER's outbound messages (for "Messages Sent" counter)
-            # Find sender agent - check both job_id (UUID) and agent_type
-            # from_agent can be a UUID like "abf6c4fd-68b9-4556-a268-467fa90db480" or agent_type like "orchestrator"
-            # CRITICAL: Must filter by tenant_key AND project_id for proper isolation (Handover 0325)
+            # Handover 0372: Look up AgentExecution, not AgentJob
             from sqlalchemy import and_, or_
             sender_result = await session.execute(
-                select(AgentJob).where(
+                select(AgentExecution).join(AgentJob).where(
                     and_(
-                        AgentJob.tenant_key == tenant_key,
+                        AgentExecution.tenant_key == tenant_key,
                         AgentJob.project_id == project_id,
                         or_(
-                            AgentJob.job_id == from_agent,
-                            AgentJob.job_type == from_agent
+                            AgentExecution.agent_id == from_agent,
+                            AgentExecution.agent_type == from_agent
                         )
                     )
                 ).limit(1)
@@ -984,33 +1180,32 @@ class MessageService:
                     "text": content[:200],  # Truncate for storage
                     "priority": priority,
                     "timestamp": timestamp,
-                    "to_agents": recipient_job_ids,
+                    "to_agents": recipient_job_ids,  # Now contains agent_ids
                 })
 
                 # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                # Without this, SQLAlchemy won't detect the append() and won't save changes!
                 flag_modified(sender_agent, "messages")
 
                 self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column (flagged modified)")
 
             # Add message to each RECIPIENT's inbound messages (for "Messages Waiting" counter)
             # Skip sender - they already got the outbound copy above
-            sender_job_id = sender_agent.job_id if sender_agent else None
-            for recipient_job_id in recipient_job_ids:
+            sender_agent_id = sender_agent.agent_id if sender_agent else None
+            for recipient_agent_id in recipient_job_ids:  # Now contains agent_ids
                 # Skip sender - don't add inbound message to the sender
-                if recipient_job_id == sender_job_id:
+                if recipient_agent_id == sender_agent_id:
                     self._logger.debug(
-                        f"[PERSISTENCE] Skipping inbound message for sender {recipient_job_id}"
+                        f"[PERSISTENCE] Skipping inbound message for sender {recipient_agent_id}"
                     )
                     continue
 
-                # Tenant + project isolation on recipient lookup (Handover 0325)
+                # Handover 0372: Look up AgentExecution by agent_id
                 recipient_result = await session.execute(
-                    select(AgentJob).where(
+                    select(AgentExecution).join(AgentJob).where(
                         and_(
-                            AgentJob.tenant_key == tenant_key,
+                            AgentExecution.tenant_key == tenant_key,
                             AgentJob.project_id == project_id,
-                            AgentJob.job_id == recipient_job_id
+                            AgentExecution.agent_id == recipient_agent_id
                         )
                     )
                 )
@@ -1034,8 +1229,8 @@ class MessageService:
                     flag_modified(recipient_agent, "messages")
 
                     self._logger.info(
-                        f"[PERSISTENCE] Added inbound message to {recipient_agent.job_type} "
-                        f"({recipient_job_id}) JSONB column (flagged modified)"
+                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_type} "
+                        f"({recipient_agent_id}) JSONB column (flagged modified)"
                     )
 
             # Commit changes to persist JSONB updates
