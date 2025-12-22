@@ -66,7 +66,7 @@ def find_available_port(preferred_port: int) -> int:
             if result != 0:  # Port is available
                 return preferred_port
     except Exception:
-        pass
+        pass  # nosec B110 - best effort port check
 
     # Try some alternative ports
     alternatives = [7273, 7274, 8747, 8823, 9456, 9789]
@@ -79,7 +79,7 @@ def find_available_port(preferred_port: int) -> int:
                     logging.warning(f"Port {preferred_port} is occupied, using alternative port {port}")
                     return port
         except Exception:
-            continue
+            continue  # nosec B112 - best effort port scan
 
     raise RuntimeError(f"Could not find available port (preferred: {preferred_port})")
 
