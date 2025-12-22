@@ -230,12 +230,12 @@ class ProjectService:
                 # Include messages for JobsTab WebSocket refresh fix (Handover 0358)
                 agent_dicts = [
                     {
-                        "id": job.id,
-                        "job_id": job.id,
-                        "agent_type": job.agent_type,
-                        "agent_name": job.agent_name,
+                        "id": job.job_id,
+                        "job_id": job.job_id,
+                        "agent_type": job.job_type,
+                        "agent_name": execution.agent_name,
                         "status": execution.status,
-                        "messages": job.messages or [],
+                        "messages": execution.messages or [],
                         "thin_client": True,
                     }
                     for job, execution in agent_pairs
@@ -740,7 +740,7 @@ class ProjectService:
                 for execution in executions_to_decommission:
                     execution.status = "decommissioned"
                     execution.updated_at = datetime.utcnow()
-                    decommissioned_ids.append(execution.agent_job_id)
+                    decommissioned_ids.append(execution.job_id)
 
                 await session.commit()
 
@@ -833,7 +833,7 @@ class ProjectService:
                 for execution in executions_to_resume:
                     execution.status = "waiting"
                     execution.updated_at = datetime.utcnow()
-                    resumed_ids.append(execution.agent_job_id)
+                    resumed_ids.append(execution.job_id)
 
                 await session.commit()
 
@@ -1186,7 +1186,7 @@ class ProjectService:
 
                 # Get job counts by status (migrated to AgentExecution - Handover 0367a)
                 job_counts_result = await session.execute(
-                    select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
+                    select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
@@ -1548,7 +1548,7 @@ class ProjectService:
         Aggregate agent status counts for closeout operations (migrated to AgentExecution - Handover 0367a).
         """
         job_counts_result = await session.execute(
-            select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
+            select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 and_(
@@ -1987,7 +1987,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "context_used": project.context_used,
                     },
                     "agents": [
-                        {"name": job.agent_type, "status": execution.status, "role": job.agent_type}
+                        {"name": job.job_type, "status": execution.status, "role": job.job_type}
                         for job, execution in agent_pairs
                     ],
                     "pending_messages": pending_messages,

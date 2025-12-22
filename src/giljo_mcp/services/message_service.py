@@ -306,7 +306,7 @@ class MessageService:
                             )
                             self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_job_ids)} recipient(s)")
 
-                        # CRITICAL: Persist messages to mcp_agent_jobs.messages JSONB column for counter persistence
+                        # CRITICAL: Persist messages to agent_jobs.messages JSONB column for counter persistence
                         # This ensures counters survive page refresh
                         await self._persist_message_to_agent_jsonb(
                             session=session,
