@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.mission_planner import MissionPlanner
 from giljo_mcp.models import Product, Project, AgentTemplate
-from giljo_mcp.models.agents import AgentExecution
+from giljo_mcp.models.agent_identity import AgentExecution
 from giljo_mcp.models.auth import User
 from giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
@@ -364,8 +364,6 @@ class TestAgentTemplateDepthIntegration:
         product, project = sample_product_and_project
 
         # Create orchestrator job
-        from giljo_mcp.models import AgentExecution
-
         async with db_manager.get_session_async() as session:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
@@ -445,8 +443,6 @@ class TestAgentTemplateDepthIntegration:
         product, project = sample_product_and_project
 
         # Create orchestrator job
-        from giljo_mcp.models import AgentExecution
-
         async with db_manager.get_session_async() as session:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
@@ -525,8 +521,6 @@ class TestAgentTemplateDepthIntegration:
         product, project = sample_product_and_project
 
         # Create orchestrator job
-        from giljo_mcp.models import AgentExecution
-
         async with db_manager.get_session_async() as session:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
@@ -584,8 +578,6 @@ class TestAgentTemplateDepthIntegration:
         product, project = sample_product_and_project
 
         # Create orchestrator job
-        from giljo_mcp.models import AgentExecution
-
         async with db_manager.get_session_async() as session:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
