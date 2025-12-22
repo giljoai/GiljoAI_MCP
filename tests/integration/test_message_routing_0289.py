@@ -204,10 +204,10 @@ async def test_broadcast_message_emits_websocket_event(
     EXPECTED TO FAIL: MessageService currently does NOT emit WebSocket events
     """
     # Arrange: Create agent jobs in project (simulating active agents)
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     agent_jobs = [
-        MCPAgentJob(
+        AgentExecution(
             job_id=str(uuid4()),
             tenant_key=test_tenant_a,
             project_id=str(test_project_a.id),

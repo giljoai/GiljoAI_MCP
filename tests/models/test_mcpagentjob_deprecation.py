@@ -24,7 +24,7 @@ class TestMCPAgentJobDeprecation:
 
             # Import and instantiate MCPAgentJob
             from src.giljo_mcp.models.agents import MCPAgentJob
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-001",
                 tenant_key="tenant-abc",
                 agent_type="orchestrator",
@@ -72,7 +72,7 @@ class TestMCPAgentJobDeprecation:
             warnings.simplefilter("always")
 
             from src.giljo_mcp.models.agents import MCPAgentJob
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-002",
                 tenant_key="tenant-xyz",
                 agent_type="implementor",
@@ -96,7 +96,7 @@ class TestMCPAgentJobDeprecation:
             warnings.simplefilter("always")
 
             from src.giljo_mcp.models.agents import MCPAgentJob
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-003",
                 tenant_key="tenant-test",
                 agent_type="tester",
@@ -122,7 +122,7 @@ class TestDeprecationWarningContent:
             warnings.simplefilter("always")
 
             from src.giljo_mcp.models.agents import MCPAgentJob
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-migration",
                 tenant_key="tenant-migrate",
                 agent_type="orchestrator",
@@ -144,7 +144,7 @@ class TestDeprecationWarningContent:
             warnings.simplefilter("always")
 
             from src.giljo_mcp.models.agents import MCPAgentJob
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-handover-ref",
                 tenant_key="tenant-ref",
                 agent_type="database-expert",

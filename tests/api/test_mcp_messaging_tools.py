@@ -32,7 +32,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Message, Project, User, APIKey
+from src.giljo_mcp.models import Message, Project, User, APIKey
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 # ============================================================================
@@ -218,7 +219,7 @@ async def test_project(db_session: AsyncSession, test_user) -> Project:
 async def test_agents(
     db_session: AsyncSession,
     test_project: Project
-) -> list[MCPAgentJob]:
+) -> list[AgentExecution]:
     """
     Create test agents for messaging tests.
 
@@ -228,7 +229,7 @@ async def test_agents(
     - agent2 (tester type)
 
     Returns:
-        list[MCPAgentJob]: List of test agent jobs
+        list[AgentExecution]: List of test agent jobs
     """
     agents = []
 
@@ -239,7 +240,7 @@ async def test_agents(
     ]
 
     for agent_name, agent_type, mission in agent_configs:
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             tenant_key=test_project.tenant_key,
             project_id=test_project.id,
             job_id=str(uuid.uuid4()),
@@ -278,7 +279,7 @@ class TestMCPMessagingTools:
         api_client: AsyncClient,
         test_api_key: tuple,
         test_project: Project,
-        test_agents: list[MCPAgentJob],
+        test_agents: list[AgentExecution],
         db_session: AsyncSession,
     ):
         """
@@ -353,7 +354,7 @@ class TestMCPMessagingTools:
         api_client: AsyncClient,
         test_api_key: tuple,
         test_project: Project,
-        test_agents: list[MCPAgentJob],
+        test_agents: list[AgentExecution],
         db_session: AsyncSession,
     ):
         """
@@ -420,7 +421,7 @@ class TestMCPMessagingTools:
         api_client: AsyncClient,
         test_api_key: tuple,
         test_project: Project,
-        test_agents: list[MCPAgentJob],
+        test_agents: list[AgentExecution],
         db_session: AsyncSession,
     ):
         """
@@ -512,7 +513,7 @@ class TestMCPMessagingTools:
         api_client: AsyncClient,
         test_api_key: tuple,
         test_project: Project,
-        test_agents: list[MCPAgentJob],
+        test_agents: list[AgentExecution],
         db_session: AsyncSession,
     ):
         """
@@ -774,7 +775,7 @@ class TestMCPMessagingTools:
         api_client: AsyncClient,
         test_api_key: tuple,
         test_project: Project,
-        test_agents: list[MCPAgentJob],
+        test_agents: list[AgentExecution],
         db_session: AsyncSession,
     ):
         """

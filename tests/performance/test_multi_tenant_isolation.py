@@ -17,7 +17,8 @@ import pytest_asyncio
 from uuid import uuid4
 import time
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product, User, AgentTemplate
+from src.giljo_mcp.models import Project, Product, User, AgentTemplate
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tools.agent_discovery import get_available_agents
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
@@ -255,7 +256,7 @@ class TestMultiTenantIsolation:
         await db_session.commit()
 
         # Create orchestrators for both tenants
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=project_a.id,
             tenant_key=tenant_a_user.tenant_key,
             agent_type="orchestrator",
@@ -268,7 +269,7 @@ class TestMultiTenantIsolation:
                 "execution_mode": "claude-code"
             }
         )
-        orchestrator_b = MCPAgentJob(
+        orchestrator_b = AgentExecution(
             project_id=project_b.id,
             tenant_key=tenant_b_user.tenant_key,
             agent_type="orchestrator",
@@ -409,7 +410,7 @@ class TestMultiTenantIsolation:
             version="1.0.0",
             template_content="A"
         )
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=None,  # Will be set after project creation
             tenant_key=tenant_a_user.tenant_key,
             agent_type="orchestrator",

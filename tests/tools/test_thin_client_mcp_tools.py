@@ -21,7 +21,8 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 # ========================================================================
@@ -99,7 +100,7 @@ async def test_project_with_product(db_session, tenant_key, test_product):
 @pytest_asyncio.fixture
 async def test_orchestrator_job(db_session, tenant_key, test_project_with_product, test_user):
     """Create test orchestrator job."""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         id=1,  # Auto-increment
         job_id=str(uuid4()),
         tenant_key=tenant_key,
@@ -419,7 +420,7 @@ async def test_get_agent_mission_thin_client(db_session, tenant_key, test_projec
     from giljo_mcp.tools.orchestration import get_agent_mission
 
     # Create agent job
-    agent_job = MCPAgentJob(
+    agent_job = AgentExecution(
         id=str(uuid4()),
         job_id=str(uuid4()),
         tenant_key=tenant_key,
@@ -520,7 +521,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
     assert result["prompt_tokens"] < 100, "Prompt should be <100 tokens"
 
     # Verify mission stored in database
-    db_agent = await db_session.get(MCPAgentJob, agent_job_id)
+    db_agent = await db_session.get(AgentExecution, agent_job_id)
     assert db_agent is not None
     assert db_agent.mission == mission_content
     assert db_agent.agent_type == "implementer"
@@ -618,7 +619,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
     from giljo_mcp.tools.orchestration import get_agent_mission, get_orchestrator_instructions, spawn_agent_job
 
     # Step 1: Create orchestrator job (simulating thin prompt stage)
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         id=str(uuid4()),
         job_id=str(uuid4()),
         tenant_key=tenant_key,

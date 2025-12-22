@@ -16,7 +16,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
+from src.giljo_mcp.models import Message, Product, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -244,7 +245,7 @@ class TestProjectSoftDelete:
         await db_session.commit()
 
         # Create child records
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             tenant_key=test_tenant_key,
             project_id=project.id,
             agent_type="tester",
@@ -284,7 +285,7 @@ class TestProjectSoftDelete:
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.id == agent_id)
+        stmt = select(AgentExecution).where(AgentExecution.id == agent_id)
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 

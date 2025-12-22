@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 pytestmark = pytest.mark.asyncio
@@ -81,7 +82,7 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
     ]
 
     for job_data in jobs_data:
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=job_data["job_id"],
@@ -125,7 +126,7 @@ async def test_project_with_messages(db_session: AsyncSession, tenant_manager: T
     await db_session.flush()
 
     # Create job with known message counts
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=tenant_key,
         project_id=project.id,
         job_id="job-counter-test",
@@ -234,7 +235,7 @@ class TestJobsEndpointMessageCounters:
     async def test_message_counters_reflect_jsonb_state(
         self, db_session: AsyncSession, test_project_with_messages
     ):
-        """Message counters should reflect the MCPAgentJob.messages JSONB state."""
+        """Message counters should reflect the AgentExecution.messages JSONB state."""
         from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
         from src.giljo_mcp.models import User
 

@@ -21,7 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -78,7 +79,7 @@ async def test_generate_execution_prompt_logs_deprecation_warning(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator_job = MCPAgentJob(
+    orchestrator_job = AgentExecution(
         job_id="orch-dep-001",
         agent_name="orchestrator",
         agent_type="orchestrator",
@@ -184,7 +185,7 @@ async def test_generate_execution_prompt_redirects_to_generate_staging_prompt(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator_job = MCPAgentJob(
+    orchestrator_job = AgentExecution(
         job_id="orch-redirect-001",
         agent_name="orchestrator",
         agent_type="orchestrator",
@@ -325,7 +326,7 @@ async def test_generate_execution_prompt_parameter_mapping_with_claude_code_mode
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator_job = MCPAgentJob(
+    orchestrator_job = AgentExecution(
         job_id="orch-cc-001",
         agent_name="orchestrator",
         agent_type="orchestrator",

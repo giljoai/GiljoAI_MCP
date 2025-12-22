@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.utils.tools_helpers import ToolsTestHelper
 
 
@@ -39,7 +39,7 @@ class TestAgentStatusTool:
 
     async def _create_test_job(self, session, status="waiting", progress=0):
         """Helper to create test agent job"""
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=self.tenant_key,
             project_id=self.project.id,
             job_id=str(uuid.uuid4()),
@@ -87,7 +87,7 @@ class TestAgentStatusTool:
 
         # Verify database update
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             updated_job = (await session.execute(stmt)).scalar_one()
             assert updated_job.status == "working"
             assert updated_job.progress == 25
@@ -230,7 +230,7 @@ class TestAgentStatusTool:
 
         # Verify completed_at timestamp set
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             updated_job = (await session.execute(stmt)).scalar_one()
             assert updated_job.status == "complete"
             assert updated_job.completed_at is not None
@@ -259,7 +259,7 @@ class TestAgentStatusTool:
 
         # Verify block_reason stored
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             updated_job = (await session.execute(stmt)).scalar_one()
             assert updated_job.status == "blocked"
             assert updated_job.block_reason == "Waiting for database migration approval"
@@ -286,7 +286,7 @@ class TestAgentStatusTool:
 
         # Verify estimated completion stored
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             updated_job = (await session.execute(stmt)).scalar_one()
             assert updated_job.progress == 75
             assert updated_job.estimated_completion is not None

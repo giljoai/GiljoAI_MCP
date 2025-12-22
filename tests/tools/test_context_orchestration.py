@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 from src.giljo_mcp.database import DatabaseManager
@@ -59,7 +59,7 @@ async def test_get_orchestrator_instructions_accepts_user_id(db_manager: Databas
         await session.flush()
 
         orchestrator_id = str(uuid4())
-        orchestrator_job = MCPAgentJob(
+        orchestrator_job = AgentExecution(
             job_id=orchestrator_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -159,7 +159,7 @@ async def test_get_user_config_with_custom_settings(db_manager: DatabaseManager)
         await session.flush()
 
         orchestrator_id = str(uuid4())
-        orchestrator_job = MCPAgentJob(
+        orchestrator_job = AgentExecution(
             job_id=orchestrator_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -244,7 +244,7 @@ async def test_get_user_config_with_defaults(db_manager: DatabaseManager):
         await session.flush()
 
         orchestrator_id = str(uuid4())
-        orchestrator_job = MCPAgentJob(
+        orchestrator_job = AgentExecution(
             job_id=orchestrator_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -309,7 +309,7 @@ async def test_get_orchestrator_instructions_without_user_id_backward_compatibil
         await session.flush()
 
         orchestrator_id = str(uuid4())
-        orchestrator_job = MCPAgentJob(
+        orchestrator_job = AgentExecution(
             job_id=orchestrator_id,
             tenant_key=tenant_key,
             project_id=project.id,

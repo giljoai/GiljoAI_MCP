@@ -21,7 +21,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import and_, select
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -65,11 +66,11 @@ class TestOrchestratorReuse:
         await db_session.refresh(project)
 
         # Verify no orchestrator exists
-        stmt = select(MCPAgentJob).where(
+        stmt = select(AgentExecution).where(
             and_(
-                MCPAgentJob.project_id == str(project.id),
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.project_id == str(project.id),
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == tenant_key
             )
         )
         result = await db_session.execute(stmt)
@@ -87,7 +88,7 @@ class TestOrchestratorReuse:
         # Verify orchestrator created
         assert response["orchestrator_id"] is not None
         # Fetch orchestrator using job_id (UUID), not primary key (id)
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == response["orchestrator_id"])
+        stmt = select(AgentExecution).where(AgentExecution.job_id == response["orchestrator_id"])
         result = await db_session.execute(stmt)
         orchestrator = result.scalar_one_or_none()
         assert orchestrator is not None
@@ -158,11 +159,11 @@ class TestOrchestratorReuse:
         )
 
         # Verify only ONE orchestrator exists in database
-        stmt = select(MCPAgentJob).where(
+        stmt = select(AgentExecution).where(
             and_(
-                MCPAgentJob.project_id == str(project.id),
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.project_id == str(project.id),
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == tenant_key
             )
         )
         result = await db_session.execute(stmt)
@@ -223,11 +224,11 @@ class TestOrchestratorReuse:
         )
 
         # Verify only ONE orchestrator in database
-        stmt = select(MCPAgentJob).where(
+        stmt = select(AgentExecution).where(
             and_(
-                MCPAgentJob.project_id == str(project.id),
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.project_id == str(project.id),
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == tenant_key
             )
         )
         result = await db_session.execute(stmt)
@@ -301,11 +302,11 @@ class TestOrchestratorReuse:
 
         # Verify each project has exactly one orchestrator
         for project in [project_a, project_b]:
-            stmt = select(MCPAgentJob).where(
+            stmt = select(AgentExecution).where(
                 and_(
-                    MCPAgentJob.project_id == str(project.id),
-                    MCPAgentJob.agent_type == "orchestrator",
-                    MCPAgentJob.tenant_key == tenant_key
+                    AgentExecution.project_id == str(project.id),
+                    AgentExecution.agent_type == "orchestrator",
+                    AgentExecution.tenant_key == tenant_key
                 )
             )
             result = await db_session.execute(stmt)
@@ -384,7 +385,7 @@ class TestOrchestratorReuse:
             )
 
         # Verify orchestrator exists only for Tenant A
-        orch_a = (await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.job_id == response_a["orchestrator_id"]))).scalar_one_or_none()
+        orch_a = (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == response_a["orchestrator_id"]))).scalar_one_or_none()
         assert orch_a.tenant_key == tenant_a_key
 
     async def test_completed_orchestrator_creates_new_one(self, db_session):
@@ -432,7 +433,7 @@ class TestOrchestratorReuse:
         orchestrator_id_1 = response1["orchestrator_id"]
 
         # Mark orchestrator as complete
-        orchestrator1 = (await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_1))).scalar_one_or_none()
+        orchestrator1 = (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_1))).scalar_one_or_none()
         orchestrator1.status = "complete"
         await db_session.commit()
 
@@ -449,11 +450,11 @@ class TestOrchestratorReuse:
         )
 
         # Verify TWO orchestrators exist
-        stmt = select(MCPAgentJob).where(
+        stmt = select(AgentExecution).where(
             and_(
-                MCPAgentJob.project_id == str(project.id),
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.project_id == str(project.id),
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == tenant_key
             )
         )
         result = await db_session.execute(stmt)
@@ -505,7 +506,7 @@ class TestOrchestratorReuse:
         )
 
         # Mark as failed
-        orchestrator1 = (await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
+        orchestrator1 = (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
         orchestrator1.status = "failed"
         await db_session.commit()
 
@@ -558,7 +559,7 @@ class TestOrchestratorReuse:
             )
 
             # Set status
-            orch = (await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
+            orch = (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
             orch.status = status
             await db_session.commit()
 
@@ -624,7 +625,7 @@ class TestOrchestratorReuse:
         assert response1["orchestrator_id"] == response2["orchestrator_id"]
 
         # Verify instance_number in database
-        orch = (await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
+        orch = (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == response1["orchestrator_id"]))).scalar_one_or_none()
         assert orch.instance_number == 1
 
     async def test_most_recent_orchestrator_selected(self, db_session):
@@ -662,7 +663,7 @@ class TestOrchestratorReuse:
         # In normal operation, this should never happen due to our reuse logic
         import asyncio
 
-        orch1 = MCPAgentJob(
+        orch1 = AgentExecution(
             tenant_key=tenant_key,
             project_id=str(project.id),
             job_id=str(uuid4()),
@@ -681,7 +682,7 @@ class TestOrchestratorReuse:
         # Small delay to ensure orch2 has a later created_at timestamp
         await asyncio.sleep(0.01)
 
-        orch2 = MCPAgentJob(
+        orch2 = AgentExecution(
             tenant_key=tenant_key,
             project_id=str(project.id),
             job_id=str(uuid4()),
@@ -712,11 +713,11 @@ class TestOrchestratorReuse:
         )
 
         # Verify we didn't create a THIRD orchestrator
-        stmt = select(MCPAgentJob).where(
+        stmt = select(AgentExecution).where(
             and_(
-                MCPAgentJob.project_id == str(project.id),
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == tenant_key
+                AgentExecution.project_id == str(project.id),
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == tenant_key
             )
         )
         result = await db_session.execute(stmt)

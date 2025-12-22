@@ -15,7 +15,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, Project, AgentTemplate, MCPAgentJob
+from src.giljo_mcp.models import Product, Project, AgentTemplate
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tools.orchestration import spawn_agent_job
 from src.giljo_mcp.services.orchestration_service import _generate_agent_protocol
 from tests.fixtures.base_fixtures import db_session
@@ -75,9 +76,9 @@ async def workflow_template(db_session, workflow_product, workflow_tenant):
         product_id=workflow_product.id,
         is_active=True,
         version="1.0.0",
-        template_content="# Implementer
+        template_content="""# Implementer
 
-Implements code.",
+Implements code.""",
     )
     db_session.add(template)
     await db_session.flush()

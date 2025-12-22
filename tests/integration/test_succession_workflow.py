@@ -18,7 +18,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import (
     SuccessionTestData,
 )
@@ -59,7 +60,7 @@ async def test_full_succession_workflow_end_to_end(
         status="working",
     )
 
-    orchestrator1 = MCPAgentJob(**orch1_data)
+    orchestrator1 = AgentExecution(**orch1_data)
     db_session.add(orchestrator1)
     await db_session.commit()
     await db_session.refresh(orchestrator1)
@@ -79,7 +80,7 @@ async def test_full_succession_workflow_end_to_end(
         status="waiting",
     )
 
-    orchestrator2 = MCPAgentJob(**orch2_data)
+    orchestrator2 = AgentExecution(**orch2_data)
     db_session.add(orchestrator2)
     await db_session.flush()
 
@@ -162,7 +163,7 @@ async def test_multiple_successive_handovers(
     context_budget = 150000
 
     # Create Instance 1
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -182,7 +183,7 @@ async def test_multiple_successive_handovers(
     for i in range(2, 5):
         previous_instance = instances[-1]
 
-        new_instance = MCPAgentJob(
+        new_instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -269,7 +270,7 @@ async def test_concurrent_orchestrators_during_transition(
     context_budget = 150000
 
     # Create Instance 1 in "completing" status (transitioning)
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -283,7 +284,7 @@ async def test_concurrent_orchestrators_during_transition(
     await db_session.flush()
 
     # Create Instance 2 in "waiting" status
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -304,10 +305,10 @@ async def test_concurrent_orchestrators_during_transition(
     # - Instance 2 is waiting to be launched
 
     # Query for active orchestrators (both might be in transition)
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.status.in_(["working", "waiting"]),
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.status.in_(["working", "waiting"]),
     )
     result = await db_session.execute(stmt)
     active_orchestrators = result.scalars().all()
@@ -344,10 +345,10 @@ async def test_concurrent_orchestrators_during_transition(
     assert instance1.handover_to == instance2.job_id
 
     # Query again - only Instance 2 should be waiting
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.status == "waiting",
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.status == "waiting",
     )
     result = await db_session.execute(stmt)
     waiting_orchestrators = result.scalars().all()
@@ -374,7 +375,7 @@ async def test_succession_preserves_project_continuity(
     context_budget = 150000
 
     # Create Instance 1 with rich project state
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -396,7 +397,7 @@ async def test_succession_preserves_project_continuity(
     await db_session.refresh(instance1)
 
     # Create successor
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -502,12 +503,12 @@ async def test_query_succession_chain_ordered(
 
     # Query all orchestrators for project, ordered by instance_number
     stmt = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == project_id,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == project_id,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result = await db_session.execute(stmt)
@@ -551,7 +552,7 @@ async def test_succession_at_exact_90_percent(
     context_budget = 150000
     context_used = int(context_budget * 0.90)  # Exactly 135000 tokens
 
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,

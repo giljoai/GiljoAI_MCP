@@ -17,7 +17,8 @@ import pytest
 import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product, User
+from src.giljo_mcp.models import Project, Product, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -125,7 +126,7 @@ class TestFullStackModeFlow:
             "get_available_agents() must return agents list"
 
         # STEP 4: Generate prompt and validate token reduction
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -205,7 +206,7 @@ class TestFullStackModeFlow:
 
         # Verify successor created
         successor_id = result["successor_job_id"]
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == successor_id)
         result_successor = await db_session.execute(stmt)
         successor = result_successor.scalar_one()
 
@@ -234,7 +235,7 @@ class TestFullStackModeFlow:
         test_project.meta_data = {"execution_mode": "claude-code"}
         await db_session.commit()
 
-        orchestrator_cc = MCPAgentJob(
+        orchestrator_cc = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -271,7 +272,7 @@ class TestFullStackModeFlow:
         test_project.meta_data = {"execution_mode": "multi-terminal"}
         await db_session.commit()
 
-        orchestrator_mt = MCPAgentJob(
+        orchestrator_mt = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -335,7 +336,7 @@ class TestFullStackModeFlow:
             test_project.meta_data = {"execution_mode": mode}
             await db_session.commit()
 
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 project_id=test_project.id,
                 tenant_key=test_tenant,
                 agent_type="orchestrator",

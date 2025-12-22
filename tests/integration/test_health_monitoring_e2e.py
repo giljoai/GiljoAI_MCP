@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
 from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
 from src.giljo_mcp.database import DatabaseManager
@@ -80,7 +80,7 @@ class TestHealthMonitoringE2E:
 
         async with get_test_session() as session:
             # Create job stuck in waiting
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-waiting-timeout",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",
@@ -116,7 +116,7 @@ class TestHealthMonitoringE2E:
         async with get_test_session() as session:
             # Create stalled active job
             stale_time = datetime.now(timezone.utc) - timedelta(minutes=3)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-stalled-job",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",
@@ -156,7 +156,7 @@ class TestHealthMonitoringE2E:
         async with get_test_session() as session:
             # Create job that should timeout
             timeout_time = datetime.now(timezone.utc) - timedelta(minutes=6)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-auto-fail",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",
@@ -196,7 +196,7 @@ class TestHealthMonitoringE2E:
 
             # Create jobs for different tenants
             jobs = [
-                MCPAgentJob(
+                AgentExecution(
                     job_id=f"e2e-tenant-{i}-job",
                     tenant_key=f"tenant-{i}",
                     agent_type="implementer",
@@ -236,7 +236,7 @@ class TestHealthMonitoringE2E:
         async with get_test_session() as session:
             # Create healthy job with recent activity
             recent_time = datetime.now(timezone.utc) - timedelta(seconds=30)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-healthy-job",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",
@@ -273,7 +273,7 @@ class TestHealthMonitoringE2E:
         async with get_test_session() as session:
             # Create job that will degrade
             initial_time = datetime.now(timezone.utc) - timedelta(minutes=3)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-degrading-job",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",
@@ -321,7 +321,7 @@ class TestHealthMonitoringE2E:
 
             # Create multiple jobs
             jobs = [
-                MCPAgentJob(
+                AgentExecution(
                     job_id=f"e2e-concurrent-{i}",
                     tenant_key="test-tenant-e2e",
                     agent_type="implementer",
@@ -379,7 +379,7 @@ class TestHealthMonitoringE2E:
 
         async with get_test_session() as session:
             # Create job
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="e2e-transitions",
                 tenant_key="test-tenant-e2e",
                 agent_type="implementer",

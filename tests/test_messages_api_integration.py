@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy import select
 
 from api.app import create_app
-from giljo_mcp.models import MCPAgentJob, Project, User
+from giljo_mcp.models import AgentExecution, Project, User
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
 
@@ -57,7 +57,7 @@ async def test_project(db_session, test_tenant):
 @pytest.fixture
 async def test_agent_job(db_session, test_project):
     """Create test agent job"""
-    job = MCPAgentJob(
+    job = AgentExecution(
         project_id=test_project.id,
         agent_type="test-agent",
         agent_name="Test Agent",
@@ -261,7 +261,7 @@ class TestDatabaseIntegration:
 
     @pytest.mark.asyncio
     async def test_messages_stored_in_agent_job(self, db_session, test_agent_job):
-        """Test messages stored in MCPAgentJob.messages JSONB"""
+        """Test messages stored in AgentExecution.messages JSONB"""
         # Add message to job
         message = {
             "id": "msg-1",

@@ -83,7 +83,7 @@ class TestMessageWebSocketRecipientCounters:
             # Create 3 recipient agents
             recipient_job_ids = [str(uuid4()) for _ in range(3)]
             for i, job_id in enumerate(recipient_job_ids):
-                agent = models.MCPAgentJob(
+                agent = models.AgentExecution(
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_id=job_id,
@@ -217,7 +217,7 @@ class TestMessageWebSocketRecipientCounters:
             agent2_job_id = str(uuid4())
 
             for i, (job_id, name) in enumerate([(agent1_job_id, "agent-1"), (agent2_job_id, "agent-2")]):
-                agent = models.MCPAgentJob(
+                agent = models.AgentExecution(
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_id=job_id,

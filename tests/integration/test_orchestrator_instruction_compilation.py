@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 import json
 
 from src.giljo_mcp.models import (
-    Project, MCPAgentJob, User, Product
+    Project, AgentExecution, User, Product
 )
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
@@ -157,11 +157,11 @@ async def test_activate_project_does_not_compile_instructions(
     assert response.json()["status"] == "active"
 
     # VERIFY: No orchestrator created
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -222,11 +222,11 @@ async def test_stage_project_compiles_orchestrator_prompt(
     thin_prompt = data["prompt"]
 
     # VERIFY: Orchestrator created
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.job_id == orchestrator_id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.job_id == orchestrator_id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -307,10 +307,10 @@ async def test_settings_change_before_stage_project(
     orchestrator_id = response.json()["orchestrator_id"]
 
     # VERIFY: Orchestrator has updated priorities
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.job_id == orchestrator_id,
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.job_id == orchestrator_id,
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -385,10 +385,10 @@ async def test_settings_change_after_activation_before_stage(
     orchestrator_id = stage_response.json()["orchestrator_id"]
 
     # VERIFY: Orchestrator has MODIFIED priorities (not activation-time priorities)
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.job_id == orchestrator_id,
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.job_id == orchestrator_id,
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -467,11 +467,11 @@ async def test_repeated_stage_project_reuses_orchestrator(
         f"Expected same orchestrator on repeated clicks, got {orch_id_1} vs {orch_id_2}"
 
     # VERIFY: Only ONE orchestrator in database
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -569,7 +569,7 @@ async def test_field_priorities_persist_through_pipeline(
     Verify:
     1. User's field priorities stored in User.field_priority_config
     2. Passed to generator.generate()
-    3. Stored in MCPAgentJob.job_metadata
+    3. Stored in AgentExecution.job_metadata
     4. Retrieved and applied in get_orchestrator_instructions()
     5. Reflected in final mission content
     """
@@ -601,8 +601,8 @@ async def test_field_priorities_persist_through_pipeline(
     orchestrator_id = response.json()["orchestrator_id"]
 
     # STEP 1: Verify stored in job_metadata
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -787,8 +787,8 @@ async def test_depth_config_persists_and_applies(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Depth config stored in metadata
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -871,11 +871,11 @@ async def test_multiple_projects_independent_orchestrators(
     assert orch_id_1 != orch_id_2, "Different projects should have different orchestrators"
 
     # VERIFY: Correct project linkage
-    orch1_stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orch_id_1)
+    orch1_stmt = select(AgentExecution).where(AgentExecution.job_id == orch_id_1)
     orch1_result = await db_session.execute(orch1_stmt)
     orch1 = orch1_result.scalar_one_or_none()
 
-    orch2_stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orch_id_2)
+    orch2_stmt = select(AgentExecution).where(AgentExecution.job_id == orch_id_2)
     orch2_result = await db_session.execute(orch2_stmt)
     orch2 = orch2_result.scalar_one_or_none()
 

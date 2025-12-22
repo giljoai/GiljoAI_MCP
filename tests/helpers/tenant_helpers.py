@@ -17,7 +17,8 @@ from typing import Any, Callable, Optional
 from sqlalchemy.orm import Session
 
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
+from src.giljo_mcp.models import Message, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @dataclass
@@ -102,7 +103,7 @@ class TenantIsolationHelper:
 
                 if test_all_models:
                     # Test MCPAgentJob isolation
-                    if not self._test_model_isolation(session, MCPAgentJob, tenant1_key, tenant2_key):
+                    if not self._test_model_isolation(session, AgentExecution, tenant1_key, tenant2_key):
                         return IsolationTestResult(
                             passed=False,
                             tenant1_key=tenant1_key,
@@ -467,13 +468,13 @@ class PerformanceHelper:
         """
         Create a random entity for load testing.
 
-        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        Migration Note (0129a): Replaced Agent with AgentExecution.
         """
         with self.db_manager.get_session() as session:
             project = session.query(Project).filter_by(tenant_key=tenant_key).first()
 
             if project:
-                agent_job = MCPAgentJob(
+                agent_job = AgentExecution(
                     job_id=str(uuid.uuid4()),
                     tenant_key=tenant_key,
                     project_id=project.id,
@@ -489,10 +490,10 @@ class PerformanceHelper:
         """
         Query entities for load testing.
 
-        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        Migration Note (0129a): Replaced Agent with AgentExecution.
         """
         with self.db_manager.get_session() as session:
-            session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).limit(10).all()
+            session.query(AgentExecution).filter_by(tenant_key=tenant_key).limit(10).all()
 
             session.query(Message).filter_by(tenant_key=tenant_key).limit(10).all()
 
@@ -500,10 +501,10 @@ class PerformanceHelper:
         """
         Update a random entity for load testing.
 
-        Migration Note (0129a): Replaced Agent with MCPAgentJob.
+        Migration Note (0129a): Replaced Agent with AgentExecution.
         """
         with self.db_manager.get_session() as session:
-            agent_job = session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).first()
+            agent_job = session.query(AgentExecution).filter_by(tenant_key=tenant_key).first()
 
             if agent_job:
                 # Update mission as a proxy for context usage

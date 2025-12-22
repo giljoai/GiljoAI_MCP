@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def multi_agent_project_jobs():
     project_id = str(uuid4())
     tenant_key = "tenant-test"
 
-    analyzer_job = MCPAgentJob(
+    analyzer_job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key=tenant_key,
         project_id=project_id,
@@ -83,7 +83,7 @@ def multi_agent_project_jobs():
         started_at=None,
     )
 
-    documenter_job = MCPAgentJob(
+    documenter_job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key=tenant_key,
         project_id=project_id,
@@ -348,7 +348,7 @@ class TestTeamAwareMissions:
         project_id = str(uuid4())
         tenant_key = "tenant-solo"
 
-        solo_job = MCPAgentJob(
+        solo_job = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_key,
             project_id=project_id,

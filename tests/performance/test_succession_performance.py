@@ -18,7 +18,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import SuccessionTestData
 
 
@@ -39,7 +40,7 @@ async def test_succession_latency_under_5_seconds(
     Measures time from Instance 1 completion to Instance 2 creation.
     """
     # Create Instance 1
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -58,7 +59,7 @@ async def test_succession_latency_under_5_seconds(
     start_time = time.perf_counter()
 
     # Create successor
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -114,7 +115,7 @@ async def test_handover_summary_under_10k_tokens(
 
     Uses character-based estimation (4 chars ≈ 1 token).
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -166,7 +167,7 @@ async def test_succession_query_performance(
     """
     # Create chain of 10 instances
     for i in range(1, 11):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -184,13 +185,13 @@ async def test_succession_query_performance(
     start_time = time.perf_counter()
 
     stmt = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.tenant_key == test_tenant_key,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.tenant_key == test_tenant_key,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result = await db_session.execute(stmt)
@@ -237,7 +238,7 @@ async def test_concurrent_successions_different_projects(
     # Create orchestrator for each project
     orchestrators = []
     for project in projects:
-        orch = MCPAgentJob(
+        orch = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project.id,
                 tenant_key=test_tenant_key,
@@ -257,7 +258,7 @@ async def test_concurrent_successions_different_projects(
 
     # Simulate concurrent successions
     async def create_succession(orch):
-        successor = MCPAgentJob(
+        successor = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=orch.project_id,
                 tenant_key=test_tenant_key,
@@ -288,9 +289,9 @@ async def test_concurrent_successions_different_projects(
     # ========== VERIFICATIONS ==========
 
     # Verify all successions completed
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.tenant_key == test_tenant_key,
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt = select(AgentExecution).where(
+        AgentExecution.tenant_key == test_tenant_key,
+        AgentExecution.agent_type == "orchestrator",
     )
     result = await db_session.execute(stmt)
     all_orchestrators = result.scalars().all()
@@ -314,7 +315,7 @@ async def test_large_handover_summary_performance(
     """
     Test serialization performance of large (but under 10K) handover summary.
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -380,7 +381,7 @@ async def test_succession_chain_query_scaling(
     """
     # Create chain of 50 instances
     for i in range(1, 51):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -398,12 +399,12 @@ async def test_succession_chain_query_scaling(
     start_time = time.perf_counter()
 
     stmt = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result = await db_session.execute(stmt)

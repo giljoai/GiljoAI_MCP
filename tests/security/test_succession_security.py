@@ -16,7 +16,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import SuccessionTestData
 
 
@@ -37,7 +38,7 @@ async def test_non_orchestrator_cannot_create_successor(
     Other agent types (analyzer, implementer, etc.) should not create successors.
     """
     # Create non-orchestrator agent (implementer)
-    implementer = MCPAgentJob(
+    implementer = AgentExecution(
         job_id=f"impl-{uuid.uuid4()}",
         tenant_key=test_tenant_key,
         project_id=test_project.id,
@@ -77,7 +78,7 @@ async def test_orchestrator_role_enforcement(
     Only agents with agent_type='orchestrator' can use succession features.
     """
     # Create orchestrator
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -123,7 +124,7 @@ async def test_handover_summary_no_sensitive_data_leak(
     - Personal data from other tenants
     - Database credentials
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -222,7 +223,7 @@ async def test_cross_tenant_data_isolation_in_handover(
     await db_session.commit()
 
     # Create Tenant A orchestrator with handover
-    orch_a = MCPAgentJob(
+    orch_a = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_a.id,
             tenant_key=tenant_a_key,
@@ -284,7 +285,7 @@ async def test_sql_injection_in_succession_queries(
     Tests that malicious input in project_id doesn't execute SQL.
     """
     # Create valid orchestrator
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -302,9 +303,9 @@ async def test_sql_injection_in_succession_queries(
     malicious_input = "' OR '1'='1'; DROP TABLE mcp_agent_jobs; --"
 
     # Use parameterized query (SAFE)
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == malicious_input,  # Treated as literal string
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == malicious_input,  # Treated as literal string
+        AgentExecution.agent_type == "orchestrator",
     )
 
     result = await db_session.execute(stmt)
@@ -316,7 +317,7 @@ async def test_sql_injection_in_succession_queries(
     assert len(orchestrators) == 0
 
     # Verify table still exists (injection didn't execute)
-    verify_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == test_project.id)
+    verify_stmt = select(AgentExecution).where(AgentExecution.project_id == test_project.id)
     verify_result = await db_session.execute(verify_stmt)
     valid_orchestrators = verify_result.scalars().all()
 
@@ -334,7 +335,7 @@ async def test_handover_summary_json_injection_prevention(
 
     Tests that handover_summary rejects invalid JSON structures.
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -374,7 +375,7 @@ async def test_handover_summary_json_injection_prevention(
     assert instance.handover_summary["active_agents"][0]["type"] == "<script>alert('XSS')</script>"
 
     # Verify table still exists (SQL injection didn't execute)
-    verify_stmt = select(MCPAgentJob).where(MCPAgentJob.project_id == test_project.id)
+    verify_stmt = select(AgentExecution).where(AgentExecution.project_id == test_project.id)
     verify_result = await db_session.execute(verify_stmt)
     all_instances = verify_result.scalars().all()
 
@@ -422,7 +423,7 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     # Create succession chain for Tenant B
     tenant_b_instances = []
     for i in range(1, 4):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project_b.id,
                 tenant_key=tenant_b_key,
@@ -438,10 +439,10 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     await db_session.commit()
 
     # Tenant A attempts to query Tenant B's succession chain (SHOULD FAIL)
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_b.id,
-        MCPAgentJob.tenant_key == tenant_a_key,  # Wrong tenant key!
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == project_b.id,
+        AgentExecution.tenant_key == tenant_a_key,  # Wrong tenant key!
+        AgentExecution.agent_type == "orchestrator",
     )
 
     result = await db_session.execute(stmt)
@@ -453,10 +454,10 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     assert len(tenant_a_query_results) == 0
 
     # Verify Tenant B data exists (correct tenant key query)
-    correct_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_b.id,
-        MCPAgentJob.tenant_key == tenant_b_key,  # Correct tenant key
-        MCPAgentJob.agent_type == "orchestrator",
+    correct_stmt = select(AgentExecution).where(
+        AgentExecution.project_id == project_b.id,
+        AgentExecution.tenant_key == tenant_b_key,  # Correct tenant key
+        AgentExecution.agent_type == "orchestrator",
     )
 
     correct_result = await db_session.execute(correct_stmt)
@@ -478,7 +479,7 @@ async def test_handover_summary_no_system_metadata_leak(
     - File system paths
     - Environment variables
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,

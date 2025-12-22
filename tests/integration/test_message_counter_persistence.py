@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
@@ -24,7 +24,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
 
     Scenario:
     1. Create project with agents
-    2. Send messages (stored in MCPAgentJob.messages JSONB)
+    2. Send messages (stored in AgentExecution.messages JSONB)
     3. Simulate page refresh by re-querying agents
     4. Verify counters are correctly computed from JSONB data
 
@@ -68,7 +68,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
     async_db_session.add(project)
 
     # Create orchestrator agent (sender)
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="orchestrator-294",
         tenant_key=tenant_key,
         project_id="project-294",
@@ -82,7 +82,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
     async_db_session.add(orchestrator)
 
     # Create recipient agents
-    implementer = MCPAgentJob(
+    implementer = AgentExecution(
         job_id="implementer-294",
         tenant_key=tenant_key,
         project_id="project-294",
@@ -95,7 +95,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
     )
     async_db_session.add(implementer)
 
-    tester = MCPAgentJob(
+    tester = AgentExecution(
         job_id="tester-294",
         tenant_key=tenant_key,
         project_id="project-294",
@@ -175,10 +175,10 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
     await async_db_session.expire_all()  # Clear session cache
 
     result = await async_db_session.execute(
-        select(MCPAgentJob)
-        .where(MCPAgentJob.project_id == "project-294")
-        .where(MCPAgentJob.tenant_key == tenant_key)
-        .order_by(MCPAgentJob.agent_type)
+        select(AgentExecution)
+        .where(AgentExecution.project_id == "project-294")
+        .where(AgentExecution.tenant_key == tenant_key)
+        .order_by(AgentExecution.agent_type)
     )
     refreshed_agents = result.scalars().all()
 
@@ -187,7 +187,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
     # ============================================================================
 
     # Helper function (mimics frontend logic)
-    def compute_counters(agent: MCPAgentJob):
+    def compute_counters(agent: AgentExecution):
         messages = agent.messages or []
         sent = sum(1 for m in messages if m.get("direction") == "outbound")
         waiting = sum(1 for m in messages if m.get("status") == "pending")
@@ -265,7 +265,7 @@ async def test_table_view_endpoint_computes_message_counters(async_db_session: A
 
     # Create agent with messages
     now = datetime.now(timezone.utc).isoformat()
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="agent-294-tv",
         tenant_key=tenant_key,
         project_id="project-294-tv",
@@ -289,9 +289,9 @@ async def test_table_view_endpoint_computes_message_counters(async_db_session: A
     # Action: Query agent and compute counters (mimics table_view endpoint)
     # ============================================================================
     result = await async_db_session.execute(
-        select(MCPAgentJob)
-        .where(MCPAgentJob.project_id == "project-294-tv")
-        .where(MCPAgentJob.tenant_key == tenant_key)
+        select(AgentExecution)
+        .where(AgentExecution.project_id == "project-294-tv")
+        .where(AgentExecution.tenant_key == tenant_key)
     )
     agents = result.scalars().all()
 
@@ -366,7 +366,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
     now = datetime.now(timezone.utc).isoformat()
 
     # Agent 1: Has unread messages
-    agent_with_unread = MCPAgentJob(
+    agent_with_unread = AgentExecution(
         job_id="agent-with-unread",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
@@ -383,7 +383,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
     async_db_session.add(agent_with_unread)
 
     # Agent 2: All messages acknowledged
-    agent_all_read = MCPAgentJob(
+    agent_all_read = AgentExecution(
         job_id="agent-all-read",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
@@ -400,7 +400,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
     async_db_session.add(agent_all_read)
 
     # Agent 3: No messages
-    agent_no_messages = MCPAgentJob(
+    agent_no_messages = AgentExecution(
         job_id="agent-no-messages",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
@@ -418,12 +418,12 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
     # ============================================================================
     # Test JSONB path query (from table_view.py line 145-150)
     # ============================================================================
-    query = select(MCPAgentJob).where(
+    query = select(AgentExecution).where(
         and_(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.project_id == "project-294-jsonb",
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.project_id == "project-294-jsonb",
             func.jsonb_path_exists(
-                MCPAgentJob.messages,
+                AgentExecution.messages,
                 '$[*] ? (@.status == "pending")'
             )
         )

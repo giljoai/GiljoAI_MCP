@@ -9,7 +9,8 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import MCPAgentJob, AgentInteraction, Base, Message, Project
+from src.giljo_mcp.models import AgentInteraction, Base, Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

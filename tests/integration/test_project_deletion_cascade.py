@@ -20,7 +20,8 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob, Message, Product, Project, Task
+from src.giljo_mcp.models import Message, Product, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.models.products import Vision
 from src.giljo_mcp.models.projects import Session as ProjectSession
@@ -73,7 +74,7 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     await db_session.refresh(project)
 
     # 1. Create MCPAgentJob
-    agent_job = MCPAgentJob(
+    agent_job = AgentExecution(
         tenant_key=cascade_test_tenant_key,
         project_id=project.id,
         agent_type="implementer",
@@ -330,7 +331,7 @@ class TestPurgeProjectRecordsCascade:
                 select(Project).where(Project.id == project.id)
             )).scalar_one_or_none(),
             "agent_job": (await db_session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.id == data["agent_job"].id)
+                select(AgentExecution).where(AgentExecution.id == data["agent_job"].id)
             )).scalar_one_or_none(),
             "task": (await db_session.execute(
                 select(Task).where(Task.id == data["task"].id)
@@ -377,7 +378,7 @@ class TestPurgeProjectRecordsCascade:
                 select(Project).where(Project.id == project.id)
             )).scalar_one_or_none(),
             "agent_job": (await db_session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.id == data["agent_job"].id)
+                select(AgentExecution).where(AgentExecution.id == data["agent_job"].id)
             )).scalar_one_or_none(),
             "task": (await db_session.execute(
                 select(Task).where(Task.id == data["task"].id)
@@ -493,7 +494,7 @@ class TestNuclearDeleteConsistency:
         await db_session.refresh(project)
 
         # Create all related records
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key=cascade_test_tenant_key,
             project_id=project.id,
             agent_type="implementer",
@@ -570,7 +571,7 @@ class TestNuclearDeleteConsistency:
         )).scalar_one_or_none() is None, "Project should be deleted"
 
         assert (await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.id == agent_job_id)
+            select(AgentExecution).where(AgentExecution.id == agent_job_id)
         )).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
 
         assert (await db_session.execute(

@@ -16,7 +16,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest_asyncio.fixture
@@ -156,7 +157,7 @@ async def test_user_field_priorities_passed_to_orchestrator_job(
     orchestrator_id = result["orchestrator_id"]
 
     # Fetch the created orchestrator job from database
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -233,7 +234,7 @@ async def test_user_without_field_config_uses_empty_dict(
     # ASSERT: Verify orchestrator job has EMPTY field priorities
     orchestrator_id = result["orchestrator_id"]
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -329,7 +330,7 @@ async def test_field_priorities_respect_tenant_isolation(
     # ASSERT: Verify tenant_A got their own priorities
     orchestrator_id_a = result_a["orchestrator_id"]
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_a)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_a)
     job_result = await db_session.execute(stmt)
     orchestrator_job_a = job_result.scalar_one_or_none()
 
@@ -351,9 +352,9 @@ async def test_field_priorities_respect_tenant_isolation(
 
     # Verify tenant_B user CANNOT access tenant_A's orchestrator job
     # (by checking tenant_key isolation in database query)
-    stmt_b = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id_a,
-        MCPAgentJob.tenant_key == tenant_b_user.tenant_key  # Different tenant
+    stmt_b = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id_a,
+        AgentExecution.tenant_key == tenant_b_user.tenant_key  # Different tenant
     )
     job_result_b = await db_session.execute(stmt_b)
     orchestrator_job_b = job_result_b.scalar_one_or_none()

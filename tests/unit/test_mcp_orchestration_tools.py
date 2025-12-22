@@ -247,9 +247,9 @@ class TestOrchestrationTools:
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock agent lookup with mission (using MCPAgentJob)
-            from src.giljo_mcp.models import MCPAgentJob
+            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-            mock_agent = Mock(spec=MCPAgentJob)
+            mock_agent = Mock(spec=AgentExecution)
             mock_agent.job_id = str(uuid.uuid4())
             mock_agent.agent_name = "implementer"
             mock_agent.tenant_key = self.tenant_key
@@ -312,9 +312,9 @@ class TestOrchestrationTools:
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock agent without mission (using MCPAgentJob)
-            from src.giljo_mcp.models import MCPAgentJob
+            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-            mock_agent = Mock(spec=MCPAgentJob)
+            mock_agent = Mock(spec=AgentExecution)
             mock_agent.job_id = str(uuid.uuid4())
             mock_agent.agent_name = "implementer"
             mock_agent.tenant_key = self.tenant_key
@@ -352,7 +352,7 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock MCPAgentJob lookup
-            from src.giljo_mcp.models import MCPAgentJob
+            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(
@@ -500,7 +500,7 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock jobs with failures
-            from src.giljo_mcp.models import MCPAgentJob
+            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(
@@ -632,7 +632,7 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock 5 jobs: 3 completed, 1 active, 1 pending
-            from src.giljo_mcp.models import MCPAgentJob
+            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(spec=MCPAgentJob, status="completed"),

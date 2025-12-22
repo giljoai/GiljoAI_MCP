@@ -276,13 +276,13 @@ class TestHealthMonitoringStartup:
     @pytest.mark.asyncio
     async def test_health_check_with_unhealthy_job(self):
         """Test health monitor detects unhealthy jobs."""
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         # Mock database manager with unhealthy job
         db_manager = Mock(spec=DatabaseManager)
 
         # Create mock unhealthy job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "test-job-123"
         mock_job.agent_type = "implementer"
         mock_job.status = "waiting"

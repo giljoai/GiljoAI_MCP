@@ -32,7 +32,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
 from src.giljo_mcp.auth.dependencies import get_current_active_user
-from src.giljo_mcp.models import MCPAgentJob, User
+from src.giljo_mcp.models import User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 # Test Fixtures
@@ -142,9 +143,9 @@ async def authenticated_client(
 
 
 @pytest_asyncio.fixture
-async def test_job(db_session: AsyncSession, admin_user: User) -> MCPAgentJob:
+async def test_job(db_session: AsyncSession, admin_user: User) -> AgentExecution:
     """Create test job for testing."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=admin_user.tenant_key,
         agent_type="implementer",
         mission="Test implementation task",
@@ -214,7 +215,7 @@ async def test_create_job_admin_only(api_client: AsyncClient, regular_user: User
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_list_jobs_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test listing jobs with filters."""
     client, user = authenticated_client
 
@@ -234,7 +235,7 @@ async def test_list_jobs_success(authenticated_client: tuple[AsyncClient, User],
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test filtering jobs by status."""
     client, user = authenticated_client
 
@@ -250,7 +251,7 @@ async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test filtering jobs by agent type."""
     client, user = authenticated_client
 
@@ -264,7 +265,7 @@ async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncC
 
 
 @pytest.mark.asyncio
-async def test_get_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_get_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test getting job details."""
     client, user = authenticated_client
 
@@ -290,7 +291,7 @@ async def test_get_job_not_found(authenticated_client: tuple[AsyncClient, User])
 
 
 @pytest.mark.asyncio
-async def test_update_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_update_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test updating job status."""
     client, user = authenticated_client
 
@@ -303,7 +304,7 @@ async def test_update_job_success(authenticated_client: tuple[AsyncClient, User]
 
 
 @pytest.mark.asyncio
-async def test_delete_job_admin_only(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_delete_job_admin_only(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test only admins can delete jobs."""
     client, user = authenticated_client
 
@@ -317,11 +318,11 @@ async def test_delete_job_admin_only(authenticated_client: tuple[AsyncClient, Us
 
 @pytest.mark.asyncio
 async def test_multi_tenant_isolation_list_jobs(
-    api_client: AsyncClient, other_tenant_user: User, test_job: MCPAgentJob, db_session: AsyncSession
+    api_client: AsyncClient, other_tenant_user: User, test_job: AgentExecution, db_session: AsyncSession
 ):
     """Test jobs are isolated by tenant_key in list endpoint."""
     # Create job for other tenant
-    other_job = MCPAgentJob(
+    other_job = AgentExecution(
         tenant_key=other_tenant_user.tenant_key,
         agent_type="tester",
         mission="Other tenant job",
@@ -350,7 +351,7 @@ async def test_multi_tenant_isolation_list_jobs(
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_get_job(api_client: AsyncClient, other_tenant_user: User, test_job: MCPAgentJob):
+async def test_multi_tenant_isolation_get_job(api_client: AsyncClient, other_tenant_user: User, test_job: AgentExecution):
     """Test cannot access job from different tenant."""
     # Override with other tenant user
     from api.app import app
@@ -369,7 +370,7 @@ async def test_multi_tenant_isolation_get_job(api_client: AsyncClient, other_ten
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_acknowledge_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test acknowledging a job (pending -> active)."""
     client, user = authenticated_client
 
@@ -384,7 +385,7 @@ async def test_acknowledge_job_success(authenticated_client: tuple[AsyncClient, 
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_idempotent(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_acknowledge_job_idempotent(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test acknowledging already acknowledged job is idempotent."""
     client, user = authenticated_client
 
@@ -399,7 +400,7 @@ async def test_acknowledge_job_idempotent(authenticated_client: tuple[AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_complete_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_complete_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test completing a job (active -> completed)."""
     client, user = authenticated_client
 
@@ -421,7 +422,7 @@ async def test_complete_job_success(authenticated_client: tuple[AsyncClient, Use
 
 @pytest.mark.asyncio
 async def test_complete_job_invalid_status_transition(
-    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob
+    authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution
 ):
     """Test completing job from invalid status fails."""
     client, user = authenticated_client
@@ -434,7 +435,7 @@ async def test_complete_job_invalid_status_transition(
 
 
 @pytest.mark.asyncio
-async def test_fail_job_success(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_fail_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test failing a job."""
     client, user = authenticated_client
 
@@ -455,7 +456,7 @@ async def test_fail_job_success(authenticated_client: tuple[AsyncClient, User], 
 
 
 @pytest.mark.asyncio
-async def test_send_message_to_job(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_send_message_to_job(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test sending message to a job."""
     client, user = authenticated_client
 
@@ -476,7 +477,7 @@ async def test_send_message_to_job(authenticated_client: tuple[AsyncClient, User
 
 @pytest.mark.asyncio
 async def test_get_job_messages(
-    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution, db_session: AsyncSession
 ):
     """Test getting messages for a job."""
     client, user = authenticated_client
@@ -497,7 +498,7 @@ async def test_get_job_messages(
 
 @pytest.mark.asyncio
 async def test_acknowledge_message(
-    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution, db_session: AsyncSession
 ):
     """Test acknowledging a message."""
     client, user = authenticated_client
@@ -525,7 +526,7 @@ async def test_acknowledge_message(
 
 
 @pytest.mark.asyncio
-async def test_spawn_children_jobs(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_spawn_children_jobs(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test spawning child jobs."""
     client, user = authenticated_client
 
@@ -548,13 +549,13 @@ async def test_spawn_children_jobs(authenticated_client: tuple[AsyncClient, User
 
 @pytest.mark.asyncio
 async def test_get_job_hierarchy(
-    authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob, db_session: AsyncSession
+    authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution, db_session: AsyncSession
 ):
     """Test getting job hierarchy (parent + children)."""
     client, user = authenticated_client
 
     # Create child jobs
-    child1 = MCPAgentJob(
+    child1 = AgentExecution(
         tenant_key=test_job.tenant_key,
         agent_type="implementer",
         mission="Child job 1",
@@ -562,7 +563,7 @@ async def test_get_job_hierarchy(
         spawned_by=test_job.job_id,
         messages=[],
     )
-    child2 = MCPAgentJob(
+    child2 = AgentExecution(
         tenant_key=test_job.tenant_key,
         agent_type="tester",
         mission="Child job 2",
@@ -584,7 +585,7 @@ async def test_get_job_hierarchy(
 
 
 @pytest.mark.asyncio
-async def test_get_hierarchy_no_children(authenticated_client: tuple[AsyncClient, User], test_job: MCPAgentJob):
+async def test_get_hierarchy_no_children(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test hierarchy endpoint with job that has no children."""
     client, user = authenticated_client
 
@@ -638,7 +639,7 @@ async def test_invalid_status_transition_returns_400(
     client, user = authenticated_client
 
     # Create completed job
-    completed_job = MCPAgentJob(
+    completed_job = AgentExecution(
         tenant_key=admin_user.tenant_key,
         agent_type="implementer",
         mission="Completed job",

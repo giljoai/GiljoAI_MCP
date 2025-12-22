@@ -19,7 +19,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product
+from src.giljo_mcp.models import Project, Product
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.auth import User
 
 
@@ -97,7 +98,7 @@ async def test_orchestrator_metadata_new_creation(
     orchestrator_id = data["orchestrator_id"]
 
     # ASSERT: Orchestrator exists in database with job_metadata
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     result = await db_session.execute(stmt)
     orchestrator = result.scalar_one()
 
@@ -174,7 +175,7 @@ async def test_orchestrator_metadata_reuse_updates(
     await db_session.refresh(project)
 
     # Setup: Create OLD orchestrator with empty metadata (simulating pre-0315 code)
-    old_orchestrator = MCPAgentJob(
+    old_orchestrator = AgentExecution(
         tenant_key=test_user.tenant_key,
         project_id=project.id,
         job_id="f73f6798-5922-4813-bc80-802c68ce1645",  # Use actual UUID from bug report
@@ -310,7 +311,7 @@ async def test_orchestrator_metadata_default_values(
     orchestrator_id = data["orchestrator_id"]
 
     # ASSERT: Orchestrator has default metadata values
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     result = await db_session.execute(stmt)
     orchestrator = result.scalar_one()
 

@@ -20,7 +20,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 # Use existing fixtures
@@ -235,7 +236,7 @@ async def test_field_priorities_isolated_between_tenants(
     # ASSERT: Verify Tenant A got their own priorities
     orchestrator_id_a = result_a["orchestrator_id"]
 
-    stmt_a = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_a)
+    stmt_a = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_a)
     job_result_a = await db_session.execute(stmt_a)
     orchestrator_job_a = job_result_a.scalar_one_or_none()
 
@@ -249,7 +250,7 @@ async def test_field_priorities_isolated_between_tenants(
     # ASSERT: Verify Tenant B got their own priorities
     orchestrator_id_b = result_b["orchestrator_id"]
 
-    stmt_b = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_b)
+    stmt_b = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_b)
     job_result_b = await db_session.execute(stmt_b)
     orchestrator_job_b = job_result_b.scalar_one_or_none()
 
@@ -303,9 +304,9 @@ async def test_tenant_cannot_access_other_tenant_orchestrator_job(
     orchestrator_id_a = result_a["orchestrator_id"]
 
     # ACT: Try to access Tenant A's job using Tenant B's tenant_key
-    stmt_b = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id_a,
-        MCPAgentJob.tenant_key == user_tenant_b.tenant_key  # WRONG TENANT
+    stmt_b = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id_a,
+        AgentExecution.tenant_key == user_tenant_b.tenant_key  # WRONG TENANT
     )
     job_result_b = await db_session.execute(stmt_b)
     orchestrator_job_b = job_result_b.scalar_one_or_none()
@@ -317,9 +318,9 @@ async def test_tenant_cannot_access_other_tenant_orchestrator_job(
     )
 
     # VERIFY: Tenant A CAN access their own job
-    stmt_a = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id_a,
-        MCPAgentJob.tenant_key == user_tenant_a.tenant_key  # CORRECT TENANT
+    stmt_a = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id_a,
+        AgentExecution.tenant_key == user_tenant_a.tenant_key  # CORRECT TENANT
     )
     job_result_a = await db_session.execute(stmt_a)
     orchestrator_job_a = job_result_a.scalar_one_or_none()
@@ -491,8 +492,8 @@ async def test_multiple_users_same_tenant_independent_priorities(
     )
 
     # ASSERT: Verify Alice got her priorities
-    stmt_alice = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == result_alice["orchestrator_id"]
+    stmt_alice = select(AgentExecution).where(
+        AgentExecution.job_id == result_alice["orchestrator_id"]
     )
     job_alice = (await db_session.execute(stmt_alice)).scalar_one()
 
@@ -503,8 +504,8 @@ async def test_multiple_users_same_tenant_independent_priorities(
     )
 
     # ASSERT: Verify Bob got his priorities
-    stmt_bob = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == result_bob["orchestrator_id"]
+    stmt_bob = select(AgentExecution).where(
+        AgentExecution.job_id == result_bob["orchestrator_id"]
     )
     job_bob = (await db_session.execute(stmt_bob)).scalar_one()
 
@@ -557,7 +558,7 @@ async def test_orchestrator_job_tenant_key_matches_user_tenant(
     orchestrator_id = result["orchestrator_id"]
 
     # ASSERT: Verify orchestrator job has correct tenant_key
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one()
 

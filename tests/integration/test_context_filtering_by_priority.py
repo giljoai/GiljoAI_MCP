@@ -491,9 +491,9 @@ async def test_field_priorities_affect_context_detail_level(
     orchestrator_id = result["orchestrator_id"]
 
     from sqlalchemy import select
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 

@@ -15,7 +15,8 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.models import Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 def _completion_payload(confirm_closeout: bool = True) -> dict:
@@ -45,7 +46,7 @@ async def test_can_close_all_agents_complete(
 
     # Create completed agents
     for i in range(3):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"complete-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -93,7 +94,7 @@ async def test_can_close_some_agents_failed(
 
     # Create mix of agents
     for i in range(2):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"success-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -104,7 +105,7 @@ async def test_can_close_some_agents_failed(
         db_session.add(agent)
 
     for i in range(1):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"failed-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -147,7 +148,7 @@ async def test_can_close_agents_still_working(
 
     # Create active agents
     for i in range(2):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"working-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -198,7 +199,7 @@ async def test_generate_closeout_prompt(
 
     # Create completed agents
     for i in range(2):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"closeout-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -264,7 +265,7 @@ async def test_complete_project_closeout(
     # Create agents
     agent_count = 4
     for i in range(agent_count):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"final-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -342,7 +343,7 @@ async def test_closeout_workflow_end_to_end(
     db_session.add(project)
 
     for i in range(3):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"workflow-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -476,7 +477,7 @@ async def test_get_closeout_data_endpoint_success(
 
     # Mix of agent statuses
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="closeout-complete-1",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -486,7 +487,7 @@ async def test_get_closeout_data_endpoint_success(
         )
     )
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="closeout-working-1",
             tenant_key=test_user.tenant_key,
             project_id=project.id,

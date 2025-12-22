@@ -12,7 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator, ThinPromptResponse
 
 
@@ -91,7 +92,7 @@ class TestThinClientGeneratorBasic:
         )
 
         # Verify orchestrator job created in database
-        orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
+        orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
         assert orchestrator is not None
         assert orchestrator.agent_type == "orchestrator"
         assert orchestrator.status == "pending"
@@ -174,7 +175,7 @@ class TestThinClientGeneratorBasic:
         result = await generator.generate(project_id=str(project.id), tool="codex", instance_number=2)
 
         # Verify database persistence
-        orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
+        orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
         assert orchestrator is not None
         assert orchestrator.agent_type == "orchestrator"
         assert orchestrator.agent_name == "Orchestrator #2"
@@ -225,7 +226,7 @@ class TestThinClientGeneratorBasic:
         result = await generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Verify mission is condensed (not full vision)
-        orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
+        orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
         mission_length = len(orchestrator.mission)
         vision_length = len(large_vision)
 
@@ -530,5 +531,5 @@ class TestThinClientGeneratorPromptContent:
             assert result.prompt is not None
             assert len(result.prompt) > 0
             # Verify orchestrator created with correct tool
-            orchestrator = await db_session.get(MCPAgentJob, result.orchestrator_id)
+            orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
             assert orchestrator.tool_type == tool
