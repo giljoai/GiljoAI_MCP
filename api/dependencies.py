@@ -71,7 +71,7 @@ async def get_tenant_key(request: Request) -> str:
     except HTTPException:
         raise
     except Exception:
-        pass  # If config read fails, allow fallback
+        pass  # If config read fails, allow fallback  # nosec B110
 
     # Fallback to default tenant (localhost mode only)
     default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
