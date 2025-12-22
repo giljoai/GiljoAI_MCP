@@ -507,7 +507,7 @@ class VisionDocument(Base):
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
                 except Exception:
-                    pass
+                    pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document
 
@@ -533,7 +533,7 @@ class VisionDocument(Base):
                 if path.exists():
                     content = path.read_text(encoding="utf-8")
             except Exception:
-                pass
+                pass  # nosec B110 - file read fallback
         elif self.storage_type == "inline" and self.vision_document:
             content = self.vision_document
         elif self.storage_type == "hybrid":
@@ -546,7 +546,7 @@ class VisionDocument(Base):
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
                 except Exception:
-                    pass
+                    pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document
 

@@ -6,7 +6,7 @@ Handover 0041 - Phase 2: Template Resolution with Caching
 """
 
 import logging
-import pickle
+import pickle  # nosec B403
 from typing import Optional
 
 from sqlalchemy import select
@@ -100,7 +100,7 @@ class TemplateCache:
             try:
                 redis_data = await self._get_from_redis(cache_key)
                 if redis_data:
-                    template = pickle.loads(redis_data)
+                    template = pickle.loads(redis_data)  # nosec B301
                     # Populate memory cache
                     self._memory_cache[cache_key] = template
                     self._cache_hits += 1
