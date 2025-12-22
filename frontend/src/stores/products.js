@@ -351,38 +351,6 @@ export const useProductStore = defineStore('products', () => {
   }
 
   /**
-   * Handle product:github:settings:changed event
-   * Updates GitHub integration settings in product memory
-   */
-  function handleProductGitHubSettingsChanged(payload) {
-    if (!payload?.product_id) {
-      console.warn('[PRODUCTS] product:github:settings:changed missing product_id', payload)
-      return
-    }
-
-    const product = products.value.find((p) => p.id === payload.product_id)
-    if (product && payload.data?.git_integration) {
-      // Initialize product_memory if missing
-      if (!product.product_memory) {
-        product.product_memory = {}
-      }
-
-      // Update GitHub integration settings
-      product.product_memory.git_integration = payload.data.git_integration
-
-      // Also update currentProduct if it matches
-      if (currentProduct.value?.id === payload.product_id) {
-        if (!currentProduct.value.product_memory) {
-          currentProduct.value.product_memory = {}
-        }
-        currentProduct.value.product_memory.git_integration = payload.data.git_integration
-      }
-
-      console.log('[PRODUCTS] GitHub settings updated for product:', payload.product_id)
-    }
-  }
-
-  /**
    * Initialize WebSocket event listeners
    * Registers handlers for product memory events
    */
@@ -392,9 +360,6 @@ export const useProductStore = defineStore('products', () => {
     // Register event handlers and store unsubscribe functions
     wsUnsubscribers.value.push(wsStore.on('product:memory:updated', handleProductMemoryUpdated))
     wsUnsubscribers.value.push(wsStore.on('product:learning:added', handleProductLearningAdded))
-    wsUnsubscribers.value.push(
-      wsStore.on('product:github:settings:changed', handleProductGitHubSettingsChanged),
-    )
 
     // Refresh active product on status changes (tenant-scoped WS event)
     wsUnsubscribers.value.push(
