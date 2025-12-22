@@ -14,4 +14,5 @@ Ensure these systems are working in harmony but their own system
 
 Tennant based, tied to product->Project->Jobs via ID
  
+2025-12-22: Review and tune the three-tier agent behavior contract (template → protocol → mission), and later merge both TODO documents (TODO.txt and more todo items.txt) into a single unified list.
 
