@@ -407,7 +407,7 @@ class OrchestratorSuccessionManager:
                     if match:
                         return f"{match.group(1)}% complete"
                 except Exception:
-                    pass
+                    pass  # nosec B110 - regex fallback
 
         # Fallback: estimate based on message count
         message_count = len(messages)
