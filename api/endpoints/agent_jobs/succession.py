@@ -188,7 +188,7 @@ async def trigger_succession(
             launch_prompt=launch_prompt,
             handover_summary=handover_summary_str,
             succession_reason=request.reason,
-            created_at=successor.created_at
+            created_at=successor.started_at or successor.job.created_at
         )
 
     except ValueError as e:

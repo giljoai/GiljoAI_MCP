@@ -88,8 +88,8 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
             # Get the latest execution for this job to retrieve agent_id (executor UUID)
             exec_result = session.execute(
                 select(AgentExecution)
-                .filter_by(job_id=job.id, tenant_key=tenant_key)
-                .order_by(AgentExecution.created_at.desc())
+                .filter_by(job_id=job.job_id, tenant_key=tenant_key)
+                .order_by(AgentExecution.started_at.desc().nullslast())
             )
             latest_execution = exec_result.scalars().first()
 
