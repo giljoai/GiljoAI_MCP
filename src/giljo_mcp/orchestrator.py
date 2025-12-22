@@ -17,7 +17,6 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -42,20 +41,6 @@ logger = logging.getLogger(__name__)
 
 
 # ContextStatus enum moved to enums.py
-
-
-@dataclass
-class CLIPromptJobInfo:
-    """Job information for CLI prompt generation.
-
-    This dataclass provides the minimal job interface needed for generating
-    CLI prompts for Codex/Gemini agents. It decouples prompt generation from
-    the full Job model.
-    """
-    job_id: str
-    agent_type: str  # Agent role/type for display purposes
-    mission: str
-    status: str
 
 
 class ProjectOrchestrator:
@@ -587,15 +572,12 @@ class ProjectOrchestrator:
             f"job_id={job_id}, agent_id={agent_id}, project={project.id}"
         )
 
-        # 3. Generate CLI prompt using CLIPromptJobInfo dataclass
-        job_info = CLIPromptJobInfo(
+        # 3. Generate CLI prompt with direct parameters
+        cli_prompt = self._generate_cli_prompt(
             job_id=job_id,
             agent_type=role.value,
             mission=full_mission,
-            status="waiting_acknowledgment"
-        )
-        cli_prompt = self._generate_cli_prompt(
-            job=job_info,
+            status="waiting_acknowledgment",
             template=template,
             project=project,
             tenant_key=project.tenant_key,
@@ -715,7 +697,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
     def _generate_cli_prompt(
         self,
-        job: CLIPromptJobInfo,
+        job_id: str,
+        agent_type: str,
+        mission: str,
+        status: str,
         template: AgentTemplate,
         project: Project,
         tenant_key: str,
@@ -731,7 +716,10 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         - MCP tool call examples (tenant-specific)
 
         Args:
-            job: CLIPromptJobInfo instance with minimal job data
+            job_id: Job ID
+            agent_type: Agent role/type for display purposes
+            mission: Mission text
+            status: Job status
             template: AgentTemplate instance
             project: Project instance
             tenant_key: Tenant key for multi-tenant isolation
@@ -752,20 +740,20 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 f"- {criterion}" for criterion in template.success_criteria
             )
 
-        mcp_instructions = self._generate_mcp_instructions(tenant_key, job.agent_type, job.mission)
+        mcp_instructions = self._generate_mcp_instructions(tenant_key, agent_type, mission)
 
         return f"""
-# {template.name} Agent - Job {job.job_id}
+# {template.name} Agent - Job {job_id}
 
 ## Job Information
-- **Job ID**: `{job.job_id}`
-- **Agent Type**: `{job.agent_type}`
+- **Job ID**: `{job_id}`
+- **Agent Type**: `{agent_type}`
 - **Project**: {project.name}
 - **Tenant**: `{tenant_key}`
-- **Status**: {job.status}
+- **Status**: {status}
 
 ## Mission
-{job.mission}
+{mission}
 
 {behavioral_rules}
 
@@ -778,8 +766,8 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 1. **First Step**: Acknowledge this job
    ```
    acknowledge_job(
-       job_id="{job.job_id}",
-       agent_id="{job.agent_type}",
+       job_id="{job_id}",
+       agent_id="{agent_type}",
        tenant_key="{tenant_key}"
    )
    ```
@@ -789,7 +777,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 3. **Report progress**: Every 2-3 completed tasks
    ```
    report_progress(
-       job_id="{job.job_id}",
+       job_id="{job_id}",
        completed_todo="Description of what you completed",
        files_modified=["list", "of", "files"],
        context_used=<estimated_tokens>,
@@ -800,7 +788,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 4. **Complete job**: When mission accomplished
    ```
    complete_job(
-       job_id="{job.job_id}",
+       job_id="{job_id}",
        result={{
            "summary": "Mission summary",
            "files_created": [],
