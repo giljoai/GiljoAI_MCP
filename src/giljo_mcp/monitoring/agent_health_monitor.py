@@ -393,7 +393,7 @@ class AgentHealthMonitor:
 
     def _get_last_progress_time(self, execution: AgentExecution) -> datetime:
         """
-        Extract last progress update time from execution metadata.
+        Get last progress update time from execution.
 
         Args:
             execution: Agent execution to check
@@ -401,14 +401,9 @@ class AgentHealthMonitor:
         Returns:
             Datetime of last progress update
         """
-        metadata = execution.execution_metadata or {}
-        last_progress_str = metadata.get("last_progress_update")
-
-        if last_progress_str:
-            try:
-                return datetime.fromisoformat(last_progress_str)
-            except (ValueError, TypeError):
-                pass
+        # AgentExecution has last_progress_at as a direct field
+        if execution.last_progress_at:
+            return execution.last_progress_at
 
         # Fallback to started_at or job.created_at
         return execution.started_at or execution.job.created_at
