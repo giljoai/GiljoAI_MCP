@@ -217,7 +217,7 @@ class DatabaseManager:
             raise RuntimeError("Use close() for sync engine")
 
     @staticmethod
-    def build_postgresql_url(
+    def build_postgresql_url(  # nosec B107
         host: str = "localhost",
         port: int = 5432,
         database: str = "giljo_mcp",

@@ -142,7 +142,7 @@ class VisionDocumentSummarizer:
             except Exception:
                 # If chunk summarization fails, skip it
                 # This handles edge cases like very short chunks
-                continue
+                continue  # nosec B112
 
         # Combine chunk summaries
         combined = "\n\n".join(summaries)

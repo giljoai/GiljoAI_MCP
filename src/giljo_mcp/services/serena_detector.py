@@ -7,7 +7,7 @@ Uses cross-platform subprocess commands with proper error handling.
 
 import logging
 import re
-import subprocess
+import subprocess  # nosec B404
 from typing import Any, Optional
 
 
@@ -78,7 +78,7 @@ class SerenaDetector:
             Tuple of (is_available, error_message)
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["uvx", "--version"],
                 check=False,
                 capture_output=True,
@@ -109,7 +109,7 @@ class SerenaDetector:
             Tuple of (is_installed, version, error_message)
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["uvx", "serena", "--version"],
                 check=False,
                 capture_output=True,

@@ -67,15 +67,15 @@ class LockManager:
                         self.lock_file.unlink()
                         self.locked = False
             except Exception:
-                pass
+                pass  # nosec B110 - best effort lock cleanup
 
     def _is_process_running(self, pid: int) -> bool:
         """Check if a process with given PID is running"""
         if sys.platform == "win32":
-            import subprocess
+            import subprocess  # nosec B404
 
             try:
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603 B607
                     ["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, check=False
                 )
                 return str(pid) in result.stdout

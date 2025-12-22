@@ -302,6 +302,6 @@ class ClaudeConfigManager:
             # Clean up temp file on error
             try:
                 Path(temp_path).unlink(missing_ok=True)
-            except:
-                pass
+            except Exception:
+                pass  # nosec B110 - temp file cleanup
             raise e

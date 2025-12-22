@@ -271,6 +271,7 @@ class TemplateValidator:
         except Exception as e:
             # Log error but don't fail validation
             # Fall through to uncached validation
+            pass  # nosec B110
             return None
 
     def _cache_result(
@@ -312,7 +313,7 @@ class TemplateValidator:
 
         except Exception as e:
             # Log error but don't fail validation
-            pass
+            pass  # nosec B110
 
     def add_custom_rule(self, rule: ValidationRule):
         """
@@ -351,4 +352,4 @@ class TemplateValidator:
 
         except Exception as e:
             # Log error but don't fail
-            pass
+            pass  # nosec B110

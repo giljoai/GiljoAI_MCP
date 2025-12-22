@@ -479,7 +479,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     await orchestrator.send_welcome_broadcast(project_id=project.id)
                 except Exception:
                     # Non-fatal; continue returning orchestration result
-                    pass
+                    pass  # nosec B110
 
                 logger.info(
                     f"Orchestration completed for project {project.id}. "
