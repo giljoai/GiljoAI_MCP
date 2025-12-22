@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def orchestration_service(mock_db_manager, mock_tenant_manager):
 @pytest.fixture
 def mock_agent_job():
     """Create mock agent job."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),

@@ -18,7 +18,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.utils.tools_helpers import ToolsTestHelper
 
 
@@ -38,7 +38,7 @@ class TestAgentMessagingTools:
 
     async def _create_test_job(self, session, agent_name="test-agent", status="working"):
         """Helper to create test agent job"""
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=self.tenant_key,
             project_id=self.project.id,
             job_id=str(uuid.uuid4()),
@@ -82,7 +82,7 @@ class TestAgentMessagingTools:
 
         # Verify message stored in database
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             updated_job = (await session.execute(stmt)).scalar_one()
             assert len(updated_job.messages) == 1
             msg = updated_job.messages[0]
@@ -123,7 +123,7 @@ class TestAgentMessagingTools:
         # Verify all jobs received message
         async with self.db_manager.get_session_async() as session:
             for job_id in [job1.job_id, job2.job_id, job3.job_id]:
-                stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+                stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
                 job = (await session.execute(stmt)).scalar_one()
                 assert len(job.messages) >= 1
                 # Find broadcast message
@@ -157,7 +157,7 @@ class TestAgentMessagingTools:
 
         # Verify only target received message
         async with self.db_manager.get_session_async() as session:
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == target_job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == target_job_id)
             target_job = (await session.execute(stmt)).scalar_one()
             assert len(target_job.messages) == 1
             assert target_job.messages[0]["content"] == "Please review my implementation"
@@ -235,7 +235,7 @@ class TestAgentMessagingTools:
             project_b = await ToolsTestHelper.create_test_project(session, "Project B")
             tenant_b = project_b.tenant_key
 
-            job_b = MCPAgentJob(
+            job_b = AgentExecution(
                 tenant_key=tenant_b,
                 project_id=project_b.id,
                 job_id=str(uuid.uuid4()),

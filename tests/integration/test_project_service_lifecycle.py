@@ -17,7 +17,7 @@ from datetime import datetime
 
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import Product
 
 
@@ -237,43 +237,43 @@ class TestProjectLifecycleMethods:
 
             # Add jobs with different statuses
             jobs = [
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="architect",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="implementor",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="tester",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="reviewer",
                     status="active",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="orchestrator",
                     status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="helper",
                     status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     agent_type="analyzer",
                     status="failed",
                     project_id=project_id,

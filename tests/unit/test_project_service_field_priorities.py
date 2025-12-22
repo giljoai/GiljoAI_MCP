@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.models import Project, MCPAgentJob, User
+from giljo_mcp.models import Project, AgentExecution, User
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ class TestProjectServiceFieldPriorities:
         }
 
         # Mock orchestrator job that will be created
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.id = "orchestrator-job-123"
         mock_job.job_id = "orchestrator-job-123"
         mock_job.status = "waiting"

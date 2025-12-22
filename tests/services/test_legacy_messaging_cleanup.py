@@ -143,7 +143,7 @@ class TestDatabaseSchema:
 
     def test_mcp_agent_job_has_messages_jsonb(self):
         """MCPAgentJob should have messages JSONB field for counters."""
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         assert MCPAgentJob is not None
 
         # Check for messages JSONB field

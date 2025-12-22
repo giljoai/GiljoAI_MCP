@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from api.websocket import WebSocketManager
 
 
@@ -69,7 +69,7 @@ async def mock_websocket_connection(websocket_manager):
 @pytest_asyncio.fixture
 async def test_agent_job_data(db_session, test_project):
     """Create test agent job in database"""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid.uuid4()),
         tenant_key=test_project.tenant_key,
         project_id=test_project.id,

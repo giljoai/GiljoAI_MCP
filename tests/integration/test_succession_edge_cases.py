@@ -15,7 +15,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import (
     SuccessionTestData,
 )
@@ -41,7 +42,7 @@ async def test_succession_above_100_percent(
     context_budget = 150000
     context_used = 155000  # 103% - exceeds budget!
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -67,7 +68,7 @@ async def test_succession_above_100_percent(
     # In real implementation, this would generate truncated handover summary
 
     # Create emergency successor
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -125,7 +126,7 @@ async def test_failed_successor_creation(
     context_budget = 150000
     context_used = 140000
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -157,9 +158,9 @@ async def test_failed_successor_creation(
     assert "Successor creation failed" in instance1.block_reason
 
     # Verify no successor was created
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.instance_number == 2,
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.instance_number == 2,
     )
     result = await db_session.execute(stmt)
     successor = result.scalar_one_or_none()
@@ -185,7 +186,7 @@ async def test_manual_succession_before_threshold(
     context_budget = 150000
     context_used = int(context_budget * 0.60)  # Only 60%, well below 90% threshold
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -201,7 +202,7 @@ async def test_manual_succession_before_threshold(
     await db_session.refresh(instance1)
 
     # User triggers manual succession
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -261,7 +262,7 @@ async def test_phase_transition_succession(
     context_budget = 150000
     context_used = int(context_budget * 0.75)  # 75% - comfortable margin
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -277,7 +278,7 @@ async def test_phase_transition_succession(
     await db_session.refresh(instance1)
 
     # Create successor for phase transition
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -337,7 +338,7 @@ async def test_multiple_rapid_successions(
 
     # Create 4 instances rapidly (simulating high-throughput project)
     for i in range(1, 5):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -401,7 +402,7 @@ async def test_succession_with_no_active_agents(
     context_budget = 150000
     context_used = 140000
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -417,7 +418,7 @@ async def test_succession_with_no_active_agents(
     await db_session.refresh(instance1)
 
     # Create successor
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -481,7 +482,7 @@ async def test_succession_reason_enum_validation(
     valid_reasons = ["context_limit", "manual", "phase_transition"]
 
     for i, reason in enumerate(valid_reasons, start=1):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -499,9 +500,9 @@ async def test_succession_reason_enum_validation(
     await db_session.commit()
 
     # Query all and verify
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.agent_type == "orchestrator",
     )
     result = await db_session.execute(stmt)
     instances = result.scalars().all()
@@ -529,7 +530,7 @@ async def test_handover_summary_token_estimation(
     context_budget = 150000
     context_used = 145000
 
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -545,7 +546,7 @@ async def test_handover_summary_token_estimation(
     await db_session.refresh(instance1)
 
     # Create successor
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,

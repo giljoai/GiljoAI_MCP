@@ -2,7 +2,7 @@
 Unit tests for AgentMessageQueue class.
 
 Handover 0019: Tests for JSONB-based agent message queue
-operating on MCPAgentJob.messages field.
+operating on AgentExecution.messages field.
 """
 
 import sys
@@ -15,7 +15,7 @@ from unittest.mock import Mock, PropertyMock
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.base_test import BaseAsyncTest
 
 
@@ -38,7 +38,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         # Mock job retrieval
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
         mock_job.messages = []
@@ -86,7 +86,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
         mock_job.messages = []
@@ -121,7 +121,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
         mock_job.messages = []
@@ -179,7 +179,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = []
 
@@ -237,7 +237,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = []
 
@@ -295,7 +295,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         # Job belongs to different tenant
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = "different-tenant-key"
         mock_job.messages = []
 
@@ -327,7 +327,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -370,7 +370,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -426,7 +426,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -482,7 +482,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -539,7 +539,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {"id": str(uuid.uuid4()), "acknowledged": False},
@@ -566,7 +566,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {"id": str(uuid.uuid4()), "to_agent": "analyzer", "acknowledged": False},
@@ -598,7 +598,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         message_id = str(uuid.uuid4())
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -645,7 +645,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         message_id = str(uuid.uuid4())
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -680,7 +680,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = []
 
@@ -708,7 +708,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -764,7 +764,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [{"id": "existing-msg", "content": "Existing"}]
 
@@ -798,7 +798,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         message_id = str(uuid.uuid4())
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {
@@ -839,7 +839,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_db = Mock(spec=DatabaseManager)
         mock_session = Mock()
 
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.messages = [
             {"id": "1", "to_agent": "analyzer", "type": "task", "acknowledged": False},
@@ -880,7 +880,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_session = Mock()
 
         # Job belongs to different tenant
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = "different-tenant"
         mock_job.messages = []
 
@@ -915,7 +915,7 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         tenant2_key = str(uuid.uuid4())
 
         # Job belongs to tenant1
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = tenant1_key
         mock_job.messages = [{"id": str(uuid.uuid4()), "content": "Tenant 1 message", "acknowledged": False}]
 

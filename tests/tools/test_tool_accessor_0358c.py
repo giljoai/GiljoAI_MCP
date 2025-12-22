@@ -172,7 +172,7 @@ async def test_get_orchestrator_instructions_joins_tables(
     2. Join to AgentJob to fetch mission
     3. Return orchestrator instructions with mission from AgentJob
 
-    Will FAIL initially: tool_accessor.py uses MCPAgentJob.
+    Will FAIL initially: tool_accessor.py uses AgentExecution.
     """
     result = await tool_accessor.get_orchestrator_instructions(
         job_id=orchestrator_job.job_id,
@@ -277,7 +277,7 @@ async def test_get_agent_mission_via_agentjob_mission(
     2. Join to AgentJob to fetch mission
     3. Return mission (not duplicated in AgentExecution)
 
-    Will FAIL initially: tool_accessor.py queries MCPAgentJob.mission directly.
+    Will FAIL initially: tool_accessor.py queries AgentExecution.mission directly.
     """
     result = await tool_accessor.get_agent_mission(
         job_id=orchestrator_job.job_id,
@@ -313,7 +313,7 @@ async def test_get_workflow_status_creates_both_models(
     3. Also create AgentExecution (executor instance)
     4. Return both job_id and agent_id
 
-    Will FAIL initially: tool_accessor.py creates only MCPAgentJob.
+    Will FAIL initially: tool_accessor.py creates only AgentExecution.
     """
     # Create inactive project for activation test
     inactive_project = Project(
@@ -381,7 +381,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
     2. Join to AgentExecution for current executor status
     3. Return jobs with execution details
 
-    Will FAIL initially: tool_accessor.py queries MCPAgentJob.
+    Will FAIL initially: tool_accessor.py queries AgentExecution.
     """
     # Create multiple jobs
     job1 = AgentJob(
@@ -524,7 +524,7 @@ async def test_succession_preserves_job_id_changes_agent_id(
     2. Succession: job_id=X (SAME), agent_id=B (NEW), instance=2
     3. Mission remains in AgentJob (not duplicated)
 
-    Will FAIL initially: tool_accessor.py succession uses MCPAgentJob.
+    Will FAIL initially: tool_accessor.py succession uses AgentExecution.
     """
     # Trigger succession
     result = await tool_accessor.create_successor_orchestrator(

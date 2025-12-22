@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.tools.agent_status import report_progress
 from src.giljo_mcp.tools.agent_messaging import read_mcp_messages
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from sqlalchemy import select
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -39,10 +39,10 @@ async def get_stale_jobs(tenant_key: str, threshold_minutes: int = 10):
     async with db_manager.get_session_async() as session:
         threshold_time = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.status.in_(["active", "working"]),
-            MCPAgentJob.last_progress_at <= threshold_time
+        stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.status.in_(["active", "working"]),
+            AgentExecution.last_progress_at <= threshold_time
         )
 
         result = await session.execute(stmt)
@@ -73,7 +73,7 @@ async def test_job(db_session):
     tenant_key = f"tk_test_{uuid4().hex[:16]}"
     project_id = str(uuid4())
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=tenant_key,
         project_id=project_id,
         job_id=str(uuid4()),
@@ -209,7 +209,7 @@ class TestHealthMonitoring:
 
         # Create job with stale timestamp (11 minutes ago)
         stale_time = datetime.now(timezone.utc) - timedelta(minutes=11)
-        stale_job = MCPAgentJob(
+        stale_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -237,7 +237,7 @@ class TestHealthMonitoring:
 
         # Create job with recent timestamp (5 minutes ago)
         recent_time = datetime.now(timezone.utc) - timedelta(minutes=5)
-        recent_job = MCPAgentJob(
+        recent_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -266,7 +266,7 @@ class TestHealthMonitoring:
         now = datetime.now(timezone.utc)
 
         # Exactly at threshold (10 minutes)
-        threshold_job = MCPAgentJob(
+        threshold_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -277,7 +277,7 @@ class TestHealthMonitoring:
         )
 
         # Just over threshold (10.5 minutes)
-        stale_job = MCPAgentJob(
+        stale_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -288,7 +288,7 @@ class TestHealthMonitoring:
         )
 
         # Just under threshold (9.5 minutes)
-        recent_job = MCPAgentJob(
+        recent_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -324,7 +324,7 @@ class TestMultiTenantIsolation:
         # Create stale jobs for both tenants
         stale_time = datetime.now(timezone.utc) - timedelta(minutes=15)
 
-        job_a = MCPAgentJob(
+        job_a = AgentExecution(
             tenant_key=tenant_a,
             project_id=project_id,
             job_id=str(uuid4()),
@@ -334,7 +334,7 @@ class TestMultiTenantIsolation:
             last_progress_at=stale_time,
         )
 
-        job_b = MCPAgentJob(
+        job_b = AgentExecution(
             tenant_key=tenant_b,
             project_id=project_id,
             job_id=str(uuid4()),

@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, Mock, MagicMock, patch
 from uuid import uuid4
 
 from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.models import Project, MCPAgentJob, Message
+from giljo_mcp.models import Project, AgentExecution, Message
 
 
 @pytest.fixture
@@ -129,7 +129,7 @@ class TestProjectServiceCRUD:
         mock_project.completed_at = None
 
         # Mock agent
-        mock_agent = Mock(spec=MCPAgentJob)
+        mock_agent = Mock(spec=AgentExecution)
         mock_agent.job_id = "agent-1"
         mock_agent.agent_type = "implementer"
         mock_agent.agent_name = "Test Agent"
@@ -652,7 +652,7 @@ class TestProjectServiceStatus:
         mock_project.completed_at = None
 
         # Mock agent job
-        mock_agent = Mock(spec=MCPAgentJob)
+        mock_agent = Mock(spec=AgentExecution)
         mock_agent.agent_type = "implementer"
         mock_agent.status = "active"
 

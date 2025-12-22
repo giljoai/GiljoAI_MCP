@@ -113,7 +113,8 @@ class BaseIntegrationTest(BaseAsyncTest):
 
     async def create_test_environment(self, db_session):
         """Create a complete test environment with projects, agent jobs, etc."""
-        from src.giljo_mcp.models import MCPAgentJob, Project
+        from src.giljo_mcp.models import Project
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from tests.fixtures.base_fixtures import TestData
 
         # Create tenant key
@@ -128,7 +129,7 @@ class BaseIntegrationTest(BaseAsyncTest):
         agent_jobs = []
         for agent_type in ["orchestrator", "analyzer", "implementer"]:
             job_data = TestData.generate_agent_job_data(project.id, tenant_key, agent_type)
-            job = MCPAgentJob(**job_data)
+            job = AgentExecution(**job_data)
             db_session.add(job)
             agent_jobs.append(job)
 
@@ -138,11 +139,12 @@ class BaseIntegrationTest(BaseAsyncTest):
 
     async def cleanup_test_environment(self, db_session, environment: dict):
         """Clean up test environment"""
-        from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
+        from src.giljo_mcp.models import Message, Project, Task
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         # Delete in order to respect foreign keys
         await db_session.query(Message).filter_by(project_id=environment["project"].id).delete()
         await db_session.query(Task).filter_by(project_id=environment["project"].id).delete()
-        await db_session.query(MCPAgentJob).filter_by(project_id=environment["project"].id).delete()
+        await db_session.query(AgentExecution).filter_by(project_id=environment["project"].id).delete()
         await db_session.query(Project).filter_by(id=environment["project"].id).delete()
         await db_session.commit()

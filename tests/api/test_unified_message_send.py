@@ -111,10 +111,10 @@ async def test_project(db_manager, test_user, test_product):
 @pytest.fixture
 async def orchestrator_job(db_manager, test_user, test_project):
     """Create an orchestrator job for the test project."""
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     async with db_manager.get_session_async() as session:
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_user._test_tenant_key,

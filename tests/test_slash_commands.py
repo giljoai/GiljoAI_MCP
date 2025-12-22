@@ -6,7 +6,8 @@ Tests the /gil_handover slash command functionality
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.slash_commands.handover import (
     _generate_launch_prompt,
     _get_active_orchestrator,
@@ -32,7 +33,7 @@ def mock_project(db_session, test_tenant):
 @pytest.fixture
 def mock_orchestrator(db_session, test_tenant, mock_project):
     """Create test orchestrator job"""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="orch-test-12345",
         agent_type="orchestrator",
         status="working",
@@ -67,7 +68,7 @@ class TestHandleGilHandover:
         assert "Instance 2" in result["message"]
 
         # Verify successor was created
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == result["successor_id"])
+        stmt = select(AgentExecution).where(AgentExecution.job_id == result["successor_id"])
         successor_result = db_session.execute(stmt)
         successor = successor_result.scalar_one()
 
@@ -81,7 +82,7 @@ class TestHandleGilHandover:
     async def test_rejects_non_orchestrator_agent(self, db_session, test_tenant):
         """Test /gil_handover rejects non-orchestrator agents"""
         # Create a non-orchestrator agent
-        frontend_agent = MCPAgentJob(
+        frontend_agent = AgentExecution(
             job_id="frontend-test-12345",
             agent_type="frontend-dev",
             status="working",
@@ -141,7 +142,7 @@ class TestHandleGilHandover:
     async def test_multi_tenant_isolation(self, db_session, test_tenant):
         """Test tenant isolation enforced"""
         # Create orchestrator for different tenant
-        other_orchestrator = MCPAgentJob(
+        other_orchestrator = AgentExecution(
             job_id="orch-other-12345",
             agent_type="orchestrator",
             status="working",

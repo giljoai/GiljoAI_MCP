@@ -18,7 +18,7 @@ from unittest.mock import patch, AsyncMock
 from uuid import uuid4
 from passlib.hash import bcrypt
 
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models import User
 
 
@@ -40,7 +40,7 @@ async def test_update_agent_mission_success(
         tenant_key = f"test_tenant_{unique_id}"
 
         # Create agent job with known tenant
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -94,7 +94,7 @@ async def test_update_mission_tenant_isolation(
     """Test that users cannot update jobs from other tenants."""
     async with db_manager.get_session_async() as session:
         # Create agent job for different tenant
-        other_tenant_job = MCPAgentJob(
+        other_tenant_job = AgentExecution(
             job_id="other-tenant-job",
             tenant_key="other-tenant-key-999",
             project_id="other-project",
@@ -129,7 +129,7 @@ async def test_update_mission_validation_empty_mission(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -163,7 +163,7 @@ async def test_update_mission_validation_too_long(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -200,7 +200,7 @@ async def test_update_mission_validation_max_length_boundary(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -257,7 +257,7 @@ async def test_update_mission_missing_field(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -289,7 +289,7 @@ async def test_update_mission_unauthorized(
     async with db_manager.get_session_async() as session:
         unique_id = uuid4().hex[:8]
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=f"test_tenant_{unique_id}",
             project_id="test-project-001",
@@ -323,7 +323,7 @@ async def test_update_mission_preserves_other_fields(
         tenant_key = f"test_tenant_{unique_id}"
 
         # Create test agent job with specific values
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -356,7 +356,7 @@ async def test_update_mission_preserves_other_fields(
     # Verify other fields unchanged
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
 
@@ -378,7 +378,7 @@ async def test_update_mission_updates_timestamp(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -406,7 +406,7 @@ async def test_update_mission_updates_timestamp(
     # Verify updated_at changed
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
 
@@ -426,7 +426,7 @@ async def test_update_mission_with_special_characters(
         unique_id = uuid4().hex[:8]
         tenant_key = f"test_tenant_{unique_id}"
 
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
@@ -460,7 +460,7 @@ async def test_update_mission_with_special_characters(
     # Verify stored correctly in database
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
         assert updated_job.mission == special_mission

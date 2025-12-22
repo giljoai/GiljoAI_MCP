@@ -16,7 +16,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestOrchestratorStatusFiltering:
@@ -30,7 +30,7 @@ class TestOrchestratorStatusFiltering:
         BEHAVIOR: When multiple orchestrators exist, return active one (not cancelled).
         """
         # Create cancelled orchestrator (higher instance number)
-        cancelled_orch = MCPAgentJob(
+        cancelled_orch = AgentExecution(
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
@@ -44,7 +44,7 @@ class TestOrchestratorStatusFiltering:
         db_session.add(cancelled_orch)
 
         # Create active orchestrator (lower instance number but ACTIVE)
-        active_orch = MCPAgentJob(
+        active_orch = AgentExecution(
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
@@ -59,13 +59,13 @@ class TestOrchestratorStatusFiltering:
 
         # Buggy query (no status filter) - documents the bug
         buggy_stmt = (
-            select(MCPAgentJob)
+            select(AgentExecution)
             .where(
-                MCPAgentJob.project_id == test_project.id,
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == test_project.tenant_key,
+                AgentExecution.project_id == test_project.id,
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == test_project.tenant_key,
             )
-            .order_by(MCPAgentJob.instance_number.desc())
+            .order_by(AgentExecution.instance_number.desc())
         )
         buggy_result = await db_session.execute(buggy_stmt)
         buggy_orchestrator = buggy_result.scalars().first()
@@ -75,14 +75,14 @@ class TestOrchestratorStatusFiltering:
 
         # Fixed query (with status filter)
         fixed_stmt = (
-            select(MCPAgentJob)
+            select(AgentExecution)
             .where(
-                MCPAgentJob.project_id == test_project.id,
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == test_project.tenant_key,
-                MCPAgentJob.status.in_(["waiting", "working", "blocked"]),
+                AgentExecution.project_id == test_project.id,
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == test_project.tenant_key,
+                AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(MCPAgentJob.instance_number.desc())
+            .order_by(AgentExecution.instance_number.desc())
         )
         fixed_result = await db_session.execute(fixed_stmt)
         fixed_orchestrator = fixed_result.scalars().first()
@@ -100,7 +100,7 @@ class TestOrchestratorStatusFiltering:
         BEHAVIOR: Return None when all orchestrators are in terminal states.
         """
         # Create only cancelled/failed orchestrators
-        cancelled_orch = MCPAgentJob(
+        cancelled_orch = AgentExecution(
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
@@ -112,7 +112,7 @@ class TestOrchestratorStatusFiltering:
         )
         db_session.add(cancelled_orch)
 
-        failed_orch = MCPAgentJob(
+        failed_orch = AgentExecution(
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
@@ -127,14 +127,14 @@ class TestOrchestratorStatusFiltering:
 
         # Fixed query should return None
         fixed_stmt = (
-            select(MCPAgentJob)
+            select(AgentExecution)
             .where(
-                MCPAgentJob.project_id == test_project.id,
-                MCPAgentJob.agent_type == "orchestrator",
-                MCPAgentJob.tenant_key == test_project.tenant_key,
-                MCPAgentJob.status.in_(["waiting", "working", "blocked"]),
+                AgentExecution.project_id == test_project.id,
+                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.tenant_key == test_project.tenant_key,
+                AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(MCPAgentJob.instance_number.desc())
+            .order_by(AgentExecution.instance_number.desc())
         )
         result = await db_session.execute(fixed_stmt)
         orchestrator = result.scalars().first()
