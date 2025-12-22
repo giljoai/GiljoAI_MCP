@@ -180,7 +180,7 @@ class DatabaseManager:
                 try:
                     await session.rollback()
                 except Exception:
-                    pass  # Suppress rollback errors during cleanup
+                    pass  # Suppress rollback errors during cleanup  # nosec B110
             raise
         except Exception:
             # Regular exceptions - rollback and re-raise
@@ -195,7 +195,7 @@ class DatabaseManager:
                 try:
                     await session.rollback()
                 except Exception:
-                    pass  # Suppress rollback errors during cleanup
+                    pass  # Suppress rollback errors during cleanup  # nosec B110
             try:
                 await session.close()
             except Exception as close_error:
