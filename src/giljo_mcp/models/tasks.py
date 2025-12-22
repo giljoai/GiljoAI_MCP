@@ -85,9 +85,6 @@ class Task(Base):
     # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
 
-    # Handover 0072: Agent job relationship
-    agent_job = relationship("MCPAgentJob", foreign_keys=[agent_job_id], backref="task")
-
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
         Index("idx_task_product", "product_id"),
