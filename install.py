@@ -1855,7 +1855,7 @@ class UnifiedInstaller:
             "products",
             "projects",
             "messages",
-            "mcp_agent_jobs",
+            "agent_jobs",  # 0371: renamed from mcp_agent_jobs
             "agent_executions",
         ]
 
