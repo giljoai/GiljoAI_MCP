@@ -196,7 +196,7 @@ class ContinueWorkingResponse(BaseModel):
 class OrchestratorJobResponse(BaseModel):
     """Orchestrator job details for project."""
 
-    id: int
+    id: Optional[int] = None  # Deprecated after AgentExecution refactor (Handover 0366a)
     job_id: str
     agent_id: str  # Alias for backward compatibility
     agent_type: str
@@ -208,7 +208,7 @@ class OrchestratorJobResponse(BaseModel):
     created_at: Optional[datetime]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
-    instance_number: Optional[int] = 1  # Handover 0080 - orchestrator succession
+    instance_number: Optional[int] = 1  # Handover 0080 - orchestrator succession  # Handover 0080 - orchestrator succession
 
 
 class OrchestratorResponse(BaseModel):

@@ -34,7 +34,7 @@ class Task(Base):
     - Nullable fields for backward compatibility and MCP tool creation
 
     Handover 0072: Task-to-Agent Job Integration
-    - agent_job_id: Links task to MCPAgentJob for execution tracking
+    - agent_job_id: Links task to AgentJob for execution tracking
     - project_id: Now nullable to support unassigned tasks
     - status: Added "converted" state for task-to-project conversions
     """
@@ -59,7 +59,7 @@ class Task(Base):
     converted_to_project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
 
     # Handover 0072: Agent job integration
-    agent_job_id = Column(String(36), ForeignKey("mcp_agent_jobs.job_id"), nullable=True)
+    agent_job_id = Column(String(36), ForeignKey("agent_jobs.job_id"), nullable=True)
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)

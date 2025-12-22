@@ -2602,7 +2602,7 @@ pg_restore -l {backup_file.name} | head -20
                 # Step 2: Count ALL agent jobs to delete
                 self.update_status_message("Counting agent jobs to delete...")
                 cur.execute("""
-                    SELECT COUNT(*) FROM mcp_agent_jobs
+                    SELECT COUNT(*) FROM agent_jobs
                     WHERE project_id = %s
                 """, (project_uuid,))
                 agent_count = cur.fetchone()[0]
@@ -2639,10 +2639,18 @@ pg_restore -l {backup_file.name} | head -20
                 self.update_status_message(f"Deleting {task_count} tasks...")
                 cur.execute("DELETE FROM tasks WHERE project_id = %s", (project_uuid,))
 
-                # Step 11: Delete ALL agent jobs (any status)
-                self.update_status_message(f"Deleting {agent_count} agent jobs...")
+                # Step 11: Delete ALL agent jobs and executions (any status)
+                self.update_status_message(f"Deleting {agent_count} agent jobs and their executions...")
+                # First delete agent_executions (referencing agent_jobs via agent_id)
                 cur.execute("""
-                    DELETE FROM mcp_agent_jobs
+                    DELETE FROM agent_executions
+                    WHERE agent_id IN (
+                        SELECT id FROM agent_jobs WHERE project_id = %s
+                    )
+                """, (project_uuid,))
+                # Then delete agent_jobs (work orders)
+                cur.execute("""
+                    DELETE FROM agent_jobs
                     WHERE project_id = %s
                 """, (project_uuid,))
 

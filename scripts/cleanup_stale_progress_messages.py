@@ -3,11 +3,11 @@
 Cleanup Script for Stale Progress Messages (Handover 0289)
 
 This script migrates progress messages from the messages table to the
-mcp_agent_jobs.progress field where they belong.
+agent_executions.progress field where they belong.
 
 Progress updates should NOT create message records. They should update:
-- mcp_agent_jobs.progress (integer 0-100)
-- mcp_agent_jobs.current_task (string)
+- agent_executions.progress (integer 0-100)
+- agent_executions.current_task (string)
 
 Usage:
     python scripts/cleanup_stale_progress_messages.py [--dry-run]
@@ -30,7 +30,8 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Message, MCPAgentJob
+from src.giljo_mcp.models import Message
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.config_manager import ConfigManager
 
 
@@ -71,20 +72,21 @@ def extract_progress_from_content(content: str) -> tuple[int, str]:
 async def find_agent_job_for_message(
     session: AsyncSession,
     message: Message
-) -> MCPAgentJob | None:
+) -> AgentExecution | None:
     """
-    Find the agent job that should receive this progress update.
+    Find the agent execution that should receive this progress update.
 
     Uses message metadata or searches by tenant/project.
+    Returns the AgentExecution instance (not AgentJob).
     """
     # Check if job_id is in metadata
     job_id = message.meta_data.get("job_id") if message.meta_data else None
 
     if job_id:
         result = await session.execute(
-            select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == message.tenant_key
+            select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == message.tenant_key
             )
         )
         return result.scalar_one_or_none()
@@ -94,11 +96,13 @@ async def find_agent_job_for_message(
 
     if from_agent and message.project_id:
         result = await session.execute(
-            select(MCPAgentJob).where(
-                MCPAgentJob.agent_type == from_agent,
-                MCPAgentJob.project_id == message.project_id,
-                MCPAgentJob.tenant_key == message.tenant_key
-            ).order_by(MCPAgentJob.created_at.desc()).limit(1)
+            select(AgentExecution).join(
+                AgentJob, AgentExecution.job_id == AgentJob.job_id
+            ).where(
+                AgentExecution.agent_type == from_agent,
+                AgentJob.project_id == message.project_id,
+                AgentExecution.tenant_key == message.tenant_key
+            ).order_by(AgentExecution.started_at.desc()).limit(1)
         )
         return result.scalar_one_or_none()
 
@@ -111,7 +115,7 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
 
     1. Find all progress messages in messages table
     2. Extract progress data
-    3. Update corresponding agent jobs
+    3. Update corresponding agent executions
     4. Delete progress messages
 
     Returns:
@@ -121,7 +125,7 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
         "found": 0,
         "migrated": 0,
         "deleted": 0,
-        "orphaned": 0,  # Progress messages without matching agent job
+        "orphaned": 0,  # Progress messages without matching agent execution
         "errors": []
     }
 
@@ -146,16 +150,16 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
                 percentage, current_task = extract_progress_from_content(message.content)
                 print(f"  Extracted: {percentage}% - {current_task[:50]}...")
 
-                # Find corresponding agent job
-                agent_job = await find_agent_job_for_message(session, message)
+                # Find corresponding agent execution
+                agent_execution = await find_agent_job_for_message(session, message)
 
-                if agent_job:
-                    print(f"  Found agent job: {agent_job.job_id} ({agent_job.agent_type})")
+                if agent_execution:
+                    print(f"  Found agent execution: {agent_execution.job_id} ({agent_execution.agent_type})")
 
                     if not dry_run:
-                        # Update agent job with progress
-                        agent_job.progress = percentage
-                        agent_job.current_task = current_task[:255]
+                        # Update agent execution with progress
+                        agent_execution.progress = percentage
+                        agent_execution.current_task = current_task[:255]
 
                         # Delete the progress message
                         await session.delete(message)
@@ -163,9 +167,9 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
 
                     stats["migrated"] += 1
                     stats["deleted"] += 1
-                    print(f"  {'Would migrate' if dry_run else 'Migrated'} to agent job")
+                    print(f"  {'Would migrate' if dry_run else 'Migrated'} to agent execution")
                 else:
-                    print(f"  WARNING: No matching agent job found (orphaned)")
+                    print(f"  WARNING: No matching agent execution found (orphaned)")
                     stats["orphaned"] += 1
 
                     if not dry_run:

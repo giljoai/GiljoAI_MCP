@@ -331,7 +331,7 @@ class TestPurgeProjectRecordsCascade:
                 select(Project).where(Project.id == project.id)
             )).scalar_one_or_none(),
             "agent_job": (await db_session.execute(
-                select(AgentExecution).where(AgentExecution.id == data["agent_job"].id)
+                select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
             )).scalar_one_or_none(),
             "task": (await db_session.execute(
                 select(Task).where(Task.id == data["task"].id)
@@ -378,7 +378,7 @@ class TestPurgeProjectRecordsCascade:
                 select(Project).where(Project.id == project.id)
             )).scalar_one_or_none(),
             "agent_job": (await db_session.execute(
-                select(AgentExecution).where(AgentExecution.id == data["agent_job"].id)
+                select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
             )).scalar_one_or_none(),
             "task": (await db_session.execute(
                 select(Task).where(Task.id == data["task"].id)
@@ -571,7 +571,7 @@ class TestNuclearDeleteConsistency:
         )).scalar_one_or_none() is None, "Project should be deleted"
 
         assert (await db_session.execute(
-            select(AgentExecution).where(AgentExecution.id == agent_job_id)
+            select(AgentExecution).where(AgentExecution.agent_id == agent_job_id)
         )).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
 
         assert (await db_session.execute(

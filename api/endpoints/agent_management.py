@@ -115,7 +115,7 @@ async def get_active_agent_jobs(
             return [
                 AgentJobResponse(
                     job_id=job.job_id,
-                    agent_type=job.agent_type,
+                    agent_type=job.job_type,
                     mission=job.mission,
                     status=job.status,
                     spawned_by=job.spawned_by,
@@ -160,7 +160,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_created(
                     job_id=job.job_id,
-                    agent_type=job.agent_type,
+                    agent_type=job.job_type,
                     tenant_key=tenant_key,
                     project_id=str(job.project_id) if getattr(job, "project_id", None) else None,
                     agent_name=getattr(job, "agent_name", None),
@@ -172,7 +172,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
 
             return AgentJobResponse(
                 job_id=job.job_id,
-                agent_type=job.agent_type,
+                agent_type=job.job_type,
                 mission=job.mission,
                 status=job.status,
                 spawned_by=job.spawned_by,
@@ -229,7 +229,7 @@ async def update_agent_job_status(
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
-                    agent_type=job.agent_type,
+                    agent_type=job.job_type,
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status=status_update.status,
@@ -274,7 +274,7 @@ async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_ten
             if state.websocket_manager and old_status == "pending":
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
-                    agent_type=job.agent_type,
+                    agent_type=job.job_type,
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status="active",  # Acknowledgment implies active status
@@ -324,7 +324,7 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
                 await state.websocket_manager.broadcast_job_message(
                     job_id=job_id,
                     message_id=message_data.message.get("message_id", str(uuid4())),
-                    from_agent=message_data.message.get("from_agent", job.agent_type),
+                    from_agent=message_data.message.get("from_agent", job.job_type),
                     tenant_key=tenant_key,
                     to_agent=message_data.message.get("to_agent"),
                     message_type=message_data.message.get("type", "status"),
