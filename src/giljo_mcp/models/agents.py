@@ -230,9 +230,7 @@ class MCPAgentJob(Base):
         comment="Agent template ID this job was spawned from (Handover 0244a)"
     )
 
-    # Relationships (Handover 0062)
-    project = relationship("Project", back_populates="agent_jobs")
-    template = relationship("AgentTemplate", back_populates="jobs")
+    # Relationships removed (Handover 0367d - MCPAgentJob deprecated)
 
     __table_args__ = (
         Index("idx_mcp_agent_jobs_tenant_status", "tenant_key", "status"),
