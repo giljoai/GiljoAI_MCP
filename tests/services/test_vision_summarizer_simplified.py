@@ -485,7 +485,7 @@ class TestDatabaseIntegration:
         """
         Upload should populate only light and medium summary columns.
 
-        CRITICAL: summary_heavy column should remain NULL (deprecated).
+        CRITICAL: Deprecated summary fields (summary_moderate, summary_heavy) removed in Handover 0374.
 
         NOTE: This test is a placeholder and will FAIL until database
         integration is implemented.
