@@ -751,9 +751,9 @@ class ToolAccessor:
             parent_job_id=parent_job_id
         )
 
-    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
         """Get agent-specific mission (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_agent_mission(agent_job_id=job_id, tenant_key=tenant_key)
+        return await self._orchestration_service.get_agent_mission(agent_job_id=agent_job_id, tenant_key=tenant_key)
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Full project orchestration workflow (delegates to OrchestrationService)"""
