@@ -26,7 +26,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from src.giljo_mcp.models import (
     User, Product, Project
 )
-from src.giljo_mcp.models.agents import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
