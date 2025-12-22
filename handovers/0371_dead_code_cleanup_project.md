@@ -15,12 +15,12 @@
 | **Phase 1** | ✅ COMPLETE | ~340 | All 3 items fixed |
 | **Phase 2** | ✅ COMPLETE | ~6,600 | 12 test files deleted; 2.1 deferred to 0372 |
 | **Phase 3** | ✅ COMPLETE | ~1,944 | 5 tool files + 1 test file deleted |
-| **Phase 4** | 🔄 IN PROGRESS | ~561 | 4.1→0373, 4.2 deprecated, 4.3 fixed (bug!), 4.4 DONE, 4.5→0374, 4.6 pending |
+| **Phase 4** | 🔄 IN PROGRESS | ~618 | 4.1→0373, 4.2 deprecated, 4.3 fixed, 4.4 DONE, 4.5→0374 DONE, 4.6 pending |
 | **Phase 5** | ⏳ PENDING | - | SQL files |
 | **Phase 6** | ⏳ PENDING | - | Frontend (~5,500 lines) |
 | **Phase 7** | ⏳ PENDING | - | Migration cleanup |
 
-**Total Removed So Far**: ~9,400 lines
+**Total Removed So Far**: ~9,502 lines
 
 ### Spawned Handovers
 - **0372**: MessageService Unification (from Phase 2.1) - merge message_service_0366b.py
@@ -43,6 +43,8 @@
 - `57da9794` - Phase 4.1-4.2: add 0373 handover, deprecate TemplateManager alias
 - `93c8b4a6` - Phase 4.3: fix user management API bug
 - `ac4bd88d` - Phase 4.4: remove deprecated GitHub router + frontend cleanup
+- `ca5e11d0` - Phase 4.5/0374: remove deprecated vision summary fields
+- `35237890` - Phase 4.5/0374: sync baseline migration with models
 
 ---
 
