@@ -306,11 +306,11 @@ async def report_progress(
             now = datetime.now(timezone.utc)
             execution.last_progress_at = now
 
-            # Store progress in execution_metadata (not job_metadata)
-            if execution.execution_metadata is None:
-                execution.execution_metadata = {}
-            execution.execution_metadata["latest_progress"] = progress
-            execution.execution_metadata["latest_progress_timestamp"] = now.isoformat()
+            # Update progress percentage if provided in dict
+            if "percentage" in progress:
+                execution.progress = progress["percentage"]
+            if "current_task" in progress:
+                execution.current_task = progress["current_task"]
 
             # Commit changes
             await session.commit()
