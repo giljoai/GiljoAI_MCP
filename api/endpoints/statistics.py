@@ -8,6 +8,10 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
+from src.giljo_mcp.logging_config import get_logger
+
+
+logger = get_logger(__name__)
 
 
 router = APIRouter()
@@ -109,9 +113,10 @@ startup_time = datetime.now(timezone.utc)
 @router.get("/call-counts", response_model=CallCountsResponse)
 async def get_call_counts(request: Request):
     """Get total API and MCP call counts."""
+    from sqlalchemy import select
+
     from api.app import state
     from src.giljo_mcp.models import ApiMetrics
-    from sqlalchemy import select
 
     tenant_key = getattr(request.state, "tenant_key", "default")
     if not tenant_key:
@@ -163,7 +168,7 @@ async def get_system_statistics(request: Request):
 
             # Get agent stats (using AgentExecution)
             total_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
-            active_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(['waiting', 'working'])))
+            active_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(["waiting", "working"])))
 
             # Get message stats
             total_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
@@ -333,13 +338,13 @@ async def get_agent_statistics(
             if status:
                 # Map legacy status to AgentExecution status
                 if status == "active":
-                    query = query.where(AgentExecution.status.in_(['waiting', 'working']))
+                    query = query.where(AgentExecution.status.in_(["waiting", "working"]))
                 elif status == "idle":
-                    query = query.where(AgentExecution.status == 'waiting')
+                    query = query.where(AgentExecution.status == "waiting")
                 elif status == "working":
-                    query = query.where(AgentExecution.status == 'working')
+                    query = query.where(AgentExecution.status == "working")
                 elif status == "decommissioned":
-                    query = query.where(AgentExecution.status == 'decommissioned')
+                    query = query.where(AgentExecution.status == "decommissioned")
                 else:
                     query = query.where(AgentExecution.status == status)
             query = query.limit(limit)
@@ -527,7 +532,8 @@ async def get_performance_metrics():
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(select(1))
                 db_query_time = (time.time() - db_start) * 1000
-            except:
+            except Exception:
+                logger.exception("Database health check failed")
                 db_query_time = -1
 
         # Calculate API response time

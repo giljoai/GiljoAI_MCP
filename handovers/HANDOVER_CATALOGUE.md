@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-22 (0370 Audit COMPLETE, 0372 MessageService Unification COMPLETE)
+**Last Updated:** 2025-12-22 (1000 Series Safe Batch: 1002, 1003, 1004, 1005, 1006, 1008, 1012 COMPLETE)
 
 ---
 
@@ -54,21 +54,23 @@
 ### Greptile Security Series (1000-1014) - SECURITY
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 1000 | Greptile Remediation Roadmap | Ready | HIGH | Master roadmap |
+| 1000 | Greptile Remediation Roadmap | Active | HIGH | Master roadmap |
 | 1001 | Greptile Project Index | Reference | - | Index document |
-| 1002 | Fix Bare Except | Ready | HIGH | Security fix |
-| 1003 | Sanitize Paths | Ready | HIGH | Security fix |
-| 1004 | Secure Cookies | Ready | HIGH | Security fix |
-| 1005 | Sync pyproject | Ready | MEDIUM | Maintenance |
-| 1006 | Pip Audit | Ready | HIGH | Security fix |
-| 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement |
-| 1008 | Security Headers | Ready | MEDIUM | Security enhancement |
-| 1009 | Rate Limiting | Ready | MEDIUM | Security enhancement |
-| 1010 | Lifespan Refactor | Ready | LOW | Refactoring |
-| 1011 | Repository Pattern | Ready | LOW | Architecture |
-| 1012 | Bandit Linting | Ready | MEDIUM | Tooling |
-| 1013 | Structured Logging | Ready | LOW | Observability |
-| 1014 | Security Auditing | Ready | MEDIUM | Documentation |
+| 1002 | Fix Bare Except | **COMPLETE** | HIGH | Moved to completed/ |
+| 1003 | Sanitize Paths | **COMPLETE** | HIGH | Moved to completed/ |
+| 1004 | Secure Cookies | **COMPLETE** | HIGH | Moved to completed/ |
+| 1005 | Sync pyproject | **COMPLETE** | MEDIUM | Moved to completed/ |
+| 1006 | Pip Audit | **COMPLETE** | HIGH | Moved to completed/ |
+| 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement (HIGH RISK) |
+| 1008 | Security Headers | **COMPLETE** | MEDIUM | Moved to completed/ |
+| 1009 | Rate Limiting | Ready | MEDIUM | Security enhancement (MEDIUM RISK) |
+| 1010 | Lifespan Refactor | Ready | LOW | Refactoring (MEDIUM RISK) |
+| 1011 | Repository Pattern | Ready | LOW | Architecture (HIGH RISK) |
+| 1012 | Bandit Linting | **COMPLETE** | MEDIUM | Moved to completed/ |
+| 1013 | Structured Logging | Deferred | LOW | Future (Phase 5) |
+| 1014 | Security Auditing | Deferred | MEDIUM | Future (Phase 5) |
+
+> **Status**: 7/15 COMPLETE. Safe batch executed 2025-12-22. Remaining: 1007 (HIGH risk), 1009-1011 (MEDIUM risk), 1013-1014 (deferred).
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -100,6 +102,13 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 1002 | Fix Bare Except | **COMPLETE** (2025-12-22) |
+| 1003 | Sanitize Paths | **COMPLETE** (2025-12-22) |
+| 1004 | Secure Cookies | **COMPLETE** (2025-12-22) |
+| 1005 | Sync pyproject | **COMPLETE** (2025-12-22) |
+| 1006 | Pip Audit | **COMPLETE** (2025-12-22) |
+| 1008 | Security Headers | **COMPLETE** (2025-12-22) |
+| 1012 | Bandit Linting | **COMPLETE** (2025-12-22) |
 | 0370 | Comprehensive agent_id vs job_id Audit | **COMPLETE** (2025-12-22) |
 | 0372 | MessageService Unification (0366b merge) | **COMPLETE** (2025-12-22) |
 | 0356 | MCP Tool Parameter Consistency | **COMPLETE** (2025-12-21) |

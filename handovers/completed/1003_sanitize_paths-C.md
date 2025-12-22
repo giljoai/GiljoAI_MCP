@@ -118,3 +118,33 @@ raise HTTPException(status_code=400, detail="Project path is not writable")
 - Estimated effort: 2 hours (research, implementation, testing)
 - No database schema changes required
 - No frontend changes required (verified during research phase)
+
+---
+
+## Completion Summary
+
+**Date Completed**: 2025-12-22
+**Status**: ✅ COMPLETED
+
+### What Was Done
+- Sanitized 4 HTTPException calls in `validate_project_path()` function
+- Removed filesystem paths from user-facing error messages
+- Added `logger.warning()` calls to preserve debugging info server-side
+
+### Files Modified
+- `src/giljo_mcp/services/product_service.py` (lines 1329-1352)
+
+### Changes Applied
+1. `path.exists()` check - generic error message
+2. `path.is_dir()` check - generic error message
+3. `PermissionError/OSError` catch - generic error message
+4. General `Exception` catch - generic error message
+
+### Verification
+- No filesystem paths exposed in HTTP error responses
+- Paths logged internally via `logger.warning()` for debugging
+- No cascade risk - error semantics unchanged
+
+### Notes
+- Part of 1000 series Greptile Security Remediation
+- Prevents information disclosure of server directory structure
