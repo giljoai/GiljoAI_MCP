@@ -285,7 +285,7 @@ class TestProjectSoftDelete:
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
-        stmt = select(AgentExecution).where(AgentExecution.id == agent_id)
+        stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None
 

@@ -211,7 +211,7 @@ class TestTokenReductionComparison:
 
         from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == thin_result.orchestrator_id))
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == thin_result.orchestrator_id))
         orchestrator = result.scalar_one()
         mission_tokens = len(orchestrator.mission) // 4  # 1 token ≈ 4 chars
 
@@ -327,7 +327,7 @@ class TestTokenReductionComparison:
 
         from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == result.orchestrator_id))
+        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         mission_tokens = len(orchestrator.mission) // 4
@@ -383,7 +383,7 @@ class TestTokenReductionComparison:
 
         from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == result.orchestrator_id))
+        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         # Content should be in stored mission
