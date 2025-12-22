@@ -13,7 +13,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 from src.giljo_mcp.database import get_db_manager
-from src.giljo_mcp.models import MCPAgentJob, Message, Project, Task
+from src.giljo_mcp.models import Message, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models import Session as DBSession
 
 
@@ -83,7 +84,7 @@ class TenantFixture:
             # Create agent jobs if requested
             agent_jobs = []
             for i in range(with_agents):
-                job = MCPAgentJob(
+                job = AgentExecution(
                     job_id=str(uuid.uuid4()),
                     tenant_key=tenant_key,
                     project_id=project.id,
@@ -226,7 +227,7 @@ class TenantFixture:
             # Delete in reverse order of dependencies
             session.query(Task).filter_by(tenant_key=tenant_key).delete()
             session.query(Message).filter_by(tenant_key=tenant_key).delete()
-            session.query(MCPAgentJob).filter_by(tenant_key=tenant_key).delete()
+            session.query(AgentExecution).filter_by(tenant_key=tenant_key).delete()
             session.query(DBSession).filter_by(tenant_key=tenant_key).delete()
             session.query(Project).filter_by(tenant_key=tenant_key).delete()
             session.commit()
@@ -308,7 +309,7 @@ class TenantFixture:
 
             for i in range(count):
                 if entity_type == "agent":
-                    entity = MCPAgentJob(
+                    entity = AgentExecution(
                         job_id=str(uuid.uuid4()),
                         tenant_key=tenant_key,
                         project_id=project.id,

@@ -22,7 +22,8 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import AgentTemplate, Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tools.orchestration import (
     get_orchestrator_instructions,
     spawn_agent_job,
@@ -143,7 +144,7 @@ async def validation_templates(db_session, validation_product, validation_tenant
 @pytest_asyncio.fixture
 async def cli_orchestrator(db_session, validation_project, validation_tenant, validation_user):
     """Orchestrator in CLI mode for testing constraints"""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id=str(uuid.uuid4()),
         project_id=validation_project.id,
         tenant_key=validation_tenant,
@@ -194,7 +195,7 @@ class TestValidAgentSpawning:
 
         # ASSERTION: Agent job exists in database
         agent_job_id = result["agent_job_id"]
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
         db_result = await db_session.execute(stmt)
         agent_job = db_result.scalar_one_or_none()
 
@@ -228,7 +229,7 @@ class TestValidAgentSpawning:
 
             # ASSERTION: Agent exists in database
             agent_job_id = result["agent_job_id"]
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
             db_result = await db_session.execute(stmt)
             agent_job = db_result.scalar_one()
 
@@ -281,9 +282,9 @@ class TestInvalidAgentTypeRejection:
         assert "agent_name" in result["hint"]
 
         # ASSERTION 6: No agent job created in database
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.project_id == validation_project.id,
-            MCPAgentJob.agent_type == "backend-api-specialist",
+        stmt = select(AgentExecution).where(
+            AgentExecution.project_id == validation_project.id,
+            AgentExecution.agent_type == "backend-api-specialist",
         )
         db_result = await db_session.execute(stmt)
         agent_job = db_result.scalar_one_or_none()

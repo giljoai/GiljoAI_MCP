@@ -16,7 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.enums import AgentStatus, ProjectStatus
-from src.giljo_mcp.models import MCPAgentJob, Message, Project
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 
 
@@ -44,15 +45,47 @@ class TestData:
 
     @staticmethod
     def generate_agent_job_data(project_id: str, tenant_key: str, agent_type: Optional[str] = None) -> dict[str, Any]:
-        """Generate test MCPAgentJob data"""
+        """
+        Generate test AgentJob data (work order - the WHAT).
+
+        Migration Note (0367d): Replaced MCPAgentJob with AgentJob.
+        Returns AgentJob data dictionary.
+        """
         return {
             "job_id": str(uuid.uuid4()),
             "tenant_key": tenant_key,
             "project_id": project_id,
-            "agent_type": agent_type or "worker",
+            "job_type": agent_type or "worker",
             "mission": f"Test mission for {agent_type or 'worker'} agent",
-            "status": "waiting",
+            "status": "active",  # AgentJob has 3 statuses: active/completed/cancelled
             "created_at": datetime.now(timezone.utc),
+            "job_metadata": {},
+        }
+
+    @staticmethod
+    def generate_agent_execution_data(
+        job_id: str, tenant_key: str, agent_type: Optional[str] = None, instance_number: int = 1
+    ) -> dict[str, Any]:
+        """
+        Generate test AgentExecution data (executor - the WHO).
+
+        Migration Note (0367d): Extracted from AgentExecution.
+        Returns AgentExecution data dictionary.
+        """
+        return {
+            "agent_id": str(uuid.uuid4()),
+            "job_id": job_id,
+            "tenant_key": tenant_key,
+            "agent_type": agent_type or "worker",
+            "agent_name": f"Test {agent_type or 'worker'} Agent",
+            "instance_number": instance_number,
+            "status": "waiting",  # AgentExecution has 7 statuses
+            "progress": 0,
+            "messages": [],
+            "health_status": "unknown",
+            "tool_type": "universal",
+            "context_used": 0,
+            "context_budget": 150000,
         }
 
     @staticmethod
@@ -121,33 +154,60 @@ async def test_project(db_session) -> Project:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_agent_jobs(db_session, test_project) -> list:
-    """Create multiple test agent jobs"""
-    jobs = []
+async def test_agent_jobs(db_session, test_project) -> list[tuple[AgentJob, AgentExecution]]:
+    """
+    Create multiple test agent jobs with executions.
+
+    Migration Note (0367d): Now creates both AgentJob and AgentExecution.
+    Returns list of tuples: [(job1, execution1), (job2, execution2), ...]
+
+    For backward compatibility, tests can unpack: jobs_and_execs = test_agent_jobs
+    Or access jobs only: jobs = [job for job, _ in test_agent_jobs]
+    """
+    jobs_and_executions = []
     agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
 
     for agent_type in agent_types:
+        # Create AgentJob (work order)
         job_data = TestData.generate_agent_job_data(test_project.id, test_project.tenant_key, agent_type)
-        job = MCPAgentJob(**job_data)
+        job = AgentJob(**job_data)
         db_session.add(job)
-        jobs.append(job)
+
+        # Create AgentExecution (executor)
+        execution_data = TestData.generate_agent_execution_data(job.job_id, test_project.tenant_key, agent_type)
+        execution = AgentExecution(**execution_data)
+        db_session.add(execution)
+
+        jobs_and_executions.append((job, execution))
 
     await db_session.commit()
-    for job in jobs:
+    for job, execution in jobs_and_executions:
         await db_session.refresh(job)
+        await db_session.refresh(execution)
 
-    return jobs
+    return jobs_and_executions
 
 
 @pytest_asyncio.fixture(scope="function")
 async def test_messages(db_session, test_agent_jobs, test_project) -> list:
-    """Create test messages between agents"""
+    """
+    Create test messages between agents.
+
+    Migration Note (0367d): Messages reference agent_id (from AgentExecution).
+    test_agent_jobs now returns list of tuples: [(job, execution), ...]
+    """
     messages = []
 
-    # Create messages between agent jobs
+    # Create messages between agent executions
     for i in range(len(test_agent_jobs) - 1):
+        # Extract executions from tuples
+        _, from_execution = test_agent_jobs[i]
+        _, to_execution = test_agent_jobs[i + 1]
+
         msg_data = TestData.generate_message_data(
-            from_agent=test_agent_jobs[i].job_id, to_agent=test_agent_jobs[i + 1].job_id, project_id=test_project.id
+            from_agent=from_execution.agent_id,
+            to_agent=to_execution.agent_id,
+            project_id=test_project.id,
         )
         message = Message(**msg_data)
         db_session.add(message)

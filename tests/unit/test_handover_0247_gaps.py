@@ -18,7 +18,7 @@ from uuid import uuid4
 
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 # Fixtures
@@ -77,7 +77,7 @@ def succession_manager(mock_sync_session):
 
 @pytest.fixture
 def mock_orchestrator():
-    orch = MagicMock(spec=MCPAgentJob)
+    orch = MagicMock(spec=AgentExecution)
     orch.job_id = str(uuid4())
     orch.tenant_key = "test-tenant-123"
     orch.project_id = str(uuid4())

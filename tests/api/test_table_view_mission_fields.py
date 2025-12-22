@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.products import Product
 
@@ -27,7 +27,7 @@ async def test_project_with_jobs(db_manager, admin_user):
         session.add(product)
         await session.commit()
         await session.refresh(product)
-        
+
         # Create project
         project = Project(
             id=str(uuid4()),
@@ -45,7 +45,7 @@ async def test_project_with_jobs(db_manager, admin_user):
         # Job 1: With mission_acknowledged_at set
         job1_id = str(uuid4())
         ack_time = datetime.now(timezone.utc)
-        job1 = MCPAgentJob(
+        job1 = AgentExecution(
             job_id=job1_id,
             tenant_key=admin_user.tenant_key,
             project_id=project.id,
@@ -61,7 +61,7 @@ async def test_project_with_jobs(db_manager, admin_user):
         # Job 2: With mission_acknowledged_at set
         job2_id = str(uuid4())
         ack_time2 = datetime.now(timezone.utc)
-        job2 = MCPAgentJob(
+        job2 = AgentExecution(
             job_id=job2_id,
             tenant_key=admin_user.tenant_key,
             project_id=project.id,
@@ -76,7 +76,7 @@ async def test_project_with_jobs(db_manager, admin_user):
 
         # Job 3: With mission_acknowledged_at null
         job3_id = str(uuid4())
-        job3 = MCPAgentJob(
+        job3 = AgentExecution(
             job_id=job3_id,
             tenant_key=admin_user.tenant_key,
             project_id=project.id,

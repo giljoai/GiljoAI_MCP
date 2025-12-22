@@ -24,7 +24,8 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Project, Product
+from src.giljo_mcp.models import Project, Product
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.staging_rollback import (
     StagingRollbackManager,
     rollback_project_staging,
@@ -95,7 +96,7 @@ async def orchestrator_job(
 ):
     """Create orchestrator job"""
     async with db_manager.get_session_async() as session:
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             tenant_key=tenant_key,
             project_id=test_project.id,
             agent_type="orchestrator",
@@ -118,7 +119,7 @@ class TestStagingRollbackBasic:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 1: Soft delete agents in 'waiting' status (default behavior)
@@ -126,7 +127,7 @@ class TestStagingRollbackBasic:
         # Arrange: Create 3 child agents in 'waiting' status
         async with db_manager.get_session_async() as session:
             agents = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type=f"implementer_{i}",
@@ -161,8 +162,8 @@ class TestStagingRollbackBasic:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.spawned_by == orchestrator_job.job_id
+            stmt = select(AgentExecution).where(
+                AgentExecution.spawned_by == orchestrator_job.job_id
             )
             result_agents = await session.execute(stmt)
             agents_after = result_agents.scalars().all()
@@ -181,7 +182,7 @@ class TestStagingRollbackBasic:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 2: Hard delete agents (permanent removal)
@@ -189,7 +190,7 @@ class TestStagingRollbackBasic:
         # Arrange: Create 2 child agents in 'waiting' status
         async with db_manager.get_session_async() as session:
             agents = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type=f"tester_{i}",
@@ -221,8 +222,8 @@ class TestStagingRollbackBasic:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.spawned_by == orchestrator_job.job_id
+            stmt = select(AgentExecution).where(
+                AgentExecution.spawned_by == orchestrator_job.job_id
             )
             result_agents = await session.execute(stmt)
             agents_after = result_agents.scalars().all()
@@ -235,7 +236,7 @@ class TestStagingRollbackBasic:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 3: Agents with status != 'waiting' are NOT deleted (protected)
@@ -243,7 +244,7 @@ class TestStagingRollbackBasic:
         # Arrange: Create agents with different statuses
         async with db_manager.get_session_async() as session:
             agents = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type="implementer_1",
@@ -251,7 +252,7 @@ class TestStagingRollbackBasic:
                     status="waiting",  # Deletable
                     spawned_by=orchestrator_job.job_id,
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type="implementer_2",
@@ -259,7 +260,7 @@ class TestStagingRollbackBasic:
                     status="active",  # Protected (already launched)
                     spawned_by=orchestrator_job.job_id,
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type="implementer_3",
@@ -267,7 +268,7 @@ class TestStagingRollbackBasic:
                     status="working",  # Protected (already launched)
                     spawned_by=orchestrator_job.job_id,
                 ),
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type="implementer_4",
@@ -299,9 +300,9 @@ class TestStagingRollbackBasic:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.spawned_by == orchestrator_job.job_id,
-                MCPAgentJob.status.in_(["active", "working"]),
+            stmt = select(AgentExecution).where(
+                AgentExecution.spawned_by == orchestrator_job.job_id,
+                AgentExecution.status.in_(["active", "working"]),
             )
             result_agents = await session.execute(stmt)
             protected_agents = result_agents.scalars().all()
@@ -317,7 +318,7 @@ class TestStagingRollbackBasic:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 4: Orchestrator status updated to 'failed' with metadata
@@ -339,8 +340,8 @@ class TestStagingRollbackBasic:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == orchestrator_job.job_id
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == orchestrator_job.job_id
             )
             result_orch = await session.execute(stmt)
             orch_after = result_orch.scalar_one()
@@ -355,7 +356,7 @@ class TestStagingRollbackBasic:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 5: Project mission field cleared during rollback
@@ -397,7 +398,7 @@ class TestStagingRollbackSecurity:
         tenant_key: str,
         tenant_key_2: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 6: CRITICAL - Multi-tenant isolation enforced
@@ -406,7 +407,7 @@ class TestStagingRollbackSecurity:
         async with db_manager.get_session_async() as session:
             # Tenant A agents (should be deleted)
             agents_a = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,  # Tenant A
                     project_id=test_project.id,
                     agent_type=f"implementer_a_{i}",
@@ -419,7 +420,7 @@ class TestStagingRollbackSecurity:
 
             # Tenant B agents (should NOT be deleted)
             agents_b = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key_2,  # Tenant B (different tenant)
                     project_id=test_project.id,
                     agent_type=f"implementer_b_{i}",
@@ -452,18 +453,18 @@ class TestStagingRollbackSecurity:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt_a = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.spawned_by == orchestrator_job.job_id,
+            stmt_a = select(AgentExecution).where(
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.spawned_by == orchestrator_job.job_id,
             )
             result_a = await session.execute(stmt_a)
             agents_a_after = result_a.scalars().all()
             assert len(agents_a_after) == 0  # Tenant A agents deleted
 
             # Verify Tenant B agents unchanged
-            stmt_b = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key_2,
-                MCPAgentJob.spawned_by == orchestrator_job.job_id,
+            stmt_b = select(AgentExecution).where(
+                AgentExecution.tenant_key == tenant_key_2,
+                AgentExecution.spawned_by == orchestrator_job.job_id,
             )
             result_b = await session.execute(stmt_b)
             agents_b_after = result_b.scalars().all()
@@ -496,7 +497,7 @@ class TestStagingRollbackSecurity:
         self,
         db_manager: DatabaseManager,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 8: Empty required parameters raise ValueError
@@ -553,7 +554,7 @@ class TestStagingRollbackEdgeCases:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 9: Rollback succeeds even when no child agents exist
@@ -585,7 +586,7 @@ class TestStagingRollbackEdgeCases:
         """
         # Arrange: Create orchestrator chain (instance 1 → instance 2)
         async with db_manager.get_session_async() as session:
-            orch_1 = MCPAgentJob(
+            orch_1 = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=test_project.id,
                 agent_type="orchestrator",
@@ -597,7 +598,7 @@ class TestStagingRollbackEdgeCases:
             await session.commit()
             await session.refresh(orch_1)
 
-            orch_2 = MCPAgentJob(
+            orch_2 = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=test_project.id,
                 agent_type="orchestrator",
@@ -612,7 +613,7 @@ class TestStagingRollbackEdgeCases:
 
             # Create agents spawned by instance 2
             agents = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type=f"implementer_{i}",
@@ -644,8 +645,8 @@ class TestStagingRollbackEdgeCases:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == orch_1.job_id
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == orch_1.job_id
             )
             result_orch1 = await session.execute(stmt)
             orch1_after = result_orch1.scalar_one()
@@ -658,7 +659,7 @@ class TestStagingRollbackEdgeCases:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 11: Convenience function rollback_project_staging()
@@ -666,7 +667,7 @@ class TestStagingRollbackEdgeCases:
         # Arrange: Create child agents
         async with db_manager.get_session_async() as session:
             agents = [
-                MCPAgentJob(
+                AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
                     agent_type=f"tester_{i}",
@@ -698,7 +699,7 @@ class TestStagingRollbackEdgeCases:
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
-        orchestrator_job: MCPAgentJob,
+        orchestrator_job: AgentExecution,
     ):
         """
         Test 12: Transaction rollback on database error
@@ -722,8 +723,8 @@ class TestStagingRollbackEdgeCases:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == orchestrator_job.job_id
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == orchestrator_job.job_id
             )
             result_orch = await session.execute(stmt)
             orch_after = result_orch.scalar_one()

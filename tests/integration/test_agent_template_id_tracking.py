@@ -10,7 +10,8 @@ from pathlib import Path
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import MCPAgentJob, AgentTemplate, Product, Project
+from src.giljo_mcp.models import AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from sqlalchemy import select
 
 
@@ -64,7 +65,7 @@ async def test_spawn_agent_job_captures_template_id():
         await session.commit()
 
         # Create agent job with template_id
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-123",
@@ -83,7 +84,7 @@ async def test_spawn_agent_job_captures_template_id():
 
         # Verify we can query by template_id
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.template_id == template.id)
+            select(AgentExecution).where(AgentExecution.template_id == template.id)
         )
         retrieved_job = result.scalar_one()
         assert retrieved_job.id == agent_job.id
@@ -135,7 +136,7 @@ async def test_agent_job_without_template_id():
         await session.commit()
 
         # Create agent job WITHOUT template_id
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-no-template",
@@ -206,7 +207,7 @@ async def test_multiple_jobs_same_template():
         await session.commit()
 
         # Create multiple jobs with same template
-        job1 = MCPAgentJob(
+        job1 = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-1",
@@ -217,7 +218,7 @@ async def test_multiple_jobs_same_template():
             template_id=template.id,
         )
 
-        job2 = MCPAgentJob(
+        job2 = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-2",
@@ -233,7 +234,7 @@ async def test_multiple_jobs_same_template():
 
         # Query all jobs with this template
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.template_id == template.id)
+            select(AgentExecution).where(AgentExecution.template_id == template.id)
         )
         jobs = result.scalars().all()
 

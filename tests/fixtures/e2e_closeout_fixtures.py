@@ -25,7 +25,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -254,7 +255,7 @@ class E2ECloseoutFixtures:
 
     async def _create_test_agents(
         self, session: AsyncSession, tenant_key: str, project_id: str
-    ) -> list[MCPAgentJob]:
+    ) -> list[AgentExecution]:
         """
         Create 3 completed test agents.
 
@@ -264,7 +265,7 @@ class E2ECloseoutFixtures:
             project_id: Project ID to associate with
 
         Returns:
-            list[MCPAgentJob]: List of created agent jobs
+            list[AgentExecution]: List of created agent jobs
         """
         agents = []
         agent_configs = [
@@ -286,7 +287,7 @@ class E2ECloseoutFixtures:
         ]
 
         for config in agent_configs:
-            agent = MCPAgentJob(
+            agent = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
                 agent_type=config["type"],
@@ -365,10 +366,10 @@ class E2ECloseoutFixtures:
         print(f"[OK] Project verified: {project.name}")
 
         # Verify agents
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.project_id == project.id,
-            MCPAgentJob.status == "complete"
+        stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.project_id == project.id,
+            AgentExecution.status == "complete"
         )
         result = await session.execute(stmt)
         agents = result.scalars().all()
@@ -392,7 +393,7 @@ class E2ECloseoutFixtures:
         print(f"\n=== Cleaning up fixtures for tenant: {tenant_key} ===")
 
         # Delete agents
-        stmt = select(MCPAgentJob).where(MCPAgentJob.tenant_key == tenant_key)
+        stmt = select(AgentExecution).where(AgentExecution.tenant_key == tenant_key)
         result = await session.execute(stmt)
         agents = result.scalars().all()
         for agent in agents:

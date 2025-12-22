@@ -27,7 +27,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import (
-    User, Product, Project, MCPAgentJob, AgentTemplate
+    User, Product, Project, AgentExecution, AgentTemplate
 )
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator

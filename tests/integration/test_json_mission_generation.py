@@ -22,7 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.json_context_builder import JSONContextBuilder
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import MCPAgentJob, Product, Project
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.products import VisionDocument
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
@@ -100,7 +101,7 @@ def sample_vision_doc():
 @pytest.fixture
 def sample_orchestrator(sample_project):
     """Create sample orchestrator job for testing."""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="test-orchestrator-id",
         agent_type="orchestrator",
         agent_name="Orchestrator",

@@ -10,7 +10,8 @@ import pytest
 from sqlalchemy import select
 from uuid import uuid4
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -188,10 +189,10 @@ async def test_end_to_end_priority_filtering(
     )
 
     # ASSERT 1: Orchestrator job created with user settings in metadata
-    orchestrator_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.tenant_key == test_user.tenant_key
+    orchestrator_stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.tenant_key == test_user.tenant_key
     )
     orchestrator_result = await db_session.execute(orchestrator_stmt)
     orchestrator = orchestrator_result.scalar_one()

@@ -19,7 +19,7 @@ from uuid import uuid4
 
 import pytest
 
-from giljo_mcp.models import MCPAgentJob, Project
+from giljo_mcp.models import AgentExecution, Project
 from giljo_mcp.tools.orchestration import register_orchestration_tools
 
 
@@ -43,7 +43,7 @@ async def test_project(db_session, test_tenant):
 @pytest.fixture
 async def test_orchestrator_job(db_session, test_project, test_tenant):
     """Create test orchestrator job"""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id=str(uuid4()),
         project_id=test_project.id,
         tenant_key=test_tenant.tenant_key,
@@ -69,7 +69,7 @@ async def test_orchestrator_job(db_session, test_project, test_tenant):
 @pytest.fixture
 async def test_agent_job(db_session, test_project, test_tenant, test_orchestrator_job):
     """Create test agent job"""
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id=str(uuid4()),
         project_id=test_project.id,
         tenant_key=test_tenant.tenant_key,
@@ -326,7 +326,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, test_project, test_tenant
         assert result["mission_tokens"] > 0
 
         # Verify agent job created in database
-        agent_job = await db_session.get(MCPAgentJob, result["agent_job_id"])
+        agent_job = await db_session.get(AgentExecution, result["agent_job_id"])
         assert agent_job is not None
         assert agent_job.mission == mission_text
         assert agent_job.spawned_by == test_orchestrator_job.job_id
@@ -409,7 +409,7 @@ async def test_agent_mission_stored_not_embedded(db_session, test_project, test_
         assert mission not in result["agent_prompt"], "CRITICAL: Mission must NOT be embedded in prompt"
 
         # Verify mission IS in database
-        agent_job = await db_session.get(MCPAgentJob, result["agent_job_id"])
+        agent_job = await db_session.get(AgentExecution, result["agent_job_id"])
         assert agent_job.mission == mission, "CRITICAL: Mission must be stored in database"
 
 

@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 from src.giljo_mcp.database import DatabaseManager
 
@@ -148,7 +148,7 @@ async def monolithic_test_orchestrator(
     monolithic_test_user
 ):
     """Create orchestrator job with user metadata."""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id=str(uuid4()),
         tenant_key=test_tenant_key,
         project_id=monolithic_test_project.id,

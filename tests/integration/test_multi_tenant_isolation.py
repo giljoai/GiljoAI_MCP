@@ -28,8 +28,9 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import (
-    User, Product, Project, MCPAgentJob
+    User, Product, Project
 )
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.mission_planner import MissionPlanner
 
 from tests.fixtures.base_fixtures import db_manager, db_session
@@ -451,7 +452,7 @@ class TestContextGenerationTenantRespect:
         await db_session.flush()
 
         # Create job
-        job = MCPAgentJob(
+        job = AgentExecution(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
             project_id=project.id,
@@ -558,7 +559,7 @@ class TestMCPToolTenantScoping:
         await db_session.flush()
 
         # Create job for MCP tool call
-        job = MCPAgentJob(
+        job = AgentExecution(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
             project_id=project.id,

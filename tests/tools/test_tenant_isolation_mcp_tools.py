@@ -23,7 +23,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -101,7 +102,7 @@ async def two_tenant_setup(db_session):
 
     # Create MCPAgentJob A for Tenant A
     # Valid status values: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
-    agent_job_a = MCPAgentJob(
+    agent_job_a = AgentExecution(
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_a,
         project_id=project_a.id,
@@ -113,7 +114,7 @@ async def two_tenant_setup(db_session):
     db_session.add(agent_job_a)
 
     # Create MCPAgentJob B for Tenant B
-    agent_job_b = MCPAgentJob(
+    agent_job_b = AgentExecution(
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_b,
         project_id=project_b.id,

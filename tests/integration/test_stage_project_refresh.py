@@ -22,7 +22,8 @@ from passlib.hash import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from src.giljo_mcp.models import Project, Product, MCPAgentJob, User
+from src.giljo_mcp.models import Project, Product, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -116,7 +117,7 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
     assert orchestrator_id_1 == orchestrator_id_2, "Orchestrator should be reused, not recreated"
 
     # ASSERT: Verify metadata was updated
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_2)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_2)
     result = await db_session.execute(stmt)
     orchestrator = result.scalar_one()
 
@@ -417,10 +418,10 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
         "Third stage should reuse orchestrator from previous stages"
 
     # ASSERT: Only one orchestrator exists in database
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project.id,
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.tenant_key == tenant_key,
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == project.id,
+        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.tenant_key == tenant_key,
     )
     result = await db_session.execute(stmt)
     orchestrators = result.scalars().all()

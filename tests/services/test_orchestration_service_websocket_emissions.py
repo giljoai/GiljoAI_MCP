@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 from uuid import uuid4
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 
 
@@ -57,7 +57,7 @@ def orchestration_service(mock_db_manager, mock_tenant_manager):
 @pytest.fixture
 def mock_agent_job():
     """Create mock agent job in waiting status."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test-123",
         project_id=str(uuid4()),
@@ -74,7 +74,7 @@ def mock_agent_job():
 @pytest.fixture
 def mock_working_job():
     """Create mock agent job in working status."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test-123",
         project_id=str(uuid4()),
@@ -434,7 +434,7 @@ async def test_websocket_emission_respects_tenant_isolation(orchestration_servic
 
     # Create job for Tenant A
     tenant_a_key = "tenant-a-123"
-    job_a = MCPAgentJob(
+    job_a = AgentExecution(
         job_id=str(uuid4()),
         tenant_key=tenant_a_key,
         project_id=str(uuid4()),

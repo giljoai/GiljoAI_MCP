@@ -171,7 +171,7 @@ class AgentHealthMonitor:
                 and_(
                     AgentExecution.tenant_key == tenant_key,
                     AgentExecution.status == "waiting",
-                    AgentExecution.created_at < timeout_threshold,
+                    AgentJob.created_at < timeout_threshold,
                     or_(
                         AgentJob.project_id.is_(None),
                         Project.deleted_at.is_(None)
@@ -189,8 +189,12 @@ class AgentHealthMonitor:
                 agent_type=execution.job.agent_type,
                 current_status="waiting",
                 health_state="critical",
-                last_update=execution.created_at,
-                minutes_since_update=(datetime.now(timezone.utc) - execution.created_at).total_seconds() / 60,
+                last_update=execution.job.created_at,
+                minutes_since_update=(
+                    (datetime.now(timezone.utc) - execution.job.created_at).total_seconds() / 60
+                    if execution.job.created_at
+                    else float(self.config.waiting_timeout_minutes)
+                ),
                 issue_description=f"Job never acknowledged after {self.config.waiting_timeout_minutes} minutes",
                 recommended_action="Check if agent received job, manual intervention may be required"
             )
@@ -406,8 +410,8 @@ class AgentHealthMonitor:
             except (ValueError, TypeError):
                 pass
 
-        # Fallback to started_at or created_at
-        return execution.started_at or execution.created_at
+        # Fallback to started_at or job.created_at
+        return execution.started_at or execution.job.created_at
 
     def _get_last_activity_time(self, execution: AgentExecution) -> datetime:
         """
@@ -420,7 +424,7 @@ class AgentHealthMonitor:
             Most recent activity timestamp
         """
         candidates = [
-            execution.created_at,
+            execution.job.created_at,
             execution.started_at,
             execution.last_progress_at,
             execution.last_message_check_at,
@@ -429,7 +433,7 @@ class AgentHealthMonitor:
 
         # Filter out None values and return max
         valid_timestamps = [ts for ts in candidates if ts is not None]
-        return max(valid_timestamps) if valid_timestamps else execution.created_at
+        return max(valid_timestamps) if valid_timestamps else datetime.now(timezone.utc)
 
     async def _get_all_tenants(self, session: AsyncSession) -> List[str]:
         """

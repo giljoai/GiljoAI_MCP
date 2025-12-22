@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Message, Project
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from giljo_mcp.tools.orchestration import get_orchestrator_instructions
-from giljo_mcp.models import MCPAgentJob, Product, Project, User
+from giljo_mcp.models import AgentExecution, Product, Project, User
 
 
 # Test fixtures
@@ -87,7 +87,7 @@ class TestOrchestratorTokenReduction:
         """Test that orchestrator prompt no longer embeds agent templates inline."""
 
         # Create orchestrator job
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -144,7 +144,7 @@ class TestOrchestratorTokenReduction:
     ):
         """Test that prompt token count is significantly smaller (target: 450 tokens)."""
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -195,7 +195,7 @@ class TestOrchestratorTokenReduction:
     ):
         """Test that get_orchestrator_instructions() no longer returns embedded templates."""
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -239,7 +239,7 @@ class TestOrchestratorTokenReduction:
     ):
         """Test that prompt contains clear reference to agent discovery tool."""
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",
@@ -301,7 +301,7 @@ class TestOrchestratorTokenReduction:
     ):
         """Test that tenant isolation is maintained in discovery tool reference."""
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
             agent_type="orchestrator",

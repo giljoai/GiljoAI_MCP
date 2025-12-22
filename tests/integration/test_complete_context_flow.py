@@ -30,7 +30,8 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.services.product_service import ProductService
@@ -161,7 +162,7 @@ class TestCompleteSettingsPersistence:
         assert priorities["tech_stack"] == 2
 
         # Simulate staging (where priorities are passed to job)
-        job = MCPAgentJob(
+        job = AgentExecution(
             id=str(uuid4()),
             product_id=product_with_all_features.id,
             project_id=project_ready_to_stage.id,
@@ -179,7 +180,7 @@ class TestCompleteSettingsPersistence:
         await db_session.flush()
 
         # Retrieve from database and verify persistence
-        retrieved_job = await db_session.get(MCPAgentJob, job.id)
+        retrieved_job = await db_session.get(AgentExecution, job.id)
         assert retrieved_job.job_metadata["field_priorities"] == priorities
 
     async def test_depth_config_setting_persists(
@@ -356,7 +357,7 @@ class TestOrchestratorContextDelivery:
         (Handover 0266 - critical requirement)
         """
         # Create orchestration job
-        job = MCPAgentJob(
+        job = AgentExecution(
             id=str(uuid4()),
             product_id=product_with_all_features.id,
             project_id=project_ready_to_stage.id,

@@ -24,8 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from src.giljo_mcp.models import (
-    User, Product, Project, MCPAgentJob
+    User, Product, Project
 )
+from src.giljo_mcp.models.agents import AgentExecution
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -330,7 +331,7 @@ class TestMissingRelationships:
         """
         REQUIREMENT: Agent job with non-existent user should not crash
         """
-        job = MCPAgentJob(
+        job = AgentExecution(
             id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
@@ -343,7 +344,7 @@ class TestMissingRelationships:
         await db_session.flush()
 
         # Should not crash
-        retrieved = await db_session.get(MCPAgentJob, job.id)
+        retrieved = await db_session.get(AgentExecution, job.id)
         assert retrieved is not None
 
 

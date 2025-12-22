@@ -9,13 +9,13 @@ Note: mission_read_at has been removed; only mission_acknowledged_at remains.
 import pytest
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
 async def test_agent_job_has_mission_acknowledged_at_field_defaults_none(db_session: AsyncSession):
     """Test that MCPAgentJob model includes mission_acknowledged_at timestamp field defaulting to None"""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-001",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -36,7 +36,7 @@ async def test_agent_job_has_mission_acknowledged_at_field_defaults_none(db_sess
 @pytest.mark.asyncio
 async def test_agent_job_has_mission_acknowledged_at_field(db_session: AsyncSession):
     """Test that MCPAgentJob model includes mission_acknowledged_at timestamp field"""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-002",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -58,7 +58,7 @@ async def test_agent_job_has_mission_acknowledged_at_field(db_session: AsyncSess
 @pytest.mark.asyncio
 async def test_agent_job_can_update_mission_acknowledged_at(db_session: AsyncSession):
     """Test that mission_acknowledged_at can be set and updated"""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-003",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -91,7 +91,7 @@ async def test_agent_job_can_set_mission_acknowledged_at_timestamp(db_session: A
     """Test that mission_acknowledged_at can be set to a timestamp"""
     ack_time = datetime.now(timezone.utc)
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-004",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -116,7 +116,7 @@ async def test_agent_job_mission_acknowledged_at_independent_of_status(db_sessio
     """Test that mission_acknowledged_at timestamp is independent of job status"""
     ack_time = datetime.now(timezone.utc)
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-005",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -140,7 +140,7 @@ async def test_agent_job_mission_acknowledged_at_persists_across_sessions(db_ses
     """Test that mission_acknowledged_at persists correctly across database sessions"""
     ack_time = datetime.now(timezone.utc)
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id="test-job-006",
         tenant_key="test-tenant",
         agent_type="orchestrator",
@@ -161,7 +161,7 @@ async def test_agent_job_mission_acknowledged_at_persists_across_sessions(db_ses
     from sqlalchemy import select
     async with db_session.begin():
         result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+            select(AgentExecution).where(AgentExecution.job_id == job_id)
         )
         retrieved_job = result.scalar_one_or_none()
 

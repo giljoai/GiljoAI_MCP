@@ -24,7 +24,8 @@ from api.app import create_app
 from api.dependencies.websocket import WebSocketDependency
 from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.fixture
@@ -162,7 +163,7 @@ class TestStageProjectWorkflow:
         # Assert: Agent created in database
         from sqlalchemy import select
         result = await db_session.execute(
-            select(MCPAgentJob).filter_by(
+            select(AgentExecution).filter_by(
                 project_id=test_project.id,
                 tenant_key=test_user.tenant_key,
                 agent_type="implementor"

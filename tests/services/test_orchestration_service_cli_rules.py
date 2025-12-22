@@ -14,7 +14,7 @@ import uuid
 import pytest
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+from giljo_mcp.models import AgentTemplate, AgentExecution, Product, Project
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ class TestCLIModeRules:
 
             # Create CLI mode orchestrator job
             orchestrator_id = str(uuid.uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -124,7 +124,7 @@ class TestCLIModeRules:
 
             # Create multi-terminal mode orchestrator job
             orchestrator_id = str(uuid.uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -526,7 +526,7 @@ class TestCLIModeRulesBackwardCompatibility:
 
             # Create CLI mode orchestrator job
             orchestrator_id = str(uuid.uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,

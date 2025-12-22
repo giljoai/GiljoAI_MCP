@@ -11,7 +11,8 @@ import pytest
 
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.enums import AgentRole, ProjectStatus
-from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Project
+from src.giljo_mcp.models import AgentTemplate, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
 
@@ -318,7 +319,7 @@ async def test_spawn_generic_agent_creates_job(orchestrator, test_project, codex
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         result = await session.execute(stmt)
         db_job = result.scalar_one_or_none()
 
@@ -474,7 +475,7 @@ async def test_acknowledge_job_transitions_status(orchestrator, test_project, co
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
 
@@ -520,7 +521,7 @@ async def test_complete_job_transitions_status(orchestrator, test_project, codex
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
 
@@ -568,7 +569,7 @@ async def test_report_error_transitions_status(orchestrator, test_project, codex
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
 
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         result = await session.execute(stmt)
         updated_job = result.scalar_one()
 
@@ -614,7 +615,7 @@ def test_generate_mcp_instructions_includes_tenant_key(orchestrator):
 def test_generate_cli_prompt_includes_job_info(orchestrator, test_project, codex_template, db_manager):
     """Test CLI prompt includes job information."""
     # Create mock job
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=test_project.tenant_key,
         agent_type="tester",
         mission="Test mission",
@@ -635,7 +636,7 @@ def test_generate_cli_prompt_includes_job_info(orchestrator, test_project, codex
 
 def test_generate_cli_prompt_copy_paste_ready(orchestrator, test_project, gemini_template, db_manager):
     """Test CLI prompt is copy-paste ready with all sections."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=test_project.tenant_key,
         agent_type="reviewer",
         mission="Review code",

@@ -9,7 +9,7 @@ from sqlalchemy import and_, select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
 
@@ -51,7 +51,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
         await session.flush()
 
         # Create orchestrator job (mission_acknowledged_at should be None initially)
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=str(uuid.uuid4()),
             tenant_key=tenant_key,
             project_id=project.id,
@@ -73,7 +73,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
 
         # Verify mission_acknowledged_at is None before first call
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
         )
         job = result.scalar_one()
         assert job.mission_acknowledged_at is None, "mission_acknowledged_at should be None initially"
@@ -90,7 +90,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
     # Verify mission_acknowledged_at was set
     async with db_manager.get_session_async() as session:
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
         )
         job = result.scalar_one()
         assert job.mission_acknowledged_at is not None, "mission_acknowledged_at should be set after first call"
@@ -109,7 +109,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
     # Verify mission_acknowledged_at was NOT updated
     async with db_manager.get_session_async() as session:
         result = await session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
         )
         job = result.scalar_one()
         assert job.mission_acknowledged_at == first_ack_timestamp, (
@@ -149,7 +149,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
         session.add(project1)
         await session.flush()
 
-        orchestrator1 = MCPAgentJob(
+        orchestrator1 = AgentExecution(
             job_id=str(uuid.uuid4()),
             tenant_key=tenant_key_1,
             project_id=project1.id,
@@ -184,7 +184,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
         session.add(project2)
         await session.flush()
 
-        orchestrator2 = MCPAgentJob(
+        orchestrator2 = AgentExecution(
             job_id=orchestrator1.job_id,  # Same job_id
             tenant_key=tenant_key_2,  # Different tenant
             project_id=project2.id,
@@ -211,10 +211,10 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
     # Verify only tenant_key_2's job has mission_acknowledged_at set
     async with db_manager.get_session_async() as session:
         result = await session.execute(
-            select(MCPAgentJob).where(
+            select(AgentExecution).where(
                 and_(
-                    MCPAgentJob.job_id == job_id,
-                    MCPAgentJob.tenant_key == tenant_key_1
+                    AgentExecution.job_id == job_id,
+                    AgentExecution.tenant_key == tenant_key_1
                 )
             )
         )
@@ -222,10 +222,10 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
         assert job1.mission_acknowledged_at is None, "Tenant 1 job should not have mission_acknowledged_at set"
 
         result = await session.execute(
-            select(MCPAgentJob).where(
+            select(AgentExecution).where(
                 and_(
-                    MCPAgentJob.job_id == job_id,
-                    MCPAgentJob.tenant_key == tenant_key_2
+                    AgentExecution.job_id == job_id,
+                    AgentExecution.tenant_key == tenant_key_2
                 )
             )
         )

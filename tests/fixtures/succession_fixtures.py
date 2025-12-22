@@ -13,7 +13,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class SuccessionTestData:
@@ -108,7 +109,7 @@ async def orchestrator_at_90_percent(db_session: AsyncSession, test_project: Pro
         status="working",
     )
 
-    orchestrator = MCPAgentJob(**job_data)
+    orchestrator = AgentExecution(**job_data)
     db_session.add(orchestrator)
     await db_session.commit()
     await db_session.refresh(orchestrator)
@@ -135,7 +136,7 @@ async def orchestrator_below_threshold(db_session: AsyncSession, test_project: P
         status="working",
     )
 
-    orchestrator = MCPAgentJob(**job_data)
+    orchestrator = AgentExecution(**job_data)
     db_session.add(orchestrator)
     await db_session.commit()
     await db_session.refresh(orchestrator)
@@ -163,7 +164,7 @@ async def orchestrator_over_100_percent(db_session: AsyncSession, test_project: 
         status="working",
     )
 
-    orchestrator = MCPAgentJob(**job_data)
+    orchestrator = AgentExecution(**job_data)
     db_session.add(orchestrator)
     await db_session.commit()
     await db_session.refresh(orchestrator)
@@ -191,7 +192,7 @@ async def succession_chain_3_instances(db_session: AsyncSession, test_project: P
         context_budget=150000,
         status="complete",
     )
-    instance1 = MCPAgentJob(**instance1_data)
+    instance1 = AgentExecution(**instance1_data)
     instance1.completed_at = datetime.now(timezone.utc)
     instance1.succession_reason = "context_limit"
     db_session.add(instance1)
@@ -207,7 +208,7 @@ async def succession_chain_3_instances(db_session: AsyncSession, test_project: P
         spawned_by=instance1.job_id,
         status="complete",
     )
-    instance2 = MCPAgentJob(**instance2_data)
+    instance2 = AgentExecution(**instance2_data)
     instance2.completed_at = datetime.now(timezone.utc)
     instance2.succession_reason = "context_limit"
     db_session.add(instance2)
@@ -227,7 +228,7 @@ async def succession_chain_3_instances(db_session: AsyncSession, test_project: P
         spawned_by=instance2.job_id,
         status="working",
     )
-    instance3 = MCPAgentJob(**instance3_data)
+    instance3 = AgentExecution(**instance3_data)
     db_session.add(instance3)
     await db_session.flush()
 
@@ -274,7 +275,7 @@ async def multi_tenant_orchestrators(db_session: AsyncSession, test_project: Pro
         context_budget=150000,
         status="working",
     )
-    orchestrator_a = MCPAgentJob(**orch_a_data)
+    orchestrator_a = AgentExecution(**orch_a_data)
     db_session.add(orchestrator_a)
 
     # Tenant B - Orchestrator at 50%
@@ -286,7 +287,7 @@ async def multi_tenant_orchestrators(db_session: AsyncSession, test_project: Pro
         context_budget=150000,
         status="working",
     )
-    orchestrator_b = MCPAgentJob(**orch_b_data)
+    orchestrator_b = AgentExecution(**orch_b_data)
     db_session.add(orchestrator_b)
 
     await db_session.commit()

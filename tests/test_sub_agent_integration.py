@@ -22,7 +22,8 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import MCPAgentJob, AgentInteraction, Base, Message, Project
+from src.giljo_mcp.models import AgentInteraction, Base, Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

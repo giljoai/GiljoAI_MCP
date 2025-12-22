@@ -534,14 +534,14 @@ class TestAgentJobStatus:
           jobs endpoint returns steps: {"total": int, "completed": int}
         """
         from sqlalchemy import select
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         job_id = tenant_a_agent_job["agent_job_id"]
 
         # Populate todo_steps in job_metadata for the spawned job
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == job_id)
+                select(AgentExecution).where(AgentExecution.job_id == job_id)
             )
             job = result.scalar_one()
 

@@ -13,7 +13,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import text, inspect
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestAgentJobIndexes:
@@ -78,7 +78,7 @@ class TestIndexPerformance:
 
         # Create 5 agent jobs with different last_progress_at times
         for i in range(5):
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
                 agent_type=f"worker_{i}",
@@ -127,7 +127,7 @@ class TestIndexPerformance:
         health_statuses = ["healthy", "warning", "critical", "timeout", "unknown"]
 
         for i, health_status in enumerate(health_statuses):
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
                 agent_type=f"worker_{i}",
@@ -176,7 +176,7 @@ class TestIndexPerformance:
         # Create test jobs with various statuses and timestamps
         for i, status in enumerate(statuses):
             for j in range(2):
-                job = MCPAgentJob(
+                job = AgentExecution(
                     tenant_key=tenant_key,
                     project_id=project_id,
                     agent_type=f"worker_{i}_{j}",

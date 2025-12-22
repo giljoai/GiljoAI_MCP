@@ -17,7 +17,8 @@ import pytest
 import yaml
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product, Project, MCPAgentJob
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -223,7 +224,7 @@ class TestOrchestratorSerenaIntegration:
             session.add(project)
             await session.flush()
 
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=f"orch_{uuid4().hex[:8]}",
                 tenant_key=tenant_key,
                 project_id=project.id,

@@ -892,7 +892,7 @@ class TestAgentJobDecommissioning:
 
     def test_decommissioned_at_field_exists(self, db_session, db_manager):
         """Test that decommissioned_at field exists in MCPAgentJob model."""
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         tenant_key = str(uuid4())
         manager = AgentJobManager(db_manager)
@@ -910,7 +910,7 @@ class TestAgentJobDecommissioning:
 
     def test_decommissioned_at_is_nullable(self, db_session, db_manager):
         """Test that decommissioned_at field is nullable."""
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import inspect
 
         # Get column metadata
@@ -923,7 +923,7 @@ class TestAgentJobDecommissioning:
 
     def test_decommissioned_at_is_timezone_aware(self, db_session, db_manager):
         """Test that decommissioned_at field uses timezone-aware datetime."""
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import inspect
 
         # Get column metadata
