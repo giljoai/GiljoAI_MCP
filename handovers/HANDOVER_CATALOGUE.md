@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-21 (0367 MCPAgentJob Migration COMPLETE, 0368-0369 archived)
+**Last Updated:** 2025-12-22 (0370 Audit COMPLETE, 0372 MessageService Unification COMPLETE)
 
 ---
 
@@ -100,6 +100,8 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0370 | Comprehensive agent_id vs job_id Audit | **COMPLETE** (2025-12-22) |
+| 0372 | MessageService Unification (0366b merge) | **COMPLETE** (2025-12-22) |
 | 0356 | MCP Tool Parameter Consistency | **COMPLETE** (2025-12-21) |
 | 0357 | Agent Template Context Loading | **COMPLETE** (2025-12-21) |
 | 0358 | WebSocket & UI State Overhaul | **COMPLETE** (2025-12-21) |
