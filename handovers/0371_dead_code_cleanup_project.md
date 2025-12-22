@@ -41,7 +41,7 @@
 - `f313067c` - Phase 3: delete 5 orphan tool files + 1 test file
 - `57da9794` - Phase 4.1-4.2: add 0373 handover, deprecate TemplateManager alias
 - `93c8b4a6` - Phase 4.3: fix user management API bug
-- (pending) - Phase 4.4: remove deprecated GitHub router + frontend cleanup
+- `ac4bd88d` - Phase 4.4: remove deprecated GitHub router + frontend cleanup
 
 ---
 
