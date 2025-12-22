@@ -46,7 +46,7 @@ dependencies = [
     "PyJWT>=2.8.0",
 
     # MCP SDK (Model Context Protocol)
-    "mcp>=1.0.0",
+    "mcp==1.12.3",
     "fastmcp>=0.1.0",
 
     # Core Utilities
@@ -264,3 +264,14 @@ markers = [
     "deprecated: marks tests for deprecated functionality (Handover 0116)",
     "smoke: Smoke tests (integration workflows validating critical paths, exempt from coverage thresholds)",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", "node_modules", "installer", "installers"]
+skips = [
+    "B101",  # assert_used - allowed in tests
+    "B104",  # hardcoded_bind_all_interfaces - intentional per v3.0 architecture
+    "B601",  # paramiko_calls - handled separately if SSH used
+]
+
+[tool.bandit.assert_used]
+skips = ["*_test.py", "*test*.py"]
