@@ -1048,5 +1048,7 @@ def get_template_manager(
     return _template_manager_instance
 
 
-# Compatibility alias for backward compatibility
-TemplateManager = UnifiedTemplateManager
+# DEPRECATED: Use UnifiedTemplateManager directly. This alias will be removed in v4.0.
+# Kept for backward compatibility with examples/ directory only.
+# See Handover 0373 for migration plan.
+TemplateManager = UnifiedTemplateManager  # DEPRECATED
