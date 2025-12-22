@@ -826,7 +826,7 @@ async def get_implementation_prompt(
             .where(
                 AgentJob.project_id == project_id
             )
-            .order_by(AgentExecution.created_at.desc())
+            .order_by(AgentExecution.started_at.desc().nullslast())
         )
 
         orchestrator_result = await db.execute(orchestrator_stmt)
@@ -848,7 +848,7 @@ async def get_implementation_prompt(
                 AgentExecution.tenant_key == current_user.tenant_key,
                 AgentExecution.status.in_(['waiting', 'working'])
             )
-            .order_by(AgentExecution.created_at)
+            .order_by(AgentExecution.started_at.asc().nullsfirst())
         )
 
         agent_executions_result = await db.execute(agent_executions_stmt)
@@ -872,7 +872,7 @@ async def get_implementation_prompt(
                 .where(
                     AgentJob.project_id == project_id
                 )
-                .order_by(AgentExecution.created_at)
+                .order_by(AgentExecution.started_at.asc().nullsfirst())
             )
 
             fallback_result = await db.execute(fallback_stmt)
