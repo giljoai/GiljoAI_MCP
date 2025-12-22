@@ -93,16 +93,16 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
             )
             latest_execution = exec_result.scalars().first()
 
-            claude_type = get_claude_code_agent_type(job.agent_type)
+            claude_type = get_claude_code_agent_type(job.job_type)
 
             agent_instructions.append(
                 {
                     "mcp_agent_id": str(job.id),  # job_id = work order UUID (persistent)
                     "agent_execution_id": str(latest_execution.agent_id) if latest_execution else None,  # agent_id = executor UUID
-                    "mcp_agent_name": job.agent_type,
-                    "mcp_role": job.agent_type,
+                    "mcp_agent_name": job.job_type,
+                    "mcp_role": job.job_type,
                     "claude_code_type": claude_type,
-                    "mission": job.mission or f"Work on {project.name} as {job.agent_type}",
+                    "mission": job.mission or f"Work on {project.name} as {job.job_type}",
                     "context_budget": job.metadata.get("context_budget", 50000) if job.metadata else 50000,
                 }
             )

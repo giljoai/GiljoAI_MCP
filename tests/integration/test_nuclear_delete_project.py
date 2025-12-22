@@ -136,7 +136,7 @@ async def test_nuclear_delete_removes_all_related_data(
 
     # Check counts before deletion
     agent_count = await db_session.scalar(
-        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
+        select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
     task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -176,7 +176,7 @@ async def test_nuclear_delete_removes_all_related_data(
         select(func.count(Project.id)).where(Project.id == project_id)
     )
     agents_exist = await db_session.scalar(
-        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
+        select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
     tasks_exist = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -349,7 +349,7 @@ async def test_nuclear_delete_transaction_rollback_on_error(
 
     # Count records before deletion attempt
     initial_agent_count = await db_session.scalar(
-        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
+        select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
     initial_task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -376,7 +376,7 @@ async def test_nuclear_delete_transaction_rollback_on_error(
     db_session.expire_all()  # Not async
 
     final_agent_count = await db_session.scalar(
-        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
+        select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
     final_task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
