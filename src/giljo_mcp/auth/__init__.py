@@ -9,7 +9,6 @@ This module provides unified authentication for all deployment contexts:
 
 Components:
     - JWTManager: Create and verify JWT tokens
-    - AutoLoginMiddleware: Deprecated (kept for backwards compatibility)
     - get_current_user: FastAPI dependency for authentication
     - require_admin: FastAPI dependency for admin-only endpoints
     - AuthManager: Main auth manager with unified logic
@@ -19,7 +18,6 @@ Components:
 # Import AuthManager from the auth manager module
 from giljo_mcp.auth_manager import AuthManager
 
-from .auto_login import LOCALHOST_IPS, AutoLoginMiddleware
 from .dependencies import (
     get_current_active_user,
     get_current_user,
@@ -35,9 +33,6 @@ __all__ = [
     "AuthManager",
     # JWT
     "JWTManager",
-    # Auto-login
-    "AutoLoginMiddleware",
-    "LOCALHOST_IPS",
     # Dependencies
     "get_current_active_user",
     "get_current_user",
