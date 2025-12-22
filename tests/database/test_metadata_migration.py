@@ -8,7 +8,7 @@ including idempotency, data migration, and multi-tenant isolation.
 import pytest
 from sqlalchemy import inspect, text
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestMetadataMigration:
@@ -31,7 +31,7 @@ class TestMetadataMigration:
     def test_job_metadata_default_value(self, db_session):
         """Verify job_metadata defaults to empty JSON object."""
         # Create a minimal job without job_metadata
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key="test-tenant", project_id="test-project", agent_type="orchestrator", mission="test mission"
         )
 
@@ -81,7 +81,7 @@ class TestMetadataFunctionality:
             "created_via": "thin_client_generator",
         }
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project",
             agent_type="orchestrator",
@@ -101,7 +101,7 @@ class TestMetadataFunctionality:
     def test_query_by_job_metadata_field(self, db_session):
         """Test querying jobs by job_metadata field using JSONB operators."""
         # Create jobs with different tools
-        job1 = MCPAgentJob(
+        job1 = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project-1",
             agent_type="orchestrator",
@@ -109,7 +109,7 @@ class TestMetadataFunctionality:
             job_metadata={"tool": "claude-code", "created_via": "thin_client"},
         )
 
-        job2 = MCPAgentJob(
+        job2 = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project-2",
             agent_type="orchestrator",
@@ -121,14 +121,14 @@ class TestMetadataFunctionality:
         db_session.commit()
 
         # Query for claude-code jobs using JSONB operator
-        result = db_session.query(MCPAgentJob).filter(MCPAgentJob.job_metadata["tool"].astext == "claude-code").all()
+        result = db_session.query(AgentExecution).filter(AgentExecution.job_metadata["tool"].astext == "claude-code").all()
 
         assert len(result) == 1
         assert result[0].job_metadata["tool"] == "claude-code"
 
     def test_update_job_metadata_field(self, db_session):
         """Test updating specific job_metadata fields."""
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project",
             agent_type="orchestrator",
@@ -155,7 +155,7 @@ class TestMultiTenantIsolation:
     def test_job_metadata_respects_tenant_isolation(self, db_session):
         """Verify job_metadata doesn't leak across tenants."""
         # Create jobs for two tenants with different job_metadata
-        job1 = MCPAgentJob(
+        job1 = AgentExecution(
             tenant_key="tenant-1",
             project_id="proj-1",
             agent_type="orchestrator",
@@ -163,7 +163,7 @@ class TestMultiTenantIsolation:
             job_metadata={"secret": "tenant-1-secret", "field_priorities": {"vision": 10}},
         )
 
-        job2 = MCPAgentJob(
+        job2 = AgentExecution(
             tenant_key="tenant-2",
             project_id="proj-2",
             agent_type="orchestrator",
@@ -175,14 +175,14 @@ class TestMultiTenantIsolation:
         db_session.commit()
 
         # Query with tenant filtering (REQUIRED)
-        result = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-1").all()
+        result = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-1").all()
 
         assert len(result) == 1
         assert result[0].job_metadata["secret"] == "tenant-1-secret"
         assert "vision" in result[0].job_metadata["field_priorities"]
 
         # Verify tenant-2 data is not accessible
-        tenant2_result = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-2").all()
+        tenant2_result = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-2").all()
 
         assert len(tenant2_result) == 1
         assert tenant2_result[0].job_metadata["secret"] == "tenant-2-secret"
@@ -191,7 +191,7 @@ class TestMultiTenantIsolation:
         """Test querying job_metadata with mandatory tenant isolation."""
         # Create jobs for multiple tenants
         jobs = [
-            MCPAgentJob(
+            AgentExecution(
                 tenant_key=f"tenant-{i}",
                 project_id=f"proj-{i}",
                 agent_type="orchestrator",
@@ -206,8 +206,8 @@ class TestMultiTenantIsolation:
 
         # Query with tenant filter AND job_metadata filter
         result = (
-            db_session.query(MCPAgentJob)
-            .filter(MCPAgentJob.tenant_key == "tenant-1", MCPAgentJob.job_metadata["sequence"].astext == "1")
+            db_session.query(AgentExecution)
+            .filter(AgentExecution.tenant_key == "tenant-1", AgentExecution.job_metadata["sequence"].astext == "1")
             .all()
         )
 
@@ -311,7 +311,7 @@ class TestDataMigration:
             conn.commit()
 
         # Verify migration worked
-        job = db_session.query(MCPAgentJob).filter(MCPAgentJob.job_id == "job-old-format").first()
+        job = db_session.query(AgentExecution).filter(AgentExecution.job_id == "job-old-format").first()
 
         assert job is not None
         assert job.job_metadata != {}
@@ -366,7 +366,7 @@ class TestDataMigration:
             conn.commit()
 
         # Verify: job_metadata has thin client data, handover_summary keeps succession data
-        job = db_session.query(MCPAgentJob).filter(MCPAgentJob.job_id == "job-succession").first()
+        job = db_session.query(AgentExecution).filter(AgentExecution.job_id == "job-succession").first()
 
         assert job is not None
 

@@ -30,7 +30,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
 
     Designed to test filtering, sorting, and aggregation capabilities.
     """
-    from src.giljo_mcp.models.agents import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentExecution
     from src.giljo_mcp.models.projects import Project
 
     # Create test project
@@ -51,7 +51,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
 
         jobs = [
             # Job 1: Orchestrator, working, healthy, has unread messages
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
@@ -74,7 +74,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 instance_number=1,
             ),
             # Job 2: Implementer, waiting, warning health, no messages
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
@@ -91,7 +91,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 instance_number=1,
             ),
             # Job 3: Tester, working, critical health, stale (>10 min no progress)
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
@@ -112,7 +112,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 instance_number=1,
             ),
             # Job 4: Analyzer, complete, healthy (terminal state)
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
@@ -134,7 +134,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 instance_number=1,
             ),
             # Job 5: Implementer, failed, timeout health
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
@@ -156,7 +156,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 instance_number=1,
             ),
             # Job 6: Orchestrator instance 2 (succession)
-            MCPAgentJob(
+            AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,

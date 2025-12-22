@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import models using modular imports (Post-Handover 0128a)
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.database import DatabaseManager
@@ -71,7 +71,7 @@ async def test_project_with_agents(
     db_session: AsyncSession,
     test_tenant_key: str,
     test_product: Product,
-) -> tuple[Project, list[MCPAgentJob]]:
+) -> tuple[Project, list[AgentExecution]]:
     """
     Create a test project with multiple agents.
     Returns tuple of (project, [agent_jobs]).
@@ -95,7 +95,7 @@ async def test_project_with_agents(
     agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
     agents = []
     for agent_type in agent_types:
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=test_tenant_key,
             project_id=project.id,
@@ -156,13 +156,13 @@ class TestMessageCreationAndJSONBMirroring:
         self,
         db_session: AsyncSession,
         message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
+        test_project_with_agents: tuple[Project, list[AgentExecution]],
         mock_websocket_manager: MagicMock,
     ):
         """
         CRITICAL CONTRACT TEST: Verify that send_message():
         1. Creates a Message row in the database
-        2. Mirrors message to recipient's MCPAgentJob.messages JSONB column
+        2. Mirrors message to recipient's AgentExecution.messages JSONB column
         3. Sets status="waiting" in JSONB for inbound messages
         4. Emits WebSocket events correctly
         """
@@ -251,7 +251,7 @@ class TestMessageCompletion:
         self,
         db_session: AsyncSession,
         message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
+        test_project_with_agents: tuple[Project, list[AgentExecution]],
     ):
         """
         CRITICAL CONTRACT TEST: Verify that complete_message():
@@ -321,7 +321,7 @@ class TestBroadcastMessaging:
         self,
         db_session: AsyncSession,
         message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
+        test_project_with_agents: tuple[Project, list[AgentExecution]],
     ):
         """
         CRITICAL CONTRACT TEST: Verify that send_message(to_agents=['all']):
@@ -440,7 +440,7 @@ class TestMultiTenantIsolation:
         await db_session.commit()
 
         # Create agents for both tenants
-        agent_a = MCPAgentJob(
+        agent_a = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_a_key,
             project_id=project_a.id,
@@ -449,7 +449,7 @@ class TestMultiTenantIsolation:
             status="waiting",
             messages=[],
         )
-        agent_b = MCPAgentJob(
+        agent_b = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_b_key,
             project_id=project_b.id,
@@ -533,11 +533,11 @@ class TestMessagePersistenceContract:
         self,
         db_session: AsyncSession,
         message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[MCPAgentJob]],
+        test_project_with_agents: tuple[Project, list[AgentExecution]],
     ):
         """
         CRITICAL CONTRACT TEST: Verify message persistence for counter survival:
-        1. Messages persist to MCPAgentJob.messages JSONB
+        1. Messages persist to AgentExecution.messages JSONB
         2. Messages survive database session close/reopen (page refresh simulation)
         3. Counters can be recalculated from JSONB on load
         """
@@ -561,7 +561,7 @@ class TestMessagePersistenceContract:
 
         # Simulate page refresh: Re-fetch agent from database
         recipient_result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == recipient.job_id)
+            select(AgentExecution).where(AgentExecution.job_id == recipient.job_id)
         )
         refreshed_agent = recipient_result.scalar_one_or_none()
         assert refreshed_agent is not None
@@ -623,4 +623,3 @@ class TestMessageServiceErrorHandling:
 
         assert result["success"] is False
         assert "not found" in result["error"].lower()
-

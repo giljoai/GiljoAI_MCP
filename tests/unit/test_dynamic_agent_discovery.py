@@ -20,7 +20,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+from src.giljo_mcp.models import AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers import ToolsTestHelper
 from tests.mock_mcp import MockMCPToolRegistrar
 
@@ -110,7 +111,7 @@ class TestDynamicAgentDiscovery:
 
         # Create orchestrator with claude-code execution_mode in metadata
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -162,7 +163,7 @@ class TestDynamicAgentDiscovery:
 
         # Create orchestrator with legacy execution_mode
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -207,7 +208,7 @@ class TestDynamicAgentDiscovery:
 
         # Create orchestrator WITHOUT execution_mode (should infer from tool_type)
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -246,7 +247,7 @@ class TestDynamicAgentDiscovery:
 
         # Create OLD orchestrator WITHOUT tool_type or execution_mode
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -301,7 +302,7 @@ class TestDynamicAgentDiscovery:
             # Check database for execution_mode in job_metadata
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == result["orchestrator_id"])
+            stmt = select(AgentExecution).where(AgentExecution.job_id == result["orchestrator_id"])
             db_result = await session.execute(stmt)
             orchestrator = db_result.scalar_one()
 
@@ -328,7 +329,7 @@ class TestDynamicAgentDiscovery:
             # Check database for inferred execution_mode
             from sqlalchemy import select
 
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == result["orchestrator_id"])
+            stmt = select(AgentExecution).where(AgentExecution.job_id == result["orchestrator_id"])
             db_result = await session.execute(stmt)
             orchestrator = db_result.scalar_one()
 
@@ -419,7 +420,7 @@ class TestDynamicAgentDiscovery:
         mock_server = registrar.create_tool_decorator()
 
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,

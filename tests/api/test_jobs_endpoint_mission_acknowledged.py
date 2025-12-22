@@ -24,7 +24,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 pytestmark = pytest.mark.asyncio
@@ -78,7 +79,7 @@ async def test_project_with_jobs_acknowledged(db_session: AsyncSession, tenant_m
     ]
 
     for job_data in jobs_data:
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=job_data["job_id"],
@@ -118,7 +119,7 @@ async def test_multi_tenant_acknowledged(db_session: AsyncSession, tenant_manage
     db_session.add(project_a)
     await db_session.flush()
 
-    job_a = MCPAgentJob(
+    job_a = AgentExecution(
         tenant_key=tenant_a_key,
         project_id=project_a.id,
         job_id=f"job-a-{uuid4().hex[:8]}",
@@ -146,7 +147,7 @@ async def test_multi_tenant_acknowledged(db_session: AsyncSession, tenant_manage
     db_session.add(project_b)
     await db_session.flush()
 
-    job_b = MCPAgentJob(
+    job_b = AgentExecution(
         tenant_key=tenant_b_key,
         project_id=project_b.id,
         job_id=f"job-b-{uuid4().hex[:8]}",
@@ -498,7 +499,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
         db_session.add(project)
         await db_session.flush()
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=f"job-db-{uuid4().hex[:8]}",
@@ -523,7 +524,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
 
         # Verify update persisted
         result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         )
         job_from_db = result.scalar_one()
 
@@ -549,7 +550,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
 
         # Create job with acknowledged timestamp
         original_acknowledged = datetime.now(timezone.utc) - timedelta(hours=1)
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=f"job-preserve-{uuid4().hex[:8]}",
@@ -571,7 +572,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
 
         # Verify mission_acknowledged_at was NOT changed
         result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         )
         job_from_db = result.scalar_one()
 
@@ -605,7 +606,7 @@ class TestMissionAcknowledgedDatabaseIntegrity:
         db_session.add(project)
         await db_session.flush()
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=f"job-nullable-{uuid4().hex[:8]}",
@@ -624,7 +625,7 @@ class TestMissionAcknowledgedDatabaseIntegrity:
 
         # Verify field is None in database
         result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         )
         job_from_db = result.scalar_one()
 
@@ -651,7 +652,7 @@ class TestMissionAcknowledgedDatabaseIntegrity:
 
         acknowledged_at = datetime.now(timezone.utc)
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             tenant_key=tenant_key,
             project_id=project.id,
             job_id=f"job-tz-{uuid4().hex[:8]}",
@@ -668,7 +669,7 @@ class TestMissionAcknowledgedDatabaseIntegrity:
 
         # Verify timestamp is timezone-aware
         result = await db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.job_id == job.job_id)
+            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
         )
         job_from_db = result.scalar_one()
 

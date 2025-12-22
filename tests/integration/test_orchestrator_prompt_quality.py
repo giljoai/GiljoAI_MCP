@@ -30,7 +30,8 @@ from sqlalchemy import and_, select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, VisionDocument
+from src.giljo_mcp.models import Product, Project, VisionDocument
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -85,7 +86,7 @@ class TestTechStackEncoding:
 
             # Create orchestrator job
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -166,7 +167,7 @@ class TestTechStackEncoding:
 
             # Create orchestrator job
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -274,7 +275,7 @@ class TestTokenEstimationAccuracy:
 
             # Create orchestrator job with vision enabled
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -391,7 +392,7 @@ class TestFullContextPolicy:
 
             # Create orchestrator job - NO vision_chunking in depth_config
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -478,7 +479,7 @@ class TestCLIModeRulesInclusion:
 
             # Create orchestrator job with CLI mode execution
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -596,7 +597,7 @@ class TestPromptQualityRegression:
 
             # Create orchestrator job with CLI mode - NO vision_chunking (full context)
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,

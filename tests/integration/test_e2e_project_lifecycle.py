@@ -31,7 +31,7 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
@@ -128,7 +128,7 @@ class MockAgentSimulator:
 
     async def _acknowledge_job(self):
         """Acknowledge job and transition to 'working' status."""
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -140,7 +140,7 @@ class MockAgentSimulator:
 
     async def _read_mission(self) -> str:
         """Read mission from database."""
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -156,7 +156,7 @@ class MockAgentSimulator:
         await asyncio.sleep(self.work_duration)
 
         # Update progress
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -180,14 +180,14 @@ class MockAgentSimulator:
     async def _send_messages(self):
         """Send messages to other agents (inter-agent communication)."""
         # Get project ID and tenant key
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
         # Find other agents in same project
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.project_id == job.project_id,
-            MCPAgentJob.job_id != self.job_id,
+        stmt = select(AgentExecution).where(
+            AgentExecution.project_id == job.project_id,
+            AgentExecution.job_id != self.job_id,
         )
         result = await self.db_session.execute(stmt)
         other_agents = result.scalars().all()
@@ -209,7 +209,7 @@ class MockAgentSimulator:
 
     async def _complete_job(self):
         """Complete job successfully."""
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -221,7 +221,7 @@ class MockAgentSimulator:
 
     async def _fail_job(self, reason: str):
         """Fail job with reason."""
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -301,7 +301,7 @@ class OrchestratorSimulator:
 
     async def _update_progress(self, progress: int, task: str):
         """Update orchestrator progress."""
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == self.orchestrator_job_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == self.orchestrator_job_id)
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
@@ -360,7 +360,7 @@ class OrchestratorSimulator:
         spawned_jobs = []
 
         for config in agent_configs:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=self.tenant_key,
                 project_id=self.project_id,
                 agent_type=config["agent_type"],
@@ -464,9 +464,9 @@ async def test_project(db_session, test_product, test_user) -> Project:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def orchestrator_job(db_session, test_project, test_user) -> MCPAgentJob:
+async def orchestrator_job(db_session, test_project, test_user) -> AgentExecution:
     """Create orchestrator job."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=test_user.tenant_key,
         project_id=test_project.id,
         agent_type="orchestrator",
@@ -625,8 +625,8 @@ class TestCompleteProjectLifecycle:
         assert len(spawned_job_ids) == 3
 
         # Verify agent jobs created in database
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id.in_(spawned_job_ids)
+        stmt = select(AgentExecution).where(
+            AgentExecution.job_id.in_(spawned_job_ids)
         )
         result = await db_session.execute(stmt)
         spawned_jobs = result.scalars().all()
@@ -680,8 +680,8 @@ class TestCompleteProjectLifecycle:
 
         # 3. Verify agents transitioned to 'complete' status
         db_session.expire_all()  # Refresh session (not async)
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id.in_(spawned_job_ids)
+        stmt = select(AgentExecution).where(
+            AgentExecution.job_id.in_(spawned_job_ids)
         )
         result = await db_session.execute(stmt)
         completed_jobs = result.scalars().all()
@@ -725,16 +725,16 @@ class TestCompleteProjectLifecycle:
 
         # 6. Verify database state consistent
         # - Orchestrator job exists
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.job_id == orchestrator_simulator.orchestrator_job_id
+        stmt = select(AgentExecution).where(
+            AgentExecution.job_id == orchestrator_simulator.orchestrator_job_id
         )
         result = await db_session.execute(stmt)
         orch_job = result.scalar_one()
         assert orch_job is not None
 
         # - All spawned agents exist and are complete
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.spawned_by == orchestrator_simulator.orchestrator_job_id
+        stmt = select(AgentExecution).where(
+            AgentExecution.spawned_by == orchestrator_simulator.orchestrator_job_id
         )
         result = await db_session.execute(stmt)
         spawned_by_orch = result.scalars().all()
@@ -951,7 +951,7 @@ class TestCompleteProjectLifecycle:
         # Create 3 agent jobs
         jobs = []
         for agent_type in ["implementer", "tester", "reviewer"]:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=test_user.tenant_key,
                 project_id=test_project.id,
                 agent_type=agent_type,

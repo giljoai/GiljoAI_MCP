@@ -17,7 +17,8 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Base, MCPAgentJob, AgentTemplate, Product, Project
+from src.giljo_mcp.models import Base, AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestAgentJobTemplateTracking:
@@ -100,7 +101,7 @@ class TestAgentJobTemplateTracking:
 
     def test_create_agent_job_with_template_id(self, db_session, sample_project, sample_template):
         """Test creating agent job with template_id reference."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-123",
@@ -120,14 +121,14 @@ class TestAgentJobTemplateTracking:
 
         # Verify we can query by template_id
         result = db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.template_id == sample_template.id)
+            select(AgentExecution).where(AgentExecution.template_id == sample_template.id)
         )
         retrieved_job = result.scalar_one()
         assert retrieved_job.id == agent_job.id
 
     def test_create_agent_job_without_template_id(self, db_session, sample_project):
         """Test creating agent job without template_id (backward compatibility)."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-456",
@@ -148,7 +149,7 @@ class TestAgentJobTemplateTracking:
 
     def test_template_relationship_if_exists(self, db_session, sample_project, sample_template):
         """Test that relationship to AgentTemplate exists (if implemented)."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-789",
@@ -172,7 +173,7 @@ class TestAgentJobTemplateTracking:
 
     def test_multiple_jobs_same_template(self, db_session, sample_project, sample_template):
         """Test that multiple jobs can reference the same template."""
-        job1 = MCPAgentJob(
+        job1 = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-001",
@@ -183,7 +184,7 @@ class TestAgentJobTemplateTracking:
             template_id=sample_template.id,
         )
 
-        job2 = MCPAgentJob(
+        job2 = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-002",
@@ -199,7 +200,7 @@ class TestAgentJobTemplateTracking:
 
         # Query all jobs with this template
         result = db_session.execute(
-            select(MCPAgentJob).where(MCPAgentJob.template_id == sample_template.id)
+            select(AgentExecution).where(AgentExecution.template_id == sample_template.id)
         )
         jobs = result.scalars().all()
 
@@ -209,7 +210,7 @@ class TestAgentJobTemplateTracking:
     def test_tenant_isolation_with_template_id(self, db_session, sample_project, sample_template):
         """Test tenant isolation when querying by template_id."""
         # Create job for tenant-a
-        job_a = MCPAgentJob(
+        job_a = AgentExecution(
             tenant_key="tenant-a",
             project_id=sample_project.id,
             job_id="job-a",
@@ -232,7 +233,7 @@ class TestAgentJobTemplateTracking:
         )
         db_session.add(template_b)
 
-        job_b = MCPAgentJob(
+        job_b = AgentExecution(
             tenant_key="tenant-b",
             project_id=sample_project.id,
             job_id="job-b",
@@ -248,16 +249,16 @@ class TestAgentJobTemplateTracking:
 
         # Query tenant-a jobs
         result_a = db_session.execute(
-            select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == "tenant-a", MCPAgentJob.template_id == sample_template.id
+            select(AgentExecution).where(
+                AgentExecution.tenant_key == "tenant-a", AgentExecution.template_id == sample_template.id
             )
         )
         jobs_a = result_a.scalars().all()
 
         # Query tenant-b jobs
         result_b = db_session.execute(
-            select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == "tenant-b", MCPAgentJob.template_id == template_b.id
+            select(AgentExecution).where(
+                AgentExecution.tenant_key == "tenant-b", AgentExecution.template_id == template_b.id
             )
         )
         jobs_b = result_b.scalars().all()
@@ -272,7 +273,7 @@ class TestAgentJobTemplateTracking:
     def test_foreign_key_constraint(self, db_session, sample_project):
         """Test that template_id has proper foreign key constraint."""
         # Attempt to create job with non-existent template_id
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-invalid",

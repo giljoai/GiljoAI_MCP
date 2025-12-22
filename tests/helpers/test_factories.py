@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from src.giljo_mcp.models import MCPAgentJob, Message, Project
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestDataFactory:
@@ -33,34 +34,102 @@ class TestDataFactory:
         }
 
     @staticmethod
+    def create_agent_job_data(
+        project_id: str,
+        tenant_key: str,
+        job_type: str = "worker",
+        mission: str = "Test mission for agent job",
+        status: str = "active",
+    ) -> dict[str, Any]:
+        """
+        Create AgentJob data dictionary (work order - the WHAT).
+
+        Migration Note (0367d): Replaced MCPAgentJob with AgentJob.
+        Field mappings:
+        - AgentExecution.agent_type → AgentJob.job_type
+        - AgentExecution.status values → AgentJob.status (active/completed/cancelled)
+        """
+        return {
+            "job_id": str(uuid.uuid4()),
+            "tenant_key": tenant_key,
+            "project_id": project_id,
+            "job_type": job_type,
+            "mission": mission,
+            "status": status,
+            "created_at": datetime.now(timezone.utc),
+            "job_metadata": {},
+        }
+
+    @staticmethod
+    def create_agent_execution_data(
+        job_id: str,
+        tenant_key: str,
+        agent_name: str = "test_agent",
+        agent_type: str = "worker",
+        status: str = "waiting",
+        instance_number: int = 1,
+    ) -> dict[str, Any]:
+        """
+        Create AgentExecution data dictionary (executor - the WHO).
+
+        Migration Note (0367d): Extracted from AgentExecution.
+        Execution-specific fields:
+        - status: waiting/working/blocked/complete/failed/cancelled/decommissioned
+        - progress, messages, spawned_by, succeeded_by, etc.
+        """
+        return {
+            "agent_id": str(uuid.uuid4()),
+            "job_id": job_id,
+            "tenant_key": tenant_key,
+            "agent_type": agent_type,
+            "agent_name": agent_name,
+            "instance_number": instance_number,
+            "status": status,
+            "progress": 0,
+            "messages": [],
+            "health_status": "unknown",
+            "tool_type": "universal",
+            "context_used": 0,
+            "context_budget": 150000,
+        }
+
+    @staticmethod
     def create_agent_data(
         project_id: str,
         tenant_key: str,
         agent_name: str = "test_agent",
         agent_type: str = "worker",
         mission: str = "Test mission for agent job",
-        status: str = "pending"
-    ) -> dict[str, Any]:
+        status: str = "waiting"
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
-        Create agent job data dictionary.
+        Create both AgentJob and AgentExecution data (backward compatibility).
 
-        Migration Note (0129a): Replaced Agent model with MCPAgentJob.
-        Field mappings:
-        - Agent.name → MCPAgentJob.agent_name
-        - Agent.type → MCPAgentJob.agent_type
-        - Agent.tenant_id → MCPAgentJob.tenant_key
+        Migration Note (0367d): Replaced MCPAgentJob with AgentJob + AgentExecution.
+        Returns tuple of (job_data, execution_data) for tests that need both.
+
+        For new tests, use create_agent_job_data() and create_agent_execution_data() directly.
         """
-        return {
-            "job_id": str(uuid.uuid4()),
-            "tenant_key": tenant_key,
-            "project_id": project_id,
-            "agent_name": agent_name,
-            "agent_type": agent_type,
-            "mission": mission,
-            "status": status,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
+        # Map old status to new job status (3 values: active/completed/cancelled)
+        job_status = "active" if status in ["waiting", "working", "blocked"] else status
+
+        job_data = TestDataFactory.create_agent_job_data(
+            project_id=project_id,
+            tenant_key=tenant_key,
+            job_type=agent_type,
+            mission=mission,
+            status=job_status,
+        )
+
+        execution_data = TestDataFactory.create_agent_execution_data(
+            job_id=job_data["job_id"],
+            tenant_key=tenant_key,
+            agent_name=agent_name,
+            agent_type=agent_type,
+            status=status,
+        )
+
+        return job_data, execution_data
 
     @staticmethod
     def create_message_data(
@@ -110,17 +179,48 @@ class ProjectFactory:
 
 class AgentFactory:
     """
-    Factory for creating MCPAgentJob model instances.
+    Factory for creating AgentJob and AgentExecution model instances.
 
-    Migration Note (0129a): Replaced Agent with MCPAgentJob.
+    Migration Note (0367d): Replaced MCPAgentJob with AgentJob + AgentExecution.
     """
 
     @staticmethod
-    def build(project_id: str, tenant_key: str, **kwargs) -> MCPAgentJob:
-        """Build an MCPAgentJob instance with default values"""
-        defaults = TestDataFactory.create_agent_data(project_id, tenant_key)
+    def build(project_id: str, tenant_key: str, **kwargs) -> tuple[AgentJob, AgentExecution]:
+        """
+        Build AgentJob and AgentExecution instances with default values.
+
+        Migration Note (0367d): Now returns tuple of (job, execution).
+        For backward compatibility, returns both models.
+        Tests can use: job, execution = AgentFactory.build(...)
+        """
+        job_data, execution_data = TestDataFactory.create_agent_data(project_id, tenant_key, **kwargs)
+
+        job = AgentJob(**job_data)
+        execution = AgentExecution(**execution_data)
+
+        return job, execution
+
+    @staticmethod
+    def build_job(project_id: str, tenant_key: str, **kwargs) -> AgentJob:
+        """Build only AgentJob instance (work order - the WHAT)"""
+        defaults = TestDataFactory.create_agent_job_data(project_id, tenant_key)
         defaults.update(kwargs)
-        return MCPAgentJob(**defaults)
+        return AgentJob(**defaults)
+
+    @staticmethod
+    def build_execution(job_id: str, tenant_key: str, **kwargs) -> AgentExecution:
+        """Build only AgentExecution instance (executor - the WHO)"""
+        defaults = TestDataFactory.create_agent_execution_data(job_id, tenant_key)
+        defaults.update(kwargs)
+        return AgentExecution(**defaults)
+
+    @staticmethod
+    def build_with_execution(project_id: str, tenant_key: str, **kwargs) -> tuple[AgentJob, AgentExecution]:
+        """
+        Explicitly build both job and execution.
+        Alias for build() for clarity in tests.
+        """
+        return AgentFactory.build(project_id, tenant_key, **kwargs)
 
 
 class MessageFactory:

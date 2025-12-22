@@ -17,7 +17,8 @@ from uuid import uuid4
 from fastapi import status
 from httpx import AsyncClient
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -76,7 +77,7 @@ async def test_implementation_prompt_happy_path(
         session.add(project)
 
         # Create working orchestrator job (working = active in this context)
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=orch_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -89,7 +90,7 @@ async def test_implementation_prompt_happy_path(
         session.add(orchestrator)
 
         # Create spawned agent jobs in waiting status
-        agent1 = MCPAgentJob(
+        agent1 = AgentExecution(
             job_id=agent1_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -101,7 +102,7 @@ async def test_implementation_prompt_happy_path(
         )
         session.add(agent1)
 
-        agent2 = MCPAgentJob(
+        agent2 = AgentExecution(
             job_id=agent2_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -289,7 +290,7 @@ async def test_implementation_prompt_no_active_orchestrator(
         session.add(project)
 
         # Create orchestrator but with wrong status
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -363,7 +364,7 @@ async def test_implementation_prompt_no_spawned_agents(
         session.add(project)
 
         # Create working orchestrator but no spawned agents
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -437,7 +438,7 @@ async def test_implementation_prompt_tenant_isolation(
         session.add(project)
 
         # Create orchestrator and agents for tenant A
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=tenant_key_a,
             project_id=project.id,
@@ -447,7 +448,7 @@ async def test_implementation_prompt_tenant_isolation(
         )
         session.add(orchestrator)
 
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"impl-agent-{uuid4().hex[:12]}",
             tenant_key=tenant_key_a,
             project_id=project.id,
@@ -549,7 +550,7 @@ async def test_implementation_prompt_includes_context_used(
 
         # Create orchestrator with significant context_used
         orch_id = f"impl-orch-{uuid4().hex[:8]}"
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=orch_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -562,7 +563,7 @@ async def test_implementation_prompt_includes_context_used(
 
         # Create spawned agent
         agent_id = f"impl-agent-{uuid4().hex[:8]}"
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=agent_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,

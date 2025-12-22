@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import MCPAgentJob
+from giljo_mcp.models import AgentExecution
 from giljo_mcp.orchestrator_succession import (
     OrchestratorSuccessionManager,
     calculate_context_usage,
@@ -56,7 +56,7 @@ def session(db_manager):
 @pytest.fixture
 def orchestrator_job(session: Session, tenant_key: str):
     """Create a test orchestrator job."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=tenant_key,
         job_id=str(uuid4()),
         agent_type="orchestrator",
@@ -89,7 +89,7 @@ def succession_manager(db_manager, tenant_key):
 
 def test_should_trigger_succession_at_90_percent(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test succession triggers at 90% context usage threshold."""
@@ -104,7 +104,7 @@ def test_should_trigger_succession_at_90_percent(
 
 def test_should_trigger_succession_above_90_percent(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test succession triggers above 90% threshold."""
@@ -119,7 +119,7 @@ def test_should_trigger_succession_above_90_percent(
 
 def test_should_not_trigger_succession_below_threshold(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test succession does not trigger below 90% threshold."""
@@ -134,7 +134,7 @@ def test_should_not_trigger_succession_below_threshold(
 
 def test_should_not_trigger_succession_at_50_percent(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test succession does not trigger at 50% context usage."""
@@ -149,7 +149,7 @@ def test_should_not_trigger_succession_at_50_percent(
 
 def test_should_trigger_succession_manual_request(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
 ):
     """Test manual succession request triggers regardless of context."""
     # Set context to 50% (should not normally trigger)
@@ -166,7 +166,7 @@ def test_should_trigger_succession_manual_request(
 
 def test_create_successor_increments_instance_number(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor gets incremented instance number."""
@@ -180,7 +180,7 @@ def test_create_successor_increments_instance_number(
 
 def test_create_successor_preserves_tenant_key(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor preserves tenant isolation."""
@@ -193,7 +193,7 @@ def test_create_successor_preserves_tenant_key(
 
 def test_create_successor_preserves_project_id(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor preserves project association."""
@@ -210,7 +210,7 @@ def test_create_successor_preserves_project_id(
 
 def test_create_successor_sets_spawned_by(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor tracks parent via spawned_by."""
@@ -223,7 +223,7 @@ def test_create_successor_sets_spawned_by(
 
 def test_create_successor_status_waiting(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor created in waiting status."""
@@ -236,7 +236,7 @@ def test_create_successor_status_waiting(
 
 def test_create_successor_fresh_context(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor starts with fresh context window."""
@@ -254,7 +254,7 @@ def test_create_successor_fresh_context(
 
 def test_create_successor_unique_job_id(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test successor gets unique job ID."""
@@ -268,7 +268,7 @@ def test_create_successor_unique_job_id(
 
 def test_create_successor_multiple_instances(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test creating multiple successive instances."""
@@ -292,7 +292,7 @@ def test_create_successor_multiple_instances(
 
 def test_generate_handover_summary_includes_required_fields(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test handover summary contains all required fields."""
@@ -318,7 +318,7 @@ def test_generate_handover_summary_includes_required_fields(
 
 def test_generate_handover_summary_includes_context_refs(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test handover summary includes context chunk references."""
@@ -337,7 +337,7 @@ def test_generate_handover_summary_includes_context_refs(
 
 def test_generate_handover_summary_compression_target(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test handover summary meets compression target (<10K tokens)."""
@@ -360,7 +360,7 @@ def test_generate_handover_summary_compression_target(
 
 def test_generate_handover_summary_empty_orchestrator(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test handover summary handles empty orchestrator gracefully."""
@@ -385,7 +385,7 @@ def test_generate_handover_summary_empty_orchestrator(
 
 def test_complete_handover_marks_status_complete(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test complete_handover marks orchestrator as complete."""
@@ -407,7 +407,7 @@ def test_complete_handover_marks_status_complete(
 
 def test_complete_handover_sets_handover_to_field(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test complete_handover sets handover_to field."""
@@ -429,7 +429,7 @@ def test_complete_handover_sets_handover_to_field(
 
 def test_complete_handover_stores_summary(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test complete_handover stores handover summary."""
@@ -453,7 +453,7 @@ def test_complete_handover_stores_summary(
 
 def test_complete_handover_sets_completed_at(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test complete_handover sets completed_at timestamp."""
@@ -476,7 +476,7 @@ def test_complete_handover_sets_completed_at(
 
 def test_complete_handover_sets_succession_reason(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test complete_handover stores succession reason."""
@@ -501,7 +501,7 @@ def test_complete_handover_sets_succession_reason(
 # ============================================================================
 
 
-def test_calculate_context_usage_returns_tuple(orchestrator_job: MCPAgentJob):
+def test_calculate_context_usage_returns_tuple(orchestrator_job: AgentExecution):
     """Test calculate_context_usage returns (used, budget) tuple."""
     orchestrator_job.context_used = 100000
     orchestrator_job.context_budget = 150000
@@ -512,7 +512,7 @@ def test_calculate_context_usage_returns_tuple(orchestrator_job: MCPAgentJob):
     assert budget == 150000
 
 
-def test_calculate_context_usage_zero_usage(orchestrator_job: MCPAgentJob):
+def test_calculate_context_usage_zero_usage(orchestrator_job: AgentExecution):
     """Test calculate_context_usage with zero usage."""
     orchestrator_job.context_used = 0
     orchestrator_job.context_budget = 150000
@@ -523,7 +523,7 @@ def test_calculate_context_usage_zero_usage(orchestrator_job: MCPAgentJob):
     assert budget == 150000
 
 
-def test_calculate_context_usage_full_usage(orchestrator_job: MCPAgentJob):
+def test_calculate_context_usage_full_usage(orchestrator_job: AgentExecution):
     """Test calculate_context_usage at 100% usage."""
     orchestrator_job.context_used = 150000
     orchestrator_job.context_budget = 150000
@@ -547,7 +547,7 @@ async def test_full_succession_workflow(
     """Test complete succession workflow from detection to handover."""
     with db_manager.get_session() as session:
         # Create orchestrator at 90% context
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -610,7 +610,7 @@ async def test_multiple_successive_handovers(
         manager = OrchestratorSuccessionManager(session, tenant_key)
 
         # Create instance 1
-        orch1 = MCPAgentJob(
+        orch1 = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -678,7 +678,7 @@ async def test_multi_tenant_isolation_during_succession(
 
     with db_manager.get_session() as session:
         # Create orchestrators for both tenants
-        orch_a = MCPAgentJob(
+        orch_a = AgentExecution(
             tenant_key=tenant_a,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -688,7 +688,7 @@ async def test_multi_tenant_isolation_during_succession(
             context_used=135000,
             context_budget=150000,
         )
-        orch_b = MCPAgentJob(
+        orch_b = AgentExecution(
             tenant_key=tenant_b,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -719,8 +719,8 @@ async def test_multi_tenant_isolation_during_succession(
         assert successor_b.spawned_by == orch_b.job_id
 
         # Query orchestrators by tenant - should only see own tenant
-        query_a = select(MCPAgentJob).where(MCPAgentJob.tenant_key == tenant_a)
-        query_b = select(MCPAgentJob).where(MCPAgentJob.tenant_key == tenant_b)
+        query_a = select(AgentExecution).where(AgentExecution.tenant_key == tenant_a)
+        query_b = select(AgentExecution).where(AgentExecution.tenant_key == tenant_b)
 
         result_a = session.execute(query_a).scalars().all()
         result_b = session.execute(query_b).scalars().all()
@@ -745,7 +745,7 @@ async def test_concurrent_orchestrators_during_transition(
         manager = OrchestratorSuccessionManager(session, tenant_key)
 
         # Create instance 1 (working)
-        orch1 = MCPAgentJob(
+        orch1 = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -797,7 +797,7 @@ async def test_failed_succession_creates_blocked_status(
     """Test failed succession marks orchestrator as blocked."""
     with db_manager.get_session() as session:
         # Create orchestrator
-        orch = MCPAgentJob(
+        orch = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
             agent_type="orchestrator",
@@ -837,7 +837,7 @@ async def test_failed_succession_creates_blocked_status(
 
 def test_succession_with_different_reasons(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test succession with different reason codes."""
@@ -864,7 +864,7 @@ def test_succession_with_different_reasons(
 
 def test_handover_context_refs_transferred(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test context chunk references transferred in handover."""
@@ -890,7 +890,7 @@ def test_handover_context_refs_transferred(
 
 def test_message_count_in_handover_summary(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test message count accurately reflected in handover summary."""
@@ -908,7 +908,7 @@ def test_message_count_in_handover_summary(
 
 def test_unresolved_blockers_in_handover(
     succession_manager: OrchestratorSuccessionManager,
-    orchestrator_job: MCPAgentJob,
+    orchestrator_job: AgentExecution,
     session: Session,
 ):
     """Test unresolved blockers included in handover summary."""

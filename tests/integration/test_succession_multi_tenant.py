@@ -17,7 +17,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import SuccessionTestData
 
 
@@ -58,7 +59,7 @@ async def test_succession_respects_tenant_boundaries(
     await db_session.commit()
 
     # Create orchestrators for both tenants
-    orch_a1 = MCPAgentJob(
+    orch_a1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_a.id,
             tenant_key=tenant_a_key,
@@ -69,7 +70,7 @@ async def test_succession_respects_tenant_boundaries(
         )
     )
 
-    orch_b1 = MCPAgentJob(
+    orch_b1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_b.id,
             tenant_key=tenant_b_key,
@@ -86,7 +87,7 @@ async def test_succession_respects_tenant_boundaries(
     await db_session.refresh(orch_b1)
 
     # Tenant A triggers succession
-    orch_a2 = MCPAgentJob(
+    orch_a2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_a.id,
             tenant_key=tenant_a_key,
@@ -127,9 +128,9 @@ async def test_succession_respects_tenant_boundaries(
     assert orch_b1.handover_summary is None
 
     # Query Tenant A orchestrators only
-    stmt_a = select(MCPAgentJob).where(
-        MCPAgentJob.tenant_key == tenant_a_key,
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt_a = select(AgentExecution).where(
+        AgentExecution.tenant_key == tenant_a_key,
+        AgentExecution.agent_type == "orchestrator",
     )
     result_a = await db_session.execute(stmt_a)
     tenant_a_orchestrators = result_a.scalars().all()
@@ -138,9 +139,9 @@ async def test_succession_respects_tenant_boundaries(
     assert all(o.tenant_key == tenant_a_key for o in tenant_a_orchestrators)
 
     # Query Tenant B orchestrators only
-    stmt_b = select(MCPAgentJob).where(
-        MCPAgentJob.tenant_key == tenant_b_key,
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt_b = select(AgentExecution).where(
+        AgentExecution.tenant_key == tenant_b_key,
+        AgentExecution.agent_type == "orchestrator",
     )
     result_b = await db_session.execute(stmt_b)
     tenant_b_orchestrators = result_b.scalars().all()
@@ -181,7 +182,7 @@ async def test_handover_summary_no_cross_tenant_data(
     await db_session.commit()
 
     # Create Tenant A orchestrator
-    orch_a1 = MCPAgentJob(
+    orch_a1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_a.id,
             tenant_key=tenant_a_key,
@@ -193,7 +194,7 @@ async def test_handover_summary_no_cross_tenant_data(
     )
 
     # Create Tenant B orchestrator (for isolation verification)
-    orch_b1 = MCPAgentJob(
+    orch_b1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_b.id,
             tenant_key=tenant_b_key,
@@ -210,7 +211,7 @@ async def test_handover_summary_no_cross_tenant_data(
     await db_session.refresh(orch_b1)
 
     # Tenant A creates successor
-    orch_a2 = MCPAgentJob(
+    orch_a2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=project_a.id,
             tenant_key=tenant_a_key,
@@ -300,7 +301,7 @@ async def test_succession_chain_query_tenant_isolation(
     # Create Tenant A succession chain (3 instances)
     tenant_a_chain = []
     for i in range(1, 4):
-        orch = MCPAgentJob(
+        orch = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project_a.id,
                 tenant_key=tenant_a_key,
@@ -328,7 +329,7 @@ async def test_succession_chain_query_tenant_isolation(
     # Create Tenant B succession chain (2 instances)
     tenant_b_chain = []
     for i in range(1, 3):
-        orch = MCPAgentJob(
+        orch = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project_b.id,
                 tenant_key=tenant_b_key,
@@ -358,13 +359,13 @@ async def test_succession_chain_query_tenant_isolation(
 
     # Query Tenant A succession chain only
     stmt_a = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == project_a.id,
-            MCPAgentJob.tenant_key == tenant_a_key,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == project_a.id,
+            AgentExecution.tenant_key == tenant_a_key,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result_a = await db_session.execute(stmt_a)
@@ -377,13 +378,13 @@ async def test_succession_chain_query_tenant_isolation(
 
     # Query Tenant B succession chain only
     stmt_b = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == project_b.id,
-            MCPAgentJob.tenant_key == tenant_b_key,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == project_b.id,
+            AgentExecution.tenant_key == tenant_b_key,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result_b = await db_session.execute(stmt_b)
@@ -429,7 +430,7 @@ async def test_concurrent_succession_different_tenants(
     # Each tenant creates orchestrator at 90% threshold
     orchestrators_before = []
     for tenant in tenants:
-        orch = MCPAgentJob(
+        orch = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=tenant["project"].id,
                 tenant_key=tenant["tenant_key"],
@@ -451,7 +452,7 @@ async def test_concurrent_succession_different_tenants(
         await db_session.refresh(orch_before)
 
         # Create successor
-        orch_after = MCPAgentJob(
+        orch_after = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=tenant["project"].id,
                 tenant_key=tenant["tenant_key"],
@@ -480,9 +481,9 @@ async def test_concurrent_succession_different_tenants(
     # Verify all 3 tenants successfully created successors
     for i, tenant in enumerate(tenants):
         # Query tenant's orchestrators
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.tenant_key == tenant["tenant_key"],
-            MCPAgentJob.agent_type == "orchestrator",
+        stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant["tenant_key"],
+            AgentExecution.agent_type == "orchestrator",
         )
         result = await db_session.execute(stmt)
         tenant_orchestrators = result.scalars().all()
@@ -540,7 +541,7 @@ async def test_tenant_isolation_in_spawned_by_chain(
 
     for i in range(1, 4):
         # Tenant A
-        orch_a = MCPAgentJob(
+        orch_a = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project_a.id,
                 tenant_key=tenant_a_key,
@@ -555,7 +556,7 @@ async def test_tenant_isolation_in_spawned_by_chain(
         tenant_a_chain.append(orch_a)
 
         # Tenant B
-        orch_b = MCPAgentJob(
+        orch_b = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=project_b.id,
                 tenant_key=tenant_b_key,

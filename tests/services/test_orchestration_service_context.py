@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 
 
@@ -56,7 +56,7 @@ def orchestration_service(mock_db_manager, mock_tenant_manager):
 @pytest.fixture
 def mock_orchestrator_job():
     """Create mock orchestrator agent job."""
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),
@@ -87,7 +87,7 @@ async def test_report_progress_todo_updates_job_metadata_steps(mock_db_manager, 
     mock_message_service.send_message = AsyncMock(return_value={"success": True, "message_id": "msg-steps-001"})
     service._message_service = mock_message_service
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test-steps",
         project_id=str(uuid4()),
@@ -144,7 +144,7 @@ async def test_report_progress_non_todo_does_not_set_steps(mock_db_manager, mock
     mock_message_service.send_message = AsyncMock(return_value={"success": True, "message_id": "msg-progress-001"})
     service._message_service = mock_message_service
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test-steps",
         project_id=str(uuid4()),
@@ -368,7 +368,7 @@ async def test_trigger_succession_rejects_non_orchestrator(orchestration_service
     db_manager, session = mock_db_manager
 
     # Create non-orchestrator job
-    job = MCPAgentJob(
+    job = AgentExecution(
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),

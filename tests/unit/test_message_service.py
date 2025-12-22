@@ -17,7 +17,8 @@ from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 from giljo_mcp.services.message_service import MessageService
-from giljo_mcp.models import Message, Project, MCPAgentJob
+from giljo_mcp.models import Message, Project
+from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestMessageServiceSending:
@@ -85,10 +86,10 @@ class TestMessageServiceSending:
         db_manager, session = mock_db_manager
 
         # Mock agent jobs
-        mock_job1 = Mock(spec=MCPAgentJob)
+        mock_job1 = Mock(spec=AgentExecution)
         mock_job1.agent_type = "implementer"
 
-        mock_job2 = Mock(spec=MCPAgentJob)
+        mock_job2 = Mock(spec=AgentExecution)
         mock_job2.agent_type = "analyzer"
 
         # Mock project

@@ -27,7 +27,8 @@ from httpx import AsyncClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from api.app import create_app, state
-from src.giljo_mcp.models import MCPAgentJob, Product, User
+from src.giljo_mcp.models import Product, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 from tests.helpers.websocket_test_utils import PerformanceMonitor
 
@@ -214,7 +215,7 @@ class TestAgentJobWebSocketEvents:
 
         # Create a pending job first
         async with test_db.get_session_async() as session:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
                 agent_type="analyzer",
@@ -266,7 +267,7 @@ class TestAgentJobWebSocketEvents:
 
         # Create an active job
         async with test_db.get_session_async() as session:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
                 agent_type="implementer",
@@ -323,7 +324,7 @@ class TestAgentJobWebSocketEvents:
 
         # Create an active job
         async with test_db.get_session_async() as session:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
                 agent_type="tester",
@@ -377,7 +378,7 @@ class TestAgentJobWebSocketEvents:
 
         # Create a job
         async with test_db.get_session_async() as session:
-            job = MCPAgentJob(
+            job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
                 agent_type="orchestrator",
@@ -467,7 +468,7 @@ class TestMultiTenantIsolation:
         try:
             # Create job in tenant A
             async with test_db.get_session_async() as session:
-                job_a = MCPAgentJob(
+                job_a = AgentExecution(
                     tenant_key=tenant_a,
                     job_id=str(uuid4()),
                     agent_type="orchestrator",

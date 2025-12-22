@@ -13,7 +13,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from sqlalchemy import select
 
 
@@ -88,9 +88,16 @@ async def test_send_message_flow_multi_recipient(db_manager, db_session, test_pr
 
 @pytest.mark.asyncio
 async def test_receive_messages_flow(db_manager, db_session, test_project, test_agent_jobs):
-    """Test message retrieval flow"""
+    """
+    Test message retrieval flow.
+
+    Migration Note (0367d): test_agent_jobs now returns list of tuples [(job, execution), ...].
+    """
     tenant_manager = TenantManager()
     tenant_manager.set_current_tenant(test_project.tenant_key)
+
+    # Unpack first job and execution
+    first_job, first_execution = test_agent_jobs[0]
 
     # Create a test message
     message = Message(
@@ -103,7 +110,7 @@ async def test_receive_messages_flow(db_manager, db_session, test_project, test_
         priority="normal",
         status="waiting",
         created_at=datetime.now(timezone.utc),
-        meta_data={"_job_id": test_agent_jobs[0].job_id}
+        meta_data={"_job_id": first_job.job_id}
     )
     db_session.add(message)
     await db_session.commit()
@@ -115,7 +122,7 @@ async def test_receive_messages_flow(db_manager, db_session, test_project, test_
     async with db_manager.get_session_async() as session:
         result = await queue.get_messages(
             session=session,
-            job_id=test_agent_jobs[0].job_id,
+            job_id=first_job.job_id,
             tenant_key=test_project.tenant_key,
             to_agent="test-implementer",
             unread_only=True

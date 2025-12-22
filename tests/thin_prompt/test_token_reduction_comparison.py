@@ -209,9 +209,9 @@ class TestTokenReductionComparison:
         # Get mission tokens by fetching the stored mission
         from sqlalchemy import select
 
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == thin_result.orchestrator_id))
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == thin_result.orchestrator_id))
         orchestrator = result.scalar_one()
         mission_tokens = len(orchestrator.mission) // 4  # 1 token ≈ 4 chars
 
@@ -325,9 +325,9 @@ class TestTokenReductionComparison:
         # Get mission
         from sqlalchemy import select
 
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        db_result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id))
+        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         mission_tokens = len(orchestrator.mission) // 4
@@ -381,9 +381,9 @@ class TestTokenReductionComparison:
         # Mission should be in database, not prompt
         from sqlalchemy import select
 
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        db_result = await db_session.execute(select(MCPAgentJob).where(MCPAgentJob.id == result.orchestrator_id))
+        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.id == result.orchestrator_id))
         orchestrator = db_result.scalar_one()
 
         # Content should be in stored mission

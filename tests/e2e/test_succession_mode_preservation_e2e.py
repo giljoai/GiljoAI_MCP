@@ -20,7 +20,8 @@ import pytest
 import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product, User
+from src.giljo_mcp.models import Project, Product, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -96,7 +97,7 @@ class TestSuccessionModePreservationE2E:
         )
 
         # Step 2: Spawn Orchestrator A
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -130,7 +131,7 @@ class TestSuccessionModePreservationE2E:
 
         # Step 4: Verify B inherits Claude Code mode
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_b_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_b_id)
         result = await db_session.execute(stmt)
         orchestrator_b = result.scalar_one()
 
@@ -155,7 +156,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_c_id = result_bc["data"]["successor_id"]
 
         # Step 6: Verify C still uses Claude Code mode
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_c_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_c_id)
         result = await db_session.execute(stmt)
         orchestrator_c = result.scalar_one()
 
@@ -199,7 +200,7 @@ class TestSuccessionModePreservationE2E:
         await db_session.refresh(project)
 
         # Step 2: Spawn Orchestrator A (claude-code)
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -222,7 +223,7 @@ class TestSuccessionModePreservationE2E:
         await db_session.commit()
 
         # Step 4: Spawn Orchestrator D (should use multi-terminal)
-        orchestrator_d = MCPAgentJob(
+        orchestrator_d = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -271,7 +272,7 @@ class TestSuccessionModePreservationE2E:
         await db_session.refresh(project)
 
         # Spawn Orchestrator A (multi-terminal)
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -306,7 +307,7 @@ class TestSuccessionModePreservationE2E:
 
         # Verify B inherited multi-terminal mode
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_b_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_b_id)
         result_b = await db_session.execute(stmt)
         orchestrator_b = result_b.scalar_one()
 
@@ -332,7 +333,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_c_id = result_bc["data"]["successor_id"]
 
         # Verify C inherited the OVERRIDDEN mode from B (claude-code)
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_c_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_c_id)
         result_c = await db_session.execute(stmt)
         orchestrator_c = result_c.scalar_one()
 
@@ -369,7 +370,7 @@ class TestSuccessionModePreservationE2E:
         await db_session.refresh(project)
 
         # Spawn Orchestrator A (claude-code)
-        orchestrator_a = MCPAgentJob(
+        orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -415,7 +416,7 @@ class TestSuccessionModePreservationE2E:
 
         orchestrator_b_id = result["data"]["successor_id"]
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_b_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_b_id)
         result_b = await db_session.execute(stmt)
         orchestrator_b = result_b.scalar_one()
 

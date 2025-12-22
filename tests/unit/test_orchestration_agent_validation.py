@@ -23,7 +23,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+from src.giljo_mcp.models import AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.utils.tools_helpers import ToolsTestHelper, MockMCPToolRegistrar
 
 
@@ -124,7 +125,7 @@ class TestOrchestratorInstructionsConstraint:
 
         # Create orchestrator with multi-terminal execution_mode
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -167,7 +168,7 @@ class TestOrchestratorInstructionsConstraint:
 
         # Create orchestrator with CLI execution_mode
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -245,7 +246,7 @@ class TestOrchestratorInstructionsConstraint:
 
         # Create orchestrator in CLI mode
         async with self.db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
@@ -301,7 +302,7 @@ class TestOrchestratorInstructionsConstraint:
             await session.commit()
 
             # Create orchestrator
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,

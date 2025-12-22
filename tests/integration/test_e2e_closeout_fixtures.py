@@ -83,7 +83,8 @@ async def test_e2e_closeout_fixtures_multi_tenant_isolation(
     - No data leaks to other tenants
     """
     from sqlalchemy import select
-    from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+    from src.giljo_mcp.models import Product, Project, User
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     fixtures = e2e_closeout_fixtures
     tenant_key = fixtures["tenant_key"]
@@ -104,7 +105,7 @@ async def test_e2e_closeout_fixtures_multi_tenant_isolation(
     projects = result.scalars().all()
     assert len(projects) >= 1  # At least the test project
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.tenant_key == tenant_key)
+    stmt = select(AgentExecution).where(AgentExecution.tenant_key == tenant_key)
     result = await db_session.execute(stmt)
     agents = result.scalars().all()
     assert len(agents) >= 3  # At least the 3 test agents

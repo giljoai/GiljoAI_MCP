@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
 from src.giljo_mcp.monitoring.health_config import (
     HealthCheckConfig,
@@ -181,7 +181,7 @@ class TestAgentHealthMonitor:
 
         async with get_test_session() as session:
             # Create job 3 minutes ago in 'waiting' state
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-waiting-1",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -208,7 +208,7 @@ class TestAgentHealthMonitor:
 
         async with get_test_session() as session:
             # Create job 1 minute ago (below threshold)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-waiting-2",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -232,7 +232,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create active job with stale progress (6 minutes)
             stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-stalled-1",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -262,7 +262,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create active job with very stale progress (8 minutes)
             stale_time = datetime.now(timezone.utc) - timedelta(minutes=8)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-stalled-2",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -289,7 +289,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create active job with extremely stale progress (12 minutes)
             stale_time = datetime.now(timezone.utc) - timedelta(minutes=12)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-stalled-3",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -316,7 +316,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create active job with recent progress
             recent_time = datetime.now(timezone.utc) - timedelta(minutes=2)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-active-healthy",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -343,7 +343,7 @@ class TestAgentHealthMonitor:
             silent_time = datetime.now(timezone.utc) - timedelta(minutes=12)
 
             # Create orchestrator job silent for 12 minutes
-            orch_job = MCPAgentJob(
+            orch_job = AgentExecution(
                 job_id="orch-1",
                 tenant_key="test-tenant",
                 agent_type="orchestrator",
@@ -356,7 +356,7 @@ class TestAgentHealthMonitor:
             )
 
             # Create implementer job silent for 12 minutes
-            impl_job = MCPAgentJob(
+            impl_job = AgentExecution(
                 job_id="impl-1",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -387,7 +387,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create job silent for 15 minutes (exceeds 10min timeout)
             silent_time = datetime.now(timezone.utc) - timedelta(minutes=15)
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-silent-1",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -414,7 +414,7 @@ class TestAgentHealthMonitor:
         """Test extracting last progress time from job metadata."""
         progress_time = datetime.now(timezone.utc) - timedelta(minutes=5)
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id="test-job-1",
             tenant_key="test-tenant",
             agent_type="implementer",
@@ -435,7 +435,7 @@ class TestAgentHealthMonitor:
         """Test fallback to started_at when no progress metadata."""
         started_time = datetime.now(timezone.utc) - timedelta(minutes=5)
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id="test-job-2",
             tenant_key="test-tenant",
             agent_type="implementer",
@@ -455,7 +455,7 @@ class TestAgentHealthMonitor:
         """Test getting most recent activity timestamp."""
         now = datetime.now(timezone.utc)
 
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id="test-job-3",
             tenant_key="test-tenant",
             agent_type="implementer",
@@ -478,7 +478,7 @@ class TestAgentHealthMonitor:
 
         async with get_test_session() as session:
             # Create job
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-warning",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -529,7 +529,7 @@ class TestAgentHealthMonitor:
             monitor.config.auto_fail_on_timeout = False
 
             # Create job
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="test-job-timeout-1",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -580,7 +580,7 @@ class TestAgentHealthMonitor:
             monitor.config.auto_fail_on_timeout = True
 
             # Create timed-out job
-            job = MCPAgentJob(
+            job = AgentExecution(
                 job_id="timeout-job",
                 tenant_key="test-tenant",
                 agent_type="implementer",
@@ -634,7 +634,7 @@ class TestAgentHealthMonitor:
             stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
 
             # Create jobs for different tenants
-            job_tenant_a = MCPAgentJob(
+            job_tenant_a = AgentExecution(
                 job_id="job-tenant-a",
                 tenant_key="tenant-a",
                 agent_type="implementer",
@@ -646,7 +646,7 @@ class TestAgentHealthMonitor:
                 job_metadata={"last_progress_update": stale_time.isoformat()}
             )
 
-            job_tenant_b = MCPAgentJob(
+            job_tenant_b = AgentExecution(
                 job_id="job-tenant-b",
                 tenant_key="tenant-b",
                 agent_type="implementer",
@@ -708,7 +708,7 @@ class TestAgentHealthMonitor:
         async with get_test_session() as session:
             # Create jobs for multiple tenants
             jobs = [
-                MCPAgentJob(
+                AgentExecution(
                     job_id=f"job-{i}",
                     tenant_key=f"tenant-{i % 3}",  # 3 unique tenants
                     agent_type="implementer",
@@ -739,7 +739,7 @@ class TestAgentHealthMonitor:
             # Create jobs triggering different detections
             jobs = [
                 # Waiting timeout
-                MCPAgentJob(
+                AgentExecution(
                     job_id="waiting-timeout",
                     tenant_key="test-tenant",
                     agent_type="implementer",
@@ -749,7 +749,7 @@ class TestAgentHealthMonitor:
                     updated_at=now - timedelta(minutes=3)
                 ),
                 # Stalled job
-                MCPAgentJob(
+                AgentExecution(
                     job_id="stalled-job",
                     tenant_key="test-tenant",
                     agent_type="implementer",
@@ -761,7 +761,7 @@ class TestAgentHealthMonitor:
                     job_metadata={"last_progress_update": (now - timedelta(minutes=6)).isoformat()}
                 ),
                 # Heartbeat failure
-                MCPAgentJob(
+                AgentExecution(
                     job_id="heartbeat-fail",
                     tenant_key="test-tenant",
                     agent_type="tester",  # 8min timeout
