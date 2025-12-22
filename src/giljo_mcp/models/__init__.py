@@ -10,7 +10,8 @@ Use specific module imports for clarity and maintainability:
 
     from src.giljo_mcp.models.auth import User, APIKey, MCPSession
     from src.giljo_mcp.models.projects import Project, Session
-    from src.giljo_mcp.models.agents import MCPAgentJob, AgentInteraction
+    from src.giljo_mcp.models.agents import AgentInteraction, Job
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from src.giljo_mcp.models.products import Product, VisionDocument
     from src.giljo_mcp.models.tasks import Task, Message
     from src.giljo_mcp.models.templates import AgentTemplate
@@ -20,7 +21,7 @@ Use specific module imports for clarity and maintainability:
 ⚠️  LEGACY (Existing Code Only):
 Backward compatibility maintained for 427 existing imports:
 
-    from src.giljo_mcp.models import User, Project, MCPAgentJob
+    from src.giljo_mcp.models import User, Project, AgentJob
 
 This works but obscures which domain the model belongs to.
 Use modular imports in new code to benefit from domain organization.
@@ -30,16 +31,17 @@ Use modular imports in new code to benefit from domain organization.
 Package Structure (Post-Handover 0128a):
 ----------------------------------------
 src/giljo_mcp/models/
-├── base.py       → Base, generate_uuid, generate_project_alias
-├── auth.py       → User, APIKey, MCPSession
-├── products.py   → Product, VisionDocument, Vision
-├── projects.py   → Project, Session
-├── agents.py     → MCPAgentJob, AgentInteraction, Job
-├── templates.py  → AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
-├── tasks.py      → Task, Message
-├── context.py    → ContextIndex, LargeDocumentIndex, MCPContextIndex, MCPContextSummary
-└── config.py     → Configuration, DiscoveryConfig, GitConfig, GitCommit, SetupState,
-                     OptimizationRule, OptimizationMetric, DownloadToken, ApiMetrics
+├── base.py            → Base, generate_uuid, generate_project_alias
+├── auth.py            → User, APIKey, MCPSession
+├── products.py        → Product, VisionDocument, Vision
+├── projects.py        → Project, Session
+├── agents.py          → AgentInteraction, Job
+├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
+├── templates.py       → AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+├── tasks.py           → Task, Message
+├── context.py         → ContextIndex, LargeDocumentIndex, MCPContextIndex, MCPContextSummary
+└── config.py          → Configuration, DiscoveryConfig, GitConfig, GitCommit, SetupState,
+                          OptimizationRule, OptimizationMetric, DownloadToken, ApiMetrics
 
 Migration Strategy:
 -------------------
@@ -87,7 +89,6 @@ from .projects import (
 
 # Agent models
 from .agents import (
-    MCPAgentJob as _MCPAgentJob,  # Import with underscore to allow wrapper
     AgentInteraction,
     Job,
 )
@@ -154,7 +155,6 @@ __all__ = [
     "Project",
     "Session",
     # Agents
-    "MCPAgentJob",
     "AgentInteraction",
     "Job",
     # Agent Identity (Handover 0366a)
@@ -188,27 +188,5 @@ __all__ = [
 ]
 
 
-# Handover 0358d: Deprecation warnings for MCPAgentJob
-# Use lazy evaluation via __getattr__ to emit warning on import
-_DEPRECATED_MODELS = {
-    "MCPAgentJob": _MCPAgentJob,
-}
-
-
-def __getattr__(name):
-    """Module-level __getattr__ for deprecation warnings on import.
-
-    Handover 0358d: Emit deprecation warning when MCPAgentJob is imported
-    via "from src.giljo_mcp.models import MCPAgentJob".
-    """
-    if name in _DEPRECATED_MODELS:
-        import warnings
-        warnings.warn(
-            f"{name} is deprecated. Use AgentJob and AgentExecution instead. "
-            "See Handover 0358 for migration guide. Will be removed in v4.0.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return _DEPRECATED_MODELS[name]
-
-    raise AttributeError(f"module 'src.giljo_mcp.models' has no attribute '{name}'")
+# MCPAgentJob removed as of v3.2 (Handover 0367c-3)
+# Use AgentJob and AgentExecution instead
