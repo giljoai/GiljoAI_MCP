@@ -442,9 +442,9 @@ export const api = {
     // REMOVED (Handover 0034): changePassword - legacy admin/admin flow
     // Replaced by createFirstAdmin for fresh installs
     createFirstAdmin: (data) => apiClient.post('/api/auth/create-first-admin', data),
-    listUsers: () => apiClient.get('/api/auth/users'),
-    updateUser: (userId, data) => apiClient.put(`/api/auth/users/${userId}`, data),
-    deleteUser: (userId) => apiClient.delete(`/api/auth/users/${userId}`),
+    listUsers: () => apiClient.get('/api/v1/users/'),  // 0371: Fixed - was /api/auth/users (missing PUT/DELETE)
+    updateUser: (userId, data) => apiClient.put(`/api/v1/users/${userId}`, data),
+    deleteUser: (userId) => apiClient.delete(`/api/v1/users/${userId}`),
     // Password reset endpoints (Handover 0023)
     checkFirstLogin: (username) => apiClient.post('/api/auth/check-first-login', { username }),
     completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
