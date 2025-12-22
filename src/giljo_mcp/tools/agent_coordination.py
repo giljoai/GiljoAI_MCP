@@ -600,7 +600,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 formatted_jobs.append(
                     {
                         "job_id": job.job_id,
-                        "agent_type": job.agent_type,
+                        "agent_type": job.job_type,
                         "mission": job.mission,
                         "context_chunks": job.context_chunks or [],
                         "priority": "normal",  # Default priority
@@ -696,7 +696,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "status": "success",
                 "job": {
                     "job_id": job.job_id,
-                    "agent_type": job.agent_type,
+                    "agent_type": job.job_type,
                     "mission": job.mission,
                     "status": job.status,
                     "started_at": job.started_at.isoformat() if job.started_at else None,
@@ -1014,7 +1014,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # AgentJob status is authoritative and updated via AgentJobManager
 
             # Check for next job (optional chaining)
-            next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=job.agent_type, limit=1)
+            next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=job.job_type, limit=1)
 
             next_job_info = None
             if next_jobs:
@@ -1022,7 +1022,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 next_job_info = {
                     "job_id": next_job.job_id,
                     "mission": next_job.mission,
-                    "agent_type": next_job.agent_type,
+                    "agent_type": next_job.job_type,
                 }
 
             logger.info(

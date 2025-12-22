@@ -17,6 +17,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -29,7 +30,7 @@ from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
-from .models import AgentTemplate, Job, Message, Product, Project
+from .models import AgentTemplate, Message, Product, Project
 from .models.agent_identity import AgentJob, AgentExecution
 from .agent_message_queue import AgentMessageQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
@@ -41,6 +42,20 @@ logger = logging.getLogger(__name__)
 
 
 # ContextStatus enum moved to enums.py
+
+
+@dataclass
+class CLIPromptJobInfo:
+    """Job information for CLI prompt generation.
+
+    This dataclass provides the minimal job interface needed for generating
+    CLI prompts for Codex/Gemini agents. It decouples prompt generation from
+    the full Job model.
+    """
+    job_id: str
+    agent_type: str  # Agent role/type for display purposes
+    mission: str
+    status: str
 
 
 class ProjectOrchestrator:
@@ -327,7 +342,7 @@ class ProjectOrchestrator:
         async with self.db_manager.get_session_async() as session:
             # Get project and jobs
             result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
             )
             project = result.scalar_one_or_none()
             if not project:
@@ -335,7 +350,7 @@ class ProjectOrchestrator:
 
             sent = 0
             tenant_key = project.tenant_key
-            jobs = [j for j in project.agent_jobs]
+            jobs = [j for j in project.agent_jobs_v2]
 
             for job in jobs:
                 try:
@@ -344,7 +359,7 @@ class ProjectOrchestrator:
                         job_id=job.job_id,
                         tenant_key=tenant_key,
                         from_agent="orchestrator",
-                        to_agent=job.agent_type,
+                        to_agent=job.job_type,
                         message_type="orchestrator_instruction",
                         content=(
                             "Team assembled. Check messages before starting. "
@@ -363,19 +378,19 @@ class ProjectOrchestrator:
         """Broadcast a concise team status to all agents in the project."""
         async with self.db_manager.get_session_async() as session:
             result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
             )
             project = result.scalar_one_or_none()
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
             tenant_key = project.tenant_key
-            jobs = list(project.agent_jobs)
+            jobs = list(project.agent_jobs_v2)
 
             # Compose a short status line
             parts = []
             for job in jobs:
-                parts.append(f"{job.agent_type}:{job.status}")
+                parts.append(f"{job.job_type}:{job.status}")
             content = "Team status: " + ", ".join(parts)
 
             sent = 0
@@ -386,7 +401,7 @@ class ProjectOrchestrator:
                         job_id=job.job_id,
                         tenant_key=tenant_key,
                         from_agent="orchestrator",
-                        to_agent=job.agent_type,
+                        to_agent=job.job_type,
                         message_type="orchestrator_instruction",
                         content=content,
                         priority=0,
@@ -418,14 +433,14 @@ class ProjectOrchestrator:
         async with self.db_manager.get_session_async() as session:
             # Load project and jobs
             result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
             )
             project = result.scalar_one_or_none()
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
             tenant_key = project.tenant_key
-            jobs = list(project.agent_jobs)
+            jobs = list(project.agent_jobs_v2)
 
         # Poll loop (use fresh sessions inside loop for isolation)
         for _ in range(max(1, int(iterations))):
@@ -458,7 +473,7 @@ class ProjectOrchestrator:
                                     job_id=job.job_id,
                                     tenant_key=tenant_key,
                                     from_agent="orchestrator",
-                                    to_agent=job.agent_type,
+                                    to_agent=job.job_type,
                                     message_type="orchestrator_instruction",
                                     content=(
                                         "Error received. Investigating. Provide minimal repro if possible; "
@@ -572,17 +587,15 @@ class ProjectOrchestrator:
             f"job_id={job_id}, agent_id={agent_id}, project={project.id}"
         )
 
-        # 3. Generate CLI prompt (using a temporary Job-like object for backward compatibility)
-        class JobCompat:
-            def __init__(self, job_id, agent_type, mission, status):
-                self.job_id = job_id
-                self.agent_type = agent_type
-                self.mission = mission
-                self.status = status
-
-        job_compat = JobCompat(job_id, role.value, full_mission, "waiting_acknowledgment")
+        # 3. Generate CLI prompt using CLIPromptJobInfo dataclass
+        job_info = CLIPromptJobInfo(
+            job_id=job_id,
+            agent_type=role.value,
+            mission=full_mission,
+            status="waiting_acknowledgment"
+        )
         cli_prompt = self._generate_cli_prompt(
-            job=job_compat,
+            job=job_info,
             template=template,
             project=project,
             tenant_key=project.tenant_key,
@@ -702,7 +715,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
     def _generate_cli_prompt(
         self,
-        job: Job,
+        job: CLIPromptJobInfo,
         template: AgentTemplate,
         project: Project,
         tenant_key: str,
@@ -718,7 +731,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         - MCP tool call examples (tenant-specific)
 
         Args:
-            job: Job instance
+            job: CLIPromptJobInfo instance with minimal job data
             template: AgentTemplate instance
             project: Project instance
             tenant_key: Tenant key for multi-tenant isolation
@@ -1447,7 +1460,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             if tenant_key:
                 query = query.where(Project.tenant_key == tenant_key)
 
-            result = await session.execute(query.options(selectinload(Project.agent_jobs_v2)))
+            result = await session.execute(query.options(selectinload(Project.agent_jobs_v2_v2)))
             return result.scalars().all()
 
     async def get_project_agents(self, project_id: str) -> list[AgentExecution]:
@@ -1529,7 +1542,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 async with self.db_manager.get_session_async() as session:
                     # Get project and agents
                     result = await session.execute(
-                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
+                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2_v2))
                     )
                     project = result.scalar_one_or_none()
 
@@ -1537,7 +1550,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                         break
 
                     # Check each agent execution
-                    for execution in project.agent_jobs_v2:
+                    for execution in project.agent_jobs_v2_v2:
                         if execution.status == "active":
                             needs_handoff, reason = await self.check_handoff_needed(execution.agent_id)
                             if needs_handoff:
@@ -1572,7 +1585,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         """
         async with self.db_manager.get_session_async() as session:
             result = await session.execute(
-                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agent_jobs_v2))
+                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agent_jobs_v2_v2))
             )
             return result.scalars().all()
 
@@ -1631,7 +1644,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         async with self.db_manager.get_session_async() as session:
             # Get project and agents
             project_result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2_v2))
             )
             project = project_result.scalar_one_or_none()
 
@@ -1646,7 +1659,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             total_operations = 0
             total_tokens_saved = 0
 
-            for execution in project.agent_jobs_v2:
+            for execution in project.agent_jobs_v2_v2:
                 try:
                     agent_report = await optimizer.generate_savings_report(execution.agent_id)
                     agent_reports[execution.agent_id] = {

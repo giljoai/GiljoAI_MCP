@@ -74,7 +74,7 @@ async def generate_orchestrator_prompt(
         )
 
     # Count agents in project (via AgentExecution)
-    agent_count_stmt = select(func.count(AgentExecution.id)).where(
+    agent_count_stmt = select(func.count(AgentExecution.agent_id)).where(
         AgentExecution.tenant_key == current_user.tenant_key
     ).join(
         AgentJob,
@@ -668,7 +668,7 @@ async def get_execution_prompt(
 
         # Count specialist agents (exclude orchestrator)
         agent_count_stmt = (
-            select(func.count(AgentExecution.id))
+            select(func.count(AgentExecution.agent_id))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
                 AgentExecution.agent_type != 'orchestrator',

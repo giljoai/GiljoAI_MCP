@@ -653,7 +653,7 @@ class AgentJobManager:
             )
 
             if agent_type:
-                stmt = stmt.where(AgentJob.agent_type == agent_type)
+                stmt = stmt.where(AgentJob.job_type == agent_type)
 
             # Order by created_at to get oldest first
             stmt = stmt.order_by(AgentJob.created_at)
@@ -694,7 +694,7 @@ class AgentJobManager:
             )
 
             if agent_type:
-                stmt = stmt.where(AgentJob.agent_type == agent_type)
+                stmt = stmt.where(AgentJob.job_type == agent_type)
 
             # Order by started_at to get oldest first
             stmt = stmt.order_by(AgentJob.started_at)
