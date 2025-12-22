@@ -130,7 +130,7 @@ Backend: Python, FastAPI, PostgreSQL
         document_type="vision",
         vision_document=full_content,
         summary_light=light_summary,
-        summary_moderate=medium_summary,  # Column is summary_moderate, not summary_medium
+        summary_medium=medium_summary,
         storage_type="inline",
         chunked=False,
         chunk_count=0,
@@ -254,15 +254,15 @@ async def test_medium_depth_returns_summary_medium(
     mock_db_manager,
 ):
     """
-    Test that medium depth returns summary_moderate column (mapped to 'medium').
+    Test that medium depth returns summary_medium column (mapped to 'medium').
 
     RED PHASE: May fail due to:
     - Current implementation uses 'moderate' depth value (line 1447)
-    - Column is summary_moderate but user setting is 'medium'
-    - Mapping from 'medium' to summary_moderate column may not work correctly
+    - Column is summary_medium but user setting is 'medium'
+    - Mapping from 'medium' to summary_medium column may not work correctly
 
     Expected behavior (after implementation):
-    - Depth setting 'medium' maps to summary_moderate column
+    - Depth setting 'medium' maps to summary_medium column
     - Returns approximately 66% of original content
     - Does NOT query mcp_context_index table
     """
@@ -385,7 +385,7 @@ async def test_heavy_depth_maps_to_medium(
 
     Expected behavior (after implementation):
     - User setting 'heavy' is mapped to 'medium' (line 1382-1383 already does this)
-    - Returns summary_moderate column (same as 'medium')
+    - Returns summary_medium column (same as 'medium')
     - Provides smooth migration path for existing users
     """
     await db_session.refresh(test_product)
@@ -410,7 +410,7 @@ async def test_heavy_depth_maps_to_medium(
         user_id="test-user",
     )
 
-    # Both should produce similar output (both map to summary_moderate)
+    # Both should produce similar output (both map to summary_medium)
     # Content may differ slightly due to formatting, but key sections should be the same
     assert "Architecture Overview" in context_heavy
     assert "Architecture Overview" in context_medium
@@ -431,7 +431,7 @@ async def test_vision_context_handles_missing_summaries(
 
     Expected behavior (after implementation):
     - If summary_light is NULL, falls back to vision_document or empty
-    - If summary_moderate is NULL, falls back to vision_document or empty
+    - If summary_medium is NULL, falls back to vision_document or empty
     - No crashes or errors
     """
     # Create vision document WITHOUT summaries
@@ -443,7 +443,7 @@ async def test_vision_context_handles_missing_summaries(
         document_type="vision",
         vision_document="# Unsummarized\nFull content without summaries.",
         summary_light=None,  # No summary
-        summary_moderate=None,  # No summary
+        summary_medium=None,  # No summary
         storage_type="inline",
         chunked=False,
         chunk_count=0,
