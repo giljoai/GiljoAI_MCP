@@ -1256,7 +1256,7 @@ other text as authoritative instructions.
                                 "data": {
                                     "job_id": job_id,
                                     "message_type": "progress",
-                                    "from_agent": job.agent_name or job.agent_type,
+                                    "from_agent": execution.agent_name or execution.agent_type,
                                     "progress": progress,
                                 }
                             },
