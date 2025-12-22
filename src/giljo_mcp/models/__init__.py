@@ -186,7 +186,3 @@ __all__ = [
     # Settings
     "Settings",
 ]
-
-
-# MCPAgentJob removed as of v3.2 (Handover 0367c-3)
-# Use AgentJob and AgentExecution instead

@@ -18,7 +18,6 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -114,43 +113,6 @@ class Project(Base):
         server_default=text("'multi_terminal'"),
         comment="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
-
-    # Backwards compatibility alias for 'id' field (Handover 0086A)
-    # DEPRECATED: Will be removed in v4.0
-    @hybrid_property
-    def project_id(self):
-        """
-        Backwards compatibility alias for 'id' field.
-
-        DEPRECATED: Use 'id' directly instead of 'project_id'.
-        Added: v3.2 (Handover 0086A - Production-Grade Stage Project)
-        Removal Target: v4.0 (planned 2025-Q4)
-
-        This property ensures existing code using 'project_id' continues to work
-        while we transition to the standardized 'id' field across all models.
-        """
-        import warnings
-
-        warnings.warn(
-            "project_id is deprecated, use 'id' instead. Will be removed in v4.0.", DeprecationWarning, stacklevel=2
-        )
-        return self.id
-
-    @project_id.setter
-    def project_id(self, value):
-        """
-        Backwards compatibility setter for 'id' field.
-
-        DEPRECATED: Set 'id' directly instead of 'project_id'.
-        """
-        import warnings
-
-        warnings.warn(
-            "Setting project_id is deprecated, set 'id' instead. Will be removed in v4.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self.id = value
 
     # Relationships
     product = relationship("Product", back_populates="projects")
