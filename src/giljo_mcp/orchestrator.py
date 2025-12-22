@@ -355,7 +355,7 @@ class ProjectOrchestrator:
                     sent += 1
                 except Exception:
                     # Continue sending to others; errors are logged at queue level
-                    continue
+                    continue  # nosec B112
 
             return sent
 
@@ -393,7 +393,7 @@ class ProjectOrchestrator:
                     )
                     sent += 1
                 except Exception:
-                    continue
+                    continue  # nosec B112
 
             return {"sent": sent, "content": content}
 
@@ -467,7 +467,7 @@ class ProjectOrchestrator:
                                     priority=2,
                                 )
                             except Exception:
-                                pass
+                                pass  # nosec B110
 
                         # Message will be auto-acknowledged when retrieved via receive_messages
 

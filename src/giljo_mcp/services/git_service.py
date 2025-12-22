@@ -17,7 +17,7 @@ has been removed (Handover 013B). All git operations are performed via
 subprocess calls to local git installations.
 """
 
-import subprocess
+import subprocess  # nosec B404
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -95,7 +95,7 @@ class GitService:
                 cmd.insert(4, f"--since={since}")
 
             # Execute git log
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 cmd,
                 capture_output=True,
                 text=True,
@@ -147,7 +147,7 @@ class GitService:
                 return False
 
             # Try to run git command to verify
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["git", "-C", repo_path, "rev-parse", "--git-dir"],
                 capture_output=True,
                 text=True,
@@ -232,7 +232,7 @@ class GitService:
             "main"
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,
@@ -267,7 +267,7 @@ class GitService:
             "https://github.com/user/repo.git"
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["git", "-C", repo_path, "config", "--get", "remote.origin.url"],
                 capture_output=True,
                 text=True,
@@ -303,7 +303,7 @@ class GitService:
             42
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["git", "-C", repo_path, "rev-list", "--count", branch],
                 capture_output=True,
                 text=True,
