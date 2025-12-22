@@ -295,3 +295,44 @@ def test_websocket_not_affected(client):
 - [OWASP Secure Headers Project](https://owasp.org/www-project-secure-headers/)
 - [FastAPI Middleware Documentation](https://fastapi.tiangolo.com/advanced/middleware/)
 - [Security Headers Scanner](https://securityheaders.com)
+
+---
+
+## Completion Summary
+
+**Date Completed**: 2025-12-22
+**Status**: ✅ COMPLETED
+
+### What Was Done
+- Discovered `SecurityHeadersMiddleware` already existed from Handover 0129c
+- Fixed bug: HSTS header was being added to HTTP requests (meaningless/confusing)
+- Added conditional check: HSTS only added for HTTPS connections
+
+### Files Modified
+- `api/middleware/security.py` (lines 57-61)
+
+### Bug Fix Applied
+```python
+# HSTS: Only add for HTTPS connections (meaningless for HTTP)
+if request.url.scheme == "https":
+    response.headers["Strict-Transport-Security"] = (
+        f"max-age={self.hsts_max_age}; includeSubDomains; preload"
+    )
+```
+
+### Existing Security Headers (Already Present)
+- Content-Security-Policy (CSP)
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
+- Referrer-Policy: strict-origin-when-cross-origin
+- Permissions-Policy (disabled features)
+- X-XSS-Protection: 1; mode=block
+
+### Verification
+- HSTS no longer added for HTTP requests
+- All other security headers still present
+- WebSocket connections unaffected
+
+### Notes
+- Part of 1000 series Greptile Security Remediation
+- SecurityHeadersMiddleware from 0129c was comprehensive - only minor HSTS fix needed

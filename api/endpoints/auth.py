@@ -363,6 +363,7 @@ async def login(
                 # Load whitelist from config (defaults to empty list if not configured)
                 config = get_config()
                 allowed_domains = config.get("security", {}).get("cookie_domains", [])
+                secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
 
                 if host_only in allowed_domains:
                     cookie_domain = host_only
@@ -380,7 +381,7 @@ async def login(
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=secure_cookies,  # Configured via config.yaml security.cookies.secure
         samesite="lax",
         # NO max_age - makes it a session cookie that expires on browser close
         path="/",  # Accessible from all paths (frontend and API)
@@ -799,6 +800,7 @@ async def create_first_admin_user(
                     # Load whitelist from config (defaults to empty list if not configured)
                     config = get_config()
                     allowed_domains = config.get("security", {}).get("cookie_domains", [])
+                    secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
 
                     if host_only in allowed_domains:
                         cookie_domain = host_only
@@ -816,7 +818,7 @@ async def create_first_admin_user(
             key="access_token",
             value=token,
             httponly=True,
-            secure=False,  # Set to True in production with HTTPS
+            secure=secure_cookies,  # Configured via config.yaml security.cookies.secure
             samesite="lax",
             path="/",  # Accessible from all paths (frontend and API)
             domain=cookie_domain,  # Set to request host for cross-port cookie sharing
