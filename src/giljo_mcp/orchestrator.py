@@ -1448,7 +1448,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             if tenant_key:
                 query = query.where(Project.tenant_key == tenant_key)
 
-            result = await session.execute(query.options(selectinload(Project.agent_jobs_v2_v2)))
+            result = await session.execute(query.options(selectinload(Project.agent_jobs_v2)))
             return result.scalars().all()
 
     async def get_project_agents(self, project_id: str) -> list[AgentExecution]:
@@ -1530,7 +1530,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 async with self.db_manager.get_session_async() as session:
                     # Get project and agents
                     result = await session.execute(
-                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2_v2))
+                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
                     )
                     project = result.scalar_one_or_none()
 
@@ -1538,7 +1538,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                         break
 
                     # Check each agent execution
-                    for execution in project.agent_jobs_v2_v2:
+                    for execution in project.agent_jobs_v2:
                         if execution.status == "active":
                             needs_handoff, reason = await self.check_handoff_needed(execution.agent_id)
                             if needs_handoff:
@@ -1573,7 +1573,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         """
         async with self.db_manager.get_session_async() as session:
             result = await session.execute(
-                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agent_jobs_v2_v2))
+                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agent_jobs_v2))
             )
             return result.scalars().all()
 
@@ -1632,7 +1632,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         async with self.db_manager.get_session_async() as session:
             # Get project and agents
             project_result = await session.execute(
-                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2_v2))
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
             )
             project = project_result.scalar_one_or_none()
 
@@ -1647,7 +1647,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             total_operations = 0
             total_tokens_saved = 0
 
-            for execution in project.agent_jobs_v2_v2:
+            for execution in project.agent_jobs_v2:
                 try:
                     agent_report = await optimizer.generate_savings_report(execution.agent_id)
                     agent_reports[execution.agent_id] = {
