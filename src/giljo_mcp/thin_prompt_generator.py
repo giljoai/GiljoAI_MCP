@@ -1122,7 +1122,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
         agent_spawn_lines = []
         if agent_jobs:
             for idx, agent in enumerate(agent_jobs, 1):
-                mission = agent.mission or "(No mission assigned)"
+                # AgentExecution.job relationship points to AgentJob which has mission
+                # (Handover 0366 split: mission lives on AgentJob, not AgentExecution)
+                mission = getattr(agent.job, 'mission', None) or "(No mission assigned)"
                 # Truncate long missions
                 mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
 
