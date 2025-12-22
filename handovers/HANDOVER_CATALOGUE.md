@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-21 (Alpha Trial Remediation 0356-0361 COMPLETE, moved to completed/)
+**Last Updated:** 2025-12-21 (0367 MCPAgentJob Migration COMPLETE, 0368-0369 archived)
 
 ---
 
@@ -43,7 +43,7 @@
 |----|-------|--------|----------|-------|
 | 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
-| 0349 | Agent Execution Context Refactor | Ready | Medium | 3-layer separation |
+| 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 
 ### In Progress / Partial
@@ -116,6 +116,10 @@
 | 0366b | Service Layer Updates | **COMPLETE** (2025-12-20) |
 | 0366c | MCP Tool Standardization | **COMPLETE** (2025-12-20) |
 | 0366d | Frontend Updates (4 parts) | **COMPLETE** (2025-12-20) |
+| 0367 | MCPAgentJob Cleanup Migration (9 files) | **COMPLETE** (2025-12-21) |
+| 0368 | Test Migration Roadmap | **COMPLETE** (2025-12-21) |
+| 0369 | Post-Refactor Quality Audit | **COMPLETE** (2025-12-21) |
+| 0349 | Agent Execution Context Refactor | **COMPLETE** (2025-12-21) |
 | 0117 | Agent Role Refactor (8-Role System) | **SUPERSEDED** by 0515 |
 | 0256 | Task Templates Cleanup Followup | **COMPLETE** |
 | 0331 | Message Audit Modal | **COMPLETE** |
@@ -189,6 +193,20 @@ Located in `handovers/cancelled/`:
 - 0366: Agent Identity Refactor (a/b/c/d - AgentJob/AgentExecution model)
 - **Remaining**: 0362 (WebSocket counters), 0365 (handover behavior)
 - See: `completed/alpha_trial_remediation_roadmap-C.md`
+
+### MCPAgentJob Cleanup Migration (0367 Series)
+**Status:** 100% Complete (December 2025)
+- 0367: Kickoff + coordination document
+- 0367a: Service layer cleanup (206 refs removed)
+- 0367b: API endpoint migration (103 refs removed)
+- 0367c-1: Monitoring + orchestrator cleanup (46 refs)
+- 0367c-2: Tools + prompt generation cleanup (49 refs)
+- 0367d: Validation & deprecation
+- 0367e: Final identity cleanup
+- 0368: Test migration roadmap (documented)
+- 0369: Post-refactor quality audit
+- **Result**: Zero MCPAgentJob imports in production code
+- See: `completed/0367_mcpagentjob_cleanup_roadmap.md`
 
 ### Agent Name Single Source of Truth (0351)
 **Status:** 100% Complete (December 2025)
