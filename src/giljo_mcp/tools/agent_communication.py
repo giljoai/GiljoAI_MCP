@@ -35,7 +35,7 @@ from giljo_mcp.agent_job_manager import AgentJobManager
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.models.agent_identity import AgentExecution
-from giljo_mcp.services.message_service_0366b import MessageService
+from giljo_mcp.services.message_service import MessageService  # Handover 0372: Unified service
 
 
 logger = logging.getLogger(__name__)
@@ -80,12 +80,15 @@ def register_agent_communication_tools(mcp: FastMCP, db_manager: DatabaseManager
                 websocket_manager=None,
             )
 
-            # Receive messages using agent_id (returns list directly)
-            messages = await message_service.receive_messages(
+            # Receive messages using agent_id with filtering (Handover 0372)
+            result = await message_service.receive_messages(
                 agent_id=agent_id,
                 tenant_key=tenant_key,
                 limit=10,
+                exclude_self=True,  # No self-echoes
+                exclude_progress=True,  # No progress spam
             )
+            messages = result.get("messages", [])  # Extract list from dict
 
             # Filter by message type if specified
             if message_type:
