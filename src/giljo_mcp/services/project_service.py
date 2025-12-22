@@ -219,7 +219,7 @@ class ProjectService:
                 # Get agent jobs for this project (migrated to AgentJob + AgentExecution - Handover 0367a)
                 agent_query = (
                     select(AgentJob, AgentExecution)
-                    .join(AgentExecution, AgentJob.id == AgentExecution.agent_job_id)
+                    .join(AgentExecution, AgentJob.job_id == AgentExecution.job_id)
                     .where(AgentJob.project_id == project_id)
                     .order_by(AgentJob.created_at)
                 )
@@ -312,7 +312,7 @@ class ProjectService:
                     return {"success": True, "project": None}
 
                 # Get agent job and message counts (migrated to AgentJob - Handover 0367a)
-                agent_job_stmt = select(func.count(AgentJob.id)).where(AgentJob.project_id == project.id)
+                agent_job_stmt = select(func.count(AgentJob.job_id)).where(AgentJob.project_id == project.id)
                 agent_count_result = await session.execute(agent_job_stmt)
                 agent_count = agent_count_result.scalar() or 0
 
@@ -725,7 +725,7 @@ class ProjectService:
                 # Query AgentExecution records via join with AgentJob
                 agent_result = await session.execute(
                     select(AgentExecution)
-                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
                             AgentJob.project_id == project_id,
@@ -818,7 +818,7 @@ class ProjectService:
                 # Resume decommissioned agents (migrated to AgentExecution - Handover 0367a)
                 agent_result = await session.execute(
                     select(AgentExecution)
-                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
                             AgentJob.project_id == project_id,
@@ -1187,7 +1187,7 @@ class ProjectService:
                 # Get job counts by status (migrated to AgentExecution - Handover 0367a)
                 job_counts_result = await session.execute(
                     select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
-                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
                             AgentJob.project_id == project_id,
@@ -1222,7 +1222,7 @@ class ProjectService:
                         )
                     )
                     .select_from(AgentExecution)
-                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
                             AgentJob.project_id == project_id,
@@ -1549,7 +1549,7 @@ class ProjectService:
         """
         job_counts_result = await session.execute(
             select(AgentExecution.status, func.count(AgentExecution.id).label("count"))
-            .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 and_(
                     AgentJob.project_id == project_id,
@@ -1960,7 +1960,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 # Get agent jobs (migrated to AgentJob + AgentExecution - Handover 0367a)
                 agent_job_result = await session.execute(
                     select(AgentJob, AgentExecution)
-                    .join(AgentExecution, AgentJob.id == AgentExecution.agent_job_id)
+                    .join(AgentExecution, AgentJob.job_id == AgentExecution.job_id)
                     .where(AgentJob.project_id == project.id)
                 )
                 agent_pairs = agent_job_result.all()
@@ -2353,7 +2353,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 # Cascade soft delete to agent jobs - cancel all executions for this project (migrated to AgentExecution - Handover 0367a)
                 executions_stmt = (
                     select(AgentExecution)
-                    .join(AgentJob, AgentExecution.agent_job_id == AgentJob.id)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         and_(
                             AgentJob.project_id == project_id,
