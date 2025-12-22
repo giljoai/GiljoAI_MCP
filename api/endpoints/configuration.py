@@ -490,7 +490,7 @@ async def update_database_password(update: DatabasePasswordUpdate):
                     conn.commit()
                 rollback_engine.dispose()
             except Exception:
-                pass  # Best effort rollback
+                pass  # Best effort rollback  # nosec B110
 
             raise HTTPException(
                 status_code=500, detail=f"Failed to update .env file: {e!s}. PostgreSQL password has been rolled back."
