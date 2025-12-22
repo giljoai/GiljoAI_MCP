@@ -186,7 +186,7 @@ class AgentHealthMonitor:
         return [
             AgentHealthStatus(
                 job_id=execution.job_id,
-                agent_type=execution.job.agent_type,
+                agent_type=execution.agent_type,
                 current_status="waiting",
                 health_state="critical",
                 last_update=execution.job.created_at,
@@ -257,7 +257,7 @@ class AgentHealthMonitor:
 
                 stalled.append(AgentHealthStatus(
                     job_id=execution.job_id,
-                    agent_type=execution.job.agent_type,
+                    agent_type=execution.agent_type,
                     current_status="active",
                     health_state=health_state,
                     last_update=last_progress,
@@ -307,7 +307,7 @@ class AgentHealthMonitor:
         failures = []
         for execution in executions:
             # Apply agent-type-specific timeouts
-            timeout_minutes = self.config.get_timeout_for_agent(execution.job.agent_type)
+            timeout_minutes = self.config.get_timeout_for_agent(execution.agent_type)
             threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
             last_activity = self._get_last_activity_time(execution)
 
@@ -316,7 +316,7 @@ class AgentHealthMonitor:
 
                 failures.append(AgentHealthStatus(
                     job_id=execution.job_id,
-                    agent_type=execution.job.agent_type,
+                    agent_type=execution.agent_type,
                     current_status=execution.status,
                     health_state="timeout",
                     last_update=last_activity,
