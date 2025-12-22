@@ -81,17 +81,7 @@ class UserProfileResponse(BaseModel):
     password_change_required: Optional[bool] = None  # v3.0 Unified: Indicates default password must be changed
 
 
-class UserListResponse(BaseModel):
-    """User list response for tenant users"""
-
-    id: str
-    username: str
-    email: Optional[str]
-    full_name: Optional[str]
-    role: str
-    is_active: bool
-    created_at: str
-    last_login: Optional[str]
+# 0371: Removed UserListResponse - was only used by duplicate /users endpoint
 
 
 class APIKeyResponse(BaseModel):
@@ -617,57 +607,7 @@ async def revoke_api_key(
     return APIKeyRevokeResponse(id=str(key_id), name=key_name, message="API key revoked successfully")
 
 
-@router.get("/users", response_model=List[UserListResponse], tags=["auth"])
-async def list_users(
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    List all users in the current tenant (admin only).
-
-    This endpoint returns all users in the same tenant as the authenticated user.
-    Only admins can list users.
-
-    NOTE: This endpoint is duplicated from /api/users/ for backward compatibility.
-    It should be migrated to use UserService once proper tenant isolation is in place.
-
-    Args:
-        current_user: User from JWT token (dependency)
-
-    Returns:
-        List of users in the tenant
-
-    Raises:
-        HTTPException: 403 if user is not admin
-    """
-    # Check if user is admin
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
-    # Import UserService here to avoid circular dependencies
-    from api.endpoints.dependencies import get_db_manager
-    from src.giljo_mcp.services import UserService
-
-    db_manager = await get_db_manager()
-    user_service = UserService(db_manager=db_manager, tenant_key=current_user.tenant_key)
-
-    result = await user_service.list_users()
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    return [
-        UserListResponse(
-            id=user["id"],
-            username=user["username"],
-            email=user["email"],
-            full_name=user["full_name"],
-            role=user["role"],
-            is_active=user["is_active"],
-            created_at=user["created_at"],
-            last_login=user["last_login"],
-        )
-        for user in result["data"]
-    ]
+# 0371: Removed duplicate GET /users endpoint - frontend now uses /api/v1/users/
 
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
