@@ -15,7 +15,7 @@
 | **Phase 1** | ✅ COMPLETE | ~340 | All 3 items fixed |
 | **Phase 2** | ✅ COMPLETE | ~6,600 | 12 test files deleted; 2.1 deferred to 0372 |
 | **Phase 3** | ✅ COMPLETE | ~1,944 | 5 tool files + 1 test file deleted |
-| **Phase 4** | 🔄 IN PROGRESS | ~516 | 4.1→0373, 4.2 deprecated, 4.3 fixed (bug!), 4.4 DONE, 4.5-4.6 pending |
+| **Phase 4** | 🔄 IN PROGRESS | ~561 | 4.1→0373, 4.2 deprecated, 4.3 fixed (bug!), 4.4 DONE, 4.5→0374, 4.6 pending |
 | **Phase 5** | ⏳ PENDING | - | SQL files |
 | **Phase 6** | ⏳ PENDING | - | Frontend (~5,500 lines) |
 | **Phase 7** | ⏳ PENDING | - | Migration cleanup |
@@ -25,6 +25,7 @@
 ### Spawned Handovers
 - **0372**: MessageService Unification (from Phase 2.1) - merge message_service_0366b.py
 - **0373**: Template Adapter Migration (from Phase 4.1) - migrate template_adapter.py
+- **0374**: Vision Summary Field Migration (from Phase 4.5) - remove deprecated summary_moderate/heavy fields
 
 ### Phase 4 Details
 | Item | Status | Action |
@@ -33,7 +34,7 @@
 | 4.2 TemplateManager Alias | ✅ DONE | Added DEPRECATED comment |
 | 4.3 Duplicate User Endpoint | ✅ DONE | **BUG FIX** - frontend was calling non-existent endpoints! Fixed api.js, removed duplicate from auth.py |
 | 4.4 GitHub Router | ✅ DONE | Deleted github.py (145 lines), removed router, cleaned frontend WS handler + tests (~464 lines total) |
-| 4.5 Vision Document Fields | ⏳ PENDING | Schema cleanup |
+| 4.5 Vision Document Fields | ✅ DONE | → Handover 0374 (migration created, code updated) |
 | 4.6 Template Fields | ⏳ PENDING | Schema cleanup |
 
 ### Commits

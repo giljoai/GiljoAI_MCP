@@ -364,45 +364,27 @@ class VisionDocument(Base):
         BigInteger, nullable=True, comment="Original file size in bytes (NULL for inline content without file)"
     )
 
-    # Summarization metadata (Handover 0345b, enhanced in 0345e)
-    summary_text = Column(Text, nullable=True, comment="DEPRECATED: Use summary_heavy instead (kept for backward compatibility)")
+    # Summarization metadata (Handover 0345b, enhanced in 0345e, cleaned in 0374)
     is_summarized = Column(
         Boolean, default=False, nullable=False, comment="Has document been summarized using LSA algorithm"
     )
     original_token_count = Column(
         Integer, nullable=True, comment="Original document token count before summarization"
     )
-    compression_ratio = Column(
-        Float, nullable=True, comment="DEPRECATED: Use per-level token counts instead (kept for backward compatibility)"
-    )
 
-    # Multi-level summaries (Handover 0345e, simplified in 0246b)
-    # Handover 0246b: Simplified to 2 levels (light=33%, medium=66%)
+    # Multi-level summaries (Handover 0345e, simplified in 0246b, cleaned in 0374)
+    # Handover 0374: 3-tier system (light=33%, medium=66%, full=original)
     summary_light = Column(
         Text, nullable=True, comment="Light summary (~33% of original, ~13K tokens for 40K doc)"
     )
     summary_medium = Column(
         Text, nullable=True, comment="Medium summary (~66% of original, ~26K tokens for 40K doc)"
     )
-    # DEPRECATED columns (Handover 0246b) - kept for migration/rollback safety
-    summary_moderate = Column(
-        Text, nullable=True, comment="DEPRECATED: Use summary_medium instead (kept for backward compatibility)"
-    )
-    summary_heavy = Column(
-        Text, nullable=True, comment="DEPRECATED: Removed in 0246b (kept for backward compatibility)"
-    )
     summary_light_tokens = Column(
         Integer, nullable=True, comment="Actual token count in light summary"
     )
     summary_medium_tokens = Column(
         Integer, nullable=True, comment="Actual token count in medium summary"
-    )
-    # DEPRECATED token columns (Handover 0246b)
-    summary_moderate_tokens = Column(
-        Integer, nullable=True, comment="DEPRECATED: Use summary_medium_tokens instead"
-    )
-    summary_heavy_tokens = Column(
-        Integer, nullable=True, comment="DEPRECATED: Removed in 0246b"
     )
 
     # Versioning and integrity

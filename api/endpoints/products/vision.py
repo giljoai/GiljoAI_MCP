@@ -48,19 +48,19 @@ async def upload_vision_document(
         f"User {current_user.username} uploading vision document "
         f"'{file.filename}' for product {product_id}"
     )
-    
+
     # Validate file size (10MB limit)
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     file.file.seek(0, 2)  # Seek to end
     file_size = file.file.tell()
     file.file.seek(0)  # Reset to beginning
-    
+
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
         )
-    
+
     # Validate file type (markdown/text)
     allowed_extensions = [".md", ".txt", ".markdown"]
     if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
@@ -68,7 +68,7 @@ async def upload_vision_document(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
         )
-    
+
     try:
         # Read file content
         content = await file.read()
@@ -174,7 +174,7 @@ async def list_vision_documents(
         response_docs = []
         for doc in documents:
             # Check if summaries exist
-            has_summaries = bool(doc.summary_light or doc.summary_moderate or doc.summary_heavy)
+            has_summaries = bool(doc.summary_light or doc.summary_medium)
 
             response_docs.append(VisionDocumentResponse(
                 id=doc.id,
@@ -197,13 +197,11 @@ async def list_vision_documents(
                 updated_at=doc.updated_at,
                 chunked_at=doc.chunked_at,
                 meta_data=doc.meta_data or {},
-                # Summary fields (Sumy LSA compression)
+                # Summary fields (Handover 0246b: light/medium only)
                 summary_light=doc.summary_light,
-                summary_moderate=doc.summary_moderate,
-                summary_heavy=doc.summary_heavy,
+                summary_medium=doc.summary_medium,
                 summary_light_tokens=doc.summary_light_tokens,
-                summary_moderate_tokens=doc.summary_moderate_tokens,
-                summary_heavy_tokens=doc.summary_heavy_tokens,
+                summary_medium_tokens=doc.summary_medium_tokens,
                 has_summaries=has_summaries,
             ))
 
