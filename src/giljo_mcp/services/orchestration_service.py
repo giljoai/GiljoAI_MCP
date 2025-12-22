@@ -90,14 +90,14 @@ Role: {agent_type}
     for job in all_project_jobs:
         role_name = getattr(job, 'agent_name', None) or getattr(job, 'agent_type', 'unknown')
 
-        # Get mission: try direct attribute, then job relationship, then lookup dict
+        # Get mission: prefer lookup dict (avoids lazy load), then direct attribute
+        # IMPORTANT: Check mission_lookup FIRST to avoid SQLAlchemy lazy load errors
+        # when AgentExecution objects are accessed outside session context (Handover 0366 fix)
         mission_text = ""
-        if hasattr(job, 'mission') and job.mission:
-            mission_text = job.mission
-        elif hasattr(job, 'job') and hasattr(job.job, 'mission') and job.job.mission:
-            mission_text = job.job.mission
-        elif mission_lookup and hasattr(job, 'job_id') and job.job_id in mission_lookup:
+        if mission_lookup and hasattr(job, 'job_id') and job.job_id in mission_lookup:
             mission_text = mission_lookup[job.job_id]
+        elif hasattr(job, 'mission') and job.mission:
+            mission_text = job.mission
 
         # Extract a short deliverable summary from the mission (first 80 chars)
         deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
