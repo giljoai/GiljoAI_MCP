@@ -16,7 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select
 from datetime import datetime, timezone
 
-from src.giljo_mcp.models import Project, MCPAgentJob, User, Product
+from src.giljo_mcp.models import Project, User, Product
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 from src.giljo_mcp.database import DatabaseManager
@@ -119,7 +120,7 @@ async def test_orchestrator_stores_field_priorities(
 
     This is critical for the compilation pipeline:
     1. User's priorities from field_priority_config passed to generator.generate()
-    2. Generator stores them in MCPAgentJob.job_metadata
+    2. Generator stores them in AgentExecution.job_metadata
     3. MCP tool retrieves from job_metadata and applies them
     4. Mission is built with those priorities
     """
@@ -139,8 +140,8 @@ async def test_orchestrator_stores_field_priorities(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Priorities stored in database
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -200,8 +201,8 @@ async def test_orchestrator_stores_depth_config(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Depth config stored
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -368,11 +369,11 @@ async def test_repeated_staging_reuses_orchestrator(
         f"Repeated calls should reuse orchestrator: {orch_id_1} vs {orch_id_2}"
 
     # VERIFY: Only one orchestrator in database
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.project_id == env["project"].id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == env["tenant_key"]
+            AgentExecution.project_id == env["project"].id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == env["tenant_key"]
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -563,8 +564,8 @@ async def test_orchestrator_status_waiting_after_creation(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Status is "waiting"
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()

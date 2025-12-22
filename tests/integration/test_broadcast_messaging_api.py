@@ -14,7 +14,8 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.models import Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -36,7 +37,7 @@ async def test_broadcast_message_success(
     # Create multiple agents
     agent_count = 5
     for i in range(agent_count):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -74,7 +75,7 @@ async def test_broadcast_message_success(
 
     # Verify messages were added to agents
     for i in range(agent_count):
-        agent_result = await db_session.get(MCPAgentJob, i + 1)
+        agent_result = await db_session.get(AgentExecution, i + 1)
         assert agent_result is not None
         assert len(agent_result.messages) == 1
 
@@ -207,7 +208,7 @@ async def test_broadcast_multi_tenant_isolation(
 
     # Create agents for user 1
     for i in range(3):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"tenant1-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -231,7 +232,7 @@ async def test_broadcast_multi_tenant_isolation(
     # Verify no messages were added to user 1's agents
     for i in range(3):
         agent_id = i + 1
-        agent = await db_session.get(MCPAgentJob, agent_id)
+        agent = await db_session.get(AgentExecution, agent_id)
         assert len(agent.messages) == 0
 
 
@@ -251,7 +252,7 @@ async def test_broadcast_preserves_existing_messages(
     )
     db_session.add(project)
 
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="agent-with-msgs",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -303,7 +304,7 @@ async def test_broadcast_multiple_broadcasts_same_project(
     )
     db_session.add(project)
 
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="multi-agent",
         tenant_key=test_user.tenant_key,
         project_id=project.id,

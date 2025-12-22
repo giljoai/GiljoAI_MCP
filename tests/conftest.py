@@ -265,7 +265,14 @@ def api_client():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_project_id(db_session):
+async def test_tenant_key():
+    """Generate a test tenant key"""
+    import uuid
+    return str(uuid.uuid4())
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_project_id(db_session, test_tenant_key):
     """Create a test project and return its ID"""
     import uuid
 
@@ -277,7 +284,7 @@ async def test_project_id(db_session):
         description="Test project description for integration testing",
         mission="Test mission for integration testing",
         status="active",
-        tenant_key=str(uuid.uuid4()),
+        tenant_key=test_tenant_key,
     )
 
     db_session.add(project)
@@ -288,26 +295,52 @@ async def test_project_id(db_session):
 
 @pytest_asyncio.fixture(scope="function")
 async def test_agent_job(db_session, test_project_id, test_tenant_key):
-    """Create a test agent job"""
+    """
+    Create a test agent job with execution.
+
+    Migration Note (0367d): Now creates both AgentJob and AgentExecution.
+    Returns tuple of (job, execution) for backward compatibility.
+    """
     import uuid
     from datetime import datetime, timezone
 
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-    job = MCPAgentJob(
+    # Create AgentJob (work order)
+    job = AgentJob(
         job_id=str(uuid.uuid4()),
         tenant_key=test_tenant_key,
         project_id=test_project_id,
-        agent_type="worker",
+        job_type="worker",
         mission="Test mission for worker agent",
-        status="waiting",
+        status="active",  # AgentJob: active/completed/cancelled
         created_at=datetime.now(timezone.utc),
+        job_metadata={},
     )
 
     db_session.add(job)
+
+    # Create AgentExecution (executor)
+    execution = AgentExecution(
+        agent_id=str(uuid.uuid4()),
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_type="worker",
+        agent_name="Test Worker Agent",
+        instance_number=1,
+        status="waiting",  # AgentExecution: 7 statuses
+        progress=0,
+        messages=[],
+        health_status="unknown",
+        tool_type="universal",
+        context_used=0,
+        context_budget=150000,
+    )
+
+    db_session.add(execution)
     await db_session.commit()
 
-    return job
+    return job, execution
 
 
 # Performance benchmarking fixtures

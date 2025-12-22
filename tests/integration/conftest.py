@@ -354,7 +354,7 @@ async def test_client(db_manager: DatabaseManager, db_session: AsyncSession, tes
 @pytest_asyncio.fixture
 async def test_project_with_orchestrator(db_session: AsyncSession, test_user: User, test_product: Product):
     """Create test project with orchestrator job"""
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     project = Project(
         name=f"Test Project with Orchestrator {uuid4().hex[:8]}",
@@ -369,7 +369,7 @@ async def test_project_with_orchestrator(db_session: AsyncSession, test_user: Us
     await db_session.refresh(project)
 
     # Create orchestrator job for the project
-    orchestrator_job = MCPAgentJob(
+    orchestrator_job = AgentExecution(
         job_id=str(uuid4()),
         project_id=project.id,
         tenant_key=test_user.tenant_key,

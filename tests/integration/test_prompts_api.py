@@ -14,7 +14,8 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -36,7 +37,7 @@ async def test_generate_orchestrator_prompt_claude_code(
 
     # Create test agents
     for i in range(3):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
@@ -141,7 +142,7 @@ async def test_generate_agent_prompt(
     db_session.add(project)
 
     # Create test agent
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="agent-backend-001",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -239,7 +240,7 @@ async def test_multi_tenant_isolation_agent(
 ):
     """Test multi-tenant isolation in agent prompt generation."""
     # Create agent for user 1
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="tenant1-agent",
         tenant_key=test_user.tenant_key,
         agent_type="developer",
@@ -260,7 +261,7 @@ async def test_agent_prompt_universal_tool_type(
     client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
     """Test agent prompt generation with universal tool type."""
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="universal-agent-001",
         tenant_key=test_user.tenant_key,
         agent_type="tester",
@@ -285,7 +286,7 @@ async def test_agent_prompt_with_long_mission(
 ):
     """Test agent prompt generation with long mission (preview truncation)."""
     long_mission = "A" * 500  # 500 characters
-    agent = MCPAgentJob(
+    agent = AgentExecution(
         job_id="long-mission-agent",
         tenant_key=test_user.tenant_key,
         agent_type="implementer",
@@ -346,7 +347,7 @@ async def test_execution_endpoint_logs_deprecation_warning(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="exec-deprecate-orch-001",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -412,7 +413,7 @@ async def test_execution_endpoint_includes_deprecation_flags(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="exec-deprecate-orch-002",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -486,7 +487,7 @@ async def test_execution_endpoint_redirects_to_universal_generator(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="exec-deprecate-orch-003",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -578,7 +579,7 @@ async def test_execution_endpoint_backward_compatibility_maintained(
     db_session.add(project)
 
     # Create orchestrator job
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="exec-deprecate-orch-004",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
@@ -590,7 +591,7 @@ async def test_execution_endpoint_backward_compatibility_maintained(
 
     # Create specialist agents
     for i in range(2):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"exec-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,

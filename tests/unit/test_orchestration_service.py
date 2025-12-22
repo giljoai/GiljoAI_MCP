@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 from giljo_mcp.services.orchestration_service import OrchestrationService
-from giljo_mcp.models import MCPAgentJob, Project
+from giljo_mcp.models import AgentExecution, Project
 
 
 @pytest.fixture
@@ -120,7 +120,7 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager = Mock()
 
         # Mock agent job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.agent_type = "implementer"
         mock_job.mission = "Implement feature X with unit tests"
@@ -165,7 +165,7 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         # Mock job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.agent_type = "implementer"
         mock_job.mission = "Test mission"
@@ -202,7 +202,7 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         # Mock already-acknowledged job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.agent_type = "implementer"
         mock_job.mission = "Test mission"
@@ -236,7 +236,7 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         # Mock job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.status = "working"
         mock_job.completed_at = None
@@ -269,7 +269,7 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         # Mock job
-        mock_job = Mock(spec=MCPAgentJob)
+        mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.status = "working"
         mock_job.failure_reason = None
@@ -310,13 +310,13 @@ class TestOrchestrationServiceWorkflow:
         mock_project.id = "project-id"
 
         # Mock jobs with various statuses
-        mock_job1 = Mock(spec=MCPAgentJob)
+        mock_job1 = Mock(spec=AgentExecution)
         mock_job1.status = "working"
 
-        mock_job2 = Mock(spec=MCPAgentJob)
+        mock_job2 = Mock(spec=AgentExecution)
         mock_job2.status = "complete"
 
-        mock_job3 = Mock(spec=MCPAgentJob)
+        mock_job3 = Mock(spec=AgentExecution)
         mock_job3.status = "waiting"
 
         # Multiple queries: project lookup, then jobs lookup
@@ -376,14 +376,14 @@ class TestOrchestrationServiceWorkflow:
         tenant_manager = Mock()
 
         # Mock pending jobs
-        mock_job1 = Mock(spec=MCPAgentJob)
+        mock_job1 = Mock(spec=AgentExecution)
         mock_job1.job_id = "job-1"
         mock_job1.agent_type = "implementer"
         mock_job1.mission = "Mission 1"
         mock_job1.context_chunks = []
         mock_job1.created_at = datetime.now()
 
-        mock_job2 = Mock(spec=MCPAgentJob)
+        mock_job2 = Mock(spec=AgentExecution)
         mock_job2.job_id = "job-2"
         mock_job2.agent_type = "implementer"
         mock_job2.mission = "Mission 2"

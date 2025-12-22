@@ -14,7 +14,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.project_service import ProjectService
 
@@ -226,8 +227,8 @@ class TestLaunchProjectDoesNotCreateMCPAgentJob:
         """MCPAgentJob count should remain unchanged after launch_project()."""
         # Arrange - Count existing MCPAgentJob records for this project
         count_before_stmt = select(func.count()).select_from(MCPAgentJob).where(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.tenant_key == test_project.tenant_key,
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.tenant_key == test_project.tenant_key,
         )
         count_before_result = await db_session.execute(count_before_stmt)
         count_before = count_before_result.scalar()

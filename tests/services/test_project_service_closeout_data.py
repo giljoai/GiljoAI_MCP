@@ -5,7 +5,8 @@ Unit tests for ProjectService.get_closeout_data (Handover 0249a).
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Product, Project
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -30,7 +31,7 @@ async def test_get_closeout_data_all_agents_complete(
 
     for i in range(3):
         db_session.add(
-            MCPAgentJob(
+            AgentExecution(
                 job_id=f"agent-complete-{i}",
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -72,7 +73,7 @@ async def test_get_closeout_data_with_failed_agents(
     await db_session.flush()
 
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="agent-ok-1",
             tenant_key=tenant_key,
             project_id=project.id,
@@ -82,7 +83,7 @@ async def test_get_closeout_data_with_failed_agents(
         )
     )
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="agent-failed-1",
             tenant_key=tenant_key,
             project_id=project.id,
@@ -92,7 +93,7 @@ async def test_get_closeout_data_with_failed_agents(
         )
     )
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="agent-working-1",
             tenant_key=tenant_key,
             project_id=project.id,
@@ -140,7 +141,7 @@ async def test_get_closeout_data_with_git_integration(
     )
     db_session.add(project)
     db_session.add(
-        MCPAgentJob(
+        AgentExecution(
             job_id="agent-complete-git",
             tenant_key=tenant_key,
             project_id=project.id,

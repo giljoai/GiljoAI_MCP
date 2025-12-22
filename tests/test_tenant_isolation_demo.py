@@ -12,7 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Message, Project
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 

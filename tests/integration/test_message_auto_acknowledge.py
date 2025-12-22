@@ -29,7 +29,7 @@ class TestMessageAutoAcknowledge:
         # Create test data: project and agent job
         # We create everything in separate sessions and commit to ensure
         # data is visible across all sessions (not using db_session fixture)
-        from giljo_mcp.models import Project, MCPAgentJob
+        from giljo_mcp.models import Project, AgentExecution
         from giljo_mcp.tenant import TenantManager
 
         tenant_key = TenantManager.generate_tenant_key(f"test_auto_ack_{uuid4().hex[:8]}")
@@ -50,7 +50,7 @@ class TestMessageAutoAcknowledge:
             setup_session.add(project)
 
             # Create agent job
-            agent_job = MCPAgentJob(
+            agent_job = AgentExecution(
                 job_id=agent_job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
@@ -147,7 +147,7 @@ class TestMessageAutoAcknowledge:
         WHEN: Agent calls receive_messages with limit=2
         THEN: Only 2 messages are returned and acknowledged, 3 remain pending
         """
-        from giljo_mcp.models import Project, MCPAgentJob
+        from giljo_mcp.models import Project, AgentExecution
         from giljo_mcp.tenant import TenantManager
 
         # Create isolated test data
@@ -169,7 +169,7 @@ class TestMessageAutoAcknowledge:
             setup_session.add(project)
 
             # Create agent job
-            agent_job = MCPAgentJob(
+            agent_job = AgentExecution(
                 job_id=agent_job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
@@ -244,7 +244,7 @@ class TestMessageAutoAcknowledge:
         WHEN: One agent receives the message
         THEN: Message is acknowledged by that agent only
         """
-        from giljo_mcp.models import Project, MCPAgentJob
+        from giljo_mcp.models import Project, AgentExecution
         from giljo_mcp.tenant import TenantManager
 
         # Create isolated test data
@@ -267,7 +267,7 @@ class TestMessageAutoAcknowledge:
             setup_session.add(project)
 
             # Create agent jobs
-            agent1 = MCPAgentJob(
+            agent1 = AgentExecution(
                 job_id=agent1_job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
@@ -276,7 +276,7 @@ class TestMessageAutoAcknowledge:
                 status="waiting",
                 created_at=datetime.now(timezone.utc),
             )
-            agent2 = MCPAgentJob(
+            agent2 = AgentExecution(
                 job_id=agent2_job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,

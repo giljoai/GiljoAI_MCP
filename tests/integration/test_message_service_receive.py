@@ -12,7 +12,7 @@ from sqlalchemy import select
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models.tasks import Message
 from giljo_mcp.models.projects import Project
-from giljo_mcp.models.agents import MCPAgentJob
+from giljo_mcp.models.agents import AgentExecution
 from giljo_mcp.services.message_service import MessageService
 from giljo_mcp.tenant import TenantManager
 
@@ -46,7 +46,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
         session.add(project)
 
         # Create test agents (status must be one of: waiting, working, blocked, complete, failed, cancelled, decommissioned)
-        agent1 = MCPAgentJob(
+        agent1 = AgentExecution(
             job_id=agent1_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -55,7 +55,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             mission="Implement features",
             status="working"
         )
-        agent2 = MCPAgentJob(
+        agent2 = AgentExecution(
             job_id=agent2_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -64,7 +64,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             mission="Run tests",
             status="working"
         )
-        agent3 = MCPAgentJob(
+        agent3 = AgentExecution(
             job_id=agent3_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -291,7 +291,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
         session.add_all([project1, project2])
 
         # Create agents for both tenants (valid status: working)
-        agent1 = MCPAgentJob(
+        agent1 = AgentExecution(
             job_id=agent1_id,
             tenant_key=tenant_key_1,
             project_id=project1.id,
@@ -300,7 +300,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             mission="Work for tenant 1",
             status="working"
         )
-        agent2 = MCPAgentJob(
+        agent2 = AgentExecution(
             job_id=agent2_id,
             tenant_key=tenant_key_2,
             project_id=project2.id,
@@ -484,7 +484,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
         session.add(project)
 
         # Create sender agent
-        sender_agent = MCPAgentJob(
+        sender_agent = AgentExecution(
             job_id=sender_agent_id,
             tenant_key=tenant_key,
             project_id=project.id,
@@ -495,7 +495,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
         )
 
         # Create other agent
-        other_agent = MCPAgentJob(
+        other_agent = AgentExecution(
             job_id=other_agent_id,
             tenant_key=tenant_key,
             project_id=project.id,

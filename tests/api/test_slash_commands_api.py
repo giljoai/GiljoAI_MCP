@@ -8,7 +8,8 @@ import pytest_asyncio
 from fastapi import status
 from sqlalchemy import select
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest_asyncio.fixture
@@ -55,7 +56,7 @@ async def mock_project(db_session, test_tenant_key, mock_product):
 @pytest_asyncio.fixture
 async def mock_orchestrator(db_session, test_tenant_key, mock_project):
     """Create test orchestrator job"""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="orch-test-12345",
         agent_type="orchestrator",
         status="working",
@@ -179,7 +180,7 @@ class TestTriggerSuccessionEndpoint:
     async def test_trigger_succession_non_orchestrator(self, api_client, auth_headers, db_session, test_tenant_key, mock_project):
         """Test triggering succession for non-orchestrator agent"""
         # Create non-orchestrator agent
-        frontend_agent = MCPAgentJob(
+        frontend_agent = AgentExecution(
             job_id="frontend-test-12345",
             agent_type="frontend-dev",
             status="working",
@@ -233,7 +234,7 @@ class TestTriggerSuccessionEndpoint:
         successor_id = data["successor_id"]
 
         # Verify successor exists and is in waiting state
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == successor_id)
         result = await db_session.execute(stmt)
         successor = result.scalar_one()
 

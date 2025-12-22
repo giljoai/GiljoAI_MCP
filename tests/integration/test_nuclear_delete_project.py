@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agents import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
@@ -59,7 +59,7 @@ async def test_project_with_data(db_session: AsyncSession, test_user):
 
     # Create agent jobs
     for i in range(3):
-        agent = MCPAgentJob(
+        agent = AgentExecution(
             job_id=f"agent-{i}",
             project_id=project.id,
             tenant_key=tenant_key,
@@ -136,7 +136,7 @@ async def test_nuclear_delete_removes_all_related_data(
 
     # Check counts before deletion
     agent_count = await db_session.scalar(
-        select(func.count(MCPAgentJob.id)).where(MCPAgentJob.project_id == project_id)
+        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
     )
     task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -176,7 +176,7 @@ async def test_nuclear_delete_removes_all_related_data(
         select(func.count(Project.id)).where(Project.id == project_id)
     )
     agents_exist = await db_session.scalar(
-        select(func.count(MCPAgentJob.id)).where(MCPAgentJob.project_id == project_id)
+        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
     )
     tasks_exist = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -349,7 +349,7 @@ async def test_nuclear_delete_transaction_rollback_on_error(
 
     # Count records before deletion attempt
     initial_agent_count = await db_session.scalar(
-        select(func.count(MCPAgentJob.id)).where(MCPAgentJob.project_id == project_id)
+        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
     )
     initial_task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)
@@ -376,7 +376,7 @@ async def test_nuclear_delete_transaction_rollback_on_error(
     db_session.expire_all()  # Not async
 
     final_agent_count = await db_session.scalar(
-        select(func.count(MCPAgentJob.id)).where(MCPAgentJob.project_id == project_id)
+        select(func.count(AgentExecution.id)).where(AgentExecution.project_id == project_id)
     )
     final_task_count = await db_session.scalar(
         select(func.count(Task.id)).where(Task.project_id == project_id)

@@ -10,7 +10,8 @@ from uuid import uuid4
 
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Product, Project
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
 
@@ -45,7 +46,7 @@ async def test_new_fields_in_real_response():
         session.add(project)
 
         # Create orchestrator job
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=str(uuid4()),
             agent_type="orchestrator",
             agent_name="Test Orchestrator",
@@ -138,7 +139,7 @@ async def test_cli_mode_excludes_multi_terminal_rules():
         session.add(project)
 
         # Create orchestrator job
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             job_id=str(uuid4()),
             agent_type="orchestrator",
             agent_name="Test Orchestrator CLI",

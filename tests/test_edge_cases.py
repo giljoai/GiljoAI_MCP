@@ -18,7 +18,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob, Configuration, Job, Message, Project, Session, Task, Vision
+from src.giljo_mcp.models import Configuration, Job, Message, Project, Session, Task, Vision
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -342,7 +343,7 @@ class TestEdgeCases:
         # Verify handling
         assert message.to_agents == []
         assert message.acknowledged_by == []
-        
+
     def test_context_budget_tracking(self, db_session):
         """Test context budget tracking and limits."""
         tenant_key = str(uuid4())
