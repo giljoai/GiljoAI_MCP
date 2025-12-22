@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import models using modular imports (Post-Handover 0128a)
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.database import DatabaseManager
@@ -91,19 +91,29 @@ async def test_project_with_agents(
     await db_session.commit()
     await db_session.refresh(project)
 
-    # Create agent jobs
+    # Create agent jobs and executions (Handover 0372: Separate work order from executor)
     agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
     agents = []
     for agent_type in agent_types:
-        agent = AgentExecution(
+        # Create work order (AgentJob)
+        job = AgentJob(
             job_id=str(uuid4()),
             tenant_key=test_tenant_key,
             project_id=project.id,
-            agent_type=agent_type,
+            job_type=agent_type,
             mission=f"Test mission for {agent_type}",
+            status="active",
+        )
+        db_session.add(job)
+
+        # Create executor instance (AgentExecution)
+        agent = AgentExecution(
+            job_id=job.job_id,
+            tenant_key=test_tenant_key,
+            agent_type=agent_type,
             status="waiting",
+            instance_number=1,
             messages=[],  # Initialize empty JSONB array
-            created_at=datetime.now(timezone.utc),
         )
         db_session.add(agent)
         agents.append(agent)
@@ -136,10 +146,12 @@ async def message_service(
     # Patch the db_manager's method
     db_manager.get_session_async = mock_get_session_async
 
+    # Handover 0372: Pass test_session for transaction-aware testing
     service = MessageService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=mock_websocket_manager,
+        test_session=db_session,  # Share test transaction
     )
     return service
 
@@ -171,6 +183,7 @@ class TestMessageCreationAndJSONBMirroring:
         recipient = agents[1]  # analyzer
 
         # Act: Send message from orchestrator to analyzer
+        # Handover 0372: Must pass tenant_key for agent-ID resolution
         result = await message_service.send_message(
             to_agents=[recipient.agent_type],
             content="Analyze the codebase for patterns",
@@ -178,6 +191,7 @@ class TestMessageCreationAndJSONBMirroring:
             message_type="direct",
             priority="high",
             from_agent=orchestrator.agent_type,
+            tenant_key=project.tenant_key,
         )
 
         # Assert: Message sending succeeded
@@ -195,8 +209,9 @@ class TestMessageCreationAndJSONBMirroring:
         assert db_message is not None, "Message should exist in database"
         assert db_message.project_id == project.id
         assert db_message.tenant_key == project.tenant_key
-        # Message stores resolved job_ids, not agent_types (message_service resolves agent_type → job_id)
-        assert db_message.to_agents == [recipient.job_id]
+        # Handover 0372: Message stores resolved agent_ids (executor), not job_ids (work order)
+        # This enables succession: messages route to NEW executor after handover
+        assert db_message.to_agents == [recipient.agent_id]
         assert db_message.content == "Analyze the codebase for patterns"
         assert db_message.message_type == "direct"
         assert db_message.priority == "high"
@@ -235,8 +250,8 @@ class TestMessageCreationAndJSONBMirroring:
         assert outbound_msg["from"] == orchestrator.agent_type
         assert outbound_msg["direction"] == "outbound"
         assert outbound_msg["status"] == "sent"
-        # Note: to_agents contains job_ids after resolution (not agent_types)
-        assert outbound_msg["to_agents"] == [recipient.job_id]
+        # Handover 0372: to_agents contains agent_ids (executor) after resolution
+        assert outbound_msg["to_agents"] == [recipient.agent_id]
 
         # Assert: WebSocket events were emitted
         mock_websocket_manager.broadcast_message_sent.assert_awaited_once()
@@ -266,18 +281,21 @@ class TestMessageCompletion:
         recipient = agents[2]  # implementer
 
         # Arrange: Send a message
+        # Handover 0372: Must pass tenant_key for agent-ID resolution
         send_result = await message_service.send_message(
             to_agents=[recipient.agent_type],
             content="Implement feature X",
             project_id=project.id,
             from_agent=orchestrator.agent_type,
+            tenant_key=project.tenant_key,
         )
         assert send_result["success"] is True
         message_id = send_result["message_id"]
 
         # Auto-acknowledge via receive_messages (Handover 0326)
+        # Handover 0372: Now uses agent_id (executor), not job_id (work order)
         receive_result = await message_service.receive_messages(
-            agent_id=recipient.job_id,
+            agent_id=recipient.agent_id,
             limit=10,
             tenant_key=project.tenant_key,
         )
@@ -308,9 +326,9 @@ class TestMessageCompletion:
         assert db_message.completed_at is not None
 
         # Assert: acknowledged_by is PRESERVED (not overwritten)
-        # Note: With auto-acknowledge (Handover 0326), acknowledged_by contains job_id, not agent_type
-        assert recipient.job_id in db_message.acknowledged_by, \
-            f"Acknowledgment should be preserved after completion. Expected {recipient.job_id} in {db_message.acknowledged_by}"
+        # Handover 0372: acknowledged_by now contains agent_id (executor), not job_id
+        assert recipient.agent_id in db_message.acknowledged_by, \
+            f"Acknowledgment should be preserved after completion. Expected {recipient.agent_id} in {db_message.acknowledged_by}"
 
 
 class TestBroadcastMessaging:
