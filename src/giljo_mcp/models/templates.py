@@ -106,7 +106,6 @@ class AgentTemplate(Base):
     archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
     augmentations = relationship("TemplateAugmentation", back_populates="template", cascade="all, delete-orphan")
     usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
-    jobs = relationship("MCPAgentJob", back_populates="template")  # Handover 0244a
 
     __table_args__ = (
         UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),

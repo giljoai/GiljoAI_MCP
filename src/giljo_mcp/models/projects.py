@@ -154,7 +154,6 @@ class Project(Base):
 
     # Relationships
     product = relationship("Product", back_populates="projects")
-    agent_jobs = relationship("MCPAgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0062
     agent_jobs_v2 = relationship("AgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0366a
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship(
