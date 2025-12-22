@@ -549,7 +549,7 @@ async def test_session_info_uses_agent_job_model(db_manager):
     """
     MEDIUM ISSUE #6 - Lines 719-727
 
-    Behavior: session_info (MCP tool) should query AgentJob, not deprecated MCPAgentJob.
+    Behavior: session_info (MCP tool) should query AgentJob, not deprecated AgentExecution.
 
     The function should use the new dual-model architecture:
     - AgentJob = work order

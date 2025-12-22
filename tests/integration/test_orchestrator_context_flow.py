@@ -21,7 +21,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 # Use existing fixtures
@@ -200,7 +201,7 @@ async def test_orchestrator_receives_user_field_priorities(
     orchestrator_id = result["orchestrator_id"]
 
     # Fetch the created orchestrator job from database
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -283,7 +284,7 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(
     # ASSERT: Verify orchestrator job has EMPTY field priorities
     orchestrator_id = result["orchestrator_id"]
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -336,7 +337,7 @@ async def test_orchestrator_field_priorities_match_user_session(
     # ASSERT: Orchestrator should have THIS USER's priorities
     orchestrator_id = result["orchestrator_id"]
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -380,7 +381,7 @@ async def test_orchestrator_field_priorities_stored_in_job_metadata(
     orchestrator_id = result["orchestrator_id"]
 
     # ASSERT: Fetch job and verify storage location
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
 
@@ -438,9 +439,9 @@ async def test_orchestrator_field_priorities_available_in_mission(
     orchestrator_id = result["orchestrator_id"]
 
     # ASSERT: Verify field priorities can be retrieved from database
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id,
-        MCPAgentJob.tenant_key == user_with_field_config.tenant_key
+    stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id,
+        AgentExecution.tenant_key == user_with_field_config.tenant_key
     )
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()

@@ -17,7 +17,8 @@ import pytest
 from sqlalchemy import inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import MCPAgentJob, Project
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.fixtures.succession_fixtures import SuccessionTestData
 
 
@@ -41,7 +42,7 @@ async def test_spawned_by_chain_integrity(
     instances = []
 
     for i in range(1, 5):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -73,7 +74,7 @@ async def test_spawned_by_chain_integrity(
         assert instances[i].spawned_by == instances[i - 1].job_id
 
         # Verify parent exists in database
-        parent_stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == instances[i].spawned_by)
+        parent_stmt = select(AgentExecution).where(AgentExecution.job_id == instances[i].spawned_by)
         parent_result = await db_session.execute(parent_stmt)
         parent = parent_result.scalar_one_or_none()
 
@@ -94,7 +95,7 @@ async def test_handover_to_references_valid_jobs(
     we verify referential integrity through application logic.
     """
     # Create two instances
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -108,7 +109,7 @@ async def test_handover_to_references_valid_jobs(
     db_session.add(instance1)
     await db_session.flush()
 
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -138,7 +139,7 @@ async def test_handover_to_references_valid_jobs(
     assert instance1.handover_to == instance2.job_id
 
     # Verify referenced job exists
-    referenced_stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == instance1.handover_to)
+    referenced_stmt = select(AgentExecution).where(AgentExecution.job_id == instance1.handover_to)
     referenced_result = await db_session.execute(referenced_stmt)
     referenced_job = referenced_result.scalar_one_or_none()
 
@@ -159,7 +160,7 @@ async def test_instance_number_increments_correctly(
     """
     # Create 5 instances with sequential instance numbers
     for i in range(1, 6):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -176,12 +177,12 @@ async def test_instance_number_increments_correctly(
 
     # Query all instances ordered by instance_number
     stmt = (
-        select(MCPAgentJob)
+        select(AgentExecution)
         .where(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.agent_type == "orchestrator",
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.agent_type == "orchestrator",
         )
-        .order_by(MCPAgentJob.instance_number.asc())
+        .order_by(AgentExecution.instance_number.asc())
     )
 
     result = await db_session.execute(stmt)
@@ -218,7 +219,7 @@ async def test_handover_summary_jsonb_structure(
     - pending_decisions
     - next_steps
     """
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -281,7 +282,7 @@ async def test_succession_reason_enum_constraint(
     valid_reasons = ["context_limit", "manual", "phase_transition"]
 
     for i, reason in enumerate(valid_reasons, start=1):
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -300,9 +301,9 @@ async def test_succession_reason_enum_constraint(
     await db_session.commit()
 
     # Query all
-    stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == test_project.id,
-        MCPAgentJob.agent_type == "orchestrator",
+    stmt = select(AgentExecution).where(
+        AgentExecution.project_id == test_project.id,
+        AgentExecution.agent_type == "orchestrator",
     )
     result = await db_session.execute(stmt)
     instances = result.scalars().all()
@@ -328,7 +329,7 @@ async def test_context_budget_positive_constraint(
     Verifies CHECK constraint on context_budget.
     """
     # Create instance with valid context_budget
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -361,7 +362,7 @@ async def test_instance_number_positive_constraint(
     Handover 0080 schema includes: CHECK (instance_number >= 1)
     """
     # Create instance with valid instance_number
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -426,7 +427,7 @@ async def test_succession_query_performance_with_index(
     """
     # Create multiple instances to test index usage
     for i in range(1, 11):  # 10 instances
-        instance = MCPAgentJob(
+        instance = AgentExecution(
             **SuccessionTestData.generate_orchestrator_job_data(
                 project_id=test_project.id,
                 tenant_key=test_tenant_key,
@@ -482,7 +483,7 @@ async def test_handover_context_refs_array_integrity(
     """
     Verify handover_context_refs JSON array is stored and retrieved correctly.
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -520,7 +521,7 @@ async def test_messages_jsonb_array_integrity(
     """
     Verify messages JSONB array stores handover messages correctly.
     """
-    instance1 = MCPAgentJob(
+    instance1 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -534,7 +535,7 @@ async def test_messages_jsonb_array_integrity(
     db_session.add(instance1)
     await db_session.flush()
 
-    instance2 = MCPAgentJob(
+    instance2 = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,
@@ -581,7 +582,7 @@ async def test_completed_at_timestamp_integrity(
     """
     Verify completed_at timestamp is set correctly and includes timezone.
     """
-    instance = MCPAgentJob(
+    instance = AgentExecution(
         **SuccessionTestData.generate_orchestrator_job_data(
             project_id=test_project.id,
             tenant_key=test_tenant_key,

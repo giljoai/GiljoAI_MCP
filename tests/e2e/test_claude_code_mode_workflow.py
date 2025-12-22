@@ -17,7 +17,8 @@ import pytest
 import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product, User
+from src.giljo_mcp.models import Project, Product, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
@@ -110,7 +111,7 @@ class TestClaudeCodeModeWorkflow:
         )
 
         # Create orchestrator job (simulates "Stage Project" button click)
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -165,7 +166,7 @@ class TestClaudeCodeModeWorkflow:
         # Step 6: Verify successor uses Task tool
         successor_id = succession_result["data"]["successor_id"]
         from sqlalchemy import select
-        stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == successor_id)
+        stmt = select(AgentExecution).where(AgentExecution.job_id == successor_id)
         result = await db_session.execute(stmt)
         successor = result.scalar_one()
 
@@ -224,7 +225,7 @@ class TestClaudeCodeModeWorkflow:
         await db_session.refresh(project)
 
         # Create orchestrator
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",
@@ -295,7 +296,7 @@ class TestClaudeCodeModeWorkflow:
         await db_session.refresh(project)
 
         # Create orchestrator
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
             agent_type="orchestrator",

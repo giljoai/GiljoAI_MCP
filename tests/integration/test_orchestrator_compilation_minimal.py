@@ -8,7 +8,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select
 
-from src.giljo_mcp.models import Project, MCPAgentJob
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
@@ -53,8 +54,8 @@ async def test_orchestrator_stores_field_priorities(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Priorities stored in database
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -114,11 +115,11 @@ async def test_repeated_staging_reuses_orchestrator(
         f"Repeated calls should reuse orchestrator: {orch_id_1} vs {orch_id_2}"
 
     # VERIFY: Only one orchestrator in database
-    orch_stmt = select(MCPAgentJob).where(
+    orch_stmt = select(AgentExecution).where(
         and_(
-            MCPAgentJob.project_id == test_project.id,
-            MCPAgentJob.agent_type == "orchestrator",
-            MCPAgentJob.tenant_key == test_tenant_key
+            AgentExecution.project_id == test_project.id,
+            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.tenant_key == test_tenant_key
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -302,8 +303,8 @@ async def test_orchestrator_status_waiting_after_creation(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Status is "waiting"
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -387,8 +388,8 @@ async def test_depth_config_stored_in_metadata(
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Depth config stored
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.job_id == orchestrator_id
+    orch_stmt = select(AgentExecution).where(
+        AgentExecution.job_id == orchestrator_id
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()

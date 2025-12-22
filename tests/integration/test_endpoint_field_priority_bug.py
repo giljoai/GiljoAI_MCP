@@ -18,7 +18,8 @@ import pytest_asyncio
 from uuid import uuid4
 from sqlalchemy import select
 
-from src.giljo_mcp.models import User, Product, Project, MCPAgentJob
+from src.giljo_mcp.models import User, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 # Use existing fixtures
@@ -186,7 +187,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
     # ASSERT: Orchestrator receives EMPTY field_priorities (bug consequence)
     orchestrator_id_buggy = result_buggy["orchestrator_id"]
 
-    stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_buggy)
+    stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_buggy)
     job_result = await db_session.execute(stmt)
     orchestrator_job_buggy = job_result.scalar_one_or_none()
 
@@ -208,7 +209,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
 
     orchestrator_id_fixed = result_fixed["orchestrator_id"]
 
-    stmt2 = select(MCPAgentJob).where(MCPAgentJob.job_id == orchestrator_id_fixed)
+    stmt2 = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id_fixed)
     job_result2 = await db_session.execute(stmt2)
     orchestrator_job_fixed = job_result2.scalar_one_or_none()
 

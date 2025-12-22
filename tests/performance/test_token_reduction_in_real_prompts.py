@@ -14,7 +14,8 @@ import pytest
 import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, MCPAgentJob, Product, User, AgentTemplate
+from src.giljo_mcp.models import Project, Product, User, AgentTemplate
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -138,7 +139,7 @@ class TestTokenReductionInRealPrompts:
         Ideal: 800-1000 tokens
         """
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             agent_type="orchestrator",
@@ -191,7 +192,7 @@ class TestTokenReductionInRealPrompts:
         Acceptance: <600 tokens
         """
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             agent_type="orchestrator",
@@ -252,7 +253,7 @@ class TestTokenReductionInRealPrompts:
         This is the source of token reduction.
         """
 
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             agent_type="orchestrator",
@@ -317,7 +318,7 @@ class TestTokenReductionInRealPrompts:
             test_project.meta_data = {"execution_mode": mode}
             await db_session.commit()
 
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 project_id=test_project.id,
                 tenant_key=test_user.tenant_key,
                 agent_type="orchestrator",
@@ -388,7 +389,7 @@ class TestTokenReductionInRealPrompts:
         await db_session.commit()
 
         # Generate prompt with 15 total agents
-        orchestrator = MCPAgentJob(
+        orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
             agent_type="orchestrator",

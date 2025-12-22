@@ -17,7 +17,8 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
+from src.giljo_mcp.models import AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.mark.asyncio
@@ -57,7 +58,7 @@ class TestGetOrchestratorInstructionsMCP:
 
             # Create orchestrator job
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -451,7 +452,7 @@ class TestGetOrchestratorInstructionsMCP:
 
             # Create orchestrator job
             orchestrator_id = str(uuid4())
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
@@ -551,7 +552,7 @@ class TestErrorHandling:
         orchestrator_id = str(uuid4())
 
         async with db_manager.get_session_async() as session:
-            orchestrator = MCPAgentJob(
+            orchestrator = AgentExecution(
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=uuid4(),  # Non-existent project

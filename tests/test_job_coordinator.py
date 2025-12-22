@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 @pytest.fixture
@@ -66,7 +66,7 @@ def job_coordinator(db_manager, job_manager, comm_queue):
 @pytest.fixture
 def sample_parent_job():
     """Create a sample parent job."""
-    return MCPAgentJob(
+    return AgentExecution(
         id=1,
         tenant_key="test-tenant-123",
         job_id="parent-job-001",
@@ -87,7 +87,7 @@ def sample_child_jobs():
     """Create sample child jobs."""
     base_time = datetime.now(timezone.utc)
     return [
-        MCPAgentJob(
+        AgentExecution(
             id=2,
             tenant_key="test-tenant-123",
             job_id="child-job-001",
@@ -101,7 +101,7 @@ def sample_child_jobs():
             completed_at=base_time + timedelta(seconds=30),
             created_at=base_time,
         ),
-        MCPAgentJob(
+        AgentExecution(
             id=3,
             tenant_key="test-tenant-123",
             job_id="child-job-002",
@@ -115,7 +115,7 @@ def sample_child_jobs():
             completed_at=base_time + timedelta(seconds=45),
             created_at=base_time,
         ),
-        MCPAgentJob(
+        AgentExecution(
             id=4,
             tenant_key="test-tenant-123",
             job_id="child-job-003",

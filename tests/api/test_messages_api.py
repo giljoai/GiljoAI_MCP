@@ -194,11 +194,11 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, db_mana
 @pytest.fixture
 async def tenant_a_agent_job(db_manager, tenant_a_project, tenant_a_user):
     """Create a test agent job for Tenant A to receive messages."""
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from datetime import datetime, timezone
 
     async with db_manager.get_session_async() as session:
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_a_user._test_tenant_key,
             project_id=tenant_a_project.id,
@@ -216,11 +216,11 @@ async def tenant_a_agent_job(db_manager, tenant_a_project, tenant_a_user):
 @pytest.fixture
 async def tenant_b_agent_job(db_manager, tenant_b_project, tenant_b_user):
     """Create a test agent job for Tenant B to receive messages."""
-    from src.giljo_mcp.models import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from datetime import datetime, timezone
 
     async with db_manager.get_session_async() as session:
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_b_user._test_tenant_key,
             project_id=tenant_b_project.id,
@@ -376,11 +376,11 @@ class TestBroadcastMessage:
     ):
         """Test POST /api/messages/broadcast - Broadcast successfully."""
         # Create multiple active agents
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
-            job2 = MCPAgentJob(
+            job2 = AgentExecution(
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_user._test_tenant_key,
                 project_id=tenant_a_project.id,
@@ -504,13 +504,13 @@ class TestListMessages:
     ):
         """Test GET /api/messages/ - List messages successfully."""
         # Add messages to agent job
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import select
         from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_a_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_a_agent_job.job_id)
             )
             job = result.scalar_one()
             job.messages = [
@@ -558,13 +558,13 @@ class TestListMessages:
     ):
         """Test GET /api/messages/ - Filter by project_id."""
         # Add messages
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import select
         from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_a_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_a_agent_job.job_id)
             )
             job = result.scalar_one()
             job.messages = [
@@ -601,13 +601,13 @@ class TestListMessages:
     ):
         """Test GET /api/messages/ - Filter by status."""
         # Add messages with different statuses
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import select
         from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_a_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_a_agent_job.job_id)
             )
             job = result.scalar_one()
             job.messages = [
@@ -721,14 +721,14 @@ class TestCompleteMessage:
     ):
         """Test POST /api/messages/{message_id}/complete - Complete successfully."""
         # Add a message first
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import select
         from datetime import datetime, timezone
 
         message_id = str(uuid4())
         async with db_manager.get_session_async() as session:
             result = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_a_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_a_agent_job.job_id)
             )
             job = result.scalar_one()
             job.messages = [
@@ -883,14 +883,14 @@ class TestMultiTenantIsolation:
         message_b = response_b.json()
 
         # Add messages to database for list testing
-        from src.giljo_mcp.models import MCPAgentJob
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from sqlalchemy import select
         from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
             # Add to Tenant A job
             result_a = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_a_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_a_agent_job.job_id)
             )
             job_a = result_a.scalar_one()
             job_a.messages = [
@@ -908,7 +908,7 @@ class TestMultiTenantIsolation:
 
             # Add to Tenant B job
             result_b = await session.execute(
-                select(MCPAgentJob).where(MCPAgentJob.job_id == tenant_b_agent_job.job_id)
+                select(AgentExecution).where(AgentExecution.job_id == tenant_b_agent_job.job_id)
             )
             job_b = result_b.scalar_one()
             job_b.messages = [

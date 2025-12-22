@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.agent_job_manager import request_job_cancellation, force_fail_job
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -45,7 +45,7 @@ async def active_job(db_session):
     """Create working test agent job."""
     tenant_key = f"tk_test_{uuid4().hex[:16]}"
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=tenant_key,
         project_id=None,  # No project needed for unit tests
         job_id=str(uuid4()),
@@ -67,7 +67,7 @@ async def pending_job(db_session):
     """Create waiting test agent job."""
     tenant_key = f"tk_test_{uuid4().hex[:16]}"
 
-    job = MCPAgentJob(
+    job = AgentExecution(
         tenant_key=tenant_key,
         project_id=None,  # No project needed for unit tests
         job_id=str(uuid4()),
@@ -153,7 +153,7 @@ class TestCancellationRequest:
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
 
         # Create completed job
-        completed_job = MCPAgentJob(
+        completed_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=None,
             job_id=str(uuid4()),
@@ -229,7 +229,7 @@ class TestForceFailJob:
         tenant_key = f"tk_test_{uuid4().hex[:16]}"
 
         # Create job in cancelled state
-        cancelled_job = MCPAgentJob(
+        cancelled_job = AgentExecution(
             tenant_key=tenant_key,
             project_id=None,
             job_id=str(uuid4()),
@@ -305,7 +305,7 @@ class TestMultiTenantIsolation:
         tenant_b = f"tk_test_{uuid4().hex[:16]}"
 
         # Create job for tenant A
-        job_a = MCPAgentJob(
+        job_a = AgentExecution(
             tenant_key=tenant_a,
             project_id=None,
             job_id=str(uuid4()),
@@ -339,7 +339,7 @@ class TestMultiTenantIsolation:
         tenant_b = f"tk_test_{uuid4().hex[:16]}"
 
         # Create job for tenant A
-        job_a = MCPAgentJob(
+        job_a = AgentExecution(
             tenant_key=tenant_a,
             project_id=None,
             job_id=str(uuid4()),

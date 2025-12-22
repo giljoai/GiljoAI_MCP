@@ -21,7 +21,8 @@ from sqlalchemy.orm import Session
 
 from api.dependencies.websocket import WebSocketDependency
 from api.websocket import WebSocketManager
-from src.giljo_mcp.models import MCPAgentJob, Product, Project, User
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class MockWebSocket:
@@ -343,7 +344,7 @@ class TestAgentCardRealTimeBroadcasting:
             # Assert: Agent job was created in database
             agent_job_id = result["agent_job_id"]
             from sqlalchemy import select
-            stmt = select(MCPAgentJob).where(MCPAgentJob.job_id == agent_job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
             result_query = await db_session.execute(stmt)
             agent_job = result_query.scalar_one_or_none()
             assert agent_job is not None

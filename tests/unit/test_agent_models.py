@@ -11,7 +11,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Base, MCPAgentJob, MCPContextIndex, MCPContextSummary, Product
+from src.giljo_mcp.models import Base, MCPContextIndex, MCPContextSummary, Product
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestMCPContextIndex:
@@ -277,7 +278,7 @@ class TestMCPAgentJob:
 
     def test_mcp_agent_job_creation(self, db_session):
         """Test creating agent job with all fields."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant",
             agent_type="orchestrator",
             mission="Coordinate development project tasks",
@@ -309,7 +310,7 @@ class TestMCPAgentJob:
 
     def test_mcp_agent_job_status_workflow(self, db_session):
         """Test job status transitions."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant", agent_type="analyzer", mission="Analyze codebase structure", status="waiting"
         )
 
@@ -342,12 +343,12 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_tenant_isolation(self, db_session):
         """Test tenant isolation in agent jobs."""
         # Create job for tenant A
-        job_a = MCPAgentJob(
+        job_a = AgentExecution(
             tenant_key="tenant-a", agent_type="implementer", mission="Implement feature for tenant A", status="waiting"
         )
 
         # Create job for tenant B
-        job_b = MCPAgentJob(
+        job_b = AgentExecution(
             tenant_key="tenant-b", agent_type="tester", mission="Test feature for tenant B", status="active"
         )
 
@@ -355,14 +356,14 @@ class TestMCPAgentJob:
         db_session.commit()
 
         # Query for tenant A only
-        tenant_a_jobs = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-a").all()
+        tenant_a_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-a").all()
 
         assert len(tenant_a_jobs) == 1
         assert tenant_a_jobs[0].agent_type == "implementer"
         assert tenant_a_jobs[0].mission.endswith("tenant A")
 
         # Query for tenant B only
-        tenant_b_jobs = db_session.query(MCPAgentJob).filter(MCPAgentJob.tenant_key == "tenant-b").all()
+        tenant_b_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-b").all()
 
         assert len(tenant_b_jobs) == 1
         assert tenant_b_jobs[0].agent_type == "tester"
@@ -370,7 +371,7 @@ class TestMCPAgentJob:
 
     def test_mcp_agent_job_message_array(self, db_session):
         """Test agent job message array functionality."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant", agent_type="orchestrator", mission="Test message handling", status="active"
         )
 
@@ -398,7 +399,7 @@ class TestMCPAgentJob:
 
     def test_mcp_agent_job_context_chunks_array(self, db_session):
         """Test agent job context chunks array functionality."""
-        agent_job = MCPAgentJob(
+        agent_job = AgentExecution(
             tenant_key="test-tenant", agent_type="analyzer", mission="Analyze with context", status="waiting"
         )
 

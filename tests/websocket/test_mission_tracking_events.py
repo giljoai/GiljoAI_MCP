@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.models import MCPAgentJob, Project, Product
+from giljo_mcp.models import AgentExecution, Project, Product
 from giljo_mcp.agent_job_manager import AgentJobManager
 from api.websocket import WebSocketManager
 
@@ -66,7 +66,7 @@ async def test_project(db_session: AsyncSession, tenant_key: str):
 @pytest.fixture
 async def test_orchestrator(db_session: AsyncSession, test_project: Project, tenant_key: str):
     """Create test orchestrator job"""
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentExecution(
         job_id="orch-test-123",
         tenant_key=tenant_key,
         project_id=test_project.id,
@@ -88,7 +88,7 @@ async def test_orchestrator(db_session: AsyncSession, test_project: Project, ten
 @pytest.mark.asyncio
 async def test_mission_acknowledged_at_set_by_get_orchestrator_instructions(
     db_session: AsyncSession,
-    test_orchestrator: MCPAgentJob,
+    test_orchestrator: AgentExecution,
     tenant_key: str,
     db_manager
 ):
@@ -171,7 +171,7 @@ async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
     - Only clients with matching tenant_key should receive event
     """
     # Create pending agent job
-    agent_job = MCPAgentJob(
+    agent_job = AgentExecution(
         job_id="agent-test-456",
         tenant_key=tenant_key,
         project_id=test_project.id,
@@ -244,7 +244,7 @@ async def test_mission_acknowledged_event_not_emitted_for_other_status_transitio
     emit job:mission_acknowledged events.
     """
     # Create pending agent job
-    agent_job = MCPAgentJob(
+    agent_job = AgentExecution(
         job_id="agent-test-789",
         tenant_key=tenant_key,
         project_id=test_project.id,
@@ -321,7 +321,7 @@ async def test_mission_tracking_events_scoped_to_tenant(
         id="project-a", name="Project A", tenant_key=tenant_a, product_id=product_a.id,
         mission="Tenant A mission", status="active"
     )
-    orch_a = MCPAgentJob(
+    orch_a = AgentExecution(
         job_id="orch-a", tenant_key=tenant_a, project_id=project_a.id,
         agent_type="orchestrator", agent_name="Orch A", mission="Tenant A orch mission",
         status="waiting"
@@ -335,7 +335,7 @@ async def test_mission_tracking_events_scoped_to_tenant(
         id="project-b", name="Project B", tenant_key=tenant_b, product_id=product_b.id,
         mission="Tenant B mission", status="active"
     )
-    orch_b = MCPAgentJob(
+    orch_b = AgentExecution(
         job_id="orch-b", tenant_key=tenant_b, project_id=project_b.id,
         agent_type="orchestrator", agent_name="Orch B", mission="Tenant B orch mission",
         status="waiting"
@@ -394,7 +394,7 @@ async def test_mission_acknowledged_event_has_correct_payload_structure(
     - timestamp: str (ISO-formatted current time)
     """
     # Create agent job
-    agent_job = MCPAgentJob(
+    agent_job = AgentExecution(
         job_id="agent-payload-test",
         tenant_key=tenant_key,
         project_id=test_project.id,

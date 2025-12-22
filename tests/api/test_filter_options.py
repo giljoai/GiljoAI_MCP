@@ -241,7 +241,7 @@ async def test_filter_options_empty_project(async_client: AsyncClient, empty_pro
 @pytest.fixture
 async def project_without_unread(db_manager, tenant_a_admin):
     """Create a project with jobs but no unread messages."""
-    from src.giljo_mcp.models.agents import MCPAgentJob
+    from src.giljo_mcp.models.agent_identity import AgentExecution
     from src.giljo_mcp.models.projects import Project
 
     async with db_manager.get_session_async() as session:
@@ -257,7 +257,7 @@ async def project_without_unread(db_manager, tenant_a_admin):
         await session.refresh(project)
 
         # Create job with only acknowledged messages
-        job = MCPAgentJob(
+        job = AgentExecution(
             job_id=str(uuid4()),
             tenant_key=tenant_a_admin.tenant_key,
             project_id=project.project_id,
