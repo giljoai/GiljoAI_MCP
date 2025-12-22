@@ -2,9 +2,33 @@
 
 **Date**: 2025-12-22
 **Priority**: MEDIUM
-**Status**: READY FOR EXECUTION
+**Status**: IN PROGRESS
 **Estimated Effort**: 8-12 hours (can be parallelized)
 **Related**: Handover 0370 (agent_id/job_id audit)
+
+---
+
+## Execution Status (Updated 2025-12-22)
+
+| Phase | Status | Lines Removed | Notes |
+|-------|--------|---------------|-------|
+| **Phase 1** | ✅ COMPLETE | ~340 | All 3 items fixed |
+| **Phase 2** | ✅ COMPLETE | ~6,600 | 12 test files deleted; 2.1 deferred to 0372 |
+| **Phase 3** | ✅ COMPLETE | ~1,944 | 5 tool files + 1 test file deleted |
+| **Phase 4** | 🔄 IN PROGRESS | - | 4.1→0373, 4.2 deprecated, 4.3-4.6 pending |
+| **Phase 5** | ⏳ PENDING | - | SQL files |
+| **Phase 6** | ⏳ PENDING | - | Frontend (~5,500 lines) |
+| **Phase 7** | ⏳ PENDING | - | Migration cleanup |
+
+**Total Removed So Far**: ~8,884 lines
+
+### Spawned Handovers
+- **0372**: MessageService Unification (from Phase 2.1) - merge message_service_0366b.py
+- **0373**: Template Adapter Migration (from Phase 4.1) - migrate template_adapter.py
+
+### Commits
+- `4f31844b` - Phase 1-2: fix install.py, delete 13 test files
+- `f313067c` - Phase 3: delete 5 orphan tool files + 1 test file
 
 ---
 
