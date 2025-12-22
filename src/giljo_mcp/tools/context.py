@@ -1737,12 +1737,17 @@ async def fetch_context(
         categories: List of context categories to fetch
 
     Returns:
-        Agent execution context with current usage metrics
+        Agent execution context with current usage metrics and product/project context
+        for the requested categories (memory_360, git_history, testing, etc.).
     """
     try:
         import giljo_mcp.database as db_module
-        from giljo_mcp.models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+        from giljo_mcp.models.projects import Project
+        from giljo_mcp.models.products import Product
         from sqlalchemy import select
+
+        from .context_tools.fetch_context import fetch_context as fetch_product_context
 
         # Use existing database manager (NO hardcoded test URL!)
         if db_module._db_manager is None:
@@ -1750,25 +1755,42 @@ async def fetch_context(
         db_manager = db_module._db_manager
 
         async with db_manager.get_session_async() as session:
-            # Query AgentExecution by agent_id + tenant_key
-            query = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key,
+            # Query AgentExecution + AgentJob (+ optional Project/Product) by agent_id + tenant_key
+            query = (
+                select(AgentExecution, AgentJob, Project, Product)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .outerjoin(Project, Project.id == AgentJob.project_id)
+                .outerjoin(Product, Product.id == Project.product_id)
+                .where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
             )
             result = await session.execute(query)
-            execution = result.scalar_one_or_none()
+            row = result.first()
 
-            if not execution:
+            if not row:
                 return {
                     "success": False,
                     "error": "Agent execution not found or unauthorized",
                 }
 
-            # Build context data based on categories
-            context_data = {}
-            for category in categories:
-                # Placeholder - in real implementation, would fetch actual context
-                context_data[category] = {"data": f"Context for {category}"}
+            execution, job, project, product = row
+
+            # Resolve project and product for this job (executor → job → project → product)
+            project_id = str(project.id) if project is not None else None
+            product_id = str(product.id) if product is not None else None
+
+            product_context: dict[str, Any] = {}
+            if product_id:
+                # Delegate to unified product-level fetch_context for actual category data
+                product_context = await fetch_product_context(
+                    product_id=product_id,
+                    tenant_key=tenant_key,
+                    project_id=project_id,
+                    categories=categories,
+                    db_manager=db_manager,
+                )
 
             return {
                 "success": True,
@@ -1776,7 +1798,7 @@ async def fetch_context(
                 "job_id": execution.job_id,
                 "context_used": execution.context_used,
                 "context_budget": execution.context_budget,
-                "context": context_data,
+                "context": product_context,
             }
 
     except Exception as e:

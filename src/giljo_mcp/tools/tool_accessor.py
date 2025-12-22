@@ -253,6 +253,7 @@ class ToolAccessor:
         message_type: str = "direct",
         priority: str = "normal",
         from_agent: Optional[str] = None,
+        tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """Send message to one or more agents (delegates to MessageService)"""
         return await self._message_service.send_message(
@@ -261,7 +262,8 @@ class ToolAccessor:
             project_id=project_id,
             message_type=message_type,
             priority=priority,
-            from_agent=from_agent
+            from_agent=from_agent,
+            tenant_key=tenant_key,
         )
 
     async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
