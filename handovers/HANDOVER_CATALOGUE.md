@@ -41,7 +41,7 @@
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0246b | Vision Document Storage Simplification | Ready | Medium | New Dec 2025 feature |
+| 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
 | 0349 | Agent Execution Context Refactor | Ready | Medium | 3-layer separation |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
@@ -298,6 +298,7 @@ Located in `handovers/cancelled/`:
 | ID | Title | Superseded By |
 |----|-------|---------------|
 | 0348 | Product Context Gap Analysis | 0350 series (On-Demand Context Fetch) |
+| 0246b | Vision Document Storage Simplification | 0352 (Vision Document Depth Refactor) |
 | 0261 | Task MCP Surface Rationalization | 0334 (HTTP-Only MCP) |
 | 0262 | Agent Mission Protocol Merge | 0334 (HTTP-Only MCP) |
 | 0278 | Mode-Aware MCP Catalog Architecture | 0334 (HTTP-Only MCP) |
