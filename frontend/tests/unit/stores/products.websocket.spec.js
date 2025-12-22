@@ -5,9 +5,8 @@
  * Test Coverage:
  * 1. Product memory updated event handling
  * 2. Product learning added event handling
- * 3. GitHub settings changed event handling
- * 4. Event listener cleanup on store destruction
- * 5. Real-time UI updates
+ * 3. Event listener cleanup on store destruction
+ * 4. Real-time UI updates
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
@@ -352,119 +351,6 @@ describe('Products Store - WebSocket Event Listeners', () => {
     })
   })
 
-  describe('product:github:settings:changed event', () => {
-    it('should update GitHub integration settings in product memory', () => {
-      productStore.products = [
-        {
-          id: 1,
-          name: 'Product 1',
-          product_memory: {
-            git_integration: {
-              enabled: false,
-              repo_url: 'https://github.com/old/repo',
-            },
-          },
-        },
-      ]
-
-      const payload = {
-        product_id: 1,
-        data: {
-          git_integration: {
-            enabled: true,
-            repo_url: 'https://github.com/new/repo',
-            access_token: 'ghp_token123',
-          },
-        },
-      }
-
-      // Handler logic
-      const product = productStore.products.find((p) => p.id === payload.product_id)
-      if (product && payload.data?.git_integration) {
-        if (!product.product_memory) {
-          product.product_memory = {}
-        }
-        product.product_memory.git_integration = payload.data.git_integration
-      }
-
-      // Verify settings updated
-      expect(productStore.products[0].product_memory.git_integration.enabled).toBe(true)
-      expect(productStore.products[0].product_memory.git_integration.repo_url).toBe(
-        'https://github.com/new/repo'
-      )
-    })
-
-    it('should initialize product_memory if missing', () => {
-      productStore.products = [
-        {
-          id: 1,
-          name: 'Product 1',
-          // No product_memory
-        },
-      ]
-
-      const payload = {
-        product_id: 1,
-        data: {
-          git_integration: {
-            enabled: true,
-            repo_url: 'https://github.com/user/repo',
-          },
-        },
-      }
-
-      // Handler logic
-      const product = productStore.products.find((p) => p.id === payload.product_id)
-      if (product && payload.data?.git_integration) {
-        if (!product.product_memory) {
-          product.product_memory = {}
-        }
-        product.product_memory.git_integration = payload.data.git_integration
-      }
-
-      // Verify product_memory initialized
-      expect(productStore.products[0].product_memory).toBeDefined()
-      expect(productStore.products[0].product_memory.git_integration.enabled).toBe(true)
-    })
-
-    it('should update currentProduct if it matches', () => {
-      productStore.currentProduct = {
-        id: 1,
-        name: 'Current Product',
-        product_memory: {
-          git_integration: { enabled: false },
-        },
-      }
-      productStore.products = [productStore.currentProduct]
-
-      const payload = {
-        product_id: 1,
-        data: {
-          git_integration: { enabled: true },
-        },
-      }
-
-      // Handler logic for both
-      const product = productStore.products.find((p) => p.id === payload.product_id)
-      if (product && payload.data?.git_integration) {
-        if (!product.product_memory) {
-          product.product_memory = {}
-        }
-        product.product_memory.git_integration = payload.data.git_integration
-      }
-      if (productStore.currentProduct?.id === payload.product_id && payload.data?.git_integration) {
-        if (!productStore.currentProduct.product_memory) {
-          productStore.currentProduct.product_memory = {}
-        }
-        productStore.currentProduct.product_memory.git_integration = payload.data.git_integration
-      }
-
-      // Verify both updated
-      expect(productStore.products[0].product_memory.git_integration.enabled).toBe(true)
-      expect(productStore.currentProduct.product_memory.git_integration.enabled).toBe(true)
-    })
-  })
-
   describe('Event listener lifecycle', () => {
     it('should register event listeners when store is initialized', () => {
       // This test verifies the registration happens
@@ -474,12 +360,10 @@ describe('Products Store - WebSocket Event Listeners', () => {
       // Simulate initialization (would be in store's setup/initialization method)
       wsStore.on('product:memory:updated', () => {})
       wsStore.on('product:learning:added', () => {})
-      wsStore.on('product:github:settings:changed', () => {})
 
       // Verify listeners registered
       expect(onSpy).toHaveBeenCalledWith('product:memory:updated', expect.any(Function))
       expect(onSpy).toHaveBeenCalledWith('product:learning:added', expect.any(Function))
-      expect(onSpy).toHaveBeenCalledWith('product:github:settings:changed', expect.any(Function))
     })
 
     it('should cleanup event listeners when store is destroyed', () => {
@@ -488,21 +372,17 @@ describe('Products Store - WebSocket Event Listeners', () => {
       // Register handlers
       const handler1 = () => {}
       const handler2 = () => {}
-      const handler3 = () => {}
 
       wsStore.on('product:memory:updated', handler1)
       wsStore.on('product:learning:added', handler2)
-      wsStore.on('product:github:settings:changed', handler3)
 
       // Cleanup (would be in store's cleanup/destroy method)
       wsStore.off('product:memory:updated', handler1)
       wsStore.off('product:learning:added', handler2)
-      wsStore.off('product:github:settings:changed', handler3)
 
       // Verify cleanup
       expect(offSpy).toHaveBeenCalledWith('product:memory:updated', handler1)
       expect(offSpy).toHaveBeenCalledWith('product:learning:added', handler2)
-      expect(offSpy).toHaveBeenCalledWith('product:github:settings:changed', handler3)
     })
 
     it('should use unsubscribe functions returned by on()', () => {

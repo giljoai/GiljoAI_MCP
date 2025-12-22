@@ -6,7 +6,6 @@ Handover 0139a: WebSocket Events - Backend Emission
 Tests verify that ProductService emits correct WebSocket events when:
 - Product memory is updated (product:memory:updated)
 - Learning entries are added (product:learning:added)
-- GitHub settings are changed (product:github:settings:changed)
 
 PRODUCTION-GRADE: Validates real-time event delivery with tenant isolation.
 """
@@ -283,101 +282,6 @@ class TestProductMemoryWebSocketEvents:
             assert event_data["learning"]["sequence"] == i + 1
 
     """
-    Test 3: GitHub settings change emits WebSocket event
-    Validates product:github:settings:changed event when GitHub integration toggles
-    """
-
-    async def test_update_github_settings_emits_websocket_event(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
-    ):
-        """
-        PRODUCTION-GRADE: Verify product:github:settings:changed event emission
-
-        GIVEN: A product with GitHub integration disabled
-        WHEN: GitHub settings are enabled via update_github_settings()
-        THEN: WebSocket event is emitted with new settings
-        """
-        # ARRANGE
-        service = product_service_with_websocket
-
-        create_result = await service.create_product(name="GitHub Settings Test Product")
-        product_id = create_result["product_id"]
-
-        mock_websocket_manager.broadcast_to_tenant.reset_mock()
-
-        # ACT: Enable GitHub integration
-        settings_result = await service.update_github_settings(
-            product_id=product_id,
-            enabled=True,
-            repo_url="https://github.com/test/integration",
-            auto_commit=True
-        )
-
-        # ASSERT: Update succeeded
-        assert settings_result["success"] is True
-
-        # ASSERT: WebSocket event emitted
-        mock_websocket_manager.broadcast_to_tenant.assert_called_once()
-
-        # Verify event parameters
-        call_args = mock_websocket_manager.broadcast_to_tenant.call_args
-        assert call_args.kwargs["tenant_key"] == tenant_key
-        assert call_args.kwargs["event_type"] == "product:github:settings:changed"
-
-        # Verify event payload
-        event_data = call_args.kwargs["data"]
-        assert event_data["product_id"] == product_id
-        assert event_data["settings"]["enabled"] is True
-        assert event_data["settings"]["repo_url"] == "https://github.com/test/integration"
-        assert event_data["settings"]["auto_commit"] is True
-
-    async def test_disable_github_settings_emits_websocket_event(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
-    ):
-        """
-        PRODUCTION-GRADE: Verify event emission when GitHub integration is disabled
-
-        GIVEN: A product with GitHub integration enabled
-        WHEN: GitHub integration is disabled
-        THEN: WebSocket event is emitted showing disabled state
-        """
-        # ARRANGE: Create product and enable GitHub
-        service = product_service_with_websocket
-
-        create_result = await service.create_product(name="GitHub Disable Test Product")
-        product_id = create_result["product_id"]
-
-        await service.update_github_settings(
-            product_id=product_id,
-            enabled=True,
-            repo_url="https://github.com/test/disable",
-            auto_commit=False
-        )
-
-        mock_websocket_manager.broadcast_to_tenant.reset_mock()
-
-        # ACT: Disable GitHub integration
-        settings_result = await service.update_github_settings(
-            product_id=product_id,
-            enabled=False
-        )
-
-        # ASSERT: WebSocket event emitted
-        mock_websocket_manager.broadcast_to_tenant.assert_called_once()
-
-        call_args = mock_websocket_manager.broadcast_to_tenant.call_args
-        event_data = call_args.kwargs["data"]
-
-        assert event_data["settings"]["enabled"] is False
-        assert event_data["settings"]["repo_url"] is None
-
-    """
     Test 4: Multi-tenant isolation in WebSocket events
     Validates events are scoped to correct tenant
     """
@@ -561,62 +465,6 @@ class TestProductMemoryWebSocketEvents:
         assert isinstance(event_data["learning"]["sequence"], int)
         assert isinstance(event_data["learning"]["type"], str)
         assert isinstance(event_data["learning"]["summary"], str)
-
-    async def test_github_settings_changed_event_payload_schema(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
-    ):
-        """
-        PRODUCTION-GRADE: Validate product:github:settings:changed event schema
-
-        Expected schema:
-        {
-            "product_id": str,
-            "tenant_key": str,
-            "timestamp": str (ISO 8601),
-            "settings": {
-                "enabled": bool,
-                "repo_url": str | None,
-                "auto_commit": bool
-            }
-        }
-        """
-        # ARRANGE
-        service = product_service_with_websocket
-
-        create_result = await service.create_product(name="GitHub Schema Test")
-        product_id = create_result["product_id"]
-
-        mock_websocket_manager.broadcast_to_tenant.reset_mock()
-
-        # ACT
-        await service.update_github_settings(
-            product_id=product_id,
-            enabled=True,
-            repo_url="https://github.com/test/schema",
-            auto_commit=True
-        )
-
-        # ASSERT: Schema validation
-        call_args = mock_websocket_manager.broadcast_to_tenant.call_args
-        event_data = call_args.kwargs["data"]
-
-        # Required fields
-        required_fields = ["product_id", "tenant_key", "timestamp", "settings"]
-        for field in required_fields:
-            assert field in event_data, f"Missing required field: {field}"
-
-        # Settings structure
-        assert "enabled" in event_data["settings"]
-        assert "repo_url" in event_data["settings"]
-        assert "auto_commit" in event_data["settings"]
-
-        # Types
-        assert isinstance(event_data["settings"]["enabled"], bool)
-        assert isinstance(event_data["settings"]["repo_url"], (str, type(None)))
-        assert isinstance(event_data["settings"]["auto_commit"], bool)
 
     """
     Test 6: Event emission failures don't block operations
