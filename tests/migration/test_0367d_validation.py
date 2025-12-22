@@ -3,17 +3,15 @@ TDD validation tests for Handover 0367d: MCPAgentJob Cleanup Verification
 
 These tests validate that:
 1. Zero MCPAgentJob references exist in production code
-2. MCPAgentJob model is properly marked deprecated
-3. All production code uses AgentJob + AgentExecution exclusively
+2. All production code uses AgentJob + AgentExecution exclusively
 
 RED → GREEN → REFACTOR
-- Import verification tests should PASS (migration complete via 0367a-c)
-- Deprecation notice test should FAIL initially (we'll add deprecation notice)
+- All tests should PASS (MCPAgentJob completely removed)
 
 Test Organization:
 - TestMCPAgentJobRemovalValidation: Verify no imports in production code
-- TestMCPAgentJobDeprecationNotice: Verify deprecation notice exists
 - TestProductionCodeReferenceCount: Verify zero code references
+- TestTableReferenceValidation: Verify no mcp_agent_jobs table queries
 """
 import ast
 import os
@@ -135,44 +133,6 @@ class TestMCPAgentJobRemovalValidation:
                         pass
 
         assert not violations, f"MCPAgentJob imports found in orchestrator: {violations}"
-
-
-class TestMCPAgentJobDeprecationNotice:
-    """Verify MCPAgentJob model has proper deprecation notice"""
-
-    def test_mcpagentjob_has_deprecation_docstring(self):
-        """MCPAgentJob class should have DEPRECATED in docstring"""
-        models_file = PROJECT_ROOT / "src" / "giljo_mcp" / "models" / "agents.py"
-        content = models_file.read_text(encoding="utf-8")
-        tree = ast.parse(content)
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "MCPAgentJob":
-                docstring = ast.get_docstring(node)
-                assert docstring is not None, "MCPAgentJob should have a docstring"
-                assert "DEPRECATED" in docstring, "MCPAgentJob docstring should contain 'DEPRECATED'"
-                assert "AgentJob" in docstring, "MCPAgentJob docstring should reference AgentJob"
-                assert "AgentExecution" in docstring, "MCPAgentJob docstring should reference AgentExecution"
-                return
-
-        pytest.fail("MCPAgentJob class not found in models/agents.py")
-
-    def test_mcpagentjob_deprecation_includes_timeline(self):
-        """MCPAgentJob deprecation notice should include migration timeline"""
-        models_file = PROJECT_ROOT / "src" / "giljo_mcp" / "models" / "agents.py"
-        content = models_file.read_text(encoding="utf-8")
-        tree = ast.parse(content)
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "MCPAgentJob":
-                docstring = ast.get_docstring(node)
-                assert docstring is not None, "MCPAgentJob should have a docstring"
-                assert "v3.2" in docstring, "MCPAgentJob docstring should mention v3.2"
-                assert "v3.4" in docstring or "removal" in docstring.lower(), \
-                    "MCPAgentJob docstring should mention removal timeline"
-                return
-
-        pytest.fail("MCPAgentJob class not found in models/agents.py")
 
 
 class TestProductionCodeReferenceCount:
