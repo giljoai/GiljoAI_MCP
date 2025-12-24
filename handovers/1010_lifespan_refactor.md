@@ -23,7 +23,9 @@ Extract `api/app.py` lifespan blocks into composable async functions for better 
 
 ## Current Structure Analysis
 
-### Lifespan Function Overview (api/app.py lines 172-650)
+### Lifespan Function Overview (api/app.py lines 150-649)
+
+> **Note**: See "Research Findings (2025-12-22)" section for corrected dependency map.
 
 ```
 lifespan() - 480 lines total:
@@ -64,8 +66,8 @@ Initialization Order (CRITICAL - must be preserved):
 
 6. WebSocket Heartbeat Task (depends on: WebSocketManager)
 
-7. Event Bus (depends on: WebSocketManager)
-   └── WebSocketEventListener registered
+7. Event Bus (NO dependencies - see Research Findings for correction)
+   └── WebSocketEventListener registered (requires EventBus + WebSocketManager)
 
 8. Background Tasks (depend on: DatabaseManager):
    ├── Download Token Cleanup (every 15 minutes)
@@ -827,7 +829,7 @@ git revert HEAD  # Revert the refactor commit
 
 - **Handover 0111**: Event bus initialization debugging (verbose logging)
 - **Handover 0107**: Agent health monitoring feature
-- **Handover 0100**: Download token cleanup task
+- **Handover 0101**: Download token cleanup task (corrected from 0100)
 - **Handover 0070**: Expired item purge (projects and products)
 
 ---
@@ -938,6 +940,275 @@ git revert HEAD  # Revert the refactor commit
 **Reason**: Changes critical startup path. While risk is mitigated through testing and incremental approach, this is core infrastructure that affects every server startup.
 
 **Approval Question**: "Do you approve Handover 1010 (Lifespan Refactor)? This will extract api/app.py lifespan logic into 7 testable modules, reducing the function from 480 to ~50 lines while preserving exact behavior."
+
+---
+
+## CRITICAL: Implementation Protocol
+
+**READ FIRST**: `F:\GiljoAI_MCP\handovers\Reference_docs\QUICK_LAUNCH.txt`
+
+This handover MUST be implemented using **Test-Driven Development (TDD)**. Non-negotiable.
+
+### TDD Discipline (Mandatory)
+
+Follow the RED → GREEN → REFACTOR cycle:
+
+1. **Write the test FIRST** (it should fail initially - RED ❌)
+2. **Implement minimal code** to make test pass (GREEN ✅)
+3. **Refactor if needed** (tests MUST stay GREEN)
+4. **Test BEHAVIOR** (what the code does), not IMPLEMENTATION (how it does it)
+5. **Use descriptive test names** like:
+   - `test_init_database_creates_tables_on_startup`
+   - `test_init_event_bus_registers_websocket_listener`
+   - `test_shutdown_cancels_all_background_tasks`
+   - `test_shutdown_gracefully_closes_websocket_connections`
+6. **Avoid testing internal implementation details**
+
+### Test-First Workflow for This Handover
+
+```bash
+# PHASE 1: RED (Write failing tests)
+touch tests/startup/test_database_init.py
+touch tests/startup/test_core_services_init.py
+touch tests/startup/test_event_bus_init.py
+touch tests/startup/test_background_tasks_init.py
+touch tests/startup/test_health_monitor_init.py
+touch tests/startup/test_shutdown.py
+
+pytest tests/startup/ -v
+# MUST FAIL (RED ❌) - modules don't exist yet
+
+# PHASE 2: GREEN (Implement minimal code)
+mkdir -p api/startup
+touch api/startup/__init__.py
+touch api/startup/database.py
+# ... implement each module ...
+
+pytest tests/startup/ -v
+# MUST PASS (GREEN ✅)
+
+# PHASE 3: REFACTOR (Polish while keeping tests green)
+ruff api/startup/ && black api/startup/
+pytest tests/startup/ -v --cov=api/startup --cov-report=html
+# Coverage target: >80%
+```
+
+### Example Test Structure (Behavior-Focused)
+
+```python
+# tests/startup/test_database_init.py
+import pytest
+from unittest.mock import AsyncMock, patch
+
+@pytest.mark.asyncio
+async def test_init_database_sets_db_manager_on_state():
+    """BEHAVIOR: After init_database, state.db_manager should be set"""
+    from api.startup.database import init_database
+    from api.app import APIState
+
+    state = APIState()
+    assert state.db_manager is None  # Precondition
+
+    with patch.dict('os.environ', {'DATABASE_URL': 'postgresql://test'}):
+        with patch('api.startup.database.DatabaseManager') as MockDB:
+            mock_db = AsyncMock()
+            MockDB.return_value = mock_db
+
+            await init_database(state)
+
+            # BEHAVIOR: state.db_manager should be populated
+            assert state.db_manager is not None
+            # BEHAVIOR: tables should be created
+            mock_db.create_tables_async.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_init_database_raises_on_missing_url():
+    """BEHAVIOR: Missing DATABASE_URL should raise ValueError"""
+    from api.startup.database import init_database
+    from api.app import APIState
+
+    state = APIState()
+    state.config = None  # No config fallback
+
+    with patch.dict('os.environ', {}, clear=True):
+        with pytest.raises(ValueError, match="Database URL not configured"):
+            await init_database(state)
+```
+
+---
+
+## Research Findings (2025-12-22)
+
+### Dependency Order Discrepancies
+
+| Documented | Actual | Status |
+|------------|--------|--------|
+| EventBus depends on WebSocketManager | EventBus has NO dependencies | ❌ INACCURATE |
+| WebSocketEventListener not documented | Requires EventBus + WebSocketManager | ⚠️ MISSING |
+| Configuration not documented | Phase 0 - executes first | ⚠️ MISSING |
+| Lines 172-650 | Lines 150-649 | ⚠️ LINE DRIFT |
+
+### Corrected Dependency Map
+
+```
+ACTUAL Initialization Order (Verified 2025-12-22):
+
+Phase 0: Configuration (NOT DOCUMENTED - ADDING)
+   └── state.config = get_config()
+   └── NO dependencies
+
+Phase 1: Database (no dependencies)
+   └── DatabaseManager created
+   └── Tables created/verified
+   └── SystemPromptService initialized  ← HIDDEN DEPENDENCY
+
+Phase 2: Tenant Manager (no dependencies - static methods)
+
+Phase 3: WebSocket Manager (no dependencies)
+
+Phase 4: Tool Accessor
+   └── REQUIRES: db_manager, tenant_manager, websocket_manager ✅ VERIFIED
+
+Phase 5: Auth Manager
+   └── REQUIRES: config
+   └── API key loaded from environment
+
+Phase 6: WebSocket Heartbeat Task
+   └── REQUIRES: websocket_manager
+
+Phase 7: Event Bus + WebSocket Event Listener
+   └── EventBus: NO DEPENDENCIES ← CORRECTION
+   └── WebSocketEventListener: REQUIRES EventBus + WebSocketManager ← ADDING
+
+Phase 8: Background Tasks
+   └── Download Token Cleanup (every 15 minutes)
+   └── API Metrics Sync (every 5 minutes)
+   └── REQUIRES: db_manager
+
+Phase 9: Health Monitor
+   └── REQUIRES: db_manager, websocket_manager, config.yaml file I/O ← ADDING
+
+Phase 10: Validation (setup state checking)
+   └── REQUIRES: db_manager, config
+
+Phase 11: Expired Item Purge (startup only)
+   └── REQUIRES: db_manager, tenant_manager ← CLARIFICATION
+```
+
+### Related Handover Status
+
+| Handover | Status | Notes |
+|----------|--------|-------|
+| 0111 | ⚠️ INVESTIGATION NEEDED | WebSocket access issues from MCP context - relevant to event bus |
+| 0107 | ✅ COMPLETED | Health monitoring pattern - good reference for `init_health_monitor()` |
+| **0101** | ✅ COMPLETED | Download token cleanup (NOT 0100 as documented) |
+| 0070 | ✅ COMPLETED | Expired item purge |
+
+### Test Coverage Gap
+
+**CRITICAL**: The handover references `tests/integration/test_api_startup.py` which **DOES NOT EXIST**.
+
+Existing startup tests:
+- `tests/test_startup_validation.py` (497 lines) - Port config, NOT lifespan
+- `tests/unit/test_startup.py` (311 lines) - Entry point, NOT lifespan
+- `tests/integration/test_health_monitoring_startup.py` (402 lines) - Health monitor only
+
+**Action Required**: Create `tests/startup/` directory with dedicated lifespan tests.
+
+### state.connections Clarification
+
+The `state.connections` dict is:
+- Initialized empty in `APIState.__init__()` (line 136)
+- Populated at RUNTIME by WebSocket endpoint (line 984)
+- NOT populated during lifespan initialization
+- Used correctly in shutdown (line 635)
+
+**Note**: Duplication exists between `state.connections` and `websocket_manager.active_connections`. Both track WebSocket connections. Consider consolidating in future refactor.
+
+---
+
+## Frontend Verification (Post-Refactor)
+
+### Zero UI Impact Expected
+
+This is a **pure backend refactor**. If implemented correctly:
+- No behavioral changes
+- No API changes
+- No WebSocket protocol changes
+- Frontend should work identically
+
+### Components to Verify After Refactor
+
+| Priority | Component | What to Test |
+|----------|-----------|--------------|
+| **P1** | `ConnectionStatus.vue` | WebSocket connects, shows "Connected" |
+| **P1** | `ServerDownView.vue` | Only shows when server actually down |
+| **P1** | `AgentMonitoring.vue` | Receives live agent updates |
+| **P2** | `JobsTab.vue` | Job status updates flow |
+| **P2** | `LaunchTab.vue` | Orchestrator launch works |
+| **P3** | `MessagePanel.vue` | Messages arrive in real-time |
+
+### Manual Smoke Test Checklist
+
+```bash
+# 1. Start server
+python startup.py --dev
+
+# 2. Open browser to http://localhost:7272
+# 3. Check: ConnectionStatus chip shows "Connected" (green)
+# 4. Navigate to Projects → verify agent grid loads
+# 5. Check browser console: NO WebSocket errors
+# 6. Graceful shutdown: Ctrl+C
+# 7. Check server logs: "API shutdown complete" message
+```
+
+---
+
+## Updated Execution Checklist
+
+### Pre-Implementation (TDD Phase 0)
+
+- [ ] Read `F:\GiljoAI_MCP\handovers\Reference_docs\QUICK_LAUNCH.txt`
+- [ ] Read `F:\GiljoAI_MCP\CLAUDE.md`
+- [ ] Review this handover's Research Findings section
+- [ ] Create `tests/startup/` directory structure
+- [ ] Write ALL failing tests FIRST (RED phase)
+
+### Implementation (TDD Phases 1-2)
+
+- [ ] Create `api/startup/` directory
+- [ ] Create `api/startup/__init__.py`
+- [ ] Implement `api/startup/database.py` → run tests → GREEN
+- [ ] Implement `api/startup/core_services.py` → run tests → GREEN
+- [ ] Implement `api/startup/event_bus.py` → run tests → GREEN
+- [ ] Implement `api/startup/background_tasks.py` → run tests → GREEN
+- [ ] Implement `api/startup/health_monitor.py` → run tests → GREEN
+- [ ] Implement `api/startup/validation.py` → run tests → GREEN
+- [ ] Implement `api/startup/shutdown.py` → run tests → GREEN
+- [ ] Update `api/app.py` lifespan function
+- [ ] Run linting: `ruff api/startup/; black api/startup/`
+
+### Testing (TDD Phase 3)
+
+- [ ] Run unit tests: `pytest tests/startup/ -v`
+- [ ] Run coverage: `pytest tests/startup/ --cov=api/startup --cov-report=html`
+- [ ] Verify coverage >80%
+- [ ] Run integration tests: `pytest tests/integration/ -v`
+- [ ] Manual test: Start server and verify logs
+- [ ] Manual test: Health check endpoint
+- [ ] Manual test: Graceful shutdown (Ctrl+C)
+
+### Frontend Verification
+
+- [ ] WebSocket connects (check ConnectionStatus.vue)
+- [ ] No console CSP/WebSocket errors
+- [ ] AgentMonitoring receives live updates
+- [ ] JobsTab shows real-time status
+
+### Documentation
+
+- [ ] Update line numbers in this handover if changed
+- [ ] Create devlog: `docs/devlogs/2025-XX-XX_handover_1010_lifespan_refactor.md`
 
 ---
 

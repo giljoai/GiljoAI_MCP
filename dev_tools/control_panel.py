@@ -176,6 +176,7 @@ class GiljoDevControlPanel:
         self.build_services_tab()
         self.build_database_tab()
         self.build_resets_tab()
+        self.build_reference_tab()
 
         # Status bar at bottom (5 rows high)
         self.status_label = ttk.Label(
@@ -281,6 +282,61 @@ class GiljoDevControlPanel:
 
         # Environment Resets section
         row = self.build_reset_section(tab, row)
+
+    def build_reference_tab(self):
+        """Build the Reference tab with quick developer references."""
+        tab = ttk.Frame(self.notebook, padding="5")
+        self.notebook.add(tab, text="Reference")
+
+        # Log Colors section
+        colors_section = ttk.LabelFrame(tab, text="Log Color Legend", padding="10")
+        colors_section.grid(row=0, column=0, sticky="ew", pady=3)
+
+        # Color definitions with their meanings
+        log_colors = [
+            ("RED", "#DC3545", "Errors & Critical Issues", "Something broke - fix immediately"),
+            ("YELLOW", "#FFC107", "Warnings", "Potential issue - investigate soon"),
+            ("GREEN", "#28A745", "Success", "Operation completed successfully"),
+            ("BLUE", "#007BFF", "Information", "General status updates"),
+            ("WHITE", "#6C757D", "Debug", "Technical details for troubleshooting"),
+            ("CYAN", "#17A2B8", "Highlights", "Important values & key data"),
+        ]
+
+        # Header
+        ttk.Label(
+            colors_section,
+            text="Terminal logs use colors to help you quickly identify message severity:",
+            wraplength=400
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+
+        # Color table
+        for idx, (color_name, hex_color, meaning, description) in enumerate(log_colors, start=1):
+            # Colored indicator
+            indicator = ttk.Label(colors_section, text="████", foreground=hex_color)
+            indicator.grid(row=idx, column=0, sticky="w", padx=(0, 10))
+
+            # Color name and meaning
+            ttk.Label(
+                colors_section,
+                text=f"{color_name}: {meaning}",
+                font=("Arial", 10, "bold")
+            ).grid(row=idx, column=1, sticky="w", padx=(0, 10))
+
+            # Description
+            ttk.Label(
+                colors_section,
+                text=description,
+                foreground="gray"
+            ).grid(row=idx, column=2, sticky="w")
+
+        # Tip at bottom
+        tip_label = ttk.Label(
+            colors_section,
+            text="Tip: Red and yellow messages need your attention first!",
+            font=("Arial", 9, "italic"),
+            foreground="#6C757D"
+        )
+        tip_label.grid(row=len(log_colors) + 1, column=0, columnspan=3, sticky="w", pady=(15, 0))
 
     def build_service_section(self, parent: ttk.Frame, row: int) -> int:
         """Build service management section."""
