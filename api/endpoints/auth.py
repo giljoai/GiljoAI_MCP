@@ -341,6 +341,11 @@ async def login(
     #   security:
     #     cookie_domains: ["example.com", "myapp.io"]
 
+    # Load secure cookie config BEFORE cookie domain logic (always needed)
+    config = get_config()
+    secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
+    allowed_domains = config.get("security", {}).get("cookie_domains", [])
+
     cookie_domain = None
     if request and request.client:
         # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
@@ -360,11 +365,6 @@ async def login(
             # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
             # Without whitelist, attacker could send "Host: evil.com" and steal cookies
             else:
-                # Load whitelist from config (defaults to empty list if not configured)
-                config = get_config()
-                allowed_domains = config.get("security", {}).get("cookie_domains", [])
-                secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
-
                 if host_only in allowed_domains:
                     cookie_domain = host_only
                     logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
@@ -778,6 +778,11 @@ async def create_first_admin_user(
         #   security:
         #     cookie_domains: ["example.com", "myapp.io"]
 
+        # Load secure cookie config BEFORE cookie domain logic (always needed)
+        config = get_config()
+        secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
+        allowed_domains = config.get("security", {}).get("cookie_domains", [])
+
         cookie_domain = None
         if request and request.client:
             # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
@@ -797,11 +802,6 @@ async def create_first_admin_user(
                 # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
                 # Without whitelist, attacker could send "Host: evil.com" and steal cookies
                 else:
-                    # Load whitelist from config (defaults to empty list if not configured)
-                    config = get_config()
-                    allowed_domains = config.get("security", {}).get("cookie_domains", [])
-                    secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
-
                     if host_only in allowed_domains:
                         cookie_domain = host_only
                         logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
