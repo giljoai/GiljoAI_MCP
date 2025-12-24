@@ -35,5 +35,19 @@ agent idle is annyong
 
 need to fix  Reading messages 'to force acknowledgement they ahve been read. 
 
-Close out project button disappeared. 
+Close out project button disappeared.
+
+---
+
+## TECH DEBT (Pre-Launch Checklist)
+
+### Rate Limiting: Migrate to Redis (Before Multi-Server)
+- **Added**: 2025-12-24
+- **Related**: Handover 1009 (Rate Limiting)
+- **Current**: In-memory storage (single server only)
+- **Risk**: Multi-server deployment bypasses rate limits (each server has separate counter)
+- **Fix**: Swap in-memory dict to Redis (~2-4 hours)
+- **When**: Before load balancer / multi-server / auto-scaling deployment
+- **Files**: `api/middleware/rate_limit.py` (RateLimiter class)
+- **Priority**: LOW now, HIGH before SaaS scale-out
 
