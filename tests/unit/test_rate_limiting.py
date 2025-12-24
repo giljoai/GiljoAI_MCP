@@ -96,7 +96,7 @@ class TestRateLimitingBasics:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60, raise_on_limit=True)
 
         assert exc_info.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-        assert "Too many requests" in exc_info.value.detail.lower()
+        assert "too many requests" in exc_info.value.detail.lower()
 
         # Check for Retry-After header in exception
         # (Implementation should add this to headers dict)
@@ -124,10 +124,10 @@ class TestRateLimitingCooldown:
 
         # Mock time passage (61 seconds)
         # Implementation should use time.time() for tracking
-        with patch('time.time') as mock_time:
+        with patch('api.middleware.rate_limit.time') as mock_time:
             # Simulate current time + 61 seconds
             original_time = time.time()
-            mock_time.return_value = original_time + 61
+            mock_time.time.return_value = original_time + 61
 
             # This request should succeed (after cooldown)
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
@@ -269,9 +269,9 @@ class TestRateLimitingRetryAfterHeader:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
 
         # Mock time passage (20 seconds into window)
-        with patch('time.time') as mock_time:
+        with patch('api.middleware.rate_limit.time') as mock_time:
             original_time = time.time()
-            mock_time.return_value = original_time + 20
+            mock_time.time.return_value = original_time + 20
 
             # 6th request should be blocked with Retry-After
             with pytest.raises(HTTPException) as exc_info:
@@ -342,9 +342,9 @@ class TestRateLimitingEdgeCases:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
 
         # Mock time passage (past window)
-        with patch('time.time') as mock_time:
+        with patch('api.middleware.rate_limit.time') as mock_time:
             original_time = time.time()
-            mock_time.return_value = original_time + 120  # 2 minutes later
+            mock_time.time.return_value = original_time + 120  # 2 minutes later
 
             # Trigger cleanup (implementation-specific method)
             if hasattr(rate_limiter, 'cleanup_expired'):
