@@ -29,6 +29,7 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
 from api.endpoints.dependencies import get_auth_service
+from api.middleware.rate_limit import get_rate_limiter
 
 
 logger = logging.getLogger(__name__)
@@ -282,6 +283,8 @@ async def login(
     v3.0 Unified (Handover 0034): No more default password flow.
     Fresh installs go directly to "Create Admin Account" page.
 
+    Rate Limiting (Handover 1009): 5 attempts per minute per IP
+
     Args:
         request: Login credentials (username, password)
         response: FastAPI response (to set cookie)
@@ -292,7 +295,12 @@ async def login(
 
     Raises:
         HTTPException: 401 if credentials are invalid
+        HTTPException: 429 if rate limit exceeded
     """
+    # Rate limiting: 5 attempts per minute (Handover 1009)
+    rate_limiter = get_rate_limiter()
+    rate_limiter.check_rate_limit(request, limit=5, window=60, raise_on_limit=True)
+
     # Authenticate user via service
     auth_result = await auth_service.authenticate_user(login_data.username, login_data.password)
 
@@ -613,6 +621,7 @@ async def revoke_api_key(
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(
+    http_request: Request,
     request: RegisterUserRequest = Body(...),
     current_user: User = Depends(require_admin),
     auth_service: AuthService = Depends(get_auth_service),
@@ -622,7 +631,10 @@ async def register_user(
 
     This endpoint creates a new user account. Only admins can create new users.
 
+    Rate Limiting (Handover 1009): 3 attempts per minute per IP
+
     Args:
+        http_request: FastAPI request object
         request: User registration data
         current_user: Admin user from JWT token (dependency)
         auth_service: Auth service for user registration
@@ -633,7 +645,12 @@ async def register_user(
     Raises:
         HTTPException: 400 if username/email already exists
         HTTPException: 403 if not admin
+        HTTPException: 429 if rate limit exceeded
     """
+    # Rate limiting: 3 attempts per minute (Handover 1009)
+    rate_limiter = get_rate_limiter()
+    rate_limiter.check_rate_limit(http_request, limit=3, window=60, raise_on_limit=True)
+
     result = await auth_service.register_user(
         username=request.username,
         email=request.email,
