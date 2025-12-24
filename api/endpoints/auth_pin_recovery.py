@@ -12,7 +12,7 @@ All endpoints include rate limiting, timing-safe comparisons, and audit logging.
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from passlib.hash import bcrypt
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+from api.middleware.rate_limit import get_rate_limiter
 
 
 logger = logging.getLogger(__name__)
@@ -110,26 +111,31 @@ class CompleteFirstLoginResponse(BaseModel):
 
 @router.post("/verify-pin-and-reset-password", response_model=PinPasswordResetResponse, tags=["auth"])
 async def verify_pin_and_reset_password(
-    request_data: PinPasswordResetRequest = Body(...), db: AsyncSession = Depends(get_db_session)
+    http_request: Request,
+    request_data: PinPasswordResetRequest = Body(...),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Verify recovery PIN and reset password (Handover 0023).
 
     Security Features:
     - Generic error messages (doesn't reveal username existence)
-    - Rate limiting: 5 failed attempts → 15 minute lockout
+    - IP-based rate limiting: 3 attempts per minute (Handover 1009)
+    - Account lockout: 5 failed attempts → 15 minute lockout (per-user)
     - Timing-safe PIN comparison (bcrypt)
     - PIN never stored in plaintext
     - Audit logging for security monitoring
 
     Flow:
-    1. Find user by username
-    2. Check lockout status (pin_lockout_until)
-    3. Verify PIN with bcrypt
-    4. If invalid: Increment failed_pin_attempts, trigger lockout if >= 5
-    5. If valid: Reset password, clear lockout
+    1. Check IP-based rate limit (3/min across all users)
+    2. Find user by username
+    3. Check per-user lockout status (pin_lockout_until)
+    4. Verify PIN with bcrypt
+    5. If invalid: Increment failed_pin_attempts, trigger lockout if >= 5
+    6. If valid: Reset password, clear lockout
 
     Args:
+        http_request: FastAPI request object
         request_data: Username, PIN, new password
         db: Database session
 
@@ -138,8 +144,13 @@ async def verify_pin_and_reset_password(
 
     Raises:
         HTTPException: 400 if username/PIN invalid
-        HTTPException: 429 if user is locked out
+        HTTPException: 429 if rate limit exceeded or user is locked out
     """
+    # IP-based rate limiting: 3 attempts per minute (Handover 1009)
+    # This is in ADDITION to per-user account lockout (5 failed → 15 min)
+    rate_limiter = get_rate_limiter()
+    rate_limiter.check_rate_limit(http_request, limit=3, window=60, raise_on_limit=True)
+
     # Validate password confirmation match
     if request_data.new_password != request_data.confirm_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
