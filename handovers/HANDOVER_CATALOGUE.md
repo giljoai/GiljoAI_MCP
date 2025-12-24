@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-22 (1000 Series Safe Batch: 1002, 1003, 1004, 1005, 1006, 1008, 1012 COMPLETE)
+**Last Updated:** 2025-12-24 (0375 Logging Regression Fix COMPLETE)
 
 ---
 
@@ -102,6 +102,7 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0375 | Logging Regression Fix (1002 Bug) | **COMPLETE** (2025-12-24) |
 | 1002 | Fix Bare Except | **COMPLETE** (2025-12-22) |
 | 1003 | Sanitize Paths | **COMPLETE** (2025-12-22) |
 | 1004 | Secure Cookies | **COMPLETE** (2025-12-22) |
@@ -375,7 +376,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0375 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
