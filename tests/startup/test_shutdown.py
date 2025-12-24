@@ -1,0 +1,249 @@
+"""Tests for shutdown module"""
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from api.app import APIState
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_heartbeat_task():
+    """Should cancel heartbeat task if present"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.heartbeat_task = MagicMock()
+    state.heartbeat_task.cancel = MagicMock()
+
+    # Mock the awaited task to raise CancelledError
+    async def mock_cancelled_task():
+        raise asyncio.CancelledError()
+
+    state.heartbeat_task.__await__ = mock_cancelled_task().__await__
+
+    await shutdown(state)
+
+    # Verify task was cancelled
+    state.heartbeat_task.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_cleanup_task():
+    """Should cancel cleanup task if present"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.cleanup_task = MagicMock()
+    state.cleanup_task.cancel = MagicMock()
+
+    async def mock_cancelled_task():
+        raise asyncio.CancelledError()
+
+    state.cleanup_task.__await__ = mock_cancelled_task().__await__
+
+    await shutdown(state)
+
+    # Verify task was cancelled
+    state.cleanup_task.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_metrics_sync_task():
+    """Should cancel metrics sync task if present"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.metrics_sync_task = MagicMock()
+    state.metrics_sync_task.cancel = MagicMock()
+
+    async def mock_cancelled_task():
+        raise asyncio.CancelledError()
+
+    state.metrics_sync_task.__await__ = mock_cancelled_task().__await__
+
+    await shutdown(state)
+
+    # Verify task was cancelled
+    state.metrics_sync_task.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_handles_missing_tasks():
+    """Should handle gracefully when tasks are None"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.heartbeat_task = None
+    state.cleanup_task = None
+    state.metrics_sync_task = None
+    state.health_monitor = None
+    state.db_manager = None
+    state.connections = {}
+
+    # Should not raise any errors
+    await shutdown(state)
+
+
+@pytest.mark.asyncio
+async def test_shutdown_stops_health_monitor():
+    """Should call health_monitor.stop() if monitor exists"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.health_monitor = MagicMock()
+    state.health_monitor.stop = AsyncMock()
+    state.connections = {}
+
+    await shutdown(state)
+
+    # Verify stop was called
+    state.health_monitor.stop.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_closes_websocket_connections():
+    """Should close all WebSocket connections in state.connections"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+
+    # Create mock WebSocket connections
+    mock_ws1 = MagicMock()
+    mock_ws1.close = AsyncMock()
+    mock_ws2 = MagicMock()
+    mock_ws2.close = AsyncMock()
+
+    state.connections = {
+        "client1": mock_ws1,
+        "client2": mock_ws2
+    }
+
+    await shutdown(state)
+
+    # Verify both connections were closed
+    mock_ws1.close.assert_awaited_once()
+    mock_ws2.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_closes_database_connection():
+    """Should call db_manager.close_async() if db_manager exists"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.db_manager = MagicMock()
+    state.db_manager.close_async = AsyncMock()
+    state.connections = {}
+
+    await shutdown(state)
+
+    # Verify database connection was closed
+    state.db_manager.close_async.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_continues_on_task_cancel_error():
+    """Should handle CancelledError gracefully when awaiting cancelled tasks"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.heartbeat_task = MagicMock()
+    state.heartbeat_task.cancel = MagicMock()
+
+    async def raise_cancelled():
+        raise asyncio.CancelledError()
+
+    state.heartbeat_task.__await__ = raise_cancelled().__await__
+    state.connections = {}
+
+    # Should not propagate CancelledError
+    await shutdown(state)
+
+    # Test passes if no exception raised
+
+
+@pytest.mark.asyncio
+async def test_shutdown_continues_on_error():
+    """Should log errors but continue shutdown process"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.health_monitor = MagicMock()
+    state.health_monitor.stop = AsyncMock(side_effect=RuntimeError("Stop failed"))
+    state.connections = {}
+    state.db_manager = MagicMock()
+    state.db_manager.close_async = AsyncMock()
+
+    with patch('api.startup.shutdown.logger') as mock_logger:
+        # Should not raise, just log error
+        await shutdown(state)
+
+        # Verify error was logged
+        error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
+        assert any('Error stopping health monitor' in msg for msg in error_calls)
+
+        # Database should still close despite health monitor error
+        state.db_manager.close_async.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_logs_progress():
+    """Should log shutdown progress messages"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    state.heartbeat_task = MagicMock()
+    state.heartbeat_task.cancel = MagicMock()
+
+    async def mock_cancelled_task():
+        raise asyncio.CancelledError()
+
+    state.heartbeat_task.__await__ = mock_cancelled_task().__await__
+    state.connections = {}
+    state.db_manager = MagicMock()
+    state.db_manager.close_async = AsyncMock()
+
+    with patch('api.startup.shutdown.logger') as mock_logger:
+        await shutdown(state)
+
+        # Verify shutdown messages were logged
+        info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
+        assert any('Shutting down GiljoAI MCP API' in msg for msg in info_calls)
+        assert any('Background tasks canceled' in msg for msg in info_calls)
+        assert any('Database connection closed' in msg for msg in info_calls)
+
+
+@pytest.mark.asyncio
+async def test_shutdown_all_tasks_in_order():
+    """Should perform shutdown steps in correct order"""
+    from api.startup.shutdown import shutdown
+
+    state = APIState()
+    execution_order = []
+
+    # Create mock tasks that track execution order
+    state.heartbeat_task = MagicMock()
+    state.heartbeat_task.cancel = MagicMock(side_effect=lambda: execution_order.append('cancel_heartbeat'))
+
+    async def mock_cancelled():
+        raise asyncio.CancelledError()
+
+    state.heartbeat_task.__await__ = mock_cancelled().__await__
+
+    state.health_monitor = MagicMock()
+    state.health_monitor.stop = AsyncMock(side_effect=lambda: execution_order.append('stop_health_monitor'))
+
+    mock_ws = MagicMock()
+    mock_ws.close = AsyncMock(side_effect=lambda: execution_order.append('close_websocket'))
+    state.connections = {"client1": mock_ws}
+
+    state.db_manager = MagicMock()
+    state.db_manager.close_async = AsyncMock(side_effect=lambda: execution_order.append('close_database'))
+
+    await shutdown(state)
+
+    # Verify order: tasks cancelled → health monitor stopped → websockets closed → database closed
+    assert execution_order.index('cancel_heartbeat') < execution_order.index('stop_health_monitor')
+    assert execution_order.index('stop_health_monitor') < execution_order.index('close_websocket')
+    assert execution_order.index('close_websocket') < execution_order.index('close_database')
