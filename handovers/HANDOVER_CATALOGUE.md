@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-24 (0375 Logging Regression Fix COMPLETE)
+**Last Updated:** 2025-12-24 (1009 Rate Limiting COMPLETE)
 
 ---
 
@@ -63,14 +63,14 @@
 | 1006 | Pip Audit | **COMPLETE** | HIGH | Moved to completed/ |
 | 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement (HIGH RISK) |
 | 1008 | Security Headers | **COMPLETE** | MEDIUM | Moved to completed/ |
-| 1009 | Rate Limiting | Ready | MEDIUM | Security enhancement (MEDIUM RISK) |
+| 1009 | Rate Limiting | **COMPLETE** | MEDIUM | Moved to completed/ (2025-12-24) |
 | 1010 | Lifespan Refactor | Ready | LOW | Refactoring (MEDIUM RISK) |
 | 1011 | Repository Pattern | Ready | LOW | Architecture (HIGH RISK) |
 | 1012 | Bandit Linting | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1013 | Structured Logging | Deferred | LOW | Future (Phase 5) |
 | 1014 | Security Auditing | Deferred | MEDIUM | Future (Phase 5) |
 
-> **Status**: 7/15 COMPLETE. Safe batch executed 2025-12-22. Remaining: 1007 (HIGH risk), 1009-1011 (MEDIUM risk), 1013-1014 (deferred).
+> **Status**: 8/15 COMPLETE. 1009 completed 2025-12-24. Remaining: 1007 (HIGH risk), 1010-1011 (MEDIUM risk), 1013-1014 (deferred).
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -102,6 +102,7 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 1009 | Rate Limiting (Auth Endpoints) | **COMPLETE** (2025-12-24) |
 | 0375 | Logging Regression Fix (1002 Bug) | **COMPLETE** (2025-12-24) |
 | 1002 | Fix Bare Except | **COMPLETE** (2025-12-22) |
 | 1003 | Sanitize Paths | **COMPLETE** (2025-12-22) |
