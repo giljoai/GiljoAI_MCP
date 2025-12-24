@@ -8,10 +8,10 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
-from src.giljo_mcp.logging_config import get_logger
+from src.giljo_mcp.colored_logger import get_colored_logger
 
 
-logger = get_logger(__name__)
+logger = get_colored_logger(__name__)
 
 
 router = APIRouter()
