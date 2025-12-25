@@ -68,7 +68,10 @@
                 <span class="agent-name">ORCHESTRATOR</span>
                 <div v-if="currentOrchestrator" class="text-caption text-medium-emphasis">
                   Instance #{{ currentOrchestrator.instance_number || 1 }} •
-                  ID: <code data-testid="orchestrator-agent-id">{{ currentOrchestrator.agent_id?.slice(0, 8) }}...</code>
+                  ID:
+                  <code data-testid="orchestrator-agent-id">
+                    {{ (currentOrchestrator?.job_id || currentOrchestrator?.agent_id || '').slice(0, 8) }}...
+                  </code>
                 </div>
               </div>
               <v-icon size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
@@ -92,7 +95,7 @@
                 <!-- Slim agent cards (exclude orchestrator as it's shown above) -->
                 <div
                   v-for="agent in nonOrchestratorAgents"
-                  :key="agent.agent_id || agent.job_id"
+                  :key="agent.job_id || agent.agent_id || agent.id"
                   class="agent-slim-card"
                   data-testid="agent-card"
                   :data-agent-type="agent.agent_type"
@@ -154,9 +157,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useWebSocket } from '@/composables/useWebSocket'
-import { useUserStore } from '@/stores/user'
+import { ref, computed, watch } from 'vue'
+import api from '@/services/api'
+import { useAgentJobs } from '@/composables/useAgentJobs'
+import { useAgentJobsStore } from '@/stores/agentJobsStore'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useToast } from '@/composables/useToast'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
@@ -200,7 +205,7 @@ const emit = defineEmits([
  * Project ID from props
  */
 const projectId = computed(() => {
-  const id = props.project?.id
+  const id = props.project?.project_id || props.project?.id
   if (!id) {
     console.error('[LaunchTab] Project missing ID field')
     throw new Error('Invalid project: missing ID')
@@ -217,18 +222,18 @@ const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from bran
  * Filter out orchestrator from agents list (since it's shown in Default Agent)
  */
 const nonOrchestratorAgents = computed(() => {
-  return agents.value.filter(agent => agent.agent_type !== 'orchestrator')
+  return sortedJobs.value.filter((agent) => agent.agent_type !== 'orchestrator')
 })
 
 /**
  * Get current orchestrator execution (most recent instance)
  */
 const currentOrchestrator = computed(() => {
-  if (!agents.value || agents.value.length === 0) return null
+  if (!sortedJobs.value || sortedJobs.value.length === 0) return null
 
   // Find orchestrator jobs
-  const orchestrators = agents.value
-    .filter(agent => agent.agent_type === 'orchestrator')
+  const orchestrators = sortedJobs.value
+    .filter((agent) => agent.agent_type === 'orchestrator')
     .sort((a, b) => (b.instance_number || 0) - (a.instance_number || 0))
 
   return orchestrators[0] || null
@@ -277,20 +282,19 @@ const getAgentInitials = (agentType) => {
   return agentType.substring(0, 2).toUpperCase()
 }
 
-/**
- * WebSocket and Auth Setup
- */
-const { on, off } = useWebSocket()
 const { showToast: showToastNotification } = useToast()
-const userStore = useUserStore()
-const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+
+const projectStateStore = useProjectStateStore()
+const missionText = computed(
+  () => projectStateStore.getProjectState(projectId.value)?.mission || '',
+)
+
+const { sortedJobs } = useAgentJobs()
+const agentJobsStore = useAgentJobsStore()
 
 /**
  * Component State
  */
-const missionText = ref('')
-const agentIds = ref(new Set())
-const agents = ref([])
 const showToast = ref(false)
 const toastMessage = ref('')
 const showDetailsModal = ref(false)
@@ -310,90 +314,12 @@ function getInstanceNumber(agent) {
   const agentType = agent.agent_type?.toLowerCase()
   if (!agentType) return 1
 
-  const sameTypeAgents = agents.value.filter((a) => a.agent_type?.toLowerCase() === agentType)
+  const sameTypeAgents = sortedJobs.value.filter((a) => a.agent_type?.toLowerCase() === agentType)
   const index = sameTypeAgents.findIndex(
     (a) => (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id),
   )
 
   return index + 1
-}
-
-/**
- * WebSocket Event Handlers
- */
-const handleMissionUpdate = (data) => {
-  console.log('[LaunchTab] Received project:mission_updated event:', data)
-
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    console.warn('[LaunchTab] Mission update rejected: tenant mismatch')
-    return
-  }
-
-  // Project isolation check
-  if (data.project_id !== projectId.value) {
-    console.log('[LaunchTab] Mission update ignored: different project')
-    return
-  }
-
-  // Update mission text reactively
-  missionText.value = data.mission
-
-  toastMessage.value = `Mission generated (${data.token_estimate || 0} tokens)`
-  showToast.value = true
-
-  console.log('[LaunchTab] Mission panel updated successfully')
-}
-
-const handleAgentCreated = (data) => {
-  console.log('[LaunchTab] Received agent:created event:', data)
-
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    console.warn('[LaunchTab] Agent creation rejected: tenant mismatch')
-    return
-  }
-
-  // Project isolation check
-  if (data.project_id !== projectId.value) {
-    console.log('[LaunchTab] Agent creation ignored: different project')
-    return
-  }
-
-  // Support both payload shapes
-  const nestedAgent = data.agent || {}
-  const fallbackAgentId = data.agent_id || data.agent_job_id
-  const agentId = nestedAgent.id || nestedAgent.job_id || fallbackAgentId
-
-  if (!agentId) {
-    console.warn('[LaunchTab] Agent creation ignored: no ID in payload')
-    return
-  }
-
-  // Prevent duplicates
-  if (agentIds.value.has(agentId)) {
-    console.log('[LaunchTab] Agent already exists, skipping duplicate')
-    return
-  }
-
-  // Build normalized agent object
-  const normalizedAgent = {
-    id: agentId,
-    job_id: agentId,
-    agent_type: nestedAgent.agent_type || data.agent_type || 'unknown',
-    agent_name: nestedAgent.agent_name || data.agent_name || `Agent ${agentId.substring(0, 6)}`,
-    status: nestedAgent.status || data.status || 'waiting',
-  }
-
-  // Add to Set and array
-  agentIds.value.add(agentId)
-  agents.value.push(normalizedAgent)
-
-  const agentType = normalizedAgent.agent_type || 'Unknown'
-  toastMessage.value = `Agent Selected - ${agentType} agent assigned to project`
-  showToast.value = true
-
-  console.log('[LaunchTab] Agent card added to UI. Total agents:', agents.value.length)
 }
 
 /**
@@ -420,9 +346,7 @@ async function toggleExecutionMode() {
 
   try {
     // Persist to backend
-    const projectId = props.project.id
-    const { api } = await import('@/services/api')
-    await api.projects.update(projectId, { execution_mode: newMode })
+    await api.projects.update(projectId.value, { execution_mode: newMode })
 
     // Handover 0335: Emit event so parent can update project prop
     // This ensures ProjectTabs.handleStageProject() uses fresh execution_mode
@@ -508,11 +432,7 @@ function handleAgentEdit(agent) {
  * Handle mission updated event from modal
  */
 function handleMissionUpdated({ jobId, mission }) {
-  // Update local agent data
-  const agentIndex = agents.value.findIndex((a) => a.id === jobId)
-  if (agentIndex !== -1) {
-    agents.value[agentIndex].mission = mission
-  }
+  agentJobsStore.upsertJob?.({ job_id: jobId, mission })
 
   // Show success message
   showToastNotification({
@@ -523,103 +443,14 @@ function handleMissionUpdated({ jobId, mission }) {
 }
 
 /**
- * Handle agent mission updated via WebSocket (real-time updates)
- */
-function handleAgentMissionUpdatedViaWebSocket(data) {
-  console.log('[LaunchTab] Received agent:mission_updated event:', data)
-
-  // Update agent in local state if it matches
-  const agentIndex = agents.value.findIndex((a) => a.id === data.job_id)
-  if (agentIndex !== -1) {
-    agents.value[agentIndex].mission = data.mission
-
-    // Show notification if not the current user's action
-    // (if modal is closed, it means another user made the change)
-    if (!showMissionEditModal.value) {
-      showToastNotification({
-        message: `Mission updated for ${data.agent_name}`,
-        type: 'info',
-        timeout: 3000,
-      })
-    }
-  }
-}
-
-/**
- * Lifecycle Hooks
- */
-onMounted(() => {
-  // Initialize from props if data exists
-  if (props.project.mission) {
-    console.log('[LaunchTab] Loading existing mission from props on mount')
-    missionText.value = props.project.mission
-  }
-
-  // Load agents from props if they exist
-  if (
-    props.project.agents &&
-    Array.isArray(props.project.agents) &&
-    props.project.agents.length > 0
-  ) {
-    console.log(
-      '[LaunchTab] Loading existing agents from props on mount:',
-      props.project.agents.length,
-    )
-    agents.value = props.project.agents
-
-    // Populate agent IDs set to prevent duplicates
-    props.project.agents.forEach((agent) => {
-      const agentId = agent.id || agent.job_id
-      if (agentId) {
-        agentIds.value.add(agentId)
-      }
-    })
-  }
-
-  // Register WebSocket event listeners
-  on('project:mission_updated', handleMissionUpdate)
-  on('orchestrator:instructions_fetched', handleMissionUpdate)
-  on('agent:created', handleAgentCreated)
-  on('agent:mission_updated', handleAgentMissionUpdatedViaWebSocket)
-
-  console.log('[LaunchTab] WebSocket listeners registered for project:', projectId.value)
-  console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
-})
-
-onUnmounted(() => {
-  // Clean up WebSocket listeners
-  off('project:mission_updated', handleMissionUpdate)
-  off('orchestrator:instructions_fetched', handleMissionUpdate)
-  off('agent:created', handleAgentCreated)
-  off('agent:mission_updated', handleAgentMissionUpdatedViaWebSocket)
-
-  // Clear agent tracking Set
-  agentIds.value.clear()
-
-  console.log('[LaunchTab] Cleanup complete - WebSocket listeners removed, agent IDs cleared')
-})
-
-/**
  * Watchers
  */
-watch(
-  () => props.project.mission,
-  (newMission) => {
-    if (newMission) {
-      missionText.value = newMission
-    }
-  },
-)
-
-watch(
-  () => props.project.agents,
-  (newAgents) => {
-    if (newAgents && Array.isArray(newAgents)) {
-      agents.value = newAgents
-    }
-  },
-  { immediate: true, deep: true },
-)
+watch(missionText, (next, previous) => {
+  if (next && !previous) {
+    toastMessage.value = 'Mission generated'
+    showToast.value = true
+  }
+})
 
 /**
  * Watch for execution_mode changes (Handover 0333 Phase 1)
@@ -631,31 +462,6 @@ watch(
   },
   { immediate: true }
 )
-
-/**
- * Expose methods for parent component
- */
-defineExpose({
-  setMission: (mission) => {
-    missionText.value = mission
-  },
-  addAgent: (agent) => {
-    const agentId = agent.id || agent.job_id
-    if (agentId && !agentIds.value.has(agentId)) {
-      agentIds.value.add(agentId)
-      agents.value.push({ ...agent, id: agentId })
-    }
-  },
-  clearAgents: () => {
-    agents.value = []
-    agentIds.value.clear()
-  },
-  resetStaging: () => {
-    missionText.value = ''
-    agents.value = []
-    agentIds.value.clear()
-  },
-})
 </script>
 
 <style scoped lang="scss">
