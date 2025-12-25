@@ -47,8 +47,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Message queue
   const messageQueue = ref([])
 
-  // Subscriptions tracking
-  const subscriptions = ref(new Map()) // key: 'entity_type:entity_id' -> value: true
+  // Subscriptions tracking (refcounted)
+  // key: 'entity_type:entity_id' -> value: number (subscriber count)
+  const subscriptions = ref(new Map())
 
   // Event handlers tracking
   const eventHandlers = ref(new Map()) // key: event type -> value: Set<handler>
@@ -103,6 +104,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       return Promise.resolve()
     }
 
+    const isReconnectAttempt = connectionStatus.value === 'reconnecting'
     connectionStatus.value = 'connecting'
     authCredentials.value = options
     stats.value.connectionAttempts++
@@ -146,7 +148,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           processMessageQueue()
 
           // Notify connection listeners
-          notifyConnectionListeners('connected')
+          notifyConnectionListeners('connected', { isReconnect: isReconnectAttempt })
 
           // Re-subscribe to all previous subscriptions
           resubscribeAll()
@@ -526,9 +528,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function subscribe(entityType, entityId) {
     const key = `${entityType}:${entityId}`
 
-    if (subscriptions.value.has(key)) {
-      log(`Already subscribed to ${key}`)
-      return key // Already subscribed
+    const currentCount = subscriptions.value.get(key) || 0
+    const nextCount = currentCount + 1
+    subscriptions.value.set(key, nextCount)
+
+    if (currentCount > 0) {
+      log(`Subscription refcount incremented for ${key} (${nextCount})`)
+      return key
     }
 
     const success = send({
@@ -538,8 +544,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     })
 
     if (success || !isConnected.value) {
-      // Add to subscriptions even if queued (will be sent on reconnect)
-      subscriptions.value.set(key, true)
+      // Subscription is tracked even if queued (will be sent on reconnect)
       log(`Subscribed to ${key}`)
     }
 
@@ -552,16 +557,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function unsubscribe(entityType, entityId) {
     const key = `${entityType}:${entityId}`
 
-    if (!subscriptions.value.has(key)) {
+    const currentCount = subscriptions.value.get(key) || 0
+
+    if (currentCount <= 0) {
       log(`Not subscribed to ${key}`)
       return false
     }
 
-    send({
-      type: 'unsubscribe',
-      entity_type: entityType,
-      entity_id: entityId,
-    })
+    if (currentCount > 1) {
+      const nextCount = currentCount - 1
+      subscriptions.value.set(key, nextCount)
+      log(`Subscription refcount decremented for ${key} (${nextCount})`)
+      return true
+    }
+
+    // Last subscriber: actually unsubscribe on the wire.
+    send({ type: 'unsubscribe', entity_type: entityType, entity_id: entityId })
 
     subscriptions.value.delete(key)
     log(`Unsubscribed from ${key}`)
@@ -574,7 +585,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function resubscribeAll() {
     log(`Re-subscribing to ${subscriptions.value.size} subscriptions`)
 
-    subscriptions.value.forEach((_, key) => {
+    subscriptions.value.forEach((count, key) => {
+      if (!count || count <= 0) {
+        return
+      }
       const [entityType, entityId] = key.split(':')
       send({
         type: 'subscribe',

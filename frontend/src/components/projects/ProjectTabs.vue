@@ -89,9 +89,6 @@
       <v-window-item value="jobs">
         <JobsTab
           :project="project"
-          :agents="store.sortedAgents"
-          :messages="store.messages"
-          :all-agents-complete="store.allAgentsComplete"
           :readonly="readonly"
           @launch-agent="handleLaunchAgent"
           @view-details="emit('view-details', $event)"
