@@ -51,4 +51,54 @@ Make backend WebSocket emission **one system**:
  
 ## Rollback Plan
 - Keep aliasing enabled and fallback emit paths behind a feature flag while transitioning; revert to previous broadcast path by toggling configuration if needed.
+
+---
+
+## Critical Findings (from 0379a/b Quality Review)
+
+### P0: Tenant Guard Fail-Open Risk
+**Location:** `frontend/src/stores/websocketEventRouter.js:22-35`
+
+The router currently allows events through when `tenant_key` is missing (for backward compatibility).
+```javascript
+if (!currentTenantKey) return true  // Bypass when user not loaded
+if (payload?.tenant_key && ...) return false  // Only checks if present
+return true  // Missing tenant_key = allowed
+```
+
+**Required Fix:**
+- Backend MUST always include `tenant_key` on all tenant-scoped events
+- Once backend contract is enforced, frontend can switch to fail-closed for tenant-scoped event types
+- Add explicit list of "tenant-scoped" event types that require `tenant_key`
+
+### P1: Agent/Job Identifier Ambiguity
+**Location:** `frontend/src/stores/agentJobsStore.js:155-170`
+
+`resolveJobId()` falls back to `agent_type`/`agent_name` when `job_id` is not found in the Map:
+```javascript
+// Legacy fallback: from_agent may be agent_type (e.g., "orchestrator")
+for (const job of jobsById.value.values()) {
+  if (job.agent_type === identifier || job.agent_name === identifier) {
+    return job.job_id
+  }
+}
+```
+
+**Risk:** Multiple agents can share a type (e.g., 3 "implementer" agents). Message counters could be misattributed.
+
+**Required Fix:**
+- Backend should always send `from_job_id` / `to_job_ids` (not `from_agent` / `to_agent_ids` with type names)
+- Fallback to agent_type should only apply to `orchestrator` (always unique per project)
+
+### P2: Router Event Ordering
+**Location:** `frontend/src/stores/websocketEventRouter.js:369`
+
+Router dispatches events concurrently (no queue). If handlers become async and depend on strict ordering, races are possible.
+
+**Consideration:** If any domain requires ordering (e.g., mission update before agent spawn), consider adding a serialization queue for those event types.
+
+### Tests to Add (Backend)
+1. All tenant-scoped events include `tenant_key` in payload
+2. All message events include `from_job_id` / `to_job_ids` (not type names)
+3. Event envelope shape validation for key events
  

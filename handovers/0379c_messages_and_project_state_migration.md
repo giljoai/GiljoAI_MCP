@@ -60,4 +60,26 @@ Then refactor Launch + ProjectTabs to consume via composables and remove the leg
  
 ## Rollback Plan
 - Revert LaunchTab.vue/ProjectTabs.vue and keep new stores unused; keep EVENT_MAP mappings for these domains disabled until ready.
+
+---
+
+## Pre-Implementation Notes (from 0379a/b Quality Review)
+
+### P1 Bug Fixed (Commit bf77e6e6)
+The subscription lifecycle bug in ProjectTabs.vue has been fixed:
+- Component now unsubscribes from old project when `props.project` changes
+- Subscribes to new project's WebSocket channel
+- No longer misses events when switching projects without unmount
+
+### Patterns to Follow (from agentJobsStore)
+1. **Map-based store with immutable updates** - Use `new Map()` on every update
+2. **Composable API boundary** - `useProjectMessages()` wraps store + API loading
+3. **Reconnect resync** - Register `wsStore.onConnectionChange()` listener to reload on reconnect
+4. **EVENT_MAP routing** - Add new event types to `websocketEventRouter.js` EVENT_MAP
+
+### Files to Delete
+- `frontend/src/stores/websocketIntegrations.js` - Confirmed no longer used by DefaultLayout.vue after 0379a
+
+### Test Template
+- Use `agentJobsStore.spec.js` as template for new store tests (immutability, dedupe, counters)
  
