@@ -41,24 +41,23 @@ async def check_first_run(request: Request) -> Dict[str, Any]:
         api_state = getattr(request.app.state, "api_state", None)
         db_manager = getattr(api_state, "db_manager", None)
         if db_manager is not None:
-            from sqlalchemy import select
+            # Handover 1011 Phase 3: Migrated to ConfigurationRepository
             from sqlalchemy.ext.asyncio import AsyncSession
 
-            from src.giljo_mcp.models import User
+            from src.giljo_mcp.repositories import ConfigurationRepository
 
             async def _has_admin_user() -> bool:
                 """Return True if at least one admin user exists."""
                 session_ctx = db_manager.get_session_async()
+                repo = ConfigurationRepository(db_manager)
 
                 # Support both async context managers and async generators
                 if hasattr(session_ctx, "__aenter__"):
                     async with session_ctx as session:  # type: AsyncSession
-                        result = await session.execute(select(User).where(User.role == "admin").limit(1))
-                        return result.scalar_one_or_none() is not None
+                        return await repo.check_admin_user_exists(session)
                 elif inspect.isasyncgen(session_ctx):
                     async for session in session_ctx:  # type: AsyncSession
-                        result = await session.execute(select(User).where(User.role == "admin").limit(1))
-                        return result.scalar_one_or_none() is not None
+                        return await repo.check_admin_user_exists(session)
                     return False
                 else:
                     logger.warning("db_manager.get_session_async returned unsupported type in check_first_run")
@@ -66,6 +65,13 @@ async def check_first_run(request: Request) -> Dict[str, Any]:
 
             admin_exists = await _has_admin_user()
             return {"first_run": not admin_exists}
+
+            # ORIGINAL QUERY (for rollback):
+            # from sqlalchemy import select
+            # from src.giljo_mcp.models import User
+            # result = await session.execute(select(User).where(User.role == "admin").limit(1))
+            # return result.scalar_one_or_none() is not None
+
     except Exception as e:  # pragma: no cover - defensive logging
         logger.warning("DB-based first-run detection failed in check_first_run: %s", e)
         # Safe default on DB error: treat as not first run to avoid blocking login
