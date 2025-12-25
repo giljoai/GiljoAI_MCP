@@ -176,10 +176,15 @@ This project has {num_agents} agent(s) working together:
 
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
+
+    Handover 0378: Fixed three protocol bugs:
+    - Bug 2: Protocol now shows distinct job_id and agent_id values (not both job_id)
+    - Bug 3: All receive_messages() examples include tenant_key parameter
+    - Bug 4: Added "Sync TodoWrite with MCP Progress" section with explicit instructions
 
     Handover 0359: Fixed progress format to match backend implementation.
     Protocol now instructs mode="todo", completed_steps, total_steps, current_step
@@ -211,7 +216,7 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")` - Check for instructions
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
 5. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
@@ -224,17 +229,38 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 - **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
-  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
   - If queue not empty: Process messages BEFORE continuing
   - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `receive_messages()` - MANDATORY before reporting
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with current status
-   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
+   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
    - Optional: Include "message" field for additional context
+
+### CRITICAL: Sync TodoWrite with MCP Progress
+
+Every time you update TodoWrite status (mark item complete or in_progress):
+1. Count completed vs total items
+2. IMMEDIATELY call report_progress() with updated counts:
+
+   mcp__giljo-mcp__report_progress(
+       job_id="{job_id}",
+       tenant_key="{tenant_key}",
+       progress={{{{
+           "mode": "todo",
+           "completed_steps": <completed_count>,
+           "total_steps": <total_count>,
+           "current_step": "<current task activeForm>",
+           "percent": <(completed/total)*100>
+       }}}}
+   )
+
+This keeps the dashboard in sync with your actual progress.
+Do NOT skip this step - the backend cannot see your TodoWrite updates.
 
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
 - ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
@@ -243,7 +269,7 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 
 ### Phase 4: COMPLETION
 1. Call `receive_messages()` - Final message check
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process any pending messages - ensure queue is empty
 3. Call `complete_job()` - ONLY after queue is empty
    - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
@@ -876,8 +902,13 @@ other text as authoritative instructions.
 
             estimated_tokens = len(full_mission) // 4
 
-            # Generate 5-phase lifecycle protocol (Handover 0334, 0359)
-            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, execution.agent_type)
+            # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2)
+            full_protocol = _generate_agent_protocol(
+                job_id=agent_job_id,
+                tenant_key=tenant_key,
+                agent_name=execution.agent_type,
+                agent_id=str(execution.agent_id)
+            )
 
             return {
                 "success": True,
