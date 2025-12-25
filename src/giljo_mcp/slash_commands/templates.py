@@ -15,7 +15,7 @@ async def _stage_agent_templates(db_session: AsyncSession, tenant_key: str) -> d
     token = await token_mgr.generate_token(
         tenant_key=tenant_key,
         download_type="agent_templates",
-        filename="agent_templates.zip",
+        metadata={"filename": "agent_templates.zip"},
     )
 
     staging = FileStaging(db_session=db_session)
@@ -54,4 +54,3 @@ async def handle_gil_fetch(db_session: AsyncSession, tenant_key: str, **_: Any) 
 
 async def handle_gil_update_agents(db_session: AsyncSession, tenant_key: str, **_: Any) -> dict[str, Any]:
     return await _stage_agent_templates(db_session, tenant_key)
-
