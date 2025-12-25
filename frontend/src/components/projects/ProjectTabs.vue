@@ -391,12 +391,18 @@ onBeforeUnmount(() => {
  */
 watch(
   () => props.project,
-  async (newProject) => {
+  async (newProject, oldProject) => {
+    // Unsubscribe from old project to prevent lingering subscriptions
+    const oldPid = oldProject?.project_id || oldProject?.id
+    if (oldPid) {
+      wsStore.unsubscribe('project', oldPid)
+    }
+
     if (newProject) {
       store.setProject(newProject)
-      // Load messages for the new project
       const pid = newProject.project_id || newProject.id
       if (pid) {
+        wsStore.subscribeToProject(pid)  // Subscribe to new project
         await store.loadMessages(pid)
       }
     }
