@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
-import { useWebSocketStore } from './websocket'
 import { useProjectStore } from './projects'  // Product/Project State Fix
 
 export const useProductStore = defineStore('products', () => {
@@ -16,9 +15,6 @@ export const useProductStore = defineStore('products', () => {
   const productMetrics = ref({})
   const activeProduct = ref(null)
   const activeProductLoading = ref(false)
-
-  // WebSocket event handlers (store references for cleanup)
-  const wsUnsubscribers = ref([])
 
   // Getters
   const hasProducts = computed(() => products.value.length > 0)
@@ -299,13 +295,15 @@ export const useProductStore = defineStore('products', () => {
     }
 
     const product = products.value.find((p) => p.id === payload.product_id)
-    if (product && payload.data?.product_memory) {
+    const nextMemory = payload.product_memory || payload.data?.product_memory
+
+    if (product && nextMemory) {
       // Update product memory
-      product.product_memory = payload.data.product_memory
+      product.product_memory = nextMemory
 
       // Also update currentProduct if it matches
       if (currentProduct.value?.id === payload.product_id) {
-        currentProduct.value.product_memory = payload.data.product_memory
+        currentProduct.value.product_memory = nextMemory
       }
 
       console.log('[PRODUCTS] Product memory updated for product:', payload.product_id)
@@ -323,7 +321,9 @@ export const useProductStore = defineStore('products', () => {
     }
 
     const product = products.value.find((p) => p.id === payload.product_id)
-    if (product && payload.data?.learning) {
+    const learning = payload.learning || payload.data?.learning
+
+    if (product && learning) {
       // Initialize sequential_history if missing
       if (!product.product_memory) {
         product.product_memory = {}
@@ -333,7 +333,7 @@ export const useProductStore = defineStore('products', () => {
       }
 
       // Append new learning
-      product.product_memory.sequential_history.push(payload.data.learning)
+      product.product_memory.sequential_history.push(learning)
 
       // Also update currentProduct if it matches
       if (currentProduct.value?.id === payload.product_id) {
@@ -343,7 +343,7 @@ export const useProductStore = defineStore('products', () => {
         if (!currentProduct.value.product_memory.sequential_history) {
           currentProduct.value.product_memory.sequential_history = []
         }
-        currentProduct.value.product_memory.sequential_history.push(payload.data.learning)
+        currentProduct.value.product_memory.sequential_history.push(learning)
       }
 
       console.log('[PRODUCTS] Learning added to product:', payload.product_id)
@@ -351,50 +351,15 @@ export const useProductStore = defineStore('products', () => {
   }
 
   /**
-   * Initialize WebSocket event listeners
-   * Registers handlers for product memory events
+   * Handle product status change events by refreshing the active product.
    */
-  function initializeWebSocketListeners() {
-    const wsStore = useWebSocketStore()
-
-    // Register event handlers and store unsubscribe functions
-    wsUnsubscribers.value.push(wsStore.on('product:memory:updated', handleProductMemoryUpdated))
-    wsUnsubscribers.value.push(wsStore.on('product:learning:added', handleProductLearningAdded))
-
-    // Refresh active product on status changes (tenant-scoped WS event)
-    wsUnsubscribers.value.push(
-      wsStore.on('product:status:changed', async () => {
-        try {
-          await fetchActiveProduct()
-        } catch (e) {
-          console.warn('[PRODUCTS] Failed to refresh active product on WS event:', e)
-        }
-      }),
-    )
-
-    console.log('[PRODUCTS] WebSocket event listeners initialized')
+  async function handleProductStatusChanged() {
+    try {
+      await fetchActiveProduct()
+    } catch (e) {
+      console.warn('[PRODUCTS] Failed to refresh active product on WS event:', e)
+    }
   }
-
-  /**
-   * Cleanup WebSocket event listeners
-   * Unregisters all handlers to prevent memory leaks
-   */
-  function cleanupWebSocketListeners() {
-    // Call all unsubscribe functions
-    wsUnsubscribers.value.forEach((unsubscribe) => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe()
-      }
-    })
-    wsUnsubscribers.value = []
-
-    console.log('[PRODUCTS] WebSocket event listeners cleaned up')
-  }
-
-  // Initialize WebSocket listeners when store is created
-  // Note: In Pinia, we can't use onMounted/onUnmounted directly in the store
-  // Instead, we'll initialize listeners immediately and rely on the component lifecycle
-  initializeWebSocketListeners()
 
   return {
     // State
@@ -427,7 +392,9 @@ export const useProductStore = defineStore('products', () => {
     initializeFromStorage,
     clearProductData,
 
-    // WebSocket event handlers
-    cleanupWebSocketListeners,
+    // WebSocket router handlers (0379a)
+    handleProductMemoryUpdated,
+    handleProductLearningAdded,
+    handleProductStatusChanged,
   }
 })
