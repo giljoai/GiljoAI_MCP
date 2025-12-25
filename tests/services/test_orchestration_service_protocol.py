@@ -90,3 +90,92 @@ class TestAgentProtocolFormat:
         assert '"mode": "todo"' in phase_3_content
         assert '"completed_steps"' in phase_3_content or 'completed_steps' in phase_3_content
         assert '"total_steps"' in phase_3_content or 'total_steps' in phase_3_content
+
+    def test_protocol_distinct_identifiers(self):
+        """Verify protocol shows different values for job_id and agent_id (Bug 2)."""
+        # When agent_id is provided, it should differ from job_id
+        protocol = _generate_agent_protocol(
+            job_id="job-123",
+            tenant_key="tenant-abc",
+            agent_name="test-agent",
+            agent_id="executor-456"
+        )
+
+        # Extract the "Your Identifiers" section
+        assert "**Your Identifiers:**" in protocol
+        identifiers_start = protocol.index("**Your Identifiers:**")
+        identifiers_end = protocol.index("**When to Check Messages:**")
+        identifiers_section = protocol[identifiers_start:identifiers_end]
+
+        # Verify job_id and agent_id show different values
+        assert "job-123" in identifiers_section, "job_id should be job-123"
+        assert "executor-456" in identifiers_section, "agent_id should be executor-456"
+        # They should NOT both show the same value
+        assert identifiers_section.count("job-123") >= 1
+        assert identifiers_section.count("executor-456") >= 1
+
+    def test_protocol_receive_messages_includes_tenant_key(self):
+        """Verify all receive_messages examples include tenant_key parameter (Bug 3)."""
+        protocol = _generate_agent_protocol(
+            job_id="job-abc",
+            tenant_key="tenant-xyz",
+            agent_name="test-agent",
+            agent_id="executor-def"
+        )
+
+        # Find all receive_messages calls in the protocol
+        # There should be examples in Phase 1, 2, 3, and 4
+        import re
+        receive_messages_calls = re.findall(
+            r'receive_messages\([^)]+\)',
+            protocol
+        )
+
+        # Verify we found multiple examples
+        assert len(receive_messages_calls) >= 4, \
+            f"Expected at least 4 receive_messages examples, found {len(receive_messages_calls)}"
+
+        # Verify NONE of them are missing tenant_key
+        # The old broken format would be: receive_messages(agent_id="...")
+        # The correct format is: receive_messages(agent_id="...", tenant_key="...")
+        for call in receive_messages_calls:
+            # Skip short-form examples that just show the tool name
+            if 'agent_id=' not in call:
+                continue
+
+            # Full-form examples MUST include tenant_key
+            assert 'tenant_key=' in call, \
+                f"receive_messages call missing tenant_key: {call}"
+
+    def test_protocol_includes_todowrite_sync_instructions(self):
+        """Verify protocol includes instructions to sync TodoWrite with report_progress (Bug 4)."""
+        protocol = _generate_agent_protocol(
+            job_id="job-123",
+            tenant_key="tenant-abc",
+            agent_name="test-agent"
+        )
+
+        # Verify protocol mentions syncing TodoWrite with progress reporting
+        assert "TodoWrite" in protocol, "Protocol should mention TodoWrite tool"
+        assert "report_progress" in protocol, "Protocol should mention report_progress tool"
+
+        # Look for explicit sync instructions (should be near each other)
+        # Check for keywords that indicate the sync relationship
+        protocol_lower = protocol.lower()
+        assert "sync" in protocol_lower or "immediately" in protocol_lower or "every time" in protocol_lower, \
+            "Protocol should include instructions to sync TodoWrite status with progress reporting"
+
+        # Verify the sync section mentions both tools together
+        # Find sections that mention both TodoWrite and report_progress
+        lines = protocol.split('\n')
+        todowrite_section_found = False
+        for i, line in enumerate(lines):
+            if 'todowrite' in line.lower() and 'sync' in line.lower():
+                # Look in surrounding lines for report_progress mention
+                context = '\n'.join(lines[max(0, i-5):min(len(lines), i+15)])
+                if 'report_progress' in context.lower():
+                    todowrite_section_found = True
+                    break
+
+        assert todowrite_section_found, \
+            "Protocol should have a section explaining TodoWrite sync with report_progress"
