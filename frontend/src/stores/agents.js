@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
-import { useWebSocketStore } from '@/stores/websocket'
 
 export const useAgentStore = defineStore('agents', () => {
   // State
@@ -364,46 +363,6 @@ export const useAgentStore = defineStore('agents', () => {
       }
     }
   }
-
-  // Initialize WebSocket listeners for real-time updates
-  function initializeWebSocketListeners() {
-    const wsStore = useWebSocketStore()
-
-    // Listen for agent updates
-    wsStore.on('agent:update', (data) => {
-      handleRealtimeUpdate(data.data)
-    })
-
-    // Listen for agent spawns
-    wsStore.on('agent:spawn', (data) => {
-      handleAgentSpawn(data.data)
-    })
-
-    // Listen for agent completions
-    wsStore.on('agent:complete', (data) => {
-      handleAgentComplete(data.data)
-    })
-
-    // Listen for health alerts (Handover 0106)
-    wsStore.on('agent:health_alert', (data) => {
-      handleHealthAlert(data.data)
-    })
-
-    // Listen for health recovery (Handover 0106)
-    wsStore.on('agent:health_recovered', (data) => {
-      handleHealthRecovered(data.data)
-    })
-
-    // Listen for entity updates (legacy format)
-    wsStore.on('entity_update', (data) => {
-      if (data.entity_type === 'agent') {
-        handleRealtimeUpdate(data.data)
-      }
-    })
-  }
-
-  // Auto-initialize WebSocket listeners when store is created
-  initializeWebSocketListeners()
 
   return {
     // State

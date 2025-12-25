@@ -30,7 +30,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
-import { setupWebSocketIntegrations } from '@/stores/websocketIntegrations'
+import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
@@ -45,7 +45,6 @@ const messageStore = useMessageStore()
 const drawer = ref(true)
 const rail = ref(false)
 const currentUser = ref(null)
-let messagePollingInterval = null
 
 const loadCurrentUser = async () => {
   try {
@@ -105,22 +104,16 @@ onMounted(async () => {
       await wsStore.connect()
       console.log('[DefaultLayout] WebSocket connected with automatic cookie authentication')
 
-      // Setup WebSocket V2 integrations (store-to-store message routing)
-      setupWebSocketIntegrations()
-      console.log('[DefaultLayout] WebSocket integrations setup complete')
+      // Initialize the centralized router once (0379a)
+      initWebsocketEventRouter({
+        onReconnectResync: async () => {
+          await messageStore.fetchMessages()
+        },
+      })
+      console.log('[DefaultLayout] WebSocket event router initialized')
 
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])
-
-      // Set up 10-second message polling interval
-      messagePollingInterval = setInterval(async () => {
-        try {
-          await messageStore.fetchMessages()
-          console.log('[DefaultLayout] Messages refreshed at', new Date().toLocaleTimeString())
-        } catch (error) {
-          console.error('[DefaultLayout] Failed to fetch messages:', error)
-        }
-      }, 10000) // Poll every 10 seconds
 
       console.log('[DefaultLayout] Application initialized successfully')
     } catch (error) {
@@ -130,11 +123,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Clear message polling interval
-  if (messagePollingInterval) {
-    clearInterval(messagePollingInterval)
-  }
-
   // Disconnect WebSocket
   wsStore.disconnect()
   console.log('[DefaultLayout] Cleanup complete')
