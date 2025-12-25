@@ -282,6 +282,7 @@ class ToolAccessor:
         self,
         agent_id: str,
         limit: int = 10,
+        tenant_key: Optional[str] = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
         message_types: Optional[list[str]] = None
@@ -290,10 +291,12 @@ class ToolAccessor:
         Receive pending messages for an agent with optional filtering (delegates to MessageService).
 
         Handover 0360: Added filtering parameters for better message control.
+        Handover 0378 Bug 1: Added tenant_key parameter to match MCP tool schema.
 
         Args:
             agent_id: Agent execution ID
             limit: Maximum messages to retrieve
+            tenant_key: Tenant key for multi-tenant isolation
             exclude_self: Filter out messages from same agent_id (default: True)
             exclude_progress: Filter out progress-type messages (default: True)
             message_types: Optional allow-list of message types (default: None = all types)
@@ -304,6 +307,7 @@ class ToolAccessor:
         return await self._message_service.receive_messages(
             agent_id=agent_id,
             limit=limit,
+            tenant_key=tenant_key,
             exclude_self=exclude_self,
             exclude_progress=exclude_progress,
             message_types=message_types
@@ -314,11 +318,16 @@ class ToolAccessor:
         project_id: Optional[str] = None,
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
+        tenant_key: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> dict[str, Any]:
-        """List messages in a project or for a specific agent (delegates to MessageService)"""
+        """
+        List messages in a project or for a specific agent (delegates to MessageService).
+
+        Handover 0378 Bug 1: Added tenant_key parameter to match MCP tool schema.
+        """
         return await self._message_service.list_messages(
-            project_id=project_id, status=status, agent_id=agent_id, limit=limit
+            project_id=project_id, status=status, agent_id=agent_id, tenant_key=tenant_key, limit=limit
         )
 
     # Task Tools
@@ -1099,7 +1108,7 @@ class ToolAccessor:
                 download_token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="slash_commands",
-                    filename="slash_commands.zip",
+                    metadata={"filename": "slash_commands.zip"},
                 )
                 file_staging = FileStaging()
                 staging_path = await file_staging.create_staging_directory(tenant_key, download_token)
@@ -1208,7 +1217,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
@@ -1305,7 +1314,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
@@ -1409,7 +1418,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
                 file_staging = FileStaging(db_session=session)
                 staging_path = await file_staging.create_staging_directory(tenant_key, token)
@@ -1589,7 +1598,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
