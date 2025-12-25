@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 
 
@@ -109,7 +110,8 @@ def build_template_markdown(template: AgentTemplate) -> str:
 
 @router.get("/", response_model=TemplateListResponse)
 async def list_agent_templates(
-    current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session)
 ):
     """
     List all available agent templates
@@ -141,18 +143,23 @@ async def list_agent_templates(
 
         base_url = f"http://{host}:{port}/api/v1/agents/templates"
 
-        # Query active templates for user's tenant
-        async with state.db_manager.get_session_async() as session:
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == current_user.tenant_key)
-                .where(AgentTemplate.is_active == True)
-                .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
-                .order_by(AgentTemplate.role, AgentTemplate.name)
-            )
+        # Initialize service and get active templates
+        template_service = TemplateService()
+        templates = await template_service.list_active_user_templates(
+            session=session,
+            tenant_key=current_user.tenant_key,
+        )
 
-            result = await session.execute(stmt)
-            templates = result.scalars().all()
+        # ORIGINAL QUERY (kept for reference):
+        # stmt = (
+        #     select(AgentTemplate)
+        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
+        #     .where(AgentTemplate.is_active == True)
+        #     .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
+        #     .order_by(AgentTemplate.role, AgentTemplate.name)
+        # )
+        # result = await session.execute(stmt)
+        # templates = result.scalars().all()
 
         # Build template metadata list
         files = []
@@ -180,7 +187,9 @@ async def list_agent_templates(
 
 @router.get("/{filename}")
 async def download_agent_template(
-    filename: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+    filename: str,
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session)
 ):
     """
     Download an agent template as a markdown file
@@ -213,17 +222,23 @@ async def download_agent_template(
         raise HTTPException(status_code=404, detail=f"Template '{filename}' not found")
 
     try:
-        # Query template by role and tenant
-        async with state.db_manager.get_session_async() as session:
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == current_user.tenant_key)
-                .where(AgentTemplate.role == role)
-                .where(AgentTemplate.is_active == True)
-            )
+        # Initialize service and get template by role
+        template_service = TemplateService()
+        template = await template_service.get_template_by_role(
+            session=session,
+            tenant_key=current_user.tenant_key,
+            role=role,
+        )
 
-            result = await session.execute(stmt)
-            template = result.scalar_one_or_none()
+        # ORIGINAL QUERY (kept for reference):
+        # stmt = (
+        #     select(AgentTemplate)
+        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
+        #     .where(AgentTemplate.role == role)
+        #     .where(AgentTemplate.is_active == True)
+        # )
+        # result = await session.execute(stmt)
+        # template = result.scalar_one_or_none()
 
         if not template:
             logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")

@@ -939,3 +939,75 @@ class TemplateService:
         stmt = select(AgentTemplate).where(AgentTemplate.id == template_id)
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+
+    # ============================================================================
+    # Template Download Methods (Handover 1011 - Phase 4)
+    # ============================================================================
+
+    async def list_active_user_templates(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> list[AgentTemplate]:
+        """
+        List all active user-managed templates (excludes system roles).
+
+        Used by agent template download endpoint to list downloadable templates.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            List of active AgentTemplate ORM objects (user-managed only)
+
+        Example:
+            >>> templates = await service.list_active_user_templates(session, "tenant-1")
+            >>> for template in templates:
+            ...     print(f"{template.role}: {template.name}")
+        """
+        # ORIGINAL QUERY: agent_templates.py lines 146-155 (list_agent_templates endpoint)
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == tenant_key)
+            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
+            .order_by(AgentTemplate.role, AgentTemplate.name)
+        )
+
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_template_by_role(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        role: str,
+    ) -> Optional[AgentTemplate]:
+        """
+        Get an active template by role with tenant isolation.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            role: Template role to retrieve
+
+        Returns:
+            AgentTemplate ORM object or None if not found/inactive
+
+        Example:
+            >>> template = await service.get_template_by_role(session, "tenant-1", "backend developer")
+            >>> if template:
+            ...     print(template.template_content)
+        """
+        # ORIGINAL QUERY: agent_templates.py lines 218-226 (download_agent_template endpoint)
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == tenant_key)
+            .where(AgentTemplate.role == role)
+            .where(AgentTemplate.is_active == True)  # noqa: E712
+        )
+
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
