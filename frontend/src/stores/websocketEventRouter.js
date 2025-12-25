@@ -2,7 +2,10 @@ import { useWebSocketStore } from './websocket'
 import { useAgentStore } from './agents'
 import { useAgentJobsStore } from './agentJobsStore'
 import { useMessageStore } from './messages'
+import { useProjectMessagesStore } from './projectMessagesStore'
+import { useProjectStateStore } from './projectStateStore'
 import { useProjectStore } from './projects'
+import { useSystemStore } from './systemStore'
 import { useTaskStore } from './tasks'
 import { useProductStore } from './products'
 import { useProjectTabsStore } from './projectTabs'
@@ -13,7 +16,10 @@ export const STORE_REGISTRY = {
   agentJobs: () => useAgentJobsStore(),
   agents: () => useAgentStore(),
   messages: () => useMessageStore(),
+  projectMessages: () => useProjectMessagesStore(),
+  projectState: () => useProjectStateStore(),
   projects: () => useProjectStore(),
+  system: () => useSystemStore(),
   tasks: () => useTaskStore(),
   products: () => useProductStore(),
   projectTabs: () => useProjectTabsStore(),
@@ -75,8 +81,12 @@ export const EVENT_MAP = {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
       const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
-      agentJobsStore.handleCreated?.(payload)
-      agentsStore.handleAgentSpawn?.(payload)
+      const normalized = payload?.agent && typeof payload.agent === 'object'
+        ? { ...payload.agent, project_id: payload.project_id, tenant_key: payload.tenant_key }
+        : payload
+
+      agentJobsStore.handleCreated?.(normalized)
+      agentsStore.handleAgentSpawn?.(normalized)
     },
   },
   'agent:created': {
@@ -84,8 +94,12 @@ export const EVENT_MAP = {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
       const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
 
-      agentJobsStore.handleCreated?.(payload)
-      agentsStore.handleAgentSpawn?.(payload)
+      const normalized = payload?.agent && typeof payload.agent === 'object'
+        ? { ...payload.agent, project_id: payload.project_id, tenant_key: payload.tenant_key }
+        : payload
+
+      agentJobsStore.handleCreated?.(normalized)
+      agentsStore.handleAgentSpawn?.(normalized)
     },
   },
   'agent:complete': {
@@ -97,6 +111,7 @@ export const EVENT_MAP = {
       agentsStore.handleAgentComplete?.(payload)
     },
   },
+  'agent:mission_updated': { store: 'agentJobs', action: 'handleUpdated' },
   'agent:health_recovered': { store: 'agents', action: 'handleHealthRecovered' },
   'agent:health_alert': {
     handler: async (payload) => {
@@ -138,24 +153,43 @@ export const EVENT_MAP = {
   message: { store: 'messages', action: 'handleRealtimeUpdate' }, // legacy
   'message:new': { store: 'messages', action: 'handleRealtimeUpdate' },
   'message:sent': {
-    handler: async (payload) => {
-      useAgentJobsStore().handleMessageSent?.(payload)
-      const projectTabsStore = useProjectTabsStore()
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+      const projectMessagesStore = storeRegistry?.projectMessages?.() ?? useProjectMessagesStore()
+      const projectStateStore = storeRegistry?.projectState?.() ?? useProjectStateStore()
+      const projectTabsStore = storeRegistry?.projectTabs?.() ?? useProjectTabsStore()
+
+      agentJobsStore.handleMessageSent?.(payload)
+      projectMessagesStore.handleSent?.(payload)
+      projectStateStore.handleMessageSent?.(payload)
       projectTabsStore.handleMessageSent?.(payload)
+
       dispatchWindowEvent('agent:message_sent', payload)
     },
   },
   'message:received': {
-    handler: async (payload) => {
-      useAgentJobsStore().handleMessageReceived?.(payload)
-      const projectTabsStore = useProjectTabsStore()
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+      const projectMessagesStore = storeRegistry?.projectMessages?.() ?? useProjectMessagesStore()
+      const projectStateStore = storeRegistry?.projectState?.() ?? useProjectStateStore()
+      const projectTabsStore = storeRegistry?.projectTabs?.() ?? useProjectTabsStore()
+
+      agentJobsStore.handleMessageReceived?.(payload)
+      projectMessagesStore.handleReceived?.(payload)
+      projectStateStore.handleMessageReceived?.(payload)
       projectTabsStore.handleMessageReceived?.(payload)
+
       dispatchWindowEvent('agent:message_received', payload)
     },
   },
   'message:acknowledged': {
-    handler: async (payload) => {
-      useAgentJobsStore().handleMessageAcknowledged?.(payload)
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+      const projectMessagesStore = storeRegistry?.projectMessages?.() ?? useProjectMessagesStore()
+
+      agentJobsStore.handleMessageAcknowledged?.(payload)
+      projectMessagesStore.handleAcknowledged?.(payload)
+
       dispatchWindowEvent('agent:message_acknowledged', payload)
     },
   },
@@ -164,6 +198,7 @@ export const EVENT_MAP = {
   // Projects
   // =========================
   project_update: { store: 'projects', action: 'handleRealtimeUpdate' }, // legacy
+  'project:mission_updated': { store: 'projectState', action: 'handleMissionUpdated' },
 
   // =========================
   // Entity updates (legacy multiplexed)
@@ -205,8 +240,20 @@ export const EVENT_MAP = {
   // =========================
   // System events (legacy)
   // =========================
-  progress: { handler: async (payload) => dispatchWindowEvent('ws-progress', payload) },
-  notification: { handler: async (payload) => dispatchWindowEvent('ws-notification', payload) },
+  progress: {
+    handler: async (payload, { storeRegistry } = {}) => {
+      const systemStore = storeRegistry?.system?.() ?? useSystemStore()
+      systemStore.handleProgress?.(payload)
+      dispatchWindowEvent('ws-progress', payload)
+    },
+  },
+  notification: {
+    handler: async (payload, { storeRegistry } = {}) => {
+      const systemStore = storeRegistry?.system?.() ?? useSystemStore()
+      systemStore.handleNotification?.(payload)
+      dispatchWindowEvent('ws-notification', payload)
+    },
+  },
 
   // =========================
   // Agent communication (legacy custom events)
