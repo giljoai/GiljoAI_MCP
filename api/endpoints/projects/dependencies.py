@@ -53,4 +53,5 @@ def get_project_service(
     return ProjectService(
         db_manager=state.db_manager,
         tenant_manager=state.tenant_manager,
+        websocket_manager=state.websocket_manager,
     )

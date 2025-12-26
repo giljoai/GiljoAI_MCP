@@ -232,8 +232,7 @@ async def _get_user_config(
             if depth_config.get("vision_documents") == "optional":
                 depth_config["vision_documents"] = "light"
                 logger.debug(
-                    "[USER_CONFIG] Normalized vision_documents 'optional' → 'light'",
-                    extra={"user_id": user_id}
+                    "[USER_CONFIG] Normalized vision_documents 'optional' → 'light'", extra={"user_id": user_id}
                 )
 
             logger.debug(
@@ -946,47 +945,31 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                 prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
                 mission_tokens = len(mission) // 4  # ~2000 tokens
 
-                # Broadcast agent creation via HTTP bridge (Handover 0111 Issue #1 - FIXED)
-                # MCP tools run in separate process, must use HTTP bridge for WebSocket events
+                # Broadcast agent creation via in-process WebSocketManager (0379e)
                 try:
-                    import httpx
-                    import os
+                    from api.app import state
 
-                    # LOW #13 FIX: Use environment variable for server URL
-                    server_url = os.environ.get("GILJO_SERVER_URL", "http://localhost:7272")
-                    bridge_url = f"{server_url}/api/v1/ws-bridge/emit"
-
-                    # Use HTTP bridge to emit WebSocket event (cross-process communication)
-                    async with httpx.AsyncClient() as client:
-
-                        response = await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "agent:created",
-                                "tenant_key": tenant_key,
-                                "data": {
-                                    "project_id": project_id,
-                                    "agent_id": agent_id,  # Executor UUID
-                                    "job_id": job_id,  # Work order UUID
-                                    "agent_job_id": job_id,  # Backwards compatibility
-                                    "agent_type": agent_type,
-                                    "agent_name": agent_name,
-                                    "status": "waiting",
-                                    "thin_client": True,
-                                    "prompt_tokens": prompt_tokens,
-                                    "mission_tokens": mission_tokens,
-                                },
+                    websocket_manager = getattr(state, "websocket_manager", None)
+                    if websocket_manager:
+                        await websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="agent:created",
+                            data={
+                                "project_id": project_id,
+                                "agent_id": agent_id,  # Executor UUID
+                                "job_id": job_id,  # Work order UUID
+                                "agent_job_id": job_id,  # Backwards compatibility
+                                "agent_type": agent_type,
+                                "agent_name": agent_name,
+                                "status": "waiting",
+                                "thin_client": True,
+                                "prompt_tokens": prompt_tokens,
+                                "mission_tokens": mission_tokens,
                             },
-                            timeout=5.0,  # 5 second timeout
                         )
-
-                        if response.status_code == 200:
-                            logger.info(f"[HTTP BRIDGE] Agent spawned broadcast sent: {agent_name} ({agent_type})")
-                        else:
-                            logger.warning(f"[HTTP BRIDGE] Broadcast failed with status {response.status_code}")
-
-                except Exception as bridge_error:
-                    logger.warning(f"[HTTP BRIDGE] Failed to broadcast agent:created: {bridge_error}")
+                        logger.info(f"[WEBSOCKET] Agent spawned broadcast sent: {agent_name} ({agent_type})")
+                except Exception as ws_error:
+                    logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
                 return {
                     "success": True,
@@ -1836,6 +1819,7 @@ The agent templates are now being updated...
                 # Phase C: Include original AgentJob.mission in the response
                 # Prepend the job mission to the condensed context
                 import json
+
                 full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
 
                 # Calculate token estimate
@@ -2242,6 +2226,7 @@ async def get_orchestrator_instructions(
             # Phase C: Include original AgentJob.mission in the response
             # Prepend the job mission to the condensed context
             import json
+
             full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
 
             # Calculate token estimate
@@ -2320,7 +2305,9 @@ async def get_orchestrator_instructions(
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
 
-async def get_agent_mission(agent_id: str, tenant_key: str, db_manager: Optional["DatabaseManager"] = None) -> dict[str, Any]:
+async def get_agent_mission(
+    agent_id: str, tenant_key: str, db_manager: Optional["DatabaseManager"] = None
+) -> dict[str, Any]:
     """
     Fetch agent mission (standalone for testing - Phase C).
 
@@ -2640,7 +2627,7 @@ async def _spawn_agent_job_impl(
             mission=mission,
             job_type=agent_type,  # AgentJob uses job_type
             status="active",  # AgentJob uses 'active'
-            job_metadata={}
+            job_metadata={},
         )
         session.add(agent_job)
         await session.flush()  # Flush to ensure job_id is available
@@ -2657,7 +2644,7 @@ async def _spawn_agent_job_impl(
             status="waiting",  # AgentExecution uses 'waiting'
             spawned_by=parent_job_id,  # Link to parent agent_id (not job_id)
             context_budget=10000,
-            context_used=0
+            context_used=0,
         )
         session.add(agent_execution)
         await session.commit()
@@ -2708,9 +2695,33 @@ BEFORE implementing ANY code, you MUST:
 
 Your full mission is in the database. Call get_agent_mission to retrieve it."""
 
-
         mission_tokens = len(mission) // 4
         prompt_tokens = len(thin_prompt) // 4
+
+        # Broadcast agent creation via in-process WebSocketManager (0379e)
+        try:
+            from api.app import state
+
+            websocket_manager = getattr(state, "websocket_manager", None)
+            if websocket_manager:
+                await websocket_manager.broadcast_to_tenant(
+                    tenant_key=tenant_key,
+                    event_type="agent:created",
+                    data={
+                        "project_id": project_id,
+                        "agent_id": agent_id,  # Executor UUID
+                        "job_id": job_id,  # Work order UUID
+                        "agent_job_id": job_id,  # Backwards compatibility
+                        "agent_type": agent_type,
+                        "agent_name": agent_name,
+                        "status": "waiting",
+                        "thin_client": True,
+                        "prompt_tokens": prompt_tokens,
+                        "mission_tokens": mission_tokens,
+                    },
+                )
+        except Exception as ws_error:
+            logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
         return {
             "success": True,
