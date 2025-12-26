@@ -122,10 +122,7 @@ class TestWebSocketEventListener:
         """Test mission update event broadcast."""
         event_bus = EventBus()
         ws_manager = MagicMock()
-
-        mock_ws = AsyncMock()
-        ws_manager.active_connections = {"client_1": mock_ws}
-        ws_manager.auth_contexts = {"client_1": {"tenant_key": "tenant_123"}}
+        ws_manager.broadcast_event_to_tenant = AsyncMock(return_value=1)
 
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
@@ -140,20 +137,18 @@ class TestWebSocketEventListener:
 
         await asyncio.sleep(0.01)
 
-        mock_ws.send_json.assert_called_once()
-        call_args = mock_ws.send_json.call_args[0][0]
-        assert call_args["type"] == "project:mission_updated"
-        assert call_args["data"]["project_id"] == "proj_456"
+        ws_manager.broadcast_event_to_tenant.assert_awaited_once()
+        call_kwargs = ws_manager.broadcast_event_to_tenant.call_args.kwargs
+        assert call_kwargs["tenant_key"] == "tenant_123"
+        assert call_kwargs["event"]["type"] == "project:mission_updated"
+        assert call_kwargs["event"]["data"]["project_id"] == "proj_456"
 
     @pytest.mark.asyncio
     async def test_websocket_listener_agent_created(self):
         """Test agent creation event broadcast."""
         event_bus = EventBus()
         ws_manager = MagicMock()
-
-        mock_ws = AsyncMock()
-        ws_manager.active_connections = {"client_1": mock_ws}
-        ws_manager.auth_contexts = {"client_1": {"tenant_key": "tenant_123"}}
+        ws_manager.broadcast_event_to_tenant = AsyncMock(return_value=1)
 
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
@@ -169,26 +164,18 @@ class TestWebSocketEventListener:
 
         await asyncio.sleep(0.01)
 
-        mock_ws.send_json.assert_called_once()
-        call_args = mock_ws.send_json.call_args[0][0]
-        assert call_args["type"] == "agent:created"
+        ws_manager.broadcast_event_to_tenant.assert_awaited_once()
+        call_kwargs = ws_manager.broadcast_event_to_tenant.call_args.kwargs
+        assert call_kwargs["tenant_key"] == "tenant_123"
+        assert call_kwargs["event"]["type"] == "agent:created"
+        assert call_kwargs["event"]["data"]["agent"]["id"] == "agent_789"
 
     @pytest.mark.asyncio
     async def test_multi_tenant_isolation(self):
         """Test that events are isolated by tenant."""
         event_bus = EventBus()
         ws_manager = MagicMock()
-
-        mock_ws_1 = AsyncMock()
-        mock_ws_2 = AsyncMock()
-        ws_manager.active_connections = {
-            "client_1": mock_ws_1,
-            "client_2": mock_ws_2,
-        }
-        ws_manager.auth_contexts = {
-            "client_1": {"tenant_key": "tenant_A"},
-            "client_2": {"tenant_key": "tenant_B"},
-        }
+        ws_manager.broadcast_event_to_tenant = AsyncMock(return_value=1)
 
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
@@ -203,5 +190,7 @@ class TestWebSocketEventListener:
 
         await asyncio.sleep(0.01)
 
-        mock_ws_1.send_json.assert_called_once()
-        mock_ws_2.send_json.assert_not_called()
+        ws_manager.broadcast_event_to_tenant.assert_awaited_once()
+        call_kwargs = ws_manager.broadcast_event_to_tenant.call_args.kwargs
+        assert call_kwargs["tenant_key"] == "tenant_A"
+        assert call_kwargs["event"]["type"] == "project:mission_updated"
