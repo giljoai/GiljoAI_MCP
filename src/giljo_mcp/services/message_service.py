@@ -229,24 +229,9 @@ class MessageService:
                         if len(to_agents) == 1 and to_agents[0] != 'all':
                             to_agent_value = to_agents[0]
 
-                        # Event 1: Broadcast to SENDER (increments "Messages Sent")
-                        await self._websocket_manager.broadcast_message_sent(
-                            message_id=message_id,
-                            job_id=message.meta_data.get("job_id", ""),
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                            from_agent=from_agent or "orchestrator",
-                            to_agent=to_agent_value,
-                            message_type=message_type,
-                            content_preview=content[:200] if content else "",
-                            priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
-                        )
-                        self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
-
-                        # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
-                        # Determine recipient agent IDs (now using agent_id, not job_id)
+                        # Determine recipient agent IDs (agent_ids) for explicit job identifiers in event payloads
                         recipient_agent_ids = []
-                        if to_agents[0] == 'all':
+                        if to_agents and to_agents[0] == 'all':
                             # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
                             result = await session.execute(
                                 select(AgentExecution).join(AgentJob).where(
@@ -272,6 +257,22 @@ class MessageService:
                             recipient_agent_ids = resolved_to_agents
                             self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_agent_ids}")
 
+                        # Event 1: Broadcast to SENDER (increments "Messages Sent")
+                        await self._websocket_manager.broadcast_message_sent(
+                            message_id=message_id,
+                            job_id=message.meta_data.get("job_id", ""),
+                            project_id=project.id,
+                            tenant_key=project.tenant_key,
+                            from_agent=from_agent or "orchestrator",
+                            to_agent=to_agent_value,
+                            to_job_ids=recipient_agent_ids,
+                            message_type=message_type,
+                            content_preview=content[:200] if content else "",
+                            priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                        )
+                        self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
+
+                        # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
                         # Emit message:received event to recipients
                         if recipient_agent_ids:
                             await self._websocket_manager.broadcast_message_received(
