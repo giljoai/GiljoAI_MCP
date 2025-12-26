@@ -133,6 +133,7 @@ class APIState:
         self.tenant_manager: Optional[TenantManager] = None
         self.tool_accessor: Optional[ToolAccessor] = None
         self.websocket_manager: Optional[WebSocketManager] = None
+        self.websocket_broker = None  # WebSocketEventBroker (0379e)
         self.event_bus = None  # EventBus instance (Handover 0111 Issue #1)
         self.connections: dict[str, WebSocket] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
@@ -187,6 +188,7 @@ async def lifespan(app: FastAPI):
     # This must be done AFTER initialization, not in create_app()
     app.state.db_manager = state.db_manager
     app.state.websocket_manager = state.websocket_manager
+    app.state.websocket_broker = state.websocket_broker
 
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
@@ -516,7 +518,9 @@ def create_app() -> FastAPI:
                 # STEP 3: Store connection with authentication context
                 user_info = auth_result.get("user", {})
                 tenant_key_from_user = user_info.get("tenant_key", "default")
-                logger.info(f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}")
+                logger.info(
+                    f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
+                )
                 auth_context = {
                     "user": user_info,
                     "context": auth_result.get("context", "normal"),  # 'setup' or 'normal'
