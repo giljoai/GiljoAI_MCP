@@ -45,6 +45,22 @@ async def init_core_services(state: APIState) -> None:
         logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
         raise
 
+    # Initialize WebSocket broker (0379e)
+    try:
+        from api.broker import create_websocket_event_broker
+
+        broker = create_websocket_event_broker(
+            config=state.config,
+            database_url=getattr(state.db_manager, "database_url", None),
+        )
+        await broker.start()
+        state.websocket_broker = broker
+        state.websocket_manager.attach_broker(broker)
+        logger.info(f"WebSocket broker initialized: {broker.__class__.__name__}")
+    except Exception as e:
+        logger.error(f"Failed to initialize WebSocket broker: {e}", exc_info=True)
+        # Degrade gracefully: continue with local-only broadcasts.
+
     # Initialize tool accessor (now websocket_manager is available)
     try:
         logger.info("Initializing tool accessor...")
@@ -81,9 +97,7 @@ async def init_core_services(state: APIState) -> None:
             f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})"
         )
     else:
-        logger.info(
-            "No API key configured - all clients require JWT authentication (unified auth)"
-        )
+        logger.info("No API key configured - all clients require JWT authentication (unified auth)")
 
     # Start heartbeat task (WebSocket manager already initialized earlier)
     try:
