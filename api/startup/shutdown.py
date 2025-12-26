@@ -67,6 +67,15 @@ async def shutdown(state: APIState) -> None:
     except Exception as e:
         logger.error(f"Error closing WebSocket connections: {e}", exc_info=True)
 
+    # Stop WebSocket broker (0379e)
+    if getattr(state, "websocket_broker", None):
+        try:
+            logger.info("Stopping WebSocket broker...")
+            await state.websocket_broker.stop()
+            logger.info("WebSocket broker stopped")
+        except Exception as e:
+            logger.error(f"Error stopping WebSocket broker: {e}", exc_info=True)
+
     # Close database
     if state.db_manager:
         try:
