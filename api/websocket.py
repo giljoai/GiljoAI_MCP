@@ -7,9 +7,11 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
+from uuid import uuid4
 
 from fastapi import HTTPException, WebSocket
 
+from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.auth_utils import check_subscription_permission
 from api.events.schemas import EventFactory
 
@@ -34,7 +36,36 @@ class WebSocketManager:
         self.active_connections: dict[str, WebSocket] = {}
         self.auth_contexts: dict[str, dict[str, Any]] = {}  # NEW: Store auth context
         self.subscriptions: dict[str, set[str]] = {}  # client_id -> set of subscriptions
-        self.entity_subscribers: dict[str, set[str]] = {}  # entity_key -> set of client_ids  # entity_key -> set of client_ids
+        self.entity_subscribers: dict[str, set[str]] = (
+            {}
+        )  # entity_key -> set of client_ids  # entity_key -> set of client_ids
+        self._event_broker: Optional[WebSocketEventBroker] = None
+        self._broker_unsubscribe = None
+        self._broker_origin = uuid4().hex
+
+    def attach_broker(self, broker: WebSocketEventBroker) -> None:
+        if self._broker_unsubscribe:
+            try:
+                self._broker_unsubscribe()
+            except Exception:
+                logger.debug("Failed unsubscribing broker handler", exc_info=True)
+            self._broker_unsubscribe = None
+
+        self._event_broker = broker
+
+        async def _handle(message: WebSocketBrokerMessage) -> None:
+            # Avoid echo: the publishing worker already broadcast locally.
+            if message.origin and message.origin == self._broker_origin:
+                return
+
+            await self.broadcast_event_to_tenant(
+                tenant_key=message.tenant_key,
+                event=message.event,
+                exclude_client=message.exclude_client,
+                publish_to_broker=False,
+            )
+
+        self._broker_unsubscribe = broker.subscribe(_handle)
 
     def _event_types_for_broadcast(self, event_type: str) -> list[str]:
         if not self.emit_legacy_aliases:
@@ -62,6 +93,8 @@ class WebSocketManager:
         tenant_key: str,
         event: dict[str, Any],
         exclude_client: Optional[str] = None,
+        *,
+        publish_to_broker: bool = True,
     ) -> int:
         """Broadcast a canonical event envelope to all clients in a tenant."""
         if not tenant_key:
@@ -145,6 +178,22 @@ class WebSocketManager:
 
         for client_id in disconnected_clients:
             self.disconnect(client_id)
+
+        if publish_to_broker and self._event_broker:
+            try:
+                await self._event_broker.publish(
+                    WebSocketBrokerMessage(
+                        tenant_key=tenant_key,
+                        event=message,
+                        exclude_client=exclude_client,
+                        origin=self._broker_origin,
+                    )
+                )
+            except Exception as e:
+                logger.warning(
+                    "WebSocket broker publish failed",
+                    extra={"tenant_key": tenant_key, "event_type": event_type, "error": str(e)},
+                )
 
         logger.info(
             f"WebSocket broadcast to tenant completed: {sent_count} sent, {failed_count} failed",
@@ -1168,7 +1217,4 @@ class WebSocketManager:
 
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
-        logger.warning(
-            f"Broadcast validation_failed - template {template_id}: "
-            f"{len(validation_errors)} error(s)"
-        )
+        logger.warning(f"Broadcast validation_failed - template {template_id}: " f"{len(validation_errors)} error(s)")

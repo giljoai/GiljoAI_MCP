@@ -50,10 +50,7 @@ class TestProjectServiceCRUD:
 
         # Act
         result = await service.create_project(
-            name="Test Project",
-            mission="Test mission",
-            description="Test description",
-            tenant_key="test-tenant"
+            name="Test Project", mission="Test mission", description="Test description", tenant_key="test-tenant"
         )
 
         # Assert
@@ -73,10 +70,7 @@ class TestProjectServiceCRUD:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_project(
-            name="Test",
-            mission="Mission"
-        )
+        result = await service.create_project(name="Test", mission="Mission")
 
         # Assert
         assert result["success"] is True
@@ -95,10 +89,7 @@ class TestProjectServiceCRUD:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_project(
-            name="Test",
-            mission="Mission"
-        )
+        result = await service.create_project(name="Test", mission="Mission")
 
         # Assert
         assert result["success"] is False
@@ -136,10 +127,12 @@ class TestProjectServiceCRUD:
         mock_agent.status = "active"
 
         # Mock two queries: get project, get agents
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_agent]))))  # Get agents
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_agent])))),  # Get agents
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -160,9 +153,7 @@ class TestProjectServiceCRUD:
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -195,9 +186,9 @@ class TestProjectServiceCRUD:
         mock_project1.created_at = datetime.now()
         mock_project1.updated_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_project1])))
-        ))
+        session.execute = AsyncMock(
+            return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_project1]))))
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -234,9 +225,7 @@ class TestProjectServiceCRUD:
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[])))
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))))
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -263,10 +252,7 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.complete_project(
-            "test-id",
-            summary="Completed successfully"
-        )
+        result = await service.complete_project("test-id", summary="Completed successfully")
 
         # Assert
         assert result["success"] is True
@@ -303,10 +289,7 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.cancel_project(
-            "test-id",
-            reason="Requirements changed"
-        )
+        result = await service.cancel_project("test-id", reason="Requirements changed")
 
         # Assert
         assert result["success"] is True
@@ -354,10 +337,12 @@ class TestProjectServiceLifecycle:
         mock_project.completed_at = None
 
         # Mock two queries: get project, check for existing active
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            Mock(scalar_one_or_none=Mock(return_value=None))  # No existing active
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+                Mock(scalar_one_or_none=Mock(return_value=None)),  # No existing active
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -397,10 +382,12 @@ class TestProjectServiceLifecycle:
         existing_project.status = "active"
 
         # Mock multiple queries
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=new_project)),  # Get new project
-            Mock(scalar_one_or_none=Mock(return_value=existing_project))  # Check existing active
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=new_project)),  # Get new project
+                Mock(scalar_one_or_none=Mock(return_value=existing_project)),  # Check existing active
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -426,17 +413,12 @@ class TestProjectServiceLifecycle:
         mock_project.status = "active"
         mock_project.config_data = {}
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.deactivate_project(
-            "test-project-id",
-            reason="Testing pause"
-        )
+        result = await service.deactivate_project("test-project-id", reason="Testing pause")
 
         # Assert
         assert result["success"] is True
@@ -462,9 +444,7 @@ class TestProjectServiceLifecycle:
         mock_project.meta_data = {}
         mock_project.agent_jobs = []
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -500,20 +480,17 @@ class TestProjectServiceLifecycle:
         mock_project.product = mock_product
 
         # Mock job counts data
-        job_counts_data = [
-            ("completed", 3),
-            ("active", 1),
-            ("pending", 2),
-            ("failed", 1)
-        ]
+        job_counts_data = [("completed", 3), ("active", 1), ("pending", 2), ("failed", 1)]
 
         # Mock multiple queries: get project, job counts, last activity, product
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
-            Mock(all=Mock(return_value=job_counts_data)),  # Job counts
-            Mock(scalar=Mock(return_value=datetime.utcnow())),  # Last activity
-            Mock(scalar_one_or_none=Mock(return_value=mock_product))  # Get product
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
+                Mock(all=Mock(return_value=job_counts_data)),  # Job counts
+                Mock(scalar=Mock(return_value=datetime.utcnow())),  # Last activity
+                Mock(scalar_one_or_none=Mock(return_value=mock_product)),  # Get product
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -546,9 +523,7 @@ class TestProjectServiceLifecycle:
         mock_project.mission = "Old Mission"
         mock_project.config_data = {"old": "data"}
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -557,7 +532,7 @@ class TestProjectServiceLifecycle:
             "name": "New Name",
             "description": "New Description",
             "mission": "New Mission",
-            "config_data": {"new": "data"}
+            "config_data": {"new": "data"},
         }
         result = await service.update_project("test-project-id", updates)
 
@@ -587,6 +562,7 @@ class TestProjectServiceLifecycle:
 
         # Track created jobs
         created_jobs = []
+
         def capture_job(job):
             created_jobs.append(job)
 
@@ -594,6 +570,7 @@ class TestProjectServiceLifecycle:
 
         # Mock database queries: project fetch, instance_number query
         call_count = [0]
+
         async def mock_execute_side_effect(*args, **kwargs):
             call_count[0] += 1
             # Call 1: Fetch project
@@ -613,6 +590,7 @@ class TestProjectServiceLifecycle:
         async def mock_activate(*args, **kwargs):
             mock_project.status = "active"
             return {"success": True}
+
         service.activate_project = mock_activate
 
         # Act
@@ -660,11 +638,13 @@ class TestProjectServiceStatus:
         mock_messages = [Mock(), Mock()]
 
         # Mock multiple queries: project, agents, messages
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_agent])))),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=mock_messages))))
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_agent])))),
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=mock_messages)))),
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -700,11 +680,13 @@ class TestProjectServiceStatus:
         mock_project.completed_at = None
 
         # Mock multiple queries: project, agents, messages
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
@@ -733,19 +715,22 @@ class TestProjectServiceStatus:
 
         # Mock session
         from giljo_mcp.models import Session as SessionModel
+
         mock_session = Mock(spec=SessionModel)
         mock_session.id = "session-id"
 
         # Mock multiple queries: project, session
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            Mock(scalar_one_or_none=Mock(return_value=mock_session))
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+                Mock(scalar_one_or_none=Mock(return_value=mock_session)),
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        with patch('giljo_mcp.tenant.current_tenant') as mock_current_tenant:
+        with patch("giljo_mcp.tenant.current_tenant") as mock_current_tenant:
             result = await service.switch_project("new-project-id")
 
         # Assert
@@ -768,19 +753,18 @@ class TestProjectServiceStatus:
         mock_project.tenant_key = "tenant1"
 
         # Mock multiple queries: update, get project
-        session.execute = AsyncMock(side_effect=[
-            Mock(rowcount=1),  # Update result
-            Mock(scalar_one_or_none=Mock(return_value=mock_project))  # Get project
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(rowcount=1),  # Update result
+                Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
+            ]
+        )
 
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        with patch.object(service, '_broadcast_mission_update', new_callable=AsyncMock) as mock_broadcast:
-            result = await service.update_project_mission(
-                "test-id",
-                "New mission statement"
-            )
+        with patch.object(service, "_broadcast_mission_update", new_callable=AsyncMock) as mock_broadcast:
+            result = await service.update_project_mission("test-id", "New mission statement")
 
         # Assert
         assert result["success"] is True
@@ -815,27 +799,20 @@ class TestProjectServiceHelpers:
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
-        service = ProjectService(db_manager, tenant_manager)
+        websocket_manager = AsyncMock()
+        service = ProjectService(db_manager, tenant_manager, websocket_manager=websocket_manager)
 
-        # Act & Assert
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_response = Mock()
-            mock_response.status_code = 200
+        await service._broadcast_mission_update(
+            "project-id",
+            "New mission",
+            "tenant1",
+        )
 
-            mock_client_instance = AsyncMock()
-            mock_client_instance.post = AsyncMock(return_value=mock_response)
-            mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-            mock_client_instance.__aexit__ = AsyncMock()
-            mock_client.return_value = mock_client_instance
-
-            await service._broadcast_mission_update(
-                "project-id",
-                "New mission",
-                "tenant1"
-            )
-
-            # Verify post was called
-            mock_client_instance.post.assert_awaited_once()
+        websocket_manager.broadcast_to_tenant.assert_awaited_once()
+        call_kwargs = websocket_manager.broadcast_to_tenant.call_args.kwargs
+        assert call_kwargs["tenant_key"] == "tenant1"
+        assert call_kwargs["event_type"] == "project:mission_updated"
+        assert call_kwargs["data"]["project_id"] == "project-id"
 
     @pytest.mark.asyncio
     async def test_broadcast_mission_update_failure_graceful(self, mock_db_manager):
@@ -843,18 +820,16 @@ class TestProjectServiceHelpers:
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
-        service = ProjectService(db_manager, tenant_manager)
+        websocket_manager = AsyncMock()
+        websocket_manager.broadcast_to_tenant.side_effect = Exception("WebSocket error")
+        service = ProjectService(db_manager, tenant_manager, websocket_manager=websocket_manager)
 
         # Act & Assert (should not raise)
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_client.side_effect = Exception("Network error")
-
-            # This should log error but not raise
-            await service._broadcast_mission_update(
-                "project-id",
-                "New mission",
-                "tenant1"
-            )
+        await service._broadcast_mission_update(
+            "project-id",
+            "New mission",
+            "tenant1",
+        )
 
 
 class TestProjectServiceEdgeCases:
@@ -877,7 +852,7 @@ class TestProjectServiceEdgeCases:
             product_id="product-123",
             tenant_key="tenant-456",
             status="active",
-            context_budget=200000
+            context_budget=200000,
         )
 
         # Assert
