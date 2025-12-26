@@ -258,7 +258,7 @@ class TestAgentCardRealTimeBroadcasting:
         assert len(client.messages_sent) == 1
         message = client.messages_sent[0]
         assert message["type"] == "agent:created"
-        assert message["tenant_key"] == test_user_a.tenant_key
+        assert message["data"]["tenant_key"] == test_user_a.tenant_key
 
     """
     Test 4: Multi-tenant isolation in agent:created events
