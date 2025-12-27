@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-27 (0379 Series Complete - Universal Reactive State Architecture)
+**Last Updated:** 2025-12-27 (0379 Series Complete - Universal Reactive State Architecture; 0371 status corrected to IN PROGRESS)
 
 ---
 
@@ -13,7 +13,7 @@
 | 0001-0100 | Foundation & Installation | Mostly Complete |
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
-| 0301-0400 | Context Management & Services | Active Development |
+| 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -45,11 +45,13 @@
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
+| **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done, not complete |
+| **0371** | **Dead Code Cleanup Project** | **IN PROGRESS** | **MEDIUM** | Phases 1-4 (partial) done; Phase 4.6, 5-7 pending (~6K lines) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 | ID | Title | Status | Priority | Notes |
