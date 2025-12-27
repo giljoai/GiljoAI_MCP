@@ -577,13 +577,13 @@
       </v-card>
     </v-dialog>
 
-    <!-- Closeout Modal -->
-    <CloseoutModal
+    <!-- Manual Closeout Modal (for user-initiated project completion) -->
+    <ManualCloseoutModal
       :show="showCloseoutModal"
       :project-id="closeoutProjectId"
       :project-name="closeoutProjectName"
       @close="handleCloseoutClose"
-      @complete="handleCloseoutComplete"
+      @completed="handleCloseoutComplete"
     />
   </v-container>
 </template>
@@ -596,7 +596,7 @@ import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
-import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
+import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import { formatStatus } from '@/utils/formatters'
 
 // Router
