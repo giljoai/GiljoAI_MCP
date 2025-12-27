@@ -1,12 +1,49 @@
-# TODO: Vision Document Summarizer LLM Upgrade
+# TODO: Vision Document Summarizer Improvements & LLM Path
 
 **Created**: 2025-12-27
 **Priority**: Medium
-**Status**: Planned
+**Status**: Two-Phase Plan
 
-## Problem Statement
+## Phase 1: Consolidated Vision Summaries (IMMEDIATE)
 
-Current sumy LSA extractive summarizer is underperforming:
+**Handover**: See `0377_consolidated_vision_documents.md`
+
+**Problem**:
+- Orchestrator receives summaries from only first vision document (bug in `get_vision_document.py:112`)
+- Multi-chapter products (e.g., 5 chapters) return only Chapter 1 context
+- Sumy summaries underperform on multi-doc aggregates
+
+**Architecture**:
+```
+VisionDocument (per-chapter) → Aggregate Full Text → Sumy → Product.consolidated_vision_light/medium
+```
+
+**Deliverables**:
+- [x] Add columns to Product table: `consolidated_vision_light`, `consolidated_vision_medium`, `consolidated_vision_light_tokens`, `consolidated_vision_medium_tokens`
+- [ ] Build `consolidate_vision_documents()` trigger (document change → re-summarize)
+- [ ] Update `get_vision_document()` to fetch from consolidated columns
+- [ ] Update mission_planner to use consolidated summaries
+- [ ] Add regeneration button to Product card UI
+- **Effort**: ~1 day
+
+---
+
+## Phase 2: LLM-Based Field Extraction (FUTURE)
+
+**Note**: Sumy can't extract/infer structured fields. Requires LLM.
+
+**Separate Feature**: Auto-suggest tech_stack, features, architecture from vision documents.
+- Not summarization (Phase 1)
+- Requires Qwen2.5-0.5B or Claude Haiku
+- Stores as **suggestions** in product card, not canonical until user clicks "Apply"
+
+**Status**: Design complete, deferred until Phase 1 complete
+
+---
+
+## Phase 3: LLM Summarization (LATER)
+
+Current sumy LSA extractive summarizer underperforms:
 - 2/6 documents have **identical** light/medium summaries (bug)
 - Target ratios not achieved: Light should be 33%, Medium 66%
 - Actual compression ranges from 43-92% (inconsistent)
@@ -21,7 +58,7 @@ Current sumy LSA extractive summarizer is underperforming:
 | Ch1_4 | 92% | 92% | **IDENTICAL** |
 | HWMonitor | 92% | 92% | **IDENTICAL** |
 
-## Proposed Solution: Hybrid LLM Architecture
+## Phase 3 Proposed Solution: Hybrid LLM Architecture
 
 ### Architecture
 
