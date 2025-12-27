@@ -208,10 +208,15 @@ async def delete_product(
     Soft delete a product.
 
     Uses ProductService.delete_product() for database operations.
+    Returns enhanced response with deletion context (was_active, remaining count).
     """
     logger.info(f"User {current_user.username} deleting product {product_id}")
 
     try:
+        # Get product state before deletion for response
+        product_result = await service.get_product(product_id)
+        was_active = product_result.get("data", {}).get("is_active", False) if product_result["success"] else False
+
         result = await service.delete_product(product_id)
 
         if not result["success"]:
@@ -219,10 +224,16 @@ async def delete_product(
                 raise HTTPException(status_code=404, detail=result["error"])
             raise HTTPException(status_code=400, detail=result["error"])
 
+        # Get remaining products count
+        products_result = await service.list_products()
+        remaining_count = len(products_result.get("data", [])) if products_result["success"] else 0
+
         return ProductDeleteResponse(
-            success=True,
             message=result["message"],
-            deleted_at=result["deleted_at"]
+            deleted_product_id=product_id,
+            was_active=was_active,
+            remaining_products_count=remaining_count,
+            new_active_product=None  # Could auto-activate another product if needed
         )
 
     except HTTPException:
