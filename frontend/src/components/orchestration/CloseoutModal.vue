@@ -28,6 +28,24 @@
 
       <!-- Modal content -->
       <v-card-text class="pa-4">
+        <!-- 360 Memory Info Banner -->
+        <v-alert
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+          icon="mdi-information"
+        >
+          <template #title>
+            <span class="text-body-2 font-weight-medium">Why detailed closeout matters</span>
+          </template>
+          <span class="text-body-2">
+            This closeout data becomes part of your product's <strong>360 Memory</strong> and provides
+            context for future projects. The more detailed your summary and outcomes, the better
+            future orchestrators can learn from this work.
+          </span>
+        </v-alert>
+
         <!-- Loading state -->
         <div v-if="loading" class="text-center py-8">
           <v-progress-circular indeterminate color="primary" size="64" />
