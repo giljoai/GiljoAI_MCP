@@ -379,4 +379,50 @@ User insight: "Why not use the same `get_agent_mission()` that other agents use?
 
 ---
 
+## Implementation Summary (2025-12-27)
+
+**Status**: ✅ COMPLETE
+
+### What Was Implemented
+
+| Change | File | Lines Modified |
+|--------|------|----------------|
+| Staging prompt - write execution plan | `thin_prompt_generator.py` | 1019-1031 |
+| Implementation prompt - fetch plan | `thin_prompt_generator.py` | 1115-1130 |
+
+### Commits
+
+| Commit | Description |
+|--------|-------------|
+| `cad708cb` | feat(0376): Orchestrator unified mission pattern |
+
+### Files Modified
+
+- `src/giljo_mcp/thin_prompt_generator.py` - Added step 6 (write plan) to staging, added fetch section to implementation
+- `tests/thin_prompt/test_thin_client_generator.py` - Added test for staging prompt
+- `tests/test_thin_prompt_generator.py` - New file with implementation prompt tests
+
+### Tests Added
+
+| Test | Status |
+|------|--------|
+| `test_staging_prompt_includes_execution_plan_step` | ✅ PASSED |
+| `test_execution_plan_section_in_implementation_prompt` | ✅ PASSED |
+| `test_execution_plan_section_formatting` | ✅ PASSED |
+
+### Effort
+
+- **Estimated**: 1 hour
+- **Actual**: ~30 minutes (parallel TDD agents)
+
+### Key Architectural Decision
+
+Chose **unified agent pattern** over original proposal (dedicated field + tool):
+- ❌ Original: Add `implementation_plan` field + new MCP tool (2-3 hours, DB migration)
+- ✅ Implemented: Use existing `update_agent_mission()` + `get_agent_mission()` (1 hour, prompt-only)
+
+Result: Orchestrator is now a first-class agent following the same mission pattern as all other agents.
+
+---
+
 **Handover 0376**: Orchestrator Unified Mission Pattern (Use Existing Agent Architecture)
