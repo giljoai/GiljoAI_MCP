@@ -1,12 +1,51 @@
 # Handover 1014: Security Event Auditing
 
 **Date**: 2025-12-18
-**Status**: Pending (Future)
+**Status**: ⏸️ DEFERRED (Phase 5 - Future Work)
 **Parent**: 1000 (Greptile Remediation)
 **Risk**: LOW
 **Tier**: 1 (Auto-Execute)
 **Effort**: 8 hours
 **Phase**: 5 (Monitoring - Future Work)
+
+---
+
+## ⚠️ WHY THIS IS DEFERRED
+
+**Current State (2025-12-27):**
+- ✅ We have **structured logging (1013)** for debugging and error tracking
+- ✅ All authentication/authorization events already logged with error codes
+- ✅ Production-ready observability in place
+
+**What Security Auditing Adds:**
+- 📊 **Compliance audit trail** (SOC2, HIPAA, ISO 27001 requirements)
+- 🔍 **Forensic investigation** capabilities (who did what, when, from where)
+- 📈 **Regulatory reporting** (audit log exports, retention policies)
+- 🔐 **Tamper-proof event log** (separate from debugging logs)
+
+**Why We're Deferring:**
+1. **No compliance requirements yet** - No enterprise customers requiring SOC2/HIPAA
+2. **Structured logging covers debugging** - Handover 1013 provides error tracking and debugging
+3. **Can add later without regression** - Database migration can be added when needed
+4. **Focus on core features** - Better ROI on user-facing functionality
+
+**When to Implement:**
+- ✅ First enterprise customer with compliance requirements
+- ✅ Security certification needed (SOC2, ISO 27001)
+- ✅ Forensic investigation capabilities required
+- ✅ Customer explicitly requests audit trail feature
+- ✅ Regulatory compliance mandates it
+
+**What's Already Done:**
+- Structured logging captures auth failures (AUTH001-011)
+- Error codes for security events (WS004, AUTH010 tenant isolation)
+- IP addresses and request IDs in logs
+- Multi-tenant isolation enforced
+
+**Bottom Line:**
+This handover is **compliance theater** until we have actual compliance requirements. Structured logging (1013) gives us the security we need **today**. Security auditing gives us what auditors need **tomorrow**.
+
+---
 
 ## Mission
 
