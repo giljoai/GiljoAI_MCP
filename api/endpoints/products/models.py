@@ -166,12 +166,11 @@ class CascadeImpact(BaseModel):
     """Cascade impact response for product deletion"""
 
     product_id: str
-    projects_count: int = Field(..., description="Total number of projects")
-    unfinished_projects: int = Field(..., description="Number of unfinished projects")
-    tasks_count: int = Field(..., description="Total number of tasks")
-    unresolved_tasks: int = Field(..., description="Number of unresolved tasks")
-    vision_documents_count: int = Field(..., description="Number of vision documents")
-    total_chunks: int = Field(..., description="Total number of context chunks")
+    product_name: str = Field(..., description="Product name")
+    total_projects: int = Field(..., description="Total number of projects")
+    total_tasks: int = Field(..., description="Total number of tasks")
+    total_vision_documents: int = Field(..., description="Number of vision documents")
+    warning: str = Field(..., description="Warning message about deletion impact")
 
 
 # ============================================================================
