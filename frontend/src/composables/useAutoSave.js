@@ -19,7 +19,7 @@
  * })
  */
 
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, getCurrentInstance } from 'vue'
 import { debounce } from 'lodash-es'
 
 export function useAutoSave(options = {}) {
@@ -259,12 +259,17 @@ export function useAutoSave(options = {}) {
   /**
    * Cleanup on component unmount
    * Stops watchers and cancels pending saves
+   *
+   * NOTE: Guard with getCurrentInstance() to prevent Vue warning when composable
+   * is called outside setup() or after an await in async setup()
    */
-  onUnmounted(() => {
-    stopWatch()
-    debouncedSave.cancel()
-    console.log('[AUTO-SAVE] Cleanup complete:', key)
-  })
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      stopWatch()
+      debouncedSave.cancel()
+      console.log('[AUTO-SAVE] Cleanup complete:', key)
+    })
+  }
 
   // Return public API
   return {
