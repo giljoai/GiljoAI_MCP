@@ -576,6 +576,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Closeout Modal -->
+    <CloseoutModal
+      :show="showCloseoutModal"
+      :project-id="closeoutProjectId"
+      :project-name="closeoutProjectName"
+      @close="handleCloseoutClose"
+      @complete="handleCloseoutComplete"
+    />
   </v-container>
 </template>
 
@@ -587,6 +596,7 @@ import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
+import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 import { formatStatus } from '@/utils/formatters'
 
 // Router
@@ -605,6 +615,9 @@ const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDeletedDialog = ref(false)
 const showMissionDialog = ref(false)
+const showCloseoutModal = ref(false)
+const closeoutProjectId = ref(null)
+const closeoutProjectName = ref('')
 const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
@@ -937,21 +950,29 @@ async function handleStatusAction({ action, projectId }) {
       case 'deactivate':
         await projectStore.deactivateProject(projectId)
         break
-      case 'complete':
-        await projectStore.completeProject(projectId)
+      case 'complete': {
+        // Open CloseoutModal instead of direct API call
+        const projectToClose = projectStore.projectById(projectId)
+        if (projectToClose) {
+          closeoutProjectId.value = projectId
+          closeoutProjectName.value = projectToClose.name
+          showCloseoutModal.value = true
+        }
         break
+      }
       case 'reopen':
         await projectStore.restoreCompletedProject(projectId)
         break
       case 'cancel':
         await projectStore.cancelProject(projectId)
         break
-      case 'delete':
-        const project = projectStore.projectById(projectId)
-        if (project) {
-          confirmDelete(project)
+      case 'delete': {
+        const projectToDelete = projectStore.projectById(projectId)
+        if (projectToDelete) {
+          confirmDelete(projectToDelete)
         }
         break
+      }
     }
 
     // Refresh project list to show updated status
@@ -961,6 +982,20 @@ async function handleStatusAction({ action, projectId }) {
     // Refresh even on error to show true server state
     await projectStore.fetchProjects()
   }
+}
+
+// Handle CloseoutModal events
+async function handleCloseoutComplete() {
+  showCloseoutModal.value = false
+  closeoutProjectId.value = null
+  closeoutProjectName.value = ''
+  await projectStore.fetchProjects()
+}
+
+function handleCloseoutClose() {
+  showCloseoutModal.value = false
+  closeoutProjectId.value = null
+  closeoutProjectName.value = ''
 }
 
 function cancelEdit() {
