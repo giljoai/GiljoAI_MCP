@@ -212,6 +212,33 @@ async def create_task(
     return task_to_response(task)
 
 
+@router.get("/summary/")
+async def get_task_summary(
+    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    current_user: User = Depends(get_current_active_user),
+    task_service: TaskService = Depends(get_task_service),
+):
+    """
+    Return simple task summary metrics grouped by product for the current tenant.
+    Structure is compatible with UI store expectations.
+
+    NOTE: Route must be defined BEFORE /{task_id}/ to avoid FastAPI matching
+    "summary" as a task_id parameter (route ordering matters in FastAPI).
+    """
+    result = await task_service.get_summary(product_id=product_id)
+
+    if not result["success"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+
+    data = result["data"]
+    return {
+        "success": True,
+        "summary": data["summary"],
+        "total_products": data["total_products"],
+        "total_tasks": data["total_tasks"]
+    }
+
+
 @router.get("/{task_id}/", response_model=TaskResponse)
 async def get_task(
     task_id: str,
@@ -421,27 +448,3 @@ async def change_task_status(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Task updated but fetch failed")
 
     return TaskResponse(**get_result["data"])
-
-
-@router.get("/summary/")
-async def get_task_summary(
-    product_id: Optional[str] = Query(None, description="Filter by product ID"),
-    current_user: User = Depends(get_current_active_user),
-    task_service: TaskService = Depends(get_task_service),
-):
-    """
-    Return simple task summary metrics grouped by product for the current tenant.
-    Structure is compatible with UI store expectations.
-    """
-    result = await task_service.get_summary(product_id=product_id)
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    data = result["data"]
-    return {
-        "success": True,
-        "summary": data["summary"],
-        "total_products": data["total_products"],
-        "total_tasks": data["total_tasks"]
-    }
