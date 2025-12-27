@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-25 (Added 0378 Agent ID/Job ID Message Tool Fixes - COMPLETE)
+**Last Updated:** 2025-12-27 (0379 Series Complete - Universal Reactive State Architecture)
 
 ---
 
@@ -44,12 +44,6 @@
 | 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
-| 0379 | Universal Reactive State Architecture (Master) | Ready | **CRITICAL** | Read first; executed via 0379a–0379e |
-| 0379a | Event Router + Reconnect Resync | Ready | HIGH | Frontend infra + safe subscriptions |
-| 0379b | Agent/Job Domain Migration | Ready | HIGH | Map store + Jobs UI refactor |
-| 0379c | Messages + Project State Migration | Ready | HIGH | Launch/ProjectTabs refactor; remove legacy ws integrations |
-| 0379d | Backend Event Contract + Broadcaster Unification | Ready | **CRITICAL** | One envelope + one broadcaster + aliasing |
-| 0379e | SaaS Broker + Loopback Elimination | Ready | **CRITICAL** | LISTEN/NOTIFY baseline; multi-worker ready |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 
 ### In Progress / Partial
@@ -108,6 +102,12 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 0379 | Universal Reactive State Architecture (Master) | **COMPLETE** (2025-12-27) |
+| 0379a | Event Router + Reconnect Resync | **COMPLETE** (2025-12-27) |
+| 0379b | Agent/Job Domain Migration | **COMPLETE** (2025-12-27) |
+| 0379c | Messages + Project State Migration | **COMPLETE** (2025-12-27) |
+| 0379d | Backend Event Contract + Broadcaster Unification | **COMPLETE** (2025-12-27) |
+| 0379e | SaaS Broker + Loopback Elimination | **COMPLETE** (2025-12-27) |
 | 0378 | Agent ID / Job ID Confusion and Message Tool Fixes | **COMPLETE** (2025-12-25) |
 | 1009 | Rate Limiting (Auth Endpoints) | **COMPLETE** (2025-12-24) |
 | 0375 | Logging Regression Fix (1002 Bug) | **COMPLETE** (2025-12-24) |
@@ -200,6 +200,19 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### Universal Reactive State Architecture (0379 Series)
+**Status:** 100% Complete (December 2025)
+- 0379: Master document with 5-phase rollout plan
+- 0379a: Event Router + Reconnect Resync (frontend infrastructure)
+- 0379b: Agent/Job Domain Migration (map-based stores)
+- 0379c: Messages + Project State Migration
+- 0379d: Backend Event Contract + Broadcaster Unification
+- 0379e: SaaS Broker + Loopback Elimination
+- **Result**: Unified WebSocket platform - single manager, single store, central router
+- **Key Features**: Tenant isolation, broker abstraction, loopback eliminated
+- Commits: 53d9b236, a7ed01f8, 24b40b56, bf77e6e6
+- Cleanup: 42ae55cf (removed 8 dead agent_communication:* handlers)
 
 ### Alpha Trial Remediation Series (0356-0361, 0364, 0366)
 **Status:** 80% Complete (8/10 handovers, December 2025)
