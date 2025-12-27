@@ -256,34 +256,6 @@ export const EVENT_MAP = {
   },
 
   // =========================
-  // Agent communication (legacy custom events)
-  // =========================
-  'agent_communication:status_update': {
-    handler: async (payload) => dispatchWindowEvent('agent:status_update', payload),
-  },
-  'agent_communication:agent_spawned': {
-    handler: async (payload) => dispatchWindowEvent('agent:spawned', payload),
-  },
-  'agent_communication:agent_complete': {
-    handler: async (payload) => dispatchWindowEvent('agent:complete', payload),
-  },
-  'agent_communication:error': {
-    handler: async (payload) => dispatchWindowEvent('agent:error', payload),
-  },
-  'agent_communication:message_completed': {
-    handler: async (payload) => dispatchWindowEvent('agent:message_completed', payload),
-  },
-  'agent_communication:artifact_created': {
-    handler: async (payload) => dispatchWindowEvent('agent:artifact_created', payload),
-  },
-  'agent_communication:directory_structure': {
-    handler: async (payload) => dispatchWindowEvent('agent:directory_structure', payload),
-  },
-  'agent_communication:code_artifact': {
-    handler: async (payload) => dispatchWindowEvent('agent:code_artifact', payload),
-  },
-
-  // =========================
   // Mission tracking
   // =========================
   'mission:started': { handler: async (payload) => dispatchWindowEvent('mission:started', payload) },
