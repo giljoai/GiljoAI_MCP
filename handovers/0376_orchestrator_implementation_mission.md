@@ -1,207 +1,236 @@
-# Handover 0376: Orchestrator Implementation Mission Persistence
+# Handover 0376: Orchestrator Unified Mission Pattern (Use Existing Agent Architecture)
 
 **Status**: Ready for Execution
 **Priority**: Medium
-**Estimated Effort**: 2-3 hours
-**Risk Level**: Low (additive change, no breaking modifications)
-**Complexity**: Low-Moderate (new field + prompt generation logic)
+**Estimated Effort**: 1 hour
+**Risk Level**: Low (prompt-only changes, no database/tools)
+**Complexity**: Low (2 prompt generator modifications)
 
 ---
 
 ## Executive Summary
 
 ### What
-Add an "implementation mission" field to the orchestrator job record that captures the orchestrator's execution plan during staging. This plan is then retrievable during the implementation phase, enabling session-independent orchestration.
+Enable the orchestrator to persist its execution plan during staging and fetch it during implementation using the **existing agent mission pattern** (`update_agent_mission()` + `get_agent_mission()`). Orchestrator becomes a first-class agent that follows the same workflow as analyzer, implementer, etc.
 
 ### Why
-Currently, staging persists:
-- **Project mission** (`update_project_mission()`) - what the project needs
-- **Agent missions** (`spawn_agent_job()`) - what each specialist does
+Currently:
+- **Other agents**: Call `get_agent_mission()` at implementation startup to fetch their mission
+- **Orchestrator**: Calls special tool `get_orchestrator_instructions()` with extra context fields
 
-But NOT:
-- **Orchestrator's execution plan** - how to coordinate agents
+This creates architectural asymmetry. The orchestrator has:
+- ✅ An AgentJob record (like other agents)
+- ✅ An AgentExecution record (like other agents)
+- ✅ A `.mission` field (like other agents)
+- ✅ An `agent_id` it can use with `get_agent_mission()` (like other agents)
 
-This creates a gap when:
-1. Implementation runs in a fresh session/terminal (rare but supported)
-2. Orchestrator needs to recall execution strategy decisions
-3. Debugging requires visibility into orchestrator's coordination plan
+But doesn't use them uniformly.
 
-During alpha testing (2025-12-25), we observed that the orchestrator made decisions like:
+During alpha testing (2025-12-25), the orchestrator made execution order decisions:
 ```
 analyzer FIRST → then documenter + implementer in PARALLEL
 ```
-But this decision was not persisted anywhere, making fresh-session handover incomplete.
+But never persisted this plan, breaking fresh-session orchestration.
 
 ### Goal
-Enable orchestrators to write their execution plan during staging, which can be retrieved via `get_orchestrator_instructions()` during implementation phase.
+**Unify the pattern**: Orchestrator uses the same `update_agent_mission()` + `get_agent_mission()` flow as every other agent. No new fields, no new tools, no database changes.
 
 ---
 
 ## Current Architecture
 
-### Staging Phase (what orchestrator does now)
-1. `health_check()` - verify MCP connection
-2. `get_orchestrator_instructions()` - fetch project context
-3. Analyze requirements
-4. `update_project_mission()` - persist PROJECT mission
-5. `spawn_agent_job()` x N - create specialist agents
-6. `send_message()` broadcast - signal STAGING_COMPLETE
+### Staging Phase - Other Agents (e.g., Analyzer)
+1. Orchestrator calls `spawn_agent_job(agent_name="analyzer", ...)`
+2. Creates AgentJob with mission
+3. Implementation phase: Agent calls `get_agent_mission(agent_id, tenant_key)`
+4. Fetches mission from AgentJob.mission field
+5. Follows `full_protocol` (5-phase lifecycle)
 
-### Gap
-Step 4 persists what the PROJECT needs, but not HOW the orchestrator plans to execute it.
+### Staging Phase - Orchestrator (Currently Special)
+1. Orchestrator calls `health_check()`
+2. Orchestrator calls `get_orchestrator_instructions()` - special tool with extra context
+3. Analyzes requirements
+4. Calls `update_project_mission()` - persists project mission
+5. Calls `spawn_agent_job()` x N - creates specialist agents
+6. Calls `send_message()` broadcast - signals STAGING_COMPLETE
+7. **GAP**: No explicit instruction to write orchestrator's execution plan
+
+### Implementation Phase - Orchestrator (Currently Special)
+- Orchestrator receives `_build_claude_code_execution_prompt()`
+- Does NOT follow same pattern as other agents
+- Does NOT call `get_agent_mission()` for its own mission
+- Must infer execution strategy from context (risky in fresh session)
 
 ---
 
-## Proposed Solution
+## Proposed Solution: Use Existing Agent Pattern
 
-### New Step in Staging Workflow
-Add step between current 5 and 6:
+### Key Insight
+Orchestrator has an `AgentJob` record with `.mission` field, just like every other agent.
+Simply tell it to use the same workflow.
 
+### Staging Phase - Add One Instruction
+**File**: `src/giljo_mcp/thin_prompt_generator.py::generate_staging_prompt()`
+
+Add step 6 after `spawn_agent_job()` calls:
+
+```markdown
+6. PERSIST YOUR EXECUTION PLAN
+
+   Document how you will execute this project:
+
+   mcp__giljo-mcp__update_agent_mission(
+       job_id="{orchestrator_id}",
+       tenant_key="{tenant_key}",
+       mission="""
+       # Implementation Plan: {project_name}
+
+       ## Execution Strategy
+       - Pattern: [Sequential | Parallel | Hybrid]
+       - Rationale: [Why this pattern]
+
+       ## Agent Execution Order
+
+       ### Phase 1: {phase_name}
+       - Agent: {agent_name}
+       - Job ID: {job_id}
+       - Dependencies: None
+       - Expected Output: [What this agent produces]
+
+       ### Phase 2: {phase_name}
+       - Agents: {agent_1}, {agent_2} (parallel)
+       - Dependencies: Phase 1 completion
+       - Expected Output: [What these agents produce]
+
+       ## Coordination Checkpoints
+       1. After Phase 1: Verify {condition} before proceeding
+       2. After Phase 2: Collect outputs and validate
+
+       ## Success Criteria
+       - ✅ All agents completed without errors
+       - ✅ Deliverables match requirements
+       - ✅ No blocking messages unresolved
+       """
+   )
 ```
-5. spawn_agent_job() x N - create specialist agents
-6. NEW: update_orchestrator_implementation_plan() - persist execution strategy
-7. send_message() broadcast - signal STAGING_COMPLETE
+
+### Implementation Phase - Add Instruction at Top
+**File**: `src/giljo_mcp/thin_prompt_generator.py::_build_claude_code_execution_prompt()`
+
+Add at top of SECTION 1 (Context Recap), right after identity:
+
+```markdown
+## Your Implementation Plan (from Staging)
+
+You persisted an execution plan during staging. Fetch it now:
+
+mcp__giljo-mcp__get_agent_mission(
+    agent_job_id="{orchestrator_id}",
+    tenant_key="{tenant_key}"
+)
+
+This returns your stored plan with:
+- Agent execution order (sequential/parallel/hybrid)
+- Dependency graph
+- Coordination checkpoints
+- Success criteria
+
+Follow this plan to coordinate agents.
+
+---
+
+## Now Spawn Agents
 ```
 
-### Option A: New Dedicated Field (Recommended)
-Add `implementation_plan` field to orchestrator job record.
-
-**Pros:**
-- Clean separation of concerns
-- Explicit purpose
-- Easy to query/debug
-
-**Cons:**
-- Database schema change required
-- New MCP tool needed
-
-### Option B: Reuse Existing Mission Field
-Store implementation plan in orchestrator's `mission` field on the AgentJob record.
-
-**Pros:**
-- No schema change
-- Existing `get_agent_mission()` retrieves it
-
-**Cons:**
-- Overloads meaning of "mission" field
-- Less explicit
-
-### Recommendation
-**Option A** - cleaner architecture, worth the schema change.
+Then rest of sections continue as-is (Agent Jobs, Spawning Template, Monitoring, etc.)
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Database Schema
+### Two Simple File Changes
 
-#### File: `src/giljo_mcp/models.py`
+**No database migrations, no new tools, no new fields needed.**
 
-Add field to `AgentJob` model:
+The orchestrator already has:
+- ✅ AgentJob record with `.mission` field
+- ✅ AgentExecution record with agent_id
+- ✅ Can call `update_agent_mission()` to write its plan
+- ✅ Can call `get_agent_mission()` to read its plan
 
-```python
-class AgentJob(Base):
-    # ... existing fields ...
+### Change 1: Staging Prompt - Tell Orchestrator to Write Its Mission
 
-    # NEW: Orchestrator's execution plan (only populated for orchestrator jobs)
-    implementation_plan = Column(Text, nullable=True, default=None)
-```
+**File**: `src/giljo_mcp/thin_prompt_generator.py`
+**Method**: `generate_staging_prompt()` (lines 940-1036)
+**Action**: Add instruction in the STARTUP SEQUENCE section
 
-#### Migration
-Create Alembic migration:
-```bash
-alembic revision --autogenerate -m "add_implementation_plan_to_agent_job"
-alembic upgrade head
-```
-
-### Phase 2: MCP Tool
-
-#### File: `src/giljo_mcp/tools/orchestration.py`
-
-Add new tool:
-
-```python
-@mcp_tool(
-    name="update_orchestrator_implementation_plan",
-    description="Persist orchestrator's execution plan during staging. Called after spawning agents."
-)
-async def update_orchestrator_implementation_plan(
-    job_id: str,
-    tenant_key: str,
-    implementation_plan: str
-) -> dict:
-    """
-    Store the orchestrator's execution strategy for retrieval during implementation phase.
-
-    Args:
-        job_id: Orchestrator's job UUID
-        tenant_key: Tenant isolation key
-        implementation_plan: Execution strategy document (markdown format recommended)
-
-    Returns:
-        Success confirmation with plan summary
-    """
-    # Validate tenant access
-    # Update AgentJob.implementation_plan where job_id matches
-    # Return confirmation
-```
-
-### Phase 3: Update get_orchestrator_instructions()
-
-#### File: `src/giljo_mcp/tools/orchestration.py`
-
-Modify `get_orchestrator_instructions()` to include `implementation_plan` in response if it exists:
-
-```python
-# In get_orchestrator_instructions response
-return {
-    "identity": {...},
-    "project_description_inline": {...},
-    "context_fetch_instructions": {...},
-    "agent_templates": [...],
-    # NEW: Include implementation plan if present
-    "implementation_plan": orchestrator_job.implementation_plan,  # None during staging, populated during implementation
-    ...
-}
-```
-
-### Phase 4: Update Prompts
-
-#### Staging Prompt Addition
-Add to staging prompt after "SPAWN AGENTS" section:
-
+**Current line 1018** (after "SPAWN AGENTS: spawn_agent_job()..."):
 ```markdown
-6. WRITE IMPLEMENTATION PLAN: update_orchestrator_implementation_plan()
-   Document your execution strategy:
+6. SIGNAL COMPLETE: send_message(to_agents=['all']...
+```
+
+**Insert new step 6 before SIGNAL COMPLETE**:
+```markdown
+6. WRITE YOUR EXECUTION PLAN: update_agent_mission()
+
+   Persist how you will execute this project. Document:
    - Agent execution order (sequential/parallel/hybrid)
    - Dependency graph between agents
    - Coordination checkpoints
-   - Expected handoff points
    - Success criteria for each phase
+
+   Use update_agent_mission() with your orchestrator job_id and the plan as mission.
+   Example format provided in get_orchestrator_instructions() response.
 ```
 
-#### Implementation Prompt Simplification
-Implementation prompt can now say:
-
-```markdown
-## Your Execution Plan
-Your implementation plan from staging is available in the `implementation_plan` field
-from `get_orchestrator_instructions()`. Follow that plan to coordinate agents.
-```
-
-### Phase 5: Thin Prompt Generator Update
-
-#### File: `src/giljo_mcp/thin_prompt_generator.py`
-
-Update `_build_staging_prompt()` to include new step 6.
-
-Update `_build_implementation_prompt()` to reference `implementation_plan` field.
+Then renumber the current "6. SIGNAL COMPLETE" to "7. SIGNAL COMPLETE".
 
 ---
 
-## Implementation Plan Content Structure
+### Change 2: Implementation Prompt - Tell Orchestrator to Fetch Its Mission
 
-Recommend orchestrators write implementation plans in this format:
+**File**: `src/giljo_mcp/thin_prompt_generator.py`
+**Method**: `_build_claude_code_execution_prompt()` (lines 1087-1313)
+**Action**: Add section at top of SECTION 1 (Context Recap)
+
+**Current SECTION 1** starts at line 1097:
+```python
+context_recap = [
+    "# GiljoAI Implementation Phase - Claude Code CLI Mode",
+    "",
+    "## Who You Are",
+    f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
+    ...
+]
+```
+
+**Insert new subsection after "## Who You Are" and before "## What You've Already Done"**:
+```python
+context_recap.insert(7, "")  # blank line after tenant section
+context_recap.insert(8, "## Your Implementation Plan (from Staging)")
+context_recap.insert(9, "")
+context_recap.insert(10, "Fetch your stored execution plan:")
+context_recap.insert(11, "```python")
+context_recap.insert(12, f'get_agent_mission(agent_job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")')
+context_recap.insert(13, "```")
+context_recap.insert(14, "")
+context_recap.insert(15, "This returns your plan from staging with:")
+context_recap.insert(16, "- Agent execution order (sequential/parallel/hybrid)")
+context_recap.insert(17, "- Dependency graph between agents")
+context_recap.insert(18, "- Coordination checkpoints")
+context_recap.insert(19, "- Success criteria for each phase")
+context_recap.insert(20, "")
+context_recap.insert(21, "Follow this plan. If plan was not written during staging, proceed with best judgment.")
+context_recap.insert(22, "")
+```
+
+Or simpler approach - just add text string at beginning of context_recap list.
+
+---
+
+## Implementation Plan Format
+
+Recommend orchestrators write execution plans in this format (to be persisted via `update_agent_mission()`):
 
 ```markdown
 # Implementation Plan: {project_name}
@@ -215,7 +244,7 @@ Recommend orchestrators write implementation plans in this format:
 ### Phase 1: {phase_name}
 - Agent: {agent_name}
 - Job ID: {job_id}
-- Dependencies: [None | list of prior agents]
+- Dependencies: None
 - Expected Output: [What this agent produces]
 
 ### Phase 2: {phase_name}
@@ -228,9 +257,9 @@ Recommend orchestrators write implementation plans in this format:
 2. After Phase 2: Collect outputs and validate
 
 ## Success Criteria
-- [ ] All agents completed without errors
-- [ ] Deliverables match project requirements
-- [ ] No blocking messages unresolved
+- ✅ All agents completed without errors
+- ✅ Deliverables match project requirements
+- ✅ No blocking messages unresolved
 
 ## Fallback Strategy
 - If {agent} fails: {recovery action}
@@ -241,90 +270,113 @@ Recommend orchestrators write implementation plans in this format:
 
 ## Verification Checklist
 
-### Database
+### Staging Prompt Change
 ```bash
-# Verify migration applied
-PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "\d agent_jobs" | grep implementation_plan
-# Expected: implementation_plan | text | nullable
+# Verify step 6 is in the prompt
+grep -n "WRITE YOUR EXECUTION PLAN" src/giljo_mcp/thin_prompt_generator.py
+# Expected: Found in generate_staging_prompt() method
 ```
 
-### MCP Tool
-```python
-# Test new tool exists
-from giljo_mcp.tools.orchestration import update_orchestrator_implementation_plan
-# No import error
+### Implementation Prompt Change
+```bash
+# Verify fetch instruction is in the prompt
+grep -n "Your Implementation Plan" src/giljo_mcp/thin_prompt_generator.py
+# Expected: Found in _build_claude_code_execution_prompt() method
 ```
 
 ### Integration Test
 ```python
-# 1. Create orchestrator job
-# 2. Call update_orchestrator_implementation_plan() with test plan
-# 3. Call get_orchestrator_instructions()
-# 4. Verify implementation_plan field populated in response
+# 1. Orchestrator calls update_agent_mission() with execution plan during staging
+# 2. Implementation phase: Orchestrator calls get_agent_mission()
+# 3. Verify mission returned contains the execution plan
+# 4. Orchestrator follows the plan to spawn and coordinate agents
+# 5. All agents complete successfully
 ```
 
 ---
 
 ## Rollback Plan
 
-### Step 1: Revert Migration
+### Revert Both Changes
 ```bash
-alembic downgrade -1
+git checkout src/giljo_mcp/thin_prompt_generator.py
 ```
 
-### Step 2: Remove Tool
-Delete `update_orchestrator_implementation_plan` from `orchestration.py`
-
-### Step 3: Revert Prompt Changes
-Restore original staging/implementation prompts
+That's it. No database migrations to revert, no tools to remove.
 
 ---
 
 ## Success Criteria
 
-- [ ] `implementation_plan` field added to `AgentJob` model
-- [ ] Migration applied successfully
-- [ ] `update_orchestrator_implementation_plan()` MCP tool functional
-- [ ] `get_orchestrator_instructions()` returns `implementation_plan` when present
-- [ ] Staging prompt includes new step 6
-- [ ] Implementation prompt references `implementation_plan` field
+- [ ] Staging prompt includes instruction to write execution plan via `update_agent_mission()`
+- [ ] Implementation prompt includes instruction to fetch plan via `get_agent_mission()`
+- [ ] Orchestrator can write plan during staging (uses existing tool)
+- [ ] Orchestrator can fetch plan during implementation (uses existing tool)
 - [ ] Fresh session orchestrator can retrieve and follow execution plan
 - [ ] All existing tests pass (no breaking changes)
+- [ ] No database migrations required
+- [ ] No new MCP tools required
+- [ ] No new database fields required
 
 ---
 
 ## Risk Assessment
 
+### Risk Level: MINIMAL ✅
+
+Changes are prompt-only, no infrastructure modifications.
+
 ### Low Risk Items
-1. **Additive schema change** - new nullable field, no existing data affected
-2. **New MCP tool** - doesn't modify existing tools
-3. **Prompt updates** - additions only, no removals
+1. **Prompt-only changes** - No database, no tools, no schema changes
+2. **Additive instructions** - Orchestrators already have the tools, just adding guidance to use them
+3. **Graceful degradation** - If orchestrator skips step 6 during staging, step 1 of implementation still works (just warns user)
 
 ### Considerations
-1. **Backward compatibility** - Old orchestrator prompts without step 6 still work (field just stays null)
-2. **Token budget** - Implementation plan adds ~200-500 tokens to orchestrator context
+1. **Backward compatibility** - Existing orchestrators not changed, only new orchestrators see new instructions
+2. **Token impact** - ~50 tokens added to prompts (minimal)
 3. **Optional adoption** - Orchestrators can skip writing plan (graceful degradation)
 
 ---
 
 ## Related Documentation
 
-- **Staging/Implementation Prompts**: `src/giljo_mcp/thin_prompt_generator.py`
-- **Orchestration Tools**: `src/giljo_mcp/tools/orchestration.py`
-- **Agent Job Model**: `src/giljo_mcp/models.py`
-- **Context Reference**: `handovers/Agent instructions and where they live.md`
+- **Prompt Generator**: `src/giljo_mcp/thin_prompt_generator.py` (modified by this handover)
+- **Orchestration Tools**: `src/giljo_mcp/tools/orchestration.py` (uses existing update_agent_mission + get_agent_mission)
+- **Agent Mission Fetching**: Handover 0088 (Thin Client Architecture)
+- **Context Reference**: docs/ORCHESTRATOR.md (orchestrator workflow overview)
+
+---
+
+## Architecture Insight
+
+### Before This Handover
+- Orchestrator: special tool (`get_orchestrator_instructions`)
+- Other agents: standard tool (`get_agent_mission`)
+- Result: Asymmetric architecture
+
+### After This Handover
+- Orchestrator: standard tool (`get_agent_mission`)
+- Other agents: standard tool (`get_agent_mission`)
+- Result: Unified architecture ✅
+
+The orchestrator is just another agent that happens to coordinate work. It should use the same mission pattern as everyone else.
 
 ---
 
 ## Origin
 
-This improvement was identified during alpha testing (2025-12-25) of Claude Code CLI mode orchestration. During staging, the orchestrator made execution order decisions (sequential vs parallel) that were not persisted, creating a gap when implementation runs in a fresh session.
+This improvement was identified during alpha testing (2025-12-25) of Claude Code CLI mode orchestration. During staging, the orchestrator made execution order decisions but never persisted them:
 
-Testing session context:
-- Project: TinyContacts (test project)
-- Mode: Claude Code CLI
-- Observation: Orchestrator decided "analyzer first, then documenter + implementer in parallel" but this was not captured for fresh-session retrieval
+```
+Decision made: "analyzer first → then documenter + implementer in parallel"
+Problem: Decision not saved anywhere
+Result: Fresh session orchestrator must re-analyze and re-decide (wasteful, risky)
+```
+
+User insight: "Why not use the same `get_agent_mission()` that other agents use? Orchestrator has an AgentJob record just like them."
+
+**Handover revised** to implement this simpler, more elegant solution.
 
 ---
 
-**Handover 0376**: Orchestrator Implementation Mission Persistence
+**Handover 0376**: Orchestrator Unified Mission Pattern (Use Existing Agent Architecture)
