@@ -3,9 +3,9 @@
     <v-card-title class="d-flex align-center">
       API Keys
       <v-spacer />
-      <v-btn color="primary" @click="showWizard = true" :disabled="loading">
+      <v-btn color="primary" disabled>
         <v-icon start>mdi-plus</v-icon>
-        Generate New Key
+        Generate New Key (API Not Available)
       </v-btn>
     </v-card-title>
 
@@ -71,9 +71,6 @@
       </v-data-table>
     </v-card-text>
 
-    <!-- API Key Wizard -->
-    <ApiKeyWizard v-model="showWizard" @key-created="refreshKeys" />
-
     <!-- Revoke Confirmation Dialog -->
     <v-dialog v-model="showRevokeDialog" max-width="500">
       <v-card>
@@ -132,12 +129,10 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
-import ApiKeyWizard from './ApiKeyWizard.vue'
 
 // State
 const apiKeys = ref([])
 const loading = ref(false)
-const showWizard = ref(false)
 const showRevokeDialog = ref(false)
 const revoking = ref(false)
 const keyToRevoke = ref(null)
