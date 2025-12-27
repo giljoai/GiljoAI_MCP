@@ -4,7 +4,6 @@ DatabaseManager for GiljoAI MCP with PostgreSQL support.
 Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
-import logging
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Optional
 from urllib.parse import quote_plus
@@ -14,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from .logging import get_logger, ErrorCode
 from .models import Base
 from .tenant import TenantManager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DatabaseManager:
@@ -187,7 +187,12 @@ class DatabaseManager:
             try:
                 await session.rollback()
             except Exception as rollback_error:
-                logger.error(f"Session rollback failed: {rollback_error}", exc_info=True)
+                logger.error(
+                    "session_rollback_failed",
+                    error_code=ErrorCode.DB_TRANSACTION_ROLLBACK.value,
+                    error_message=str(rollback_error),
+                    exc_info=True,
+                )
             raise
         finally:
             # Always close session - but check state first to prevent IllegalStateChangeError
