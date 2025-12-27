@@ -223,7 +223,7 @@ const loadCloseoutData = async () => {
   error.value = null
 
   try {
-    const response = await api.get(`/api/projects/${props.projectId}/closeout`)
+    const response = await api.projects.getCloseoutData(props.projectId)
     closeoutData.value = {
       project_id: props.projectId,
       project_name: props.projectName,
@@ -308,7 +308,7 @@ const handleComplete = async () => {
       confirm_closeout: true,
     }
 
-    const response = await api.post(`/api/projects/${props.projectId}/complete`, payload)
+    const response = await api.projects.completeWithData(props.projectId, payload)
 
     emit('complete', response.data || { project_id: props.projectId, sequence_number: 0 })
   } catch (err) {

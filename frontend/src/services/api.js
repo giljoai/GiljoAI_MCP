@@ -191,6 +191,9 @@ export const api = {
     launch: (id, config = null) => apiClient.post(`/api/v1/projects/${id}/launch`, config),
     // Handover 0108: Staging cancellation
     cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
+    // Closeout endpoints (Handover 0371)
+    getCloseoutData: (id) => apiClient.get(`/api/v1/projects/${id}/closeout`),
+    completeWithData: (id, data) => apiClient.post(`/api/v1/projects/${id}/complete`, data),
   },
 
   // DEPRECATED: Legacy agent endpoints removed in Handover 0116
