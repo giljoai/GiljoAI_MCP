@@ -9,7 +9,6 @@ Helper functions (get_project_by_alias, etc.) are used by both paths.
 See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
-import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,12 +19,13 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.logging import get_logger, ErrorCode
 from giljo_mcp.models import AgentTemplate, Job, Product, Project
 from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.orchestrator import ProjectOrchestrator
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # ============================================================================
@@ -102,7 +102,13 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
         }
 
     except Exception as e:
-        logger.error(f"Failed to get project by alias '{alias}': {e}", exc_info=True)
+        logger.error(
+            "project_fetch_by_alias_failed",
+            error_code=ErrorCode.MCP_ORCHESTRATOR_ERROR.value,
+            alias=alias,
+            error_message=str(e),
+            exc_info=True,
+        )
         return {"error": f"Failed to fetch project: {e!s}"}
 
 
@@ -188,8 +194,9 @@ async def _get_user_config(
 
         if not user:
             logger.warning(
-                f"[USER_CONFIG] User {user_id} not found or inactive for tenant {tenant_key}, using defaults",
-                extra={"user_id": user_id, "tenant_key": tenant_key},
+                "user_not_found_using_defaults",
+                user_id=user_id,
+                tenant_key=tenant_key,
             )
             # Handover 0357: Normalize default priorities to integer format
             normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
@@ -257,8 +264,11 @@ async def _get_user_config(
 
     except Exception as e:
         logger.error(
-            f"[USER_CONFIG] Failed to fetch user config: {e}",
-            extra={"user_id": user_id, "tenant_key": tenant_key},
+            "user_config_fetch_failed",
+            error_code=ErrorCode.MCP_CONTEXT_FETCH_FAILED.value,
+            user_id=user_id,
+            tenant_key=tenant_key,
+            error_message=str(e),
             exc_info=True,
         )
         # Fall back to defaults on error (Handover 0357: normalize to integer format)
