@@ -61,16 +61,16 @@
 | 1004 | Secure Cookies | **COMPLETE** | HIGH | Moved to completed/ |
 | 1005 | Sync pyproject | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1006 | Pip Audit | **COMPLETE** | HIGH | Moved to completed/ |
-| 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement (HIGH RISK) |
+| 1007 | CSP Nonces | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1008 | Security Headers | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1009 | Rate Limiting | **COMPLETE** | MEDIUM | Moved to completed/ (2025-12-24) |
-| 1010 | Lifespan Refactor | Ready | LOW | Refactoring (MEDIUM RISK) |
-| 1011 | Repository Pattern | Ready | LOW | Architecture (HIGH RISK) |
+| 1010 | Lifespan Refactor | **COMPLETE** | LOW | Moved to completed/ |
+| 1011 | Repository Pattern | **COMPLETE** | LOW | Moved to completed/ |
 | 1012 | Bandit Linting | **COMPLETE** | MEDIUM | Moved to completed/ |
-| 1013 | Structured Logging | Deferred | LOW | Future (Phase 5) |
-| 1014 | Security Auditing | Deferred | MEDIUM | Future (Phase 5) |
+| 1013 | Structured Logging | **COMPLETE** | LOW | Moved to completed/ (2025-12-27) |
+| 1014 | Security Auditing | **DEFERRED** | MEDIUM | Phase 5 - Waiting for compliance requirements |
 
-> **Status**: 8/15 COMPLETE. 1009 completed 2025-12-24. Remaining: 1007 (HIGH risk), 1010-1011 (MEDIUM risk), 1013-1014 (deferred).
+> **Status**: 12/15 COMPLETE (2025-12-27). Core security complete. Remaining: 1014 (deferred - compliance-focused audit trail, not critical for core functionality).
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -102,6 +102,11 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 1013 | Structured Logging with Error Codes | **COMPLETE** (2025-12-27) |
+| 1012 | Bandit Security Linting | **COMPLETE** (2025-12-27) |
+| 1011 | Repository Pattern | **COMPLETE** (2025-12-27) |
+| 1010 | Lifespan Refactor | **COMPLETE** (2025-12-27) |
+| 1007 | CSP Nonces | **COMPLETE** (2025-12-27) |
 | 0379 | Universal Reactive State Architecture (Master) | **COMPLETE** (2025-12-27) |
 | 0379a | Event Router + Reconnect Resync | **COMPLETE** (2025-12-27) |
 | 0379b | Agent/Job Domain Migration | **COMPLETE** (2025-12-27) |
@@ -200,6 +205,17 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### Greptile Security Remediation (1000 Series)
+**Status:** 80% Complete (12/15 handovers, December 2025)
+- 1002-1006: Quick wins (bare except, path sanitization, cookies, pyproject sync, pip audit)
+- 1007-1009: Production hardening (CSP nonces, security headers, rate limiting)
+- 1010-1012: Code quality (lifespan refactor, repository pattern, bandit linting)
+- 1013: Structured logging with 42 error codes (AUTH, DB, WS, MCP, API)
+- **Deferred**: 1014 (security audit trail - compliance-focused, not critical)
+- **Result**: Production-grade security posture, industry-standard logging
+- See: `handovers/1000_greptile_remediation_roadmap.md`
+- Commits: 06cc4192 (1013), eaee9089 (log analysis guide)
 
 ### Universal Reactive State Architecture (0379 Series)
 **Status:** 100% Complete (December 2025)
