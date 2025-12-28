@@ -389,7 +389,7 @@ async def list_mcp_tools():
                 "description": "Create agent job for multi-agent coordination (orchestrator use)",
                 "arguments": {
                     "agent_type": "string REQUIRED - Agent role: 'implementer', 'tester', 'reviewer', 'documenter', etc.",
-                    "agent_name": "string REQUIRED - Human-readable agent name",
+                    "agent_name": "string REQUIRED - User-readable agent name",
                     "mission": "string REQUIRED - Agent-specific mission/tasks",
                     "project_id": "string (UUID) REQUIRED - Project ID",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",

@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 class ProjectCreate(BaseModel):
     """Request model for project creation."""
     name: str = Field(..., description="Project name")
-    description: str = Field(..., description="Human-written project description (what you want to accomplish)")
+    description: str = Field(..., description="User-written project description (what you want to accomplish)")
     mission: str = Field(
         default="", description="AI-generated mission statement (initially empty, filled by orchestrator)"
     )
@@ -92,7 +92,7 @@ class ProjectDeleteResponse(BaseModel):
     """Response model for project soft delete."""
 
     success: bool = Field(..., description="Whether the delete operation succeeded")
-    message: str = Field(..., description="Human-readable result message")
+    message: str = Field(..., description="User-readable result message")
     deleted_at: Optional[datetime] = Field(
         None,
         description="Timestamp when project was marked as deleted (soft delete)",
@@ -163,7 +163,7 @@ class StagingCancellationResponse(BaseModel):
     agents_deleted: int = Field(..., description="Number of agents deleted/soft-deleted")
     agents_protected: int = Field(..., description="Number of agents protected (already launched)")
     staging_status: Optional[str] = Field(None, description="Updated staging_status (should be None)")
-    message: str = Field(..., description="Human-readable result message")
+    message: str = Field(..., description="User-readable result message")
     rollback_timestamp: Optional[str] = Field(None, description="ISO timestamp of rollback")
 
 

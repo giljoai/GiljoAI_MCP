@@ -196,7 +196,7 @@ async def test_staging_to_implementation_flow(db_manager, db_session, tenant_key
     orchestration_service = OrchestrationService(db_manager, websocket_manager=None)
 
     read_result = await orchestration_service.get_agent_mission(
-        agent_job_id=orchestrator_job["job_id"],
+        job_id=orchestrator_job["job_id"],
         tenant_key=tenant_key,
     )
 

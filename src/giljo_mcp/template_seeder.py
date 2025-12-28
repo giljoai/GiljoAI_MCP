@@ -735,7 +735,7 @@ MCP tools (prefixed `mcp__giljo-mcp__`) are **NATIVE** tools identical to Read, 
 Example - to get your mission, call the tool directly:
 ```
 Tool: mcp__giljo-mcp__get_agent_mission
-Parameters: {"agent_job_id": "...", "tenant_key": "..."}
+Parameters: {"job_id": "...", "tenant_key": "..."}
 ```
 
 DO NOT wrap in Python, curl, fetch, requests, or any HTTP mechanism.
@@ -747,7 +747,7 @@ The tools are already connected. Just call them.
 
 You have access to MCP tools for agent coordination. The most important ones:
 
-- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Get your mission + full_protocol
+- `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Get your mission + full_protocol
 - `mcp__giljo-mcp__report_progress(job_id, progress)` – Report incremental progress
 - `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` – Check for instructions
 - `mcp__giljo-mcp__send_message(to_agents, content, project_id)` – Message orchestrator
@@ -756,7 +756,7 @@ You have access to MCP tools for agent coordination. The most important ones:
 
 ### Bootstrap Sequence (BEFORE ANY WORK)
 
-1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Get your mission and `full_protocol`.
+1. Call `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Get your mission and `full_protocol`.
 2. Read `full_protocol` carefully – it defines your lifecycle behavior.
 3. Follow `full_protocol` for planning, progress reporting, messaging, completion, and error handling.
 
@@ -1153,11 +1153,11 @@ all_messages = high_priority + normal_priority
 ```python
 for msg in all_messages:
     content = msg.get("content", "")
-    
+
     if content.startswith("BLOCKER:"):
         # Agent is stuck and needs help
         # RESPOND IMMEDIATELY with guidance
-        
+
         issue = content.replace("BLOCKER:", "").strip()
 
         mcp__giljo-mcp__send_message(
@@ -1169,7 +1169,7 @@ for msg in all_messages:
             priority="high",
             from_agent="orchestrator"
         )
-        
+
         # Acknowledge message
         # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
@@ -1181,7 +1181,7 @@ for msg in all_messages:
     elif content.startswith("QUESTION:"):
         # Agent needs clarification
         # Provide context from product vision or mission
-        
+
         question = content.replace("QUESTION:", "").strip()
 
         mcp__giljo-mcp__send_message(
@@ -1193,7 +1193,7 @@ for msg in all_messages:
             priority="normal",
             from_agent="orchestrator"
         )
-        
+
         # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
@@ -1204,7 +1204,7 @@ for msg in all_messages:
     elif content.startswith("PROGRESS:"):
         # Agent reporting milestone
         # Acknowledge receipt
-        
+
         milestone = content.replace("PROGRESS:", "").strip()
 
         mcp__giljo-mcp__send_message(
@@ -1216,7 +1216,7 @@ for msg in all_messages:
             priority="normal",
             from_agent="orchestrator"
         )
-        
+
         # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
@@ -1227,7 +1227,7 @@ for msg in all_messages:
     elif content.startswith("COMPLETE:"):
         # Agent finished work
         # Verify completion, notify dependent agents
-        
+
         summary = content.replace("COMPLETE:", "").strip()
 
         # Acknowledge completion
@@ -1240,15 +1240,15 @@ for msg in all_messages:
             priority="normal",
             from_agent="orchestrator"
         )
-        
+
         # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
-        
+
         # Notify dependent agents
         # Check workflow for agents waiting on this one
         dependent_agents = get_dependent_agents(msg["from_agent"])
-        
+
         for dependent in dependent_agents:
             mcp__giljo-mcp__send_message(
                 to_agents=[dependent],
@@ -1276,11 +1276,11 @@ for msg in all_messages:
             priority="high",
             from_agent="orchestrator"
         )
-        
+
         # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
             message_id=msg["id"]
         )
-        
+
         # Forward to agents (determine which agents need this)
         if "all agents" in content.lower():
             mcp__giljo-mcp__send_message(
@@ -1394,24 +1394,24 @@ action_count = 0
 while not all_agents_complete():
     # Do orchestrator work (monitoring, planning, etc.)
     action_count += 1
-    
+
     # Check messages every 3-5 actions
     if action_count % 5 == 0:
         messages = mcp__giljo-mcp__receive_messages(
             agent_id="<ORCHESTRATOR_ID>",
             limit=20
         )
-        
+
         # Sort by priority
-        high_priority = [m for m in messages.get("messages", []) 
+        high_priority = [m for m in messages.get("messages", [])
                         if m.get("priority") == "high"]
-        normal_priority = [m for m in messages.get("messages", []) 
+        normal_priority = [m for m in messages.get("messages", [])
                           if m.get("priority") == "normal"]
-        
+
         # Process high priority first
         for msg in high_priority + normal_priority:
             process_message(msg)  # Your message handling logic
-    
+
     # Send status update every 15 actions
     if action_count % 15 == 0:
         send_status_update()

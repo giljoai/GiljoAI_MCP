@@ -767,12 +767,6 @@ class ToolAccessor:
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
-                    # Backward compatibility
-                    "agent_job_id": job_id,  # Alias for job_id
-                    "job_id": job_id,  # Phase C: Top-level for backward compatibility
-                    "agent_id": execution.agent_id,  # Phase C: Top-level for backward compatibility
-                    "mission": agent_job.mission or "",  # Phase C: Top-level for backward compatibility
-                    "fetch_instructions": fetch_instructions,  # Phase C: Top-level for backward compatibility
                 }
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
@@ -849,9 +843,9 @@ class ToolAccessor:
             parent_job_id=parent_job_id
         )
 
-    async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Get agent-specific mission (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_agent_mission(agent_job_id=agent_job_id, tenant_key=tenant_key)
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+        """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
+        return await self._orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Full project orchestration workflow (delegates to OrchestrationService)"""
@@ -1727,22 +1721,11 @@ class ToolAccessor:
                 templates = result.scalars().all()
 
                 export_timestamp = datetime.now(timezone.utc)
-                template_ids = []
                 for template in templates:
                     template.last_exported_at = export_timestamp
-                    template_ids.append(template.id)
 
                 await session.commit()
                 logger.info(f"Updated last_exported_at for {len(templates)} templates")
-
-                # Emit WebSocket event for real-time UI update
-                # Use existing WebSocketManager API (broadcast_templates_exported)
-                if self._websocket_manager and template_ids:
-                    await self._websocket_manager.broadcast_templates_exported(
-                        tenant_key=tenant_key,
-                        template_ids=template_ids,
-                        export_type="manual_zip",
-                    )
 
             # 6. Build download URL (token IS auth - no API key needed)
             if not _server_url:

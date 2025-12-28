@@ -345,7 +345,7 @@
               v-model="projectData.description"
               label="Project Description"
               :rules="[(v) => !!v || 'Description is required']"
-              hint="Human-written description of what you want to accomplish. This will be shown to the orchestrator."
+              hint="User-written description of what you want to accomplish. This will be shown to the orchestrator."
               persistent-hint
               rows="4"
               required
@@ -595,6 +595,7 @@ import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import { formatStatus } from '@/utils/formatters'
@@ -607,6 +608,7 @@ const projectStore = useProjectStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
 const tabsStore = useProjectTabsStore()
+const projectStateStore = useProjectStateStore()
 
 // Reactive state
 const searchQuery = ref('')
@@ -744,11 +746,12 @@ const deletedProjects = computed(() => projectStore.deletedProjects)
 const deletedCount = computed(() => deletedProjects.value.length)
 
 // Helper function to determine if project is staged
-// A project is considered "staged" if:
-// 1. Has agents assigned (agent_count > 0), OR
-// 2. staging_status field is set to 'staged'
+// A project is considered "staged" when stagingComplete is true in projectStateStore
+// This aligns with the "Launch jobs" button becoming active in ProjectTabs.vue
 const isProjectStaged = (project) => {
-  return project.agent_count > 0 || project.staging_status === 'staged'
+  const projectId = project.project_id || project.id
+  const state = projectStateStore.getProjectState(projectId)
+  return Boolean(state?.stagingComplete)
 }
 
 // Launch button visibility - only show when exactly 1 active project exists
