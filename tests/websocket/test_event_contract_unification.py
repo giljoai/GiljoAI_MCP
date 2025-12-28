@@ -128,12 +128,12 @@ class TestMessageEventJobIdentifiers:
         ws_manager.active_connections["client-1"] = mock_ws
         ws_manager.auth_contexts["client-1"] = {"tenant_key": tenant_key}
 
-        agent_job_id = str(uuid.uuid4())
+        job_id = str(uuid.uuid4())
         message_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         await ws_manager.broadcast_message_acknowledged(
             message_id=message_ids[0],
-            agent_id=agent_job_id,
+            agent_id=job_id,
             tenant_key=tenant_key,
             project_id=str(uuid.uuid4()),
             message_ids=message_ids,
@@ -143,8 +143,8 @@ class TestMessageEventJobIdentifiers:
         assert sent["type"] == "message:acknowledged"
         assert sent["schema_version"] == "1.0"
         assert sent["data"]["tenant_key"] == tenant_key
-        assert sent["data"]["from_job_id"] == agent_job_id
-        assert sent["data"]["to_job_ids"] == [agent_job_id]
+        assert sent["data"]["from_job_id"] == job_id
+        assert sent["data"]["to_job_ids"] == [job_id]
 
 
 class TestLegacyEventAliasing:
