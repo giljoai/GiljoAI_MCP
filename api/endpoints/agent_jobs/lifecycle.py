@@ -96,21 +96,21 @@ async def spawn_agent_job(
             event_type="agent:created",
             data={
                 "project_id": request.project_id,
-                "agent_job_id": result["agent_job_id"],
+                "job_id": result["job_id"],
                 "agent_type": request.agent_type,
                 "status": "waiting"
             }
         )
-        logger.info(f"Agent spawn broadcasted: {result['agent_job_id']}")
+        logger.info(f"Agent spawn broadcasted: {result['job_id']}")
     except Exception:
         logger.exception("Failed to broadcast agent spawn event")
         # Non-critical - continue without broadcast
 
-    logger.info(f"Spawned agent job {result['agent_job_id']} for tenant {current_user.tenant_key}")
+    logger.info(f"Spawned agent job {result['job_id']} for tenant {current_user.tenant_key}")
 
     return SpawnAgentResponse(
         success=True,
-        agent_job_id=result["agent_job_id"],
+        job_id=result["job_id"],
         agent_prompt=result.get("agent_prompt", ""),
         mission_stored=result.get("mission_stored", True),
         thin_client=result.get("thin_client", True)

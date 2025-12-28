@@ -421,14 +421,14 @@ async def list_mcp_tools():
                 "name": "get_agent_mission",
                 "description": "Fetch agent-specific mission from storage (thin client architecture)",
                 "arguments": {
-                    "agent_job_id": "string (UUID) REQUIRED - Agent job UUID",
+                    "job_id": "string (UUID) REQUIRED - Agent job UUID (Handover 0381: renamed from agent_job_id)",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
                 },
                 "examples": [
                     {
                         "description": "Agent retrieves its mission on startup",
                         "payload": {
-                            "agent_job_id": "job-abc123-def456",
+                            "job_id": "job-abc123-def456",
                             "tenant_key": "tk-tenant123-456",
                         },
                     },

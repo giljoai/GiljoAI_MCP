@@ -34,7 +34,7 @@ class Task(Base):
     - Nullable fields for backward compatibility and MCP tool creation
 
     Handover 0072: Task-to-Agent Job Integration
-    - agent_job_id: Links task to AgentJob for execution tracking
+    - job_id: Links task to AgentJob for execution tracking (Handover 0381: renamed from agent_job_id)
     - project_id: Now nullable to support unassigned tasks
     - status: Added "converted" state for task-to-project conversions
     """
@@ -58,8 +58,8 @@ class Task(Base):
     # Phase 4: Task-to-project conversion tracking
     converted_to_project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
 
-    # Handover 0072: Agent job integration
-    agent_job_id = Column(String(36), ForeignKey("agent_jobs.job_id"), nullable=True)
+    # Handover 0072: Agent job integration (Handover 0381: renamed to job_id)
+    job_id = Column(String(36), ForeignKey("agent_jobs.job_id"), nullable=True)
 
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
@@ -95,8 +95,8 @@ class Task(Base):
         Index("idx_task_created_by_user", "created_by_user_id"),
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
         Index("idx_task_converted_to_project", "converted_to_project_id"),  # Conversion tracking
-        Index("idx_task_agent_job", "agent_job_id"),  # Handover 0072: Agent job linking
-        Index("idx_task_tenant_agent_job", "tenant_key", "agent_job_id"),  # Composite for tenant isolation
+        Index("idx_task_job", "job_id"),  # Handover 0072/0381: Agent job linking
+        Index("idx_task_tenant_job", "tenant_key", "job_id"),  # Composite for tenant isolation
     )
 
 
