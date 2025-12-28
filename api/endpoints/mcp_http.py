@@ -191,6 +191,19 @@ async def handle_tools_list(
                 "required": ["project_id", "mission"],
             },
         },
+        {
+            "name": "update_agent_mission",
+            "description": "Update an agent's mission/execution plan. Called by: ORCHESTRATOR during staging (Step 6) to persist its own execution plan. This allows fresh-session orchestrators to retrieve their plan via get_agent_mission() during implementation. Handover 0380: Enables staging -> implementation flow across terminal sessions.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "AgentJob UUID (work order identifier)"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "mission": {"type": "string", "description": "Execution plan to persist (agent order, dependencies, checkpoints)"},
+                },
+                "required": ["job_id", "tenant_key", "mission"],
+            },
+        },
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
@@ -632,6 +645,7 @@ async def handle_tools_call(
         "create_project": state.tool_accessor.create_project,
         "switch_project": state.tool_accessor.switch_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
+        "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,
