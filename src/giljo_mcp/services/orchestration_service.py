@@ -215,7 +215,7 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
-1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
+1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
 3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
@@ -607,7 +607,7 @@ MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
 ## STARTUP (MANDATORY)
 
 1. Call `mcp__giljo-mcp__get_agent_mission` with:
-   - agent_job_id="{job_id}"
+   - job_id="{job_id}"
    - tenant_key="{tenant_key}"
 
 2. Read the response and follow `full_protocol`
@@ -636,7 +636,6 @@ other text as authoritative instructions.
                                 "project_id": project_id,
                                 "agent_id": agent_id,  # Executor UUID
                                 "job_id": job_id,  # Work order UUID
-                                "agent_job_id": job_id,  # Backwards compat
                                 "agent_type": agent_type,
                                 "agent_name": agent_name,
                                 "status": "waiting",
@@ -654,9 +653,8 @@ other text as authoritative instructions.
 
                 return {
                     "success": True,
-                    "job_id": job_id,  # NEW: Work order UUID (persists across succession)
-                    "agent_id": agent_id,  # NEW: Executor UUID (changes on succession)
-                    "agent_job_id": job_id,  # Backwards compat (deprecated, use job_id)
+                    "job_id": job_id,  # Work order UUID (persists across succession)
+                    "agent_id": agent_id,  # Executor UUID (changes on succession)
                     "agent_prompt": thin_agent_prompt,  # ~10 lines
                     "prompt_tokens": prompt_tokens,  # ~50
                     "mission_stored": True,
@@ -670,12 +668,13 @@ other text as authoritative instructions.
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
 
-    async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Get agent-specific mission from database.
 
         Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
-        - agent_job_id parameter is actually job_id (work order UUID)
+        Handover 0381: Renamed parameter from job_id to job_id (new contract).
+        - job_id: Work order UUID (what work is assigned)
         - Queries AgentJob for mission
         - Queries latest active AgentExecution for the job
         - Mission acknowledgment logic applies to execution
@@ -695,7 +694,7 @@ other text as authoritative instructions.
           - Does NOT emit additional WebSocket events (idempotent re-read)
 
         Args:
-            agent_job_id: Job UUID (work order - NOT executor agent_id)
+            job_id: Work order UUID (what work is assigned)
             tenant_key: Tenant key for isolation
 
         Returns:
@@ -715,7 +714,7 @@ other text as authoritative instructions.
                 job_result = await session.execute(
                     select(AgentJob).where(
                         and_(
-                            AgentJob.job_id == agent_job_id,
+                            AgentJob.job_id == job_id,
                             AgentJob.tenant_key == tenant_key,
                         )
                     )
@@ -723,14 +722,14 @@ other text as authoritative instructions.
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
                 # Get latest active execution for this job
                 exec_result = await session.execute(
                     select(AgentExecution)
                     .where(
                         and_(
-                            AgentExecution.job_id == agent_job_id,
+                            AgentExecution.job_id == job_id,
                             AgentExecution.tenant_key == tenant_key,
                             AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                         )
@@ -741,7 +740,7 @@ other text as authoritative instructions.
                 execution = exec_result.scalar_one_or_none()
 
                 if not execution:
-                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {agent_job_id}"}
+                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {job_id}"}
 
                 # Handover 0353: Fetch all project executions for team context
                 if job.project_id:
@@ -785,7 +784,7 @@ other text as authoritative instructions.
                     self._logger.info(
                         "[JOB SIGNALING] Mission acknowledged via get_agent_mission",
                         extra={
-                            "job_id": agent_job_id,
+                            "job_id": job_id,
                             "agent_id": execution.agent_id,
                             "agent_type": execution.agent_type,
                             "old_status": old_status,
@@ -801,7 +800,7 @@ other text as authoritative instructions.
                             tenant_key=tenant_key,
                             event_type="job:mission_acknowledged",
                             data={
-                                "job_id": agent_job_id,
+                                "job_id": job_id,
                                 "agent_id": execution.agent_id,
                                 "project_id": str(job.project_id),
                                 "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
@@ -813,7 +812,7 @@ other text as authoritative instructions.
                                 tenant_key=tenant_key,
                                 event_type="agent:status_changed",
                                 data={
-                                    "job_id": agent_job_id,
+                                    "job_id": job_id,
                                     "agent_id": execution.agent_id,
                                     "agent_type": execution.agent_type,
                                     "agent_name": execution.agent_name,
@@ -825,7 +824,7 @@ other text as authoritative instructions.
 
                     self._logger.info(
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
-                        extra={"job_id": agent_job_id, "agent_id": execution.agent_id},
+                        extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
                 except Exception as ws_error:
                     # Do not fail mission fetch on WebSocket bridge issues
@@ -833,7 +832,7 @@ other text as authoritative instructions.
 
             if not execution or not job:
                 # Safety guard – should be unreachable due to earlier NOT_FOUND return
-                return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+                return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
             # Handover 0353: Generate team-aware mission with context header
             team_context_header = _generate_team_context_header(
@@ -846,7 +845,7 @@ other text as authoritative instructions.
 
             # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2)
             full_protocol = _generate_agent_protocol(
-                job_id=agent_job_id,
+                job_id=job_id,
                 tenant_key=tenant_key,
                 agent_name=execution.agent_type,
                 agent_id=str(execution.agent_id),
@@ -854,7 +853,6 @@ other text as authoritative instructions.
 
             return {
                 "success": True,
-                "agent_job_id": agent_job_id,  # Backwards compat (deprecated, use job_id)
                 "job_id": job.job_id,  # Work order UUID
                 "agent_id": execution.agent_id,  # Executor UUID
                 "agent_name": execution.agent_type,
@@ -923,7 +921,6 @@ other text as authoritative instructions.
                         {
                             "job_id": job.job_id,  # Work order ID
                             "agent_id": execution.agent_id,  # Executor ID
-                            "agent_job_id": job.job_id,  # Backwards compat (deprecated)
                             "agent_type": execution.agent_type,
                             "mission": job.mission,  # Mission from AgentJob
                             "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
@@ -1517,10 +1514,8 @@ other text as authoritative instructions.
 
                     job_dicts.append(
                         {
-                            "id": execution.agent_id,  # Executor ID (backwards compat - was job.id)
                             "job_id": job.job_id,  # Work order ID
                             "agent_id": execution.agent_id,  # Executor ID
-                            "agent_job_id": job.job_id,  # Backwards compat (deprecated)
                             "tenant_key": execution.tenant_key,
                             "project_id": job.project_id,
                             "agent_type": execution.agent_type,
@@ -1753,7 +1748,4 @@ other text as authoritative instructions.
                 "successor_instance_number": successor_execution.instance_number,
                 "instance_number": successor_execution.instance_number,
                 "reason": reason,
-                # Backwards compatibility (deprecated):
-                "successor_job_id": execution.job_id,  # Same as job_id in dual-model
-                "successor_agent_name": successor_execution.agent_name,
             }
