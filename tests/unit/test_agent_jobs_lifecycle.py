@@ -37,7 +37,7 @@ class TestSpawnAgentJob:
 
         mock_service = AsyncMock()
         mock_service.spawn_agent_job.return_value = {
-            "agent_job_id": "job-123",
+            "job_id": "job-123",
             "agent_prompt": "Test prompt",
             "mission_stored": True,
             "thin_client": True
@@ -61,7 +61,7 @@ class TestSpawnAgentJob:
 
         # Assertions
         assert response.success is True
-        assert response.agent_job_id == "job-123"
+        assert response.job_id == "job-123"
         mock_service.spawn_agent_job.assert_called_once()
         mock_ws_dep.broadcast_to_tenant.assert_called_once()
 

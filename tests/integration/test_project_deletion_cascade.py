@@ -542,7 +542,7 @@ class TestNuclearDeleteConsistency:
 
         # Get IDs
         project_id = project.id
-        agent_job_id = agent_job.id
+        job_id = agent_job.id
         task_id = task.id
         message_id = message.id
         context_index_id = context_index.id
@@ -571,7 +571,7 @@ class TestNuclearDeleteConsistency:
         )).scalar_one_or_none() is None, "Project should be deleted"
 
         assert (await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == agent_job_id)
+            select(AgentExecution).where(AgentExecution.agent_id == job_id)
         )).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
 
         assert (await db_session.execute(

@@ -480,7 +480,7 @@ async def test_spawn_agent_job_sets_context_fields_for_orchestrator(orchestratio
 
         # Verify response
         assert result["success"] is True
-        assert "agent_job_id" in result
+        assert "job_id" in result
 
         # Verify context fields were set
         assert len(added_jobs) == 1

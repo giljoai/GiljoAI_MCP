@@ -220,11 +220,11 @@ async def test_get_agent_mission_thin_client(db_session, test_agent_job, test_te
 
     from giljo_mcp.tools.orchestration import get_agent_mission
 
-    result = await get_agent_mission(agent_job_id=test_agent_job.job_id, tenant_key=test_tenant.tenant_key)
+    result = await get_agent_mission(job_id=test_agent_job.job_id, tenant_key=test_tenant.tenant_key)
 
     # Verify result structure
     assert result["success"] is True
-    assert result["agent_job_id"] == test_agent_job.job_id
+    assert result["job_id"] == test_agent_job.job_id
     assert result["agent_type"] == "backend"
     assert result["mission"] == test_agent_job.mission
     assert result["project_id"] == str(test_agent_job.project_id)
@@ -253,7 +253,7 @@ async def test_get_agent_mission_not_found(db_session, test_tenant):
 
     from giljo_mcp.tools.orchestration import get_agent_mission
 
-    result = await get_agent_mission(agent_job_id="nonexistent-id", tenant_key=test_tenant.tenant_key)
+    result = await get_agent_mission(job_id="nonexistent-id", tenant_key=test_tenant.tenant_key)
 
     # Verify error response
     assert result["error"] == "NOT_FOUND"
@@ -305,7 +305,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, test_project, test_tenant
 
         # Verify success
         assert result["success"] is True
-        assert "agent_job_id" in result
+        assert "job_id" in result
         assert result["thin_client"] is True
         assert result["mission_stored"] is True
 
@@ -319,14 +319,14 @@ async def test_spawn_agent_job_thin_prompt(db_session, test_project, test_tenant
 
         # Verify prompt contains get_agent_mission instruction
         assert "get_agent_mission" in prompt
-        assert result["agent_job_id"] in prompt
+        assert result["job_id"] in prompt
 
         # Verify token estimates
         assert result["prompt_tokens"] < 100, "Prompt should be <100 tokens"
         assert result["mission_tokens"] > 0
 
         # Verify agent job created in database
-        agent_job = await db_session.get(AgentExecution, result["agent_job_id"])
+        agent_job = await db_session.get(AgentExecution, result["job_id"])
         assert agent_job is not None
         assert agent_job.mission == mission_text
         assert agent_job.spawned_by == test_orchestrator_job.job_id
@@ -409,7 +409,7 @@ async def test_agent_mission_stored_not_embedded(db_session, test_project, test_
         assert mission not in result["agent_prompt"], "CRITICAL: Mission must NOT be embedded in prompt"
 
         # Verify mission IS in database
-        agent_job = await db_session.get(AgentExecution, result["agent_job_id"])
+        agent_job = await db_session.get(AgentExecution, result["job_id"])
         assert agent_job.mission == mission, "CRITICAL: Mission must be stored in database"
 
 
@@ -455,7 +455,7 @@ async def test_websocket_broadcast_agent_created(db_session, test_project, test_
         assert call_args.kwargs["event_type"] == "agent:created"
 
         data = call_args.kwargs["data"]
-        assert data["agent_job_id"] == result["agent_job_id"]
+        assert data["job_id"] == result["job_id"]
         assert data["agent_type"] == "orchestrator"
         assert data["agent_name"] == "Sub-Orchestrator"
         assert data["thin_client"] is True
@@ -489,7 +489,7 @@ async def test_multi_tenant_isolation_get_agent_mission(db_session, test_agent_j
     from giljo_mcp.tools.orchestration import get_agent_mission
 
     # Try to access with wrong tenant
-    result = await get_agent_mission(agent_job_id=test_agent_job.job_id, tenant_key="wrong_tenant_key")
+    result = await get_agent_mission(job_id=test_agent_job.job_id, tenant_key="wrong_tenant_key")
 
     # Verify access denied
     assert result["error"] == "NOT_FOUND"

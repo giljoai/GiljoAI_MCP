@@ -191,11 +191,11 @@ class TestValidAgentSpawning:
 
         # ASSERTION: Spawn succeeds
         assert result["success"] is True
-        assert "agent_job_id" in result
+        assert "job_id" in result
 
         # ASSERTION: Agent job exists in database
-        agent_job_id = result["agent_job_id"]
-        stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
+        job_id = result["job_id"]
+        stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
         db_result = await db_session.execute(stmt)
         agent_job = db_result.scalar_one_or_none()
 
@@ -228,8 +228,8 @@ class TestValidAgentSpawning:
             )
 
             # ASSERTION: Agent exists in database
-            agent_job_id = result["agent_job_id"]
-            stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
+            job_id = result["job_id"]
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             db_result = await db_session.execute(stmt)
             agent_job = db_result.scalar_one()
 
