@@ -154,7 +154,7 @@ class TestAgentCardRealTimeBroadcasting:
 
             # Assert: spawn_agent_job succeeded
             assert result["success"] is True
-            assert "agent_job_id" in result
+            assert "job_id" in result
 
             mock_ws_manager.broadcast_to_tenant.assert_awaited_once()
             call_kwargs = mock_ws_manager.broadcast_to_tenant.await_args.kwargs
@@ -197,7 +197,7 @@ class TestAgentCardRealTimeBroadcasting:
         event_data = {
             "project_id": test_project_0111.id,
             "agent_id": agent_id,
-            "agent_job_id": agent_id,
+            "job_id": agent_id,
             "agent_type": "tester",
             "agent_name": "QA Tester",
             "status": "pending",
@@ -354,13 +354,13 @@ class TestAgentCardRealTimeBroadcasting:
 
             # Assert: spawn_agent_job succeeded (bridge error logged but not fatal)
             assert result["success"] is True
-            assert "agent_job_id" in result
+            assert "job_id" in result
 
             # Assert: Agent job was created in database
-            agent_job_id = result["agent_job_id"]
+            job_id = result["job_id"]
             from sqlalchemy import select
 
-            stmt = select(AgentExecution).where(AgentExecution.job_id == agent_job_id)
+            stmt = select(AgentExecution).where(AgentExecution.job_id == job_id)
             result_query = await db_session.execute(stmt)
             agent_job = result_query.scalar_one_or_none()
             assert agent_job is not None

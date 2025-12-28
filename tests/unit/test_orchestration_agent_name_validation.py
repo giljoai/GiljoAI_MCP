@@ -428,7 +428,7 @@ class TestSpawnAgentJobValidationAgentName:
         )
 
         # ASSERTION: Agent job created
-        assert "agent_job_id" in result, "Successful spawn must return agent_job_id"
+        assert "job_id" in result, "Successful spawn must return job_id"
         assert "agent_prompt" in result, "Successful spawn must return agent_prompt"
 
         # ASSERTION: No error message
