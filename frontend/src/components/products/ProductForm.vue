@@ -751,7 +751,7 @@ const testingStrategies = [
   {
     value: 'Manual',
     title: 'Manual Testing',
-    subtitle: 'Human-driven QA and exploratory testing',
+    subtitle: 'User-driven QA and exploratory testing',
     icon: 'mdi-human-male',
   },
   {

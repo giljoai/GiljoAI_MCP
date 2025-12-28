@@ -29,7 +29,7 @@ class NetworkDetectionResponse(BaseModel):
 class NetworkAdapter(BaseModel):
     """Network adapter information"""
 
-    name: str = Field(..., description="Human-readable adapter name")
+    name: str = Field(..., description="User-readable adapter name")
     interface_id: str = Field(..., description="System interface identifier")
     ip_address: str = Field(..., description="IPv4 address")
     is_active: bool = Field(..., description="Whether adapter is currently active")

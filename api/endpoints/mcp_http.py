@@ -421,19 +421,19 @@ async def handle_tools_list(
         },
         {
             "name": "get_agent_mission",
-            "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times).",
+            "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times). Handover 0381: Uses job_id (work order UUID).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "agent_job_id": {"type": "string", "description": "Agent job UUID"},
+                    "job_id": {"type": "string", "description": "Work order UUID (job_id)"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_job_id", "tenant_key"],
+                "required": ["job_id", "tenant_key"],
             },
         },
         {
             "name": "spawn_agent_job",
-            "description": "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission into agent-specific tasks and spawns agents who EXECUTE the work. Returns agent_job_id and thin prompt (~10 lines). Agent later calls get_agent_mission() to fetch full mission. Creates database record linking agent to project.",
+            "description": "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission into agent-specific tasks and spawns agents who EXECUTE the work. Returns job_id and thin prompt (~10 lines). Agent later calls get_agent_mission() to fetch full mission. Creates database record linking agent to project.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
