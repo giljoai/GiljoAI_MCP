@@ -217,6 +217,95 @@ class ToolAccessor:
         """Update the mission field (delegates to ProjectService)"""
         return await self._project_service.update_project_mission(project_id, mission)
 
+    async def update_agent_mission(
+        self, job_id: str, tenant_key: str, mission: str
+    ) -> dict[str, Any]:
+        """
+        Update the mission field of an AgentJob.
+
+        Handover 0380: Used by orchestrators to persist their execution plan during staging.
+        This allows fresh-session orchestrators to retrieve the plan via get_agent_mission()
+        during implementation phase.
+
+        Args:
+            job_id: The AgentJob.job_id (work order UUID)
+            tenant_key: Tenant isolation key
+            mission: The execution plan/mission to persist
+
+        Returns:
+            {"success": True, "job_id": job_id, "mission_updated": True}
+        """
+        try:
+            async with self.get_session_async() as session:
+                from sqlalchemy import and_, select
+
+                from giljo_mcp.models.agent_identity import AgentJob
+
+                result = await session.execute(
+                    select(AgentJob).where(
+                        and_(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                job = result.scalar_one_or_none()
+
+                if not job:
+                    return {
+                        "error": "NOT_FOUND",
+                        "message": f"Agent job {job_id} not found",
+                        "troubleshooting": [
+                            "Verify job_id is correct",
+                            "Ensure tenant_key matches",
+                            f"Check database: SELECT * FROM agent_jobs WHERE job_id = '{job_id}'",
+                        ],
+                    }
+
+                job.mission = mission
+                await session.commit()
+
+                # Emit WebSocket event for UI update
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_updated",
+                            data={
+                                "job_id": job_id,
+                                "job_type": job.job_type,
+                                "mission_length": len(mission),
+                                "project_id": str(job.project_id) if job.project_id else None,
+                            },
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
+                            extra={"job_id": job_id, "tenant_key": tenant_key},
+                        )
+                    except Exception as ws_error:
+                        logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
+
+                logger.info(
+                    f"[UPDATE_AGENT_MISSION] Updated mission for job {job_id}",
+                    extra={
+                        "job_id": job_id,
+                        "job_type": job.job_type,
+                        "mission_length": len(mission),
+                        "tenant_key": tenant_key,
+                    },
+                )
+
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "mission_updated": True,
+                    "mission_length": len(mission),
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to update agent mission: {e}")
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+
     # Agent Tools
 
     async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
