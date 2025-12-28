@@ -695,7 +695,7 @@ class MessageService:
                     # The dashboard reads from AgentJob.messages JSONB, not Message table
                     await self._update_jsonb_message_status(
                         session=session,
-                        agent_job_id=agent_id,
+                        job_id=agent_id,
                         message_ids=[str(msg.id) for msg in messages],
                         new_status="acknowledged"
                     )
@@ -1084,7 +1084,7 @@ class MessageService:
                 # Update JSONB for UI counter sync
                 await self._update_jsonb_message_status(
                     session=session,
-                    agent_job_id=agent_id,
+                    job_id=agent_id,
                     message_ids=[message_id],
                     new_status="acknowledged"
                 )
@@ -1245,7 +1245,7 @@ class MessageService:
     async def _update_jsonb_message_status(
         self,
         session: AsyncSession,
-        agent_job_id: str,
+        job_id: str,
         message_ids: list[str],
         new_status: str,
     ) -> None:
@@ -1257,7 +1257,7 @@ class MessageService:
 
         Args:
             session: Active database session
-            agent_job_id: Agent job ID whose JSONB messages to update
+            job_id: Job ID (work order) whose JSONB messages to update
             message_ids: List of message IDs to update
             new_status: New status value (e.g., 'acknowledged', 'read')
         """
@@ -1266,12 +1266,12 @@ class MessageService:
         try:
             # Get the agent job
             result = await session.execute(
-                select(AgentJob).where(AgentJob.job_id == agent_job_id)
+                select(AgentJob).where(AgentJob.job_id == job_id)
             )
             agent_job = result.scalar_one_or_none()
 
             if not agent_job or not agent_job.messages:
-                self._logger.debug(f"[JSONB UPDATE] No messages to update for agent {agent_job_id}")
+                self._logger.debug(f"[JSONB UPDATE] No messages to update for job {job_id}")
                 return
 
             # Update status for matching messages
@@ -1289,10 +1289,10 @@ class MessageService:
                 await session.commit()
                 self._logger.info(
                     f"[JSONB UPDATE] Updated {updated_count} messages to '{new_status}' "
-                    f"for agent {agent_job_id}"
+                    f"for job {job_id}"
                 )
             else:
-                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for agent {agent_job_id}")
+                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for job {job_id}")
 
         except Exception as e:
             self._logger.error(f"[JSONB UPDATE] Failed to update message status: {e}")

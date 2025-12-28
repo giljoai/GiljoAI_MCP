@@ -117,8 +117,8 @@ class TaskResponse(BaseModel):
         None, description="Associated project ID (nullable for unassigned tasks - Handover 0072)"
     )
 
-    # Handover 0072: Agent job integration
-    agent_job_id: Optional[str] = Field(None, description="Linked agent job ID for execution tracking")
+    # Handover 0072/0381: Agent job integration (renamed from agent_job_id)
+    job_id: Optional[str] = Field(None, description="Linked agent job ID for execution tracking")
     parent_task_id: Optional[str] = Field(None, description="Parent task ID for subtasks")
 
     # Phase 4: User fields (Handover 0076: removed assigned_to_user_id)

@@ -30,7 +30,7 @@ class SpawnAgentResponse(BaseModel):
     """Response model for agent spawn operation."""
 
     success: bool = Field(..., description="Whether spawn succeeded")
-    agent_job_id: str = Field(..., description="Created agent job ID")
+    job_id: str = Field(..., description="Created agent job ID (Handover 0381: renamed from agent_job_id)")
     agent_prompt: str = Field(..., description="Generated agent prompt")
     mission_stored: bool = Field(..., description="Whether mission was stored")
     thin_client: bool = Field(..., description="Whether using thin client architecture")

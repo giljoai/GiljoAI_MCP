@@ -101,7 +101,7 @@ def task_to_response(task: Task) -> TaskResponse:
         priority=task.priority,
         product_id=task.product_id,
         project_id=task.project_id,
-        agent_job_id=task.agent_job_id,
+        job_id=task.job_id,
         parent_task_id=task.parent_task_id,
         created_by_user_id=task.created_by_user_id,
         converted_to_project_id=task.converted_to_project_id,

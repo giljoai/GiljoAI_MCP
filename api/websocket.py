@@ -882,8 +882,7 @@ class WebSocketManager:
                 data={
                     "tenant_key": tenant_key,
                     "project_id": project_id,
-                    "agent_id": job_id,
-                    "agent_job_id": job_id,
+                    "job_id": job_id,
                     "agent_type": agent_type,
                     "agent_name": agent_name,
                     "status": status,
