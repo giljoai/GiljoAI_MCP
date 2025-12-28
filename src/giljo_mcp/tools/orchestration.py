@@ -816,7 +816,8 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         Returns:
             {
                 'success': True,
-                'agent_job_id': 'uuid',
+                'job_id': 'uuid',  # Work order UUID
+                'agent_id': 'uuid',  # Executor UUID
                 'agent_prompt': '~10 line thin prompt for agent to paste',
                 'prompt_tokens': 50,
                 'mission_stored': True,  # Mission saved to AgentJob.mission
@@ -968,7 +969,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                                 "project_id": project_id,
                                 "agent_id": agent_id,  # Executor UUID
                                 "job_id": job_id,  # Work order UUID
-                                "agent_job_id": job_id,  # Backwards compatibility
                                 "agent_type": agent_type,
                                 "agent_name": agent_name,
                                 "status": "waiting",
@@ -985,7 +985,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                     "success": True,
                     "job_id": job_id,  # Work order UUID (persistent)
                     "agent_id": agent_id,  # Executor UUID (changes on succession)
-                    "agent_job_id": job_id,  # Backwards compatibility
                     "agent_prompt": thin_agent_prompt,
                     "prompt_tokens": prompt_tokens,
                     "mission_tokens": mission_tokens,
@@ -2721,7 +2720,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "project_id": project_id,
                         "agent_id": agent_id,  # Executor UUID
                         "job_id": job_id,  # Work order UUID
-                        "agent_job_id": job_id,  # Backwards compatibility
                         "agent_type": agent_type,
                         "agent_name": agent_name,
                         "status": "waiting",
@@ -2735,9 +2733,8 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
 
         return {
             "success": True,
-            "job_id": job_id,  # HIGH #3 FIX: Return job_id (work order UUID)
-            "agent_id": agent_id,  # HIGH #3 FIX: Return agent_id (executor UUID)
-            "agent_job_id": job_id,  # Backwards compatibility
+            "job_id": job_id,  # Work order UUID
+            "agent_id": agent_id,  # Executor UUID
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,

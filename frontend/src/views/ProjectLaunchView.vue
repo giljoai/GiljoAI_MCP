@@ -99,7 +99,7 @@
                 v-model="projectData.description"
                 label="Project Description"
                 :rules="[(v) => !!v || 'Description is required']"
-                hint="Human-written description of what you want to accomplish"
+                hint="User-written description of what you want to accomplish"
                 persistent-hint
                 rows="4"
                 required
