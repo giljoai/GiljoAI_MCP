@@ -143,7 +143,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -188,7 +188,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -234,7 +234,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=documenter_job.job_id,
+                job_id=documenter_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -277,7 +277,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -319,7 +319,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -378,7 +378,7 @@ class TestTeamAwareMissions:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=solo_job.job_id,
+                job_id=solo_job.job_id,
                 tenant_key=tenant_key
             )
 
@@ -402,7 +402,7 @@ class TestTeamContextIdClarification:
         """
         Test that mission/protocol uses job_id (UUID) for MCP tool calls.
 
-        Per 0353: Clarify that job_id / agent_job_id = UUID for MCP tools.
+        Per 0353: Clarify that job_id / job_id = UUID for MCP tools.
         """
         db_manager, session = mock_db_manager
         analyzer_job = multi_agent_project_jobs["analyzer"]
@@ -426,7 +426,7 @@ class TestTeamContextIdClarification:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 
@@ -472,7 +472,7 @@ class TestTeamContextIdClarification:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=analyzer_job.job_id,
+                job_id=analyzer_job.job_id,
                 tenant_key=multi_agent_project_jobs["tenant_key"]
             )
 

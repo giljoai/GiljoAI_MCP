@@ -97,7 +97,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
         _rows_result([(execution, job)]),
     ]
 
-    response = await orchestration_service.get_agent_mission(agent_job_id=job_id, tenant_key=tenant_key)
+    response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     assert response["success"] is True
     assert execution.mission_acknowledged_at is not None
@@ -139,7 +139,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         _rows_result([(execution, job)]),
     ]
 
-    response = await orchestration_service.get_agent_mission(agent_job_id=job_id, tenant_key=tenant_key)
+    response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     assert response["success"] is True
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()
