@@ -22,7 +22,7 @@ class GenericAgentTemplate:
     - {tenant_key}: Tenant isolation key
 
     Mission + Protocol (by Agent):
-    - Agent calls: mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)
+    - Agent calls: mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)
     - Receives: mission (what to do) + full_protocol (how to behave)
     - Executes: According to mission and full_protocol returned by server
     """
@@ -90,7 +90,7 @@ MCP tools are **native tools** (like Read/Write/Bash/Glob), already connected in
 - WRONG: Use of `curl`, raw HTTP requests, SDKs, or custom clients
 
 Key tools used by this agent:
-- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` – Fetches mission + protocol
+- `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Fetches mission + protocol
 - `mcp__giljo-mcp__report_progress(job_id, progress)` – Progress and check-ins
 - `mcp__giljo-mcp__complete_job(job_id, result)` – Completion
 - `mcp__giljo-mcp__report_error(job_id, error)` – Blocking errors
@@ -106,7 +106,7 @@ returned with your mission.
    Call:
    ```python
    result = mcp__giljo-mcp__get_agent_mission(
-       agent_job_id="{job_id}",
+       job_id="{job_id}",
        tenant_key="{tenant_key}"
    )
    ```

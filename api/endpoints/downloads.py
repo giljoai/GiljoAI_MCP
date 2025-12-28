@@ -383,17 +383,6 @@ async def download_agent_templates(
             template.last_exported_at = export_timestamp
 
         await db.commit()
-
-        # Emit WebSocket event for real-time UI update (access from app state)
-        ws_manager = getattr(request.app.state, "websocket_manager", None)
-        if ws_manager:
-            await ws_manager.broadcast_templates_exported(
-                tenant_key=current_user.tenant_key,
-                template_ids=[str(t.id) for t in selected],
-                export_type="manual_zip",
-                exported_at=export_timestamp,
-            )
-
         logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
 
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
@@ -847,17 +836,6 @@ async def import_personal_agents_rest(
                 for template in templates:
                     template.last_exported_at = export_timestamp
                 await db.commit()
-
-                # Emit WebSocket event for real-time UI update (access from app state)
-                ws_manager = getattr(request.app.state, "websocket_manager", None)
-                if ws_manager:
-                    await ws_manager.broadcast_templates_exported(
-                        tenant_key=current_user.tenant_key,
-                        template_ids=[str(t.id) for t in templates],
-                        export_type="personal_agents",
-                        exported_at=export_timestamp,
-                    )
-
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (personal agents export)")
 
         return result
@@ -924,17 +902,6 @@ async def import_product_agents_rest(
                 for template in templates:
                     template.last_exported_at = export_timestamp
                 await db.commit()
-
-                # Emit WebSocket event for real-time UI update (access from app state)
-                ws_manager = getattr(request.app.state, "websocket_manager", None)
-                if ws_manager:
-                    await ws_manager.broadcast_templates_exported(
-                        tenant_key=current_user.tenant_key,
-                        template_ids=[str(t.id) for t in templates],
-                        export_type="product_agents",
-                        exported_at=export_timestamp,
-                    )
-
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (product agents export)")
 
         return result
