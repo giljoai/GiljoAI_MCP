@@ -19,7 +19,7 @@ class SpawnAgentRequest(BaseModel):
     """Request model for spawning a new agent job."""
 
     agent_type: str = Field(..., description="Agent type (orchestrator, implementer, etc.)")
-    agent_name: Optional[str] = Field(None, description="Human-readable agent name")
+    agent_name: Optional[str] = Field(None, description="User-readable agent name")
     mission: str = Field(..., description="Agent mission/instructions")
     project_id: str = Field(..., description="Project UUID")
     parent_job_id: Optional[str] = Field(None, description="Parent job UUID")

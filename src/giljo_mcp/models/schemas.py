@@ -183,12 +183,13 @@ class SuccessionResponse(BaseModel):
     Response for manual succession trigger.
 
     Handover 0358b: Updated for dual-model architecture (AgentJob + AgentExecution).
+    Handover 0381: Clean contract - job_id (work order) + successor_agent_id (new executor).
     Returns successor execution details and handover summary for launching new instance.
     """
 
-    current_job_id: str = Field(..., description="Current orchestrator UUID (could be agent_id or job_id)")
-    successor_job_id: str = Field(..., description="Work order UUID (same across succession in dual-model)")
-    successor_agent_id: Optional[str] = Field(None, description="NEW executor agent_id (dual-model)")
+    current_agent_id: str = Field(..., description="Current executor agent_id being succeeded")
+    job_id: str = Field(..., description="Work order UUID (persists across succession)")
+    successor_agent_id: str = Field(..., description="NEW executor agent_id")
     instance_number: int = Field(..., description="Successor instance number")
     launch_prompt: str = Field(..., description="Thin-client launch prompt for successor")
     handover_summary: Optional[str] = Field(None, description="Compressed handover summary")
@@ -199,8 +200,9 @@ class SuccessionResponse(BaseModel):
         from_attributes=True,
         json_schema_extra={
             "example": {
-                "current_job_id": "orch-job-123",
-                "successor_job_id": "orch-job-456",
+                "current_agent_id": "agent-123",
+                "job_id": "job-456",
+                "successor_agent_id": "agent-789",
                 "instance_number": 2,
                 "launch_prompt": "Continue orchestration from instance 1...",
                 "handover_summary": "Project 60% complete, 3 active agents...",
