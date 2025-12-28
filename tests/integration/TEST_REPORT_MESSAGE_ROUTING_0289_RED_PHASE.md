@@ -221,7 +221,7 @@ if self._websocket_manager:
     for agent_type in agent_types:
         if agent_type != from_agent:  # Don't echo to sender
             await self._websocket_manager.broadcast_job_message(
-                job_id=agent_job_id,  # From agent_jobs query
+                job_id=job_id,  # From agent_jobs query
                 message_id=message_id,
                 from_agent=from_agent,
                 tenant_key=tenant_key,

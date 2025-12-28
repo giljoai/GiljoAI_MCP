@@ -186,7 +186,7 @@ class TestOrchestrationToolsHTTPExposure:
         result = await tool_accessor.get_agent_mission(fake_id, tenant_key)
 
         # Should return structured error, not crash
-        assert "error" in result or "agent_job_id" in result
+        assert "error" in result or "job_id" in result
 
     @pytest.mark.asyncio
     async def test_orchestrate_project_accessible(self, db_manager):

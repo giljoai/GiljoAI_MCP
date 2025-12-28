@@ -95,7 +95,7 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -126,7 +126,7 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -161,7 +161,7 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -194,7 +194,7 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -225,13 +225,13 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
         # Verify all existing fields are still present
         assert response.get("success") is True
-        assert "agent_job_id" in response
+        assert "job_id" in response
         assert "agent_name" in response
         assert "agent_type" in response
         assert "mission" in response
@@ -265,7 +265,7 @@ class TestGetAgentMissionFullProtocol:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -309,7 +309,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -355,7 +355,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -405,7 +405,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 
@@ -454,7 +454,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             MockHttpxClient.return_value = mock_client
 
             response = await orchestration_service.get_agent_mission(
-                agent_job_id=job.job_id,
+                job_id=job.job_id,
                 tenant_key="tenant-test"
             )
 

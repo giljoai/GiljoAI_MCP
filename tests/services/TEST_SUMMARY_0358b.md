@@ -73,7 +73,7 @@ pytest tests/services/test_orchestration_service_dual_model.py --collect-only
 ```python
 # Current implementation returns:
 {
-    'agent_job_id': 'a3c709f5-4049-427e-86d5-df93692534a3',  # OLD key name
+    'job_id': 'a3c709f5-4049-427e-86d5-df93692534a3',  # OLD key name
     'agent_prompt': '...',
     'mission_stored': True,
     ...
@@ -89,7 +89,7 @@ pytest tests/services/test_orchestration_service_dual_model.py --collect-only
 ```
 
 **Failure Message**: `assert 'job_id' in result`
-**Reason**: Current implementation uses monolithic MCPAgentJob (single ID as agent_job_id)
+**Reason**: Current implementation uses monolithic MCPAgentJob (single ID as job_id)
 
 ## Next Steps (GREEN Phase - Handover 0358c)
 

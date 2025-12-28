@@ -34,7 +34,7 @@ class TestMessageAutoAcknowledge:
 
         tenant_key = TenantManager.generate_tenant_key(f"test_auto_ack_{uuid4().hex[:8]}")
         project_id = str(uuid4())
-        agent_job_id = str(uuid4())
+        job_id = str(uuid4())
 
         async with db_manager.get_session_async() as setup_session:
             # Create project
@@ -51,7 +51,7 @@ class TestMessageAutoAcknowledge:
 
             # Create agent job
             agent_job = AgentExecution(
-                job_id=agent_job_id,
+                job_id=job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
                 agent_type="orchestrator",
@@ -74,7 +74,7 @@ class TestMessageAutoAcknowledge:
                 id=msg1_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
-                to_agents=[agent_job_id],
+                to_agents=[job_id],
                 message_type="direct",
                 content="Test message 1",
                 priority="normal",
@@ -87,7 +87,7 @@ class TestMessageAutoAcknowledge:
                 id=msg2_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
-                to_agents=[agent_job_id],
+                to_agents=[job_id],
                 message_type="direct",
                 content="Test message 2",
                 priority="high",
@@ -103,7 +103,7 @@ class TestMessageAutoAcknowledge:
         message_service = MessageService(db_manager, tenant_manager)
 
         result = await message_service.receive_messages(
-            agent_id=agent_job_id,
+            agent_id=job_id,
             limit=10,
             tenant_key=tenant_key
         )
@@ -117,7 +117,7 @@ class TestMessageAutoAcknowledge:
         for msg in result["messages"]:
             assert msg["acknowledged"] is True, f"Message {msg['id']} not marked as acknowledged in response"
             assert msg["acknowledged_at"] is not None, f"Message {msg['id']} missing acknowledged_at timestamp"
-            assert msg["acknowledged_by"] == agent_job_id, f"Message {msg['id']} acknowledged_by incorrect"
+            assert msg["acknowledged_by"] == job_id, f"Message {msg['id']} acknowledged_by incorrect"
 
         # Assert: Verify database records are updated to acknowledged status
         async with db_manager.get_session_async() as verify_session:
@@ -130,11 +130,11 @@ class TestMessageAutoAcknowledge:
 
             assert db_msg1.status == "acknowledged", "Message 1 status not updated to acknowledged"
             assert db_msg1.acknowledged_at is not None, "Message 1 acknowledged_at not set"
-            assert db_msg1.acknowledged_by == [agent_job_id], "Message 1 acknowledged_by not set correctly"
+            assert db_msg1.acknowledged_by == [job_id], "Message 1 acknowledged_by not set correctly"
 
             assert db_msg2.status == "acknowledged", "Message 2 status not updated to acknowledged"
             assert db_msg2.acknowledged_at is not None, "Message 2 acknowledged_at not set"
-            assert db_msg2.acknowledged_by == [agent_job_id], "Message 2 acknowledged_by not set correctly"
+            assert db_msg2.acknowledged_by == [job_id], "Message 2 acknowledged_by not set correctly"
 
     @pytest.mark.asyncio
     async def test_receive_messages_respects_limit(
@@ -153,7 +153,7 @@ class TestMessageAutoAcknowledge:
         # Create isolated test data
         tenant_key = TenantManager.generate_tenant_key(f"test_limit_{uuid4().hex[:8]}")
         project_id = str(uuid4())
-        agent_job_id = str(uuid4())
+        job_id = str(uuid4())
 
         async with db_manager.get_session_async() as setup_session:
             # Create project
@@ -170,7 +170,7 @@ class TestMessageAutoAcknowledge:
 
             # Create agent job
             agent_job = AgentExecution(
-                job_id=agent_job_id,
+                job_id=job_id,
                 tenant_key=tenant_key,
                 project_id=project_id,
                 agent_type="orchestrator",
@@ -192,7 +192,7 @@ class TestMessageAutoAcknowledge:
                     id=str(uuid4()),
                     tenant_key=tenant_key,
                     project_id=project_id,
-                    to_agents=[agent_job_id],
+                    to_agents=[job_id],
                     message_type="direct",
                     content=f"Test message {i+1}",
                     priority="normal",
@@ -209,7 +209,7 @@ class TestMessageAutoAcknowledge:
         message_service = MessageService(db_manager, tenant_manager)
 
         result = await message_service.receive_messages(
-            agent_id=agent_job_id,
+            agent_id=job_id,
             limit=2,
             tenant_key=tenant_key
         )

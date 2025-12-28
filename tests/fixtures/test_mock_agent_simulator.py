@@ -52,7 +52,7 @@ def mock_mission_response() -> dict[str, Any]:
                     "text": json.dumps(
                         {
                             "success": True,
-                            "agent_job_id": "job-123-test",
+                            "job_id": "job-123-test",
                             "agent_name": "implementer",
                             "agent_type": "implementer",
                             "mission": "Create REST API endpoint for user management",
@@ -184,7 +184,7 @@ class TestMockAgentSimulatorMethods:
             result = await mock_agent_simulator.fetch_mission(mock_job_id, mock_tenant_key)
 
             assert result["success"] is True
-            assert result["agent_job_id"] == mock_job_id
+            assert result["job_id"] == mock_job_id
             assert result["agent_type"] == "implementer"
             assert "mission" in result
             assert result["thin_client"] is True
@@ -413,7 +413,7 @@ class TestMockAgentSimulatorExecution:
                                 "text": json.dumps(
                                     {
                                         "success": True,
-                                        "agent_job_id": "job-123",
+                                        "job_id": "job-123",
                                         "agent_type": "implementer",
                                         "mission": "Quick test",
                                         "thin_client": True,
