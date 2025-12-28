@@ -173,7 +173,7 @@ class WebSocketEventListener:
         try:
             tenant_key = data.get("tenant_key")
             project_id = data.get("project_id")
-            agent_id = data.get("agent_id") or data.get("agent_job_id")
+            agent_id = data.get("job_id")  # Handover 0381: Canonical field name
 
             if not tenant_key or not project_id or not agent_id:
                 self.logger.error(
