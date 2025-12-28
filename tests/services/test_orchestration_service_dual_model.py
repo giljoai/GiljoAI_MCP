@@ -479,9 +479,9 @@ class TestQueryMethodsDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Get mission via job_id (agent_job_id parameter is actually job_id)
+        # Get mission via job_id (job_id parameter is actually job_id)
         fetched_mission = await service.get_agent_mission(
-            agent_job_id=result["job_id"], tenant_key=test_tenant_key
+            job_id=result["job_id"], tenant_key=test_tenant_key
         )
 
         assert fetched_mission.get("success") is True

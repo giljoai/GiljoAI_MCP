@@ -64,7 +64,7 @@ async def test_execution_plan_section_in_implementation_prompt(
     product_id = f"test-prod-{uuid4().hex[:12]}"
     project_id = f"test-proj-{uuid4().hex[:12]}"
     orchestrator_job_id = f"test-orch-{uuid4().hex[:12]}"
-    agent_job_id = f"test-agent-{uuid4().hex[:12]}"
+    job_id = f"test-agent-{uuid4().hex[:12]}"
 
     async with db_manager.get_session_async() as session:
         # Create test product
@@ -111,7 +111,7 @@ async def test_execution_plan_section_in_implementation_prompt(
 
         # Create spawned agent job and execution
         agent_job = AgentJob(
-            job_id=agent_job_id,
+            job_id=job_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
             job_type="implementer",
@@ -121,7 +121,7 @@ async def test_execution_plan_section_in_implementation_prompt(
         session.add(agent_job)
 
         agent = AgentExecution(
-            job_id=agent_job_id,
+            job_id=job_id,
             tenant_key=test_user.tenant_key,
             agent_type="implementer",
             agent_name="Test Implementer",
@@ -142,7 +142,7 @@ async def test_execution_plan_section_in_implementation_prompt(
         agent_result = await gen_session.execute(
             select(AgentExecution)
             .options(selectinload(AgentExecution.job))
-            .where(AgentExecution.job_id == agent_job_id)
+            .where(AgentExecution.job_id == job_id)
         )
         agent = agent_result.scalar_one()
 
@@ -258,7 +258,7 @@ async def test_execution_plan_section_formatting(
             "Prompt should include Python code block"
 
         # Verify proper MCP tool call syntax
-        expected_call = f'get_agent_mission(agent_job_id="{orchestrator_job_id}", tenant_key="{test_user.tenant_key}")'
+        expected_call = f'get_agent_mission(job_id="{orchestrator_job_id}", tenant_key="{test_user.tenant_key}")'
         assert expected_call in prompt, \
             f"Prompt should include properly formatted MCP tool call: {expected_call}"
 

@@ -81,7 +81,7 @@ class TestOrchestrationServiceJobManagement:
 
         # Assert
         assert result["success"] is True
-        assert "agent_job_id" in result
+        assert "job_id" in result
         assert "agent_prompt" in result
         assert result["thin_client"] is True
         assert result["mission_stored"] is True
@@ -145,13 +145,13 @@ class TestOrchestrationServiceJobManagement:
 
             # Act
             result = await service.get_agent_mission(
-                agent_job_id="job-123",
+                job_id="job-123",
                 tenant_key="test-tenant"
             )
 
         # Assert
         assert result["success"] is True
-        assert result["agent_job_id"] == "job-123"
+        assert result["job_id"] == "job-123"
         assert result["agent_type"] == "implementer"
         assert "Implement feature X" in result["mission"]
         assert result["thin_client"] is True

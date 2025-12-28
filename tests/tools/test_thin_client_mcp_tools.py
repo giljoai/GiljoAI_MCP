@@ -437,13 +437,13 @@ async def test_get_agent_mission_thin_client(db_session, tenant_key, test_projec
     await db_session.refresh(agent_job)
 
     # Call get_agent_mission
-    result = await get_agent_mission(agent_job_id=agent_job.job_id, tenant_key=tenant_key)
+    result = await get_agent_mission(job_id=agent_job.job_id, tenant_key=tenant_key)
 
     # Verify success
     assert "error" not in result
 
     # Verify agent identity
-    assert result["agent_job_id"] == agent_job.job_id
+    assert result["job_id"] == agent_job.job_id
     assert result["agent_name"] == "Backend Implementer"
     assert result["agent_type"] == "implementer"
 
@@ -497,8 +497,8 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
     assert "error" not in result
 
     # Verify agent job created
-    assert "agent_job_id" in result
-    agent_job_id = result["agent_job_id"]
+    assert "job_id" in result
+    job_id = result["job_id"]
 
     # Verify thin prompt returned (not full mission)
     assert "agent_prompt" in result
@@ -513,7 +513,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
 
     # Thin prompt should include fetch instructions
     assert "get_agent_mission" in agent_prompt or "fetch" in agent_prompt.lower()
-    assert agent_job_id in agent_prompt
+    assert job_id in agent_prompt
 
     # Verify token estimates
     assert "prompt_tokens" in result
@@ -521,7 +521,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
     assert result["prompt_tokens"] < 100, "Prompt should be <100 tokens"
 
     # Verify mission stored in database
-    db_agent = await db_session.get(AgentExecution, agent_job_id)
+    db_agent = await db_session.get(AgentExecution, job_id)
     assert db_agent is not None
     assert db_agent.mission == mission_content
     assert db_agent.agent_type == "implementer"
@@ -656,7 +656,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
     assert spawn_result["prompt_tokens"] < 100
 
     # Step 4: Agent fetches mission
-    agent_result = await get_agent_mission(agent_job_id=spawn_result["agent_job_id"], tenant_key=tenant_key)
+    agent_result = await get_agent_mission(job_id=spawn_result["job_id"], tenant_key=tenant_key)
 
     assert "error" not in agent_result
     assert "mission" in agent_result

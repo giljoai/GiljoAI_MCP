@@ -86,7 +86,7 @@
   "tenant_key": "tk_...",
   "project_id": "proj_...",
   "agent_id": "agent_...",
-  "agent_job_id": "agent_...",
+  "job_id": "agent_...",
   "agent_type": "implementer",
   "agent_name": "Backend Implementer",
   "status": "pending",

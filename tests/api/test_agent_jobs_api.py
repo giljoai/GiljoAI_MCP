@@ -295,7 +295,7 @@ class TestAgentJobLifecycle:
         assert response.status_code == 201
         data = response.json()
         assert data["success"] is True
-        assert "agent_job_id" in data
+        assert "job_id" in data
         assert data["mission_stored"] is True
         assert data["thin_client"] is True
         assert len(data["agent_prompt"]) > 0
@@ -343,7 +343,7 @@ class TestAgentJobLifecycle:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test successful job acknowledgment."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/acknowledge",
@@ -377,7 +377,7 @@ class TestAgentJobLifecycle:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test successful job completion."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         # First acknowledge
         await api_client.post(
@@ -420,7 +420,7 @@ class TestAgentJobLifecycle:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test successful error reporting."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         # Acknowledge first
         await api_client.post(
@@ -536,7 +536,7 @@ class TestAgentJobStatus:
         from sqlalchemy import select
         from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         # Populate todo_steps in job_metadata for the spawned job
         async with db_manager.get_session_async() as session:
@@ -584,7 +584,7 @@ class TestAgentJobStatus:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test getting job details by ID."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.get(
             f"/api/agent-jobs/{job_id}",
@@ -634,7 +634,7 @@ class TestAgentJobStatus:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test getting job mission."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.get(
             f"/api/agent-jobs/{job_id}/mission",
@@ -677,7 +677,7 @@ class TestAgentJobOperations:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test successful job cancellation."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         # Acknowledge job first (can only cancel active jobs)
         await api_client.post(
@@ -719,7 +719,7 @@ class TestAgentJobOperations:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test successful force-fail operation."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         # Acknowledge job first
         await api_client.post(
@@ -760,7 +760,7 @@ class TestAgentJobOperations:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test getting job health metrics."""
-        job_id = tenant_a_agent_job["agent_job_id"]
+        job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.get(
             f"/api/jobs/{job_id}/health",
@@ -801,7 +801,7 @@ class TestAgentJobMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_agent_job
     ):
         """Test that Tenant A cannot access Tenant B's jobs."""
-        job_id = tenant_b_agent_job["agent_job_id"]
+        job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.get(
             f"/api/agent-jobs/{job_id}",
@@ -816,7 +816,7 @@ class TestAgentJobMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_agent_job
     ):
         """Test that Tenant A cannot acknowledge Tenant B's jobs."""
-        job_id = tenant_b_agent_job["agent_job_id"]
+        job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/acknowledge",
@@ -830,7 +830,7 @@ class TestAgentJobMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_agent_job
     ):
         """Test that Tenant A cannot complete Tenant B's jobs."""
-        job_id = tenant_b_agent_job["agent_job_id"]
+        job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/complete",
@@ -845,7 +845,7 @@ class TestAgentJobMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_agent_job
     ):
         """Test that Tenant A cannot cancel Tenant B's jobs."""
-        job_id = tenant_b_agent_job["agent_job_id"]
+        job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.post(
             f"/api/jobs/{job_id}/cancel",
@@ -935,7 +935,7 @@ class TestAgentJobStateTransitions:
             cookies={"access_token": tenant_a_admin_token}
         )
         assert spawn_response.status_code == 201
-        job_id = spawn_response.json()["agent_job_id"]
+        job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(
@@ -972,7 +972,7 @@ class TestAgentJobStateTransitions:
             cookies={"access_token": tenant_a_admin_token}
         )
         assert spawn_response.status_code == 201
-        job_id = spawn_response.json()["agent_job_id"]
+        job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(
@@ -1008,7 +1008,7 @@ class TestAgentJobStateTransitions:
             cookies={"access_token": tenant_a_admin_token}
         )
         assert spawn_response.status_code == 201
-        job_id = spawn_response.json()["agent_job_id"]
+        job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(

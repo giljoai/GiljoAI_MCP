@@ -233,7 +233,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
 
     # BEHAVIOR: Should succeed for succession
     assert result.get("success") is True
-    assert "agent_job_id" in result
+    assert "job_id" in result
     assert "agent_prompt" in result
 
 
@@ -344,7 +344,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
 
     # BEHAVIOR: Non-orchestrator agents can have multiple instances
     assert result.get("success") is True
-    assert "agent_job_id" in result
+    assert "job_id" in result
 
 
 @pytest.mark.asyncio
@@ -428,4 +428,4 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
 
     # BEHAVIOR: Multi-tenant isolation - should succeed
     assert result.get("success") is True
-    assert "agent_job_id" in result
+    assert "job_id" in result
