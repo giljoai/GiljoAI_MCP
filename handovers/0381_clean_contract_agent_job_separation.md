@@ -123,14 +123,37 @@ get_agent_mission(job_id="uuid", tenant_key="key")  # Clear: work order UUID
 
 ---
 
-## Database Column Names Unchanged
+## Database Schema Changes (Phase 2)
 
-The following database columns are **NOT** changed (would require migration):
-- `Task.agent_job_id` - FK to AgentJob
-- Index `idx_task_agent_job`
-- Index `idx_task_tenant_agent_job`
+**Updated** (aggressive cleanup):
 
-These column names are internal implementation details, not API contracts.
+| Model | Old | New |
+|-------|-----|-----|
+| `Task.agent_job_id` | Column name | `Task.job_id` |
+| `idx_task_agent_job` | Index name | `idx_task_job` |
+| `idx_task_tenant_agent_job` | Index name | `idx_task_tenant_job` |
+
+**Files Updated**:
+- `src/giljo_mcp/models/tasks.py` - Column and index renames
+- `src/giljo_mcp/agent_job_manager.py` - Query updated
+- `src/giljo_mcp/services/task_service.py` - Response field renamed
+- `src/giljo_mcp/services/message_service.py` - Internal param renamed
+
+**Note**: Fresh installs via `install.py` will create correct schema. Existing installs need DB reset (dev mode).
+
+---
+
+## API Response Model Changes (Phase 2)
+
+| File | Model | Old Field | New Field |
+|------|-------|-----------|-----------|
+| `api/endpoints/agent_jobs/models.py` | SpawnAgentResponse | `agent_job_id` | `job_id` |
+| `api/schemas/task.py` | TaskResponse | `agent_job_id` | `job_id` |
+
+**WebSocket Event Changes**:
+- `api/websocket.py` - `agent:created` event now uses `job_id` (removed duplicate `agent_job_id`)
+- `api/websocket_event_listener.py` - Event handler reads `job_id` (removed fallback)
+- `api/endpoints/agent_jobs/lifecycle.py` - Spawn broadcast uses `job_id`
 
 ---
 
@@ -175,9 +198,14 @@ After deployment, verify by:
 
 ## Summary
 
-Removed all backward compatibility aliases for `agent_job_id`:
-- ~15 files modified
-- ~50 lines of backward compat code removed
+**Phase 1**: Removed backward compatibility aliases from service/tool layer
+**Phase 2**: Extended cleanup to database schema and API response models
+
+Total cleanup:
+- ~25 files modified (runtime code + 24 test files)
+- ~60 lines of backward compat code removed
+- Database column `Task.agent_job_id` → `Task.job_id`
+- API response fields standardized to `job_id`
+- WebSocket events use canonical `job_id` field
 - Clean contract: `job_id` (work order) + `agent_id` (executor)
-- No more duplicate fields in responses
-- MCP tool parameter `agent_job_id` renamed to `job_id`
+- Zero `agent_job_id` references in runtime code (comments only)
