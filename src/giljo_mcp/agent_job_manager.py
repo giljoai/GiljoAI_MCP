@@ -864,7 +864,7 @@ class AgentJobManager:
 
         try:
             # Find tasks linked to this agent job
-            task_query = select(Task).where(and_(Task.agent_job_id == job.job_id, Task.tenant_key == job.tenant_key))
+            task_query = select(Task).where(and_(Task.job_id == job.job_id, Task.tenant_key == job.tenant_key))
             task_result = session.execute(task_query)
             task = task_result.scalar_one_or_none()
 
