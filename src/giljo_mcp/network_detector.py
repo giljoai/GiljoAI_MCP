@@ -59,13 +59,35 @@ class AdapterIPDetector:
             return None
 
     def detect_ip_change(self, config: dict) -> tuple[bool, Optional[str], Optional[str]]:
-        """Detect if network adapter IP has changed from initial/stored configuration."""
+        """Detect if network adapter IP has changed from initial/stored configuration.
+
+        If no adapter is configured but mode is 'auto', will auto-detect best adapter.
+        """
         try:
             security = config.get("security", {})
             network = security.get("network", {})
+            mode = network.get("mode", "localhost")
 
             adapter_id = network.get("selected_adapter")
             initial_ip = network.get("initial_ip")
+
+            # Auto-detect adapter if not specified and mode is 'auto'
+            if not adapter_id and mode == "auto":
+                recommended = self.get_recommended_adapter()
+                if recommended:
+                    adapter_id, current_ip = recommended
+                    logger.info(f"Auto-detected adapter: {adapter_id!r} with IP {current_ip}")
+                    # First run - no initial IP to compare
+                    if not initial_ip:
+                        return False, current_ip, adapter_id
+                    # Compare with stored initial IP
+                    if current_ip != initial_ip:
+                        logger.info(f"IP changed from initial: {initial_ip} -> {current_ip}")
+                        return True, current_ip, adapter_id
+                    return False, current_ip, adapter_id
+                else:
+                    logger.warning("Auto-detect mode but no suitable adapters found")
+                    return False, None, None
 
             if not adapter_id:
                 logger.debug("No network adapter configured in security.network section")
