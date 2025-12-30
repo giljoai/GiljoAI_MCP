@@ -37,7 +37,7 @@
       <div style="flex: 0 0 auto; display: flex; align-items: center">
         <ActiveProductDisplay class="mr-3" />
         <ConnectionStatus class="mr-2" />
-        <v-btn icon="mdi-bell" variant="text" aria-label="View notifications" class="mr-2"></v-btn>
+        <NotificationDropdown class="mr-2" />
 
         <!-- User Menu -->
         <v-menu offset-y>
@@ -122,6 +122,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import UserProfileDialog from '@/components/UserProfileDialog.vue'
+import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import api from '@/services/api'
 
 const props = defineProps({
