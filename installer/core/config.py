@@ -585,6 +585,21 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
             },
         }
 
+        # Add network adapter tracking for dynamic IP detection (v3.1+)
+        # This enables CORS updates when network adapter IP changes between sessions
+        network_mode = self.settings.get("network_mode", "localhost")
+        security_config["network"] = {
+            "mode": network_mode,  # auto, static, localhost, or custom
+        }
+
+        # Include adapter info for auto/static modes (enables dynamic detection)
+        if network_mode in ("auto", "static"):
+            selected_adapter = self.settings.get("selected_adapter")
+            initial_ip = self.settings.get("initial_ip")
+            if selected_adapter and initial_ip:
+                security_config["network"]["selected_adapter"] = selected_adapter
+                security_config["network"]["initial_ip"] = initial_ip
+
         return security_config
 
     def generate_secret_key(self, length: int = 32) -> str:
