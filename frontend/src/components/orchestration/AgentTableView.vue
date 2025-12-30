@@ -125,15 +125,6 @@
       <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
     </template>
   </v-snackbar>
-
-  <!-- Handover 0234: Staleness warning snackbar -->
-  <v-snackbar v-model="showStaleWarning" color="warning" :timeout="5000" location="bottom">
-    <v-icon class="mr-2">mdi-clock-alert</v-icon>
-    <strong>{{ staleAgentName }}</strong> has been inactive for over 10 minutes
-    <template #actions>
-      <v-btn variant="text" @click="showStaleWarning = false"> Dismiss </v-btn>
-    </template>
-  </v-snackbar>
 </template>
 
 <script setup>
@@ -198,20 +189,8 @@ const { copy } = useClipboard()
 const copyingJobId = ref(null)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Handover 0234: Staleness monitoring
-const showStaleWarning = ref(false)
-const staleAgentName = ref('')
-
-const emitStaleWarning = (job) => {
-  staleAgentName.value = job.agent_name || job.agent_type
-  showStaleWarning.value = true
-}
-
-// Initialize staleness monitor
-useStalenessMonitor(
-  computed(() => props.agents),
-  emitStaleWarning,
-)
+// Handover 0234: Staleness monitoring (notifications now go to notification bell)
+useStalenessMonitor(computed(() => props.agents))
 
 // Table headers configuration (Handover 0240b, updated for Steps column; Handover 0366d-1: Added Instance and Job ID)
 const headers = [
