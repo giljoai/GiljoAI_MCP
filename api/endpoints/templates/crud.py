@@ -103,23 +103,28 @@ async def get_template(
     template_id: str,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> TemplateResponse:
     """
     Get template by ID for the current tenant.
 
-    Uses direct DB access to avoid coupling GET semantics to TemplateService,
-    while still enforcing tenant isolation.
+    Migrated to TemplateService - Handover 1011 Phase 2.
     """
     logger.debug(f"User {current_user.username} getting template {template_id}")
 
-    stmt = select(AgentTemplate).where(
-        and_(
-            AgentTemplate.id == template_id,
-            AgentTemplate.tenant_key == current_user.tenant_key,
-        )
+    # ORIGINAL QUERY: crud.py line 115-122 (replaced with service call)
+    # stmt = select(AgentTemplate).where(
+    #     and_(
+    #         AgentTemplate.id == template_id,
+    #         AgentTemplate.tenant_key == current_user.tenant_key,
+    #     )
+    # )
+    # result = await session.execute(stmt)
+    # template = result.scalar_one_or_none()
+
+    template = await template_service.get_template_by_id(
+        session, template_id, current_user.tenant_key
     )
-    result = await session.execute(stmt)
-    template = result.scalar_one_or_none()
 
     if not template:
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
@@ -131,33 +136,30 @@ async def get_template(
 async def list_templates(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
     role: Optional[str] = Query(None, description="Filter by role"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
 ) -> list[TemplateResponse]:
     """
     List all templates for the current tenant.
 
-    NOTE: Using direct DB query instead of TemplateService due to service returning
-    incomplete data (dicts instead of full ORM objects). This allows proper response
-    conversion with all fields populated.
+    Migrated to TemplateService - Handover 1011 Phase 2.
     """
     logger.debug(f"User {current_user.username} listing templates")
 
     try:
-        from sqlalchemy import select
-        from src.giljo_mcp.models import AgentTemplate
+        # ORIGINAL QUERY: crud.py line 151-160 (replaced with service call)
+        # query = select(AgentTemplate).where(AgentTemplate.tenant_key == current_user.tenant_key)
+        # if role:
+        #     query = query.where(AgentTemplate.role == role)
+        # if is_active is not None:
+        #     query = query.where(AgentTemplate.is_active == is_active)
+        # result = await session.execute(query)
+        # templates = result.scalars().all()
 
-        # TENANT ISOLATION: Only return templates for current tenant
-        query = select(AgentTemplate).where(AgentTemplate.tenant_key == current_user.tenant_key)
-
-        # Apply filters
-        if role:
-            query = query.where(AgentTemplate.role == role)
-        if is_active is not None:
-            query = query.where(AgentTemplate.is_active == is_active)
-
-        result = await session.execute(query)
-        templates = result.scalars().all()
+        templates = await template_service.list_templates_with_filters(
+            session, current_user.tenant_key, role=role, is_active=is_active
+        )
 
         return [_convert_to_response(t) for t in templates]
 
@@ -171,6 +173,7 @@ async def create_template(
     template: TemplateCreate,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> TemplateResponse:
     """
     Create a new template.
@@ -193,15 +196,19 @@ async def create_template(
         if len(generated_name) > 100:
             raise HTTPException(status_code=400, detail="Name must be 100 characters or less")
 
-        # Check uniqueness
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.tenant_key == context["tenant_key"],
-                AgentTemplate.name == generated_name
-            )
-        )
-        result = await session.execute(stmt)
-        if result.scalar_one_or_none():
+        # ORIGINAL QUERY: crud.py line 197-205 (replaced with service call)
+        # stmt = select(AgentTemplate).where(
+        #     and_(
+        #         AgentTemplate.tenant_key == context["tenant_key"],
+        #         AgentTemplate.name == generated_name
+        #     )
+        # )
+        # result = await session.execute(stmt)
+        # if result.scalar_one_or_none():
+
+        if await template_service.check_template_name_exists(
+            session, context["tenant_key"], generated_name
+        ):
             raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
 
         # Validate system prompt
@@ -224,19 +231,24 @@ async def create_template(
         # Extract variables
         variables = re.findall(r"\{(\w+)\}", template.template_content)
 
+        # ORIGINAL QUERY: crud.py line 229-240 (replaced with service call)
         # Handle default template logic
         if template.is_default and template.role:
-            filters = [
-                AgentTemplate.tenant_key == context["tenant_key"],
-                AgentTemplate.role == template.role,
-                AgentTemplate.is_default == True,
-            ]
-            if context.get("product_id"):
-                filters.append(AgentTemplate.product_id == context["product_id"])
+            # filters = [
+            #     AgentTemplate.tenant_key == context["tenant_key"],
+            #     AgentTemplate.role == template.role,
+            #     AgentTemplate.is_default == True,
+            # ]
+            # if context.get("product_id"):
+            #     filters.append(AgentTemplate.product_id == context["product_id"])
+            # stmt = select(AgentTemplate).where(and_(*filters))
+            # result = await session.execute(stmt)
+            # for existing in result.scalars().all():
 
-            stmt = select(AgentTemplate).where(and_(*filters))
-            result = await session.execute(stmt)
-            for existing in result.scalars().all():
+            existing_defaults = await template_service.get_default_templates_by_role(
+                session, context["tenant_key"], template.role, context.get("product_id")
+            )
+            for existing in existing_defaults:
                 existing.is_default = False
 
         # Create new template
@@ -296,22 +308,28 @@ async def update_template(
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        # Get existing template
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.id == template_id,
-                AgentTemplate.tenant_key == context["tenant_key"]
-            )
+        # ORIGINAL QUERY: crud.py line 300-307 (replaced with service call)
+        # stmt = select(AgentTemplate).where(
+        #     and_(
+        #         AgentTemplate.id == template_id,
+        #         AgentTemplate.tenant_key == context["tenant_key"]
+        #     )
+        # )
+        # result = await session.execute(stmt)
+        # template = result.scalar_one_or_none()
+
+        template = await template_service.get_template_by_id(
+            session, template_id, context["tenant_key"]
         )
-        result = await session.execute(stmt)
-        template = result.scalar_one_or_none()
 
         if not template:
-            # If template exists under a different tenant, treat as access denied
-            cross_tenant_result = await session.execute(
-                select(AgentTemplate).where(AgentTemplate.id == template_id)
-            )
-            if cross_tenant_result.scalar_one_or_none():
+            # ORIGINAL QUERY: crud.py line 311-314 (replaced with service call)
+            # cross_tenant_result = await session.execute(
+            #     select(AgentTemplate).where(AgentTemplate.id == template_id)
+            # )
+            # if cross_tenant_result.scalar_one_or_none():
+
+            if await template_service.check_cross_tenant_template_exists(session, template_id):
                 raise HTTPException(status_code=403, detail="Access denied for this template")
             raise HTTPException(status_code=404, detail="Template not found")
 
@@ -335,29 +353,19 @@ async def update_template(
             if not is_valid:
                 raise HTTPException(status_code=400, detail=error_msg)
 
+        # ORIGINAL QUERY: crud.py line 340-360 (replaced with service call)
         # When user_instructions change, create an archive of the previous version
         if "user_instructions" in update_data:
-            previous = TemplateArchive(
-                tenant_key=template.tenant_key,
-                template_id=template.id,
-                product_id=template.product_id,
-                name=template.name,
-                category=template.category,
-                role=template.role,
-                system_instructions=template.system_instructions,
-                user_instructions=template.user_instructions,
-                template_content=template.template_content,
-                variables=template.variables,
-                behavioral_rules=template.behavioral_rules,
-                success_criteria=template.success_criteria,
-                version=template.version,
+            # previous = TemplateArchive(...)
+            # session.add(previous)
+
+            await template_service.create_template_archive(
+                session,
+                template,
                 archive_reason="Update user instructions",
                 archive_type="auto",
-                archived_by=current_user.username,
-                usage_count_at_archive=template.usage_count,
-                avg_generation_ms_at_archive=template.avg_generation_ms,
+                archived_by=current_user.username
             )
-            session.add(previous)
 
         # Enforce 8-role active limit when toggling is_active for user-managed roles
         if "is_active" in update_data and update_data["is_active"] is not None:
@@ -406,6 +414,7 @@ async def delete_template(
     template_id: str,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> dict:
     """
     Hard delete a template and all related records.
@@ -424,14 +433,19 @@ async def delete_template(
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.id == template_id,
-                AgentTemplate.tenant_key == context["tenant_key"]
-            )
+        # ORIGINAL QUERY: crud.py line 427-434 (replaced with service call)
+        # stmt = select(AgentTemplate).where(
+        #     and_(
+        #         AgentTemplate.id == template_id,
+        #         AgentTemplate.tenant_key == context["tenant_key"]
+        #     )
+        # )
+        # result = await session.execute(stmt)
+        # template = result.scalar_one_or_none()
+
+        template = await template_service.get_template_by_id(
+            session, template_id, context["tenant_key"]
         )
-        result = await session.execute(stmt)
-        template = result.scalar_one_or_none()
 
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -441,33 +455,25 @@ async def delete_template(
 
         template_name = template.name
 
+        # ORIGINAL QUERIES: crud.py lines 445-471 (replaced with service call)
         # 1. Set AgentJob.template_id to NULL for historical jobs
-        await session.execute(
-            update(AgentJob)
-            .where(AgentJob.template_id == template_id)
-            .values(template_id=None)
-        )
-
+        # await session.execute(update(AgentJob)...)
         # 2. Delete related TemplateAugmentation records
-        await session.execute(
-            sql_delete(TemplateAugmentation)
-            .where(TemplateAugmentation.template_id == template_id)
-        )
-
+        # await session.execute(sql_delete(TemplateAugmentation)...)
         # 3. Delete related TemplateUsageStats records
-        await session.execute(
-            sql_delete(TemplateUsageStats)
-            .where(TemplateUsageStats.template_id == template_id)
-        )
-
+        # await session.execute(sql_delete(TemplateUsageStats)...)
         # 4. Delete related TemplateArchive records (version history)
-        await session.execute(
-            sql_delete(TemplateArchive)
-            .where(TemplateArchive.template_id == template_id)
+        # await session.execute(sql_delete(TemplateArchive)...)
+        # 5. Delete the template itself
+        # await session.delete(template)
+
+        deleted = await template_service.hard_delete_template(
+            session, template_id, context["tenant_key"]
         )
 
-        # 5. Delete the template itself
-        await session.delete(template)
+        if not deleted:
+            raise HTTPException(status_code=500, detail="Failed to delete template")
+
         await session.commit()
 
         logger.info(f"Hard deleted template {template_id} ({template_name})")
@@ -486,22 +492,30 @@ async def delete_template(
 async def get_active_count(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> dict:
     """
     Get count of active user-managed templates.
+
+    Migrated to TemplateService - Handover 1011 Phase 2.
     """
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        stmt = select(func.count(AgentTemplate.id)).where(
-            and_(
-                AgentTemplate.tenant_key == context["tenant_key"],
-                AgentTemplate.is_active == True,
-                AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES)
-            )
+        # ORIGINAL QUERY: crud.py line 496-504 (replaced with service call)
+        # stmt = select(func.count(AgentTemplate.id)).where(
+        #     and_(
+        #         AgentTemplate.tenant_key == context["tenant_key"],
+        #         AgentTemplate.is_active == True,
+        #         AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES)
+        #     )
+        # )
+        # result = await session.execute(stmt)
+        # count = result.scalar()
+
+        count = await template_service.get_active_user_managed_count(
+            session, context["tenant_key"]
         )
-        result = await session.execute(stmt)
-        count = result.scalar()
 
         return {
             "active_count": count,

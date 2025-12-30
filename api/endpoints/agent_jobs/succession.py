@@ -90,10 +90,9 @@ async def trigger_succession(
             tenant_key=current_user.tenant_key
         )
 
-        # Extract results (dual-model aware)
-        work_order_id = succession_result["job_id"]  # The work order (persists)
-        successor_agent_id = succession_result.get("successor_agent_id")  # NEW executor
-        successor_job_id = succession_result["successor_job_id"]  # Backwards compat (same as job_id in new model)
+        # Extract results (dual-model aware - Handover 0381: clean contract)
+        work_order_id = succession_result["job_id"]  # The work order (persists across succession)
+        successor_agent_id = succession_result.get("successor_agent_id")  # NEW executor (agent_id)
         instance_number = succession_result["successor_instance_number"]
 
         # Get successor for additional details (backwards compat: check both models)
@@ -155,7 +154,10 @@ async def trigger_succession(
 
         launch_prompt = prompt_result["prompt"]
 
-        # Emit WebSocket event for UI updates
+        # Get current agent_id for response (Handover 0381: clean contract)
+        current_agent_id = current_execution.agent_id if current_execution else job_id
+
+        # Emit WebSocket event for UI updates (Handover 0381: clean contract)
         try:
             from api.app import state  # Lazy import to avoid circular dependency
             if state.websocket_manager:
@@ -163,10 +165,9 @@ async def trigger_succession(
                     tenant_key=current_user.tenant_key,
                     event_type="orchestrator:succession_triggered",
                     data={
-                        "current_job_id": job_id,  # Original request parameter (could be agent_id or job_id)
-                        "work_order_id": work_order_id,  # The work order (persists across succession)
-                        "successor_agent_id": successor_agent_id,  # NEW executor agent_id
-                        "successor_job_id": successor_job_id,  # Backwards compat
+                        "current_agent_id": str(current_agent_id),  # Executor being succeeded
+                        "job_id": work_order_id,  # Work order (persists across succession)
+                        "successor_agent_id": successor_agent_id,  # NEW executor
                         "instance_number": instance_number,
                         "reason": request.reason,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -175,15 +176,15 @@ async def trigger_succession(
                 )
                 logger.info(
                     f"WebSocket event 'orchestrator:succession_triggered' "
-                    f"broadcasted for {job_id} -> {successor_job_id}"
+                    f"broadcasted for agent {current_agent_id} -> {successor_agent_id}"
                 )
         except Exception as ws_error:
             logger.error(f"Failed to broadcast WebSocket event: {ws_error}", exc_info=True)
 
         return SuccessionResponse(
-            current_job_id=job_id,
-            successor_job_id=successor_job_id,
-            successor_agent_id=successor_agent_id,  # NEW field for dual-model
+            current_agent_id=str(current_agent_id),
+            job_id=work_order_id,
+            successor_agent_id=successor_agent_id,
             instance_number=instance_number,
             launch_prompt=launch_prompt,
             handover_summary=handover_summary_str,

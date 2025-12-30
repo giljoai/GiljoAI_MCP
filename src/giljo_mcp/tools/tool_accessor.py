@@ -217,6 +217,95 @@ class ToolAccessor:
         """Update the mission field (delegates to ProjectService)"""
         return await self._project_service.update_project_mission(project_id, mission)
 
+    async def update_agent_mission(
+        self, job_id: str, tenant_key: str, mission: str
+    ) -> dict[str, Any]:
+        """
+        Update the mission field of an AgentJob.
+
+        Handover 0380: Used by orchestrators to persist their execution plan during staging.
+        This allows fresh-session orchestrators to retrieve the plan via get_agent_mission()
+        during implementation phase.
+
+        Args:
+            job_id: The AgentJob.job_id (work order UUID)
+            tenant_key: Tenant isolation key
+            mission: The execution plan/mission to persist
+
+        Returns:
+            {"success": True, "job_id": job_id, "mission_updated": True}
+        """
+        try:
+            async with self.get_session_async() as session:
+                from sqlalchemy import and_, select
+
+                from giljo_mcp.models.agent_identity import AgentJob
+
+                result = await session.execute(
+                    select(AgentJob).where(
+                        and_(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                job = result.scalar_one_or_none()
+
+                if not job:
+                    return {
+                        "error": "NOT_FOUND",
+                        "message": f"Agent job {job_id} not found",
+                        "troubleshooting": [
+                            "Verify job_id is correct",
+                            "Ensure tenant_key matches",
+                            f"Check database: SELECT * FROM agent_jobs WHERE job_id = '{job_id}'",
+                        ],
+                    }
+
+                job.mission = mission
+                await session.commit()
+
+                # Emit WebSocket event for UI update
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_updated",
+                            data={
+                                "job_id": job_id,
+                                "job_type": job.job_type,
+                                "mission_length": len(mission),
+                                "project_id": str(job.project_id) if job.project_id else None,
+                            },
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
+                            extra={"job_id": job_id, "tenant_key": tenant_key},
+                        )
+                    except Exception as ws_error:
+                        logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
+
+                logger.info(
+                    f"[UPDATE_AGENT_MISSION] Updated mission for job {job_id}",
+                    extra={
+                        "job_id": job_id,
+                        "job_type": job.job_type,
+                        "mission_length": len(mission),
+                        "tenant_key": tenant_key,
+                    },
+                )
+
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "mission_updated": True,
+                    "mission_length": len(mission),
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to update agent mission: {e}")
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+
     # Agent Tools
 
     async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
@@ -282,6 +371,7 @@ class ToolAccessor:
         self,
         agent_id: str,
         limit: int = 10,
+        tenant_key: Optional[str] = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
         message_types: Optional[list[str]] = None
@@ -290,10 +380,12 @@ class ToolAccessor:
         Receive pending messages for an agent with optional filtering (delegates to MessageService).
 
         Handover 0360: Added filtering parameters for better message control.
+        Handover 0378 Bug 1: Added tenant_key parameter to match MCP tool schema.
 
         Args:
             agent_id: Agent execution ID
             limit: Maximum messages to retrieve
+            tenant_key: Tenant key for multi-tenant isolation
             exclude_self: Filter out messages from same agent_id (default: True)
             exclude_progress: Filter out progress-type messages (default: True)
             message_types: Optional allow-list of message types (default: None = all types)
@@ -304,6 +396,7 @@ class ToolAccessor:
         return await self._message_service.receive_messages(
             agent_id=agent_id,
             limit=limit,
+            tenant_key=tenant_key,
             exclude_self=exclude_self,
             exclude_progress=exclude_progress,
             message_types=message_types
@@ -314,11 +407,16 @@ class ToolAccessor:
         project_id: Optional[str] = None,
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
+        tenant_key: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> dict[str, Any]:
-        """List messages in a project or for a specific agent (delegates to MessageService)"""
+        """
+        List messages in a project or for a specific agent (delegates to MessageService).
+
+        Handover 0378 Bug 1: Added tenant_key parameter to match MCP tool schema.
+        """
         return await self._message_service.list_messages(
-            project_id=project_id, status=status, agent_id=agent_id, limit=limit
+            project_id=project_id, status=status, agent_id=agent_id, tenant_key=tenant_key, limit=limit
         )
 
     # Task Tools
@@ -669,12 +767,6 @@ class ToolAccessor:
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
-                    # Backward compatibility
-                    "agent_job_id": job_id,  # Alias for job_id
-                    "job_id": job_id,  # Phase C: Top-level for backward compatibility
-                    "agent_id": execution.agent_id,  # Phase C: Top-level for backward compatibility
-                    "mission": agent_job.mission or "",  # Phase C: Top-level for backward compatibility
-                    "fetch_instructions": fetch_instructions,  # Phase C: Top-level for backward compatibility
                 }
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
@@ -751,9 +843,9 @@ class ToolAccessor:
             parent_job_id=parent_job_id
         )
 
-    async def get_agent_mission(self, agent_job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Get agent-specific mission (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_agent_mission(agent_job_id=agent_job_id, tenant_key=tenant_key)
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+        """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
+        return await self._orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Full project orchestration workflow (delegates to OrchestrationService)"""
@@ -1099,7 +1191,7 @@ class ToolAccessor:
                 download_token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="slash_commands",
-                    filename="slash_commands.zip",
+                    metadata={"filename": "slash_commands.zip"},
                 )
                 file_staging = FileStaging()
                 staging_path = await file_staging.create_staging_directory(tenant_key, download_token)
@@ -1208,7 +1300,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
@@ -1305,7 +1397,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
@@ -1409,7 +1501,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
                 file_staging = FileStaging(db_session=session)
                 staging_path = await file_staging.create_staging_directory(tenant_key, token)
@@ -1589,7 +1681,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    filename="agent_templates.zip",
+                    metadata={"filename": "agent_templates.zip"},
                 )
 
             # 4. Stage files in temp directory
@@ -1629,22 +1721,11 @@ class ToolAccessor:
                 templates = result.scalars().all()
 
                 export_timestamp = datetime.now(timezone.utc)
-                template_ids = []
                 for template in templates:
                     template.last_exported_at = export_timestamp
-                    template_ids.append(template.id)
 
                 await session.commit()
                 logger.info(f"Updated last_exported_at for {len(templates)} templates")
-
-                # Emit WebSocket event for real-time UI update
-                # Use existing WebSocketManager API (broadcast_templates_exported)
-                if self._websocket_manager and template_ids:
-                    await self._websocket_manager.broadcast_templates_exported(
-                        tenant_key=tenant_key,
-                        template_ids=template_ids,
-                        export_type="manual_zip",
-                    )
 
             # 6. Build download URL (token IS auth - no API key needed)
             if not _server_url:
