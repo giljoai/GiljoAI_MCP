@@ -454,112 +454,80 @@
     </v-dialog>
 
     <!-- No Active Product Warning Dialog -->
-    <v-dialog v-model="showNoProductDialog" max-width="500" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300">
-          <v-icon class="mr-2" size="large">mdi-alert-circle</v-icon>
-          <span class="text-h6">No Active Product</span>
-        </v-card-title>
-        <v-card-text class="pt-6 pb-4">
-          <p class="text-body-1">
-            No products are set to active state. Please activate a product before converting tasks
-            to projects.
-          </p>
-        </v-card-text>
-        <v-card-actions class="pb-4 px-4">
-          <v-spacer />
-          <v-btn color="primary" variant="flat" @click="showNoProductDialog = false"> OK </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showNoProductDialog"
+      type="warning"
+      title="No Active Product"
+      confirm-label="OK"
+      cancel-text=""
+      @confirm="showNoProductDialog = false"
+    >
+      <p class="text-body-1">
+        No products are set to active state. Please activate a product before converting tasks
+        to projects.
+      </p>
+    </BaseDialog>
 
     <!-- Conversion Confirmation Dialog -->
-    <v-dialog v-model="showConversionConfirmDialog" max-width="500" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center py-4" style="background-color: #ffc300">
-          <v-icon class="mr-2" size="large">mdi-folder-arrow-up</v-icon>
-          <span class="text-h6">Convert to Project</span>
-        </v-card-title>
-        <v-card-text class="pt-6 pb-4">
-          <p class="text-body-1">
-            Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
-          </p>
-          <p class="text-body-2 text-medium-emphasis mt-2">
-            This will create a new project in the active product with the task's title and
-            description.
-          </p>
-        </v-card-text>
-        <v-card-actions class="pb-4 px-4">
-          <v-spacer />
-          <v-btn variant="text" @click="showConversionConfirmDialog = false"> Cancel </v-btn>
-          <v-btn color="primary" variant="flat" @click="confirmConversion"> Convert </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showConversionConfirmDialog"
+      type="info"
+      title="Convert to Project"
+      icon="mdi-folder-arrow-up"
+      confirm-label="Convert"
+      @confirm="confirmConversion"
+      @cancel="showConversionConfirmDialog = false"
+    >
+      <p class="text-body-1 mb-2">
+        Convert task <strong>"{{ conversionTaskName }}"</strong> to a project?
+      </p>
+      <p class="text-body-2 text-medium-emphasis">
+        This will create a new project in the active product with the task's title and
+        description.
+      </p>
+    </BaseDialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteConfirmDialog" max-width="500" persistent>
-      <v-card>
-        <v-card-title
-          class="d-flex align-center py-4"
-          style="background-color: #f44336; color: white"
-        >
-          <v-icon class="mr-2" size="large" color="white">mdi-delete-alert</v-icon>
-          <span class="text-h6">Delete Task</span>
-        </v-card-title>
-        <v-card-text class="pt-6 pb-4">
-          <p class="text-body-1">
-            Are you sure you want to delete <strong>"{{ deleteTaskName }}"</strong>?
-          </p>
-          <p class="text-body-2 text-medium-emphasis mt-2">This action cannot be undone.</p>
-        </v-card-text>
-        <v-card-actions class="pb-4 px-4">
-          <v-spacer />
-          <v-btn variant="text" @click="showDeleteConfirmDialog = false"> Cancel </v-btn>
-          <v-btn color="error" variant="flat" @click="confirmDelete"> Delete </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showDeleteConfirmDialog"
+      type="danger"
+      title="Delete Task"
+      icon="mdi-delete-alert"
+      confirm-label="Delete"
+      @confirm="confirmDelete"
+      @cancel="showDeleteConfirmDialog = false"
+    >
+      <p class="text-body-1 mb-2">
+        Are you sure you want to delete <strong>"{{ deleteTaskName }}"</strong>?
+      </p>
+      <v-alert type="info" variant="tonal" density="compact">
+        This action cannot be undone.
+      </v-alert>
+    </BaseDialog>
 
     <!-- Success Dialog -->
-    <v-dialog v-model="showSuccessDialog" max-width="500">
-      <v-card>
-        <v-card-title
-          class="d-flex align-center py-4"
-          style="background-color: #4caf50; color: white"
-        >
-          <v-icon class="mr-2" size="large" color="white">mdi-check-circle</v-icon>
-          <span class="text-h6">Success</span>
-        </v-card-title>
-        <v-card-text class="pt-6 pb-4">
-          <p class="text-body-1">{{ successMessage }}</p>
-        </v-card-text>
-        <v-card-actions class="pb-4 px-4">
-          <v-spacer />
-          <v-btn color="success" variant="flat" @click="showSuccessDialog = false"> OK </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showSuccessDialog"
+      type="success"
+      title="Success"
+      confirm-label="OK"
+      :persistent="false"
+      @confirm="showSuccessDialog = false"
+    >
+      <p class="text-body-1">{{ successMessage }}</p>
+    </BaseDialog>
 
     <!-- Error Dialog -->
-    <v-dialog v-model="showErrorDialog" max-width="500">
-      <v-card>
-        <v-card-title
-          class="d-flex align-center py-4"
-          style="background-color: #f44336; color: white"
-        >
-          <v-icon class="mr-2" size="large" color="white">mdi-alert-circle</v-icon>
-          <span class="text-h6">Error</span>
-        </v-card-title>
-        <v-card-text class="pt-6 pb-4">
-          <p class="text-body-1">{{ errorMessage }}</p>
-        </v-card-text>
-        <v-card-actions class="pb-4 px-4">
-          <v-spacer />
-          <v-btn color="error" variant="flat" @click="showErrorDialog = false"> OK </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showErrorDialog"
+      type="danger"
+      title="Error"
+      confirm-label="OK"
+      :persistent="false"
+      @confirm="showErrorDialog = false"
+    >
+      <p class="text-body-1">{{ errorMessage }}</p>
+    </BaseDialog>
   </v-container>
 </template>
 
@@ -571,6 +539,7 @@ import { useAgentStore } from '@/stores/agents'
 import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 
 // Stores
 const taskStore = useTaskStore()
