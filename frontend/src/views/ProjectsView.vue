@@ -419,32 +419,23 @@
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="400" persistent retain-focus>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <span>Confirm Delete</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="showDeleteDialog = false"
-            aria-label="Close dialog"
-          />
-        </v-card-title>
-
-        <v-card-text>
-          Are you sure you want to delete project <strong>"{{ projectToDelete?.name }}"</strong>?
-          This will move the project to <strong>Deleted Projects</strong> for 10 days. It can be
-          restored from there during that time. After 10 days it will be permanently purged.
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" variant="flat" @click="deleteProject">Delete</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showDeleteDialog"
+      type="danger"
+      title="Delete Project?"
+      confirm-label="Delete"
+      size="sm"
+      @confirm="deleteProject"
+      @cancel="showDeleteDialog = false"
+    >
+      <p class="mb-3">
+        Are you sure you want to delete project <strong>"{{ projectToDelete?.name }}"</strong>?
+      </p>
+      <v-alert type="info" variant="tonal" density="compact">
+        This will move the project to <strong>Deleted Projects</strong> for 10 days.
+        It can be restored during that time. After 10 days it will be permanently purged.
+      </v-alert>
+    </BaseDialog>
 
     <!-- Deleted Projects Modal -->
     <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus>
@@ -598,6 +589,7 @@ import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useProjectStateStore } from '@/stores/projectStateStore'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { formatStatus } from '@/utils/formatters'
 
 // Router
