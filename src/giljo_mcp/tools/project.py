@@ -182,7 +182,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     tenant_key=tenant_key,
                     session_number=1,
                     title=f"Initial Session - {name}",
-                    started_at=datetime.now(timezone.utc)
+                    started_at=datetime.now(timezone.utc),
                 )
                 session.add(initial_session)
 
@@ -346,9 +346,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 # Get the latest session or create new one if needed
                 session_query = (
-                    select(Session)
-                    .where(Session.project_id == project.id)
-                    .order_by(Session.session_number.desc())
+                    select(Session).where(Session.project_id == project.id).order_by(Session.session_number.desc())
                 )
                 session_result = await session.execute(session_query)
                 latest_session = session_result.scalar_one_or_none()
@@ -448,7 +446,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         AgentJob.status == "active",
                     )
                     .values(status="completed", completed_at=datetime.now(timezone.utc))
-                    .execution_options(synchronize_session='fetch')
+                    .execution_options(synchronize_session="fetch")
                 )
                 await session.execute(job_update)
 
@@ -467,7 +465,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             AgentExecution.status.in_(["waiting", "working", "blocked"]),
                         )
                         .values(status="decommissioned", decommissioned_at=datetime.now(timezone.utc))
-                        .execution_options(synchronize_session='fetch')
+                        .execution_options(synchronize_session="fetch")
                     )
                     await session.execute(exec_update)
 
@@ -552,38 +550,30 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 await session.commit()
 
-                # Broadcast WebSocket event via HTTP bridge (cross-process communication)
+                # Broadcast WebSocket event via in-process WebSocketManager (0379e)
                 logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated for project {project_id}")
                 try:
-                    import httpx
+                    from api.app import state
 
-                    logger.info(f"[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
-
-                    # Use HTTP bridge to emit WebSocket event (MCP runs in separate process)
-                    async with httpx.AsyncClient() as client:
-                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                        logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
-
-                        response = await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "project:mission_updated",
-                                "tenant_key": project.tenant_key,
-                                "data": {
-                                    "project_id": str(project.id),
-                                    "mission": mission,
-                                    "user_config_applied": bool(user_id),
-                                    "token_estimate": len(mission) // 4,
-                                    "generated_by": "orchestrator",
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                                },
+                    websocket_manager = getattr(state, "websocket_manager", None)
+                    if websocket_manager:
+                        await websocket_manager.broadcast_to_tenant(
+                            tenant_key=project.tenant_key,
+                            event_type="project:mission_updated",
+                            data={
+                                "project_id": str(project.id),
+                                "mission": mission,
+                                "user_config_applied": bool(user_id),
+                                "token_estimate": len(mission) // 4,
+                                "generated_by": "orchestrator",
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                             },
-                            timeout=5.0,
                         )
-                        logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}")
-                        logger.info(f"[WEBSOCKET] Broadcasted mission_updated for project {project_id} via HTTP bridge")
                 except Exception as ws_error:
-                    logger.error(f"[WEBSOCKET ERROR] Failed to broadcast mission_updated via HTTP bridge: {ws_error}", exc_info=True)
+                    logger.error(
+                        f"[WEBSOCKET ERROR] Failed to broadcast mission_updated: {ws_error}",
+                        exc_info=True,
+                    )
 
                 logger.info(f"Updated mission for project '{project.name}'")
 
@@ -663,7 +653,9 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "context_used": execution.context_used,
                                 "context_budget": execution.context_budget,
                                 "started_at": (execution.started_at.isoformat() if execution.started_at else None),
-                                "completed_at": (execution.completed_at.isoformat() if execution.completed_at else None),
+                                "completed_at": (
+                                    execution.completed_at.isoformat() if execution.completed_at else None
+                                ),
                             }
                         )
 

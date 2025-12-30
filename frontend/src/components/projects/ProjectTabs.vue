@@ -73,7 +73,7 @@
         <LaunchTab
           :project="project"
           :orchestrator="orchestrator"
-          :is-staging="store.isStaging"
+          :is-staging="loadingStageProject"
           :readonly="readonly"
           @stage-project="handleStageProject"
           @launch-jobs="handleLaunchJobs"
@@ -89,16 +89,12 @@
       <v-window-item value="jobs">
         <JobsTab
           :project="project"
-          :agents="store.sortedAgents"
-          :messages="store.messages"
-          :all-agents-complete="store.allAgentsComplete"
           :readonly="readonly"
           @launch-agent="handleLaunchAgent"
           @view-details="emit('view-details', $event)"
           @view-error="emit('view-error', $event)"
           @hand-over="handleHandOver"
           @closeout-project="handleCloseoutProject"
-          @send-message="handleSendMessage"
         />
       </v-window-item>
     </v-window>
@@ -106,7 +102,7 @@
     <!-- Error Snackbar -->
     <v-snackbar v-model="errorVisible" color="error" :timeout="5000" location="top">
       <v-icon start>mdi-alert-circle</v-icon>
-      {{ store.error }}
+      {{ errorMessage }}
       <template #actions>
         <v-btn variant="text" @click="errorVisible = false"> Close </v-btn>
       </template>
@@ -137,8 +133,9 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useWebSocketStore } from '@/stores/websocket'
-import { useWebSocket } from '@/composables/useWebSocket'
-import { useUserStore } from '@/stores/user'
+import { useAgentJobs } from '@/composables/useAgentJobs'
+import { useProjectMessages } from '@/composables/useProjectMessages'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -182,17 +179,16 @@ const emit = defineEmits([
 /**
  * Store and Router
  */
-const store = useProjectTabsStore()
+const tabsStore = useProjectTabsStore()
 const wsStore = useWebSocketStore()
 const route = useRoute()
 const router = useRouter()
 
-/**
- * WebSocket setup
- */
-const { on, off } = useWebSocket()
-const userStore = useUserStore()
-const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+const projectStateStore = useProjectStateStore()
+const { store: projectMessagesStore, loadMessages } = useProjectMessages()
+const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
+
+const projectId = computed(() => props.project?.project_id || props.project?.id || null)
 
 /**
  * Local state - Tab activation (Handover 0243e)
@@ -218,15 +214,12 @@ watch(activeTab, (newTab) => {
 })
 
 /**
- * Backward compatibility with store
+ * Local state
  */
-const activeTabIndex = computed({
-  get: () => store.activeTab,
-  set: (value) => store.switchTab(value),
-})
-
 const errorVisible = ref(false)
+const errorMessage = ref(null)
 const loadingStageProject = ref(false)
+const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 
 // Toast state
 const toastVisible = ref(false)
@@ -238,16 +231,11 @@ const toastDuration = ref(3000)
 const showCloseoutModal = ref(false)
 
 /**
- * Computed: Ready to launch - ALIGNED with store's readyToLaunch getter
- *
- * FIX (Handover 0243): Use store.readyToLaunch directly instead of local hasActiveOrchestrator
- * to ensure button visibility matches launchJobs() precondition check.
- *
- * Store's readyToLaunch checks: orchestratorMission && agents.length > 0 && !isStaging
- * This prevents "Project not ready to launch (!)" error when button appears enabled.
+ * Computed: Project state (map-based store)
  */
 const readyToLaunch = computed(() => {
-  return store.readyToLaunch
+  const state = projectStateStore.getProjectState(projectId.value)
+  return Boolean(state?.stagingComplete && !state?.isStaging)
 })
 
 /**
@@ -257,170 +245,100 @@ const readyToLaunch = computed(() => {
  * - "Stage Project" → "Orchestrator Active"
  * - "Launch Jobs" button enables
  */
-const hasActiveOrchestrator = computed(() => store.stagingComplete)
+const hasActiveOrchestrator = computed(() => {
+  const state = projectStateStore.getProjectState(projectId.value)
+  return Boolean(state?.stagingComplete)
+})
 
 /**
  * Computed: Show closeout button when all agents complete and orchestrator is done
  * Handover 0361: Moved from JobsTab.vue to header for persistent visibility
  */
 const showCloseoutButton = computed(() => {
-  if (!store.allAgentsComplete) return false
+  const jobs = sortedJobs.value || []
+  if (!jobs.length) return false
 
-  const orchestrator = store.sortedAgents?.find((a) => a.agent_type === 'orchestrator')
+  const allComplete = jobs.every((job) => job.status === 'complete')
+  if (!allComplete) return false
+
+  const orchestrator = jobs.find((job) => job.agent_type === 'orchestrator')
   return Boolean(orchestrator && orchestrator.status === 'complete')
 })
 
-/**
- * Watch for errors
- */
-watch(
-  () => store.error,
-  (newError) => {
-    if (newError) {
-      errorVisible.value = true
+function showError(message) {
+  errorMessage.value = message || 'Unexpected error'
+  errorVisible.value = true
+}
+
+async function loadProjectData(pid, { fetchProject = false } = {}) {
+  if (!pid) return
+
+  tabsStore.currentProject = props.project
+  projectStateStore.setProject(props.project)
+
+  if (fetchProject) {
+    try {
+      const response = await api.projects.get(pid)
+      projectStateStore.setProject(response?.data)
+    } catch (error) {
+      console.warn('[ProjectTabs] Failed to refresh project state:', error)
     }
+  }
+
+  try {
+    const [messages] = await Promise.all([loadMessages(pid), loadJobs(pid)])
+
+    if (Array.isArray(messages) && messages.length > 0) {
+      projectStateStore.setStagingComplete(pid, true)
+    }
+  } catch (error) {
+    console.warn('[ProjectTabs] Failed to load project data:', error)
+  }
+}
+
+watch(
+  () => props.project?.execution_mode,
+  (newMode) => {
+    executionMode.value = newMode || 'multi_terminal'
   },
+  { immediate: true },
 )
 
-/**
- * WebSocket event handlers
- */
-const handleMissionUpdate = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  // Project isolation check
-  const projectId = props.project?.id || props.project?.project_id
-  if (data.project_id !== projectId) {
-    return
-  }
-
-  // Update store mission
-  store.setMission(data.mission)
-  console.log('[ProjectTabs] Updated store mission from WebSocket event')
-}
-
-const handleAgentCreated = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  // Project isolation check
-  const projectId = props.project?.id || props.project?.project_id
-  if (data.project_id !== projectId) {
-    return
-  }
-
-  // Add agent to store
-  const agent = {
-    id: data.agent_id || data.agent_job_id,
-    job_id: data.agent_id || data.agent_job_id,
-    agent_type: data.agent_type,
-    agent_name: data.agent_name,
-    status: data.status || 'waiting'
-  }
-
-  store.addAgent(agent)
-  console.log('[ProjectTabs] Added agent to store from WebSocket event')
-}
-
-/**
- * Handover 0291: Staging Complete Signal Handler
- * First message in project = staging is complete.
- * No string parsing needed - the orchestrator only sends messages after spawning agents.
- */
-const handleStagingCompleteMessage = (data) => {
-  // Project isolation check
-  const projectId = props.project?.id || props.project?.project_id
-  if (data.job_id !== projectId && data.project_id !== projectId) {
-    return
-  }
-
-  // First message in project = staging complete
-  console.log('[ProjectTabs] First message received - staging complete, enabling Launch Jobs')
-  store.setStagingComplete(true)
-}
-
-/**
- * Set project on mount
- */
-onMounted(async () => {
-  store.setProject(props.project)
-
-  // Load existing messages from database
-  if (props.project) {
-    const pid = props.project.project_id || props.project.id
-    if (pid) {
-      await store.loadMessages(pid)
+watch(
+  projectId,
+  async (pid, oldPid) => {
+    if (oldPid) {
+      wsStore.unsubscribe('project', oldPid)
     }
-  }
 
-  // Subscribe to WebSocket updates for staging and launch events
-  // Must subscribe BEFORE launch to receive mission_updated and agent:created events
-  if (props.project) {
-    const pid = props.project.project_id || props.project.id
-    if (pid) wsStore.subscribeToProject(pid)
-  }
+    if (!pid) return
 
-  // Register WebSocket event listeners
-  on('project:mission_updated', handleMissionUpdate)
-  on('orchestrator:instructions_fetched', handleMissionUpdate)
-  on('agent:created', handleAgentCreated)
-  on('message:sent', handleStagingCompleteMessage)  // Handover 0291
+    if (oldPid && oldPid !== pid) {
+      tabsStore.isLaunched = false
+      projectStateStore.setLaunched(pid, false)
+    }
+
+    wsStore.subscribeToProject(pid)
+    await loadProjectData(pid)
+  },
+  { immediate: true },
+)
+
+let unsubscribeConnectionListener = null
+onMounted(() => {
+  unsubscribeConnectionListener = wsStore.onConnectionChange((connectionEvent) => {
+    if (connectionEvent?.state === 'connected' && connectionEvent?.isReconnect) {
+      loadProjectData(projectId.value, { fetchProject: true })
+    }
+  })
 })
 
-/**
- * Clean up on unmount
- */
 onBeforeUnmount(() => {
-  // Unsubscribe from WebSocket
-  if (props.project) {
-    const pid = props.project.project_id || props.project.id
-    if (pid) wsStore.unsubscribe('project', pid)
+  if (projectId.value) {
+    wsStore.unsubscribe('project', projectId.value)
   }
-
-  // Remove WebSocket event listeners
-  off('project:mission_updated', handleMissionUpdate)
-  off('orchestrator:instructions_fetched', handleMissionUpdate)
-  off('agent:created', handleAgentCreated)
-  off('message:sent', handleStagingCompleteMessage)  // Handover 0291
+  unsubscribeConnectionListener?.()
 })
-
-/**
- * Watch for project changes
- */
-watch(
-  () => props.project,
-  async (newProject) => {
-    if (newProject) {
-      store.setProject(newProject)
-      // Load messages for the new project
-      const pid = newProject.project_id || newProject.id
-      if (pid) {
-        await store.loadMessages(pid)
-      }
-    }
-  },
-  { deep: true },
-)
-
-/**
- * Watch for staging reset (cancellation scenarios)
- * Only reset stagingComplete when project is explicitly cleared/reset.
- * The positive trigger comes from message:sent WebSocket event (handleStagingCompleteMessage).
- */
-watch(
-  () => store.orchestratorMission,
-  (mission) => {
-    // Reset only when mission is cleared (cancellation/reset)
-    if (!mission) {
-      store.setStagingComplete(false)
-    }
-  }
-)
 
 /**
  * Production-grade clipboard copy function
@@ -470,11 +388,7 @@ async function copyPromptToClipboard(text) {
  */
 function handleExecutionModeChanged(newMode) {
   console.log('[ProjectTabs] Execution mode changed to:', newMode)
-  // Mutate the prop's execution_mode to sync with backend
-  // This ensures handleStageProject() uses the correct mode
-  if (props.project) {
-    props.project.execution_mode = newMode
-  }
+  executionMode.value = newMode || 'multi_terminal'
 }
 
 /**
@@ -482,13 +396,21 @@ function handleExecutionModeChanged(newMode) {
  */
 async function handleStageProject() {
   loadingStageProject.value = true
+  if (projectId.value) {
+    projectStateStore.setIsStaging(projectId.value, true)
+  }
 
   try {
     // Generate thin client staging prompt
     // Pass execution_mode from project configuration (Handover 0333 Phase 2)
-    const response = await api.prompts.staging(props.project.id, {
+    const pid = projectId.value
+    if (!pid) {
+      throw new Error('Project missing ID')
+    }
+
+    const response = await api.prompts.staging(pid, {
       tool: 'claude-code',
-      execution_mode: props.project.execution_mode || 'multi_terminal',
+      execution_mode: executionMode.value || 'multi_terminal',
     })
 
     if (!response.data?.prompt) {
@@ -526,10 +448,13 @@ async function handleStageProject() {
       toastVisible.value = true
     } else {
       // Show error for other failures
-      store.error = errorMsg
+      showError(errorMsg)
     }
   } finally {
     loadingStageProject.value = false
+    if (projectId.value) {
+      projectStateStore.setIsStaging(projectId.value, false)
+    }
   }
 }
 
@@ -538,13 +463,23 @@ async function handleStageProject() {
  */
 async function handleLaunchJobs() {
   try {
-    await store.launchJobs()
+    if (!readyToLaunch.value) {
+      showError('Project not ready to launch')
+      return
+    }
+
+    await api.orchestrator.launchProject({ project_id: projectId.value })
+    tabsStore.isLaunched = true
+    tabsStore.currentProject = props.project
+    projectStateStore.setLaunched(projectId.value, true)
     emit('launch-jobs')
 
     // Auto-switch to Jobs/Implement tab after launch (Handover 0243e)
     activeTab.value = 'jobs'
   } catch (error) {
     console.error('Launch jobs failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to launch jobs'
+    showError(msg)
   }
 }
 
@@ -553,10 +488,22 @@ async function handleLaunchJobs() {
  */
 async function handleCancelStaging() {
   try {
-    await store.cancelStaging()
+    if (!projectId.value) return
+
+    await api.projects.cancelStaging(projectId.value)
+
+    projectStateStore.setMission(projectId.value, '')
+    projectStateStore.setStagingComplete(projectId.value, false)
+    projectStateStore.setIsStaging(projectId.value, false)
+    projectStateStore.setLaunched(projectId.value, false)
+    projectMessagesStore.setMessages(projectId.value, [])
+    agentJobsStore.$reset?.()
+
     emit('cancel-staging')
   } catch (error) {
     console.error('Cancel staging failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to cancel staging'
+    showError(msg)
   }
 }
 
@@ -565,10 +512,18 @@ async function handleCancelStaging() {
  */
 async function handleLaunchAgent(agent) {
   try {
-    await store.acknowledgeAgent(agent.job_id)
+    const jobId = agent?.job_id || agent?.agent_id || agent?.id
+    if (!jobId) {
+      showError('Agent job missing ID')
+      return
+    }
+
+    await api.agentJobs.acknowledge(jobId)
     emit('launch-agent', agent)
   } catch (error) {
     console.error('Launch agent failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to launch agent'
+    showError(msg)
   }
 }
 
@@ -577,11 +532,8 @@ async function handleLaunchAgent(agent) {
  */
 async function handleCloseoutProject(closeoutData) {
   try {
-    if (store.currentProject) {
-      store.currentProject = { ...store.currentProject, status: 'completed' }
-    }
     emit('closeout-project', closeoutData)
-    activeTab.value = 'project'
+    activeTab.value = 'launch'
   } catch (error) {
     console.error('Closeout project failed:', error)
   }
@@ -592,50 +544,30 @@ async function handleCloseoutProject(closeoutData) {
  */
 async function handleHandOver(agent) {
   try {
-    console.log('[ProjectTabs] Triggering succession for orchestrator:', agent.job_id)
-
-    // Call trigger_succession API endpoint
-    const response = await fetch(`/api/agent-jobs/${agent.job_id}/trigger_succession`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Failed to trigger succession')
+    const jobId = agent?.job_id || agent?.agent_id || agent?.id
+    if (!jobId) {
+      throw new Error('Orchestrator job_id missing')
     }
 
-    const result = await response.json()
+    console.log('[ProjectTabs] Triggering succession for orchestrator:', jobId)
+
+    const response = await api.agentJobs.triggerSuccession(jobId)
+    const result = response?.data || {}
 
     // Show success notification with launch prompt
     console.log('[ProjectTabs] Succession triggered successfully:', result)
 
     // TODO: Show LaunchSuccessorDialog with result.launch_prompt
     // For now, show simple confirmation
-    alert(
-      `✅ ${result.message}\n\n📋 Launch Prompt (copy to clipboard):\n\n${result.launch_prompt}`,
-    )
+    alert(`✅ ${result.message || 'Succession triggered'}\n\n📋 Launch Prompt:\n\n${result.launch_prompt || ''}`)
 
     // Refresh agents to show new successor
-    await store.loadAgents(project.value.id)
+    if (projectId.value) {
+      await loadJobs(projectId.value)
+    }
   } catch (error) {
     console.error('Hand over failed:', error)
     alert(`❌ Failed to trigger succession: ${error.message}`)
-  }
-}
-
-/**
- * Handle send message
- */
-async function handleSendMessage(message, recipient) {
-  try {
-    await store.sendMessage(message, recipient)
-    emit('send-message', message, recipient)
-  } catch (error) {
-    console.error('Send message failed:', error)
   }
 }
 

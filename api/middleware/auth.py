@@ -7,7 +7,6 @@ This is the existing AuthMiddleware from api/middleware.py,
 moved to the new middleware directory structure in Handover 0129c.
 """
 
-import logging
 import os
 from typing import Callable, Optional
 
@@ -15,8 +14,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from giljo_mcp.logging import get_logger, ErrorCode
 
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -57,7 +58,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # Fallback: get from app state
             auth_manager = getattr(request.app.state, "auth", None)
             if not auth_manager:
-                logger.error("AuthManager not configured in middleware or app state")
+                logger.error(
+                    "auth_manager_not_configured",
+                    error_code=ErrorCode.API_INTERNAL_ERROR.value,
+                    path=request.url.path,
+                    method=request.method,
+                )
                 return JSONResponse(
                     status_code=500,
                     content={
@@ -68,17 +74,24 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # DIAGNOSTIC: Log incoming request details
         logger.info(
-            f"[AuthMiddleware] {request.method} {request.url.path} - IP: {request.client.host if request.client else 'unknown'}"
+            "auth_request_received",
+            method=request.method,
+            path=request.url.path,
+            ip_address=request.client.host if request.client else "unknown",
+            has_cookie=bool(request.headers.get("cookie")),
+            has_authorization=bool(request.headers.get("authorization")),
         )
-        logger.info(f"[AuthMiddleware] Cookie header present: {bool(request.headers.get('cookie'))}")
-        logger.info(f"[AuthMiddleware] Authorization header present: {bool(request.headers.get('authorization'))}")
 
         # Authenticate (auto-login or credentials)
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
         logger.info(
-            f"[AuthMiddleware] Auth result: authenticated={auth_result.get('authenticated')}, user={auth_result.get('user')}, error={auth_result.get('error')}"
+            "auth_result",
+            authenticated=auth_result.get("authenticated"),
+            user=auth_result.get("user"),
+            error=auth_result.get("error"),
+            is_auto_login=auth_result.get("is_auto_login", False),
         )
 
         # Set request state consistently
@@ -94,6 +107,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
         else:
             # Auth failed - return 401
+            logger.warning(
+                "authentication_failed",
+                error_code=ErrorCode.AUTH_UNAUTHORIZED.value,
+                path=request.url.path,
+                method=request.method,
+                ip_address=request.client.host if request.client else "unknown",
+                reason=auth_result.get("error", "No credentials provided"),
+            )
             return JSONResponse(
                 status_code=401,
                 content={

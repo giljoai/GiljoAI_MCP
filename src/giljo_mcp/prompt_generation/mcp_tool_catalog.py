@@ -58,7 +58,7 @@ templates = instructions.get('agent_templates', [])
                     "parent_job_id: Optional[str]",
                 ],
                 "description": "Create agent job in database and return thin prompt",
-                "returns": "Dict with agent_job_id, thin agent prompt, and token estimates",
+                "returns": "Dict with job_id, thin agent prompt, and token estimates",
                 "when": [
                     "When orchestrator decides to spawn a specialist agent",
                     "To create database record linking agent to project",
@@ -74,7 +74,7 @@ result = await spawn_agent_job(
     parent_job_id='orch-123'
 )
 
-agent_id = result['agent_job_id']
+agent_id = result['job_id']
 prompt = result['agent_prompt']  # ~10 lines for agent to paste
 """,
             },
@@ -121,7 +121,7 @@ if progress == 100:
         },
         "context": {
             "get_agent_mission": {
-                "params": ["agent_job_id: str", "tenant_key: str"],
+                "params": ["job_id: str", "tenant_key: str"],
                 "description": "Fetch agent-specific mission and context (thin client pattern)",
                 "returns": "Dict with mission, project context, parent orchestrator, and tokens",
                 "when": [
@@ -131,7 +131,7 @@ if progress == 100:
                 ],
                 "example": """# Agent fetches its mission
 mission = await get_agent_mission(
-    agent_job_id='agent-123',
+    job_id='agent-123',
     tenant_key='tenant-abc'
 )
 
@@ -246,7 +246,7 @@ messages = await list_messages(
         },
         "tasks": {
             "update_job_progress": {
-                "params": ["agent_job_id: str", "percent_complete: int", "status_message: str", "tenant_key: str"],
+                "params": ["job_id: str", "percent_complete: int", "status_message: str", "tenant_key: str"],
                 "description": "Update agent job progress and status",
                 "returns": "Dict with success status and updated progress",
                 "when": [
@@ -256,7 +256,7 @@ messages = await list_messages(
                 ],
                 "example": """# Agent reports progress
 await update_job_progress(
-    agent_job_id='agent-123',
+    job_id='agent-123',
     percent_complete=50,
     status_message='Database schema complete, starting API endpoints',
     tenant_key='tenant-abc'
@@ -265,7 +265,7 @@ await update_job_progress(
             },
             "complete_agent_job": {
                 "params": [
-                    "agent_job_id: str",
+                    "job_id: str",
                     "result_summary: str",
                     "key_artifacts: list[str]",
                     "tenant_key: str",
@@ -279,7 +279,7 @@ await update_job_progress(
                 ],
                 "example": """# Agent marks job complete
 result = await complete_agent_job(
-    agent_job_id='agent-123',
+    job_id='agent-123',
     result_summary='Implemented all 5 API endpoints with tests',
     key_artifacts=['src/routes/auth.py', 'tests/test_auth.py'],
     tenant_key='tenant-abc'
@@ -288,7 +288,7 @@ result = await complete_agent_job(
             },
             "report_job_error": {
                 "params": [
-                    "agent_job_id: str",
+                    "job_id: str",
                     "error_message: str",
                     "error_type: str",
                     "blocking: bool",
@@ -303,7 +303,7 @@ result = await complete_agent_job(
                 ],
                 "example": """# Agent reports blocking error
 result = await report_job_error(
-    agent_job_id='agent-123',
+    job_id='agent-123',
     error_message='Database migration script syntax error on line 45',
     error_type='database_schema',
     blocking=True,
@@ -315,7 +315,7 @@ escalated_to = result.get('escalated_to')  # Orchestrator or peer agent
 """,
             },
             "get_job_status": {
-                "params": ["agent_job_id: str", "tenant_key: str"],
+                "params": ["job_id: str", "tenant_key: str"],
                 "description": "Fetch detailed status of specific agent job",
                 "returns": "Dict with status, progress, messages, errors, and timeline",
                 "when": [
@@ -325,7 +325,7 @@ escalated_to = result.get('escalated_to')  # Orchestrator or peer agent
                 ],
                 "example": """# Check agent job status
 status = await get_job_status(
-    agent_job_id='agent-456',
+    job_id='agent-456',
     tenant_key='tenant-abc'
 )
 
@@ -646,7 +646,7 @@ for agent_type, agent_name, work_mission in agents_needed:
         tenant_key='tenant-key',
         parent_job_id='orch-id'
     )
-    spawned_agents[agent_type] = result['agent_job_id']
+    spawned_agents[agent_type] = result['job_id']
     print(f"Spawned {agent_name}: {result['agent_prompt']}")
 
 # Step 5: Monitor progress
@@ -682,7 +682,7 @@ await close_project(
 ```python
 # Step 1: Agent receives thin prompt with job ID and fetches full mission
 mission = await get_agent_mission(
-    agent_job_id='agent-id',
+    job_id='agent-id',
     tenant_key='tenant-key'
 )
 
@@ -703,7 +703,7 @@ for msg in messages['messages']:
 
 # Step 3: Agent works and reports progress
 await update_job_progress(
-    agent_job_id='agent-id',
+    job_id='agent-id',
     percent_complete=25,
     status_message='Downloaded codebase and analyzed structure',
     tenant_key='tenant-key'
@@ -725,7 +725,7 @@ await send_message(
 
 # Step 5: Agent completes work
 await complete_agent_job(
-    agent_job_id='agent-id',
+    job_id='agent-id',
     result_summary='Implemented 5 backend endpoints with full test coverage',
     key_artifacts=['src/routes/api.py', 'tests/test_api.py'],
     tenant_key='tenant-key'

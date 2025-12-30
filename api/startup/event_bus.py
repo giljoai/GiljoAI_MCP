@@ -1,0 +1,64 @@
+"""Event bus initialization module
+
+Handles EventBus and WebSocketEventListener setup with verbose logging for debugging.
+Extracted from api/app.py lifespan function (lines ~295-332).
+Preserves Handover 0111 verbose logging for debugging.
+"""
+
+import logging
+
+from api.app import APIState
+
+
+logger = logging.getLogger(__name__)
+
+
+async def init_event_bus(state: APIState) -> None:
+    """Initialize event bus and WebSocket listener
+
+    Args:
+        state: APIState instance to populate with event_bus
+
+    Raises:
+        Exception: If event bus initialization or listener registration fails
+    """
+    # Initialize event bus and WebSocket listener (Handover 0111 Issue #1)
+    logger.info("=" * 70)
+    logger.info("STARTING EVENT BUS INITIALIZATION")
+    logger.info("=" * 70)
+    try:
+        logger.info("Step 1: About to import EventBus...")
+        from api.event_bus import EventBus
+
+        logger.info("Step 1: EventBus imported successfully")
+
+        logger.info("Step 2: About to import WebSocketEventListener...")
+        from api.websocket_event_listener import WebSocketEventListener
+
+        logger.info("Step 2: WebSocketEventListener imported successfully")
+
+        logger.info("Step 3: Creating EventBus instance...")
+        state.event_bus = EventBus()
+        logger.info(f"Step 3: EventBus created: {state.event_bus}")
+        logger.info(f"Step 3: EventBus type: {type(state.event_bus)}")
+        logger.info("Event bus initialized successfully")
+
+        # Register WebSocket event listener
+        logger.info("Step 4: Creating WebSocketEventListener instance...")
+        ws_listener = WebSocketEventListener(state.event_bus, state.websocket_manager)
+        logger.info(f"Step 4: WebSocketEventListener created: {ws_listener}")
+
+        logger.info("Step 5: Starting WebSocketEventListener (registering handlers)...")
+        await ws_listener.start()
+        logger.info("Step 5: WebSocket event listener handlers registered")
+        logger.info("WebSocket event listener registered successfully")
+        logger.info("=" * 70)
+        logger.info("EVENT BUS INITIALIZATION COMPLETE")
+        logger.info("=" * 70)
+    except Exception as e:
+        logger.error("=" * 70)
+        logger.error(f"FAILED TO INITIALIZE EVENT BUS: {e}")
+        logger.error("=" * 70)
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Exception args: {e.args}", exc_info=True)
+        raise

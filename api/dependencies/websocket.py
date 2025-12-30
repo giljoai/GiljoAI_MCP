@@ -9,19 +9,11 @@ Created: 2025-11-02
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import Depends, Request
 
-
-# Note: Import will be updated when websocket_manager.py is refactored
-# For now, importing from existing location
-try:
-    from api.websocket_service import WebSocketService as WebSocketManager
-except ImportError:
-    # Fallback if module structure changes
-    from api.websocket_manager import WebSocketManager
+from api.websocket import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +60,18 @@ class WebSocketDependency:
     interface for FastAPI endpoints with built-in safety checks.
     """
 
-    def __init__(self, manager: Optional[WebSocketManager] = None):
+    def __init__(
+        self,
+        manager: Optional[WebSocketManager] = None,
+        websocket_manager: Optional[WebSocketManager] = None,
+    ):
         """
         Initialize WebSocket dependency.
 
         Args:
             manager: Optional WebSocket manager instance
         """
-        self.manager = manager
+        self.manager = manager or websocket_manager
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     async def broadcast_to_tenant(
@@ -129,55 +125,13 @@ class WebSocketDependency:
             )
             return 0
 
-        # Build standardized message structure
-        message = {
-            "type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "schema_version": schema_version,
-            "data": data,
-        }
-
-        # Track successful sends
-        sent_count = 0
-        failed_count = 0
-
-        # Iterate through active connections
-        for client_id, ws in self.manager.active_connections.items():
-            # Skip excluded client
-            if exclude_client and client_id == exclude_client:
-                continue
-
-            # Check tenant isolation
-            auth_context = self.manager.auth_contexts.get(client_id, {})
-            if auth_context.get("tenant_key") != tenant_key:
-                continue
-
-            # Try to send to this client
-            try:
-                await ws.send_json(message)
-                sent_count += 1
-
-            except Exception as e:
-                # Log but don't fail the entire broadcast
-                failed_count += 1
-                self.logger.warning(
-                    f"Failed to send WebSocket message to client {client_id}: {e}",
-                    extra={"tenant_key": tenant_key, "event_type": event_type, "client_id": client_id, "error": str(e)},
-                )
-
-        # Log broadcast summary
-        self.logger.info(
-            f"WebSocket broadcast completed: {sent_count} sent, {failed_count} failed",
-            extra={
-                "tenant_key": tenant_key,
-                "event_type": event_type,
-                "sent_count": sent_count,
-                "failed_count": failed_count,
-                "exclude_client": exclude_client,
-            },
+        return await self.manager.broadcast_to_tenant(
+            tenant_key=tenant_key,
+            event_type=event_type,
+            data=data,
+            schema_version=schema_version,
+            exclude_client=exclude_client,
         )
-
-        return sent_count
 
     async def send_to_project(
         self, tenant_key: str, project_id: str, event_type: str, data: Dict[str, Any], schema_version: str = "1.0"

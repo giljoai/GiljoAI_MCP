@@ -287,6 +287,101 @@ class AgentStatusChangedEvent(BaseModel):
 
 
 # ============================================================================
+# Message Events
+# ============================================================================
+
+
+class MessageSentData(BaseModel):
+    """Data payload for message:sent event."""
+
+    message_id: str = Field(..., description="Unique message identifier")
+    job_id: str = Field(..., description="Sender job_id (legacy)")
+    project_id: str = Field(..., description="Project UUID as string")
+    from_agent: Optional[str] = Field(default=None, description="Sender label (legacy)")
+    to_agent: Optional[str] = Field(default=None, description="Recipient label (legacy)")
+    message_type: str = Field(..., description="Message type (task, info, error, etc.)")
+
+    # Compatibility aliases for content preview fields
+    message: str = Field(default="", description="Message preview (legacy)")
+    content: str = Field(default="", description="Message preview")
+    content_preview: str = Field(default="", description="Message preview")
+
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
+    timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
+
+    # Explicit identifiers to remove ambiguity in clients
+    from_job_id: str = Field(..., description="Sender agent job ID")
+    to_job_ids: list[str] = Field(default_factory=list, description="Recipient agent job IDs")
+
+
+class MessageSentEvent(BaseModel):
+    """Complete event structure for message:sent."""
+
+    type: Literal["message:sent"] = "message:sent"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: MessageSentData
+
+
+class MessageReceivedData(BaseModel):
+    """Data payload for message:received event."""
+
+    message_id: str = Field(..., description="Unique message identifier")
+    job_id: str = Field(..., description="Sender job_id (legacy)")
+    project_id: str = Field(..., description="Project UUID as string")
+    from_agent: Optional[str] = Field(default=None, description="Sender label (legacy)")
+    to_agent_ids: list[str] = Field(default_factory=list, description="Recipient agent IDs (legacy)")
+    message_type: str = Field(..., description="Message type (task, info, error, etc.)")
+
+    # Compatibility aliases for content preview fields
+    message: str = Field(default="", description="Message preview (legacy)")
+    content: str = Field(default="", description="Message preview")
+    content_preview: str = Field(default="", description="Message preview")
+
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
+    timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
+
+    # Explicit identifiers to remove ambiguity in clients
+    from_job_id: str = Field(..., description="Sender agent job ID")
+    to_job_ids: list[str] = Field(default_factory=list, description="Recipient agent job IDs")
+
+
+class MessageReceivedEvent(BaseModel):
+    """Complete event structure for message:received."""
+
+    type: Literal["message:received"] = "message:received"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: MessageReceivedData
+
+
+class MessageAcknowledgedData(BaseModel):
+    """Data payload for message:acknowledged event."""
+
+    message_id: str = Field(..., description="Primary message identifier")
+    message_ids: list[str] = Field(default_factory=list, description="All acknowledged message IDs")
+    agent_id: str = Field(..., description="Acknowledging agent job ID (legacy)")
+    project_id: str = Field(..., description="Project UUID as string")
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    timestamp: str = Field(..., description="Acknowledgment timestamp (ISO 8601)")
+
+    # Explicit identifiers to remove ambiguity in clients
+    from_job_id: str = Field(..., description="Acknowledging agent job ID")
+    to_job_ids: list[str] = Field(default_factory=list, description="Target agent job IDs")
+
+
+class MessageAcknowledgedEvent(BaseModel):
+    """Complete event structure for message:acknowledged."""
+
+    type: Literal["message:acknowledged"] = "message:acknowledged"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: MessageAcknowledgedData
+
+
+# ============================================================================
 # Event Type Union
 # ============================================================================
 
@@ -295,16 +390,13 @@ WebSocketEvent = Union[
     ProjectMissionUpdatedEvent,
     AgentCreatedEvent,
     AgentStatusChangedEvent,
+    MessageSentEvent,
+    MessageReceivedEvent,
+    MessageAcknowledgedEvent,
 ]
-"""
-Union type of all WebSocket events for validation.
-
-Use this for type hints when accepting any WebSocket event:
-    >>> def handle_event(event: WebSocketEvent) -> None:
-    ...     if event.type == "project:mission_updated":
-    ...         # Handle project mission update
-    ...         pass
-"""
+# Union type of all WebSocket events for validation.
+#
+# Use this for type hints when accepting any WebSocket event.
 
 
 # ============================================================================
@@ -325,6 +417,30 @@ class EventFactory:
     All factory methods return dict ready for JSON serialization,
     compatible with WebSocket.send_json() and FastAPI response models.
     """
+
+    @staticmethod
+    def tenant_envelope(
+        event_type: str,
+        tenant_key: str,
+        data: Dict[str, Any],
+        schema_version: str = "1.0",
+    ) -> dict:
+        """Create a canonical tenant-scoped event envelope."""
+        if not tenant_key:
+            raise ValueError("tenant_key cannot be empty")
+
+        payload = dict(data or {})
+        if "tenant_key" not in payload:
+            payload["tenant_key"] = tenant_key
+        elif payload.get("tenant_key") != tenant_key:
+            raise ValueError("data.tenant_key must match tenant_key")
+
+        return {
+            "type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "schema_version": schema_version,
+            "data": payload,
+        }
 
     @staticmethod
     def project_mission_updated(
@@ -477,6 +593,113 @@ class EventFactory:
                 new_status=new_status,
                 agent_type=agent_type,
                 duration_seconds=duration_seconds,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def message_sent(
+        message_id: str,
+        project_id: Union[str, UUID],
+        tenant_key: str,
+        from_job_id: str,
+        to_job_ids: list[str],
+        from_agent: Optional[str],
+        to_agent: Optional[str],
+        message_type: str,
+        content_preview: str,
+        priority: int,
+        message_timestamp: Optional[datetime] = None,
+    ) -> dict:
+        project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
+
+        msg_ts = (message_timestamp or datetime.now(timezone.utc)).isoformat().replace("+00:00", "Z")
+        preview = (content_preview or "")[:200]
+
+        event = MessageSentEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=MessageSentData(
+                message_id=message_id,
+                job_id=from_job_id,
+                project_id=project_id_str,
+                from_agent=from_agent,
+                to_agent=to_agent,
+                message_type=message_type,
+                message=preview,
+                content=preview,
+                content_preview=preview,
+                tenant_key=tenant_key,
+                priority=priority,
+                timestamp=msg_ts,
+                from_job_id=from_job_id,
+                to_job_ids=to_job_ids,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def message_received(
+        message_id: str,
+        project_id: Union[str, UUID],
+        tenant_key: str,
+        from_job_id: str,
+        to_job_ids: list[str],
+        from_agent: Optional[str],
+        to_agent_ids: list[str],
+        message_type: str,
+        content_preview: str,
+        priority: int,
+        message_timestamp: Optional[datetime] = None,
+    ) -> dict:
+        project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
+
+        msg_ts = (message_timestamp or datetime.now(timezone.utc)).isoformat().replace("+00:00", "Z")
+        preview = (content_preview or "")[:200]
+
+        event = MessageReceivedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=MessageReceivedData(
+                message_id=message_id,
+                job_id=from_job_id,
+                project_id=project_id_str,
+                from_agent=from_agent,
+                to_agent_ids=to_agent_ids,
+                message_type=message_type,
+                message=preview,
+                content=preview,
+                content_preview=preview,
+                tenant_key=tenant_key,
+                priority=priority,
+                timestamp=msg_ts,
+                from_job_id=from_job_id,
+                to_job_ids=to_job_ids,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def message_acknowledged(
+        message_id: str,
+        project_id: Union[str, UUID],
+        tenant_key: str,
+        from_job_id: str,
+        to_job_ids: list[str],
+        agent_id: str,
+        message_ids: list[str],
+    ) -> dict:
+        project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
+
+        event = MessageAcknowledgedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=MessageAcknowledgedData(
+                message_id=message_id,
+                message_ids=message_ids,
+                agent_id=agent_id,
+                project_id=project_id_str,
+                tenant_key=tenant_key,
+                timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                from_job_id=from_job_id,
+                to_job_ids=to_job_ids,
             ),
         )
         return event.model_dump(mode="json")

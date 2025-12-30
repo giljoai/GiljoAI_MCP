@@ -366,8 +366,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { useWebSocketV2 } from '@/composables/useWebSocket'
-import { useUserStore } from '@/stores/user'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
@@ -381,7 +381,7 @@ import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
  * Pure table layout with inline actions and message composer.
  * Dynamic status display from agent.status field with WebSocket updates (0243c).
  *
- * Reference: F:\GiljoAI_MCP\handovers\Launch-Jobs_panels2\IMplement tab.jpg
+ * Reference: handovers/Launch-Jobs_panels2/IMplement tab.jpg
  * Handover 0243c: JobsTab Dynamic Status Fix (CRITICAL 0242b)
  */
 
@@ -403,27 +403,7 @@ const props = defineProps({
     },
   },
 
-  /**
-   * Array of agent job objects
-   */
-  agents: {
-    type: Array,
-    required: true,
-    default: () => [],
-  },
-
-  /**
-   * Array of message objects
-   */
-  messages: {
-    type: Array,
-    default: () => [],
-  },
-
-  /**
-   * Whether all agents have completed
-   */
-  allAgentsComplete: {
+  readonly: {
     type: Boolean,
     default: false,
   },
@@ -441,9 +421,9 @@ const emit = defineEmits([
  * Composables
  */
 const { showToast } = useToast()
-const { on, off } = useWebSocketV2()
-const userStore = useUserStore()
+const wsStore = useWebSocketStore()
 const theme = useTheme()
+const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
 
 /**
  * GiljoAI face icon - theme-aware (Handover 0358)
@@ -471,7 +451,8 @@ const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
 const messageAuditInitialTab = ref('waiting')
-const selectedAgent = ref(null)
+const selectedJobId = ref(null)
+const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
 
 /**
  * Local snackbar state for immediate feedback (fixes first-click race condition)
@@ -508,48 +489,43 @@ function showLocalToast(options) {
   }
 }
 
-/**
- * Get current tenant key for multi-tenant isolation
- */
-const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
+const projectId = computed(() => props.project?.project_id || props.project?.id)
+const loadingJobs = ref(false)
 
-/**
- * Agent sorting priority map
- */
-const AGENT_PRIORITY = {
-  failed: 1,
-  blocked: 2,
-  waiting: 3,
-  working: 4,
-  complete: 5,
+async function refreshJobs() {
+  if (!projectId.value) return
+  if (loadingJobs.value) return
+
+  loadingJobs.value = true
+  try {
+    await loadJobs(projectId.value)
+  } catch (error) {
+    console.warn('[JobsTab] Failed to load agent jobs:', error)
+    showToast({
+      message: 'Failed to load agent jobs',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    loadingJobs.value = false
+  }
 }
 
-/**
- * Sort agents by priority
- */
-const sortedAgents = computed(() => {
-  if (!props.agents || props.agents.length === 0) return []
+watch(projectId, () => {
+  refreshJobs()
+}, { immediate: true })
 
-  return [...props.agents].sort((a, b) => {
-    const priorityA = AGENT_PRIORITY[a.status] || 999
-    const priorityB = AGENT_PRIORITY[b.status] || 999
-
-    // Primary sort: by priority
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB
+let unsubscribeConnectionListener = null
+onMounted(() => {
+  unsubscribeConnectionListener = wsStore.onConnectionChange((connectionEvent) => {
+    if (connectionEvent?.state === 'connected' && connectionEvent?.isReconnect) {
+      refreshJobs()
     }
-
-    // Secondary sort: by agent type (orchestrator first)
-    const isOrchestratorA = a.agent_type === 'orchestrator' ? 0 : 1
-    const isOrchestratorB = b.agent_type === 'orchestrator' ? 0 : 1
-
-    if (isOrchestratorA !== isOrchestratorB) {
-      return isOrchestratorA - isOrchestratorB
-    }
-
-    // Tertiary sort: by agent_type alphabetically
-    return (a.agent_type || '').localeCompare(b.agent_type || '')
   })
+})
+
+onUnmounted(() => {
+  unsubscribeConnectionListener?.()
 })
 
 /**
@@ -634,6 +610,9 @@ function formatAcknowledgmentTooltip(timestamp) {
  * Get count of messages sent from developer to this agent
  */
 function getMessagesSent(agent) {
+  if (Number.isFinite(agent?.messages_sent_count)) {
+    return agent.messages_sent_count
+  }
   if (!agent.messages || !Array.isArray(agent.messages)) return 0
   return agent.messages.filter(
     (m) => m.from === 'developer' || m.direction === 'outbound'
@@ -644,6 +623,9 @@ function getMessagesSent(agent) {
  * Get count of messages waiting to be read by agent
  */
 function getMessagesWaiting(agent) {
+  if (Number.isFinite(agent?.messages_waiting_count)) {
+    return agent.messages_waiting_count
+  }
   if (!agent.messages || !Array.isArray(agent.messages)) return 0
   return agent.messages.filter(
     (m) => m.status === 'pending' || m.status === 'waiting'
@@ -655,6 +637,9 @@ function getMessagesWaiting(agent) {
  * Only counts INBOUND messages that were read (not outbound messages sent by agent)
  */
 function getMessagesRead(agent) {
+  if (Number.isFinite(agent?.messages_read_count)) {
+    return agent.messages_read_count
+  }
   if (!agent.messages || !Array.isArray(agent.messages)) return 0
   return agent.messages.filter(
     (m) => m.direction === 'inbound' && (m.status === 'acknowledged' || m.status === 'read')
@@ -669,7 +654,7 @@ function getMessagesRead(agent) {
 /**
  * Determine if copy button should be shown for an agent (Handover 0333 Phase 3)
  * Reads execution_mode from project prop (read-only, controlled by LaunchTab)
- * 
+ *
  * Multi-Terminal Mode: All waiting agents show copy button
  * CLI Mode: Only waiting orchestrator shows copy button
  */
@@ -677,7 +662,7 @@ function shouldShowCopyButton(agent) {
   // Get execution mode from project prop (read-only)
   const executionMode = props.project?.execution_mode
   const claudeCodeCliMode = executionMode === 'claude_code_cli'
-  
+
   // Use consolidated function from actionConfig.js
   return shouldShowLaunchAction(agent, claudeCodeCliMode)
 }
@@ -746,7 +731,7 @@ async function handlePlay(agent) {
  */
 function handleMessages(agent) {
   console.log('[JobsTab] Messages action:', agent.agent_type)
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   messageAuditInitialTab.value = 'waiting'
   showMessageAuditModal.value = true
 }
@@ -764,7 +749,7 @@ function handleStepsClick(agent) {
     return
   }
 
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   messageAuditInitialTab.value = 'plan'
   showMessageAuditModal.value = true
 }
@@ -775,7 +760,7 @@ function handleStepsClick(agent) {
  */
 function handleAgentRole(agent) {
   console.log('[JobsTab] Agent role action:', agent.agent_type)
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   showAgentDetailsModal.value = true
 }
 
@@ -785,7 +770,7 @@ function handleAgentRole(agent) {
  */
 function handleAgentJob(agent) {
   console.log('[JobsTab] Agent job action:', agent.agent_type)
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   showAgentJobModal.value = true
 }
 
@@ -794,7 +779,7 @@ function handleAgentJob(agent) {
  * Opens confirmation dialog with agent details
  */
 function confirmCancelJob(agent) {
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   showCancelDialog.value = true
 }
 
@@ -804,7 +789,13 @@ function confirmCancelJob(agent) {
  */
 async function cancelJob() {
   try {
-    const jobId = selectedAgent.value.job_id || selectedAgent.value.agent_id
+    const job = selectedAgent.value
+    if (!job) {
+      showCancelDialog.value = false
+      return
+    }
+
+    const jobId = job.job_id || job.agent_id
     const response = await api.post(`/jobs/${jobId}/cancel`, {
       reason: 'User requested cancellation'
     })
@@ -834,7 +825,7 @@ async function cancelJob() {
  * Shows LaunchSuccessorDialog for orchestrator succession
  */
 function openHandoverDialog(agent) {
-  selectedAgent.value = agent
+  selectedJobId.value = agent.job_id || agent.agent_id
   showHandoverDialog.value = true
 }
 
@@ -850,7 +841,7 @@ function handleSuccessorCreated(successorData) {
     duration: 3000
   })
   showHandoverDialog.value = false
-  selectedAgent.value = null
+  selectedJobId.value = null
 }
 
 /**
@@ -941,295 +932,8 @@ async function copyToClipboard(text) {
   }
 }
 
-/**
- * Handle message sent event (developer -> agent)
- * Updates agent's message list when a message is successfully sent
- */
-const handleMessageSent = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  console.log('[JobsTab] Message sent event:', data)
-
-  // "Messages Sent" counter should ALWAYS increment for the SENDER (from_agent)
-  // NOT the recipient - this tracks messages the agent has sent OUT
-  const senderAgentId = data.from_agent
-
-  const agent = props.agents.find(
-    (a) =>
-      a.job_id === senderAgentId ||
-      a.id === senderAgentId ||
-      a.agent_id === senderAgentId ||
-      a.agent_type === senderAgentId
-  )
-
-  if (agent) {
-    if (!agent.messages) agent.messages = []
-    agent.messages.push({
-      id: data.message_id,
-      from: 'agent', // The agent sent this message
-      direction: 'outbound', // Outbound from the agent
-      status: 'sent',
-      text: data.content || data.content_preview || data.message || '',
-      priority: data.priority || 'medium',
-      timestamp: data.timestamp || new Date().toISOString(),
-      to_agent: data.to_agent, // Track recipient for audit trail
-      message_type: data.message_type
-    })
-
-    console.log(`[JobsTab] Added SENT message to ${agent.agent_type || agent.agent_name} (sender), total messages: ${agent.messages.length}`)
-  } else {
-    console.warn(`[JobsTab] Could not find agent for message. from_agent: ${data.from_agent}, to_agent: ${data.to_agent}`)
-  }
-}
-
-/**
- * Handle message acknowledged event (agent read message)
- * Updates message status when agent acknowledges receipt
- */
-const handleMessageAcknowledged = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  console.log('[JobsTab] Message acknowledged event:', data)
-
-  // Find the agent who acknowledged the messages
-  const agent = props.agents.find(
-    (a) => a.id === data.agent_id || a.agent_id === data.agent_id || a.job_id === data.agent_id
-  )
-
-  if (agent && agent.messages) {
-    // Handle both single message_id and array of message_ids
-    const messageIds = data.message_ids || [data.message_id]
-    const messageIdSet = new Set(messageIds)
-
-    let updatedCount = 0
-    agent.messages.forEach((msg) => {
-      if (messageIdSet.has(msg.id) && msg.status !== 'acknowledged') {
-        msg.status = 'acknowledged'
-        updatedCount++
-      }
-    })
-
-    if (updatedCount > 0) {
-      console.log(`[JobsTab] Updated ${updatedCount} messages to 'acknowledged' for agent ${agent.agent_type || agent.job_id}`)
-    }
-  }
-}
-
-/**
- * Handle new message event (agent -> developer)
- * Adds incoming messages from agents to the message list
- */
-/**
- * Handle message received event for RECIPIENT agents
- * Increments "Messages Waiting" counter on recipient agent cards
- * Emitted via broadcast_message_received() in backend
- */
-const handleMessageReceived = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  console.log('[JobsTab] Message received event:', data)
-
-  // data.to_agent_ids contains array of recipient job IDs
-  const recipientJobIds = data.to_agent_ids || []
-
-  recipientJobIds.forEach((recipientJobId) => {
-    // Find the recipient agent by job_id
-    const recipientAgent = props.agents.find(
-      (a) =>
-        a.job_id === recipientJobId ||
-        a.id === recipientJobId ||
-        a.agent_id === recipientJobId ||
-        a.agent_type === recipientJobId
-    )
-
-    if (recipientAgent) {
-      // Add message to recipient's messages array (for "Messages Waiting" counter)
-      if (!recipientAgent.messages) recipientAgent.messages = []
-      recipientAgent.messages.push({
-        id: data.message_id,
-        from: data.from_agent, // Who sent the message
-        direction: 'inbound', // Inbound to this recipient
-        status: 'waiting', // Waiting to be read
-        text: data.content || data.content_preview || data.message || '',
-        priority: data.priority || 'medium',
-        timestamp: data.timestamp || new Date().toISOString(),
-        message_type: data.message_type
-      })
-
-      console.log(
-        `[JobsTab] Added WAITING message to ${recipientAgent.agent_type || recipientAgent.agent_name} (recipient), total messages: ${recipientAgent.messages.length}`
-      )
-    } else {
-      console.warn(`[JobsTab] Could not find recipient agent. job_id: ${recipientJobId}`)
-    }
-  })
-}
-
-const handleNewMessage = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    return
-  }
-
-  console.log('[JobsTab] New message event:', data)
-
-  // Add message to agent's messages array
-  const agent = props.agents.find(
-    (a) => a.id === data.from_agent || a.agent_id === data.from_agent
-  )
-  if (agent) {
-    if (!agent.messages) agent.messages = []
-    agent.messages.push({
-      id: data.message_id,
-      from: 'agent',
-      direction: 'inbound',
-      status: 'pending',
-      text: data.message,
-      priority: data.priority || 'medium',
-      timestamp: data.timestamp || new Date().toISOString(),
-      message_type: data.message_type
-    })
-  }
-}
-
-/**
- * Handle agent status updates from WebSocket
- * CRITICAL: Multi-tenant isolation - reject events from other tenants
- * Handover 0243c: Real-time status display
- */
-const handleStatusUpdate = (data) => {
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
-    console.warn('[JobsTab] Status update rejected: tenant mismatch', {
-      expected: currentTenantKey.value,
-      received: data.tenant_key,
-    })
-    return
-  }
-
-  // Find agent and update status
-  const agent = props.agents.find((a) => a.job_id === data.job_id || a.agent_id === data.job_id)
-  if (agent) {
-    agent.status = data.status
-  } else {
-    console.warn(`[JobsTab] Agent not found for status update: ${data.job_id}`)
-  }
-}
-
-/**
- * Handle mission acknowledged event from WebSocket (Handover 0297)
- * Updates agent's mission_acknowledged_at field in real-time
- */
-const handleMissionAcknowledged = (data) => {
-  // Extract payload from nested structure (broadcast_to_tenant nests under data.data)
-  const payload = data.data || data
-
-  // Multi-tenant isolation check
-  if (!currentTenantKey.value || payload.tenant_key !== currentTenantKey.value) {
-    console.warn('[JobsTab] Mission acknowledged rejected: tenant mismatch', {
-      expected: currentTenantKey.value,
-      received: payload.tenant_key,
-    })
-    return
-  }
-
-  console.log('[JobsTab] Mission acknowledged event:', payload)
-
-  // Find agent and update mission_acknowledged_at
-  const agent = props.agents.find((a) => a.job_id === payload.job_id || a.agent_id === payload.job_id)
-  if (agent) {
-    agent.mission_acknowledged_at = payload.mission_acknowledged_at
-    console.log(`[JobsTab] Updated mission_acknowledged_at for ${agent.agent_type}:`, payload.mission_acknowledged_at)
-
-    // Emit custom event for external listeners
-    window.dispatchEvent(
-      new CustomEvent('agent:mission_acknowledged', {
-        detail: {
-          jobId: payload.job_id,
-          timestamp: payload.mission_acknowledged_at
-        }
-      })
-    )
-  } else {
-    console.warn(`[JobsTab] Agent not found for mission acknowledged: ${payload.job_id}`)
-  }
-}
-
-/**
- * Initialize messages array from backend data on mount
- * This ensures counters persist across page refreshes
- */
-const initializeMessagesFromBackend = () => {
-  if (!props.agents || props.agents.length === 0) {
-    console.warn('[JobsTab] No agents to initialize!')
-    return
-  }
-
-  console.log('[JobsTab] Initializing messages from backend for', props.agents.length, 'agents')
-
-  // Each agent in props.agents should already have messages array from backend
-  // The messages come from the JSONB column in PostgreSQL
-  props.agents.forEach(agent => {
-    const messageCount = agent.messages ? agent.messages.length : 0
-    console.log(
-      `[JobsTab] Agent ${agent.agent_type} (${agent.job_id})`,
-      `- Has ${messageCount} messages from backend`,
-      `- Messages array exists: ${!!agent.messages}`,
-      messageCount > 0 ? `- Sample message:` : '',
-      messageCount > 0 ? agent.messages[0] : ''
-    )
-
-    // Ensure messages array is initialized (even if empty)
-    if (!agent.messages) {
-      agent.messages = []
-      console.warn(`[JobsTab] Agent ${agent.agent_type} had NO messages array - initialized empty array`)
-    }
-  })
-
-  // Log counter values that should be displayed
-  console.log('[JobsTab] Counter values after initialization:')
-  props.agents.forEach(agent => {
-    console.log(
-      `  ${agent.agent_type}:`,
-      `Sent=${getMessagesSent(agent)},`,
-      `Waiting=${getMessagesWaiting(agent)},`,
-      `Read=${getMessagesRead(agent)}`
-    )
-  })
-}
-
-/**
- * Lifecycle hooks - WebSocket event management
- */
-onMounted(() => {
-  // Initialize messages from backend data (for persistence)
-  initializeMessagesFromBackend()
-
-  // Register WebSocket event handlers
-  // NOTE: message:sent and message:received are handled by websocketIntegrations.js
-  // which updates projectTabsStore.agents (same data as props.agents). Registering
-  // them here would cause double-counting of messages. (Handover 0297 fix)
-  on('agent:status_changed', handleStatusUpdate)
-  on('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
-  on('message:acknowledged', handleMessageAcknowledged)
-  on('message:new', handleNewMessage)
-})
-
-onUnmounted(() => {
-  off('agent:status_changed', handleStatusUpdate)
-  off('job:mission_acknowledged', handleMissionAcknowledged) // Handover 0297
-  off('message:acknowledged', handleMessageAcknowledged)
-  off('message:new', handleNewMessage)
-})
+// WebSocket updates for jobs/messages flow through the centralized router (0379a)
+// into `agentJobsStore` (0379b). JobsTab only renders store state and performs user actions.
 </script>
 
 <style scoped lang="scss">

@@ -214,16 +214,22 @@ async def list_tenant_configurations():
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from sqlalchemy import distinct, select
+            # Handover 1011 Phase 3: Migrated to ConfigurationRepository
+            from src.giljo_mcp.repositories import ConfigurationRepository
 
-            from src.giljo_mcp.models import Configuration
-
-            result = await session.execute(
-                select(distinct(Configuration.tenant_key)).where(Configuration.tenant_key.isnot(None))
-            )
-            tenants = [row[0] for row in result]
+            repo = ConfigurationRepository(state.db_manager)
+            tenants = await repo.list_tenant_keys(session)
 
             return tenants
+
+            # ORIGINAL QUERY (for rollback):
+            # from sqlalchemy import distinct, select
+            # from src.giljo_mcp.models import Configuration
+            # result = await session.execute(
+            #     select(distinct(Configuration.tenant_key)).where(Configuration.tenant_key.isnot(None))
+            # )
+            # tenants = [row[0] for row in result]
+            # return tenants
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -239,12 +245,11 @@ async def get_tenant_configuration(tenant_key: str):
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from sqlalchemy import select
+            # Handover 1011 Phase 3: Migrated to ConfigurationRepository
+            from src.giljo_mcp.repositories import ConfigurationRepository
 
-            from src.giljo_mcp.models import Configuration
-
-            result = await session.execute(select(Configuration).where(Configuration.tenant_key == tenant_key))
-            configs = result.scalars().all()
+            repo = ConfigurationRepository(state.db_manager)
+            configs = await repo.get_tenant_configurations(session, tenant_key)
 
             if not configs:
                 raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
@@ -255,6 +260,12 @@ async def get_tenant_configuration(tenant_key: str):
                 tenant_config[config.key] = json.loads(config.value) if config.value else None
 
             return tenant_config
+
+            # ORIGINAL QUERY (for rollback):
+            # from sqlalchemy import select
+            # from src.giljo_mcp.models import Configuration
+            # result = await session.execute(select(Configuration).where(Configuration.tenant_key == tenant_key))
+            # configs = result.scalars().all()
 
     except HTTPException:
         raise
@@ -275,16 +286,15 @@ async def set_tenant_configuration(
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from sqlalchemy import select
-
+            # Handover 1011 Phase 3: Migrated to ConfigurationRepository
             from src.giljo_mcp.models import Configuration
+            from src.giljo_mcp.repositories import ConfigurationRepository
+
+            repo = ConfigurationRepository(state.db_manager)
 
             for key, value in configurations.items():
                 # Check if configuration exists
-                result = await session.execute(
-                    select(Configuration).where(Configuration.tenant_key == tenant_key).where(Configuration.key == key)
-                )
-                config = result.scalar_one_or_none()
+                config = await repo.get_configuration_by_key(session, tenant_key, key)
 
                 if config:
                     # Update existing
@@ -306,6 +316,14 @@ async def set_tenant_configuration(
                 "message": f"Tenant configuration updated for '{tenant_key}'",
             }
 
+            # ORIGINAL QUERY (for rollback):
+            # from sqlalchemy import select
+            # from src.giljo_mcp.models import Configuration
+            # result = await session.execute(
+            #     select(Configuration).where(Configuration.tenant_key == tenant_key).where(Configuration.key == key)
+            # )
+            # config = result.scalar_one_or_none()
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -320,23 +338,31 @@ async def delete_tenant_configuration(tenant_key: str):
 
     try:
         async with state.db_manager.get_session_async() as session:
-            from sqlalchemy import delete
+            # Handover 1011 Phase 3: Migrated to ConfigurationRepository
+            from src.giljo_mcp.repositories import ConfigurationRepository
 
-            from src.giljo_mcp.models import Configuration
-
-            result = await session.execute(delete(Configuration).where(Configuration.tenant_key == tenant_key))
+            repo = ConfigurationRepository(state.db_manager)
+            deleted_count = await repo.delete_tenant_configurations(session, tenant_key)
 
             await session.commit()
 
-            if result.rowcount == 0:
+            if deleted_count == 0:
                 raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
             return {
                 "success": True,
                 "tenant_key": tenant_key,
-                "configurations_deleted": result.rowcount,
-                "message": f"Deleted {result.rowcount} configurations for tenant '{tenant_key}'",
+                "configurations_deleted": deleted_count,
+                "message": f"Deleted {deleted_count} configurations for tenant '{tenant_key}'",
             }
+
+            # ORIGINAL QUERY (for rollback):
+            # from sqlalchemy import delete
+            # from src.giljo_mcp.models import Configuration
+            # result = await session.execute(delete(Configuration).where(Configuration.tenant_key == tenant_key))
+            # await session.commit()
+            # if result.rowcount == 0:
+            #     raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
     except HTTPException:
         raise
@@ -602,14 +628,23 @@ async def test_database_connection():
         return {"success": False, "error": "Database manager not initialized"}
 
     try:
-        # Try to get a connection and execute a simple query
+        # Handover 1011 Phase 3: Migrated to ConfigurationRepository
         async with state.db_manager.get_session_async() as session:
-            from sqlalchemy import text
+            from src.giljo_mcp.repositories import ConfigurationRepository
 
-            result = await session.execute(text("SELECT 1"))
-            result.scalar()
+            repo = ConfigurationRepository(state.db_manager)
+            is_healthy = await repo.execute_health_check(session)
 
-        return {"success": True, "message": "Database connection successful"}
+            if is_healthy:
+                return {"success": True, "message": "Database connection successful"}
+            else:
+                return {"success": False, "error": "Database health check returned False"}
+
+        # ORIGINAL QUERY (for rollback):
+        # from sqlalchemy import text
+        # result = await session.execute(text("SELECT 1"))
+        # result.scalar()
+        # return {"success": True, "message": "Database connection successful"}
 
     except Exception as e:
         return {"success": False, "error": f"Database connection failed: {e!s}"}

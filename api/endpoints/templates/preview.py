@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.services.template_service import TemplateService
 
+from .dependencies import get_template_service
 from .models import TemplateDiffResponse, TemplatePreviewRequest, TemplatePreviewResponse
 
 
@@ -29,24 +31,28 @@ async def get_template_diff(
     template_id: str,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> TemplateDiffResponse:
     """
     Get diff between tenant template and system template.
 
-    TODO: Add get_template_diff to TemplateService.
+    Migrated to TemplateService - Handover 1011 Phase 2.
     """
     logger.info(f"User {current_user.username} requesting diff for template {template_id}")
 
-    # Minimal implementation: report that no system template exists yet
-    # while still returning a structured response instead of 501.
-    stmt = select(AgentTemplate).where(
-        and_(
-            AgentTemplate.id == template_id,
-            AgentTemplate.tenant_key == current_user.tenant_key,
-        )
+    # ORIGINAL QUERY: preview.py line 42-49 (replaced with service call)
+    # stmt = select(AgentTemplate).where(
+    #     and_(
+    #         AgentTemplate.id == template_id,
+    #         AgentTemplate.tenant_key == current_user.tenant_key,
+    #     )
+    # )
+    # result = await session.execute(stmt)
+    # template = result.scalar_one_or_none()
+
+    template = await template_service.get_template_by_id(
+        session, template_id, current_user.tenant_key
     )
-    result = await session.execute(stmt)
-    template = result.scalar_one_or_none()
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -70,23 +76,31 @@ async def preview_template(
     request: TemplatePreviewRequest,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
+    template_service: TemplateService = Depends(get_template_service),
 ) -> TemplatePreviewResponse:
     """
     Preview template with variable substitutions.
 
     For Claude (cli_tool='claude'): returns YAML-style preview with frontmatter.
     For Codex/Gemini: returns plaintext/markdown preview.
+
+    Migrated to TemplateService - Handover 1011 Phase 2.
     """
     logger.info(f"User {current_user.username} previewing template {template_id}")
 
-    stmt = select(AgentTemplate).where(
-        and_(
-            AgentTemplate.id == template_id,
-            AgentTemplate.tenant_key == current_user.tenant_key,
-        )
+    # ORIGINAL QUERY: preview.py line 82-89 (replaced with service call)
+    # stmt = select(AgentTemplate).where(
+    #     and_(
+    #         AgentTemplate.id == template_id,
+    #         AgentTemplate.tenant_key == current_user.tenant_key,
+    #     )
+    # )
+    # result = await session.execute(stmt)
+    # template = result.scalar_one_or_none()
+
+    template = await template_service.get_template_by_id(
+        session, template_id, current_user.tenant_key
     )
-    result = await session.execute(stmt)
-    template = result.scalar_one_or_none()
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
