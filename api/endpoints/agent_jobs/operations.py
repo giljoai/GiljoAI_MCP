@@ -18,11 +18,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 
 from src.giljo_mcp.agent_job_manager import force_fail_job, request_job_cancellation
-from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .dependencies import get_db_manager
 from .models import (
@@ -198,7 +200,7 @@ async def force_fail_job_endpoint(
 async def get_job_health(
     job_id: str,
     current_user: User = Depends(get_current_active_user),
-    db_manager: DatabaseManager = Depends(get_db_manager),
+    session: AsyncSession = Depends(get_db_session),
 ) -> JobHealthResponse:
     """
     Get health metrics for an agent job (Handover 0107).
@@ -220,54 +222,71 @@ async def get_job_health(
     logger.debug(f"User {current_user.username} checking health of job {job_id}")
 
     try:
-        async with db_manager.get_session_async() as session:
-            # Get execution with tenant isolation (job_id could be agent_id or job_id)
-            # Try agent_id first (new model)
-            stmt = select(AgentExecution).where(
-                AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_id == job_id,
+        # Initialize repository
+        repo = AgentJobRepository(None)  # Repository doesn't use db_manager for queries
+
+        # Get execution with tenant isolation (job_id could be agent_id or job_id)
+        # Try agent_id first (new model)
+        execution = await repo.get_execution_by_agent_id(
+            session=session,
+            tenant_key=current_user.tenant_key,
+            agent_id=job_id,
+        )
+
+        # Fallback to job_id if not found by agent_id
+        if not execution:
+            execution = await repo.get_execution_by_job_id(
+                session=session,
+                tenant_key=current_user.tenant_key,
+                job_id=job_id,
             )
-            result = await session.execute(stmt)
-            execution = result.scalar_one_or_none()
 
-            # Fallback to job_id if not found by agent_id
-            if not execution:
-                stmt = select(AgentExecution).where(
-                    AgentExecution.tenant_key == current_user.tenant_key,
-                    AgentExecution.job_id == job_id,
-                )
-                result = await session.execute(stmt)
-                execution = result.scalar_one_or_none()
-
-            if not execution:
-                raise HTTPException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    detail=f"Job {job_id} not found"
-                )
-
-            # Calculate minutes since last progress
-            minutes_since_progress: Optional[float] = None
-            is_stale = False
-
-            if execution.last_progress_at:
-                time_delta = datetime.now(timezone.utc) - execution.last_progress_at
-                minutes_since_progress = time_delta.total_seconds() / 60.0
-
-                # Job is stale if no progress in 10+ minutes and not in terminal state
-                is_stale = (
-                    minutes_since_progress >= 10.0
-                    and execution.status not in ("complete", "failed", "cancelled", "decommissioned")
-                )
-
-            # Return health metrics
-            return JobHealthResponse(
-                job_id=execution.job_id,
-                status=execution.status,
-                last_progress_at=execution.last_progress_at,
-                last_message_check_at=execution.last_message_check_at,
-                minutes_since_progress=minutes_since_progress,
-                is_stale=is_stale,
+        if not execution:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"Job {job_id} not found"
             )
+
+        # ORIGINAL QUERY (kept for reference):
+        # stmt = select(AgentExecution).where(
+        #     AgentExecution.tenant_key == current_user.tenant_key,
+        #     AgentExecution.agent_id == job_id,
+        # )
+        # result = await session.execute(stmt)
+        # execution = result.scalar_one_or_none()
+        #
+        # # Fallback to job_id if not found by agent_id
+        # if not execution:
+        #     stmt = select(AgentExecution).where(
+        #         AgentExecution.tenant_key == current_user.tenant_key,
+        #         AgentExecution.job_id == job_id,
+        #     )
+        #     result = await session.execute(stmt)
+        #     execution = result.scalar_one_or_none()
+
+        # Calculate minutes since last progress
+        minutes_since_progress: Optional[float] = None
+        is_stale = False
+
+        if execution.last_progress_at:
+            time_delta = datetime.now(timezone.utc) - execution.last_progress_at
+            minutes_since_progress = time_delta.total_seconds() / 60.0
+
+            # Job is stale if no progress in 10+ minutes and not in terminal state
+            is_stale = (
+                minutes_since_progress >= 10.0
+                and execution.status not in ("complete", "failed", "cancelled", "decommissioned")
+            )
+
+        # Return health metrics
+        return JobHealthResponse(
+            job_id=execution.job_id,
+            status=execution.status,
+            last_progress_at=execution.last_progress_at,
+            last_message_check_at=execution.last_message_check_at,
+            minutes_since_progress=minutes_since_progress,
+            is_stale=is_stale,
+        )
 
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -287,7 +306,7 @@ async def update_agent_mission(
     job_id: str,
     request: UpdateMissionRequest,
     current_user: User = Depends(get_current_active_user),
-    db_manager: DatabaseManager = Depends(get_db_manager),
+    session: AsyncSession = Depends(get_db_session),
 ) -> UpdateMissionResponse:
     """
     Update agent mission with validation and WebSocket broadcast (Handover 0244b).
@@ -299,7 +318,7 @@ async def update_agent_mission(
         job_id: Job ID to update
         request: Update request with new mission text
         current_user: Authenticated user (from dependency)
-        db_manager: Database manager (from dependency)
+        session: Database session (from dependency)
 
     Returns:
         UpdateMissionResponse with success status and updated mission
@@ -313,61 +332,77 @@ async def update_agent_mission(
     logger.debug(f"User {current_user.username} updating mission for job {job_id}")
 
     try:
-        async with db_manager.get_session_async() as session:
-            # Get AgentJob with tenant isolation (mission is stored on job, not execution)
-            stmt = select(AgentJob).where(
-                AgentJob.tenant_key == current_user.tenant_key,
-                AgentJob.job_id == job_id,
-            )
-            result = await session.execute(stmt)
-            job = result.scalar_one_or_none()
+        # Initialize repository
+        repo = AgentJobRepository(None)
 
-            if not job:
-                raise HTTPException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    detail=f"Agent job {job_id} not found"
-                )
+        # Get AgentJob with tenant isolation (mission is stored on job, not execution)
+        job = await repo.get_agent_job_by_job_id(
+            session=session,
+            tenant_key=current_user.tenant_key,
+            job_id=job_id,
+        )
 
-            # Update mission (stored on AgentJob, not AgentExecution)
-            job.mission = request.mission
-
-            await session.commit()
-            await session.refresh(job)
-
-            logger.info(
-                f"Mission updated for job {job_id} by user {current_user.username}. "
-                f"New length: {len(request.mission)} chars"
+        if not job:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"Agent job {job_id} not found"
             )
 
-            # Get current execution for WebSocket event
-            exec_stmt = select(AgentExecution).where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == current_user.tenant_key,
-            ).order_by(AgentExecution.instance_number.desc())
-            exec_result = await session.execute(exec_stmt)
-            current_execution = exec_result.scalar_one_or_none()
+        # ORIGINAL QUERY (kept for reference):
+        # stmt = select(AgentJob).where(
+        #     AgentJob.tenant_key == current_user.tenant_key,
+        #     AgentJob.job_id == job_id,
+        # )
+        # result = await session.execute(stmt)
+        # job = result.scalar_one_or_none()
 
-            # Emit WebSocket event for real-time updates
-            from api.websocket_manager import manager as websocket_manager
+        # Update mission (stored on AgentJob, not AgentExecution)
+        job.mission = request.mission
 
-            await websocket_manager.emit_to_tenant(
-                current_user.tenant_key,
-                "agent:mission_updated",
-                {
-                    "job_id": job_id,
-                    "agent_type": current_execution.agent_type if current_execution else job.job_type,
-                    "agent_name": current_execution.agent_name if current_execution else None,
-                    "mission": job.mission,
-                    "project_id": job.project_id,
-                },
-            )
+        await session.commit()
+        await session.refresh(job)
 
-            # Return success response
-            return UpdateMissionResponse(
-                success=True,
-                job_id=job_id,
-                mission=job.mission,
-            )
+        logger.info(
+            f"Mission updated for job {job_id} by user {current_user.username}. "
+            f"New length: {len(request.mission)} chars"
+        )
+
+        # Get current execution for WebSocket event
+        current_execution = await repo.get_latest_execution_for_job(
+            session=session,
+            tenant_key=current_user.tenant_key,
+            job_id=job_id,
+        )
+
+        # ORIGINAL QUERY (kept for reference):
+        # exec_stmt = select(AgentExecution).where(
+        #     AgentExecution.job_id == job_id,
+        #     AgentExecution.tenant_key == current_user.tenant_key,
+        # ).order_by(AgentExecution.instance_number.desc())
+        # exec_result = await session.execute(exec_stmt)
+        # current_execution = exec_result.scalar_one_or_none()
+
+        # Emit WebSocket event for real-time updates
+        from api.websocket_manager import manager as websocket_manager
+
+        await websocket_manager.emit_to_tenant(
+            current_user.tenant_key,
+            "agent:mission_updated",
+            {
+                "job_id": job_id,
+                "agent_type": current_execution.agent_type if current_execution else job.job_type,
+                "agent_name": current_execution.agent_name if current_execution else None,
+                "mission": job.mission,
+                "project_id": job.project_id,
+            },
+        )
+
+        # Return success response
+        return UpdateMissionResponse(
+            success=True,
+            job_id=job_id,
+            mission=job.mission,
+        )
 
     except HTTPException:
         # Re-raise HTTP exceptions

@@ -255,11 +255,166 @@ class TokenManager:
                 "metadata": token_record.meta_data,
                 "is_used": token_record.is_used,
                 "is_expired": token_record.is_expired,
+                "staging_status": token_record.staging_status,
+                "staging_error": token_record.staging_error,
+                "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
                 "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
             }
 
         except Exception as e:
             logger.error(f"Error retrieving token info: {e}")
             return None
+
+    async def get_token_info_by_token(self, token: str) -> Optional[dict]:
+        """
+        Retrieve token information by token only (no tenant isolation).
+        Used for download validation where token is the authentication.
+
+        Args:
+            token: UUID token string
+
+        Returns:
+            Optional[dict]: Token metadata or None if not found
+        """
+        try:
+            stmt = select(DownloadToken).where(DownloadToken.token == token)
+            result = await self.db_session.execute(stmt)
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                return None
+
+            return {
+                "token": token_record.token,
+                "tenant_key": token_record.tenant_key,
+                "download_type": token_record.download_type,
+                "metadata": token_record.meta_data,
+                "is_used": token_record.is_used,
+                "is_expired": token_record.is_expired,
+                "staging_status": token_record.staging_status,
+                "staging_error": token_record.staging_error,
+                "download_count": token_record.download_count,
+                "created_at": token_record.created_at.isoformat(),
+                "expires_at": token_record.expires_at.isoformat(),
+                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
+            }
+
+        except Exception as e:
+            logger.error(f"Error retrieving token info: {e}")
+            return None
+
+    async def mark_failed(self, token: str, error_message: str) -> bool:
+        """
+        Mark token as failed with error message.
+
+        Updates staging_status to 'failed' and records error details.
+        Used when file staging fails during token generation.
+
+        Args:
+            token: UUID token string
+            error_message: Error description for debugging
+
+        Returns:
+            bool: True if successfully marked, False otherwise
+        """
+        try:
+            # Query token (no tenant isolation - token is unique)
+            stmt = select(DownloadToken).where(DownloadToken.token == token)
+            result = await self.db_session.execute(stmt)
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                logger.warning(f"Cannot mark non-existent token as failed: {token}")
+                return False
+
+            # Update staging status
+            token_record.staging_status = "failed"
+            token_record.staging_error = error_message
+
+            await self.db_session.commit()
+
+            logger.info(f"Token marked as failed: {token}, error: {error_message}")
+            return True
+
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"Error marking token as failed: {e}")
+            return False
+
+    async def mark_ready(self, token: str) -> bool:
+        """
+        Mark token as ready for download.
+
+        Updates staging_status to 'ready' after successful file staging.
+        Token becomes available for download.
+
+        Args:
+            token: UUID token string
+
+        Returns:
+            bool: True if successfully marked, False otherwise
+        """
+        try:
+            # Query token (no tenant isolation - token is unique)
+            stmt = select(DownloadToken).where(DownloadToken.token == token)
+            result = await self.db_session.execute(stmt)
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                logger.warning(f"Cannot mark non-existent token as ready: {token}")
+                return False
+
+            # Update staging status
+            token_record.staging_status = "ready"
+            token_record.staging_error = None  # Clear any previous errors
+
+            await self.db_session.commit()
+
+            logger.info(f"Token marked as ready: {token}")
+            return True
+
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"Error marking token as ready: {e}")
+            return False
+
+    async def increment_download_count(self, token: str) -> bool:
+        """
+        Increment download counter and update last download timestamp.
+
+        Updates download_count and last_downloaded_at for metrics tracking.
+        Called after successful file download.
+
+        Args:
+            token: UUID token string
+
+        Returns:
+            bool: True if successfully updated, False otherwise
+        """
+        try:
+            # Query token (no tenant isolation - token is unique)
+            stmt = select(DownloadToken).where(DownloadToken.token == token)
+            result = await self.db_session.execute(stmt)
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                logger.warning(f"Cannot increment download count for non-existent token: {token}")
+                return False
+
+            # Increment counter and update timestamp
+            token_record.download_count += 1
+            token_record.last_downloaded_at = datetime.now(timezone.utc)
+
+            await self.db_session.commit()
+
+            logger.info(f"Download count incremented for token: {token}, new count: {token_record.download_count}")
+            return True
+
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"Error incrementing download count: {e}")
+            return False

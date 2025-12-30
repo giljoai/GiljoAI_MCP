@@ -159,7 +159,12 @@ async def create_vision_document(
             # Calculate file size from uploaded file
             file_size = len(content_bytes)
 
-            document_content = content_bytes.decode("utf-8")
+            # Try UTF-8 first, fallback to latin-1 for Windows files with special chars (e.g., degree symbol)
+            try:
+                document_content = content_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                logger.warning(f"File {vision_file.filename} is not UTF-8 encoded, falling back to latin-1")
+                document_content = content_bytes.decode("latin-1")
             storage_type = "hybrid" if content else "file"
         elif content:
             # Inline content - calculate size from string

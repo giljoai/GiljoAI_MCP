@@ -20,6 +20,7 @@ async def get_db_manager() -> DatabaseManager:
     """
     # Get db_manager from application state (set during startup)
     from api.app import state
+
     return state.db_manager
 
 
@@ -45,5 +46,6 @@ def get_orchestration_service(
     # OrchestrationService uses db_manager (not session) for its own session management
     return OrchestrationService(
         db_manager=state.db_manager,
-        tenant_manager=state.tenant_manager
+        tenant_manager=state.tenant_manager,
+        websocket_manager=state.websocket_manager,
     )

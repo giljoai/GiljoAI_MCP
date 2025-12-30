@@ -24,7 +24,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
-import httpx
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,6 +58,7 @@ class ProjectService:
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
         test_session: Optional[AsyncSession] = None,
+        websocket_manager: Optional[Any] = None,
     ):
         """
         Initialize ProjectService with database and tenant management.
@@ -75,6 +75,7 @@ class ProjectService:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._test_session = test_session
+        self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -90,6 +91,7 @@ class ProjectService:
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
 
         # Return the context manager directly (no double-wrapping)
@@ -201,16 +203,11 @@ class ProjectService:
                 # Get project with tenant isolation filter (Handover 0325)
                 if tenant_key:
                     result = await session.execute(
-                        select(Project).where(
-                            Project.tenant_key == tenant_key,
-                            Project.id == project_id
-                        )
+                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
-                    result = await session.execute(
-                        select(Project).where(Project.id == project_id)
-                    )
+                    result = await session.execute(select(Project).where(Project.id == project_id))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -416,7 +413,9 @@ class ProjectService:
             self._logger.exception(f"Failed to list projects: {e}")
             return {"success": False, "error": str(e)}
 
-    async def update_project_mission(self, project_id: str, mission: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def update_project_mission(
+        self, project_id: str, mission: str, tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis.
 
@@ -444,10 +443,7 @@ class ProjectService:
                 if tenant_key:
                     result = await session.execute(
                         update(Project)
-                        .where(
-                            Project.tenant_key == tenant_key,
-                            Project.id == project_id
-                        )
+                        .where(Project.tenant_key == tenant_key, Project.id == project_id)
                         .values(mission=mission, updated_at=datetime.utcnow())
                     )
                 else:
@@ -464,10 +460,7 @@ class ProjectService:
                 # Get project for tenant_key (with tenant filter if provided)
                 if tenant_key:
                     project_result = await session.execute(
-                        select(Project).where(
-                            Project.tenant_key == tenant_key,
-                            Project.id == project_id
-                        )
+                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
                     )
                 else:
                     project_result = await session.execute(select(Project).where(Project.id == project_id))
@@ -1241,7 +1234,7 @@ class ProjectService:
                         select(Product).where(
                             and_(
                                 Product.id == project.product_id,
-                                Product.tenant_key == self.tenant_manager.get_current_tenant()
+                                Product.tenant_key == self.tenant_manager.get_current_tenant(),
                             )
                         )
                     )
@@ -1410,21 +1403,21 @@ class ProjectService:
             "## MCP Command Template\n\n"
             "Use this command to close out the project and update 360 Memory:\n\n"
             "close_project_and_update_memory(\n"
-            f'    project_id=\"{project_id}\",\n'
-            "    summary=\"\"\"\n"
+            f'    project_id="{project_id}",\n'
+            '    summary="""\n'
             "    Provide a concise 2-3 paragraph summary of the project delivery.\n"
             "    Focus on outcomes, decisions, and next steps for the product team.\n"
-            "    \"\"\",\n"
+            '    """,\n'
             "    key_outcomes=[\n"
-            '        \"Outcome 1: Describe key deliverable\",\n'
-            '        \"Outcome 2: Describe key deliverable\",\n'
-            '        \"Outcome 3: Describe key deliverable\",\n'
+            '        "Outcome 1: Describe key deliverable",\n'
+            '        "Outcome 2: Describe key deliverable",\n'
+            '        "Outcome 3: Describe key deliverable",\n'
             "    ],\n"
             "    decisions_made=[\n"
-            '        \"Decision 1: Document architectural or technical choice\",\n'
-            '        \"Decision 2: Document architectural or technical choice\",\n'
+            '        "Decision 1: Document architectural or technical choice",\n'
+            '        "Decision 2: Document architectural or technical choice",\n'
             "    ],\n"
-            f'    tenant_key=\"{tenant_for_prompt}\"\n'
+            f'    tenant_key="{tenant_for_prompt}"\n'
             ")\n\n"
             "## Guidance\n"
             "- Summaries should explain what changed and why it matters.\n"
@@ -1509,7 +1502,7 @@ class ProjectService:
             f"cd {repo_path}\n"
             "git status\n"
             "git add .\n"
-            f"git commit -m \"Project complete: {project.name}\"\n"
+            f'git commit -m "Project complete: {project.name}"\n'
             f"git push origin {branch}\n\n"
             "cat > PROJECT_SUMMARY.md <<'EOF'\n"
             f"Project: {project.name}\n"
@@ -1642,7 +1635,7 @@ class ProjectService:
                     if project.mission and project.mission.strip():
                         return {
                             "success": False,
-                            "error": "Cannot change execution mode after staging. Mission has been generated."
+                            "error": "Cannot change execution mode after staging. Mission has been generated.",
                         }
 
                 # Update allowed fields (Handover 0260: Added execution_mode)
@@ -1700,7 +1693,7 @@ class ProjectService:
         project_id: str,
         user_id: Optional[str] = None,
         launch_config: Optional[dict[str, Any]] = None,
-        websocket_manager: Optional[Any] = None
+        websocket_manager: Optional[Any] = None,
     ) -> dict[str, Any]:
         """
         Launch project orchestrator.
@@ -1753,10 +1746,7 @@ class ProjectService:
                     from giljo_mcp.models import User
 
                     user_stmt = select(User).where(
-                        and_(
-                            User.id == user_id,
-                            User.tenant_key == self.tenant_manager.get_current_tenant()
-                        )
+                        and_(User.id == user_id, User.tenant_key == self.tenant_manager.get_current_tenant())
                     )
                     user_result = await session.execute(user_stmt)
                     user = user_result.scalar_one_or_none()
@@ -1778,7 +1768,7 @@ class ProjectService:
                         "git_commits": 25,
                         "agent_templates": "type_only",
                         "tech_stack_sections": "all",
-                        "architecture_depth": "overview"
+                        "architecture_depth": "overview",
                     }
 
                 # Calculate next instance number for orchestrator (migrated to AgentExecution - Handover 0367a)
@@ -2023,16 +2013,11 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 # Find project with tenant isolation filter (Handover 0325)
                 if tenant_key:
                     result = await db_session.execute(
-                        select(Project).where(
-                            Project.tenant_key == tenant_key,
-                            Project.id == project_id
-                        )
+                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
-                    result = await db_session.execute(
-                        select(Project).where(Project.id == project_id)
-                    )
+                    result = await db_session.execute(select(Project).where(Project.id == project_id))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -2358,7 +2343,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         and_(
                             AgentJob.project_id == project_id,
                             AgentJob.tenant_key == tenant_key,
-                            AgentExecution.status.notin_(["completed", "failed", "cancelled"])
+                            AgentExecution.status.notin_(["completed", "failed", "cancelled"]),
                         )
                     )
                 )
@@ -2407,12 +2392,10 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 "id": project_id,
                 "name": result.get("project_name", "Unknown"),
                 "tenant_key": result.get("tenant_key", ""),
-                "deleted_at": datetime.now(timezone.utc).isoformat()
+                "deleted_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            self._logger.info(
-                "[Nuclear Purge] Manually purged project %s via trash icon", project_id
-            )
+            self._logger.info("[Nuclear Purge] Manually purged project %s via trash icon", project_id)
 
             return {"success": True, "purged_count": 1, "projects": [project_info]}
         else:
@@ -2445,12 +2428,14 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             for project in deleted_projects:
                 result = await self.nuclear_delete_project(project.id)
                 if result.get("success"):
-                    purged_projects.append({
-                        "id": project.id,
-                        "name": project.name,
-                        "tenant_key": project.tenant_key,
-                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                    })
+                    purged_projects.append(
+                        {
+                            "id": project.id,
+                            "name": project.name,
+                            "tenant_key": project.tenant_key,
+                            "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                        }
+                    )
                 else:
                     self._logger.error(f"Failed to nuclear delete project {project.id}: {result.get('error')}")
 
@@ -2529,12 +2514,14 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             for project in expired_projects:
                 result = await self.nuclear_delete_project(project.id)
                 if result.get("success"):
-                    purged_projects.append({
-                        "id": project.id,
-                        "name": project.name,
-                        "tenant_key": project.tenant_key,
-                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                    })
+                    purged_projects.append(
+                        {
+                            "id": project.id,
+                            "name": project.name,
+                            "tenant_key": project.tenant_key,
+                            "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                        }
+                    )
                     self._logger.info(
                         f"[Nuclear Purge] Auto-purged expired project {project.id} "
                         f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
@@ -2542,9 +2529,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 else:
                     self._logger.error(f"Failed to nuclear delete expired project {project.id}: {result.get('error')}")
 
-            self._logger.info(
-                f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects"
-            )
+            self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")
 
             return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
 
@@ -2564,48 +2549,38 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         summary: str,
         tenant_key: str,
     ) -> None:
-        """Broadcast memory update via WebSocket HTTP bridge."""
+        """Broadcast memory update via WebSocketManager (in-process)."""
         self._logger.info(
             f"[WEBSOCKET DEBUG] Broadcasting memory update for project {project_id} (sequence: {sequence_number})"
         )
 
+        if not self._websocket_manager:
+            self._logger.debug("[WEBSOCKET] No WebSocket manager available for project:memory_updated")
+            return
+
+        summary_preview = (summary[:200] + "...") if len(summary) > 200 else summary
+
         try:
-            async with httpx.AsyncClient() as client:
-                bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                summary_preview = (summary[:200] + "...") if len(summary) > 200 else summary
-
-                response = await client.post(
-                    bridge_url,
-                    json={
-                        "event_type": "project:memory_updated",
-                        "tenant_key": tenant_key,
-                        "data": {
-                            "project_id": project_id,
-                            "project_name": project_name,
-                            "sequence_number": sequence_number,
-                            "summary_preview": summary_preview,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    },
-                    timeout=5.0,
-                )
-
-                self._logger.info(
-                    f"[WEBSOCKET] Broadcasted memory_updated for project {project_id} (response: {response.status_code})"
-                )
-
+            await self._websocket_manager.broadcast_to_tenant(
+                tenant_key=tenant_key,
+                event_type="project:memory_updated",
+                data={
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "sequence_number": sequence_number,
+                    "summary_preview": summary_preview,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
         except Exception as ws_error:
             self._logger.error(
-                f"[WEBSOCKET ERROR] Failed to broadcast memory_updated via HTTP bridge: {ws_error}",
+                f"[WEBSOCKET ERROR] Failed to broadcast project:memory_updated: {ws_error}",
                 exc_info=True,
             )
 
     async def _broadcast_mission_update(self, project_id: str, mission: str, tenant_key: str) -> None:
         """
-        Broadcast mission update via WebSocket HTTP bridge.
-
-        This method uses the HTTP bridge to emit WebSocket events since
-        MCP runs in a separate process from the main application.
+        Broadcast mission update via WebSocketManager (in-process).
 
         Args:
             project_id: Project UUID
@@ -2614,37 +2589,26 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         """
         self._logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated " f"for project {project_id}")
 
+        if not self._websocket_manager:
+            self._logger.debug("[WEBSOCKET] No WebSocket manager available for project:mission_updated")
+            return
+
         try:
-            self._logger.info("[WEBSOCKET DEBUG] httpx imported, creating client for HTTP bridge")
-
-            # Use HTTP bridge to emit WebSocket event
-            async with httpx.AsyncClient() as client:
-                bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                self._logger.info(f"[WEBSOCKET DEBUG] Sending POST to {bridge_url}")
-
-                response = await client.post(
-                    bridge_url,
-                    json={
-                        "event_type": "project:mission_updated",
-                        "tenant_key": tenant_key,
-                        "data": {
-                            "project_id": project_id,
-                            "mission": mission,
-                            "token_estimate": len(mission) // 4,
-                            "user_config_applied": False,
-                            "generated_by": "orchestrator",
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    },
-                    timeout=5.0,
-                )
-
-                self._logger.info(f"[WEBSOCKET DEBUG] HTTP bridge response: {response.status_code}")
-                self._logger.info(
-                    f"[WEBSOCKET] Broadcasted mission_updated for project " f"{project_id} via HTTP bridge"
-                )
+            await self._websocket_manager.broadcast_to_tenant(
+                tenant_key=tenant_key,
+                event_type="project:mission_updated",
+                data={
+                    "project_id": project_id,
+                    "mission": mission,
+                    "token_estimate": len(mission) // 4,
+                    "user_config_applied": False,
+                    "generated_by": "orchestrator",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
 
         except Exception as ws_error:
             self._logger.error(
-                f"[WEBSOCKET ERROR] Failed to broadcast mission_updated " f"via HTTP bridge: {ws_error}", exc_info=True
+                f"[WEBSOCKET ERROR] Failed to broadcast project:mission_updated: {ws_error}",
+                exc_info=True,
             )

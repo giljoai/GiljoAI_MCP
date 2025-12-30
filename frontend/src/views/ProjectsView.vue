@@ -345,7 +345,7 @@
               v-model="projectData.description"
               label="Project Description"
               :rules="[(v) => !!v || 'Description is required']"
-              hint="Human-written description of what you want to accomplish. This will be shown to the orchestrator."
+              hint="User-written description of what you want to accomplish. This will be shown to the orchestrator."
               persistent-hint
               rows="4"
               required
@@ -576,6 +576,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Manual Closeout Modal (for user-initiated project completion) -->
+    <ManualCloseoutModal
+      :show="showCloseoutModal"
+      :project-id="closeoutProjectId"
+      :project-name="closeoutProjectName"
+      @close="handleCloseoutClose"
+      @completed="handleCloseoutComplete"
+    />
   </v-container>
 </template>
 
@@ -586,7 +595,9 @@ import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 import StatusBadge from '@/components/StatusBadge.vue'
+import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import { formatStatus } from '@/utils/formatters'
 
 // Router
@@ -597,6 +608,7 @@ const projectStore = useProjectStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
 const tabsStore = useProjectTabsStore()
+const projectStateStore = useProjectStateStore()
 
 // Reactive state
 const searchQuery = ref('')
@@ -605,6 +617,9 @@ const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDeletedDialog = ref(false)
 const showMissionDialog = ref(false)
+const showCloseoutModal = ref(false)
+const closeoutProjectId = ref(null)
+const closeoutProjectName = ref('')
 const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
@@ -731,11 +746,12 @@ const deletedProjects = computed(() => projectStore.deletedProjects)
 const deletedCount = computed(() => deletedProjects.value.length)
 
 // Helper function to determine if project is staged
-// A project is considered "staged" if:
-// 1. Has agents assigned (agent_count > 0), OR
-// 2. staging_status field is set to 'staged'
+// A project is considered "staged" when stagingComplete is true in projectStateStore
+// This aligns with the "Launch jobs" button becoming active in ProjectTabs.vue
 const isProjectStaged = (project) => {
-  return project.agent_count > 0 || project.staging_status === 'staged'
+  const projectId = project.project_id || project.id
+  const state = projectStateStore.getProjectState(projectId)
+  return Boolean(state?.stagingComplete)
 }
 
 // Launch button visibility - only show when exactly 1 active project exists
@@ -937,21 +953,29 @@ async function handleStatusAction({ action, projectId }) {
       case 'deactivate':
         await projectStore.deactivateProject(projectId)
         break
-      case 'complete':
-        await projectStore.completeProject(projectId)
+      case 'complete': {
+        // Open CloseoutModal instead of direct API call
+        const projectToClose = projectStore.projectById(projectId)
+        if (projectToClose) {
+          closeoutProjectId.value = projectId
+          closeoutProjectName.value = projectToClose.name
+          showCloseoutModal.value = true
+        }
         break
+      }
       case 'reopen':
         await projectStore.restoreCompletedProject(projectId)
         break
       case 'cancel':
         await projectStore.cancelProject(projectId)
         break
-      case 'delete':
-        const project = projectStore.projectById(projectId)
-        if (project) {
-          confirmDelete(project)
+      case 'delete': {
+        const projectToDelete = projectStore.projectById(projectId)
+        if (projectToDelete) {
+          confirmDelete(projectToDelete)
         }
         break
+      }
     }
 
     // Refresh project list to show updated status
@@ -961,6 +985,20 @@ async function handleStatusAction({ action, projectId }) {
     // Refresh even on error to show true server state
     await projectStore.fetchProjects()
   }
+}
+
+// Handle CloseoutModal events
+async function handleCloseoutComplete() {
+  showCloseoutModal.value = false
+  closeoutProjectId.value = null
+  closeoutProjectName.value = ''
+  await projectStore.fetchProjects()
+}
+
+function handleCloseoutClose() {
+  showCloseoutModal.value = false
+  closeoutProjectId.value = null
+  closeoutProjectName.value = ''
 }
 
 function cancelEdit() {
