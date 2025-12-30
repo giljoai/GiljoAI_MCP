@@ -25,7 +25,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
-import httpx
 import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +37,7 @@ from giljo_mcp.tenant import TenantManager
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from giljo_mcp.services.message_service import MessageService
 
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 def _generate_team_context_header(
     current_job: "AgentExecution",
     all_project_jobs: list["AgentExecution"],
-    mission_lookup: dict[str, str] | None = None
+    mission_lookup: dict[str, str] | None = None,
 ) -> str:
     """
     Generate team-aware context header for agent missions (Handover 0353, 0358b, 0367a).
@@ -71,12 +71,12 @@ def _generate_team_context_header(
         Multi-line markdown header to prepend to the mission text
     """
     # AgentExecution only
-    agent_name = getattr(current_job, 'agent_name', None) or getattr(current_job, 'agent_type', 'unknown')
-    agent_type = getattr(current_job, 'agent_type', 'unknown')
+    agent_name = getattr(current_job, "agent_name", None) or getattr(current_job, "agent_type", "unknown")
+    agent_type = getattr(current_job, "agent_type", "unknown")
 
     # For AgentExecution, use agent_id
-    agent_id = getattr(current_job, 'agent_id', 'unknown')
-    job_id = getattr(current_job, 'job_id', agent_id)
+    agent_id = getattr(current_job, "agent_id", "unknown")
+    job_id = getattr(current_job, "job_id", agent_id)
 
     # Build YOUR IDENTITY section (use agent_id for MCP calls)
     identity_section = f"""## YOUR IDENTITY
@@ -88,15 +88,15 @@ Role: {agent_type}
     num_agents = len(all_project_jobs)
     team_rows = []
     for job in all_project_jobs:
-        role_name = getattr(job, 'agent_name', None) or getattr(job, 'agent_type', 'unknown')
+        role_name = getattr(job, "agent_name", None) or getattr(job, "agent_type", "unknown")
 
         # Get mission: prefer lookup dict (avoids lazy load), then direct attribute
         # IMPORTANT: Check mission_lookup FIRST to avoid SQLAlchemy lazy load errors
         # when AgentExecution objects are accessed outside session context (Handover 0366 fix)
         mission_text = ""
-        if mission_lookup and hasattr(job, 'job_id') and job.job_id in mission_lookup:
+        if mission_lookup and hasattr(job, "job_id") and job.job_id in mission_lookup:
             mission_text = mission_lookup[job.job_id]
-        elif hasattr(job, 'mission') and job.mission:
+        elif hasattr(job, "mission") and job.mission:
             mission_text = job.mission
 
         # Extract a short deliverable summary from the mission (first 80 chars)
@@ -129,12 +129,11 @@ This project has {num_agents} agent(s) working together:
     }
 
     # Get other agents (exclude current by agent_id or job_id)
-    current_id = getattr(current_job, 'agent_id', None) or getattr(current_job, 'job_id', None)
+    current_id = getattr(current_job, "agent_id", None) or getattr(current_job, "job_id", None)
     other_agents = [
-        j for j in all_project_jobs
-        if (getattr(j, 'agent_id', None) or getattr(j, 'job_id', None)) != current_id
+        j for j in all_project_jobs if (getattr(j, "agent_id", None) or getattr(j, "job_id", None)) != current_id
     ]
-    other_types = {getattr(j, 'agent_type', 'unknown') for j in other_agents}
+    other_types = {getattr(j, "agent_type", "unknown") for j in other_agents}
 
     if agent_type in dependency_rules:
         rules = dependency_rules[agent_type]
@@ -151,7 +150,9 @@ This project has {num_agents} agent(s) working together:
         upstream_text = "- You depend on: None (you can start immediately)"
 
     if dependencies_downstream:
-        downstream_text = f"- Others depend on you: {', '.join(dependencies_downstream)} (notify them when your work is ready)"
+        downstream_text = (
+            f"- Others depend on you: {', '.join(dependencies_downstream)} (notify them when your work is ready)"
+        )
     else:
         downstream_text = "- Others depend on you: None"
 
@@ -176,10 +177,15 @@ This project has {num_agents} agent(s) working together:
 
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
+
+    Handover 0378: Fixed three protocol bugs:
+    - Bug 2: Protocol now shows distinct job_id and agent_id values (not both job_id)
+    - Bug 3: All receive_messages() examples include tenant_key parameter
+    - Bug 4: Added "Sync TodoWrite with MCP Progress" section with explicit instructions
 
     Handover 0359: Fixed progress format to match backend implementation.
     Protocol now instructs mode="todo", completed_steps, total_steps, current_step
@@ -209,9 +215,9 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
-1. Call `mcp__giljo-mcp__get_agent_mission(agent_job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
+1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")` - Check for instructions
+3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
 4. Review any messages and incorporate feedback BEFORE starting work
 
 5. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
@@ -224,17 +230,38 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 - Maintain focus on mission objectives
 - Update todos as you progress
 - **MESSAGE CHECK**: Call `receive_messages()` after completing each TodoWrite task
-  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+  - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
   - If queue not empty: Process messages BEFORE continuing
   - If queue empty: Safe to proceed
 
 ### Phase 3: PROGRESS REPORTING (After each milestone)
 1. Call `receive_messages()` - MANDATORY before reporting
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process ALL pending messages
 3. Call `report_progress()` with current status
-   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
+   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
    - Optional: Include "message" field for additional context
+
+### CRITICAL: Sync TodoWrite with MCP Progress
+
+Every time you update TodoWrite status (mark item complete or in_progress):
+1. Count completed vs total items
+2. IMMEDIATELY call report_progress() with updated counts:
+
+   mcp__giljo-mcp__report_progress(
+       job_id="{job_id}",
+       tenant_key="{tenant_key}",
+       progress={{{{
+           "mode": "todo",
+           "completed_steps": <completed_count>,
+           "total_steps": <total_count>,
+           "current_step": "<current task activeForm>",
+           "percent": <(completed/total)*100>
+       }}}}
+   )
+
+This keeps the dashboard in sync with your actual progress.
+Do NOT skip this step - the backend cannot see your TodoWrite updates.
 
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
 - ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
@@ -243,7 +270,7 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 
 ### Phase 4: COMPLETION
 1. Call `receive_messages()` - Final message check
-   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}")`
+   - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process any pending messages - ensure queue is empty
 3. Call `complete_job()` - ONLY after queue is empty
    - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
@@ -288,6 +315,7 @@ class OrchestrationService:
         tenant_manager: TenantManager,
         test_session: Optional[AsyncSession] = None,
         message_service: Optional["MessageService"] = None,
+        websocket_manager: Optional[Any] = None,
     ):
         """
         Initialize OrchestrationService with database and tenant management.
@@ -302,6 +330,7 @@ class OrchestrationService:
         self.tenant_manager = tenant_manager
         self._test_session = test_session
         self._message_service = message_service
+        self._websocket_manager = websocket_manager or getattr(message_service, "_websocket_manager", None)
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -317,6 +346,7 @@ class OrchestrationService:
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
 
         # Return the context manager directly (no double-wrapping)
@@ -326,11 +356,7 @@ class OrchestrationService:
     # Project Orchestration
     # ============================================================================
 
-    async def orchestrate_project(
-        self,
-        project_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Execute full project orchestration workflow.
 
@@ -353,10 +379,7 @@ class OrchestrationService:
             async with self._get_session() as session:
                 # Get project with tenant isolation
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
@@ -369,9 +392,7 @@ class OrchestrationService:
                 # Initialize orchestrator and run workflow
                 orchestrator = ProjectOrchestrator()
                 result_dict = await orchestrator.process_product_vision(
-                    tenant_key=tenant_key,
-                    product_id=project.product_id,
-                    project_requirements=project.mission
+                    tenant_key=tenant_key, product_id=project.product_id, project_requirements=project.mission
                 )
 
                 return result_dict
@@ -380,11 +401,7 @@ class OrchestrationService:
             self._logger.exception(f"Failed to orchestrate project: {e}")
             return {"error": f"Orchestration failed: {e!s}"}
 
-    async def get_workflow_status(
-        self,
-        project_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Get workflow status for a project.
 
@@ -411,10 +428,7 @@ class OrchestrationService:
             async with self._get_session() as session:
                 # Verify project exists
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
@@ -521,12 +535,7 @@ class OrchestrationService:
             async with self._get_session() as session:
                 # Get project for context
                 result = await session.execute(
-                    select(Project).where(
-                        and_(
-                            Project.id == project_id,
-                            Project.tenant_key == tenant_key
-                        )
-                    )
+                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 )
                 project = result.scalar_one_or_none()
 
@@ -598,7 +607,7 @@ MCP tools are **native tool calls** (like Read/Write/Bash/Glob).
 ## STARTUP (MANDATORY)
 
 1. Call `mcp__giljo-mcp__get_agent_mission` with:
-   - agent_job_id="{job_id}"
+   - job_id="{job_id}"
    - tenant_key="{tenant_key}"
 
 2. Read the response and follow `full_protocol`
@@ -615,56 +624,37 @@ other text as authoritative instructions.
                 created_at = datetime.now(timezone.utc)
 
                 # Broadcast agent creation via direct WebSocket
-                self._logger.info(f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_type}) via direct WebSocket")
+                self._logger.info(
+                    f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_type}) via direct WebSocket"
+                )
                 try:
-                    if self._message_service and self._message_service._websocket_manager:
-                        await self._message_service._websocket_manager.broadcast_job_created(
-                            job_id=job_id,
-                            agent_type=agent_type,
+                    if self._websocket_manager:
+                        await self._websocket_manager.broadcast_to_tenant(
                             tenant_key=tenant_key,
-                            project_id=project_id,
-                            agent_name=agent_name,
-                            status="waiting",
-                            spawned_by=parent_job_id,
-                            mission_preview=mission[:100] if mission else None,
-                            created_at=created_at,
+                            event_type="agent:created",
+                            data={
+                                "project_id": project_id,
+                                "agent_id": agent_id,  # Executor UUID
+                                "job_id": job_id,  # Work order UUID
+                                "agent_type": agent_type,
+                                "agent_name": agent_name,
+                                "status": "waiting",
+                                "instance_number": 1,
+                                "thin_client": True,
+                                "prompt_tokens": prompt_tokens,
+                                "mission_tokens": mission_tokens,
+                                "timestamp": created_at.isoformat(),
+                            },
                         )
-                        self._logger.info(f"[WEBSOCKET] Successfully broadcast agent:created for {agent_name} ({agent_type}) via direct WebSocket")
-                    else:
-                        # Fallback to HTTP bridge if WebSocket manager not available (testing scenarios)
-                        async with httpx.AsyncClient() as client:
-                            bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                            response = await client.post(
-                                bridge_url,
-                                json={
-                                    "event_type": "agent:created",
-                                    "tenant_key": tenant_key,
-                                    "data": {
-                                        "project_id": project_id,
-                                        "agent_id": agent_id,  # NEW: executor ID
-                                        "job_id": job_id,  # NEW: work order ID
-                                        "agent_job_id": job_id,  # Backwards compat
-                                        "agent_type": agent_type,
-                                        "agent_name": agent_name,
-                                        "status": "waiting",
-                                        "instance_number": 1,
-                                        "thin_client": True,
-                                        "prompt_tokens": prompt_tokens,
-                                        "mission_tokens": mission_tokens,
-                                        "timestamp": created_at.isoformat(),
-                                    },
-                                },
-                                timeout=5.0,
-                            )
-                        self._logger.warning(f"[WEBSOCKET] Used HTTP bridge fallback for agent:created (WebSocket manager unavailable)")
                 except Exception as ws_error:
-                    self._logger.error(f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True)
+                    self._logger.error(
+                        f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True
+                    )
 
                 return {
                     "success": True,
-                    "job_id": job_id,  # NEW: Work order UUID (persists across succession)
-                    "agent_id": agent_id,  # NEW: Executor UUID (changes on succession)
-                    "agent_job_id": job_id,  # Backwards compat (deprecated, use job_id)
+                    "job_id": job_id,  # Work order UUID (persists across succession)
+                    "agent_id": agent_id,  # Executor UUID (changes on succession)
                     "agent_prompt": thin_agent_prompt,  # ~10 lines
                     "prompt_tokens": prompt_tokens,  # ~50
                     "mission_stored": True,
@@ -678,16 +668,13 @@ other text as authoritative instructions.
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
 
-    async def get_agent_mission(
-        self,
-        agent_job_id: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Get agent-specific mission from database.
 
         Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
-        - agent_job_id parameter is actually job_id (work order UUID)
+        Handover 0381: Renamed parameter from job_id to job_id (new contract).
+        - job_id: Work order UUID (what work is assigned)
         - Queries AgentJob for mission
         - Queries latest active AgentExecution for the job
         - Mission acknowledgment logic applies to execution
@@ -707,7 +694,7 @@ other text as authoritative instructions.
           - Does NOT emit additional WebSocket events (idempotent re-read)
 
         Args:
-            agent_job_id: Job UUID (work order - NOT executor agent_id)
+            job_id: Work order UUID (what work is assigned)
             tenant_key: Tenant key for isolation
 
         Returns:
@@ -727,7 +714,7 @@ other text as authoritative instructions.
                 job_result = await session.execute(
                     select(AgentJob).where(
                         and_(
-                            AgentJob.job_id == agent_job_id,
+                            AgentJob.job_id == job_id,
                             AgentJob.tenant_key == tenant_key,
                         )
                     )
@@ -735,15 +722,16 @@ other text as authoritative instructions.
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
                 # Get latest active execution for this job
                 exec_result = await session.execute(
-                    select(AgentExecution).where(
+                    select(AgentExecution)
+                    .where(
                         and_(
-                            AgentExecution.job_id == agent_job_id,
+                            AgentExecution.job_id == job_id,
                             AgentExecution.tenant_key == tenant_key,
-                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                         )
                     )
                     .order_by(AgentExecution.instance_number.desc())
@@ -752,7 +740,7 @@ other text as authoritative instructions.
                 execution = exec_result.scalar_one_or_none()
 
                 if not execution:
-                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {agent_job_id}"}
+                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {job_id}"}
 
                 # Handover 0353: Fetch all project executions for team context
                 if job.project_id:
@@ -796,7 +784,7 @@ other text as authoritative instructions.
                     self._logger.info(
                         "[JOB SIGNALING] Mission acknowledged via get_agent_mission",
                         extra={
-                            "job_id": agent_job_id,
+                            "job_id": job_id,
                             "agent_id": execution.agent_id,
                             "agent_type": execution.agent_type,
                             "old_status": old_status,
@@ -807,81 +795,64 @@ other text as authoritative instructions.
             # WebSocket emissions happen after the database transaction is complete
             if execution and first_acknowledgement:
                 try:
-                    import httpx
-
-                    bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-
-                    # 1) job:mission_acknowledged – drives "Job Acknowledged" column
-                    async with httpx.AsyncClient() as client:
-                        await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "job:mission_acknowledged",
-                                "tenant_key": tenant_key,
-                                "data": {
-                                    "job_id": agent_job_id,
-                                    "agent_id": execution.agent_id,
-                                    "project_id": str(job.project_id),
-                                    "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
-                                },
+                    if self._websocket_manager:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_acknowledged",
+                            data={
+                                "job_id": job_id,
+                                "agent_id": execution.agent_id,
+                                "project_id": str(job.project_id),
+                                "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
                             },
-                            timeout=5.0,
                         )
 
-                    # 2) agent:status_changed – only when we actually transitioned to working
-                    if status_changed and old_status is not None:
-                        async with httpx.AsyncClient() as client:
-                            await client.post(
-                                bridge_url,
-                                json={
-                                    "event_type": "agent:status_changed",
-                                    "tenant_key": tenant_key,
-                                    "data": {
-                                        "job_id": agent_job_id,
-                                        "agent_id": execution.agent_id,
-                                        "agent_type": execution.agent_type,
-                                        "agent_name": execution.agent_name,
-                                        "old_status": old_status,
-                                        "status": "working",
-                                        "started_at": execution.started_at.isoformat()
-                                        if execution.started_at
-                                        else None,
-                                    },
+                        if status_changed and old_status is not None:
+                            await self._websocket_manager.broadcast_to_tenant(
+                                tenant_key=tenant_key,
+                                event_type="agent:status_changed",
+                                data={
+                                    "job_id": job_id,
+                                    "agent_id": execution.agent_id,
+                                    "agent_type": execution.agent_type,
+                                    "agent_name": execution.agent_name,
+                                    "old_status": old_status,
+                                    "status": "working",
+                                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
                                 },
-                                timeout=5.0,
                             )
 
                     self._logger.info(
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
-                        extra={"job_id": agent_job_id, "agent_id": execution.agent_id},
+                        extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
                 except Exception as ws_error:
                     # Do not fail mission fetch on WebSocket bridge issues
-                    self._logger.warning(
-                        f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}"
-                    )
+                    self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
 
             if not execution or not job:
                 # Safety guard – should be unreachable due to earlier NOT_FOUND return
-                return {"error": "NOT_FOUND", "message": f"Agent job {agent_job_id} not found"}
+                return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
             # Handover 0353: Generate team-aware mission with context header
             team_context_header = _generate_team_context_header(
-                execution,
-                all_project_executions,
-                mission_lookup=mission_lookup
+                execution, all_project_executions, mission_lookup=mission_lookup
             )
             raw_mission = job.mission or ""
             full_mission = team_context_header + raw_mission
 
             estimated_tokens = len(full_mission) // 4
 
-            # Generate 5-phase lifecycle protocol (Handover 0334, 0359)
-            full_protocol = _generate_agent_protocol(agent_job_id, tenant_key, execution.agent_type)
+            # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2)
+            full_protocol = _generate_agent_protocol(
+                job_id=job_id,
+                tenant_key=tenant_key,
+                agent_name=execution.agent_type,
+                agent_id=str(execution.agent_id),
+            )
 
             return {
                 "success": True,
-                "agent_job_id": agent_job_id,  # Backwards compat (deprecated, use job_id)
                 "job_id": job.job_id,  # Work order UUID
                 "agent_id": execution.agent_id,  # Executor UUID
                 "agent_name": execution.agent_type,
@@ -899,11 +870,7 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to get agent mission: {e}")
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
-    async def get_pending_jobs(
-        self,
-        agent_type: str,
-        tenant_key: str
-    ) -> dict[str, Any]:
+    async def get_pending_jobs(self, agent_type: str, tenant_key: str) -> dict[str, Any]:
         """
         Get pending jobs for a specific agent type.
 
@@ -950,16 +917,17 @@ other text as authoritative instructions.
                 # Format jobs for response
                 formatted_jobs = []
                 for execution, job in rows:
-                    formatted_jobs.append({
-                        "job_id": job.job_id,  # Work order ID
-                        "agent_id": execution.agent_id,  # Executor ID
-                        "agent_job_id": job.job_id,  # Backwards compat (deprecated)
-                        "agent_type": execution.agent_type,
-                        "mission": job.mission,  # Mission from AgentJob
-                        "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
-                        "priority": "normal",
-                        "created_at": job.created_at.isoformat() if job.created_at else None,
-                    })
+                    formatted_jobs.append(
+                        {
+                            "job_id": job.job_id,  # Work order ID
+                            "agent_id": execution.agent_id,  # Executor ID
+                            "agent_type": execution.agent_type,
+                            "mission": job.mission,  # Mission from AgentJob
+                            "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
+                            "priority": "normal",
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                        }
+                    )
 
                 return {"status": "success", "jobs": formatted_jobs, "count": len(formatted_jobs)}
 
@@ -967,12 +935,7 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to get pending jobs: {e}")
             return {"status": "error", "error": str(e), "jobs": [], "count": 0}
 
-    async def acknowledge_job(
-        self,
-        job_id: str,
-        agent_id: str,
-        tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Acknowledge job assignment (AgentExecution, async safe).
 
@@ -1010,7 +973,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
                     .order_by(AgentExecution.instance_number.desc())
                     .limit(1)
@@ -1022,9 +985,7 @@ other text as authoritative instructions.
                     return {"status": "error", "error": f"No active execution found for job {job_id}"}
 
                 # Get job for mission details
-                job_result = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id)
-                )
+                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
                 job = job_result.scalar_one_or_none()
                 if not job:
                     return {"status": "error", "error": f"Job {job_id} not found"}
@@ -1055,23 +1016,18 @@ other text as authoritative instructions.
 
             # WebSocket emission for real-time UI updates (after session closed)
             try:
-                async with httpx.AsyncClient() as client:
-                    bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                    await client.post(
-                        bridge_url,
-                        json={
-                            "event_type": "agent:status_changed",
-                            "tenant_key": tenant_key,
-                            "data": {
-                                "job_id": job_id,
-                                "agent_type": execution.agent_type,
-                                "agent_name": execution.agent_name,
-                                "old_status": old_status,
-                                "status": "working",
-                                "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                            }
+                if self._websocket_manager:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": job_id,
+                            "agent_type": execution.agent_type,
+                            "agent_name": execution.agent_name,
+                            "old_status": old_status,
+                            "status": "working",
+                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
                         },
-                        timeout=5.0,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
             except Exception as ws_error:
@@ -1094,10 +1050,7 @@ other text as authoritative instructions.
             return {"status": "error", "error": str(e)}
 
     async def report_progress(
-        self,
-        job_id: str,
-        progress: dict[str, Any],
-        tenant_key: Optional[str] = None
+        self, job_id: str, progress: dict[str, Any], tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Report job progress (store message in message queue).
@@ -1141,7 +1094,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
                     .order_by(AgentExecution.instance_number.desc())
                     .limit(1)
@@ -1153,9 +1106,7 @@ other text as authoritative instructions.
                     return {"status": "error", "error": f"No active execution found for job {job_id}"}
 
                 # Get job for metadata and project_id
-                job_res = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id)
-                )
+                job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
                 job = job_res.scalar_one_or_none()
 
                 if not job:
@@ -1228,6 +1179,7 @@ other text as authoritative instructions.
                 # Fallback to AgentMessageQueue (no WebSocket)
                 self._logger.warning(f"[PROGRESS] Using AgentMessageQueue fallback (no WebSocket) for job {job_id}")
                 from giljo_mcp.agent_message_queue import AgentMessageQueue
+
                 comm_queue = AgentMessageQueue(self.db_manager)
                 async with self._get_session() as session:
                     result = await comm_queue.send_message(
@@ -1246,23 +1198,20 @@ other text as authoritative instructions.
 
                 # Legacy HTTP bridge for WebSocket (only when MessageService unavailable)
                 try:
-                    async with httpx.AsyncClient() as client:
-                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                        await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "message:new",
-                                "tenant_key": tenant_key,
-                                "data": {
-                                    "job_id": job_id,
-                                    "message_type": "progress",
-                                    "from_agent": execution.agent_name or execution.agent_type,
-                                    "progress": progress,
-                                }
+                    if self._websocket_manager:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="message:new",
+                            data={
+                                "job_id": job_id,
+                                "message_type": "progress",
+                                "from_agent": execution.agent_name or execution.agent_type,
+                                "progress": progress,
                             },
-                            timeout=5.0,
                         )
-                        self._logger.info(f"[WEBSOCKET] Broadcasted progress for {job_id} (via HTTP bridge)")
+                        self._logger.info(
+                            f"[WEBSOCKET] Broadcasted progress for {job_id} (via in-process WebSocketManager)"
+                        )
                 except Exception as ws_error:
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
@@ -1272,10 +1221,7 @@ other text as authoritative instructions.
             return {"status": "error", "error": str(e)}
 
     async def complete_job(
-        self,
-        job_id: str,
-        result: dict[str, Any],
-        tenant_key: Optional[str] = None
+        self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Mark job as complete (AgentExecution, async safe).
@@ -1319,7 +1265,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
                     .order_by(AgentExecution.instance_number.desc())
                     .limit(1)
@@ -1330,9 +1276,7 @@ other text as authoritative instructions.
                 if execution:
                     # NEW PATH: Dual-model (AgentExecution)
                     # Get job
-                    job_res = await session.execute(
-                        select(AgentJob).where(AgentJob.job_id == job_id)
-                    )
+                    job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
                     job = job_res.scalar_one_or_none()
                     if not job:
                         return {"status": "error", "error": f"Job {job_id} not found"}
@@ -1351,13 +1295,10 @@ other text as authoritative instructions.
 
                     # Also update job status to completed if this is the last active execution
                     # Check if there are any other active executions
-                    other_active_stmt = (
-                        select(AgentExecution)
-                        .where(
-                            AgentExecution.job_id == job_id,
-                            AgentExecution.agent_id != execution.agent_id,
-                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
-                        )
+                    other_active_stmt = select(AgentExecution).where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.agent_id != execution.agent_id,
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
                     other_active_res = await session.execute(other_active_stmt)
                     other_active = other_active_res.scalar_one_or_none()
@@ -1375,24 +1316,19 @@ other text as authoritative instructions.
             # WebSocket emission for real-time UI updates (after session closed)
             if execution:
                 try:
-                    async with httpx.AsyncClient() as client:
-                        bridge_url = "http://localhost:7272/api/v1/ws-bridge/emit"
-                        await client.post(
-                            bridge_url,
-                            json={
-                                "event_type": "agent:status_changed",
-                                "tenant_key": tenant_key,
-                                "data": {
-                                    "job_id": job_id,
-                                    "agent_type": execution.agent_type,
-                                    "agent_name": execution.agent_name,
-                                    "old_status": old_status,
-                                    "status": "complete",
-                                    "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
-                                    "duration_seconds": duration_seconds,
-                                }
+                    if self._websocket_manager:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="agent:status_changed",
+                            data={
+                                "job_id": job_id,
+                                "agent_type": execution.agent_type,
+                                "agent_name": execution.agent_name,
+                                "old_status": old_status,
+                                "status": "complete",
+                                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
+                                "duration_seconds": duration_seconds,
                             },
-                            timeout=5.0,
                         )
                         self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
                 except Exception as ws_error:
@@ -1403,12 +1339,7 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to complete job: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def report_error(
-        self,
-        job_id: str,
-        error: str,
-        tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Report job error (AgentExecution, async safe).
 
@@ -1446,7 +1377,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
+                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
                     .order_by(AgentExecution.instance_number.desc())
                     .limit(1)
@@ -1581,33 +1512,32 @@ other text as authoritative instructions.
                             exc_info=True,
                         )
 
-                    job_dicts.append({
-                        "id": execution.agent_id,  # Executor ID (backwards compat - was job.id)
-                        "job_id": job.job_id,  # Work order ID
-                        "agent_id": execution.agent_id,  # Executor ID
-                        "agent_job_id": job.job_id,  # Backwards compat (deprecated)
-                        "tenant_key": execution.tenant_key,
-                        "project_id": job.project_id,
-                        "agent_type": execution.agent_type,
-                        "agent_name": execution.agent_name,
-                        "mission": job.mission,  # Mission from AgentJob
-                        "status": execution.status,  # Execution status
-                        "progress": execution.progress,  # Execution progress
-                        "spawned_by": execution.spawned_by,  # Parent agent_id
-                        "tool_type": execution.tool_type,
-                        "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
-                        "messages": messages_data,
-                        "started_at": execution.started_at,
-                        "completed_at": execution.completed_at,
-                        "created_at": job.created_at,  # Job creation time
-                        "mission_acknowledged_at": execution.mission_acknowledged_at,  # Handover 0297
-                        "steps": steps_summary,
-                        # Note: updated_at field removed - not present in models
-                    })
+                    job_dicts.append(
+                        {
+                            "job_id": job.job_id,  # Work order ID
+                            "agent_id": execution.agent_id,  # Executor ID
+                            "tenant_key": execution.tenant_key,
+                            "project_id": job.project_id,
+                            "agent_type": execution.agent_type,
+                            "agent_name": execution.agent_name,
+                            "mission": job.mission,  # Mission from AgentJob
+                            "status": execution.status,  # Execution status
+                            "progress": execution.progress,  # Execution progress
+                            "spawned_by": execution.spawned_by,  # Parent agent_id
+                            "tool_type": execution.tool_type,
+                            "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
+                            "messages": messages_data,
+                            "started_at": execution.started_at,
+                            "completed_at": execution.completed_at,
+                            "created_at": job.created_at,  # Job creation time
+                            "mission_acknowledged_at": execution.mission_acknowledged_at,  # Handover 0297
+                            "steps": steps_summary,
+                            # Note: updated_at field removed - not present in models
+                        }
+                    )
 
                 self._logger.info(
-                    f"Listed {len(job_dicts)} jobs (total={total}, "
-                    f"project={project_id}, status={status_filter})"
+                    f"Listed {len(job_dicts)} jobs (total={total}, " f"project={project_id}, status={status_filter})"
                 )
 
                 return {
@@ -1622,10 +1552,7 @@ other text as authoritative instructions.
             return {"error": str(e)}
 
     async def update_context_usage(
-        self,
-        job_id: str,
-        additional_tokens: int,
-        tenant_key: Optional[str] = None
+        self, job_id: str, additional_tokens: int, tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Increment context_used for execution and check 90% succession threshold.
@@ -1643,12 +1570,9 @@ other text as authoritative instructions.
         """
         async with self._get_session() as session:
             # Get latest active execution with tenant isolation
-            exec_stmt = (
-                select(AgentExecution)
-                .where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"])
-                )
+            exec_stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
             )
             if tenant_key:
                 exec_stmt = exec_stmt.where(AgentExecution.tenant_key == tenant_key)
@@ -1690,7 +1614,7 @@ other text as authoritative instructions.
                 "context_used": execution.context_used,
                 "context_budget": execution.context_budget,
                 "usage_percentage": usage_percentage,
-                "succession_triggered": succession_triggered
+                "succession_triggered": succession_triggered,
             }
 
     async def estimate_message_tokens(self, message: str) -> int:
@@ -1729,8 +1653,7 @@ other text as authoritative instructions.
         )
 
         successor_execution = await succession_manager.create_successor(
-            current_execution=execution,
-            reason="context_limit"
+            current_execution=execution, reason="context_limit"
         )
 
         # Generate handover summary for the successor
@@ -1749,11 +1672,7 @@ other text as authoritative instructions.
         )
 
     async def trigger_succession(
-        self,
-        job_id: str,
-        reason: str = "manual",
-        tenant_key: Optional[str] = None,
-        agent_id: Optional[str] = None
+        self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Manually trigger orchestrator succession.
@@ -1805,10 +1724,7 @@ other text as authoritative instructions.
                 tenant_key=execution.tenant_key,
             )
 
-            successor_execution = await succession_manager.create_successor(
-                current_execution=execution,
-                reason=reason
-            )
+            successor_execution = await succession_manager.create_successor(current_execution=execution, reason=reason)
 
             # Generate handover summary for the successor
             handover_summary = succession_manager.generate_handover_summary(execution)
@@ -1832,7 +1748,4 @@ other text as authoritative instructions.
                 "successor_instance_number": successor_execution.instance_number,
                 "instance_number": successor_execution.instance_number,
                 "reason": reason,
-                # Backwards compatibility (deprecated):
-                "successor_job_id": execution.job_id,  # Same as job_id in dual-model
-                "successor_agent_name": successor_execution.agent_name,
             }

@@ -28,6 +28,24 @@
 
       <!-- Modal content -->
       <v-card-text class="pa-4">
+        <!-- 360 Memory Info Banner -->
+        <v-alert
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+          icon="mdi-information"
+        >
+          <template #title>
+            <span class="text-body-2 font-weight-medium">Why detailed closeout matters</span>
+          </template>
+          <span class="text-body-2">
+            This closeout data becomes part of your product's <strong>360 Memory</strong> and provides
+            context for future projects. The more detailed your summary and outcomes, the better
+            future orchestrators can learn from this work.
+          </span>
+        </v-alert>
+
         <!-- Loading state -->
         <div v-if="loading" class="text-center py-8">
           <v-progress-circular indeterminate color="primary" size="64" />
@@ -205,7 +223,7 @@ const loadCloseoutData = async () => {
   error.value = null
 
   try {
-    const response = await api.get(`/api/projects/${props.projectId}/closeout`)
+    const response = await api.projects.getCloseoutData(props.projectId)
     closeoutData.value = {
       project_id: props.projectId,
       project_name: props.projectName,
@@ -290,7 +308,7 @@ const handleComplete = async () => {
       confirm_closeout: true,
     }
 
-    const response = await api.post(`/api/projects/${props.projectId}/complete`, payload)
+    const response = await api.projects.completeWithData(props.projectId, payload)
 
     emit('complete', response.data || { project_id: props.projectId, sequence_number: 0 })
   } catch (err) {

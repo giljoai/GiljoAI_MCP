@@ -133,6 +133,7 @@ class APIState:
         self.tenant_manager: Optional[TenantManager] = None
         self.tool_accessor: Optional[ToolAccessor] = None
         self.websocket_manager: Optional[WebSocketManager] = None
+        self.websocket_broker = None  # WebSocketEventBroker (0379e)
         self.event_bus = None  # EventBus instance (Handover 0111 Issue #1)
         self.connections: dict[str, WebSocket] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
@@ -150,441 +151,44 @@ state = APIState()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager"""
-    # app parameter is required by FastAPI even if unused
-    # Startup
+    """Application lifespan manager - orchestrates startup and shutdown"""
+    from api.startup import (
+        init_background_tasks,
+        init_core_services,
+        init_database,
+        init_event_bus,
+        init_health_monitor,
+        init_validation,
+        shutdown,
+    )
+
     logger.info("=" * 70)
     logger.info("Starting GiljoAI MCP API...")
     logger.info("=" * 70)
 
-    try:
-        # Initialize configuration
-        logger.info("Initializing configuration...")
-        state.config = get_config()  # Use the singleton getter
-        logger.info("Configuration loaded successfully")
-        # v3.0: DeploymentMode removed - server always binds 0.0.0.0, firewall controls access
-    except Exception as e:
-        logger.error(f"Failed to load configuration: {e}", exc_info=True)
-        raise
+    # Phase 1: Database and configuration
+    await init_database(state)
 
-    # v3.0: Setup mode removed - all access requires authentication
+    # Phase 2: Core services
+    await init_core_services(state)
 
-    # Initialize database (ALWAYS - install.py creates DB before API starts)
-    # v3.0: No "setup mode without database" - database exists from installation
-    if True:  # Database always initialized
-        # Check for DATABASE_URL in environment first
-        logger.info("Initializing database connection...")
-        db_url = os.getenv("DATABASE_URL")
+    # Phase 3: Event bus and WebSocket listener
+    await init_event_bus(state)
 
-        if db_url:
-            logger.info("Using DATABASE_URL from environment")
-        elif state.config.database:
-            # Construct database URL using configuration manager (handles env + migrations)
-            try:
-                logger.info("Constructing database URL from configuration manager")
-                db_url = state.config.database.get_connection_string()
-                logger.debug(
-                    f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
-                )
-            except Exception as e:
-                logger.error(f"Failed to build database URL from config: {e}")
-                raise
+    # Phase 4: Background tasks
+    await init_background_tasks(state)
 
-        if not db_url:
-            logger.error("No database configuration found")
-            raise ValueError("Database URL not configured. PostgreSQL is required.")
+    # Phase 5: Health monitoring
+    await init_health_monitor(state)
 
-        logger.info(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
-
-        try:
-            state.db_manager = DatabaseManager(db_url, is_async=True)
-            logger.info("Database manager created successfully")
-
-            logger.info("Creating database tables...")
-            await state.db_manager.create_tables_async()
-            logger.info("Database tables created/verified successfully")
-
-            state.system_prompt_service = SystemPromptService(state.db_manager)
-            logger.info("System prompt service initialized")
-        except Exception as e:
-            logger.error(f"Database initialization failed: {e}", exc_info=True)
-            raise
-
-    # Initialize tenant manager
-    try:
-        logger.info("Initializing tenant manager...")
-        state.tenant_manager = TenantManager()  # TenantManager uses static methods
-        logger.info("Tenant manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
-        raise
-
-    # Initialize WebSocket manager BEFORE tool accessor (needed for MessageService)
-    try:
-        logger.info("Initializing WebSocket manager...")
-        state.websocket_manager = WebSocketManager()
-        logger.info("WebSocket manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
-        raise
-
-    # Initialize tool accessor (now websocket_manager is available)
-    try:
-        logger.info("Initializing tool accessor...")
-        state.tool_accessor = ToolAccessor(
-            state.db_manager,
-            state.tenant_manager,
-            websocket_manager=state.websocket_manager
-        )
-        logger.info("Tool accessor initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize tool accessor: {e}", exc_info=True)
-        raise
-
-    # Initialize auth with database session (for auto-login support)
-    try:
-        logger.info("Initializing authentication manager...")
-        # Note: db parameter will be set later per-request for auto-login
-        # The db_manager provides sessions, not a single session
-        state.auth = AuthManager(state.config, db=None)
-        logger.info("Auth manager initialized (mode-independent authentication)")
-    except Exception as e:
-        logger.error(f"Failed to initialize auth manager: {e}", exc_info=True)
-        raise
-
-    # Load API key from environment if available
-    api_key = os.getenv("API_KEY") or os.getenv("GILJO_MCP_API_KEY")
-    if api_key:
-        # Add the configured API key to AuthManager (for network clients)
-        state.auth.api_keys[api_key] = {
-            "name": "Installer Generated",
-            "created_at": "2024-01-01T00:00:00Z",
-            "permissions": ["*"],
-            "active": True,
-        }
-        logger.info(
-            f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})"
-        )
-    else:
-        logger.info("No API key configured - all clients require JWT authentication (unified auth)")
-
-    # Start heartbeat task (WebSocket manager already initialized earlier)
-    try:
-        logger.info("Starting WebSocket heartbeat task...")
-        heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
-        state.heartbeat_task = heartbeat_task  # Store reference to prevent garbage collection
-        logger.info("WebSocket heartbeat started (interval: 30s)")
-    except Exception as e:
-        logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
-
-    # Initialize event bus and WebSocket listener (Handover 0111 Issue #1)
-    logger.info("=" * 70)
-    logger.info("STARTING EVENT BUS INITIALIZATION")
-    logger.info("=" * 70)
-    try:
-        logger.info("Step 1: About to import EventBus...")
-        from api.event_bus import EventBus
-        logger.info("Step 1: EventBus imported successfully")
-
-        logger.info("Step 2: About to import WebSocketEventListener...")
-        from api.websocket_event_listener import WebSocketEventListener
-        logger.info("Step 2: WebSocketEventListener imported successfully")
-
-        logger.info("Step 3: Creating EventBus instance...")
-        state.event_bus = EventBus()
-        logger.info(f"Step 3: EventBus created: {state.event_bus}")
-        logger.info(f"Step 3: EventBus type: {type(state.event_bus)}")
-        logger.info("Event bus initialized successfully")
-
-        # Register WebSocket event listener
-        logger.info("Step 4: Creating WebSocketEventListener instance...")
-        ws_listener = WebSocketEventListener(state.event_bus, state.websocket_manager)
-        logger.info(f"Step 4: WebSocketEventListener created: {ws_listener}")
-
-        logger.info("Step 5: Starting WebSocketEventListener (registering handlers)...")
-        await ws_listener.start()
-        logger.info("Step 5: WebSocket event listener handlers registered")
-        logger.info("WebSocket event listener registered successfully")
-        logger.info("=" * 70)
-        logger.info("EVENT BUS INITIALIZATION COMPLETE")
-        logger.info("=" * 70)
-    except Exception as e:
-        logger.error("=" * 70)
-        logger.error(f"FAILED TO INITIALIZE EVENT BUS: {e}")
-        logger.error("=" * 70)
-        logger.error(f"Exception type: {type(e).__name__}")
-        logger.error(f"Exception args: {e.args}", exc_info=True)
-        raise
-
-
-    # Start download token cleanup task (Handover 0100)
-    async def cleanup_expired_download_tokens():
-        """Background task to cleanup expired download tokens every 15 minutes"""
-        from src.giljo_mcp.download_tokens import TokenManager
-
-        while True:
-            try:
-                await asyncio.sleep(900)  # 15 minutes
-
-                if state.db_manager:
-                    async with state.db_manager.get_session_async() as session:
-                        token_manager = TokenManager(session)
-                        result = await token_manager.cleanup_expired_tokens()
-                        # Backward-compatible handling: support int or dict
-                        deleted_total = result.get("total", 0) if isinstance(result, dict) else int(result or 0)
-                        if deleted_total > 0:
-                            logger.info(f"Download token cleanup: {deleted_total} tokens removed")
-                        else:
-                            logger.debug("Download token cleanup: no tokens removed")
-            except Exception as e:
-                logger.error(f"Error during download token cleanup: {e}", exc_info=True)
-
-    try:
-        logger.info("Starting download token cleanup task...")
-        cleanup_task = asyncio.create_task(cleanup_expired_download_tokens())
-        state.cleanup_task = cleanup_task  # Store reference to prevent garbage collection
-        logger.info("Download token cleanup task started (runs every 15 minutes)")
-    except Exception as e:
-        logger.error(f"Failed to start download token cleanup task: {e}", exc_info=True)
-
-    # Start API metrics sync task
-    async def sync_api_metrics_to_db():
-        """Background task to sync API metrics to the database every 5 minutes."""
-        from src.giljo_mcp.models import ApiMetrics
-        from sqlalchemy import select
-        from sqlalchemy.dialects.postgresql import insert
-
-        while True:
-            await asyncio.sleep(300)  # 5 minutes
-            if state.db_manager:
-                async with state.db_manager.get_session_async() as session:
-                    try:
-                        # Get a copy of the current counters and reset them
-                        api_counts = state.api_call_count.copy()
-                        mcp_counts = state.mcp_call_count.copy()
-                        state.api_call_count.clear()
-                        state.mcp_call_count.clear()
-
-                        for tenant_key, api_count in api_counts.items():
-                            mcp_count = mcp_counts.get(tenant_key, 0)
-
-                            stmt = insert(ApiMetrics).values(
-                                tenant_key=tenant_key,
-                                date=datetime.now(timezone.utc),
-                                total_api_calls=api_count,
-                                total_mcp_calls=mcp_count
-                            ).on_conflict_do_update(
-                                index_elements=['tenant_key'],
-                                set_=dict(
-                                    total_api_calls=ApiMetrics.total_api_calls + api_count,
-                                    total_mcp_calls=ApiMetrics.total_mcp_calls + mcp_count,
-                                    date=datetime.now(timezone.utc)
-                                )
-                            )
-                            await session.execute(stmt)
-                        await session.commit()
-                        logger.info(f"Synced API metrics for {len(api_counts)} tenants.")
-                    except Exception as e:
-                        logger.error(f"Error during API metrics sync: {e}", exc_info=True)
-                        # If sync fails, restore the counters
-                        state.api_call_count.update(api_counts)
-                        state.mcp_call_count.update(mcp_counts)
-
-    try:
-        logger.info("Starting API metrics sync task...")
-        metrics_sync_task = asyncio.create_task(sync_api_metrics_to_db())
-        state.metrics_sync_task = metrics_sync_task
-        logger.info("API metrics sync task started (runs every 5 minutes)")
-    except Exception as e:
-        logger.error(f"Failed to start API metrics sync task: {e}", exc_info=True)
-
-    # Start agent health monitoring service (Handover 0107)
-    try:
-        logger.info("Initializing agent health monitoring...")
-
-        # Load health_monitoring config directly from YAML
-        import yaml
-        health_config_dict = {}
-        if state.config.config_path.exists():
-            with open(state.config.config_path, 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f) or {}
-                health_config_dict = config_data.get('health_monitoring', {})
-
-        # Only start if enabled in config
-        if health_config_dict.get('enabled', True):
-            from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
-            from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
-
-            # Build configuration from config.yaml
-            timeout_config = health_config_dict.get('timeouts', {})
-            health_config = HealthCheckConfig(
-                waiting_timeout_minutes=timeout_config.get('waiting_timeout', 2),
-                active_no_progress_minutes=timeout_config.get('active_no_progress', 5),
-                heartbeat_timeout_minutes=timeout_config.get('heartbeat_timeout', 10),
-                timeout_overrides={
-                    'orchestrator': timeout_config.get('orchestrator', 15),
-                    'implementer': timeout_config.get('implementer', 10),
-                    'tester': timeout_config.get('tester', 8),
-                    'analyzer': timeout_config.get('analyzer', 5),
-                    'reviewer': timeout_config.get('reviewer', 6),
-                    'documenter': timeout_config.get('documenter', 5),
-                },
-                scan_interval_seconds=health_config_dict.get('scan_interval_seconds', 300),
-                auto_fail_on_timeout=health_config_dict.get('auto_fail_on_timeout', False),
-                notify_orchestrator=health_config_dict.get('notify_orchestrator', True)
-            )
-
-            # Initialize monitor with dependencies
-            state.health_monitor = AgentHealthMonitor(
-                db_manager=state.db_manager,
-                ws_manager=state.websocket_manager,
-                config=health_config
-            )
-
-            # Start monitoring service
-            await state.health_monitor.start()
-            logger.info(f"Agent health monitoring started (scan interval: {health_config.scan_interval_seconds}s)")
-        else:
-            logger.info("Agent health monitoring disabled in configuration")
-    except Exception as e:
-        logger.error(f"Failed to start agent health monitoring: {e}", exc_info=True)
-        logger.warning("Continuing without health monitoring")
-
-    # v3.0: Removed localhost auto-login - unified authentication for all connections
-
-    # Check setup state on startup (version tracking and validation)
-    if state.db_manager:
-        try:
-            logger.info("Checking setup state...")
-            from pathlib import Path
-
-            # Get current version from config
-            import yaml
-
-            from src.giljo_mcp.setup.state_manager import SetupStateManager
-
-            config_path = Path.cwd() / "config.yaml"
-            if config_path.exists():
-                with open(config_path) as f:
-                    config_data = yaml.safe_load(f) or {}
-                current_version = config_data.get("installation", {}).get("version", "2.0.0")
-                db_version = "18"  # PostgreSQL 18
-
-                # Initialize state manager with versions
-                state_manager = SetupStateManager.get_instance(
-                    tenant_key="default", current_version=current_version, required_db_version=db_version
-                )
-
-                # Check if migration needed
-                if state_manager.requires_migration():
-                    logger.warning("⚠️ Setup state version mismatch detected!")
-                    logger.warning(f"Current version: {current_version}")
-                    setup_state = state_manager.get_state()
-                    logger.warning(f"Stored version: {setup_state.get('setup_version')}")
-                    logger.warning("Run POST /api/setup/migrate to update state")
-                else:
-                    logger.info("Setup state version is current")
-
-                # Validate current state
-                valid, failures = state_manager.validate_state()
-                if not valid:
-                    logger.warning("⚠️ Setup validation failures detected:")
-                    for failure in failures:
-                        logger.warning(f"  - {failure}")
-                    logger.warning("Review setup configuration or run migration")
-                else:
-                    logger.info("Setup state validation passed")
-
-        except Exception as e:
-            logger.error(f"Startup setup check failed: {e}", exc_info=True)
-            # Don't crash the app on startup check failure
-            logger.warning("Continuing startup despite setup check failure")
-
-    # Run one-time purge of expired deleted projects and products (Handover 0070)
-    if state.db_manager:
-        try:
-            logger.info("Running startup purge of expired deleted items...")
-            from datetime import timedelta, timezone
-            from sqlalchemy import select
-            from src.giljo_mcp.models import Product, Project
-
-            # Get all tenants that have deleted items
-            async with state.db_manager.get_session_async() as session:
-                # Find all unique tenant keys with deleted items
-                cutoff_date = datetime.now(timezone.utc) - timedelta(days=10)
-
-                # Get unique tenants with expired deleted projects
-                project_stmt = select(Project.tenant_key).distinct().where(
-                    Project.deleted_at.isnot(None),
-                    Project.deleted_at < cutoff_date
-                )
-                project_result = await session.execute(project_stmt)
-                project_tenants = {row[0] for row in project_result.fetchall()}
-
-                # Get unique tenants with expired deleted products
-                product_stmt = select(Product.tenant_key).distinct().where(
-                    Product.deleted_at.isnot(None),
-                    Product.deleted_at < cutoff_date
-                )
-                product_result = await session.execute(product_stmt)
-                product_tenants = {row[0] for row in product_result.fetchall()}
-
-                all_tenants = project_tenants | product_tenants
-
-                if not all_tenants:
-                    logger.debug("[Handover 0070] No expired deleted items to purge")
-                else:
-                    total_projects_purged = 0
-                    total_products_purged = 0
-
-                    # Purge for each tenant
-                    for tenant_key in all_tenants:
-                        # Purge expired deleted projects
-                        from src.giljo_mcp.services.project_service import ProjectService
-                        project_service = ProjectService(
-                            db_manager=state.db_manager,
-                            tenant_manager=state.tenant_manager
-                        )
-                        # Set tenant context for this purge
-                        state.tenant_manager.set_current_tenant(tenant_key)
-
-                        project_purge_result = await project_service.purge_expired_deleted_projects(days_before_purge=10)
-                        if project_purge_result.get("success"):
-                            purged_count = project_purge_result.get("purged_count", 0)
-                            total_projects_purged += purged_count
-
-                        # Purge expired deleted products
-                        from src.giljo_mcp.services.product_service import ProductService
-                        product_service = ProductService(
-                            db_manager=state.db_manager,
-                            tenant_key=tenant_key
-                        )
-
-                        product_purge_result = await product_service.purge_expired_deleted_products(days_before_purge=10)
-                        if product_purge_result.get("success"):
-                            purged_count = product_purge_result.get("purged_count", 0)
-                            total_products_purged += purged_count
-
-                    # Clear tenant context
-                    state.tenant_manager.clear_current_tenant()
-
-                    if total_projects_purged > 0 or total_products_purged > 0:
-                        logger.info(
-                            f"[Handover 0070] Purged {total_projects_purged} expired deleted project(s) "
-                            f"and {total_products_purged} expired deleted product(s)"
-                        )
-                    else:
-                        logger.debug("[Handover 0070] No expired deleted items to purge")
-
-            logger.info("Startup purge complete")
-        except Exception as e:
-            logger.error(f"Failed to purge expired deleted items: {e}", exc_info=True)
-            logger.warning("Continuing startup despite purge failure")
+    # Phase 6: Validation
+    await init_validation(state)
 
     # Expose db_manager and websocket_manager directly on app.state
     # This must be done AFTER initialization, not in create_app()
     app.state.db_manager = state.db_manager
     app.state.websocket_manager = state.websocket_manager
+    app.state.websocket_broker = state.websocket_broker
 
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
@@ -593,59 +197,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    logger.info("Shutting down GiljoAI MCP API...")
-
-    # Cancel background tasks
-    try:
-        logger.info("Canceling background tasks...")
-        if state.heartbeat_task:
-            state.heartbeat_task.cancel()
-            try:
-                await state.heartbeat_task
-            except asyncio.CancelledError:
-                pass
-        if state.cleanup_task:
-            state.cleanup_task.cancel()
-            try:
-                await state.cleanup_task
-            except asyncio.CancelledError:
-                pass
-        if state.metrics_sync_task:
-            state.metrics_sync_task.cancel()
-            try:
-                await state.metrics_sync_task
-            except asyncio.CancelledError:
-                pass
-        logger.info("Background tasks canceled")
-    except Exception as e:
-        logger.error(f"Error canceling background tasks: {e}", exc_info=True)
-
-    # Stop health monitoring gracefully
-    if state.health_monitor:
-        try:
-            logger.info("Stopping agent health monitoring...")
-            await state.health_monitor.stop()
-            logger.info("Agent health monitoring stopped")
-        except Exception as e:
-            logger.error(f"Error stopping health monitor: {e}", exc_info=True)
-
-    # Close all WebSocket connections
-    try:
-        logger.info("Closing WebSocket connections...")
-        for ws in state.connections.values():
-            await ws.close()
-        logger.info("WebSocket connections closed")
-    except Exception as e:
-        logger.error(f"Error closing WebSocket connections: {e}", exc_info=True)
-
-    # Close database
-    if state.db_manager:
-        try:
-            logger.info("Closing database connection...")
-            await state.db_manager.close_async()  # Use close_async() for async engine
-            logger.info("Database connection closed")
-        except Exception as e:
-            logger.error(f"Error closing database: {e}", exc_info=True)
+    await shutdown(state)
 
     logger.info("API shutdown complete")
 
@@ -971,7 +523,9 @@ def create_app() -> FastAPI:
                 # STEP 3: Store connection with authentication context
                 user_info = auth_result.get("user", {})
                 tenant_key_from_user = user_info.get("tenant_key", "default")
-                logger.info(f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}")
+                logger.info(
+                    f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
+                )
                 auth_context = {
                     "user": user_info,
                     "context": auth_result.get("context", "normal"),  # 'setup' or 'normal'

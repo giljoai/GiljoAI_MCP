@@ -22,8 +22,9 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_user
+from src.giljo_mcp.auth.dependencies import get_current_user, get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 
@@ -164,31 +165,40 @@ def render_template(
     return script
 
 
-async def get_user_by_id(user_id: str) -> Optional[User]:
+async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
     """
     Query user from database by ID.
 
+    NOTE: This is a simple helper function with a straightforward query
+    that is only used within this endpoint file. For complex business logic
+    or queries used across multiple endpoints, consider adding to a repository.
+
     Args:
+        session: Database session
         user_id: User identifier
 
     Returns:
         User object or None if not found
     """
-    import os
+    # Simple query: Get user by ID (active users only)
+    stmt = select(User).where(User.id == user_id, User.is_active == True)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    return user
 
-    from src.giljo_mcp.database import DatabaseManager
-
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise RuntimeError("DATABASE_URL not configured")
-
-    db_manager = DatabaseManager(database_url=db_url, is_async=True)
-
-    async with db_manager.get_session_async() as session:
-        stmt = select(User).where(User.id == user_id, User.is_active == True)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-        return user
+    # ORIGINAL IMPLEMENTATION (kept for reference):
+    # This created a new DatabaseManager for each call (anti-pattern)
+    # import os
+    # from src.giljo_mcp.database import DatabaseManager
+    # db_url = os.getenv("DATABASE_URL")
+    # if not db_url:
+    #     raise RuntimeError("DATABASE_URL not configured")
+    # db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    # async with db_manager.get_session_async() as session:
+    #     stmt = select(User).where(User.id == user_id, User.is_active == True)
+    #     result = await session.execute(stmt)
+    #     user = result.scalar_one_or_none()
+    #     return user
 
 
 # API Endpoints
@@ -411,7 +421,11 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
 
 
 @router.get("/download/{token}/{platform}", tags=["MCP Integration"])
-async def download_via_token(token: str, platform: str):
+async def download_via_token(
+    token: str,
+    platform: str,
+    session: AsyncSession = Depends(get_db_session)
+):
     """
     Public download endpoint using secure token.
 
@@ -422,6 +436,7 @@ async def download_via_token(token: str, platform: str):
     Args:
         token: Secure JWT token from share link
         platform: "windows" or "unix"
+        session: Database session (from dependency)
 
     Returns:
         Response with script file download
@@ -441,7 +456,7 @@ async def download_via_token(token: str, platform: str):
 
     # Get user from database
     user_id = user_info["user_id"]
-    user = await get_user_by_id(user_id)
+    user = await get_user_by_id(session, user_id)
 
     if not user:
         logger.warning(f"User not found for token: {user_id}")

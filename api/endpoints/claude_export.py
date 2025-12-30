@@ -68,7 +68,7 @@ class ClaudeExportResult(BaseModel):
     success: bool = Field(..., description="Whether export succeeded")
     exported_count: int = Field(..., description="Number of templates exported")
     files: list[dict[str, str]] = Field(..., description="List of exported files with name and path")
-    message: str = Field(..., description="Human-readable result message")
+    message: str = Field(..., description="User-readable result message")
     backup: Optional[dict[str, Any]] = Field(None, description="Backup information (Handover 0075)")
 
 

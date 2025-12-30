@@ -22,12 +22,13 @@ import logging
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import and_, delete as sql_delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
 # Model imports: Use domain-specific imports (Post-0128a)
-from giljo_mcp.models.templates import AgentTemplate
+from giljo_mcp.models.agent_identity import AgentJob
+from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.tenant import TenantManager
 
@@ -481,3 +482,532 @@ class TemplateService:
             )
 
         return True, ""
+
+    # ============================================================================
+    # Template Retrieval Methods (Phase 2 - Handover 1011)
+    # ============================================================================
+
+    async def get_template_by_id(
+        self,
+        session: AsyncSession,
+        template_id: str,
+        tenant_key: str,
+    ) -> Optional[AgentTemplate]:
+        """
+        Get a template by ID with tenant isolation.
+
+        Args:
+            session: Database session
+            template_id: Template UUID
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            AgentTemplate ORM object or None if not found
+
+        Example:
+            >>> template = await service.get_template_by_id(session, "abc-123", "tenant-1")
+            >>> if template:
+            ...     print(template.name)
+        """
+        # ORIGINAL QUERY: crud.py line 115-122 (get_template endpoint)
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.id == template_id,
+                AgentTemplate.tenant_key == tenant_key,
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_templates_with_filters(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        role: Optional[str] = None,
+        is_active: Optional[bool] = None,
+    ) -> list[AgentTemplate]:
+        """
+        List templates with optional filters.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            role: Filter by role (optional)
+            is_active: Filter by active status (optional)
+
+        Returns:
+            List of AgentTemplate ORM objects
+
+        Example:
+            >>> templates = await service.list_templates_with_filters(
+            ...     session, "tenant-1", role="orchestrator", is_active=True
+            ... )
+        """
+        # ORIGINAL QUERY: crud.py line 151-160 (list_templates endpoint)
+        query = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
+
+        if role:
+            query = query.where(AgentTemplate.role == role)
+        if is_active is not None:
+            query = query.where(AgentTemplate.is_active == is_active)
+
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+    async def check_template_name_exists(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        name: str,
+    ) -> bool:
+        """
+        Check if a template name already exists for a tenant.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            name: Template name to check
+
+        Returns:
+            True if name exists, False otherwise
+
+        Example:
+            >>> exists = await service.check_template_name_exists(
+            ...     session, "tenant-1", "my-analyzer"
+            ... )
+        """
+        # ORIGINAL QUERY: crud.py line 197-205 (create_template uniqueness check)
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.name == name
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def get_default_templates_by_role(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        role: str,
+        product_id: Optional[str] = None,
+    ) -> list[AgentTemplate]:
+        """
+        Get all default templates for a specific role.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            role: Role to filter by
+            product_id: Optional product filter
+
+        Returns:
+            List of default AgentTemplate ORM objects for the role
+
+        Example:
+            >>> defaults = await service.get_default_templates_by_role(
+            ...     session, "tenant-1", "orchestrator", "product-1"
+            ... )
+        """
+        # ORIGINAL QUERY: crud.py line 229-240 (create_template default flag management)
+        filters = [
+            AgentTemplate.tenant_key == tenant_key,
+            AgentTemplate.role == role,
+            AgentTemplate.is_default == True,
+        ]
+        if product_id:
+            filters.append(AgentTemplate.product_id == product_id)
+
+        stmt = select(AgentTemplate).where(and_(*filters))
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_active_user_managed_count(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> int:
+        """
+        Get count of active user-managed templates (excludes system-managed roles).
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            Count of active user-managed templates
+
+        Example:
+            >>> count = await service.get_active_user_managed_count(session, "tenant-1")
+            >>> print(f"Active: {count}/{USER_MANAGED_AGENT_LIMIT}")
+        """
+        # ORIGINAL QUERY: crud.py line 496-504 (get_active_count endpoint)
+        stmt = select(func.count(AgentTemplate.id)).where(
+            and_(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.is_active == True,
+                AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES)
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar()
+
+    # ============================================================================
+    # Template Deletion Methods (Phase 2 - Handover 1011)
+    # ============================================================================
+
+    async def hard_delete_template(
+        self,
+        session: AsyncSession,
+        template_id: str,
+        tenant_key: str,
+    ) -> bool:
+        """
+        Hard delete a template and all related records (CASCADE).
+
+        Deletes in order:
+        1. Sets AgentJob.template_id to NULL for historical jobs
+        2. Deletes TemplateAugmentation records
+        3. Deletes TemplateUsageStats records
+        4. Deletes TemplateArchive records (version history)
+        5. Deletes the template itself
+
+        Args:
+            session: Database session
+            template_id: Template UUID to delete
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            True if deleted successfully, False if not found
+
+        Example:
+            >>> deleted = await service.hard_delete_template(session, "tpl-123", "tenant-1")
+        """
+        # ORIGINAL QUERIES: crud.py lines 427-471 (delete_template endpoint)
+
+        # Get template first to verify ownership
+        template = await self.get_template_by_id(session, template_id, tenant_key)
+        if not template:
+            return False
+
+        # 1. Set AgentJob.template_id to NULL for historical jobs
+        await session.execute(
+            update(AgentJob)
+            .where(AgentJob.template_id == template_id)
+            .values(template_id=None)
+        )
+
+        # 2. Delete related TemplateAugmentation records
+        await session.execute(
+            sql_delete(TemplateAugmentation)
+            .where(TemplateAugmentation.template_id == template_id)
+        )
+
+        # 3. Delete related TemplateUsageStats records
+        await session.execute(
+            sql_delete(TemplateUsageStats)
+            .where(TemplateUsageStats.template_id == template_id)
+        )
+
+        # 4. Delete related TemplateArchive records (version history)
+        await session.execute(
+            sql_delete(TemplateArchive)
+            .where(TemplateArchive.template_id == template_id)
+        )
+
+        # 5. Delete the template itself
+        await session.delete(template)
+
+        return True
+
+    # ============================================================================
+    # Template History Methods (Phase 2 - Handover 1011)
+    # ============================================================================
+
+    async def get_template_history(
+        self,
+        session: AsyncSession,
+        template_id: str,
+        tenant_key: str,
+    ) -> list[TemplateArchive]:
+        """
+        Get template version history ordered by archived_at descending.
+
+        Args:
+            session: Database session
+            template_id: Template UUID
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            List of TemplateArchive ORM objects (most recent first)
+
+        Example:
+            >>> history = await service.get_template_history(session, "tpl-123", "tenant-1")
+            >>> for archive in history:
+            ...     print(f"{archive.version} - {archive.archive_reason}")
+        """
+        # ORIGINAL QUERY: history.py line 41-50 (get_template_history endpoint)
+        stmt = (
+            select(TemplateArchive)
+            .where(
+                TemplateArchive.template_id == template_id,
+                TemplateArchive.tenant_key == tenant_key,
+            )
+            .order_by(TemplateArchive.archived_at.desc())
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_archive_by_id(
+        self,
+        session: AsyncSession,
+        archive_id: str,
+        template_id: str,
+        tenant_key: str,
+    ) -> Optional[TemplateArchive]:
+        """
+        Get a specific archive entry with tenant isolation.
+
+        Args:
+            session: Database session
+            archive_id: Archive entry UUID
+            template_id: Template UUID (for additional validation)
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            TemplateArchive ORM object or None if not found
+
+        Example:
+            >>> archive = await service.get_archive_by_id(
+            ...     session, "arc-456", "tpl-123", "tenant-1"
+            ... )
+        """
+        # ORIGINAL QUERY: history.py line 91-98 (restore_template endpoint)
+        stmt = select(TemplateArchive).where(
+            TemplateArchive.id == archive_id,
+            TemplateArchive.template_id == template_id,
+            TemplateArchive.tenant_key == tenant_key,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def create_template_archive(
+        self,
+        session: AsyncSession,
+        template: AgentTemplate,
+        archive_reason: str,
+        archive_type: str,
+        archived_by: str,
+    ) -> TemplateArchive:
+        """
+        Create an archive entry from a template's current state.
+
+        Args:
+            session: Database session
+            template: AgentTemplate ORM object to archive
+            archive_reason: Reason for archiving
+            archive_type: Type of archive (e.g., "auto", "manual")
+            archived_by: Username of person triggering archive
+
+        Returns:
+            Created TemplateArchive ORM object
+
+        Example:
+            >>> archive = await service.create_template_archive(
+            ...     session, template, "Update user instructions", "auto", "alice"
+            ... )
+        """
+        # ORIGINAL QUERIES: history.py lines 112-132, 175-195, 239-259
+        # (restore_template, reset_template, reset_system_instructions)
+        archive = TemplateArchive(
+            tenant_key=template.tenant_key,
+            template_id=template.id,
+            product_id=template.product_id,
+            name=template.name,
+            category=template.category,
+            role=template.role,
+            system_instructions=template.system_instructions,
+            user_instructions=template.user_instructions,
+            template_content=template.template_content,
+            variables=template.variables,
+            behavioral_rules=template.behavioral_rules,
+            success_criteria=template.success_criteria,
+            version=template.version,
+            archive_reason=archive_reason,
+            archive_type=archive_type,
+            archived_by=archived_by,
+            usage_count_at_archive=template.usage_count,
+            avg_generation_ms_at_archive=template.avg_generation_ms,
+        )
+        session.add(archive)
+        return archive
+
+    async def restore_template_from_archive(
+        self,
+        session: AsyncSession,
+        template: AgentTemplate,
+        archive: TemplateArchive,
+    ) -> None:
+        """
+        Restore a template's content from an archive entry.
+
+        Args:
+            session: Database session
+            template: AgentTemplate ORM object to restore into
+            archive: TemplateArchive ORM object to restore from
+
+        Example:
+            >>> await service.restore_template_from_archive(session, template, archive)
+        """
+        # ORIGINAL QUERY: history.py line 135-139 (restore_template endpoint)
+        template.template_content = archive.template_content
+        template.variables = archive.variables
+        template.behavioral_rules = archive.behavioral_rules
+        template.success_criteria = archive.success_criteria
+        template.version = archive.version
+
+    async def reset_template_to_defaults(
+        self,
+        session: AsyncSession,
+        template: AgentTemplate,
+    ) -> None:
+        """
+        Reset a template's editable fields to default values.
+
+        Args:
+            session: Database session
+            template: AgentTemplate ORM object to reset
+
+        Example:
+            >>> await service.reset_template_to_defaults(session, template)
+        """
+        # ORIGINAL QUERY: history.py line 198-201 (reset_template endpoint)
+        template.user_instructions = None
+        template.behavioral_rules = []
+        template.success_criteria = []
+        template.tags = []
+
+    async def reset_system_instructions(
+        self,
+        session: AsyncSession,
+        template: AgentTemplate,
+    ) -> None:
+        """
+        Reset system instructions to canonical default.
+
+        Args:
+            session: Database session
+            template: AgentTemplate ORM object to reset
+
+        Example:
+            >>> await service.reset_system_instructions(session, template)
+        """
+        # ORIGINAL QUERY: history.py line 264-270 (reset_system_instructions endpoint)
+        template.system_instructions = (
+            "# System Instructions\n\n"
+            "Use acknowledge_job() to claim tasks.\n"
+            "Use report_progress() to send updates.\n"
+            "Use complete_job() when the task is finished.\n"
+            "Use get_next_instruction() to request additional guidance.\n"
+        )
+
+    # ============================================================================
+    # Template Preview/Diff Methods (Phase 2 - Handover 1011)
+    # ============================================================================
+
+    async def check_cross_tenant_template_exists(
+        self,
+        session: AsyncSession,
+        template_id: str,
+    ) -> bool:
+        """
+        Check if a template exists across any tenant (for access denial detection).
+
+        Args:
+            session: Database session
+            template_id: Template UUID
+
+        Returns:
+            True if template exists in any tenant, False otherwise
+
+        Example:
+            >>> exists = await service.check_cross_tenant_template_exists(session, "tpl-123")
+        """
+        # ORIGINAL QUERIES: crud.py line 311-314, history.py lines 169-172, 231-234
+        # (update_template, reset_template, reset_system_instructions cross-tenant checks)
+        stmt = select(AgentTemplate).where(AgentTemplate.id == template_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+
+    # ============================================================================
+    # Template Download Methods (Handover 1011 - Phase 4)
+    # ============================================================================
+
+    async def list_active_user_templates(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> list[AgentTemplate]:
+        """
+        List all active user-managed templates (excludes system roles).
+
+        Used by agent template download endpoint to list downloadable templates.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Returns:
+            List of active AgentTemplate ORM objects (user-managed only)
+
+        Example:
+            >>> templates = await service.list_active_user_templates(session, "tenant-1")
+            >>> for template in templates:
+            ...     print(f"{template.role}: {template.name}")
+        """
+        # ORIGINAL QUERY: agent_templates.py lines 146-155 (list_agent_templates endpoint)
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == tenant_key)
+            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
+            .order_by(AgentTemplate.role, AgentTemplate.name)
+        )
+
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_template_by_role(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        role: str,
+    ) -> Optional[AgentTemplate]:
+        """
+        Get an active template by role with tenant isolation.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            role: Template role to retrieve
+
+        Returns:
+            AgentTemplate ORM object or None if not found/inactive
+
+        Example:
+            >>> template = await service.get_template_by_role(session, "tenant-1", "backend developer")
+            >>> if template:
+            ...     print(template.template_content)
+        """
+        # ORIGINAL QUERY: agent_templates.py lines 218-226 (download_agent_template endpoint)
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == tenant_key)
+            .where(AgentTemplate.role == role)
+            .where(AgentTemplate.is_active == True)  # noqa: E712
+        )
+
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()

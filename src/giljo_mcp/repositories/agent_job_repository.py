@@ -299,3 +299,138 @@ class AgentJobRepository:
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
             "failed_jobs": len([s for s, c in status_counts if s == "failed"]),
         }
+
+
+    # ============================================================================
+    # Agent Execution & Job Methods (Handover 1011 - Phase 4)
+    # ============================================================================
+
+    async def get_execution_by_agent_id(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        agent_id: str,
+    ) -> Optional["AgentExecution"]:
+        """
+        Get agent execution by agent_id with tenant isolation.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            agent_id: Agent ID to retrieve
+
+        Returns:
+            AgentExecution instance or None if not found
+
+        Example:
+            >>> execution = await repo.get_execution_by_agent_id(session, "tenant-1", "agent-123")
+            >>> if execution:
+            ...     print(execution.status)
+        """
+        # ORIGINAL QUERY: operations.py lines 226-230 (get_job_health endpoint)
+        from ..models.agent_identity import AgentExecution
+
+        stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.agent_id == agent_id,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_execution_by_job_id(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        job_id: str,
+    ) -> Optional["AgentExecution"]:
+        """
+        Get agent execution by job_id with tenant isolation (fallback lookup).
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            job_id: Job ID to retrieve execution for
+
+        Returns:
+            AgentExecution instance or None if not found
+
+        Example:
+            >>> execution = await repo.get_execution_by_job_id(session, "tenant-1", "job-456")
+        """
+        # ORIGINAL QUERY: operations.py lines 235-239 (get_job_health endpoint fallback)
+        from ..models.agent_identity import AgentExecution
+
+        stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.job_id == job_id,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_agent_job_by_job_id(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        job_id: str,
+    ) -> Optional["AgentJob"]:
+        """
+        Get agent job by job_id with tenant isolation.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            job_id: Job ID to retrieve
+
+        Returns:
+            AgentJob instance or None if not found
+
+        Example:
+            >>> job = await repo.get_agent_job_by_job_id(session, "tenant-1", "job-789")
+            >>> if job:
+            ...     print(job.mission)
+        """
+        # ORIGINAL QUERY: operations.py lines 318-322 (update_agent_mission endpoint)
+        from ..models.agent_identity import AgentJob
+
+        stmt = select(AgentJob).where(
+            AgentJob.tenant_key == tenant_key,
+            AgentJob.job_id == job_id,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_latest_execution_for_job(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        job_id: str,
+    ) -> Optional["AgentExecution"]:
+        """
+        Get the latest execution instance for a job (by instance_number desc).
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (REQUIRED)
+            job_id: Job ID to get latest execution for
+
+        Returns:
+            Latest AgentExecution instance or None if not found
+
+        Example:
+            >>> execution = await repo.get_latest_execution_for_job(session, "tenant-1", "job-123")
+            >>> if execution:
+            ...     print(f"Instance #{execution.instance_number}")
+        """
+        # ORIGINAL QUERY: operations.py lines 343-348 (update_agent_mission WebSocket event)
+        from ..models.agent_identity import AgentExecution
+
+        stmt = (
+            select(AgentExecution)
+            .where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .order_by(AgentExecution.instance_number.desc())
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()

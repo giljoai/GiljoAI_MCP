@@ -2,7 +2,8 @@
 Template rendering utilities for packaging/export (Claude Code, generic, etc.).
 
 Implements 0102a/0103 rules for Claude Code agent templates:
-- YAML frontmatter with: name, description, model
+- YAML frontmatter with: name, description, model, color (optional)
+- Color field maps GiljoAI app colors to Claude Code named colors
 - Omit tools to inherit all by default
 - Body: template_content + optional Behavioral Rules / Success Criteria sections
 - Packaging cap: max 8 distinct active roles with precedence
@@ -34,6 +35,50 @@ def _slugify_filename(name: str) -> str:
     return slug or "agent"
 
 
+def hex_to_claude_color(hex_code: str | None) -> str | None:
+    """Convert hex color code to Claude Code named color.
+
+    Maps GiljoAI app colors to Claude Code CLI color names.
+    Returns None if no mapping exists (color field will be omitted).
+
+    Supported Claude Code colors: green, blue, purple, orange, red, yellow, grey
+
+    Args:
+        hex_code: Hex color code (e.g., "#3498DB") or None
+
+    Returns:
+        Claude Code named color or None
+    """
+    if not hex_code:
+        return None
+
+    # Normalize hex code (uppercase, ensure # prefix)
+    normalized = hex_code.strip().upper()
+    if not normalized.startswith("#"):
+        normalized = f"#{normalized}"
+
+    # Map GiljoAI app colors to Claude Code named colors
+    color_map = {
+        # Orchestrator - tan/bronze -> orange
+        "#D4A574": "orange",
+        # Implementer/Frontend - blue
+        "#3498DB": "blue",
+        # Tester - yellow/gold
+        "#FFC300": "yellow",
+        # Analyzer - red
+        "#E74C3C": "red",
+        # Reviewer/Designer - purple
+        "#9B59B6": "purple",
+        # Documenter/Backend - green
+        "#27AE60": "green",
+        "#2ECC71": "green",
+        # Default/fallback - grey
+        "#90A4AE": "grey",
+    }
+
+    return color_map.get(normalized)
+
+
 def render_claude_agent(template: AgentTemplate) -> str:
     """Render a single AgentTemplate to Claude Code-compatible Markdown.
 
@@ -52,6 +97,12 @@ def render_claude_agent(template: AgentTemplate) -> str:
         "description": description,
         "model": model_value,
     }
+
+    # Include color field if template has background_color (maps to Claude Code named colors)
+    if hasattr(template, "background_color") and template.background_color:
+        claude_color = hex_to_claude_color(template.background_color)
+        if claude_color:
+            frontmatter["color"] = claude_color
 
     # Include tools only when explicitly specified (inherit all otherwise)
     tools_field = (template.tools or "").strip() if hasattr(template, "tools") else ""
@@ -173,6 +224,7 @@ def render_template(template: AgentTemplate) -> str:
 
 __all__ = [
     "_slugify_filename",
+    "hex_to_claude_color",
     "render_claude_agent",
     "render_generic_agent",
     "render_template",

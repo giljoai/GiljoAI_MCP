@@ -1,18 +1,18 @@
 /**
- * Unit tests for products store - WebSocket event listeners
- * Tests for Handover 0139b: WebSocket Events - Frontend Listeners
+ * Unit tests for products store - WebSocket events (0379a router)
  *
- * Test Coverage:
- * 1. Product memory updated event handling
- * 2. Product learning added event handling
- * 3. Event listener cleanup on store destruction
- * 4. Real-time UI updates
+ * These tests validate that product WebSocket events update store state via the
+ * centralized `websocketEventRouter`, not per-store `wsStore.on(...)` wiring.
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useProductStore } from '@/stores/products'
 import { useWebSocketStore } from '@/stores/websocket'
+import {
+  __resetWebsocketEventRouterForTests,
+  initWebsocketEventRouter,
+} from '@/stores/websocketEventRouter'
 
 // Mock the API service
 vi.mock('@/services/api', () => ({
@@ -120,6 +120,8 @@ describe('Products Store - WebSocket Event Listeners', () => {
 
     // Create a fresh pinia instance for each test
     setActivePinia(createPinia())
+    __resetWebsocketEventRouterForTests()
+    initWebsocketEventRouter()
     productStore = useProductStore()
     wsStore = useWebSocketStore()
 

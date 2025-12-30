@@ -444,6 +444,51 @@ class TestThinClientGeneratorErrors:
 class TestThinClientGeneratorPromptContent:
     """Tests for prompt content and format."""
 
+    async def test_staging_prompt_includes_execution_plan_step(self, db_session):
+        """
+        Verify staging prompt includes step to write execution plan.
+
+        This test ensures orchestrators are instructed to persist their
+        execution strategy via update_agent_mission() for fresh-session retrieval.
+        """
+        tenant_key = str(uuid4())
+
+        # Product model no longer has vision_document field (Handover 0128e)
+        product = Product(id=str(uuid4()), tenant_key=tenant_key, name="Product", description="Test product")
+        db_session.add(product)
+
+        project = Project(
+            id=str(uuid4()),
+            tenant_key=tenant_key,
+            product_id=product.id,
+            name="Project",
+            description="Test project",
+            mission="Test mission for staging prompt",
+            status="active",
+            context_budget=150000,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        generator = ThinClientPromptGenerator(db_session, tenant_key)
+
+        # Generate staging prompt (claude_code_mode=True to use staging prompt)
+        staging_prompt = await generator.generate_staging_prompt(
+            orchestrator_id=str(uuid4()),
+            project_id=str(project.id),
+            claude_code_mode=True
+        )
+
+        # Verify execution plan instruction is present
+        assert "WRITE YOUR EXECUTION PLAN" in staging_prompt
+        assert "update_agent_mission" in staging_prompt
+
+        # Verify key components of the execution plan instruction
+        assert "Agent execution order" in staging_prompt
+        assert "Dependency graph" in staging_prompt
+        assert "Coordination checkpoints" in staging_prompt
+        assert "Success criteria" in staging_prompt
+
     async def test_mcp_connection_config_included(self, db_session):
         """
         Verify MCP connection configuration is included in prompt (Amendment C).
