@@ -191,6 +191,19 @@ async def handle_tools_list(
                 "required": ["project_id", "mission"],
             },
         },
+        {
+            "name": "update_agent_mission",
+            "description": "Update an agent's mission/execution plan. Called by: ORCHESTRATOR during staging (Step 6) to persist its own execution plan. This allows fresh-session orchestrators to retrieve their plan via get_agent_mission() during implementation. Handover 0380: Enables staging -> implementation flow across terminal sessions.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "AgentJob UUID (work order identifier)"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "mission": {"type": "string", "description": "Execution plan to persist (agent order, dependencies, checkpoints)"},
+                },
+                "required": ["job_id", "tenant_key", "mission"],
+            },
+        },
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
@@ -408,19 +421,19 @@ async def handle_tools_list(
         },
         {
             "name": "get_agent_mission",
-            "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times).",
+            "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times). Handover 0381: Uses job_id (work order UUID).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "agent_job_id": {"type": "string", "description": "Agent job UUID"},
+                    "job_id": {"type": "string", "description": "Work order UUID (job_id)"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_job_id", "tenant_key"],
+                "required": ["job_id", "tenant_key"],
             },
         },
         {
             "name": "spawn_agent_job",
-            "description": "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission into agent-specific tasks and spawns agents who EXECUTE the work. Returns agent_job_id and thin prompt (~10 lines). Agent later calls get_agent_mission() to fetch full mission. Creates database record linking agent to project.",
+            "description": "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission into agent-specific tasks and spawns agents who EXECUTE the work. Returns job_id and thin prompt (~10 lines). Agent later calls get_agent_mission() to fetch full mission. Creates database record linking agent to project.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -632,6 +645,7 @@ async def handle_tools_call(
         "create_project": state.tool_accessor.create_project,
         "switch_project": state.tool_accessor.switch_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
+        "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,

@@ -1019,9 +1019,19 @@ STARTUP SEQUENCE:
 5. SPAWN AGENTS: spawn_agent_job() for each specialist
    CRITICAL: agent_name MUST exactly match template name from Step 2
    agent_type can be descriptive category (for UI display only)
-6. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
+6. WRITE YOUR EXECUTION PLAN: Persist how you will coordinate agents during implementation.
+   Call update_agent_mission(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}', mission=YOUR_PLAN)
+
+   Document in your plan:
+   - Agent execution order (sequential/parallel/hybrid)
+   - Dependency graph between agents
+   - Coordination checkpoints
+   - Success criteria for each phase
+
+   This allows fresh-session orchestrators to retrieve your execution strategy.
+7. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
-7. EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
+8. EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
 
    **Sequential Pattern**: Spawn agent → Poll via `receive_messages()` → Wait for completion → Send handoff message → Spawn next agent
 
@@ -1105,6 +1115,21 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             f"Project ID: {project.id}",
             f"Product ID: {project.product_id}",
             "",
+            "## Your Execution Plan (from Staging)",
+            "",
+            "Fetch your stored execution plan from staging:",
+            "```python",
+            f'get_agent_mission(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            "```",
+            "",
+            "This returns your plan with:",
+            "- Agent execution order (sequential/parallel/hybrid)",
+            "- Dependency graph between agents",
+            "- Coordination checkpoints",
+            "- Success criteria for each phase",
+            "",
+            "Follow this plan to coordinate agents. If no plan was written during staging, proceed with best judgment.",
+            "",
             "## What You've Already Done",
             "In a PREVIOUS session, you completed staging:",
             "- Analyzed project requirements",
@@ -1165,7 +1190,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "    Tenant: {tenant_key}",
             "    ",
             '    First action: Call mcp__giljo-mcp__get_agent_mission as a tool',
-            '    with agent_job_id="{job_id}" and tenant_key="{tenant_key}".',
+            '    with job_id="{job_id}" and tenant_key="{tenant_key}".',
             "    This returns your `mission` and `full_protocol`.",
             "    Follow `full_protocol` for all lifecycle behavior",
             "    (startup, planning, progress, messaging, completion, error handling).",
@@ -1189,7 +1214,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                     f"    Tenant: {self.tenant_key}",
                     "    ",
                     f'    First action: Call mcp__giljo-mcp__get_agent_mission as a tool',
-                    f'    with agent_job_id="{first.job_id}" and tenant_key="{self.tenant_key}".',
+                    f'    with job_id="{first.job_id}" and tenant_key="{self.tenant_key}".',
                     "    This returns your `mission` and `full_protocol`.",
                     "    Follow `full_protocol` for all lifecycle behavior",
                     "    (startup, planning, progress, messaging, completion, error handling).",
