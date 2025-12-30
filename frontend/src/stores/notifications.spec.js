@@ -4,9 +4,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useNotificationStore } from '@/stores/notifications'
 
 // Mock crypto.randomUUID
-global.crypto = {
+vi.stubGlobal('crypto', {
   randomUUID: vi.fn(() => 'mock-uuid-' + Math.random().toString(36).substring(7)),
-}
+})
 
 describe('useNotificationStore', () => {
   let store
