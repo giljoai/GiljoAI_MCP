@@ -35,7 +35,7 @@ class OrchestratorPromptResponse(BaseModel):
 
     prompt: str = Field(..., description="Multi-line bash commands for orchestrator invocation")
     tool: str = Field(..., description="Tool type: claude-code, codex, gemini")
-    instructions: str = Field(..., description="Human-readable instructions for using the prompt")
+    instructions: str = Field(..., description="User-readable instructions for using the prompt")
     project_name: str = Field(..., description="Project name")
     project_id: str = Field(..., description="Project ID")
     agent_count: int = Field(..., description="Number of agents in project")
@@ -54,7 +54,7 @@ class AgentPromptResponse(BaseModel):
     agent_name: str = Field(..., description="Agent display name")
     agent_type: str = Field(..., description="Agent type")
     tool_type: str = Field(..., description="Tool assigned: claude-code, codex, gemini, universal")
-    instructions: str = Field(..., description="Human-readable instructions for using the prompt")
+    instructions: str = Field(..., description="User-readable instructions for using the prompt")
     mission_preview: str = Field(..., description="First 200 chars of mission")
 
     model_config = ConfigDict(from_attributes=True)

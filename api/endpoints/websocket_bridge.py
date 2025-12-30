@@ -10,7 +10,6 @@ Created: 2025-11-07
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -90,17 +89,6 @@ async def emit_websocket_event(
                 detail="event_type and tenant_key are required"
             )
 
-        # Prepare WebSocket message (FLATTEN payload for frontend handlers)
-        # Frontend handlers expect fields like tenant_key, project_id at the top level, not nested.
-        flattened = dict(request.data or {})
-        flattened["tenant_key"] = request.tenant_key
-        message = {
-            "type": request.event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "schema_version": "1.0",
-            **flattened,
-        }
-
         # Check if WebSocket manager is available
         if not ws_dep.manager:
             logger.warning(
@@ -114,28 +102,12 @@ async def emit_websocket_event(
                 message="WebSocket manager not available"
             )
 
-        # Broadcast to tenant
-        clients_notified = 0
-        logger.info(f"[BRIDGE DEBUG] Total active connections: {len(ws_dep.manager.active_connections)}, Target tenant: {request.tenant_key}")
-        for client_id, ws in ws_dep.manager.active_connections.items():
-            auth_context = ws_dep.manager.auth_contexts.get(client_id, {})
-            client_tenant = auth_context.get("tenant_key")
-
-            logger.info(f"[BRIDGE DEBUG] Client {client_id[:8]}: tenant={client_tenant}, target={request.tenant_key}, match={client_tenant == request.tenant_key}")
-
-            # Multi-tenant isolation
-            if client_tenant != request.tenant_key:
-                logger.info(f"[BRIDGE DEBUG] Skipping client {client_id[:8]} - tenant mismatch")
-                continue
-
-            try:
-                await ws.send_json(message)
-                clients_notified += 1
-            except Exception as e:
-                logger.warning(
-                    f"Failed to send {request.event_type} to client {client_id}: {e}",
-                    extra={"client_id": client_id, "error": str(e)},
-                )
+        clients_notified = await ws_dep.broadcast_to_tenant(
+            tenant_key=request.tenant_key,
+            event_type=request.event_type,
+            data=request.data or {},
+            schema_version="1.0",
+        )
 
         logger.info(
             f"WebSocket event emitted: {request.event_type} to {clients_notified} client(s)",

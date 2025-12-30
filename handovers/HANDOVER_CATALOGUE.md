@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-24 (0375 Logging Regression Fix COMPLETE)
+**Last Updated:** 2025-12-27 (0379 Series Complete - Universal Reactive State Architecture; 0371 status corrected to IN PROGRESS)
 
 ---
 
@@ -13,7 +13,7 @@
 | 0001-0100 | Foundation & Installation | Mostly Complete |
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
-| 0301-0400 | Context Management & Services | Active Development |
+| 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -45,11 +45,13 @@
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
+| **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done, not complete |
+| **0371** | **Dead Code Cleanup Project** | **IN PROGRESS** | **MEDIUM** | Phases 1-4 (partial) done; Phase 4.6, 5-7 pending (~6K lines) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 | ID | Title | Status | Priority | Notes |
@@ -61,16 +63,16 @@
 | 1004 | Secure Cookies | **COMPLETE** | HIGH | Moved to completed/ |
 | 1005 | Sync pyproject | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1006 | Pip Audit | **COMPLETE** | HIGH | Moved to completed/ |
-| 1007 | CSP Nonces | Ready | MEDIUM | Security enhancement (HIGH RISK) |
+| 1007 | CSP Nonces | **COMPLETE** | MEDIUM | Moved to completed/ |
 | 1008 | Security Headers | **COMPLETE** | MEDIUM | Moved to completed/ |
-| 1009 | Rate Limiting | Ready | MEDIUM | Security enhancement (MEDIUM RISK) |
-| 1010 | Lifespan Refactor | Ready | LOW | Refactoring (MEDIUM RISK) |
-| 1011 | Repository Pattern | Ready | LOW | Architecture (HIGH RISK) |
+| 1009 | Rate Limiting | **COMPLETE** | MEDIUM | Moved to completed/ (2025-12-24) |
+| 1010 | Lifespan Refactor | **COMPLETE** | LOW | Moved to completed/ |
+| 1011 | Repository Pattern | **COMPLETE** | LOW | Moved to completed/ |
 | 1012 | Bandit Linting | **COMPLETE** | MEDIUM | Moved to completed/ |
-| 1013 | Structured Logging | Deferred | LOW | Future (Phase 5) |
-| 1014 | Security Auditing | Deferred | MEDIUM | Future (Phase 5) |
+| 1013 | Structured Logging | **COMPLETE** | LOW | Moved to completed/ (2025-12-27) |
+| 1014 | Security Auditing | **DEFERRED** | MEDIUM | Phase 5 - Waiting for compliance requirements |
 
-> **Status**: 7/15 COMPLETE. Safe batch executed 2025-12-22. Remaining: 1007 (HIGH risk), 1009-1011 (MEDIUM risk), 1013-1014 (deferred).
+> **Status**: 12/15 COMPLETE (2025-12-27). Core security complete. Remaining: 1014 (deferred - compliance-focused audit trail, not critical for core functionality).
 
 ### Reference Documents (Not Actionable)
 | ID | Title | Type | Notes |
@@ -102,6 +104,19 @@
 ### Recently Completed (December 2025)
 | ID | Title | Status |
 |----|-------|--------|
+| 1013 | Structured Logging with Error Codes | **COMPLETE** (2025-12-27) |
+| 1012 | Bandit Security Linting | **COMPLETE** (2025-12-27) |
+| 1011 | Repository Pattern | **COMPLETE** (2025-12-27) |
+| 1010 | Lifespan Refactor | **COMPLETE** (2025-12-27) |
+| 1007 | CSP Nonces | **COMPLETE** (2025-12-27) |
+| 0379 | Universal Reactive State Architecture (Master) | **COMPLETE** (2025-12-27) |
+| 0379a | Event Router + Reconnect Resync | **COMPLETE** (2025-12-27) |
+| 0379b | Agent/Job Domain Migration | **COMPLETE** (2025-12-27) |
+| 0379c | Messages + Project State Migration | **COMPLETE** (2025-12-27) |
+| 0379d | Backend Event Contract + Broadcaster Unification | **COMPLETE** (2025-12-27) |
+| 0379e | SaaS Broker + Loopback Elimination | **COMPLETE** (2025-12-27) |
+| 0378 | Agent ID / Job ID Confusion and Message Tool Fixes | **COMPLETE** (2025-12-25) |
+| 1009 | Rate Limiting (Auth Endpoints) | **COMPLETE** (2025-12-24) |
 | 0375 | Logging Regression Fix (1002 Bug) | **COMPLETE** (2025-12-24) |
 | 1002 | Fix Bare Except | **COMPLETE** (2025-12-22) |
 | 1003 | Sanitize Paths | **COMPLETE** (2025-12-22) |
@@ -192,6 +207,30 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### Greptile Security Remediation (1000 Series)
+**Status:** 80% Complete (12/15 handovers, December 2025)
+- 1002-1006: Quick wins (bare except, path sanitization, cookies, pyproject sync, pip audit)
+- 1007-1009: Production hardening (CSP nonces, security headers, rate limiting)
+- 1010-1012: Code quality (lifespan refactor, repository pattern, bandit linting)
+- 1013: Structured logging with 42 error codes (AUTH, DB, WS, MCP, API)
+- **Deferred**: 1014 (security audit trail - compliance-focused, not critical)
+- **Result**: Production-grade security posture, industry-standard logging
+- See: `handovers/1000_greptile_remediation_roadmap.md`
+- Commits: 06cc4192 (1013), eaee9089 (log analysis guide)
+
+### Universal Reactive State Architecture (0379 Series)
+**Status:** 100% Complete (December 2025)
+- 0379: Master document with 5-phase rollout plan
+- 0379a: Event Router + Reconnect Resync (frontend infrastructure)
+- 0379b: Agent/Job Domain Migration (map-based stores)
+- 0379c: Messages + Project State Migration
+- 0379d: Backend Event Contract + Broadcaster Unification
+- 0379e: SaaS Broker + Loopback Elimination
+- **Result**: Unified WebSocket platform - single manager, single store, central router
+- **Key Features**: Tenant isolation, broker abstraction, loopback eliminated
+- Commits: 53d9b236, a7ed01f8, 24b40b56, bf77e6e6
+- Cleanup: 42ae55cf (removed 8 dead agent_communication:* handlers)
 
 ### Alpha Trial Remediation Series (0356-0361, 0364, 0366)
 **Status:** 80% Complete (8/10 handovers, December 2025)
@@ -376,7 +415,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0375 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0379 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014

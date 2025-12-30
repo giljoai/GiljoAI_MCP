@@ -383,17 +383,6 @@ async def download_agent_templates(
             template.last_exported_at = export_timestamp
 
         await db.commit()
-
-        # Emit WebSocket event for real-time UI update (access from app state)
-        ws_manager = getattr(request.app.state, "websocket_manager", None)
-        if ws_manager:
-            await ws_manager.broadcast_templates_exported(
-                tenant_key=current_user.tenant_key,
-                template_ids=[str(t.id) for t in selected],
-                export_type="manual_zip",
-                exported_at=export_timestamp,
-            )
-
         logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
 
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
@@ -582,8 +571,7 @@ async def generate_download_token(
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
             download_type=content_type,
-            filename=filename,
-            metadata={"requested_by": current_user.username},
+            metadata={"filename": filename, "requested_by": current_user.username},
         )
 
         # 2) Stage files at temp/{tenant_key}/{token}/
@@ -607,7 +595,7 @@ async def generate_download_token(
         server_url = get_server_url(request)
         download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
-        token_data = await token_manager.get_token_data(token, tenant_key)
+        token_data = await token_manager.get_token_info(token, tenant_key)
         expires_at = token_data["expires_at"] if token_data else None
 
         logger.info(f"Token generated and staged successfully: token={token}, type={content_type}, file={zip_path}")
@@ -681,19 +669,32 @@ async def download_temp_file(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token or file")
 
         token_manager = TokenManager(db_session=db)
-        validation = await token_manager.validate_token(token, filename)
-        if not validation.get("valid"):
-            reason = validation.get("reason", "invalid")
-            logger.warning(f"Token validation failed: token={token}, reason={reason}")
-            if reason in ("expired",):
-                raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download token expired")
-            if reason == "filename_mismatch":
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+        # Get token info first (no tenant_key needed - token is globally unique)
+        token_info = await token_manager.get_token_info_by_token(token)
+        if not token_info:
+            logger.warning(f"Token validation failed: token={token}, reason=not_found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
-        data = validation["token_data"]
-        tenant_key = data["tenant_key"]
-        safe_token = data["token"]  # Use token from DB to avoid path tampering
+        # Check if expired
+        if token_info["is_expired"]:
+            logger.warning(f"Token validation failed: token={token}, reason=expired")
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download token expired")
+
+        # Check if staging is ready
+        if token_info.get("staging_status") != "ready":
+            logger.warning(f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
+
+        # Check if filename matches metadata
+        expected_filename = token_info.get("metadata", {}).get("filename", "")
+        if expected_filename != filename:
+            logger.warning(f"Token validation failed: token={token}, reason=filename_mismatch")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+        # All validations passed
+        tenant_key = token_info["tenant_key"]
+        safe_token = token_info["token"]  # Use token from DB to avoid path tampering
         # Compute path from token components
         file_path = Path.cwd() / "temp" / tenant_key / safe_token / filename
 
@@ -835,17 +836,6 @@ async def import_personal_agents_rest(
                 for template in templates:
                     template.last_exported_at = export_timestamp
                 await db.commit()
-
-                # Emit WebSocket event for real-time UI update (access from app state)
-                ws_manager = getattr(request.app.state, "websocket_manager", None)
-                if ws_manager:
-                    await ws_manager.broadcast_templates_exported(
-                        tenant_key=current_user.tenant_key,
-                        template_ids=[str(t.id) for t in templates],
-                        export_type="personal_agents",
-                        exported_at=export_timestamp,
-                    )
-
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (personal agents export)")
 
         return result
@@ -912,17 +902,6 @@ async def import_product_agents_rest(
                 for template in templates:
                     template.last_exported_at = export_timestamp
                 await db.commit()
-
-                # Emit WebSocket event for real-time UI update (access from app state)
-                ws_manager = getattr(request.app.state, "websocket_manager", None)
-                if ws_manager:
-                    await ws_manager.broadcast_templates_exported(
-                        tenant_key=current_user.tenant_key,
-                        template_ids=[str(t.id) for t in templates],
-                        export_type="product_agents",
-                        exported_at=export_timestamp,
-                    )
-
                 logger.info(f"Updated last_exported_at for {len(templates)} templates (product agents export)")
 
         return result
