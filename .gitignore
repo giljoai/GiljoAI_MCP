@@ -49,6 +49,9 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# Testing - Frontend (Vitest)
+frontend/coverage/
+
 # Testing - Playwright (E2E)
 frontend/playwright-report/
 frontend/test-results/
