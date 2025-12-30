@@ -34,7 +34,7 @@
           data-testid="stage-project-btn"
           @click="handleStageProject"
         >
-          {{ hasActiveOrchestrator ? 'Orchestrator Active' : 'Stage project' }}
+          Stage Project
         </v-btn>
 
         <span class="status-text">Waiting:</span>
@@ -242,7 +242,7 @@ const readyToLaunch = computed(() => {
  * Computed: Check if orchestrator is already active (staging complete)
  *
  * Handover 0291: Unified toggle - first message in project triggers both:
- * - "Stage Project" → "Orchestrator Active"
+ * - "Stage Project" button disables (stays labeled "Stage Project")
  * - "Launch Jobs" button enables
  */
 const hasActiveOrchestrator = computed(() => {
