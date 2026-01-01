@@ -161,6 +161,71 @@ def is_port_available(port: int, host: str = "0.0.0.0") -> bool:
         return False
 
 
+def get_network_adapters() -> List[dict]:
+    """
+    Get non-localhost network adapters with their IPv4 addresses.
+
+    Returns:
+        List of dicts with 'name' and 'ip' keys for each adapter
+    """
+    adapters = []
+
+    try:
+        import psutil
+
+        logger.debug("Using psutil for network adapter detection")
+        addresses = psutil.net_if_addrs()
+        interface_stats = psutil.net_if_stats()
+
+        # Patterns for virtual/loopback interfaces to deprioritize
+        virtual_patterns = [
+            "docker", "veth", "br-", "vmnet", "vboxnet",
+            "virbr", "tun", "tap", "vEthernet", "Hyper-V", "WSL"
+        ]
+        loopback_patterns = ["lo", "Loopback"]
+
+        for interface_name, interface_addresses in addresses.items():
+            # Check if interface is up
+            stats = interface_stats.get(interface_name)
+            is_active = stats.isup if stats else False
+
+            if not is_active:
+                continue
+
+            # Check if virtual/loopback
+            is_virtual = any(p.lower() in interface_name.lower() for p in virtual_patterns)
+            is_loopback = any(p.lower() in interface_name.lower() for p in loopback_patterns)
+
+            if is_loopback:
+                continue
+
+            for address in interface_addresses:
+                # Filter for IPv4 (AF_INET) only
+                if address.family == 2:  # socket.AF_INET
+                    ip = address.address
+                    if ip and ip != "127.0.0.1" and not ip.startswith("127."):
+                        adapters.append({
+                            "name": interface_name,
+                            "ip": ip,
+                            "is_virtual": is_virtual
+                        })
+
+        # Sort: physical adapters first, then virtual
+        adapters.sort(key=lambda x: (x["is_virtual"], x["name"]))
+
+        if adapters:
+            logger.info(f"Found {len(adapters)} network adapter(s)")
+            return adapters
+
+    except ImportError:
+        logger.debug("psutil not available for adapter detection")
+    except Exception as e:
+        logger.warning(f"Network adapter detection failed: {e}")
+
+    # Fallback: return empty list (caller should handle)
+    return []
+
+
 def get_hostname() -> str:
     """
     Get the system hostname.
