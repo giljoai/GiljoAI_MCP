@@ -322,38 +322,43 @@ def create_app() -> FastAPI:
             logger.warning("CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
 
     # Dynamic network adapter IP detection for CORS updates
-    try:
-        from src.giljo_mcp.network_detector import AdapterIPDetector
+    network_mode = config.get("security", {}).get("network", {}).get("mode", "localhost")
+    logger.info(f"Network mode: {network_mode}")
 
-        detector = AdapterIPDetector()
-        ip_changed, current_ip, adapter_name = detector.detect_ip_change(config)
+    if network_mode in ("auto", "static"):
+        try:
+            from src.giljo_mcp.network_detector import AdapterIPDetector
 
-        if current_ip:
-            # Add adapter IP to CORS origins (whether changed or not)
-            frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
-            adapter_origins = [
-                f"http://{current_ip}:{frontend_port}",
-                f"http://{current_ip}:5173",  # Vite dev server
-            ]
+            detector = AdapterIPDetector()
+            ip_changed, current_ip, adapter_name = detector.detect_ip_change(config)
 
-            # Add if not already present
-            for origin in adapter_origins:
-                if origin not in cors_origins:
-                    cors_origins.append(origin)
-                    logger.info(f"Added CORS origin: {origin}")
+            if current_ip:
+                # Add adapter IP to CORS origins (whether changed or not)
+                frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+                adapter_origins = [
+                    f"http://{current_ip}:{frontend_port}",
+                    f"http://{current_ip}:{api_port}",  # API port for direct access
+                    f"http://{current_ip}:5173",  # Vite dev server
+                ]
 
-            if ip_changed:
-                logger.info(f"Network adapter IP changed: {adapter_name} -> {current_ip}")
-            else:
-                logger.info(f"Network adapter IP unchanged: {adapter_name} @ {current_ip}")
-        # Adapter disconnected - log warning and fall back to localhost
-        elif adapter_name:
-            logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
+                # Add if not already present
+                for origin in adapter_origins:
+                    if origin not in cors_origins:
+                        cors_origins.append(origin)
+                        logger.info(f"Added CORS origin: {origin}")
 
-    except ImportError:
-        logger.debug("Network detector not available - skipping dynamic IP detection")
-    except Exception as e:
-        logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
+                if ip_changed:
+                    logger.info(f"Network adapter IP changed: {adapter_name} -> {current_ip}")
+                else:
+                    logger.info(f"Network adapter IP unchanged: {adapter_name} @ {current_ip}")
+            # Adapter disconnected - log warning and fall back to localhost
+            elif adapter_name:
+                logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
+
+        except ImportError:
+            logger.debug("Network detector not available - skipping dynamic IP detection")
+        except Exception as e:
+            logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
 
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 

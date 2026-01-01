@@ -277,49 +277,73 @@ class UnifiedInstaller:
         """Gather user preferences for installation"""
         import getpass
 
-        # Network Configuration (NEW)
+        # Network Configuration
         print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
         print("Configuring external access for frontend connections...")
 
-        # Detect network interfaces
-        network_ips = self._get_all_network_ips()
+        # Detect network adapters (with names for tracking)
+        from installer.shared.network import get_network_adapters
+        network_adapters = get_network_adapters()
 
-        print("\nDetected network interfaces:")
-        print("  1. localhost (local access only)")
+        # Build options list
+        print("\nNetwork access options:")
+        print(f"  1. {Fore.GREEN}Auto-detect (recommended for development){Style.RESET_ALL}")
+        print("     → Dynamically detects IP on each startup")
+        print("  2. localhost (local access only)")
 
-        # Add detected IPs
-        for i, ip in enumerate(network_ips, 2):
-            print(f"  {i}. {ip}")
+        # Add detected adapters with their IPs
+        for i, adapter in enumerate(network_adapters, 3):
+            virtual_tag = " (virtual)" if adapter.get("is_virtual") else ""
+            print(f"  {i}. {adapter['ip']} [{adapter['name']}{virtual_tag}]")
 
         # Add custom option
-        custom_option = len(network_ips) + 2
+        custom_option = len(network_adapters) + 3
         print(f"  {custom_option}. Enter custom address (domain or IP)")
 
         # Get user choice
         while True:
-            choice = input(f"\n{Fore.YELLOW}Select network interface [1]: {Style.RESET_ALL}").strip()
+            choice = input(f"\n{Fore.YELLOW}Select network option [1]: {Style.RESET_ALL}").strip()
 
-            if not choice:
-                # Default to localhost
-                self.settings["external_host"] = "localhost"
-                self._print_info("Using localhost for frontend connections")
+            if not choice or choice == "1":
+                # Auto-detect mode (development default)
+                if network_adapters:
+                    # Use first physical adapter for initial config
+                    best_adapter = network_adapters[0]
+                    self.settings["external_host"] = best_adapter["ip"]
+                    self.settings["network_mode"] = "auto"
+                    self.settings["selected_adapter"] = best_adapter["name"]
+                    self.settings["initial_ip"] = best_adapter["ip"]
+                    self._print_success(f"Auto-detect mode: Using {best_adapter['name']} ({best_adapter['ip']})")
+                    self._print_info("IP will be re-detected on each server startup")
+                else:
+                    # Fallback if no adapters detected
+                    self.settings["external_host"] = "localhost"
+                    self.settings["network_mode"] = "localhost"
+                    self._print_warning("No network adapters detected, using localhost")
                 break
 
             try:
                 choice_num = int(choice)
-                if choice_num == 1:
+                if choice_num == 2:
+                    # Localhost mode
                     self.settings["external_host"] = "localhost"
+                    self.settings["network_mode"] = "localhost"
                     self._print_info("Using localhost for frontend connections")
                     break
-                if 2 <= choice_num < custom_option:
-                    selected_ip = network_ips[choice_num - 2]
-                    self.settings["external_host"] = selected_ip
-                    self._print_success(f"Using {selected_ip} for frontend connections")
+                if 3 <= choice_num < custom_option:
+                    # Specific adapter selected
+                    selected = network_adapters[choice_num - 3]
+                    self.settings["external_host"] = selected["ip"]
+                    self.settings["network_mode"] = "static"
+                    self.settings["selected_adapter"] = selected["name"]
+                    self.settings["initial_ip"] = selected["ip"]
+                    self._print_success(f"Using {selected['ip']} [{selected['name']}] for frontend connections")
                     break
                 if choice_num == custom_option:
                     custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
                     if custom_addr:
                         self.settings["external_host"] = custom_addr
+                        self.settings["network_mode"] = "custom"
                         self._print_success(f"Using {custom_addr} for frontend connections")
                         break
                     self._print_warning("Empty address provided")
@@ -381,6 +405,16 @@ class UnifiedInstaller:
 
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
+        network_mode = self.settings.get("network_mode", "localhost")
+        if network_mode == "auto":
+            adapter = self.settings.get("selected_adapter", "unknown")
+            print(f"  • Network mode: {Fore.GREEN}Auto-detect{Style.RESET_ALL} ({adapter})")
+            print(f"    → IP will be re-detected on each startup")
+        elif network_mode == "static":
+            adapter = self.settings.get("selected_adapter", "")
+            print(f"  • Network mode: Static [{adapter}]")
+        else:
+            print(f"  • Network mode: {network_mode}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'*' * 8} (secured)")
         if platform.system() == "Windows":
