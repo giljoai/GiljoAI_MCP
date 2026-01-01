@@ -72,56 +72,33 @@
     </v-card-text>
 
     <!-- Revoke Confirmation Dialog -->
-    <v-dialog v-model="showRevokeDialog" max-width="500">
-      <v-card>
-        <v-card-title class="bg-error">
-          <v-icon class="mr-2">mdi-alert-circle</v-icon>
-          Revoke API Key?
-        </v-card-title>
-
-        <v-card-text class="pt-6">
-          <p class="text-body-1 mb-2">You are about to revoke the API key:</p>
-          <v-card variant="outlined" class="mb-4 pa-3">
-            <div class="d-flex align-center">
-              <v-icon class="mr-2">mdi-label</v-icon>
-              <strong>{{ keyToRevoke?.name }}</strong>
-            </div>
-            <div class="d-flex align-center mt-2">
-              <v-icon class="mr-2" size="small">mdi-key</v-icon>
-              <code class="text-caption">{{ keyToRevoke?.key_prefix }}...</code>
-            </div>
-          </v-card>
-
-          <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
-            This action cannot be undone. Any applications using this key will immediately lose
-            access to the API.
-          </v-alert>
-
-          <v-text-field
-            v-model="deleteConfirmation"
-            label="Type DELETE to confirm"
-            variant="outlined"
-            hint="Type the word DELETE (all caps) to enable the revoke button"
-            persistent-hint
-            placeholder="DELETE"
-            autofocus
-          />
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="cancelRevoke" :disabled="revoking"> Cancel </v-btn>
-          <v-btn
-            color="error"
-            @click="revokeKey"
-            :loading="revoking"
-            :disabled="deleteConfirmation !== 'DELETE'"
-          >
-            Revoke Key
-          </v-btn>
-        </v-card-actions>
+    <BaseDialog
+      v-model="showRevokeDialog"
+      type="danger"
+      title="Revoke API Key?"
+      confirm-text="DELETE"
+      confirm-label="Revoke Key"
+      :loading="revoking"
+      @confirm="revokeKey"
+      @cancel="cancelRevoke"
+    >
+      <p class="text-body-1 mb-2">You are about to revoke the API key:</p>
+      <v-card variant="outlined" class="mb-4 pa-3">
+        <div class="d-flex align-center">
+          <v-icon class="mr-2">mdi-label</v-icon>
+          <strong>{{ keyToRevoke?.name }}</strong>
+        </div>
+        <div class="d-flex align-center mt-2">
+          <v-icon class="mr-2" size="small">mdi-key</v-icon>
+          <code class="text-caption">{{ keyToRevoke?.key_prefix }}...</code>
+        </div>
       </v-card>
-    </v-dialog>
+
+      <v-alert type="info" variant="tonal" density="compact">
+        This action cannot be undone. Any applications using this key will immediately lose
+        access to the API.
+      </v-alert>
+    </BaseDialog>
   </v-card>
 </template>
 
@@ -129,6 +106,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 
 // State
 const apiKeys = ref([])
@@ -136,7 +114,6 @@ const loading = ref(false)
 const showRevokeDialog = ref(false)
 const revoking = ref(false)
 const keyToRevoke = ref(null)
-const deleteConfirmation = ref('')
 
 // Table headers
 const headers = [
@@ -180,18 +157,16 @@ async function refreshKeys() {
 
 function confirmRevoke(key) {
   keyToRevoke.value = key
-  deleteConfirmation.value = ''
   showRevokeDialog.value = true
 }
 
 function cancelRevoke() {
   showRevokeDialog.value = false
   keyToRevoke.value = null
-  deleteConfirmation.value = ''
 }
 
 async function revokeKey() {
-  if (!keyToRevoke.value || deleteConfirmation.value !== 'DELETE') return
+  if (!keyToRevoke.value) return
 
   revoking.value = true
   try {
@@ -206,7 +181,6 @@ async function revokeKey() {
     // Close dialog
     showRevokeDialog.value = false
     keyToRevoke.value = null
-    deleteConfirmation.value = ''
   } catch (err) {
     console.error('[API Keys] Failed to revoke:', err)
     // Could show error toast here

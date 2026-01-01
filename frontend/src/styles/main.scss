@@ -168,6 +168,24 @@ body {
   }
 }
 
+// =========================================================================
+// Standardized Switch Styling - Glow effect when ON
+// =========================================================================
+.v-switch {
+  // Default state (OFF) - subtle appearance
+  :deep(.v-switch__track) {
+    opacity: 0.4;
+  }
+
+  // Active state (ON) - glow effect
+  :deep(.v-selection-control--dirty) {
+    .v-switch__track {
+      opacity: 1;
+      box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.5);
+    }
+  }
+}
+
 // Touch target minimum size for mobile
 .v-btn {
   min-height: 44px !important;
