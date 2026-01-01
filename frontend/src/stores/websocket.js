@@ -117,7 +117,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     return new Promise((resolve, reject) => {
       try {
         // Build WebSocket URL with authentication
-        const baseUrl = API_CONFIG.WEBSOCKET?.url || `ws://${window.location.hostname}:7272`
+        // Option 3: Use relative WebSocket URLs - derive from current location
+        // This ensures WebSocket connects to the same host the user is accessing
+        // Security note: Auth is enforced server-side via JWT, not by hostname
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const wsPort = API_CONFIG.WEBSOCKET?.port || 7272
+        const baseUrl = `${wsProtocol}//${window.location.hostname}:${wsPort}`
         const wsUrl = new URL(`${baseUrl}/ws/${clientId.value}`)
 
         // Add auth parameters if provided
