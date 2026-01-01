@@ -38,6 +38,8 @@ export async function initializeApiConfig() {
     // Update API and WebSocket config
     API_CONFIG.REST_API.baseURL = newBaseURL
     API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
+    // Extract port from websocket URL or use API port
+    API_CONFIG.WEBSOCKET.port = runtimeConfig.api?.port || parseInt(API_PORT, 10)
 
     // Update axios instance baseURL (created before config was fetched)
     // Import dynamically to avoid circular dependency
@@ -81,6 +83,7 @@ export const API_CONFIG = {
   },
   WEBSOCKET: {
     url: import.meta.env.VITE_WS_URL || `ws://${API_HOST}:${API_PORT}`,
+    port: parseInt(API_PORT, 10),
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 30000,
