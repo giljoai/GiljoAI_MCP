@@ -8,16 +8,18 @@
 
 import { ref, onMounted, onUnmounted } from 'vue'
 import { isJobStale } from '@/utils/statusConfig'
+import { useNotificationStore } from '@/stores/notifications'
 
 /**
  * Monitor job staleness and emit warnings
  *
  * @param {Ref<Array>} jobs - Reactive array of job objects
- * @param {Function} emitStaleWarning - Callback to emit stale warning
+ * @param {Function} [emitStaleWarning] - Optional callback to emit stale warning (for backward compatibility)
  * @returns {Object} - { checkStaleness } for manual triggering
  */
-export function useStalenessMonitor(jobs, emitStaleWarning) {
+export function useStalenessMonitor(jobs, emitStaleWarning = null) {
   const stalenessCheckInterval = ref(null)
+  const notificationStore = useNotificationStore()
 
   /**
    * Check all jobs for staleness and emit warnings for newly stale jobs
@@ -30,7 +32,21 @@ export function useStalenessMonitor(jobs, emitStaleWarning) {
 
       // Emit warning if job became stale (transition from fresh to stale)
       if (isStale && !wasStale) {
-        emitStaleWarning(job)
+        if (emitStaleWarning) {
+          // Use callback if provided (backward compatibility)
+          emitStaleWarning(job)
+        } else {
+          // Use notification store
+          notificationStore.addNotification({
+            type: 'agent_health',
+            title: 'Agent Inactive',
+            message: `${job.agent_name || job.agent_type} has been inactive for over 10 minutes`,
+            metadata: {
+              job_id: job.job_id,
+              agent_type: job.agent_type
+            }
+          })
+        }
       }
 
       // Track staleness state (mutate job object for state tracking)

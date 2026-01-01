@@ -127,20 +127,22 @@
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="400px">
-      <v-card>
-        <v-card-title class="text-h5">Confirm Delete</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong
-          >? This action cannot be undone.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" variant="flat" @click="deleteUser">Delete</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <BaseDialog
+      v-model="showDeleteDialog"
+      type="danger"
+      title="Delete User"
+      confirm-label="Delete"
+      size="sm"
+      @confirm="deleteUser"
+      @cancel="showDeleteDialog = false"
+    >
+      <p class="text-body-1 mb-2">
+        Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong>?
+      </p>
+      <v-alert type="info" variant="tonal" density="compact">
+        This action cannot be undone.
+      </v-alert>
+    </BaseDialog>
   </v-container>
 </template>
 
@@ -148,6 +150,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const userStore = useUserStore()
 
