@@ -31,7 +31,7 @@
           <v-icon size="small" color="primary" class="mr-2">mdi-lock</v-icon>
           <span class="text-subtitle-2 font-weight-medium">Project Description</span>
         </div>
-        <v-chip size="small" color="red-darken-2" variant="flat">CRITICAL (Locked)</v-chip>
+        <v-chip size="small" color="error" variant="flat">CRITICAL (Locked)</v-chip>
       </div>
 
       <v-divider class="mb-4" />
@@ -55,11 +55,10 @@
             <v-switch
               :model-value="config[context.key]?.enabled"
               @update:model-value="toggleContext(context.key)"
-              density="compact"
               hide-details
               color="primary"
               :aria-label="`Toggle ${context.label}`"
-              class="ml-2 compact-switch"
+              class="ml-2"
             />
           </div>
 
@@ -103,7 +102,6 @@
             <v-switch
               :model-value="config[context.key]?.enabled"
               @update:model-value="toggleContext(context.key)"
-              density="compact"
               hide-details
               color="primary"
               :aria-label="
@@ -111,7 +109,7 @@
                   ? `${context.label} disabled - GitHub integration required`
                   : `Toggle ${context.label}`
               "
-              class="ml-2 compact-switch"
+              class="ml-2"
               :disabled="isContextDisabled(context.key)"
             />
             <v-tooltip
@@ -596,25 +594,6 @@ defineExpose({
 
 .context-label {
   min-width: 140px;
-}
-
-.compact-switch {
-  margin: 0;
-  padding: 0;
-}
-
-.compact-switch :deep(.v-switch__track) {
-  height: 14px;
-  width: 28px;
-}
-
-.compact-switch :deep(.v-switch__thumb) {
-  height: 10px;
-  width: 10px;
-}
-
-.compact-switch :deep(.v-selection-control) {
-  min-height: auto;
 }
 
 .depth-select {
