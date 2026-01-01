@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2025-12-27 (0379 Series Complete - Universal Reactive State Architecture; 0371 status corrected to IN PROGRESS)
+**Last Updated:** 2026-01-01 (0380-0381 Complete - update_agent_mission tool + clean API contract)
 
 ---
 
@@ -101,9 +101,11 @@
 
 ## Completed (In completed/ Folder)
 
-### Recently Completed (December 2025)
+### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0381 | Clean Contract - agent_id/job_id Separation | **COMPLETE** (2026-01-01) |
+| 0380 | update_agent_mission() MCP Tool | **COMPLETE** (2026-01-01) |
 | 1013 | Structured Logging with Error Codes | **COMPLETE** (2025-12-27) |
 | 1012 | Bandit Security Linting | **COMPLETE** (2025-12-27) |
 | 1011 | Repository Pattern | **COMPLETE** (2025-12-27) |
@@ -415,7 +417,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0379 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0381 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
