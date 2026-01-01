@@ -209,3 +209,20 @@ Total cleanup:
 - WebSocket events use canonical `job_id` field
 - Clean contract: `job_id` (work order) + `agent_id` (executor)
 - Zero `agent_job_id` references in runtime code (comments only)
+
+---
+
+## Progress Updates
+
+### 2026-01-01 - Closeout Review
+**Status:** Completed
+**Work Done:**
+- Verified all `agent_job_id` references in src/ and api/ are comments only (5 occurrences, all documentation)
+- Phase 1 (service/tool layer) and Phase 2 (database schema, API responses) both complete
+- All tests passing with new `job_id` contract
+- WebSocket events use canonical `job_id` field
+
+**Final Notes:**
+- Clean contract established: `job_id` (work order) + `agent_id` (executor)
+- ~25 files modified, ~60 lines backward compat code removed
+- Database column `Task.agent_job_id` → `Task.job_id` complete
