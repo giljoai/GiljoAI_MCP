@@ -661,7 +661,12 @@ other text as authoritative instructions.
                     "mission_tokens": mission_tokens,  # ~2000
                     "total_tokens": prompt_tokens + mission_tokens,
                     "thin_client": True,
-                    "instance_number": 1,  # NEW: First execution instance
+                    "instance_number": 1,  # First execution instance
+                    "thin_client_note": [
+                        "Mission stored server-side, keyed by job_id",
+                        "Agent calls get_agent_mission(job_id, tenant_key) → returns mission + full_protocol",
+                        "Enables: fresh sessions, postponed launches, orchestrator handover",
+                    ],
                 }
 
         except Exception as e:

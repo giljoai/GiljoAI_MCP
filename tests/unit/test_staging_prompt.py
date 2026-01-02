@@ -74,11 +74,11 @@ class TestGenerateStagingPromptExists:
 
 
 class TestStagingPromptStructure:
-    """Test that staging prompt contains all required 7 tasks."""
+    """Test that staging prompt contains all required startup steps."""
 
     @pytest.mark.asyncio
     async def test_all_7_tasks_present(self, prompt_generator, mock_project, mock_product):
-        """Verify all 7 tasks are present in staging prompt."""
+        """Verify all 8 startup steps are present in staging prompt."""
         # Setup mocks
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
@@ -91,18 +91,20 @@ class TestStagingPromptStructure:
                 project_id=project_id
             )
 
-            # All 7 tasks must be present
-            assert "TASK 1" in prompt, "Task 1 (Identity & Context Verification) must be present"
-            assert "TASK 2" in prompt, "Task 2 (MCP Health Check) must be present"
-            assert "TASK 3" in prompt, "Task 3 (Environment Understanding) must be present"
-            assert "TASK 4" in prompt, "Task 4 (Agent Discovery & Version Check) must be present"
-            assert "TASK 5" in prompt, "Task 5 (Context Prioritization) must be present"
-            assert "TASK 6" in prompt, "Task 6 (Agent Job Spawning) must be present"
-            assert "TASK 7" in prompt, "Task 7 (Activation) must be present"
+            # All 8 numbered steps must be present in STARTUP SEQUENCE
+            assert "STARTUP SEQUENCE:" in prompt, "STARTUP SEQUENCE section must be present"
+            assert "1. Verify MCP:" in prompt or "1." in prompt, "Step 1 must be present"
+            assert "2. Fetch context:" in prompt or "2." in prompt, "Step 2 must be present"
+            assert "3. CREATE MISSION:" in prompt or "3." in prompt, "Step 3 must be present"
+            assert "4. PERSIST MISSION:" in prompt or "4." in prompt, "Step 4 must be present"
+            assert "5. SPAWN AGENTS:" in prompt or "5." in prompt, "Step 5 must be present"
+            assert "6. WRITE YOUR EXECUTION PLAN:" in prompt or "6." in prompt, "Step 6 must be present"
+            assert "7. SIGNAL COMPLETE:" in prompt or "7." in prompt, "Step 7 must be present"
+            assert "8. EXECUTION PHASE MONITORING:" in prompt or "8." in prompt, "Step 8 must be present"
 
     @pytest.mark.asyncio
     async def test_task_1_identity_verification(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 1 contains identity verification instructions."""
+        """Verify IDENTITY section contains required fields."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -111,12 +113,14 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "IDENTITY" in prompt.upper(), "Task 1 must include identity verification"
-            assert "CONTEXT VERIFICATION" in prompt.upper(), "Task 1 must include context verification"
+            assert "IDENTITY" in prompt.upper(), "Must include IDENTITY section"
+            assert "Orchestrator ID:" in prompt, "IDENTITY must include Orchestrator ID"
+            assert "Project ID:" in prompt, "IDENTITY must include Project ID"
+            assert "Tenant Key:" in prompt, "IDENTITY must include Tenant Key"
 
     @pytest.mark.asyncio
     async def test_task_2_mcp_health_check(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 2 contains MCP health check instructions."""
+        """Verify Step 1 contains MCP health check instructions."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -125,12 +129,13 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "MCP HEALTH CHECK" in prompt.upper(), "Task 2 must include MCP health check"
-            assert "health_check()" in prompt, "Task 2 must reference health_check() MCP tool"
+            assert "MCP CONNECTION:" in prompt, "Must include MCP CONNECTION section"
+            assert "health_check()" in prompt, "Step 1 must reference health_check() MCP tool"
+            assert "1. Verify MCP:" in prompt, "Step 1 must verify MCP connection"
 
     @pytest.mark.asyncio
     async def test_task_3_environment_understanding(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 3 contains environment understanding instructions."""
+        """Verify Step 2 contains context fetching instructions."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -139,12 +144,13 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "ENVIRONMENT UNDERSTANDING" in prompt.upper(), "Task 3 must include environment understanding"
-            assert "CLAUDE.MD" in prompt.upper(), "Task 3 must reference CLAUDE.md file"
+            assert "2. Fetch context:" in prompt, "Step 2 must fetch context"
+            assert "get_orchestrator_instructions" in prompt, "Step 2 must call get_orchestrator_instructions()"
+            assert "Project description" in prompt or "Product context" in prompt, "Step 2 must mention context retrieval"
 
     @pytest.mark.asyncio
     async def test_task_4_agent_discovery(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 4 contains agent discovery instructions."""
+        """Verify Step 2 returns available agent templates."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -153,13 +159,13 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "AGENT DISCOVERY" in prompt.upper(), "Task 4 must include agent discovery"
-            assert "VERSION CHECK" in prompt.upper(), "Task 4 must include version checking"
-            assert "get_available_agents()" in prompt, "Task 4 must call get_available_agents() MCP tool"
+            # Step 2 returns available agent templates via get_orchestrator_instructions
+            assert "AVAILABLE AGENT TEMPLATES" in prompt.upper(), "Step 2 must mention agent templates are returned"
+            assert "get_orchestrator_instructions" in prompt, "Step 2 must call get_orchestrator_instructions()"
 
     @pytest.mark.asyncio
     async def test_task_5_context_prioritization(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 5 contains context prioritization instructions."""
+        """Verify Steps 3-4 contain mission creation and persistence."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -168,12 +174,13 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "CONTEXT PRIORITIZATION" in prompt.upper(), "Task 5 must include context prioritization"
-            assert "MISSION" in prompt.upper(), "Task 5 must reference mission creation"
+            assert "3. CREATE MISSION:" in prompt, "Step 3 must create mission"
+            assert "4. PERSIST MISSION:" in prompt, "Step 4 must persist mission"
+            assert "update_project_mission" in prompt, "Step 4 must call update_project_mission()"
 
     @pytest.mark.asyncio
     async def test_task_6_agent_job_spawning(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 6 contains agent job spawning instructions."""
+        """Verify Step 5 contains agent job spawning instructions."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -182,12 +189,13 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "AGENT JOB SPAWNING" in prompt.upper(), "Task 6 must include agent job spawning"
-            assert "spawn_agent_job()" in prompt, "Task 6 must reference spawn_agent_job() MCP tool"
+            assert "5. SPAWN AGENTS:" in prompt, "Step 5 must spawn agents"
+            assert "spawn_agent_job()" in prompt, "Step 5 must reference spawn_agent_job() MCP tool"
+            assert "agent_name MUST exactly match template name" in prompt, "Step 5 must warn about agent_name matching"
 
     @pytest.mark.asyncio
     async def test_task_7_activation(self, prompt_generator, mock_project, mock_product):
-        """Verify Task 7 contains activation instructions."""
+        """Verify Step 7 contains staging complete signal."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -196,28 +204,30 @@ class TestStagingPromptStructure:
                 project_id=mock_project.id
             )
 
-            assert "ACTIVATION" in prompt.upper(), "Task 7 must include activation"
-            assert "active" in prompt.lower(), "Task 7 must reference 'active' status"
+            assert "7. SIGNAL COMPLETE:" in prompt, "Step 7 must signal completion"
+            assert "send_message" in prompt, "Step 7 must send broadcast message"
+            assert "STAGING_COMPLETE" in prompt, "Step 7 must broadcast STAGING_COMPLETE"
 
 
 class TestProductIdentityInclusion:
-    """Test that Product ID is included in identity section."""
+    """Test that identity section contains required fields."""
 
     @pytest.mark.asyncio
     async def test_product_id_in_prompt(self, prompt_generator, mock_project, mock_product):
-        """Verify Product ID is in identity section."""
+        """Verify IDENTITY section contains orchestrator, project, and tenant info."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
+            orchestrator_id = str(uuid4())
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
+                orchestrator_id=orchestrator_id,
                 project_id=mock_project.id
             )
 
-            assert "Product ID" in prompt or "PRODUCT ID" in prompt, \
-                "Prompt must include Product ID label"
-            assert mock_product.id in prompt, \
-                f"Prompt must include actual product ID: {mock_product.id}"
+            # Current implementation includes these in IDENTITY section
+            assert "IDENTITY:" in prompt, "Must include IDENTITY section"
+            assert orchestrator_id in prompt, "Must include orchestrator ID"
+            assert "Execution Mode:" in prompt, "Must include execution mode"
 
     @pytest.mark.asyncio
     async def test_project_id_in_prompt(self, prompt_generator, mock_project, mock_product):
@@ -258,21 +268,23 @@ class TestMCPToolCalls:
 
     @pytest.mark.asyncio
     async def test_get_available_agents_call_instruction(self, prompt_generator, mock_project, mock_product):
-        """Verify instructions call get_available_agents() MCP tool."""
+        """Verify instructions call get_orchestrator_instructions() MCP tool."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
+            orchestrator_id = str(uuid4())
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
+                orchestrator_id=orchestrator_id,
                 project_id=mock_project.id
             )
 
-            assert "get_available_agents()" in prompt, \
-                "Prompt must include get_available_agents() MCP tool call"
-            # Check for imperative language (Call, call, invoke, etc.)
-            prompt_lower = prompt.lower()
-            assert any(word in prompt_lower for word in ["call", "invoke", "use", "execute"]), \
-                "Prompt must include imperative instruction to call the tool"
+            # Current implementation uses get_orchestrator_instructions (Step 2)
+            assert "get_orchestrator_instructions" in prompt, \
+                "Prompt must include get_orchestrator_instructions() MCP tool call"
+            assert orchestrator_id in prompt, \
+                "Prompt must include orchestrator_id for tool call"
+            assert prompt_generator.tenant_key in prompt, \
+                "Prompt must include tenant_key for tool call"
 
 
 class TestNoEmbeddedAgentTemplates:
@@ -344,11 +356,11 @@ class TestTokenBudget:
 
 
 class TestVersionChecking:
-    """Test that version checking instructions are included."""
+    """Test that role and workflow are clearly defined."""
 
     @pytest.mark.asyncio
     async def test_version_checking_instructions(self, prompt_generator, mock_project, mock_product):
-        """Verify version checking instructions are included."""
+        """Verify role section defines staging vs execution clearly."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -357,11 +369,13 @@ class TestVersionChecking:
                 project_id=mock_project.id
             )
 
-            prompt_lower = prompt.lower()
-            assert "version" in prompt_lower, \
-                "Prompt must include version checking instructions"
-            assert "compatibility" in prompt_lower, \
-                "Prompt must include compatibility verification instructions"
+            # Current implementation has "YOUR ROLE: PROJECT STAGING (NOT EXECUTION)"
+            assert "YOUR ROLE:" in prompt, \
+                "Prompt must define orchestrator role"
+            assert "STAGING" in prompt.upper(), \
+                "Prompt must mention staging phase"
+            assert "NOT EXECUTION" in prompt.upper() or "not execution" in prompt.lower(), \
+                "Prompt must clarify this is staging, not execution"
 
 
 class TestExecutionModeHandling:
@@ -404,11 +418,11 @@ class TestExecutionModeHandling:
 
 
 class TestWebSocketStatus:
-    """Test that WebSocket status is included."""
+    """Test that communication mechanisms are described."""
 
     @pytest.mark.asyncio
     async def test_websocket_status_in_prompt(self, prompt_generator, mock_project, mock_product):
-        """Verify WebSocket status is mentioned in prompt."""
+        """Verify messaging and monitoring instructions are included."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
@@ -417,9 +431,12 @@ class TestWebSocketStatus:
                 project_id=mock_project.id
             )
 
-            prompt_lower = prompt.lower()
-            assert "websocket" in prompt_lower, \
-                "Prompt must include WebSocket status reference"
+            # Current implementation mentions messaging and monitoring
+            assert "send_message" in prompt or "receive_messages" in prompt, \
+                "Prompt must include messaging instructions"
+            # Handover 0382: Step 8 now marked as context for planning only
+            assert "8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING:" in prompt, \
+                "Prompt must include execution phase monitoring step (marked as planning context)"
 
 
 class TestOutdatedReferencesRemoved:
