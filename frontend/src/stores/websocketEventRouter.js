@@ -284,6 +284,28 @@ export const EVENT_MAP = {
     },
   },
 
+  // Handover 0386: Progress updates should NOT create messages
+  // This handler receives direct WebSocket events from report_progress()
+  'job:progress_update': {
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+
+      // Update the job's progress fields
+      agentJobsStore.handleProgressUpdate?.({
+        job_id: payload.job_id,
+        agent_id: payload.agent_id,
+        progress: payload.progress_percent,
+        current_task: payload.current_task,
+        todo_steps: payload.todo_steps,
+        last_progress_at: payload.last_progress_at,
+        // Include raw progress object for detailed info
+        progress_data: payload.progress,
+      })
+
+      dispatchWindowEvent('job:progress_update', payload)
+    },
+  },
+
   // =========================
   // Products (aliases; store handlers will be wired in a later phase)
   // =========================
