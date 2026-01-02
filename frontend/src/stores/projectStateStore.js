@@ -29,10 +29,15 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
 
   const projectCount = computed(() => stateByProjectId.value.size)
 
+  // Fix: Reactive array for Map contents - enables Vue reactivity for computed properties
+  // Vue 3 doesn't deeply track Map.get() calls, but does track Array.from() iterations
+  const allProjects = computed(() => Array.from(stateByProjectId.value.values()))
+
   function getProjectState(projectId) {
     const resolved = resolveProjectId(projectId)
     if (!resolved) return null
-    return stateByProjectId.value.get(resolved) || null
+    // Fix: Use computed array instead of Map.get() for proper Vue reactivity
+    return allProjects.value.find((p) => p.project_id === resolved) || null
   }
 
   function upsertProjectState(projectId, patch) {
@@ -127,6 +132,7 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
 
     // getters
     projectCount,
+    allProjects, // Fix: Export for reactive access
 
     // selectors
     getProjectState,
