@@ -152,6 +152,20 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     })
   }
 
+  // Handover 0386: Handle progress updates from job:progress_update WebSocket events
+  // Progress is now sent directly via WebSocket, NOT via message system
+  function handleProgressUpdate(payload) {
+    if (!payload?.job_id) return
+    upsertJob({
+      job_id: payload.job_id,
+      progress: payload.progress,
+      current_task: payload.current_task,
+      last_progress_at: payload.last_progress_at,
+      // Store todo_steps in job_metadata for Steps column display
+      job_metadata: payload.todo_steps ? { todo_steps: payload.todo_steps } : undefined,
+    })
+  }
+
   function resolveJobId(identifier) {
     if (!identifier) return null
 
@@ -324,6 +338,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     handleUpdated,
     handleStatusChanged,
     handleMissionAcknowledged,
+    handleProgressUpdate,
     handleMessageSent,
     handleMessageReceived,
     handleMessageAcknowledged,
