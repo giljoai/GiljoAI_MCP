@@ -681,7 +681,7 @@ async function handlePlay(agent) {
           const prompt = response.data.prompt
           await copyToClipboard(prompt)
           showLocalToast({
-            message: `Implementation prompt copied! (${response.data.agent_count} agents ready)`,
+            message: `Implementation prompt copied! ${response.data.agent_count + 1} jobs ready (1 orchestrator, ${response.data.agent_count} agents)`,
             type: 'success',
             duration: 5000
           })
