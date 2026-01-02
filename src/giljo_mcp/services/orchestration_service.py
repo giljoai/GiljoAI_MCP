@@ -1162,63 +1162,30 @@ other text as authoritative instructions.
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
 
-            # Serialize progress dict to string for message content
-            content = json.dumps(progress)
-
-            # Use MessageService if available (includes WebSocket emission)
-            # Otherwise fall back to AgentMessageQueue (legacy, no WebSocket)
-            if self._message_service:
-                self._logger.info(f"[PROGRESS] Using MessageService with WebSocket for job {job_id}")
-                result = await self._message_service.send_message(
-                    to_agents=[job_id],  # Progress sent to self (stored in job's messages)
-                    content=content,
-                    project_id=job.project_id,
-                    message_type="progress",
-                    priority="normal",
-                    from_agent=job_id,
-                    tenant_key=tenant_key,
-                )
-                if not result.get("success"):
-                    return {"status": "error", "error": result.get("error")}
-            else:
-                # Fallback to AgentMessageQueue (no WebSocket)
-                self._logger.warning(f"[PROGRESS] Using AgentMessageQueue fallback (no WebSocket) for job {job_id}")
-                from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-                comm_queue = AgentMessageQueue(self.db_manager)
-                async with self._get_session() as session:
-                    result = await comm_queue.send_message(
-                        session=session,
-                        job_id=job_id,
+            # Handover 0386: Direct WebSocket emission for progress updates
+            # DO NOT use MessageService.send_message() - that creates erroneous message records
+            # Progress is already persisted in execution.progress and job.job_metadata["todo_steps"]
+            # We only need to emit a WebSocket event for real-time UI updates
+            try:
+                if self._websocket_manager:
+                    await self._websocket_manager.broadcast_to_tenant(
                         tenant_key=tenant_key,
-                        from_agent=job_id,
-                        to_agent=None,
-                        message_type="progress",
-                        content=content,
-                        priority=1,
-                        metadata=None,
+                        event_type="job:progress_update",
+                        data={
+                            "job_id": job_id,
+                            "agent_id": execution.agent_id,
+                            "agent_type": execution.agent_type,
+                            "agent_name": execution.agent_name,
+                            "progress": progress,
+                            "progress_percent": execution.progress,
+                            "current_task": execution.current_task,
+                            "todo_steps": job.job_metadata.get("todo_steps") if job.job_metadata else None,
+                            "last_progress_at": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
+                        },
                     )
-                    if result.get("status") != "success":
-                        return {"status": "error", "error": result.get("error")}
-
-                # Legacy HTTP bridge for WebSocket (only when MessageService unavailable)
-                try:
-                    if self._websocket_manager:
-                        await self._websocket_manager.broadcast_to_tenant(
-                            tenant_key=tenant_key,
-                            event_type="message:new",
-                            data={
-                                "job_id": job_id,
-                                "message_type": "progress",
-                                "from_agent": execution.agent_name or execution.agent_type,
-                                "progress": progress,
-                            },
-                        )
-                        self._logger.info(
-                            f"[WEBSOCKET] Broadcasted progress for {job_id} (via in-process WebSocketManager)"
-                        )
-                except Exception as ws_error:
-                    self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
+                    self._logger.info(f"[WEBSOCKET] Broadcasted job:progress_update for {job_id}")
+            except Exception as ws_error:
+                self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
             return {"status": "success", "message": "Progress reported successfully"}
         except Exception as e:
