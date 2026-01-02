@@ -24,17 +24,46 @@ Architecture:
 Cross-platform: Windows, Linux, macOS
 """
 
+import subprocess
+import sys
+
+
+def _bootstrap_dependencies():
+    """Ensure click and colorama are available before main imports.
+
+    This solves the bootstrap problem where install.py needs these packages
+    to run, but is also responsible for installing them.
+    """
+    required = ['click', 'colorama']
+    missing = []
+    for pkg in required:
+        try:
+            __import__(pkg)
+        except ImportError:
+            missing.append(pkg)
+
+    if missing:
+        print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '-q'] + missing,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+
+_bootstrap_dependencies()
+
+# Standard library imports
 import os
 import platform
 import shutil
 import socket
-import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Third-party imports (safe after bootstrap)
 import click
 from colorama import Fore, Style, init
 
