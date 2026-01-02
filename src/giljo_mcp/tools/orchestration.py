@@ -981,14 +981,26 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                 except Exception as ws_error:
                     logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
-                return {
+                # Build base response
+                response = {
                     "success": True,
                     "job_id": job_id,  # Work order UUID (persistent)
                     "agent_id": agent_id,  # Executor UUID (changes on succession)
                     "agent_prompt": thin_agent_prompt,
                     "prompt_tokens": prompt_tokens,
                     "mission_tokens": mission_tokens,
+                    # Handover 0383 Option B: Explicit Task tool usage
+                    "task_tool_usage": f"Task(subagent_type='{agent_name}', ...)",
                 }
+
+                # Handover 0383 Option C: Warning when agent_name != agent_type
+                if agent_name != agent_type:
+                    response["warning"] = (
+                        f"agent_name '{agent_name}' differs from agent_type '{agent_type}'. "
+                        "Task tool MUST use agent_name (template filename), NOT agent_type."
+                    )
+
+                return response
 
         except Exception as e:
             logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
@@ -2731,14 +2743,26 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
         except Exception as ws_error:
             logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
-        return {
+        # Build base response
+        response = {
             "success": True,
             "job_id": job_id,  # Work order UUID
             "agent_id": agent_id,  # Executor UUID
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,
+            # Handover 0383 Option B: Explicit Task tool usage
+            "task_tool_usage": f"Task(subagent_type='{agent_name}', ...)",
         }
+
+        # Handover 0383 Option C: Warning when agent_name != agent_type
+        if agent_name != agent_type:
+            response["warning"] = (
+                f"agent_name '{agent_name}' differs from agent_type '{agent_type}'. "
+                "Task tool MUST use agent_name (template filename), NOT agent_type."
+            )
+
+        return response
 
     except Exception as e:
         logger.error(f"Error in spawn_agent_job: {e}", exc_info=True)
