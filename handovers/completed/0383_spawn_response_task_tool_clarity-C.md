@@ -1,7 +1,8 @@
 # Handover 0383: Spawn Response Task Tool Clarity
 
-**Status**: Ready
+**Status**: COMPLETE
 **Date**: 2026-01-01
+**Completed**: 2026-01-02
 **Priority**: HIGH
 **Estimated Hours**: 1-2 hours
 **Context**: Alpha testing revealed orchestrator confusion between agent_name and agent_type
@@ -177,12 +178,12 @@ def test_orchestrator_uses_correct_field_in_execution_plan():
 
 ## Success Criteria
 
-1. [ ] spawn_agent_job response includes `task_tool_usage` field
-2. [ ] Warning appears when `agent_name != agent_type`
-3. [ ] No warning when names match (clean response)
-4. [ ] All existing tests pass
-5. [ ] New tests added and passing
-6. [ ] Alpha test repeated - orchestrator uses correct field
+1. [x] spawn_agent_job response includes `task_tool_usage` field
+2. [x] Warning appears when `agent_name != agent_type`
+3. [x] No warning when names match (clean response)
+4. [x] All existing tests pass
+5. [x] New tests added and passing (5 tests in test_spawn_agent_job_clarity.py)
+6. [ ] Alpha test repeated - orchestrator uses correct field (pending next alpha)
 
 ---
 
@@ -219,3 +220,27 @@ After implementation:
 2. Verify response includes `task_tool_usage` with correct agent_name
 3. Verify `warning` field present
 4. Run staging flow - verify orchestrator writes correct Task tool calls
+
+---
+
+## Completion Progress
+
+### 2026-01-02 - Implementation Complete
+
+**Implemented by**: TDD Implementor subagent
+
+**Changes Made**:
+- `src/giljo_mcp/tools/orchestration.py`: Added `task_tool_usage` field and conditional `warning` to spawn_agent_job response (both MCP tool and standalone function versions)
+- `tests/tools/test_spawn_agent_job_clarity.py`: New test file with 5 comprehensive tests (304 lines)
+
+**Test Results**:
+- 5/5 new tests passed
+- 5/5 existing orchestration tests passed
+- No breaking changes
+
+**Commit**: `2f7e5b4b feat: Implement spawn_agent_job clarity (Handover 0383)`
+
+**Notes**:
+- Low-risk change - only adds fields to response
+- Alpha test verification pending next orchestrator run
+- 0384 (full rename) deferred/cancelled - this fix addresses the core confusion

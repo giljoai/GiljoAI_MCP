@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-01 (0380-0381 Complete - update_agent_mission tool + clean API contract)
+**Last Updated:** 2026-01-02 (0383 Complete - spawn response task_tool_usage clarity)
 
 ---
 
@@ -104,6 +104,7 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0383 | Spawn Response Task Tool Clarity | **COMPLETE** (2026-01-02) |
 | 0381 | Clean Contract - agent_id/job_id Separation | **COMPLETE** (2026-01-01) |
 | 0380 | update_agent_mission() MCP Tool | **COMPLETE** (2026-01-01) |
 | 1013 | Structured Logging with Error Codes | **COMPLETE** (2025-12-27) |
