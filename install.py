@@ -1893,9 +1893,10 @@ class UnifiedInstaller:
             self._print_info("Running database migrations (alembic upgrade head)...")
 
             # Run alembic upgrade head
-            # NOTE: Uses sys.executable to ensure correct Python interpreter (venv)
+            # Use venv Python to ensure alembic is available (not system Python)
+            venv_python = self.platform.get_venv_python(self.venv_dir)
             proc = subprocess.run(
-                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                [str(venv_python), "-m", "alembic", "upgrade", "head"],
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout
