@@ -121,7 +121,11 @@ class ToolAccessor:
         self._test_session = test_session
 
         # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
-        self._project_service = ProjectService(db_manager, tenant_manager)
+        self._project_service = ProjectService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager  # Fix: Pass WebSocket manager for mission updates
+        )
         self._template_service = TemplateService(db_manager, tenant_manager)
         self._task_service = TaskService(db_manager, tenant_manager)
         self._message_service = MessageService(
