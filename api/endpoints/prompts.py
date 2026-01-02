@@ -900,8 +900,9 @@ async def get_implementation_prompt(
         ]
 
         # Call the existing implementation prompt generator
+        # Handover 0385: Use job_id (not agent_id) for mission retrieval
         prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_execution.agent_id,
+            orchestrator_id=orchestrator_execution.job_id,
             project=project,
             agent_jobs=agent_executions
         )
