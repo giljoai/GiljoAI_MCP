@@ -162,7 +162,26 @@ class MessageService:
                 resolved_to_agents = []
                 for agent_ref in to_agents:
                     if agent_ref == 'all':
-                        resolved_to_agents.append('all')
+                        # FAN-OUT: Query active agents in project (Handover 0387)
+                        exec_result = await session.execute(
+                            select(AgentExecution).join(AgentJob).where(
+                                and_(
+                                    AgentJob.project_id == project_id,
+                                    AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                                    AgentExecution.tenant_key == tenant_key,
+                                )
+                            )
+                        )
+                        executions = exec_result.scalars().all()
+
+                        # Expand to individual recipients (excluding sender)
+                        sender_type = from_agent or "orchestrator"
+                        for execution in executions:
+                            # Skip sender
+                            if execution.agent_type == sender_type:
+                                continue
+                            resolved_to_agents.append(execution.agent_id)
+                            self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
                     elif len(agent_ref) == 36 and '-' in agent_ref:
                         # Already a UUID (agent_id) - use directly
                         resolved_to_agents.append(agent_ref)
@@ -191,23 +210,29 @@ class MessageService:
                                 f"[RESOLVER] Could not resolve agent_type '{agent_ref}' to active execution in project {project_id}"
                             )
 
-                # Create message with resolved agent_ids
-                message = Message(
-                    project_id=project.id,
-                    tenant_key=project.tenant_key,
-                    to_agents=resolved_to_agents,
-                    content=content,
-                    message_type=message_type,
-                    priority=priority,
-                    status="pending",
-                    # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.
-                    meta_data={"_from_agent": from_agent or "orchestrator", "job_id": project.id},
-                )
-
-                session.add(message)
-                await session.commit()
-
-                message_id = str(message.id)
+                # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
+                message_ids = []
+                if len(resolved_to_agents) > 0:
+                    for recipient_id in resolved_to_agents:
+                        message = Message(
+                            project_id=project.id,
+                            tenant_key=project.tenant_key,
+                            to_agents=[recipient_id],  # Single recipient per message (fan-out)
+                            content=content,
+                            message_type=message_type,
+                            priority=priority,
+                            status="pending",
+                            # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.
+                            meta_data={"_from_agent": from_agent or "orchestrator", "job_id": project.id},
+                        )
+                        session.add(message)
+                        message_ids.append(str(message.id))
+                    await session.commit()
+                    message_id = message_ids[0] if message_ids else None
+                else:
+                    # No recipients (e.g., broadcast to empty project) - skip message creation
+                    await session.commit()
+                    message_id = None
 
                 self._logger.info(
                     f"Sent {message_type} message {message_id} "
