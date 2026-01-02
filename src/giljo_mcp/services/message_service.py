@@ -211,7 +211,7 @@ class MessageService:
                             )
 
                 # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
-                message_ids = []
+                messages = []
                 if len(resolved_to_agents) > 0:
                     for recipient_id in resolved_to_agents:
                         message = Message(
@@ -226,7 +226,9 @@ class MessageService:
                             meta_data={"_from_agent": from_agent or "orchestrator", "job_id": project.id},
                         )
                         session.add(message)
-                        message_ids.append(str(message.id))
+                        messages.append(message)
+                    await session.flush()  # Flush to assign IDs before commit
+                    message_ids = [str(msg.id) for msg in messages]
                     await session.commit()
                     message_id = message_ids[0] if message_ids else None
                 else:
@@ -245,8 +247,29 @@ class MessageService:
                     f"for message {message_id}"
                 )
 
+                # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
+                # Handover 0372/0401: Runs ALWAYS, regardless of websocket_manager
+                # Uses resolved_to_agents which contains agent_ids for direct messages
+                if messages:
+                    try:
+                        await self._persist_message_to_agent_jsonb(
+                            session=session,
+                            message_id=message_id,
+                            from_agent=from_agent or "orchestrator",
+                            recipient_job_ids=resolved_to_agents,  # Contains agent_ids
+                            content=content,
+                            message_type=message_type,
+                            priority=priority,
+                            project_id=project.id,
+                            tenant_key=project.tenant_key,
+                        )
+                        self._logger.info(f"[PERSISTENCE] Saved message {message_id} to agent JSONB columns")
+                    except Exception as persist_error:
+                        self._logger.warning(f"Failed to persist message to JSONB: {persist_error}")
+
                 # Emit WebSocket events if manager is available
-                if self._websocket_manager:
+                if self._websocket_manager and messages:
+                    first_message = messages[0]  # Use first message for metadata
                     self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
                     try:
                         # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
@@ -285,7 +308,7 @@ class MessageService:
                         # Event 1: Broadcast to SENDER (increments "Messages Sent")
                         await self._websocket_manager.broadcast_message_sent(
                             message_id=message_id,
-                            job_id=message.meta_data.get("job_id", ""),
+                            job_id=first_message.meta_data.get("job_id", ""),
                             project_id=project.id,
                             tenant_key=project.tenant_key,
                             from_agent=from_agent or "orchestrator",
@@ -302,7 +325,7 @@ class MessageService:
                         if recipient_agent_ids:
                             await self._websocket_manager.broadcast_message_received(
                                 message_id=message_id,
-                                job_id=message.meta_data.get("job_id", ""),
+                                job_id=first_message.meta_data.get("job_id", ""),
                                 project_id=project.id,
                                 tenant_key=project.tenant_key,
                                 from_agent=from_agent or "orchestrator",
@@ -313,36 +336,23 @@ class MessageService:
                             )
                             self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)")
 
-                        # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
-                        # Handover 0372: Now persists to agent_executions, not agent_jobs
-                        await self._persist_message_to_agent_jsonb(
-                            session=session,
-                            message_id=message_id,
-                            from_agent=from_agent or "orchestrator",
-                            recipient_job_ids=recipient_agent_ids,  # Now contains agent_ids, not job_ids
-                            content=content,
-                            message_type=message_type,
-                            priority=priority,
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                        )
-                        self._logger.info(f"[PERSISTENCE] Saved message {message_id} to agent JSONB columns")
-
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(
                             f"Failed to emit WebSocket event for message {message_id}: {ws_error}"
                         )
                 else:
-                    self._logger.warning(
+                    self._logger.debug(
                         f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
                     )
 
                 return {
                     "success": True,
-                    "message_id": message_id,
-                    "to_agents": resolved_to_agents,
-                    "type": message_type,
+                    "data": {
+                        "message_id": message_id,
+                        "to_agents": resolved_to_agents,
+                        "type": message_type,
+                    }
                 }
 
         except Exception as e:
@@ -608,7 +618,7 @@ class MessageService:
                     "error": "No tenant context available"
                 }
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Handover 0372: Look up AgentExecution by agent_id, then get job
                 result = await session.execute(
                     select(AgentExecution).where(
@@ -753,8 +763,10 @@ class MessageService:
 
                 return {
                     "success": True,
-                    "messages": messages_list,
-                    "count": len(messages_list)
+                    "data": {
+                        "messages": messages_list,
+                        "count": len(messages_list)
+                    }
                 }
 
         except Exception as e:
@@ -1263,49 +1275,60 @@ class MessageService:
         new_status: str,
     ) -> None:
         """
-        Update status of messages in AgentJob.messages JSONB column.
+        Update status of messages in AgentExecution.messages JSONB column.
 
         This syncs the JSONB message status with the Message table status,
         ensuring the dashboard counters (Messages Waiting, Messages Read) are accurate.
 
         Args:
             session: Active database session
-            job_id: Job ID (work order) whose JSONB messages to update
+            job_id: Agent ID (executor UUID) whose JSONB messages to update
             message_ids: List of message IDs to update
             new_status: New status value (e.g., 'acknowledged', 'read')
         """
         from sqlalchemy.orm.attributes import flag_modified
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
         try:
-            # Get the agent job
+            # Get the agent execution (messages stored on executor, not work order)
+            self._logger.info(f"[JSONB UPDATE] Querying AgentExecution for agent_id={job_id}")
             result = await session.execute(
-                select(AgentJob).where(AgentJob.job_id == job_id)
+                select(AgentExecution).where(AgentExecution.agent_id == job_id).execution_options(populate_existing=True)
             )
-            agent_job = result.scalar_one_or_none()
+            agent_execution = result.scalar_one_or_none()
 
-            if not agent_job or not agent_job.messages:
-                self._logger.debug(f"[JSONB UPDATE] No messages to update for job {job_id}")
+            if not agent_execution:
+                self._logger.warning(f"[JSONB UPDATE] AgentExecution not found for agent_id={job_id}")
                 return
+
+            # Refresh to get latest JSONB data (critical for test sessions with shared state)
+            await session.refresh(agent_execution)
+
+            if not agent_execution.messages:
+                self._logger.warning(f"[JSONB UPDATE] AgentExecution.messages is empty for agent {job_id}")
+                return
+
+            self._logger.info(f"[JSONB UPDATE] Found {len(agent_execution.messages)} messages in JSONB for agent {job_id}")
 
             # Update status for matching messages
             updated_count = 0
             message_ids_set = set(message_ids)
 
-            for msg in agent_job.messages:
+            for msg in agent_execution.messages:
                 if msg.get("id") in message_ids_set and msg.get("status") != new_status:
                     msg["status"] = new_status
                     updated_count += 1
 
             if updated_count > 0:
                 # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                flag_modified(agent_job, "messages")
+                flag_modified(agent_execution, "messages")
                 await session.commit()
                 self._logger.info(
                     f"[JSONB UPDATE] Updated {updated_count} messages to '{new_status}' "
-                    f"for job {job_id}"
+                    f"for agent {job_id}"
                 )
             else:
-                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for job {job_id}")
+                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for agent {job_id}")
 
         except Exception as e:
             self._logger.error(f"[JSONB UPDATE] Failed to update message status: {e}")
