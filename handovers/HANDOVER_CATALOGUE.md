@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-02 (0383 Complete - spawn response task_tool_usage clarity)
+**Last Updated:** 2026-01-02 (0387 Ready - Broadcast Fan-out at Write)
 
 ---
 
@@ -46,6 +46,7 @@
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
+| **0387** | **Broadcast Fan-out at Write** | **Ready** | **HIGH** | Fix broadcast bugs via industry-standard fan-out pattern |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
@@ -418,17 +419,18 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0381 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0381, 0387 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
+- **0382-0386**: Gaps in 0301-0400 range (between 0381 and 0387)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
-- **0366+**: Next sequential after current development
+- **0388+**: Next sequential after current development
 
 ### Naming Format
 ```
