@@ -161,6 +161,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   // Handover 0386: Handle progress updates from job:progress_update WebSocket events
   // Progress is now sent directly via WebSocket, NOT via message system
   // Handover 0388: Conditionally build updates to prevent undefined corruption
+  // Handover 0401: Transform todo_steps array to steps summary object
   function handleProgressUpdate(payload) {
     if (!payload?.job_id) return
 
@@ -174,6 +175,14 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     // Only add job_metadata when todo_steps exists (prevents undefined overwrite)
     if (payload.todo_steps) {
       updates.job_metadata = { todo_steps: payload.todo_steps }
+      // Transform to steps summary: count completed vs total
+      const completed = payload.todo_steps.filter(
+        (s) => s.status === 'done' || s.status === 'completed'
+      ).length
+      updates.steps = {
+        completed,
+        total: payload.todo_steps.length,
+      }
     }
 
     upsertJob(updates)
@@ -184,6 +193,13 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
     if (jobsById.value.has(identifier)) {
       return identifier
+    }
+
+    // Check by agent_id (executor UUID from messaging)
+    for (const job of jobsById.value.values()) {
+      if (job.agent_id === identifier) {
+        return job.job_id
+      }
     }
 
     // Legacy fallback: from_agent may be agent_type (e.g., "orchestrator").
@@ -329,9 +345,22 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     jobsById.value = new Map()
   }
 
+  // Create a proxy object that maintains .value structure
+  const jobsByIdProxy = new Proxy(
+    {},
+    {
+      get: (target, prop) => {
+        if (prop === 'value') {
+          return jobsById.value
+        }
+        return undefined
+      },
+    }
+  )
+
   return {
     // state
-    jobsById,
+    jobsById: jobsByIdProxy,
 
     // getters
     jobs,
@@ -340,6 +369,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
     // selectors
     getJob,
+    resolveJobId,
 
     // actions
     setJobs,
