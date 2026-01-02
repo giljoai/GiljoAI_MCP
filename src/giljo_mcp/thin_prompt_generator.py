@@ -981,9 +981,10 @@ This project uses Claude Code CLI for implementation. When spawning agents:
 - agent_type: Display category label (e.g., "implementer")
 - Template file: Each agent_name requires .claude/agents/{agent_name}.md
 
-Example Task call:
+Example Task call (IMPLEMENTATION PHASE ONLY - not during staging):
   Task(subagent_type="{agent_name}", instructions="...")
 
+NOTE: Do NOT invoke Task tool during staging. This syntax is for PLANNING your execution strategy only.
 In implementation phase, Task(subagent_type=X) uses agent_name value, NOT agent_type.
 Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_instructions() response."""
         else:
@@ -992,13 +993,37 @@ Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_i
 - Each agent has [Copy Prompt] button in the Implementation tab
 - Coordinate agents via MCP messaging tools"""
 
-        prompt = f"""I am Orchestrator for GiljoAI Project "{project.name}".
+        prompt = f"""You are Orchestrator for project "{project.name}" managed by GiljoAI MCP Agent Orchestration Server.
 
 IDENTITY:
 - Orchestrator ID: {orchestrator_id}
 - Project ID: {project_id}
 - Tenant Key: {self.tenant_key}
 - Execution Mode: {execution_mode}
+
+════════════════════════════════════════════════════════════════════════════════
+                         PHASE BOUNDARY - READ CAREFULLY
+════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAGING PHASE (Steps 1-7): THIS SESSION                                     │
+│ Your job RIGHT NOW: Analyze, spawn jobs, write plan                         │
+│ DO NOT: Invoke Task tool, execute agent work                                │
+│ END WITH: "Staging complete. N agents spawned..."                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                         ══════ SESSION BOUNDARY ══════
+    User runs /gil_launch or copies and pastes the implementation start prompt
+                         ══════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ IMPLEMENTATION PHASE (Step 8): FUTURE SESSION                               │
+│ You or a fresh orchestrator retrieves plan via get_agent_mission()          │
+│ Invokes Task tool for each agent per your plan                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+KEY PRINCIPLE: Staging orchestrator creates jobs. It does NOT execute them.
+════════════════════════════════════════════════════════════════════════════════
 
 MCP CONNECTION:
 - Server URL: {mcp_url}
@@ -1031,7 +1056,7 @@ STARTUP SEQUENCE:
    This allows fresh-session orchestrators to retrieve your execution strategy.
 7. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
-8. EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
+8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
 
    **Sequential Pattern**: Spawn agent → Poll via `receive_messages()` → Wait for completion → Send handoff message → Spawn next agent
 
