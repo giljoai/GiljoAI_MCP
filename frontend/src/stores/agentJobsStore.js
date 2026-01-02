@@ -112,8 +112,14 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     const jobId = patch?.job_id || patch?.id || patch?.agent_id
     if (!jobId) return
 
+    // Handover 0388: Filter undefined values to prevent state corruption
+    // Spread operator preserves undefined, which overwrites existing valid data
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch || {}).filter(([_, v]) => v !== undefined)
+    )
+
     const previous = jobsById.value.get(jobId)
-    const nextJob = normalizeJob({ ...(previous || {}), ...(patch || {}), job_id: jobId })
+    const nextJob = normalizeJob({ ...(previous || {}), ...cleanPatch, job_id: jobId })
 
     // Avoid unnecessary churn if nothing changed.
     if (previous && JSON.stringify(previous) === JSON.stringify(nextJob)) {
@@ -154,16 +160,23 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
   // Handover 0386: Handle progress updates from job:progress_update WebSocket events
   // Progress is now sent directly via WebSocket, NOT via message system
+  // Handover 0388: Conditionally build updates to prevent undefined corruption
   function handleProgressUpdate(payload) {
     if (!payload?.job_id) return
-    upsertJob({
+
+    const updates = {
       job_id: payload.job_id,
       progress: payload.progress,
       current_task: payload.current_task,
       last_progress_at: payload.last_progress_at,
-      // Store todo_steps in job_metadata for Steps column display
-      job_metadata: payload.todo_steps ? { todo_steps: payload.todo_steps } : undefined,
-    })
+    }
+
+    // Only add job_metadata when todo_steps exists (prevents undefined overwrite)
+    if (payload.todo_steps) {
+      updates.job_metadata = { todo_steps: payload.todo_steps }
+    }
+
+    upsertJob(updates)
   }
 
   function resolveJobId(identifier) {
