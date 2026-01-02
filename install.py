@@ -87,6 +87,76 @@ NPM_INSTALL_TIMEOUT = 300
 NPM_MAX_RETRIES = 3
 
 
+def getpass_with_asterisks(prompt: str = "Password: ") -> str:
+    """Cross-platform password input that shows asterisks as user types.
+
+    Works on Windows (msvcrt) and Unix/Linux/Mac (termios).
+
+    Args:
+        prompt: The prompt to display before password input
+
+    Returns:
+        The entered password as a string
+    """
+    print(prompt, end='', flush=True)
+    password = []
+
+    if platform.system() == 'Windows':
+        import msvcrt
+        while True:
+            char = msvcrt.getch()
+            # Enter key
+            if char in (b'\r', b'\n'):
+                print()
+                break
+            # Backspace
+            elif char == b'\x08':
+                if password:
+                    password.pop()
+                    # Move cursor back, overwrite with space, move back again
+                    print('\b \b', end='', flush=True)
+            # Ctrl+C
+            elif char == b'\x03':
+                raise KeyboardInterrupt
+            # Regular character
+            else:
+                try:
+                    password.append(char.decode('utf-8'))
+                    print('*', end='', flush=True)
+                except UnicodeDecodeError:
+                    pass  # Ignore non-UTF8 characters
+    else:
+        # Unix/Linux/Mac
+        import termios
+        import tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            while True:
+                char = sys.stdin.read(1)
+                # Enter key
+                if char in ('\r', '\n'):
+                    print()
+                    break
+                # Backspace (DEL or BS)
+                elif char in ('\x7f', '\x08'):
+                    if password:
+                        password.pop()
+                        print('\b \b', end='', flush=True)
+                # Ctrl+C
+                elif char == '\x03':
+                    raise KeyboardInterrupt
+                # Regular character
+                else:
+                    password.append(char)
+                    print('*', end='', flush=True)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    return ''.join(password)
+
+
 class UnifiedInstaller:
     """
     Unified installer for GiljoAI MCP v3.0
@@ -304,8 +374,6 @@ class UnifiedInstaller:
 
     def ask_installation_questions(self) -> None:
         """Gather user preferences for installation"""
-        import getpass
-
         # Network Configuration
         print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
         print("Configuring external access for frontend connections...")
@@ -391,7 +459,7 @@ class UnifiedInstaller:
         # Ask twice to confirm
         max_attempts = 3
         for attempt in range(max_attempts):
-            pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+            pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
 
             # Require password - no defaults
             if not pg_pass:
@@ -399,7 +467,7 @@ class UnifiedInstaller:
                 continue
 
             # Ask for confirmation
-            pg_pass_confirm = getpass.getpass(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
+            pg_pass_confirm = getpass_with_asterisks(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
 
             # Check if they match
             if pg_pass == pg_pass_confirm:
