@@ -639,30 +639,18 @@ class MessageService:
                     }
 
                 # Query messages using native SQLAlchemy queries
-                # Include messages where:
-                # 1. Direct message to this agent (to_agents contains agent_id as JSON array element)
-                # 2. Broadcast message (to_agents contains 'all') BUT exclude sender (Issue 0361-3)
-                # 3. Only pending messages (unread_only=True by default)
-                from sqlalchemy import or_, func, String
+                # Handover 0387: Simplified query - fan-out at write means no 'all' broadcast matching needed
+                # Each message now has to_agents=[single_agent_id] after fan-out expansion
+                from sqlalchemy import func
                 from sqlalchemy.dialects.postgresql import JSONB
 
-                # Build query conditions (Handover 0372: Agent-ID filtering from 0366b)
+                # Build query conditions (Handover 0387: Simplified - direct agent_id match only)
                 conditions = [
                     Message.tenant_key == tenant_key,
                     Message.project_id == job.project_id,
                     Message.status == "pending",  # Only unread messages
-                    or_(
-                        # Direct message: JSONB array contains agent_id
-                        func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
-                        # Broadcast: JSONB array contains 'all' BUT exclude sender (Issue 0361-3)
-                        and_(
-                            func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB)),
-                            func.coalesce(
-                                Message.meta_data.op('->')('_from_agent').astext,
-                                func.cast('', String)
-                            ) != job.job_type
-                        )
-                    )
+                    # Direct match: JSONB array contains agent_id (no broadcast OR clause needed)
+                    func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB))
                 ]
 
                 # HANDOVER 0372: Apply filtering conditions from 0366b
