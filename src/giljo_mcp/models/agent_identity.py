@@ -112,6 +112,12 @@ class AgentJob(Base):
         cascade="all, delete-orphan",
         order_by="AgentExecution.instance_number",
     )
+    todo_items = relationship(
+        "AgentTodoItem",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="AgentTodoItem.sequence",
+    )
 
     __table_args__ = (
         Index("idx_agent_jobs_tenant", "tenant_key"),
@@ -333,4 +339,85 @@ class AgentExecution(Base):
         return (
             f"<AgentExecution(agent_id={self.agent_id}, job_id={self.job_id}, "
             f"agent_type={self.agent_type}, status={self.status}, instance={self.instance_number})>"
+        )
+
+
+class AgentTodoItem(Base):
+    """
+    Agent TODO item - tracks individual tasks within an agent job.
+
+    Handover 0402: Replaces JSONB storage with proper relational table.
+
+    Purpose:
+    - Store agent TODO items as structured data for UI display
+    - Enable real-time updates via WebSocket when items change
+    - Support progress tracking with status indicators
+
+    Relationships:
+    - job: Many items → One job (work order)
+
+    Multi-tenant Isolation:
+    - All queries MUST filter by tenant_key
+    - Composite indexes for (job_id, sequence) queries
+    """
+
+    __tablename__ = "agent_todo_items"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    job_id = Column(
+        String(36),
+        ForeignKey("agent_jobs.job_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Foreign key to parent AgentJob",
+    )
+    tenant_key = Column(String(64), nullable=False, index=True)
+
+    # TODO item details
+    content = Column(
+        String(255),
+        nullable=False,
+        comment="TODO item description/task text",
+    )
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        comment="Item status: pending, in_progress, completed",
+    )
+    sequence = Column(
+        Integer,
+        nullable=False,
+        comment="Display order (0-based index in agent's TODO list)",
+    )
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationships
+    job = relationship("AgentJob", back_populates="todo_items")
+
+    __table_args__ = (
+        Index("idx_todo_items_job", "job_id"),
+        Index("idx_todo_items_tenant_status", "tenant_key", "status"),
+        Index("idx_todo_items_job_sequence", "job_id", "sequence"),
+        CheckConstraint(
+            "status IN ('pending', 'in_progress', 'completed')",
+            name="ck_agent_todo_item_status",
+        ),
+        CheckConstraint(
+            "sequence >= 0",
+            name="ck_agent_todo_item_sequence_positive",
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<AgentTodoItem(id={self.id}, job_id={self.job_id}, "
+            f"content={self.content[:30]}..., status={self.status}, sequence={self.sequence})>"
         )
