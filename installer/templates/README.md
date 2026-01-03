@@ -173,7 +173,7 @@ Backend endpoints must implement:
 2. **Download Endpoints**:
    - `GET /api/download/slash-commands.zip` - Returns slash commands ZIP
    - `GET /api/download/agent-templates.zip?active_only=true` - Returns agent templates ZIP
-3. **Authentication**: Validate `X-API-Key` header
+3. **Authentication**: Slash commands + install scripts are public; agent templates are optional-auth (JWT cookie or X-API-Key)
 4. **ZIP Archive Structure**:
    - Slash commands: Flat structure with `*.md` files
    - Agent templates: Flat structure with `*.md` files
@@ -185,8 +185,9 @@ After successful installation:
 ### Slash Commands
 ```
 $HOME/.claude/commands/
-├── gil_import_productagents.md
-├── gil_import_personalagents.md
+├── gil_get_claude_agents.md
+├── gil_activate.md
+├── gil_launch.md
 └── gil_handover.md
 ```
 
