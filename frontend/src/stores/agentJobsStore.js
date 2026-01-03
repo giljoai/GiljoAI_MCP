@@ -162,6 +162,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   // Progress is now sent directly via WebSocket, NOT via message system
   // Handover 0388: Conditionally build updates to prevent undefined corruption
   // Handover 0401: Transform todo_steps array to steps summary object
+  // Handover 0402: Store todo_items for Plan/TODOs tab display
   function handleProgressUpdate(payload) {
     if (!payload?.job_id) return
 
@@ -195,6 +196,12 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
           updates.steps = { completed, total }
         }
       }
+    }
+
+    // Handover 0402: Store todo_items array for display in Plan/TODOs tab
+    // Backend sends: [{ content: "...", status: "pending|in_progress|completed" }, ...]
+    if (payload.todo_items && Array.isArray(payload.todo_items)) {
+      updates.todo_items = payload.todo_items
     }
 
     upsertJob(updates)
