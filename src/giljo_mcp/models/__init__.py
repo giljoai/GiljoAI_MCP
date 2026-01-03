@@ -93,10 +93,11 @@ from .agents import (
     Job,
 )
 
-# Agent Identity models (Handover 0366a)
+# Agent Identity models (Handover 0366a, 0402)
 from .agent_identity import (
     AgentJob,
     AgentExecution,
+    AgentTodoItem,
 )
 
 # Template models
@@ -157,9 +158,10 @@ __all__ = [
     # Agents
     "AgentInteraction",
     "Job",
-    # Agent Identity (Handover 0366a)
+    # Agent Identity (Handover 0366a, 0402)
     "AgentJob",
     "AgentExecution",
+    "AgentTodoItem",
     # Templates
     "AgentTemplate",
     "TemplateArchive",
