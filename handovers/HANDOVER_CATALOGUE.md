@@ -46,9 +46,9 @@
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
-| **0387** | **Broadcast Fan-out at Write** | **Ready** | **HIGH** | Fix broadcast bugs via industry-standard fan-out pattern |
+| **0387** | **Broadcast Fan-out + JSONB Cleanup** | **Ready** | **HIGH** | Fan-out at write + Phase 4 JSONB normalization (12-19h) |
 | **0402** | **Agent TODO Items Table** | **COMPLETE** | **HIGH** | Plan/TODOs tab populated from DB (2026-01-02) |
-| **0403** | **JSONB Normalization - Messages** | **Ready** | **HIGH** | Remove AgentExecution.messages JSONB duplication |
+| **0403** | **JSONB Normalization - Messages** | **SUPERSEDED** | - | Merged into 0387 Phase 4 |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
