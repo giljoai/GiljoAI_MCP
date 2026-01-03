@@ -702,6 +702,67 @@ This is why messaging is tied to agent_id, not job_id.
 
 ---
 
+## Appendix C: Implementation Session (2026-01-02)
+
+### Additional Issue Discovered During Testing
+
+During live browser testing, we discovered a **4th bug** not in the original handover:
+
+**Issue 4: API Response Missing `agent_id` Field**
+
+The jobs API endpoint (`/api/agent-jobs/`) was returning jobs WITHOUT the `agent_id` field. This means even though:
+- ✅ Backend stores `agent_id` in `AgentExecution`
+- ✅ `OrchestrationService.list_jobs()` returns `agent_id` in job dicts
+- ✅ Frontend `resolveJobId()` checks for `agent_id`
+
+The field was being **dropped** in the API response layer because:
+- `JobResponse` Pydantic model didn't have `agent_id` field
+- `job_to_response()` didn't map `agent_id` to the response
+
+**Fix Applied**:
+
+**File 1**: `api/endpoints/agent_jobs/models.py` (line 91)
+```python
+class JobResponse(BaseModel):
+    id: str
+    job_id: str
+    agent_id: Optional[str] = None  # NEW: Executor UUID for WebSocket event matching
+    tenant_key: str
+    ...
+```
+
+**File 2**: `api/endpoints/agent_jobs/status.py` (line 44)
+```python
+def job_to_response(job: dict) -> JobResponse:
+    return JobResponse(
+        id=job.get("agent_id", job.get("id", "")),
+        job_id=job["job_id"],
+        agent_id=job.get("agent_id"),  # NEW: Executor UUID for WebSocket event matching
+        tenant_key=job["tenant_key"],
+        ...
+```
+
+### Summary of All Fixes (Session 2026-01-02)
+
+| File | Fix | Status |
+|------|-----|--------|
+| `frontend/src/stores/agentJobsStore.js:191-213` | Added `agent_id` check to `resolveJobId()` | ✅ Committed |
+| `frontend/src/stores/agentJobsStore.js:165-189` | Added steps transformation in `handleProgressUpdate()` | ✅ Committed |
+| `src/giljo_mcp/services/message_service.py:250-268` | Moved JSONB persistence outside websocket_manager block | ✅ Committed |
+| `api/endpoints/agent_jobs/models.py:91` | Added `agent_id` field to `JobResponse` | ✅ Applied |
+| `api/endpoints/agent_jobs/status.py:44` | Added `agent_id` mapping in `job_to_response()` | ✅ Applied |
+
+### Verification Steps
+
+After restarting the API server:
+
+1. Refresh browser to reload jobs with `agent_id`
+2. Send test message via MCP
+3. Verify counters update in real-time (no refresh needed)
+4. Verify counters persist after page refresh
+
+---
+
 **End of Handover 0401**
 
 *Remember: This is a unification effort. The goal is ONE harmonized WebSocket platform, not patches on top of patches. Take time to understand the full flow before making changes.*
