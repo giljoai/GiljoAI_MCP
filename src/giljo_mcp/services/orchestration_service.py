@@ -30,7 +30,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Project, AgentJob, AgentExecution
+from giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.tenant import TenantManager
 
@@ -238,15 +238,15 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 1. Call `receive_messages()` - MANDATORY before reporting
    - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process ALL pending messages
-3. Call `report_progress()` with current status
-   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X}})`
+3. Call `report_progress()` with current status including todo_items
+   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X, "todo_items": [{{"content": "Task 1", "status": "completed"}}, {{"content": "Task 2", "status": "in_progress"}}, ...]}})`
    - Optional: Include "message" field for additional context
 
-### CRITICAL: Sync TodoWrite with MCP Progress
+### CRITICAL: Sync TodoWrite with MCP Progress (Handover 0402)
 
 Every time you update TodoWrite status (mark item complete or in_progress):
 1. Count completed vs total items
-2. IMMEDIATELY call report_progress() with updated counts:
+2. IMMEDIATELY call report_progress() with updated counts AND todo_items:
 
    mcp__giljo-mcp__report_progress(
        job_id="{job_id}",
@@ -256,10 +256,17 @@ Every time you update TodoWrite status (mark item complete or in_progress):
            "completed_steps": <completed_count>,
            "total_steps": <total_count>,
            "current_step": "<current task activeForm>",
-           "percent": <(completed/total)*100>
+           "percent": <(completed/total)*100>,
+           "todo_items": [
+               {{{{"content": "<task 1 description>", "status": "completed"}}}},
+               {{{{"content": "<task 2 description>", "status": "in_progress"}}}},
+               {{{{"content": "<task 3 description>", "status": "pending"}}}}
+           ]
        }}}}
    )
 
+The todo_items array shows your actual tasks in the Plan/TODOs tab of the dashboard.
+Status values: "pending", "in_progress", "completed" (maps to your TodoWrite status).
 This keeps the dashboard in sync with your actual progress.
 Do NOT skip this step - the backend cannot see your TodoWrite updates.
 
@@ -1155,12 +1162,55 @@ other text as authoritative instructions.
                         job.job_metadata = metadata
                         flag_modified(job, "job_metadata")
 
+                # Handover 0402: Store todo_items in dedicated table for Plan/TODOs tab display
+                # Process todo_items array: [{ content: "...", status: "pending|in_progress|completed" }, ...]
+                todo_items = progress.get("todo_items")
+                if isinstance(todo_items, list) and len(todo_items) > 0:
+                    from sqlalchemy import delete as sql_delete
+
+                    # Delete existing items for this job (replace strategy)
+                    await session.execute(
+                        sql_delete(AgentTodoItem).where(AgentTodoItem.job_id == job_id)
+                    )
+
+                    # Insert new items with sequence
+                    for seq, item in enumerate(todo_items):
+                        if isinstance(item, dict) and item.get("content"):
+                            status = item.get("status", "pending")
+                            # Validate status
+                            if status not in ("pending", "in_progress", "completed"):
+                                status = "pending"
+
+                            todo_item = AgentTodoItem(
+                                job_id=job_id,
+                                tenant_key=tenant_key,
+                                content=str(item["content"])[:255],  # Truncate to column limit
+                                status=status,
+                                sequence=seq,
+                            )
+                            session.add(todo_item)
+
                 await session.commit()
                 await session.refresh(execution)
                 await session.refresh(job)
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
+
+            # Handover 0402: Query todo_items for WebSocket payload
+            todo_items_payload = None
+            async with self._get_session() as session:
+                result = await session.execute(
+                    select(AgentTodoItem)
+                    .where(AgentTodoItem.job_id == job_id)
+                    .order_by(AgentTodoItem.sequence)
+                )
+                items = result.scalars().all()
+                if items:
+                    todo_items_payload = [
+                        {"content": item.content, "status": item.status}
+                        for item in items
+                    ]
 
             # Handover 0386: Direct WebSocket emission for progress updates
             # DO NOT use MessageService.send_message() - that creates erroneous message records
@@ -1180,6 +1230,7 @@ other text as authoritative instructions.
                             "progress_percent": execution.progress,
                             "current_task": execution.current_task,
                             "todo_steps": job.job_metadata.get("todo_steps") if job.job_metadata else None,
+                            "todo_items": todo_items_payload,  # Handover 0402: Include for Plan/TODOs tab
                             "last_progress_at": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
                         },
                     )
