@@ -270,6 +270,12 @@ Status values: "pending", "in_progress", "completed" (maps to your TodoWrite sta
 This keeps the dashboard in sync with your actual progress.
 Do NOT skip this step - the backend cannot see your TodoWrite updates.
 
+### BACKEND MONITORING ACTIVE (Handover 0406)
+The backend monitors report_progress() calls. If todo_items is missing:
+- You will receive a WARNING in the response
+- Warnings are throttled (1 per 5 minutes per job)
+- Dashboard cannot display your progress without todo_items
+
 **MESSAGE HANDLING (CRITICAL - Issue 0361-5):**
 - ALWAYS use `receive_messages()` to check messages (NOT `list_messages()`)
 - `receive_messages()` auto-acknowledges and removes messages from queue
@@ -339,6 +345,8 @@ class OrchestrationService:
         self._message_service = message_service
         self._websocket_manager = websocket_manager or getattr(message_service, "_websocket_manager", None)
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        # Handover 0406: Track todo_items warning timestamps (throttle 1 per 5 min per job)
+        self._todo_warning_timestamps: dict[str, datetime] = {}
 
     def _get_session(self):
         """
@@ -358,6 +366,32 @@ class OrchestrationService:
 
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
+
+    def _can_warn_missing_todos(self, job_id: str, cooldown_minutes: int = 5) -> bool:
+        """
+        Check if we can send a todo_items warning (throttle: 1 per N minutes per job).
+
+        Args:
+            job_id: Job UUID
+            cooldown_minutes: Minimum minutes between warnings (default: 5)
+
+        Returns:
+            True if we can warn, False if throttled
+        """
+        last_warning = self._todo_warning_timestamps.get(job_id)
+        if not last_warning:
+            return True
+        elapsed = (datetime.now(timezone.utc) - last_warning).total_seconds()
+        return elapsed >= (cooldown_minutes * 60)
+
+    def _record_todo_warning(self, job_id: str) -> None:
+        """
+        Record that a todo_items warning was sent for this job.
+
+        Args:
+            job_id: Job UUID
+        """
+        self._todo_warning_timestamps[job_id] = datetime.now(timezone.utc)
 
     # ============================================================================
     # Project Orchestration
@@ -1238,7 +1272,23 @@ other text as authoritative instructions.
             except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
-            return {"status": "success", "message": "Progress reported successfully"}
+            # Handover 0406: Reactive warning for missing todo_items
+            warnings = []
+            todo_items = progress.get("todo_items")
+            if not isinstance(todo_items, list) or len(todo_items) == 0:
+                # Check throttle - only warn once per 5 minutes per job
+                if self._can_warn_missing_todos(job_id):
+                    warnings.append(
+                        "WARNING: todo_items missing! Dashboard Steps shows '--'. "
+                        "Include todo_items=[{content, status}] in every report_progress() call."
+                    )
+                    self._record_todo_warning(job_id)
+
+            return {
+                "status": "success",
+                "message": "Progress reported successfully",
+                "warnings": warnings,
+            }
         except Exception as e:
             self._logger.exception(f"Failed to report progress: {e}")
             return {"status": "error", "error": str(e)}

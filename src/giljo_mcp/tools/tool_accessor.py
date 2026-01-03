@@ -871,7 +871,7 @@ class ToolAccessor:
 
     async def report_progress(self, job_id: str, progress: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Report job progress (delegates to OrchestrationService)"""
-        return await self._orchestration_service.report_progress(job_id=job_id, progress=progress)
+        return await self._orchestration_service.report_progress(job_id=job_id, progress=progress, tenant_key=tenant_key)
 
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
