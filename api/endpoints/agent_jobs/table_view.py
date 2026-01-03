@@ -38,6 +38,7 @@ class TableRowData(BaseModel):
     """Optimized data for single table row"""
 
     job_id: str
+    agent_id: Optional[str] = None  # Handover 0401b: Executor UUID for WebSocket event matching
     agent_type: str
     agent_name: Optional[str] = None
     tool_type: str  # claude-code, codex, gemini, universal
@@ -244,6 +245,7 @@ async def get_agent_jobs_table_view(
         rows.append(
             TableRowData(
                 job_id=execution.job_id,
+                agent_id=execution.agent_id,  # Handover 0401b: WebSocket event matching
                 agent_type=execution.agent_type,
                 agent_name=execution.agent_name,
                 tool_type=execution.tool_type,
