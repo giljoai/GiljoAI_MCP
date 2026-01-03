@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-03 (0406 Ready - Reactive Feedback for TodoWrite Compliance)
+**Last Updated:** 2026-01-03 (0406 COMPLETE - Reactive Feedback for TodoWrite Compliance)
 
 ---
 
@@ -51,7 +51,8 @@
 | **0402** | **Agent TODO Items Table** | **COMPLETE** | **HIGH** | Plan/TODOs tab populated from DB (2026-01-02) |
 | **0403** | **JSONB Normalization - Messages** | **SUPERSEDED** | - | Merged into 0387 Phase 4 |
 | **0405** | **Message Counter Fallback + TodoWrite Enforcement** | **COMPLETE** | **HIGH** | Frontend counter sync + prompt enforcement (2026-01-03) |
-| **0406** | **Reactive Feedback for TodoWrite Compliance** | **Ready** | **MEDIUM** | Response warnings + queued messages for mid-mission reminders |
+| **0406** | **Reactive Feedback for TodoWrite Compliance** | **COMPLETE** | **MEDIUM** | Response warnings + throttle (2026-01-03) |
+| **0407** | **Message Acknowledged Counter Sync** | **COMPLETE** | **HIGH** | Frontend job_id resolution + fallback (2026-01-03) |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
