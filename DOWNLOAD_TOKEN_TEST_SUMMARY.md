@@ -213,8 +213,7 @@ Expected: 30-35 tests passing after fixture connection
 
 4. MCP tool testing (30 min)
    - Test /setup_slash_commands from remote client
-   - Test /gil_import_personalagents
-   - Test /gil_import_productagents
+   - Test /gil_get_claude_agents (calls get_agent_download_url)
 
 5. Load testing (optional)
    - 100+ concurrent downloads

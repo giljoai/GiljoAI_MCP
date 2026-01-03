@@ -5,50 +5,6 @@ This module provides markdown templates with YAML frontmatter for slash commands
 that can be installed to ~/.claude/commands/ directory.
 """
 
-GIL_IMPORT_PRODUCTAGENTS_MD = """---
-name: gil_import_productagents
-description: Import GiljoAI agent templates to current product folder
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Use the mcp__giljo-mcp__gil_import_productagents tool to import agent templates to your active product's .claude/agents folder.
-
-This will:
-1. Download active agent templates from GiljoAI server
-2. Create automatic backup of existing agents (if any)
-3. Install templates to your product's .claude/agents directory with YAML frontmatter
-
-Requirements:
-- Active product configured in GiljoAI dashboard
-- Product must have project_path set
-- Connected to GiljoAI MCP server
-
-This tool will generate a secure one-time download link. The AI assistant will automatically download and install the files to the appropriate location on your system.
-
-Call the tool now to begin.
-"""
-
-GIL_IMPORT_PERSONALAGENTS_MD = """---
-name: gil_import_personalagents
-description: Import GiljoAI agent templates to personal agents folder
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Use the mcp__giljo-mcp__gil_import_personalagents tool to import agent templates to your personal ~/.claude/agents folder (available across all projects).
-
-This will:
-1. Download active agent templates from GiljoAI server
-2. Create automatic backup of existing agents (if any)
-3. Install templates to ~/.claude/agents with YAML frontmatter
-
-Requirements:
-- Connected to GiljoAI MCP server
-
-This tool will generate a secure one-time download link. The AI assistant will automatically download and install the files to the appropriate location on your system.
-
-Call the tool now to begin.
-"""
-
 GIL_HANDOVER_MD = """---
 name: gil_handover
 description: Trigger orchestrator succession (context handover)
@@ -59,7 +15,7 @@ Use the mcp__giljo-mcp__gil_handover tool to trigger orchestrator succession whe
 
 This will:
 1. Generate handover summary from current orchestrator
-2. Create successor orchestrator job
+2. Create successor orchestrator job (via create_successor_orchestrator)
 3. Return launch prompt for new instance
 4. Update lineage tracking
 
@@ -69,38 +25,6 @@ Use when:
 - Manual succession requested
 
 Optional arguments: reason can be "context_limit", "manual", or "phase_transition"
-
-Call the tool now to begin.
-"""
-
-GIL_FETCH_MD = """---
-name: gil_fetch
-description: Fetch and install GiljoAI agent templates
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Use the mcp__giljo-mcp__gil_fetch tool to download the latest agent templates from your GiljoAI MCP server.
-
-This will:
-1. Generate a secure one-time download link
-2. Download agent_templates.zip
-3. Install into your ~/.claude/agents/ folder (or project .claude/agents)
-
-Call the tool now to begin.
-"""
-
-GIL_UPDATE_AGENTS_MD = """---
-name: gil_update_agents
-description: Update GiljoAI agent templates to the latest version
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Use the mcp__giljo-mcp__gil_update_agents tool to refresh your installed agent templates to the latest versions.
-
-This will:
-1. Generate a secure one-time download link
-2. Download agent_templates.zip
-3. Replace existing templates with a backup
 
 Call the tool now to begin.
 """
@@ -216,12 +140,8 @@ def get_all_templates() -> dict[str, str]:
         dict[str, str]: Mapping of filename to markdown content
     """
     return {
-        "gil_import_productagents.md": GIL_IMPORT_PRODUCTAGENTS_MD,
-        "gil_import_personalagents.md": GIL_IMPORT_PERSONALAGENTS_MD,
-        "gil_handover.md": GIL_HANDOVER_MD,
-        "gil_fetch.md": GIL_FETCH_MD,
-        "gil_update_agents.md": GIL_UPDATE_AGENTS_MD,
+        "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
         "gil_activate.md": GIL_ACTIVATE_MD,
         "gil_launch.md": GIL_LAUNCH_MD,
-        "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
+        "gil_handover.md": GIL_HANDOVER_MD,
     }

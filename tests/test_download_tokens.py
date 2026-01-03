@@ -645,8 +645,6 @@ class TestMCPToolDownloadIntegration:
 
     Tests:
     - setup_slash_commands() returns download URL
-    - gil_import_personalagents() returns download URL
-    - gil_import_productagents() returns download URL
     - Download URLs work after tool invocation
     """
 
@@ -667,52 +665,6 @@ class TestMCPToolDownloadIntegration:
         # Verify download URL works
         download_response = await api_client.get(data["download_url"])
         assert download_response.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_gil_import_personalagents_returns_download_url(
-        self, api_client, auth_headers, db_session, test_user
-    ):
-        """Test gil_import_personalagents MCP tool returns valid download URL"""
-        # Create test templates
-        template = AgentTemplate(
-            name="test_agent",
-            role="tester",
-            template_content="# Test",
-            tool="claude",
-            tenant_key=test_user.tenant_key,
-            is_active=True,
-        )
-        db_session.add(template)
-        await db_session.commit()
-
-        response = await api_client.post("/api/mcp/tools/gil_import_personalagents", headers=auth_headers, json={})
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert "download_url" in data
-
-        # Verify download contains user's templates
-        download_response = await api_client.get(data["download_url"])
-        assert download_response.status_code == 200
-
-        with zipfile.ZipFile(BytesIO(download_response.content), "r") as zf:
-            assert "test_agent.md" in zf.namelist()
-
-    @pytest.mark.asyncio
-    async def test_gil_import_productagents_returns_download_url(self, api_client, auth_headers, db_session, test_user):
-        """Test gil_import_productagents MCP tool returns valid download URL"""
-        # Create active product and templates
-        # (Implementation depends on product model)
-
-        response = await api_client.post("/api/mcp/tools/gil_import_productagents", headers=auth_headers, json={})
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert "download_url" in data
 
     @pytest.mark.asyncio
     async def test_token_expires_after_tool_invocation(self, api_client, auth_headers):
@@ -769,22 +721,6 @@ class TestEndToEndDownloadFlow:
         # Step 4: Verify token now invalid (one-time use)
         response = await api_client.get(download_url)
         assert response.status_code == 410
-
-    @pytest.mark.asyncio
-    async def test_mcp_slash_command_download_flow(self, api_client, auth_headers):
-        """Test complete flow: MCP slash command → token → download → cleanup"""
-        # Step 1: User executes /gil_import_personalagents
-        response = await api_client.post("/api/mcp/tools/gil_import_personalagents", headers=auth_headers, json={})
-        assert response.status_code == 200
-
-        download_url = response.json()["download_url"]
-
-        # Step 2: Agent downloads file
-        response = await api_client.get(download_url)
-        assert response.status_code == 200
-
-        # Step 3: Verify content
-        assert response.headers["content-type"] == "application/zip"
 
     @pytest.mark.asyncio
     async def test_concurrent_downloads_different_tenants(self, api_client, db_session):

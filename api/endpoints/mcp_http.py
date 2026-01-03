@@ -121,17 +121,9 @@ async def handle_initialize(
     }
 
 
-# Tools hidden from MCP schema but still callable via slash commands or REST API
-# These tools are callable but hidden from MCP schema to save context tokens (~150 per tool).
-# - get_agent_download_url: VISIBLE - used by /gil_get_claude_agents slash command
-# - gil_import_*: HIDDEN - replaced by get_agent_download_url (simpler workflow)
-# - gil_fetch: HIDDEN - redundant with get_agent_download_url
-# Web UI access unaffected (uses REST API with JWT auth)
-HIDDEN_FROM_SCHEMA_TOOLS = {
-    "gil_fetch",  # Redundant - use get_agent_download_url
-    "gil_import_productagents",  # Replaced by get_agent_download_url
-    "gil_import_personalagents",  # Replaced by get_agent_download_url
-}
+# Tools hidden from MCP schema (tools/list). Kept for future use.
+# As of Jan 2026, no MCP tools are hidden from schema.
+HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
 
 
 async def handle_tools_list(
@@ -218,6 +210,7 @@ async def handle_tools_list(
             },
         },
         # Message Communication Tools
+        # Handover 0405: UUID Normalization - Use agent_id UUIDs for precise identification
         {
             "name": "send_message",
             "description": "Send a message to one or more agents. Use to_agents=['all'] for broadcast.",
@@ -227,7 +220,7 @@ async def handle_tools_list(
                     "to_agents": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of target agent IDs/types. Use ['all'] for broadcast to all agents.",
+                        "description": "List of target agent_id UUIDs. Use ['all'] for broadcast to all agents.",
                     },
                     "content": {"type": "string", "description": "Message content"},
                     "project_id": {"type": "string", "description": "Project ID for the message"},
@@ -245,11 +238,11 @@ async def handle_tools_list(
                     },
                     "from_agent": {
                         "type": "string",
-                        "description": "Sender agent ID (default: orchestrator)",
+                        "description": "Sender agent_id UUID (your agent_id from get_agent_mission)",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["to_agents", "content", "project_id", "tenant_key"],
+                "required": ["to_agents", "content", "project_id", "tenant_key", "from_agent"],
             },
         },
         {
@@ -500,23 +493,6 @@ async def handle_tools_list(
             "description": "Generate one-time download link for active agent templates. Returns URL for /gil_get_claude_agents slash command.",
             "inputSchema": {"type": "object", "properties": {}},
         },
-        # Slash Command Handlers (Handover 0084b) - HIDDEN from schema, callable via slash commands
-        {
-            "name": "gil_import_productagents",
-            "description": "Import GiljoAI agent templates to current product's .claude/agents folder. Requires active product with project_path configured.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Optional project ID"}},
-            },
-        },
-        {
-            "name": "gil_import_personalagents",
-            "description": "Import GiljoAI agent templates to personal ~/.claude/agents folder (available across all projects).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Optional project ID"}},
-            },
-        },
         {
             "name": "gil_handover",
             "description": "Trigger orchestrator succession for context handover. Creates successor orchestrator instance.",
@@ -535,7 +511,6 @@ async def handle_tools_list(
             },
         },
         # Handover 0083: core /gil_* commands
-        {"name": "gil_fetch", "description": "Stage agent templates and return download URL", "inputSchema": {"type": "object", "properties": {}}},
         {"name": "gil_activate", "description": "Activate a project and ensure orchestrator exists", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
         {"name": "gil_launch", "description": "Launch project execution after staging", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
         # Unified Context Tool (Handover 0350a)
@@ -676,12 +651,8 @@ async def handle_tools_call(
         "setup_slash_commands": state.tool_accessor.setup_slash_commands,
         # Agent Template Download Tool (Handover 0355)
         "get_agent_download_url": state.tool_accessor.get_agent_download_url,
-        # Slash Command Handlers (Handover 0084b) - HIDDEN from schema
-        "gil_import_productagents": state.tool_accessor.gil_import_productagents,
-        "gil_import_personalagents": state.tool_accessor.gil_import_personalagents,
         "gil_handover": state.tool_accessor.gil_handover,
         # Handover 0083 - core /gil_* commands
-        "gil_fetch": state.tool_accessor.gil_fetch,
         "gil_activate": state.tool_accessor.gil_activate,
         "gil_launch": state.tool_accessor.gil_launch,
         # Unified Context Tool (Handover 0350a)
@@ -696,7 +667,7 @@ async def handle_tools_call(
     try:
         # Inject API key for download tools (HTTP mode support)
         # These tools need API key to download from server endpoints
-        download_tools = {"setup_slash_commands", "get_agent_download_url", "gil_import_productagents", "gil_import_personalagents"}
+        download_tools = {"setup_slash_commands", "get_agent_download_url"}
         if tool_name in download_tools:
             # Get API key from request headers
             api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace(
