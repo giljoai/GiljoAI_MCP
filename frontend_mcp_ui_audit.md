@@ -74,8 +74,8 @@ They serve different purposes and audiences.
 | /api/download/generate-token | POST | Works | Generate download token |
 | /api/download/temp/{token}/{filename} | GET | Works | Download via token |
 | /api/download/mcp/setup_slash_commands | POST | Works | Generate instructions |
-| /api/download/mcp/gil_import_personalagents | POST | Works | Personal agents |
-| /api/download/mcp/gil_import_productagents | POST | Works | Product agents |
+
+Note: Legacy `/api/download/mcp/gil_import_*` endpoints were removed (Jan 2026). Use `/gil_get_claude_agents` + `get_agent_download_url`.
 
 ## 4. Component Implementation Analysis
 

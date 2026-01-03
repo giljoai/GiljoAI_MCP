@@ -11,10 +11,11 @@
             >
           </template>
           <div>
-            <strong>Three slash commands:</strong>
+            <strong>Core slash commands:</strong>
             <ul class="mt-2 mb-2 pl-4">
-              <li>/gil_import_productagents - Import agents to product folder</li>
-              <li>/gil_import_personalagents - Import agents to ~/.claude/agents</li>
+              <li>/gil_get_claude_agents - Download + install agent templates</li>
+              <li>/gil_activate - Activate a project for staging</li>
+              <li>/gil_launch - Launch a staged project</li>
               <li>/gil_handover - Trigger orchestrator succession</li>
             </ul>
             <p class="text-caption mb-0">

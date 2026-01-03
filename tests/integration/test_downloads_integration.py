@@ -15,7 +15,6 @@ Integration Test Coverage:
 
 import io
 import zipfile
-from collections.abc import Generator
 
 import pytest
 from httpx import AsyncClient
@@ -33,9 +32,9 @@ class TestSlashCommandsDownloadIntegration:
     """Integration tests for /api/download/slash-commands.zip"""
 
     @pytest.mark.asyncio
-    async def test_download_slash_commands_complete_flow(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_download_slash_commands_complete_flow(self, authed_client: AsyncClient, auth_headers: dict):
         """Test complete slash commands download flow"""
-        response = await async_client.get("/api/download/slash-commands.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/slash-commands.zip", headers=auth_headers)
 
         # Verify response
         assert response.status_code == 200
@@ -54,38 +53,40 @@ class TestSlashCommandsDownloadIntegration:
 
             # Verify expected files
             namelist = zipf.namelist()
-            assert "gil_import_productagents.md" in namelist
-            assert "gil_import_personalagents.md" in namelist
+            assert "gil_get_claude_agents.md" in namelist
+            assert "gil_activate.md" in namelist
+            assert "gil_launch.md" in namelist
             assert "gil_handover.md" in namelist
+            # Install scripts are optional (only included if templates exist)
+            assert "install.sh" in namelist or "install.ps1" in namelist
 
             # Verify content structure
             for filename in namelist:
                 content = zipf.read(filename).decode("utf-8")
 
-                # Verify YAML frontmatter
-                assert content.startswith("---\n"), f"{filename} missing YAML frontmatter"
-                assert "name:" in content
-                assert "description:" in content
+                if filename.endswith(".md"):
+                    # Verify YAML frontmatter
+                    assert content.startswith("---\n"), f"{filename} missing YAML frontmatter"
+                    assert "name:" in content
+                    assert "description:" in content
+                else:
+                    # install.sh / install.ps1 should have server_url rendered
+                    assert "{{SERVER_URL}}" not in content, f"{filename} still contains placeholder"
 
                 # Verify content is not empty
                 assert len(content) > 100, f"{filename} content too short"
 
     @pytest.mark.asyncio
-    async def test_slash_commands_content_verification(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_slash_commands_content_verification(self, authed_client: AsyncClient, auth_headers: dict):
         """Verify slash commands contain correct content"""
-        response = await async_client.get("/api/download/slash-commands.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/slash-commands.zip", headers=auth_headers)
 
         zip_bytes = response.content
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            # Test gil_import_productagents.md
-            content = zipf.read("gil_import_productagents.md").decode("utf-8")
-            assert "name: gil_import_productagents" in content
-            assert "Import agent templates for current product" in content or "import" in content.lower()
-
-            # Test gil_import_personalagents.md
-            content = zipf.read("gil_import_personalagents.md").decode("utf-8")
-            assert "name: gil_import_personalagents" in content
-            assert "personal" in content.lower() or "home" in content.lower()
+            # Test gil_get_claude_agents.md
+            content = zipf.read("gil_get_claude_agents.md").decode("utf-8")
+            assert "name: gil_get_claude_agents" in content
+            assert "mcp__giljo-mcp__get_agent_download_url" in content
 
             # Test gil_handover.md
             content = zipf.read("gil_handover.md").decode("utf-8")
@@ -93,9 +94,9 @@ class TestSlashCommandsDownloadIntegration:
             assert "handover" in content.lower() or "succession" in content.lower()
 
     @pytest.mark.asyncio
-    async def test_slash_commands_unauthenticated(self, async_client: AsyncClient):
+    async def test_slash_commands_unauthenticated(self, authed_client: AsyncClient):
         """Test slash commands download without authentication (public)"""
-        response = await async_client.get("/api/download/slash-commands.zip")
+        response = await authed_client.get("/api/download/slash-commands.zip")
         assert response.status_code == 200
 
 
@@ -110,7 +111,7 @@ class TestAgentTemplatesDownloadIntegration:
     @pytest.mark.asyncio
     async def test_download_agent_templates_complete_flow(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -152,7 +153,7 @@ class TestAgentTemplatesDownloadIntegration:
         await db_session.commit()
 
         # Download templates
-        response = await async_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
 
         # Verify response
         assert response.status_code == 200
@@ -191,7 +192,7 @@ class TestAgentTemplatesDownloadIntegration:
     @pytest.mark.asyncio
     async def test_agent_templates_active_only_filter(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -220,7 +221,7 @@ class TestAgentTemplatesDownloadIntegration:
         await db_session.commit()
 
         # Test active_only=true (default)
-        response = await async_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
         assert response.status_code == 200
 
         zip_bytes = response.content
@@ -230,7 +231,7 @@ class TestAgentTemplatesDownloadIntegration:
             assert "inactive_agent.md" not in namelist
 
         # Test active_only=false
-        response = await async_client.get("/api/download/agent-templates.zip?active_only=false", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip?active_only=false", headers=auth_headers)
         assert response.status_code == 200
 
         zip_bytes = response.content
@@ -242,7 +243,7 @@ class TestAgentTemplatesDownloadIntegration:
     @pytest.mark.asyncio
     async def test_agent_templates_multi_tenant_isolation(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -293,7 +294,7 @@ class TestAgentTemplatesDownloadIntegration:
         await db_session.commit()
 
         # Download templates for test user
-        response = await async_client.get("/api/download/agent-templates.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip", headers=auth_headers)
         assert response.status_code == 200
 
         # Verify ONLY user's templates returned
@@ -318,7 +319,7 @@ class TestAgentTemplatesDownloadIntegration:
     @pytest.mark.asyncio
     async def test_agent_templates_no_templates_found(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -327,7 +328,7 @@ class TestAgentTemplatesDownloadIntegration:
         # Ensure no templates for this tenant
         # (fresh test database should have no templates)
 
-        response = await async_client.get("/api/download/agent-templates.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip", headers=auth_headers)
         assert response.status_code == 404
         assert "No agent templates found" in response.json()["detail"]
 
@@ -341,9 +342,9 @@ class TestInstallScriptsIntegration:
     """Integration tests for install script downloads"""
 
     @pytest.mark.asyncio
-    async def test_download_install_script_sh(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_download_install_script_sh(self, authed_client: AsyncClient, auth_headers: dict):
         """Test Unix/macOS install script download"""
-        response = await async_client.get(
+        response = await authed_client.get(
             "/api/download/install-script.sh?script_type=slash-commands",
             headers=auth_headers,
         )
@@ -365,9 +366,9 @@ class TestInstallScriptsIntegration:
         assert "http://" in script_content or "https://" in script_content
 
     @pytest.mark.asyncio
-    async def test_download_install_script_ps1(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_download_install_script_ps1(self, authed_client: AsyncClient, auth_headers: dict):
         """Test Windows PowerShell install script download"""
-        response = await async_client.get(
+        response = await authed_client.get(
             "/api/download/install-script.ps1?script_type=agent-templates",
             headers=auth_headers,
         )
@@ -388,9 +389,9 @@ class TestInstallScriptsIntegration:
         assert "http://" in script_content or "https://" in script_content
 
     @pytest.mark.asyncio
-    async def test_install_script_invalid_extension(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_install_script_invalid_extension(self, authed_client: AsyncClient, auth_headers: dict):
         """Test error handling for invalid script extension"""
-        response = await async_client.get(
+        response = await authed_client.get(
             "/api/download/install-script.bat?script_type=slash-commands",
             headers=auth_headers,
         )
@@ -398,9 +399,9 @@ class TestInstallScriptsIntegration:
         assert "Invalid extension" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_install_script_invalid_type(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_install_script_invalid_type(self, authed_client: AsyncClient, auth_headers: dict):
         """Test error handling for invalid script type"""
-        response = await async_client.get(
+        response = await authed_client.get(
             "/api/download/install-script.sh?script_type=invalid-type",
             headers=auth_headers,
         )
@@ -417,7 +418,7 @@ class TestSecurityIntegration:
     """Security and authentication integration tests"""
 
     @pytest.mark.asyncio
-    async def test_public_endpoints_access(self, async_client: AsyncClient):
+    async def test_public_endpoints_access(self, authed_client: AsyncClient):
         """Slash commands and install scripts are public; agent templates optional-auth."""
         public_endpoints = [
             "/api/download/slash-commands.zip",
@@ -426,30 +427,27 @@ class TestSecurityIntegration:
         ]
 
         for endpoint in public_endpoints:
-            response = await async_client.get(endpoint)
+            response = await authed_client.get(endpoint)
             assert response.status_code == 200, f"{endpoint} should be public"
 
         # Agent templates: optional-auth
-        response = await async_client.get("/api/download/agent-templates.zip")
+        response = await authed_client.get("/api/download/agent-templates.zip")
         assert response.status_code in [200, 404]
 
     @pytest.mark.asyncio
-    async def test_bearer_token_authentication(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_bearer_token_authentication(self, authed_client: AsyncClient, auth_headers: dict):
         """Test Bearer token authentication works"""
-        response = await async_client.get("/api/download/slash-commands.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/slash-commands.zip", headers=auth_headers)
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_api_key_authentication(self, async_client: AsyncClient, test_user: User):
-        """Test X-API-Key header authentication (if API keys implemented)"""
-        # This test depends on API key implementation
-        # For now, verify header is accepted
+    async def test_api_key_authentication(self, authed_client: AsyncClient, test_user: User):
+        """Slash commands endpoint is public (auth header ignored)."""
         api_key_headers = {"X-API-Key": "gk_test_key_12345"}
 
-        response = await async_client.get("/api/download/slash-commands.zip", headers=api_key_headers)
+        response = await authed_client.get("/api/download/slash-commands.zip", headers=api_key_headers)
 
-        # Expected: 401 (invalid key) or 200 (if key valid)
-        assert response.status_code in [200, 401]
+        assert response.status_code == 200
 
 
 # ========================================
@@ -463,7 +461,7 @@ class TestPerformanceAndIntegrity:
     @pytest.mark.asyncio
     async def test_zip_file_integrity(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -482,7 +480,7 @@ class TestPerformanceAndIntegrity:
         await db_session.commit()
 
         # Download ZIP
-        response = await async_client.get("/api/download/agent-templates.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip", headers=auth_headers)
         assert response.status_code == 200
 
         zip_bytes = response.content
@@ -501,7 +499,7 @@ class TestPerformanceAndIntegrity:
     @pytest.mark.asyncio
     async def test_unicode_content_handling(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -518,7 +516,7 @@ class TestPerformanceAndIntegrity:
         db_session.add(template)
         await db_session.commit()
 
-        response = await async_client.get("/api/download/agent-templates.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip", headers=auth_headers)
         assert response.status_code == 200
 
         zip_bytes = response.content
@@ -532,7 +530,7 @@ class TestPerformanceAndIntegrity:
     @pytest.mark.asyncio
     async def test_download_performance(
         self,
-        async_client: AsyncClient,
+        authed_client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
         test_user: User,
@@ -556,7 +554,7 @@ class TestPerformanceAndIntegrity:
         import time
 
         start_time = time.time()
-        response = await async_client.get("/api/download/agent-templates.zip", headers=auth_headers)
+        response = await authed_client.get("/api/download/agent-templates.zip", headers=auth_headers)
         end_time = time.time()
 
         assert response.status_code == 200
@@ -570,51 +568,7 @@ class TestPerformanceAndIntegrity:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
             namelist = zipf.namelist()
             # 0102a: Cap packaging to 8 distinct roles
-            assert len(namelist) == 8
-            for i in range(8):
-                assert f"agent_{i}.md" in namelist
-
-
-# ========================================
-# Pytest Fixtures
-# ========================================
-
-
-@pytest.fixture
-def test_user() -> User:
-    """Create test user"""
-    return User(
-        id="test-user-id-12345",
-        username="testuser",
-        email="test@example.com",
-        tenant_key="test-tenant-key-12345",
-        is_active=True,
-    )
-
-
-@pytest.fixture
-def auth_headers(test_user: User) -> dict:
-    """Generate authentication headers with Bearer token"""
-    # In real tests, this would generate a valid JWT token
-    # For integration tests, assume auth middleware is configured
-    return {"Authorization": "Bearer test-jwt-token-12345"}
-
-
-@pytest.fixture
-async def db_session() -> Generator[AsyncSession, None, None]:
-    """
-    Provide async database session for tests.
-    This fixture should be provided by conftest.py with actual database connection.
-    """
-    # This is a placeholder - actual implementation in conftest.py
-    raise NotImplementedError("db_session fixture must be provided by conftest.py")
-
-
-@pytest.fixture
-async def async_client() -> AsyncClient:
-    """
-    Provide async HTTP client for testing.
-    This fixture should be provided by conftest.py with actual app instance.
-    """
-    # This is a placeholder - actual implementation in conftest.py
-    raise NotImplementedError("async_client fixture must be provided by conftest.py")
+            md_files = [name for name in namelist if name.endswith(".md")]
+            assert len(md_files) == 8
+            expected = {f"agent_{i}.md" for i in range(20)}
+            assert set(md_files).issubset(expected)

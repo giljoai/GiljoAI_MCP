@@ -183,8 +183,9 @@ async def download_slash_commands(
     - install.ps1 (Windows PowerShell installer)
 
     Supported commands:
-    - gil_import_productagents.md
-    - gil_import_personalagents.md
+    - gil_get_claude_agents.md
+    - gil_activate.md
+    - gil_launch.md
     - gil_handover.md
 
     Returns:
@@ -779,133 +780,7 @@ async def setup_slash_commands_rest(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/mcp/gil_import_personalagents", tags=["MCP Tools"])
-async def import_personal_agents_rest(
-    request: Request,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> dict:
-    """
-    REST endpoint wrapper for gil_import_personalagents MCP tool.
-    Returns natural language installation instructions with download token.
-    """
-    try:
-        import os
-        from datetime import datetime, timezone
-
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        # Get database URL from environment
-        db_url = os.getenv("DATABASE_URL")
-        if not db_url:
-            raise ValueError("DATABASE_URL environment variable is required")
-
-        # Initialize dependencies
-        db_manager = DatabaseManager(database_url=db_url, is_async=True)
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(current_user.tenant_key)
-
-        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
-
-        # Extract server URL from request
-        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
-
-        # Call MCP tool (user already authenticated via JWT)
-        result = await tool_accessor.gil_import_personalagents(
-            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
-            _server_url=server_url,
-        )
-
-        # Handover 0335: Update last_exported_at and emit WebSocket event on success
-        if result.get("success"):
-            export_timestamp = datetime.now(timezone.utc)
-
-            # Query active templates for this tenant
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == current_user.tenant_key)
-                .where(AgentTemplate.is_active == True)
-            )
-            templates_result = await db.execute(stmt)
-            templates = templates_result.scalars().all()
-
-            if templates:
-                # Update last_exported_at for all templates
-                for template in templates:
-                    template.last_exported_at = export_timestamp
-                await db.commit()
-                logger.info(f"Updated last_exported_at for {len(templates)} templates (personal agents export)")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Failed to generate personal agents instructions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
-@router.post("/mcp/gil_import_productagents", tags=["MCP Tools"])
-async def import_product_agents_rest(
-    request: Request,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> dict:
-    """
-    REST endpoint wrapper for gil_import_productagents MCP tool.
-    Returns natural language installation instructions with download token.
-    """
-    try:
-        import os
-        from datetime import datetime, timezone
-
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        # Get database URL from environment
-        db_url = os.getenv("DATABASE_URL")
-        if not db_url:
-            raise ValueError("DATABASE_URL environment variable is required")
-
-        # Initialize dependencies
-        db_manager = DatabaseManager(database_url=db_url, is_async=True)
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(current_user.tenant_key)
-
-        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
-
-        # Extract server URL from request
-        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
-
-        # Call MCP tool (user already authenticated via JWT)
-        result = await tool_accessor.gil_import_productagents(
-            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
-            _server_url=server_url,
-        )
-
-        # Handover 0335: Update last_exported_at and emit WebSocket event on success
-        if result.get("success"):
-            export_timestamp = datetime.now(timezone.utc)
-
-            # Query active templates for this tenant
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == current_user.tenant_key)
-                .where(AgentTemplate.is_active == True)
-            )
-            templates_result = await db.execute(stmt)
-            templates = templates_result.scalars().all()
-
-            if templates:
-                # Update last_exported_at for all templates
-                for template in templates:
-                    template.last_exported_at = export_timestamp
-                await db.commit()
-                logger.info(f"Updated last_exported_at for {len(templates)} templates (product agents export)")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Failed to generate product agents instructions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#
+# NOTE: Legacy agent-template installers were removed in Jan 2026.
+# Use the `gil_get_claude_agents` slash command (which calls `get_agent_download_url`)
+# for the supported download-and-install flow.

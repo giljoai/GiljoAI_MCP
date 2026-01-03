@@ -186,7 +186,7 @@ RESEARCH_SUMMARY.md
 
 | Aspect | Finding |
 |--------|---------|
-| **Commands** | 3 fully implemented (/gil_import_productagents, /gil_import_personalagents, /gil_handover) |
+| **Commands** | 4 current commands (/gil_get_claude_agents, /gil_activate, /gil_launch, /gil_handover) |
 | **Code Size** | 755 lines of production code |
 | **Tests** | 21 passing, 3 skipped, 100% coverage (new modules) |
 | **Templates** | Self-contained markdown strings (1.2 KB total) |
