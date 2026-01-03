@@ -41,6 +41,7 @@ def job_to_response(job: dict) -> JobResponse:
     return JobResponse(
         id=job.get("agent_id", job.get("id", "")),  # 0366: prefer agent_id (UUID)
         job_id=job["job_id"],
+        agent_id=job.get("agent_id"),  # Handover 0401: Executor UUID for WebSocket event matching
         tenant_key=job["tenant_key"],
         project_id=job.get("project_id"),
         agent_type=job["agent_type"],
