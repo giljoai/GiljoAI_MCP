@@ -201,17 +201,20 @@ class UnifiedInstaller:
         self.database_credentials: Optional[Dict[str, str]] = None
 
     def _ensure_venv_site_packages(self) -> None:
-        """Ensure virtualenv site-packages are available on sys.path."""
-        venv_paths = []
+        """Ensure virtualenv site-packages and src/ are available on sys.path."""
+        paths_to_add = []
 
         # Windows site-packages
-        venv_paths.append(self.venv_dir / "Lib" / "site-packages")
+        paths_to_add.append(self.venv_dir / "Lib" / "site-packages")
 
         # POSIX site-packages with python version
         py_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
-        venv_paths.append(self.venv_dir / "lib" / py_version / "site-packages")
+        paths_to_add.append(self.venv_dir / "lib" / py_version / "site-packages")
 
-        for path in venv_paths:
+        # Add src/ directory for giljo_mcp package imports
+        paths_to_add.append(self.install_dir / "src")
+
+        for path in paths_to_add:
             if path.exists():
                 str_path = str(path)
                 if str_path not in sys.path:
@@ -1893,9 +1896,10 @@ class UnifiedInstaller:
             self._print_info("Running database migrations (alembic upgrade head)...")
 
             # Run alembic upgrade head
-            # NOTE: Uses sys.executable to ensure correct Python interpreter (venv)
+            # Use venv Python to ensure alembic is available (not system Python)
+            venv_python = self.platform.get_venv_python(self.venv_dir)
             proc = subprocess.run(
-                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                [str(venv_python), "-m", "alembic", "upgrade", "head"],
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout
