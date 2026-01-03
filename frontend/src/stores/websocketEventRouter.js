@@ -184,6 +184,15 @@ export const EVENT_MAP = {
   },
   'message:acknowledged': {
     handler: async (payload, { storeRegistry } = {}) => {
+      // Handover 0407: Debug logging to diagnose message counter sync issues
+      // eslint-disable-next-line no-console
+      console.debug('[websocketEventRouter] message:acknowledged received', {
+        agent_id: payload?.agent_id,
+        job_id: payload?.job_id,
+        from_job_id: payload?.from_job_id,
+        message_ids_count: payload?.message_ids?.length || 0,
+      })
+
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
       const projectMessagesStore = storeRegistry?.projectMessages?.() ?? useProjectMessagesStore()
 
