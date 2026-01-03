@@ -173,15 +173,27 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     }
 
     // Only add job_metadata when todo_steps exists (prevents undefined overwrite)
+    // Handover 0401: Handle both object format { total_steps, completed_steps }
+    // and array format [{ status: 'done' }, ...]
     if (payload.todo_steps) {
       updates.job_metadata = { todo_steps: payload.todo_steps }
-      // Transform to steps summary: count completed vs total
-      const completed = payload.todo_steps.filter(
-        (s) => s.status === 'done' || s.status === 'completed'
-      ).length
-      updates.steps = {
-        completed,
-        total: payload.todo_steps.length,
+
+      if (Array.isArray(payload.todo_steps)) {
+        // Array format: count completed vs total
+        const completed = payload.todo_steps.filter(
+          (s) => s.status === 'done' || s.status === 'completed'
+        ).length
+        updates.steps = {
+          completed,
+          total: payload.todo_steps.length,
+        }
+      } else if (typeof payload.todo_steps === 'object') {
+        // Object format from backend: { total_steps, completed_steps }
+        const total = payload.todo_steps.total_steps
+        const completed = payload.todo_steps.completed_steps
+        if (typeof total === 'number' && typeof completed === 'number') {
+          updates.steps = { completed, total }
+        }
       }
     }
 
