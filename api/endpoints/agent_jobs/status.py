@@ -164,7 +164,7 @@ async def list_pending_jobs(
     if "error" in result:
         logger.error(f"Failed to get pending jobs: {result['error']}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result["error"]
         )
 
@@ -211,9 +211,9 @@ async def get_job(
     if "error" in result:
         error_msg = result["error"]
         if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
         else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+            raise HTTPException(status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
 
@@ -272,9 +272,9 @@ async def get_job_mission(
     if "error" in result:
         error_msg = result["error"]
         if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
         else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+            raise HTTPException(status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
 
