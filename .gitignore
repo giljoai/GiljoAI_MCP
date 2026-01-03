@@ -168,17 +168,11 @@ external/serena-venv/bin/python3.12
 external/serena-venv/lib64
 external/serena-venv/pyvenv.cfg
 external/serena/
-installer/credentials/db_credentials_20251101_185129.txt
-installer/credentials/db_credentials_20251101_185835.txt
-installer/credentials/db_credentials_20251101_191524.txt
-installer/credentials/db_credentials_20251101_232218.txt
+
+# Installer credentials (generated during setup, contain passwords)
+installer/credentials/
 
 # Archives (cleanup items, not for version control)
 docs/archive/0130_websocket_v1_backups/
 handovers/Project_500_Prompt.md
 backup*.sql
-installer/credentials/db_credentials_20251221_030815.txt
-installer/credentials/db_credentials_20251221_035942.txt
-installer/credentials/db_credentials_20251221_040321.txt
-installer/credentials/db_credentials_20251221_040525.txt
-installer/credentials/db_credentials_20251221_111513.txt
