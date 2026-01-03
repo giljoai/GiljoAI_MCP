@@ -302,8 +302,10 @@
     <v-dialog v-model="showAgentJobModal" max-width="700" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-briefcase-outline</v-icon>
-          <span>Assigned Job: {{ selectedAgent?.agent_name || selectedAgent?.agent_type }}</span>
+          <v-avatar :color="getAgentColor(selectedAgent?.agent_type)" size="32" class="agent-avatar mr-2">
+            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_type) }}</span>
+          </v-avatar>
+          <span style="text-transform: capitalize">{{ selectedAgent?.agent_name || selectedAgent?.agent_type }}</span>&nbsp;- Assigned Job
           <v-spacer></v-spacer>
           <v-btn icon variant="text" @click="showAgentJobModal = false" aria-label="Close">
             <v-icon>mdi-close</v-icon>
@@ -312,12 +314,10 @@
         <v-divider></v-divider>
         <v-card-text>
           <div v-if="selectedAgent" class="agent-job-content">
-            <!-- Agent Info -->
-            <div class="d-flex align-center gap-2 mb-4">
-              <v-chip size="small" :color="getAgentColor(selectedAgent.agent_type)" label>
-                {{ selectedAgent.agent_type }}
-              </v-chip>
-              <span class="text-caption text-medium-emphasis">ID: {{ selectedAgent.job_id }}</span>
+            <!-- Agent Info - Handover 0401b: Show agent_id and job_id as labeled text -->
+            <div class="text-caption text-medium-emphasis mb-4">
+              <div><strong>Agent ID:</strong> {{ selectedAgent.agent_id }}</div>
+              <div><strong>Job ID:</strong> {{ selectedAgent.job_id }}</div>
             </div>
 
             <!-- Mission Content -->
@@ -1187,6 +1187,15 @@ async function copyToClipboard(text) {
     margin: 0;
     max-height: 400px;
     overflow-y: auto;
+  }
+}
+
+/* Global avatar styles for modal consistency - Handover 0401b */
+.agent-avatar {
+  .avatar-text {
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
   }
 }
 </style>
