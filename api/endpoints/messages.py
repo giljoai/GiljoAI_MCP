@@ -128,15 +128,18 @@ async def send_message_from_ui(
             message_type=payload.message_type,
             priority=payload.priority,
             from_agent="user",  # UI messages always come from "user"
+            tenant_key=current_user.tenant_key,  # Handover 0405: Required for broadcast fan-out
         )
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
 
+        # Handover 0405: Extract from nested data structure
+        data = result.get("data", {})
         return {
             "success": True,
-            "message_id": result["message_id"],
-            "to_agents": result.get("to_agents", payload.to_agents),
+            "message_id": data.get("message_id"),
+            "to_agents": data.get("to_agents", payload.to_agents),
         }
 
     except HTTPException:
