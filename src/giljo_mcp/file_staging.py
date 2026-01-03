@@ -124,7 +124,7 @@ class FileStaging:
             # Get all templates
             all_templates = get_all_templates()
             # Select a stable subset - core commands for CLI users
-            # Note: gil_fetch and gil_update_agents removed (redundant with gil_get_claude_agents)
+            # Note: Legacy template installers removed (redundant with gil_get_claude_agents)
             wanted = [
                 "gil_get_claude_agents.md",  # Unified agent installer (interactive)
                 "gil_activate.md",

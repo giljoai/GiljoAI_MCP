@@ -574,14 +574,6 @@ export const api = {
     generateSlashCommandsInstructions: () =>
       apiClient.post('/api/download/mcp/setup_slash_commands'),
 
-    // Personal agents - Generate token with natural language instructions (via MCP tool)
-    generatePersonalAgentsInstructions: () =>
-      apiClient.post('/api/download/mcp/gil_import_personalagents'),
-
-    // Product agents - Generate token with natural language instructions (via MCP tool)
-    generateProductAgentsInstructions: () =>
-      apiClient.post('/api/download/mcp/gil_import_productagents'),
-
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),

@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Ensure config validation passes without real secrets
 os.environ.setdefault("DB_PASSWORD", "test-password")
+os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 
 from src.giljo_mcp.config_manager import get_config
