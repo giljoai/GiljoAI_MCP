@@ -5,7 +5,7 @@
 **To Agent:** database-expert, tdd-implementor, ux-designer
 **Priority:** High
 **Estimated Complexity:** 2-3 hours
-**Status:** Ready for Implementation
+**Status:** Complete
 
 ---
 
@@ -157,14 +157,14 @@ Status icons:
 
 ## Success Criteria
 
-- [ ] New `agent_todo_items` table created with proper indexes
-- [ ] `report_progress()` accepts and stores `todo_items`
-- [ ] Agent instructions include `todo_items` in example
-- [ ] WebSocket event includes `todo_items`
-- [ ] Plan/TODOs tab displays items with status icons
-- [ ] Real-time updates work
-- [ ] Existing step counts (Steps column) still work
-- [ ] All tests pass
+- [x] New `agent_todo_items` table created with proper indexes
+- [x] `report_progress()` accepts and stores `todo_items`
+- [x] Agent instructions include `todo_items` in example
+- [x] WebSocket event includes `todo_items`
+- [x] Plan/TODOs tab displays items with status icons
+- [x] Real-time updates work
+- [x] Existing step counts (Steps column) still work
+- [x] All tests pass
 
 ---
 
@@ -187,5 +187,15 @@ Status icons:
 ## Progress Updates
 
 ### 2026-01-02 - Initial Creation
-**Status:** Ready for Implementation
+**Status:** Complete
 **Notes:** Created from discussion about Plan/TODOs tab not being populated. Decision made to use proper table instead of JSONB for SaaS scalability.
+
+### 2026-01-02 - Implementation Complete
+**Status:** Complete
+**Commit:** `5c09bbab`
+**Changes:**
+- Phase 1 (Database): Created `AgentTodoItem` model with indexes, constraints, cascade delete
+- Phase 2 (Backend): Updated `report_progress()` to store todo_items, include in WebSocket
+- Phase 3 (Frontend): Redesigned Plan/TODOs tab with status icons and animations
+- Agent template updated with todo_items example in report_progress() call
+**Token Impact:** ~70-80 tokens per call (<1% overhead)
