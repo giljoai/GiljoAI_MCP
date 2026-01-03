@@ -114,7 +114,7 @@ class TestToolAccessorUsesServerURL:
 
     @pytest.mark.asyncio
     @patch("giljo_mcp.config_manager.get_config")
-    @patch("giljo_mcp.download_tokens.TokenManager")
+    @patch("giljo_mcp.downloads.token_manager.TokenManager")
     @patch("giljo_mcp.file_staging.FileStaging")
     async def test_setup_slash_commands_uses_server_url(self, mock_file_staging, mock_token_manager, mock_get_config):
         """Test setup_slash_commands uses _server_url instead of config"""
@@ -132,12 +132,15 @@ class TestToolAccessorUsesServerURL:
         # Mock token generation
         mock_tm_instance = MagicMock()
         mock_tm_instance.generate_token = AsyncMock(return_value="token-abc123")
+        mock_tm_instance.mark_ready = AsyncMock()
+        mock_tm_instance.mark_failed = AsyncMock()
         mock_token_manager.return_value = mock_tm_instance
 
         # Mock file staging
         mock_fs_instance = MagicMock()
         mock_fs_instance.create_staging_directory = AsyncMock()
-        mock_fs_instance.stage_slash_commands = AsyncMock(return_value="/tmp/slash_commands.zip")
+        mock_fs_instance.stage_slash_commands = AsyncMock(return_value=("/tmp/slash_commands.zip", "ok"))
+        mock_fs_instance.cleanup = AsyncMock(return_value=True)
         mock_file_staging.return_value = mock_fs_instance
 
         # Mock config (should NOT be used if _server_url is provided)
@@ -163,30 +166,34 @@ class TestToolAccessorUsesServerURL:
 
     @pytest.mark.asyncio
     @patch("giljo_mcp.config_manager.get_config")
-    @patch("giljo_mcp.download_tokens.TokenManager")
+    @patch("giljo_mcp.downloads.token_manager.TokenManager")
     @patch("giljo_mcp.file_staging.FileStaging")
-    async def test_gil_import_productagents_uses_server_url(
+    async def test_get_agent_download_url_uses_server_url(
         self, mock_file_staging, mock_token_manager, mock_get_config
     ):
-        """Test gil_import_productagents uses _server_url instead of config"""
+        """Test get_agent_download_url uses _server_url instead of config"""
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Setup mocks (same pattern as above)
         mock_db_manager = MagicMock()
         mock_session = AsyncMock()
         mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
+        mock_session.execute = AsyncMock(return_value=MagicMock(scalars=lambda: MagicMock(all=lambda: [])))
+        mock_session.commit = AsyncMock()
 
         mock_tenant_manager = MagicMock()
         mock_tenant_manager.get_current_tenant.return_value = "test-tenant"
 
         mock_tm_instance = MagicMock()
         mock_tm_instance.generate_token = AsyncMock(return_value="token-xyz789")
+        mock_tm_instance.mark_ready = AsyncMock()
+        mock_tm_instance.mark_failed = AsyncMock()
         mock_token_manager.return_value = mock_tm_instance
 
         mock_fs_instance = MagicMock()
-        mock_fs_instance.db_session = None
         mock_fs_instance.create_staging_directory = AsyncMock()
-        mock_fs_instance.stage_agent_templates = AsyncMock(return_value="/tmp/templates.zip")
+        mock_fs_instance.stage_agent_templates = AsyncMock(return_value=("/tmp/templates.zip", "ok"))
+        mock_fs_instance.cleanup = AsyncMock(return_value=True)
         mock_file_staging.return_value = mock_fs_instance
 
         mock_config = MagicMock()
@@ -197,18 +204,21 @@ class TestToolAccessorUsesServerURL:
         tool_accessor = ToolAccessor(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager)
 
         # Call with _server_url
-        result = await tool_accessor.gil_import_productagents(
+        with patch("zipfile.ZipFile") as mock_zip:
+            mock_zip.return_value.__enter__.return_value.namelist.return_value = ["a.md", "b.md"]
+
+            result = await tool_accessor.get_agent_download_url(
             _api_key="test-key", _server_url="http://192.168.1.50:7272"
         )
 
         # Verify
         assert result["success"] is True
-        assert "192.168.1.50" in result["download_url"]
+        assert result["download_url"].startswith("http://192.168.1.50:7272")
         assert "0.0.0.0" not in result["download_url"]
 
     @pytest.mark.asyncio
     @patch("giljo_mcp.config_manager.get_config")
-    @patch("giljo_mcp.download_tokens.TokenManager")
+    @patch("giljo_mcp.downloads.token_manager.TokenManager")
     @patch("giljo_mcp.file_staging.FileStaging")
     async def test_fallback_to_config_when_server_url_not_provided(
         self, mock_file_staging, mock_token_manager, mock_get_config
@@ -226,11 +236,14 @@ class TestToolAccessorUsesServerURL:
 
         mock_tm_instance = MagicMock()
         mock_tm_instance.generate_token = AsyncMock(return_value="token-fallback")
+        mock_tm_instance.mark_ready = AsyncMock()
+        mock_tm_instance.mark_failed = AsyncMock()
         mock_token_manager.return_value = mock_tm_instance
 
         mock_fs_instance = MagicMock()
         mock_fs_instance.create_staging_directory = AsyncMock()
-        mock_fs_instance.stage_slash_commands = AsyncMock(return_value="/tmp/commands.zip")
+        mock_fs_instance.stage_slash_commands = AsyncMock(return_value=("/tmp/commands.zip", "ok"))
+        mock_fs_instance.cleanup = AsyncMock(return_value=True)
         mock_file_staging.return_value = mock_fs_instance
 
         # Mock config with reasonable fallback
@@ -244,9 +257,10 @@ class TestToolAccessorUsesServerURL:
         # Call WITHOUT _server_url (edge case - should use config fallback)
         result = await tool_accessor.setup_slash_commands(_api_key="test-key")
 
-        # Verify fallback to config
+        # Verify fallback to config.yaml external_host (not bind address)
         assert result["success"] is True
-        assert "localhost" in result["download_url"]
+        assert "0.0.0.0" not in result["download_url"]
+        assert result["download_url"].endswith("/slash_commands.zip")
 
 
 class TestDownloadURLGeneration:
