@@ -434,3 +434,107 @@ async def test_e2e_broadcast_workflow(api_client, test_project):
 ---
 
 **Remember**: Test thoroughly! Broadcast messaging is critical for agent coordination. A good test suite now saves debugging time later.
+
+---
+
+## Phase 4: JSONB Normalization (Added from 0403)
+
+**Added:** 2026-01-02 (consolidated from Handover 0403)
+**Additional Effort:** 8-12 hours
+**Priority:** HIGH - SaaS scalability
+
+### Problem Statement
+
+`AgentExecution.messages` JSONB field duplicates the `Message` table, causing:
+- Data inconsistency (two sources of truth)
+- Storage bloat (same data stored twice)
+- Complex query logic in frontend
+- Dashboard reads from JSONB, not Message table
+
+### Current Usage (22+ locations)
+
+**Backend Write Locations (13 places):**
+| File | Lines | Usage |
+|------|-------|-------|
+| `agent_job_manager.py` | 309, 416, 484, 538, 594, 975, 1100 | Appends messages to JSONB |
+| `message_service.py` | 1199, 1242 | Initializes empty messages |
+| `job_coordinator.py` | 321 | Sets messages |
+| `agent_job_repository.py` | 207 | Sets messages |
+
+**Backend Read Locations (9 places):**
+| File | Lines | Usage |
+|------|-------|-------|
+| `message_service.py` | 1307, 1308, 1311, 1317 | Updates message status in JSONB |
+| `orchestrator_succession.py` | 269 | Reads messages |
+| `orchestration_service.py` | 1508, 1511 | Reads messages |
+| `project_service.py` | 235 | Includes messages in response |
+| `table_view.py` | 199, 201, 202 | Counts messages for dashboard |
+
+**Frontend Locations (10+ files):**
+- `agentJobsStore.js` - 15+ references for message counters
+- `JobsTab.vue` - Message sent/waiting/read counts
+- `MessageAuditModal.vue` - Display messages array
+- `AgentCard.vue`, `OrchestratorCard.vue` - Pending counts
+
+### Implementation Strategy
+
+**Phase 4a: Stop Writing to JSONB (2-3 hours)**
+1. Modify `agent_job_manager.py` - remove all `job.messages = ...` writes
+2. Modify `message_service.py` - remove JSONB initialization
+3. Messages now ONLY go to Message table (via existing code)
+4. Keep JSONB column for backward compatibility (read-only)
+
+**Phase 4b: Read from Message Table (3-4 hours)**
+1. Update `table_view.py` to query Message table for counts
+2. Update `project_service.py` to include messages from Message table
+3. Update `orchestration_service.py` to query Message table
+4. Update `orchestrator_succession.py` to query Message table
+
+**Phase 4c: Frontend Alignment (2-3 hours)**
+1. API already returns message counts - verify frontend uses them
+2. Remove any direct JSONB array access in frontend
+3. Update WebSocket handlers if needed
+
+**Phase 4d: Cleanup (1-2 hours)**
+1. Mark `AgentExecution.messages` column as deprecated
+2. Add migration to drop column (future release)
+3. Update tests
+
+### Success Criteria (Phase 4)
+
+- [ ] No code writes to `AgentExecution.messages` JSONB
+- [ ] All message counts derived from Message table
+- [ ] Dashboard message counters still work
+- [ ] WebSocket events include correct counts
+- [ ] No data loss during transition
+- [ ] Column marked deprecated (not removed yet)
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Data inconsistency during transition | HIGH | Parallel read from both sources initially |
+| Frontend relies on JSONB structure | MEDIUM | API abstracts data source |
+| Performance regression | LOW | Message table already indexed |
+
+---
+
+## Updated Estimates
+
+| Phase | Effort | Cumulative |
+|-------|--------|------------|
+| Phase 1: Send fan-out | 2-3 hours | 2-3 hours |
+| Phase 2: Simplify receive | 1-2 hours | 3-5 hours |
+| Phase 3: Testing | 1-2 hours | 4-7 hours |
+| Phase 4a: Stop JSONB writes | 2-3 hours | 6-10 hours |
+| Phase 4b: Read from Message table | 3-4 hours | 9-14 hours |
+| Phase 4c: Frontend alignment | 2-3 hours | 11-17 hours |
+| Phase 4d: Cleanup | 1-2 hours | 12-19 hours |
+| **Total** | **12-19 hours** | |
+
+---
+
+## Supersedes
+
+This handover now supersedes **Handover 0403** (JSONB Normalization - Messages).
+0403 content has been merged into Phase 4 above.
