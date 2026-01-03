@@ -313,12 +313,33 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     jobsById.value = nextMap
   }
 
+  // Handover 0405: Fixed fallback for message counter updates when messages
+  // aren't tracked locally. Also improved job ID resolution (Handover 0407).
   function handleMessageAcknowledged(payload) {
-    const recipientId = resolveJobId(payload?.agent_id || payload?.job_id)
-    if (!recipientId) return
+    // Try multiple resolution strategies: agent_id, job_id, from_job_id
+    // Handover 0407: Backend sends agent_id (executor UUID), which may not
+    // be directly in the store. Also try from_job_id for backward compat.
+    const recipientId = resolveJobId(payload?.agent_id)
+      || resolveJobId(payload?.job_id)
+      || resolveJobId(payload?.from_job_id)
+
+    if (!recipientId) {
+      // eslint-disable-next-line no-console
+      console.debug('[agentJobsStore] handleMessageAcknowledged: Could not resolve job ID', {
+        agent_id: payload?.agent_id,
+        job_id: payload?.job_id,
+        from_job_id: payload?.from_job_id,
+        available_jobs: Array.from(jobsById.value.keys()).slice(0, 5),
+      })
+      return
+    }
 
     const previous = jobsById.value.get(recipientId)
-    if (!previous) return
+    if (!previous) {
+      // eslint-disable-next-line no-console
+      console.debug('[agentJobsStore] handleMessageAcknowledged: Job not found in store', { recipientId })
+      return
+    }
 
     const messageIds = ensureArray(payload?.message_ids).length
       ? ensureArray(payload?.message_ids)
@@ -344,6 +365,29 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       }
       return message
     })
+
+    // Handover 0405: Fallback when messages aren't tracked locally
+    // Backend acknowledged messages we don't have in the local messages array.
+    // This happens when the page wasn't open when message:received was sent,
+    // or messages were loaded from JSONB without full detail.
+    if (acknowledgedNow === 0 && messageIds.length > 0) {
+      // eslint-disable-next-line no-console
+      console.debug('[agentJobsStore] handleMessageAcknowledged: Using fallback counter update', {
+        recipientId,
+        messageCount: messageIds.length,
+        previousWaiting: previous.messages_waiting_count,
+        previousRead: previous.messages_read_count,
+      })
+
+      const nextJob = normalizeJob({
+        ...previous,
+        messages_waiting_count: Math.max(0, (previous.messages_waiting_count || 0) - messageIds.length),
+        messages_read_count: (previous.messages_read_count || 0) + messageIds.length,
+      })
+
+      jobsById.value = createNextMapWith(jobsById.value, recipientId, nextJob)
+      return
+    }
 
     if (acknowledgedNow === 0) return
 
