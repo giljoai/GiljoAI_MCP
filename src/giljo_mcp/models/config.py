@@ -590,9 +590,9 @@ class DownloadToken(Base):
     - Background cleanup of expired/failed/abandoned tokens
 
     Use Cases:
-    - Slash command download (gil_import_productagents, gil_import_personalagents)
-    - Agent template download from UI
-    - MCP tool file retrieval
+    - Slash command download (setup_slash_commands → slash_commands.zip)
+    - Agent template download (get_agent_download_url → agent_templates.zip)
+    - MCP tool file retrieval (token-based downloads)
 
     Multi-tenant isolation: All queries filter by tenant_key.
     """

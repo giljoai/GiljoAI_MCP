@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-02 (0402 Complete, 0403 Ready - JSONB Normalization)
+**Last Updated:** 2026-01-03 (0383 Complete - MCP Tool Surface Audit + Legacy Download Tool Removal)
 
 ---
 
@@ -46,6 +46,7 @@
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
+| **0383** | **MCP Tool Surface Audit + Legacy Download Tool Removal** | **COMPLETE** | **MEDIUM** | Removed `gil_fetch`/`gil_import_*`; catalog + decommission candidates |
 | **0387** | **Broadcast Fan-out + JSONB Cleanup** | **Ready** | **HIGH** | Fan-out at write + Phase 4 JSONB normalization (12-19h) |
 | **0402** | **Agent TODO Items Table** | **COMPLETE** | **HIGH** | Plan/TODOs tab populated from DB (2026-01-02) |
 | **0403** | **JSONB Normalization - Messages** | **SUPERSEDED** | - | Merged into 0387 Phase 4 |
@@ -421,14 +422,14 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0381, 0387 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0383, 0387 (includes Alpha Trial 0356-0362, 0364-0365)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0382-0386**: Gaps in 0301-0400 range (between 0381 and 0387)
+- **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range

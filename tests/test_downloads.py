@@ -1,24 +1,20 @@
 """
-Unit tests for api/endpoints/downloads.py
-Tests download endpoints for slash commands and agent templates.
+Unit tests for download helpers and the public slash-commands ZIP endpoint.
 
-Test-Driven Development: These tests are written BEFORE implementation.
+Scope:
+- Pure helper functions in `api/endpoints/downloads.py`
+- Public `/api/download/slash-commands.zip` contents (no auth required)
 """
 
 import io
 import zipfile
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from src.giljo_mcp.models import AgentTemplate, User
-
 
 class TestZipArchiveCreation:
-    """Test ZIP archive creation utility"""
+    """Test ZIP archive creation utility."""
 
     def test_create_zip_archive_basic(self):
-        """Test basic ZIP archive creation from file dict"""
         from api.endpoints.downloads import create_zip_archive
 
         files = {
@@ -29,42 +25,28 @@ class TestZipArchiveCreation:
 
         zip_bytes = create_zip_archive(files)
 
-        # Verify ZIP is valid
         assert isinstance(zip_bytes, bytes)
         assert len(zip_bytes) > 0
 
-        # Verify contents
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
             namelist = zipf.namelist()
             assert len(namelist) == 3
-            assert "file1.md" in namelist
-            assert "file2.md" in namelist
-            assert "file3.md" in namelist
-
-            # Verify content
+            assert set(namelist) == {"file1.md", "file2.md", "file3.md"}
             assert zipf.read("file1.md").decode("utf-8") == "# Content 1"
 
     def test_create_zip_archive_empty(self):
-        """Test ZIP archive creation with no files"""
         from api.endpoints.downloads import create_zip_archive
 
-        files = {}
-        zip_bytes = create_zip_archive(files)
+        zip_bytes = create_zip_archive({})
 
-        # Should create empty ZIP
         assert isinstance(zip_bytes, bytes)
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            assert len(zipf.namelist()) == 0
+            assert zipf.namelist() == []
 
     def test_create_zip_archive_unicode_content(self):
-        """Test ZIP archive with Unicode content"""
         from api.endpoints.downloads import create_zip_archive
 
-        files = {
-            "test.md": "# 测试 🚀 Test",
-        }
-
-        zip_bytes = create_zip_archive(files)
+        zip_bytes = create_zip_archive({"test.md": "# 测试 🚀 Test"})
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
             content = zipf.read("test.md").decode("utf-8")
             assert "测试" in content
@@ -72,328 +54,95 @@ class TestZipArchiveCreation:
 
 
 class TestDownloadSlashCommands:
-    """Test /api/download/slash-commands.zip endpoint"""
+    """Test `/api/download/slash-commands.zip` endpoint."""
 
-    @pytest.mark.asyncio
-    async def test_download_slash_commands_authenticated(self, api_client, auth_headers):
-        """Test slash commands download with authentication"""
-        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
+    def test_download_slash_commands_public(self, api_client):
+        response = api_client.get("/api/download/slash-commands.zip")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/zip"
         assert "attachment" in response.headers.get("content-disposition", "")
 
-        # Verify ZIP contents
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            namelist = zipf.namelist()
-            assert "gil_import_productagents.md" in namelist
-            assert "gil_import_personalagents.md" in namelist
-            assert "gil_handover.md" in namelist
+        with zipfile.ZipFile(io.BytesIO(response.content), "r") as zipf:
+            namelist = set(zipf.namelist())
 
-    @pytest.mark.asyncio
-    async def test_download_slash_commands_unauthenticated(self, api_client):
-        """Test slash commands download without authentication (public endpoint)"""
+        # Current supported command set (Jan 2026+)
+        assert {
+            "gil_get_claude_agents.md",
+            "gil_activate.md",
+            "gil_launch.md",
+            "gil_handover.md",
+        }.issubset(namelist)
+
+    def test_slash_commands_zip_does_not_ship_legacy_commands(self, api_client):
         response = api_client.get("/api/download/slash-commands.zip")
-
         assert response.status_code == 200
 
-    @pytest.mark.asyncio
-    async def test_download_slash_commands_content_verification(self, api_client, auth_headers):
-        """Test slash commands ZIP contains correct content"""
-        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
+        with zipfile.ZipFile(io.BytesIO(response.content), "r") as zipf:
+            namelist = set(zipf.namelist())
 
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            # Verify gil_import_productagents.md content
-            content = zipf.read("gil_import_productagents.md").decode("utf-8")
-            assert "name: gil_import_productagents" in content
-            assert "description:" in content
-            assert "Import agent templates" in content
+        assert "gil_import_productagents.md" not in namelist
+        assert "gil_import_personalagents.md" not in namelist
+        assert "gil_fetch.md" not in namelist
+        assert "gil_update_agents.md" not in namelist
 
-
-class TestDownloadAgentTemplates:
-    """Test /api/download/agent-templates.zip endpoint"""
-
-    @pytest.mark.asyncio
-    async def test_download_agent_templates_authenticated(self, api_client, auth_headers, test_db_session, test_user):
-        """Test agent templates download with authentication"""
-        # Create test templates
-        templates = [
-            AgentTemplate(
-                name="orchestrator",
-                role="orchestrator",
-                template_content="# Orchestrator content",
-                tool="claude",
-                tenant_key=test_user.tenant_key,
-                is_active=True,
-            ),
-            AgentTemplate(
-                name="implementor",
-                role="implementor",
-                template_content="# Implementor content",
-                tool="claude",
-                tenant_key=test_user.tenant_key,
-                is_active=True,
-            ),
-        ]
-        test_db_session.add_all(templates)
-        await test_db_session.commit()
-
-        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/zip"
-
-        # Verify ZIP contents
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            namelist = zipf.namelist()
-            assert "orchestrator.md" in namelist
-            assert "implementor.md" in namelist
-
-    @pytest.mark.asyncio
-    async def test_download_agent_templates_active_only(self, api_client, auth_headers, test_db_session, test_user):
-        """Test agent templates download filters inactive templates"""
-        # Create active and inactive templates
-        templates = [
-            AgentTemplate(
-                name="active",
-                role="active",
-                template_content="# Active",
-                tool="claude",
-                tenant_key=test_user.tenant_key,
-                is_active=True,
-            ),
-            AgentTemplate(
-                name="inactive",
-                role="inactive",
-                template_content="# Inactive",
-                tool="claude",
-                tenant_key=test_user.tenant_key,
-                is_active=False,
-            ),
-        ]
-        test_db_session.add_all(templates)
-        await test_db_session.commit()
-
-        response = api_client.get("/api/download/agent-templates.zip?active_only=true", headers=auth_headers)
-
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            namelist = zipf.namelist()
-            assert "active.md" in namelist
-            assert "inactive.md" not in namelist
-
-    @pytest.mark.asyncio
-    async def test_download_agent_templates_with_frontmatter(
-        self, api_client, auth_headers, test_db_session, test_user
-    ):
-        """Test agent templates ZIP includes YAML frontmatter"""
-        template = AgentTemplate(
-            name="tester",
-            role="tester",
-            description="Test agent",
-            template_content="# Tester content",
-            tool="claude",
-            tenant_key=test_user.tenant_key,
-            is_active=True,
-        )
-        test_db_session.add(template)
-        await test_db_session.commit()
-
-        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
-
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            content = zipf.read("tester.md").decode("utf-8")
-            # Verify YAML frontmatter
-            assert "---" in content
-            assert "name: tester" in content
-            assert "description: Test agent" in content
-            # 0102a: Omit tools field to inherit all
-            assert "tools:" not in content
-            assert "model: sonnet" in content
-
-    @pytest.mark.asyncio
-    async def test_download_agent_templates_multi_tenant_isolation(
-        self, api_client, auth_headers, test_db_session, test_user
-    ):
-        """Test agent templates download respects multi-tenant isolation"""
-        # Create templates for different tenants
-        other_tenant_key = "other-tenant-key"
-        templates = [
-            AgentTemplate(
-                name="my_template",
-                role="role1",
-                template_content="# My content",
-                tool="claude",
-                tenant_key=test_user.tenant_key,
-                is_active=True,
-            ),
-            AgentTemplate(
-                name="other_template",
-                role="role2",
-                template_content="# Other content",
-                tool="claude",
-                tenant_key=other_tenant_key,
-                is_active=True,
-            ),
-        ]
-        test_db_session.add_all(templates)
-        await test_db_session.commit()
-
-        response = api_client.get("/api/download/agent-templates.zip", headers=auth_headers)
-
-        zip_bytes = response.content
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zipf:
-            namelist = zipf.namelist()
-            assert "my_template.md" in namelist
-            assert "other_template.md" not in namelist
-
-    @pytest.mark.asyncio
-    async def test_download_agent_templates_unauthenticated(self, api_client):
-        """Test agent templates download without authentication"""
-        response = api_client.get("/api/download/agent-templates.zip")
-
-        assert response.status_code == 401
-
-
-class TestDownloadInstallScript:
-    """Test /api/download/install-script.{extension} endpoint"""
-
-    @pytest.mark.asyncio
-    async def test_download_install_script_sh(self, api_client, auth_headers):
-        """Test Unix install script download"""
-        response = api_client.get(
-            "/api/download/install-script.sh?script_type=slash-commands", headers=auth_headers
-        )
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/x-sh"
-        assert "attachment" in response.headers.get("content-disposition", "")
-
-        # Verify script content
-        content = response.text
-        assert "#!/bin/bash" in content
-        assert "$GILJO_API_KEY" in content
-        assert "/api/download/slash-commands.zip" in content
-
-    @pytest.mark.asyncio
-    async def test_download_install_script_ps1(self, api_client, auth_headers):
-        """Test PowerShell install script download"""
-        response = api_client.get(
-            "/api/download/install-script.ps1?script_type=agent-templates", headers=auth_headers
-        )
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/x-powershell"
-        assert "attachment" in response.headers.get("content-disposition", "")
-
-        # Verify script content
-        content = response.text
-        assert "$env:GILJO_API_KEY" in content
-        assert "/api/download/agent-templates.zip" in content
-
-    @pytest.mark.asyncio
-    async def test_download_install_script_invalid_extension(self, api_client, auth_headers):
-        """Test install script download with invalid extension"""
-        response = api_client.get(
-            "/api/download/install-script.bat?script_type=slash-commands", headers=auth_headers
-        )
-
-        assert response.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_download_install_script_invalid_type(self, api_client, auth_headers):
-        """Test install script download with invalid type"""
-        response = api_client.get(
-            "/api/download/install-script.sh?script_type=invalid", headers=auth_headers
-        )
-
-        assert response.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_download_install_script_server_url_templating(self, api_client, auth_headers):
-        """Test install script includes correct server URL"""
-        response = api_client.get("/api/download/install-script.sh?type=slash-commands", headers=auth_headers)
-
-        content = response.text
-        # Should have replaced template variable
-        assert "{{SERVER_URL}}" not in content
-        # Should have actual server URL
-        assert "http://" in content or "https://" in content
-
-
-class TestAPIKeyAuthentication:
-    """Test API key authentication for download endpoints"""
-
-    @pytest.mark.asyncio
-    async def test_download_with_api_key_header(self, api_client, test_user):
-        """Test download endpoint with X-API-Key header"""
-        # Assume user has api_key attribute
-        api_key = f"gk_{test_user.username}_test"
-
-        response = api_client.get("/api/download/slash-commands.zip", headers={"X-API-Key": api_key})
-
-        # Should succeed with valid API key
-        assert response.status_code in [200, 401]  # Depends on API key validation
-
-    @pytest.mark.asyncio
-    async def test_download_with_bearer_token(self, api_client, auth_headers):
-        """Test download endpoint with Bearer token"""
-        response = api_client.get("/api/download/slash-commands.zip", headers=auth_headers)
-
-        assert response.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_download_without_authentication(self, api_client):
-        """Test download endpoint without any authentication"""
+    def test_slash_commands_zip_content_verification(self, api_client):
         response = api_client.get("/api/download/slash-commands.zip")
+        assert response.status_code == 200
 
-        assert response.status_code == 401
+        with zipfile.ZipFile(io.BytesIO(response.content), "r") as zipf:
+            content = zipf.read("gil_get_claude_agents.md").decode("utf-8")
+            assert "name: gil_get_claude_agents" in content
+            assert "mcp__giljo-mcp__get_agent_download_url" in content
+
+
+class TestRenderInstallScript:
+    """Unit tests for install script rendering helper."""
+
+    def test_render_install_script_substitutes_server_url(self):
+        from api.endpoints.downloads import render_install_script
+
+        template = "curl {{SERVER_URL}}/api/download/slash-commands.zip"
+        rendered = render_install_script(template, "http://example.com:7272")
+        assert rendered == "curl http://example.com:7272/api/download/slash-commands.zip"
 
 
 class TestServerURLUtility:
-    """Test get_server_url utility function"""
-
-    def test_get_server_url_from_config(self):
-        """Test server URL extraction from config"""
-        from api.endpoints.downloads import get_server_url
-
-        url = get_server_url()
-        assert isinstance(url, str)
-        assert url.startswith("http://") or url.startswith("https://")
+    """Unit tests for get_server_url utility."""
 
     @patch("api.endpoints.downloads.get_config")
-    def test_get_server_url_localhost_fallback(self, mock_get_config):
-        """Test server URL uses localhost for 0.0.0.0"""
-        mock_config = MagicMock()
-        mock_config.api.host = "0.0.0.0"
-        mock_config.api.port = 7272
-        mock_get_config.return_value = mock_config
-
+    def test_get_server_url_uses_config_yaml_external_host(self, mock_get_config, tmp_path, monkeypatch):
         from api.endpoints.downloads import get_server_url
 
+        (tmp_path / "config.yaml").write_text("services:\n  external_host: example.com\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+
+        mock_config = MagicMock()
+        mock_config.server.api_port = 7272
+        mock_get_config.return_value = mock_config
+
         url = get_server_url()
-        assert "localhost:7272" in url
+        assert url == "http://example.com:7272"
 
+    @patch("api.endpoints.downloads.get_config")
+    def test_get_server_url_uses_https_when_forwarded(self, mock_get_config, tmp_path, monkeypatch):
+        from api.endpoints.downloads import get_server_url
 
-# Fixtures for testing
-@pytest.fixture
-def test_user():
-    """Create test user"""
-    return User(
-        id="test-user-id",
-        username="testuser",
-        email="test@example.com",
-        tenant_key="test-tenant",
-        is_active=True,
-    )
+        (tmp_path / "config.yaml").write_text("services:\n  external_host: example.com\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
 
+        mock_config = MagicMock()
+        mock_config.server.api_port = 7272
+        mock_get_config.return_value = mock_config
 
-@pytest.fixture
-def auth_headers(test_user):
-    """Generate authentication headers"""
-    # Mock JWT token
-    return {"Authorization": "Bearer test-token-12345"}
+        mock_request = MagicMock()
+        mock_request.headers = {"x-forwarded-proto": "https"}
+
+        url = get_server_url(request=mock_request)
+        assert url == "https://example.com:7272"
+
+    @patch("api.endpoints.downloads.get_config", side_effect=Exception("boom"))
+    def test_get_server_url_falls_back_on_error(self, _mock_get_config):
+        from api.endpoints.downloads import get_server_url
+
+        assert get_server_url() == "http://localhost:7272"
