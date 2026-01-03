@@ -88,7 +88,7 @@
       <!-- Jobs Tab -->
       <v-window-item value="jobs">
         <JobsTab
-          :project="project"
+          :project="projectWithUpdatedMode"
           :readonly="readonly"
           @launch-agent="handleLaunchAgent"
           @view-details="emit('view-details', $event)"
@@ -220,6 +220,16 @@ const errorVisible = ref(false)
 const errorMessage = ref(null)
 const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
+
+/**
+ * Computed: Project with updated execution_mode
+ * Handover 0404: Sync local executionMode ref with project prop for JobsTab
+ * JobsTab reads execution_mode from project prop, so we need to merge the updated value
+ */
+const projectWithUpdatedMode = computed(() => ({
+  ...props.project,
+  execution_mode: executionMode.value,
+}))
 
 // Toast state
 const toastVisible = ref(false)
