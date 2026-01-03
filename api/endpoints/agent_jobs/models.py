@@ -88,6 +88,7 @@ class JobResponse(BaseModel):
 
     id: str  # Changed from int to str for UUID (0366 series)
     job_id: str
+    agent_id: Optional[str] = None  # Handover 0401: Executor UUID for WebSocket event matching
     tenant_key: str
     project_id: Optional[str] = None
     agent_type: str
