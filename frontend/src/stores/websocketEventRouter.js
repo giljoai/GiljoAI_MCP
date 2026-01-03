@@ -286,6 +286,7 @@ export const EVENT_MAP = {
 
   // Handover 0386: Progress updates should NOT create messages
   // This handler receives direct WebSocket events from report_progress()
+  // Handover 0402: Include todo_items array for Plan/TODOs tab
   'job:progress_update': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
@@ -297,6 +298,7 @@ export const EVENT_MAP = {
         progress: payload.progress_percent,
         current_task: payload.current_task,
         todo_steps: payload.todo_steps,
+        todo_items: payload.todo_items, // Handover 0402: TODO items for UI display
         last_progress_at: payload.last_progress_at,
         // Include raw progress object for detailed info
         progress_data: payload.progress,
