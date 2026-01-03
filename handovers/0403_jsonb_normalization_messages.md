@@ -5,7 +5,9 @@
 **To Agent:** database-expert, backend-tester
 **Priority:** High
 **Estimated Complexity:** 4-6 hours
-**Status:** Ready for Implementation
+**Status:** SUPERSEDED by Handover 0387
+
+> **Note:** This handover has been merged into Handover 0387 (Broadcast Fan-out at Write) as Phase 4. See 0387 for the combined implementation plan.
 
 ---
 
