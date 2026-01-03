@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-02 (0387 Ready - Broadcast Fan-out at Write)
+**Last Updated:** 2026-01-02 (0402 Complete, 0403 Ready - JSONB Normalization)
 
 ---
 
@@ -47,6 +47,8 @@
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
 | **0387** | **Broadcast Fan-out at Write** | **Ready** | **HIGH** | Fix broadcast bugs via industry-standard fan-out pattern |
+| **0402** | **Agent TODO Items Table** | **COMPLETE** | **HIGH** | Plan/TODOs tab populated from DB (2026-01-02) |
+| **0403** | **JSONB Normalization - Messages** | **Ready** | **HIGH** | Remove AgentExecution.messages JSONB duplication |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
