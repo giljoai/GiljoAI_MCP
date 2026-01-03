@@ -5,7 +5,7 @@
 **To Agent:** Backend Integration Tester / System Architect
 **Priority:** P0 - Critical
 **Estimated Complexity:** 12-16 hours
-**Status:** Ready for Implementation
+**Status:** ✅ Complete (2026-01-02)
 
 ---
 
@@ -744,13 +744,23 @@ def job_to_response(job: dict) -> JobResponse:
 
 ### Summary of All Fixes (Session 2026-01-02)
 
-| File | Fix | Status |
+| File | Fix | Commit |
 |------|-----|--------|
-| `frontend/src/stores/agentJobsStore.js:191-213` | Added `agent_id` check to `resolveJobId()` | ✅ Committed |
-| `frontend/src/stores/agentJobsStore.js:165-189` | Added steps transformation in `handleProgressUpdate()` | ✅ Committed |
-| `src/giljo_mcp/services/message_service.py:250-268` | Moved JSONB persistence outside websocket_manager block | ✅ Committed |
-| `api/endpoints/agent_jobs/models.py:91` | Added `agent_id` field to `JobResponse` | ✅ Applied |
-| `api/endpoints/agent_jobs/status.py:44` | Added `agent_id` mapping in `job_to_response()` | ✅ Applied |
+| `frontend/src/stores/agentJobsStore.js:191-213` | Added `agent_id` check to `resolveJobId()` | `80a0ccde` |
+| `frontend/src/stores/agentJobsStore.js:165-189` | Added steps transformation in `handleProgressUpdate()` | `80a0ccde` |
+| `src/giljo_mcp/services/message_service.py:250-268` | Moved JSONB persistence outside websocket_manager block | (earlier session) |
+| `api/endpoints/agent_jobs/models.py:91` | Added `agent_id` field to `JobResponse` | `3c384d78` |
+| `api/endpoints/agent_jobs/status.py:44` | Added `agent_id` mapping in `job_to_response()` | `3c384d78` |
+| `frontend/src/stores/agentJobsStore.js:176-197` | Handle both object and array formats for `todo_steps` | `c6e00c5f` |
+
+### Final Verification Results
+
+| Feature | Test | Result |
+|---------|------|--------|
+| Message Sent Counter | Send broadcast → Orchestrator sent 8→9 | ✅ Real-time |
+| Messages Waiting Counter | Send broadcast → All agents waiting 7→8 | ✅ Real-time |
+| Steps Column | report_progress with mode=todo → 2/5→4/5→5/5 | ✅ Real-time |
+| Data Persistence | Page refresh → Counters preserved | ✅ Verified |
 
 ### Verification Steps
 
