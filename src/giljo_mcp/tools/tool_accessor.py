@@ -789,10 +789,14 @@ class ToolAccessor:
                         ),
                     }
 
+                    # Handover 0389: Build dynamic example from actual allowed agent names
+                    example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
+                    example_str = ", ".join(f"'{n}'" for n in example_agents) if example_agents else "'implementer'"
+
                     response["cli_mode_rules"] = {
                         "agent_name_usage": (
                             "SINGLE SOURCE OF TRUTH - MUST match template filename exactly for Task tool. "
-                            "This is the filename without .md extension (e.g., 'implementer-frontend')."
+                            f"This is the filename without .md extension (e.g., {example_str})."
                         ),
                         "agent_type_usage": "Display category label for UI only (e.g., 'implementer').",
                         "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
