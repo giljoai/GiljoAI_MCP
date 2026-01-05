@@ -18,6 +18,8 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
+from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.logging import get_logger, ErrorCode
 from giljo_mcp.models import AgentTemplate, Job, Product, Project
@@ -26,6 +28,12 @@ from giljo_mcp.orchestrator import ProjectOrchestrator
 
 
 logger = get_logger(__name__)
+
+# Extract inner structure for backward compatibility with existing code
+# defaults.py uses versioned structure: {"version": "2.1", "priorities": {...}}
+# This code expects flat structure: {"field": {"toggle": True, "priority": X}}
+DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
+DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
 
 
 # ============================================================================
@@ -112,25 +120,8 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
         return {"error": f"Failed to fetch project: {e!s}"}
 
 
-# Handover 0281 Phase 1: Default configurations for monolithic context
-DEFAULT_FIELD_PRIORITIES = {
-    "product_core": {"toggle": True, "priority": 1},
-    "project_description": {"toggle": True, "priority": 1},
-    "vision_documents": {"toggle": True, "priority": 2},
-    "tech_stack": {"toggle": True, "priority": 2},
-    "architecture": {"toggle": True, "priority": 3},
-    "testing_config": {"toggle": True, "priority": 3},
-    "memory_360": {"toggle": True, "priority": 2},
-    "git_history": {"toggle": False, "priority": 4},
-    "agent_templates": {"toggle": True, "priority": 2},
-}
-
-DEFAULT_DEPTH_CONFIG = {
-    "memory_360": 5,  # Number of projects in 360 Memory (1/3/5/10)
-    "git_history": 20,  # Number of commits in git log examples (5/10/25/50/100)
-    "agent_templates": "type_only",  # Agent template detail level ("type_only", "full") - Handover 0347d
-    "vision_documents": "light",  # Vision document depth ("light", "medium", "full") - Handover 0352
-}
+# Handover 0281 Phase 1: Default configurations imported from config/defaults.py
+# (DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG are now unified across the codebase)
 
 
 def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, int]:
