@@ -770,6 +770,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         project_id: str,
         tenant_key: str,
         parent_job_id: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
         template_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
@@ -804,6 +805,10 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         - template_id links agent job to its source template
         - Enables (i) icon functionality to display template metadata
 
+        HANDOVER 0506:
+        - parent_agent_id enables orchestrator handover bypass
+        - Retiring orchestrator provides its own agent_id to spawn successor
+
         Args:
             agent_type: Type of agent (backend-tester, frontend-dev, etc.)
             agent_name: Human-readable name for the agent
@@ -811,6 +816,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             project_id: Project UUID
             tenant_key: Tenant isolation key
             parent_job_id: Optional parent orchestrator ID (for tracking)
+            parent_agent_id: Handover 0506 - Retiring orchestrator's agent_id to authorize successor spawn
             template_id: Optional template ID this job was spawned from (Handover 0244a)
 
         Returns:
@@ -855,25 +861,39 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     existing_orchestrator = result.scalar_one_or_none()
 
                     if existing_orchestrator:
-                        # Active orchestrator already exists - prevent duplicate
-                        logger.warning(
-                            f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
-                            extra={
-                                "project_id": project_id,
-                                "tenant_key": tenant_key,
+                        # Handover 0506: Allow spawning successor if parent_agent_id matches existing orchestrator
+                        # This enables retiring orchestrator to spawn its own replacement during handover
+                        if parent_agent_id and parent_agent_id == existing_orchestrator.agent_id:
+                            logger.info(
+                                f"Handover: Allowing successor spawn from orchestrator {parent_agent_id}",
+                                extra={
+                                    "project_id": project_id,
+                                    "tenant_key": tenant_key,
+                                    "parent_agent_id": parent_agent_id,
+                                    "existing_agent_id": existing_orchestrator.agent_id,
+                                },
+                            )
+                            # Continue with spawn - this is an authorized handover
+                        else:
+                            # Active orchestrator already exists - prevent duplicate
+                            logger.warning(
+                                f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                                extra={
+                                    "project_id": project_id,
+                                    "tenant_key": tenant_key,
+                                    "existing_agent_id": existing_orchestrator.agent_id,
+                                    "existing_job_id": existing_orchestrator.job_id,
+                                    "existing_status": existing_orchestrator.status,
+                                },
+                            )
+                            return {
+                                "success": False,
+                                "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                                f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                                 "existing_agent_id": existing_orchestrator.agent_id,
                                 "existing_job_id": existing_orchestrator.job_id,
                                 "existing_status": existing_orchestrator.status,
-                            },
-                        )
-                        return {
-                            "success": False,
-                            "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                            f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
-                            "existing_agent_id": existing_orchestrator.agent_id,
-                            "existing_job_id": existing_orchestrator.job_id,
-                            "existing_status": existing_orchestrator.status,
-                        }
+                            }
 
                 # No duplicate found (or not an orchestrator) - proceed with creation
                 # Create BOTH AgentJob (work order) AND AgentExecution (executor)
@@ -2499,6 +2519,7 @@ async def spawn_agent_job(
     project_id: str,
     tenant_key: str,
     parent_job_id: Optional[str] = None,
+    parent_agent_id: Optional[str] = None,
     db_manager: Optional["DatabaseManager"] = None,
     session: Optional["AsyncSession"] = None,
 ) -> dict[str, Any]:
@@ -2512,6 +2533,7 @@ async def spawn_agent_job(
         project_id: Project UUID
         tenant_key: Tenant isolation key
         parent_job_id: Optional parent job UUID
+        parent_agent_id: Handover 0506 - Retiring orchestrator's agent_id to authorize successor spawn
         db_manager: Optional DatabaseManager instance (for testing)
         session: Optional AsyncSession (for testing with transaction isolation)
 
@@ -2526,7 +2548,7 @@ async def spawn_agent_job(
     # If session is provided, use it directly (for testing with transaction isolation)
     if session is not None:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
     # Otherwise, create session from db_manager
@@ -2537,7 +2559,7 @@ async def spawn_agent_job(
 
     async with db_manager.get_session_async() as session:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
 
@@ -2549,8 +2571,16 @@ async def _spawn_agent_job_impl(
     project_id: str,
     tenant_key: str,
     parent_job_id: Optional[str] = None,
+    parent_agent_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Internal implementation of spawn_agent_job."""
+    """
+    Internal implementation of spawn_agent_job.
+
+    Args:
+        parent_agent_id: Handover 0506 - If provided, bypasses orchestrator duplication check
+                        when spawning successor during handover. The retiring orchestrator
+                        provides its own agent_id to authorize successor creation.
+    """
     from uuid import uuid4
 
     from sqlalchemy import and_, select
@@ -2616,25 +2646,39 @@ async def _spawn_agent_job_impl(
             existing_orchestrator = result.scalar_one_or_none()
 
             if existing_orchestrator:
-                # Active orchestrator already exists - prevent duplicate
-                logger.warning(
-                    f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
-                    extra={
-                        "project_id": project_id,
-                        "tenant_key": tenant_key,
+                # Handover 0506: Allow spawning successor if parent_agent_id matches existing orchestrator
+                # This enables retiring orchestrator to spawn its own replacement during handover
+                if parent_agent_id and parent_agent_id == existing_orchestrator.agent_id:
+                    logger.info(
+                        f"Handover: Allowing successor spawn from orchestrator {parent_agent_id}",
+                        extra={
+                            "project_id": project_id,
+                            "tenant_key": tenant_key,
+                            "parent_agent_id": parent_agent_id,
+                            "existing_agent_id": existing_orchestrator.agent_id,
+                        },
+                    )
+                    # Continue with spawn - this is an authorized handover
+                else:
+                    # Active orchestrator already exists - prevent duplicate
+                    logger.warning(
+                        f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                        extra={
+                            "project_id": project_id,
+                            "tenant_key": tenant_key,
+                            "existing_agent_id": existing_orchestrator.agent_id,
+                            "existing_job_id": existing_orchestrator.job_id,
+                            "existing_status": existing_orchestrator.status,
+                        },
+                    )
+                    return {
+                        "success": False,
+                        "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                        f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                         "existing_agent_id": existing_orchestrator.agent_id,
                         "existing_job_id": existing_orchestrator.job_id,
                         "existing_status": existing_orchestrator.status,
-                    },
-                )
-                return {
-                    "success": False,
-                    "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                    f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
-                    "existing_agent_id": existing_orchestrator.agent_id,
-                    "existing_job_id": existing_orchestrator.job_id,
-                    "existing_status": existing_orchestrator.status,
-                }
+                    }
 
         # No duplicate found (or not an orchestrator) - proceed with creation
         # HIGH #3 FIX: Create BOTH AgentJob (work order) AND AgentExecution (executor)

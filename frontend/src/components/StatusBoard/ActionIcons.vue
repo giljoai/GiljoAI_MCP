@@ -87,12 +87,12 @@
       <span>{{ getActionTooltip('cancel') }}</span>
     </v-tooltip>
 
-    <!-- Hand Over Action -->
+    <!-- Hand Over Action (Handover 0506) -->
     <v-tooltip v-if="availableActions.includes('handOver')" location="top">
       <template #activator="{ props }">
         <v-btn
           v-bind="props"
-          icon="mdi-hand-left"
+          icon="mdi-hand-wave"
           :color="getActionColor('handOver')"
           size="small"
           variant="text"
