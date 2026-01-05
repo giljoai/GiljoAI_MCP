@@ -49,13 +49,13 @@ You have access to comprehensive MCP tools for project orchestration. Use these 
 
 **Mission creation tools**:
 
-5. `mcp__giljo-mcp__list_templates()` - See available agent types
-   - No parameters required
-   - Returns: All agent templates (implementer, tester, reviewer, etc.)
-
-6. `mcp__giljo-mcp__get_template(template_name)` - Get template details
-   - **template_name**: Agent type name
-   - Returns: Template content, behavioral rules, success criteria
+5. `mcp__giljo-mcp__fetch_context(product_id, tenant_key, categories)` - Get agent templates
+   - **product_id**: Current product UUID
+   - **tenant_key**: Tenant isolation key
+   - **categories**: ["agent_templates"] to fetch available agent types
+   - Returns: All agent templates (orchestrator, implementer, tester, analyzer, reviewer, documenter)
+   - **Note**: Replaces deprecated `list_templates()` and `get_template()` tools
+   - **Depth config**: Use "minimal", "standard", or "full" for varying detail levels
 
 ### Phase 3: AGENT SPAWNING
 
@@ -140,7 +140,7 @@ START
   ↓
 3. discover_context() - Gather all context
   ↓
-4. list_templates() - See available agents
+4. fetch_context(categories=["agent_templates"]) - See available agents
   ↓
 5. spawn_agent_job() × N - Create agents
   ↓
@@ -190,8 +190,17 @@ If tools fail:
 
 **Critical**: At 90%+ context usage, call `create_successor_orchestrator()` to avoid context overflow. Successor will receive compressed handover summary (<10K tokens).
 
+## Deprecated Tools
+
+The following tools have been removed. Use their replacements instead:
+
+| Deprecated Tool | Replacement | Notes |
+|----------------|-------------|-------|
+| `list_templates()` | `fetch_context(categories=["agent_templates"])` | Use unified context fetch tool |
+| `get_template(name)` | `fetch_context(categories=["agent_templates"])` | Fetch all templates, filter client-side |
+
 ---
 
 **Version**: 1.0
 **Handover**: 0090 - MCP Comprehensive Tool Exposure
-**Last Updated**: 2025-11-03
+**Last Updated**: 2025-01-05 (Updated for deprecated tools)
