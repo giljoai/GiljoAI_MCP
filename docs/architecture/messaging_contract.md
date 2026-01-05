@@ -49,6 +49,8 @@ send_message(
 )
 
 # Receive pending messages (Handover 0360: Auto-acknowledge & remove from queue)
+# NOTE: This is the standard tool for agents to retrieve messages.
+# Deprecated tool `get_next_instruction()` has been removed - use receive_messages() instead.
 receive_messages(
     agent_id: str,                   # Agent executor UUID (AgentExecution.agent_id)
     tenant_key: str,                 # Multi-tenant isolation
@@ -292,11 +294,9 @@ get_agent_mission(
     tenant_key: str        # Multi-tenant isolation
 )
 
-# Agent fetches next instruction (multi-phase workflows)
-get_next_instruction(
-    job_id: str,           # Work order UUID (AgentJob.id)
-    tenant_key: str        # Multi-tenant isolation
-)
+# DEPRECATED: get_next_instruction() has been removed.
+# Agents should use receive_messages(agent_id, tenant_key) to check for new instructions.
+# Instructions are delivered via the standard messaging system (Category 1: MESSAGES).
 ```
 
 **Return Format**:

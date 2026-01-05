@@ -833,117 +833,6 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "error": str(e),
             }
 
-    async def get_next_instruction(job_id: str, agent_type: str, tenant_key: str) -> Dict[str, Any]:
-        """
-        Check for new instructions, user feedback, or handoff requests.
-
-        Polls message queue for unread messages directed to this agent.
-        Supports orchestrator-to-agent communication and user feedback integration.
-
-        Args:
-            job_id: Job ID to check messages for
-            agent_type: Agent type (for filtering messages)
-            tenant_key: Tenant key for multi-tenant isolation
-
-        Returns:
-            dict: {
-                "status": "success" | "error",
-                "has_updates": bool,
-                "instructions": list[str],
-                "handoff_requested": bool,
-                "context_warning": bool,
-                "message_count": int
-            }
-
-        Security:
-            - Only messages for jobs owned by tenant are returned
-            - Message queue enforces tenant isolation
-            - No cross-tenant message leakage
-
-        Message Types:
-            - user_feedback: Direct user input requiring attention
-            - orchestrator_instruction: Commands from orchestrator
-            - handoff_request: Signal to prepare for context handoff
-            - context_warning: Approaching context limit
-        """
-        try:
-            # Validate input parameters
-            if not job_id or not job_id.strip():
-                return {
-                    "status": "error",
-                    "error": "job_id cannot be empty",
-                }
-
-            if not agent_type or not agent_type.strip():
-                return {
-                    "status": "error",
-                    "error": "agent_type cannot be empty",
-                }
-
-            if not tenant_key or not tenant_key.strip():
-                return {
-                    "status": "error",
-                    "error": "tenant_key cannot be empty",
-                }
-
-            # Get unread messages for this job
-            async with db_manager.get_session_async() as session:
-                result = await comm_queue.get_messages(
-                    session=session,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    to_agent=agent_type,
-                    unread_only=True,
-                )
-
-                if result.get("status") != "success":
-                    return result
-
-            messages = result.get("messages", [])
-            has_updates = len(messages) > 0
-
-            # Extract and categorize instructions
-            instructions = []
-            handoff_requested = False
-            context_warning = False
-
-            for msg in messages:
-                msg_type = msg.get("type")
-                content = msg.get("content")
-
-                if msg_type == "user_feedback":
-                    instructions.append(f"USER FEEDBACK: {content}")
-                elif msg_type == "orchestrator_instruction":
-                    instructions.append(f"ORCHESTRATOR: {content}")
-                elif msg_type == "handoff_request":
-                    handoff_requested = True
-                    instructions.append("HANDOFF REQUESTED: Prepare comprehensive summary and context handoff")
-                elif msg_type == "context_warning":
-                    context_warning = True
-                    instructions.append(f"CONTEXT WARNING: {content} - Plan completion or handoff")
-                elif msg_type == "error_recovery":
-                    instructions.append(f"ERROR RECOVERY GUIDANCE: {content}")
-
-            logger.info(
-                f"[get_next_instruction] Retrieved {len(messages)} unread messages "
-                f"for job {job_id}, tenant={tenant_key}"
-            )
-
-            return {
-                "status": "success",
-                "has_updates": has_updates,
-                "instructions": instructions,
-                "handoff_requested": handoff_requested,
-                "context_warning": context_warning,
-                "message_count": len(messages),
-            }
-
-        except Exception as e:
-            logger.error(f"[get_next_instruction] Error: {e}", exc_info=True)
-            return {
-                "status": "error",
-                "error": str(e),
-            }
 
     def complete_job(job_id: str, result: Dict[str, Any], tenant_key: str) -> Dict[str, Any]:
         """
@@ -1304,7 +1193,6 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
     tools["get_pending_jobs"] = get_pending_jobs
     tools["acknowledge_job"] = acknowledge_job
     tools["report_progress"] = report_progress
-    tools["get_next_instruction"] = get_next_instruction
     tools["complete_job"] = complete_job
     tools["report_error"] = report_error
     tools["send_message"] = send_message
@@ -1312,4 +1200,4 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
     tools["get_agent_status"] = get_agent_status
     tools["get_team_agents"] = get_team_agents  # Handover 0360 Feature 2
 
-    logger.info("[agent_coordination] Registered 10 agent coordination tools for multi-tool orchestration")
+    logger.info("[agent_coordination] Registered 9 agent coordination tools for multi-tool orchestration")

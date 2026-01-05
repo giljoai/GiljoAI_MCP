@@ -73,7 +73,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "create_task": state.tool_accessor.create_task,
             # Template tools
             "list_templates": state.tool_accessor.list_templates,
-            "get_template": state.tool_accessor.get_template,
             # Orchestration tools
             "health_check": state.tool_accessor.health_check,
             "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
@@ -306,23 +305,6 @@ async def list_mcp_tools():
                     {
                         "description": "List all templates",
                         "payload": {},
-                    },
-                ],
-            },
-            {
-                "name": "get_template",
-                "description": "Get specific agent template details",
-                "arguments": {
-                    "template_name": "string REQUIRED - Template name/role (e.g., 'orchestrator', 'implementer')",
-                },
-                "examples": [
-                    {
-                        "description": "Get orchestrator template",
-                        "payload": {"template_name": "orchestrator"},
-                    },
-                    {
-                        "description": "Get backend implementer template",
-                        "payload": {"template_name": "backend-implementer"},
                     },
                 ],
             },
