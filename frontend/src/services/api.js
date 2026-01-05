@@ -475,7 +475,7 @@ export const api = {
   // Serena MCP Integration
   serena: {
     getStatus: () => apiClient.get('/api/serena/status'),
-    toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
+    toggle: (enabled) => apiClient.post('/api/serena/toggle', { use_in_prompts: enabled }),
     getConfig: () => apiClient.get('/api/serena/config'),
     updateConfig: (data) => apiClient.post('/api/serena/config', data),
   },
