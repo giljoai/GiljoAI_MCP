@@ -24,7 +24,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.schemas import SuccessionRequest, SuccessionResponse, SuccessionStatusResponse
+from src.giljo_mcp.models.schemas import (
+    InitiateHandoverResponse,
+    SuccessionRequest,
+    SuccessionResponse,
+    SuccessionStatusResponse,
+)
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -308,4 +313,202 @@ async def check_succession_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check succession status: {str(e)}"
+        )
+
+
+@router.post(
+    "/{job_id}/initiate-handover",
+    response_model=InitiateHandoverResponse,
+    summary="Initiate orchestrator handover",
+    description="Returns prompt for retiring orchestrator to spawn its successor",
+    tags=["agent-jobs", "succession"]
+)
+async def initiate_handover(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> InitiateHandoverResponse:
+    """
+    Initiate orchestrator handover (Handover 0506).
+
+    Returns a prompt that the user pastes into the CURRENT orchestrator terminal.
+    The prompt instructs the retiring orchestrator to:
+    1. Gather its context (mission status, work progress, active agents)
+    2. Spawn a successor orchestrator with rich handover mission
+    3. Mark itself as handed_over
+
+    The RETIRING orchestrator has the context - it spawns the successor.
+
+    Args:
+        job_id: Current orchestrator's job_id or agent_id
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        InitiateHandoverResponse with prompt and job details
+
+    Raises:
+        HTTPException 404: Job not found
+        HTTPException 400: Job is not an orchestrator or not in active status
+    """
+    logger.info(f"User {current_user.username} initiating handover for job {job_id}")
+
+    try:
+        # Get execution (job_id could be agent_id)
+        from sqlalchemy import select
+        from sqlalchemy.orm import joinedload
+
+        stmt = select(AgentExecution).options(
+            joinedload(AgentExecution.job)
+        ).where(
+            AgentExecution.agent_id == job_id,
+            AgentExecution.tenant_key == current_user.tenant_key
+        )
+        result = await db.execute(stmt)
+        execution = result.scalars().first()
+
+        # Fallback: try job_id
+        if not execution:
+            stmt = select(AgentExecution).options(
+                joinedload(AgentExecution.job)
+            ).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == current_user.tenant_key
+            ).order_by(AgentExecution.instance_number.desc())
+            result = await db.execute(stmt)
+            execution = result.scalars().first()
+
+        if not execution:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job {job_id} not found"
+            )
+
+        # Validate: must be orchestrator
+        if execution.agent_type != "orchestrator":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only initiate handover for orchestrators"
+            )
+
+        # Validate: must be in active status
+        if execution.status not in ["waiting", "working", "blocked"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot initiate handover for orchestrator in '{execution.status}' status"
+            )
+
+        # Get project_id from the job
+        project_id = execution.job.project_id if execution.job else None
+        if not project_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not determine project_id for orchestrator"
+            )
+
+        # Build handover prompt for the retiring orchestrator
+        instance = execution.instance_number or 1
+        tenant_key = current_user.tenant_key
+
+        prompt = f"""=== HANDOVER REQUESTED ===
+
+The user has requested you hand over to a successor orchestrator.
+
+YOU must spawn the successor because YOU have the richest context.
+
+## Step 1: Gather Your Context
+
+Think about:
+- What is the current mission status?
+- What work is complete, in-progress, or blocked?
+- Who are the active agents and what are they doing?
+- What decisions are pending?
+- What should the successor do next?
+
+## Step 2: Spawn Successor Orchestrator
+
+Call spawn_agent_job with a RICH mission:
+
+mcp__giljo-mcp__spawn_agent_job(
+    agent_type="orchestrator",
+    agent_name="Orchestrator",
+    mission='''
+## HANDOVER CONTEXT
+
+You are taking over from Orchestrator Instance {instance}.
+
+### Mission Status
+[Describe current overall status]
+
+### Completed Work
+- [List completed items]
+
+### In-Progress Work
+- [List in-progress items with status]
+
+### Active Agents
+- agent_name (agent_id): [what they're doing]
+
+### Pending Decisions
+- [List decisions needing user input]
+
+### Recommended Next Steps
+1. [First priority]
+2. [Second priority]
+
+### User Notes
+[Any notes from user conversations]
+
+## TOOLS TO USE
+
+1. get_agent_mission(job_id, tenant_key) - Read this mission
+2. get_team_agents(job_id, tenant_key) - List agents for any job
+3. get_orchestrator_instructions(agent_id, tenant_key) - Get product/project context
+4. get_workflow_status(project_id, tenant_key) - Check agent counts
+
+## FIRST ACTIONS
+
+1. Call acknowledge_job() to mark yourself as working
+2. Review the handover context above
+3. Call get_team_agents() to see current agent states
+4. ASK THE USER how they want to proceed
+''',
+    project_id="{project_id}",
+    tenant_key="{tenant_key}",
+    parent_agent_id="{execution.agent_id}"
+)
+
+## Step 3: Output the Result
+
+After spawning, OUTPUT the launch prompt that was returned, so user can paste it in a new terminal.
+
+Then mark yourself as complete:
+
+mcp__giljo-mcp__complete_job(
+    job_id="{execution.job_id}",
+    tenant_key="{tenant_key}",
+    result={{"handover": "complete", "successor_spawned": true}}
+)
+"""
+
+        logger.info(
+            f"Generated handover prompt for orchestrator {execution.agent_id} "
+            f"(job: {execution.job_id}, instance: {instance})"
+        )
+
+        return InitiateHandoverResponse(
+            prompt=prompt,
+            job_id=execution.job_id,
+            agent_id=execution.agent_id,
+            project_id=project_id,
+            instance_number=instance
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to initiate handover for job {job_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initiate handover: {str(e)}"
         )

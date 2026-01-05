@@ -37,6 +37,13 @@ export const statusConfig = {
     italic: false,
     chipColor: 'warning',
   },
+  // Handover 0506: Status after orchestrator hands over to successor
+  handed_over: {
+    label: 'Handed Over',
+    color: '#9e9e9e', // Grey
+    italic: false,
+    chipColor: 'default',
+  },
 }
 
 /**
@@ -119,6 +126,13 @@ export const STATUS_CONFIG = {
     label: 'Decommissioned',
     description: 'Agent has been decommissioned',
   },
+  // Handover 0506: Status after orchestrator hands over to successor
+  handed_over: {
+    icon: 'mdi-hand-wave',
+    color: 'grey',
+    label: 'Handed Over',
+    description: 'Orchestrator handed over to successor',
+  },
 }
 
 export const HEALTH_CONFIG = {
@@ -172,7 +186,7 @@ export function getHealthConfig(healthStatus) {
 export function isJobStale(lastProgressAt, status) {
   if (!lastProgressAt) return false
 
-  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned']
+  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned', 'handed_over']
   if (terminalStates.includes(status)) return false
 
   const now = new Date()
