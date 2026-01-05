@@ -145,23 +145,6 @@ async def handle_tools_list(
     tools = [
         # Project Management Tools
         {
-            "name": "create_project",
-            "description": "Create a new project with mission and optional agent sequence",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Project name"},
-                    "mission": {"type": "string", "description": "Project mission statement"},
-                    "agents": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Optional list of agent names to initialize",
-                    },
-                },
-                "required": ["name", "mission"],
-            },
-        },
-        {
             "name": "update_project_mission",
             "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
             "inputSchema": {
@@ -295,16 +278,6 @@ async def handle_tools_list(
                 "required": ["title"],
             },
         },
-        # Template Management Tools (read-only via MCP)
-        {
-            "name": "get_template",
-            "description": "Get a specific agent template",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"template_name": {"type": "string", "description": "Template name"}},
-                "required": ["template_name"],
-            },
-        },
         # Health & Status Tools
         {
             "name": "health_check",
@@ -348,19 +321,6 @@ async def handle_tools_list(
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["job_id", "progress", "tenant_key"],
-            },
-        },
-        {
-            "name": "get_next_instruction",
-            "description": "Check for new instructions from orchestrator",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Job ID to check messages for"},
-                    "agent_type": {"type": "string", "description": "Agent type"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"},
-                },
-                "required": ["job_id", "agent_type", "tenant_key"],
             },
         },
         {
@@ -607,7 +567,6 @@ async def handle_tools_call(
     # Route to appropriate tool method
     tool_map = {
         # Project Management
-        "create_project": state.tool_accessor.create_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
         "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
@@ -619,13 +578,10 @@ async def handle_tools_call(
         "list_messages": state.tool_accessor.list_messages,
         # Task Management (MCP tools retired Dec 2025 - only create_task kept)
         "create_task": state.tool_accessor.create_task,
-        # Template Management (read-only via MCP)
-        "get_template": state.tool_accessor.get_template,
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "acknowledge_job": state.tool_accessor.acknowledge_job,
         "report_progress": state.tool_accessor.report_progress,
-        "get_next_instruction": state.tool_accessor.get_next_instruction,
         "complete_job": state.tool_accessor.complete_job,
         "report_error": state.tool_accessor.report_error,
         # Orchestration Tools (Handover 0088)
