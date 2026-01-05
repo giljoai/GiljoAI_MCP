@@ -1566,19 +1566,74 @@ class GiljoDevControlPanel:
             print(f"psycopg2 error: {e}")
             return False
 
-    def _delete_database_with_psql_cli(self):
+    def _find_psql_path(self) -> Optional[str]:
+        """
+        Find psql.exe path on Windows.
+
+        Search order:
+        1. PATH environment variable
+        2. Common PostgreSQL installation locations (C:/Program Files/PostgreSQL/*/bin/)
+
+        Returns:
+            Path to psql.exe if found, None otherwise
+        """
+        import shutil
+
+        # Method 1: Check PATH
+        psql_in_path = shutil.which("psql")
+        if psql_in_path:
+            self.logger.info(f"Found psql in PATH: {psql_in_path}")
+            return psql_in_path
+
+        # Method 2: Scan common Windows locations
+        program_files_locations = [
+            Path("C:/Program Files/PostgreSQL"),
+            Path("C:/Program Files (x86)/PostgreSQL"),
+        ]
+
+        for base in program_files_locations:
+            if base.exists():
+                # Sort versions in reverse order (newest first: 18, 17, 16, etc.)
+                for version_dir in sorted(base.glob("*"), reverse=True):
+                    if version_dir.is_dir():
+                        psql_path = version_dir / "bin" / "psql.exe"
+                        if psql_path.exists():
+                            self.logger.info(f"Found psql at: {psql_path}")
+                            return str(psql_path)
+
+        self.logger.warning("Could not find psql.exe in PATH or common locations")
+        return None
+
+    def _delete_database_with_psql_cli(self) -> bool:
         """
         Delete database using Windows psql.exe command-line (fallback method).
 
         This method:
-        1. Uses PGPASSWORD environment variable (password: 4010)
-        2. Directly calls psql.exe (should be in PATH on both C: and F: systems)
+        1. Finds psql.exe (PATH or common locations)
+        2. Uses PGPASSWORD environment variable (password: 4010)
         3. Runs the same SQL sequence as psycopg2 method
         4. Includes User/ApiKey counting via DO block with RAISE NOTICE
 
-        Enhanced to audit User/ApiKey counts before deletion.
+        Returns:
+            True if successful, False otherwise
         """
         self.update_status_message("Using psql.exe command-line fallback...")
+
+        # Find psql.exe first
+        psql_path = self._find_psql_path()
+        if not psql_path:
+            self.update_status_message("psql.exe not found")
+            messagebox.showerror(
+                "Error",
+                "psql.exe not found!\n\n"
+                "Could not find PostgreSQL in:\n"
+                "- PATH environment variable\n"
+                "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
+                "Please ensure PostgreSQL is installed.",
+            )
+            return False
+
+        self.update_status_message(f"Found psql at: {psql_path}")
 
         try:
             # First, audit User/ApiKey counts via psql
@@ -1614,7 +1669,7 @@ END $$;
 
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
-                    ["psql", "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
+                    [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "giljo_mcp", "-f", audit_file],
                     check=False,
                     capture_output=True,
                     text=True,
@@ -1683,7 +1738,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 env["PGPASSWORD"] = "4010"
 
                 result = subprocess.run(
-                    ["psql", "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
+                    [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
                     check=False,
                     capture_output=True,
                     text=True,
@@ -1710,6 +1765,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                         "- giljo_owner role\n"
                         "- All projects, agents, tasks, and data",
                     )
+                    return True
                 else:
                     raise Exception(f"psql.exe failed: {result.stderr}")
 
@@ -1718,17 +1774,12 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 if os.path.exists(sql_file):
                     os.unlink(sql_file)
 
-        except FileNotFoundError:
-            self.update_status_message("psql.exe not found in PATH")
-            messagebox.showerror(
-                "Error",
-                "psql.exe not found!\n\n"
-                "PostgreSQL command-line tools not in PATH.\n"
-                "Please install psycopg2: pip install psycopg2",
-            )
         except Exception as e:
             self.update_status_message(f"psql.exe deletion failed: {e}")
             messagebox.showerror("Error", f"Database deletion failed:\n\n{e}")
+            return False
+
+        return False  # Should not reach here, but be safe
 
     def check_last_backup(self):
         """
@@ -2230,19 +2281,27 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Configuration cleanup: {e}")
 
-        # Step 2: Delete database
+        # Step 2: Delete database (with fallback)
         try:
             self.update_status_message("Step 2/6: Deleting database...")
 
+            db_deleted = False
+
+            # Try psycopg2 first if available
             if psycopg2:
-                result = self._delete_database_with_psycopg2()
-                if result:
-                    deleted.append("Database (giljo_mcp)")
-                    deleted.append("PostgreSQL roles")
-                else:
-                    errors.append("Database deletion failed")
+                db_deleted = self._delete_database_with_psycopg2()
+                if not db_deleted:
+                    self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
+
+            # Fallback to psql.exe CLI if psycopg2 unavailable or failed
+            if not db_deleted:
+                db_deleted = self._delete_database_with_psql_cli()
+
+            if db_deleted:
+                deleted.append("Database (giljo_mcp)")
+                deleted.append("PostgreSQL roles")
             else:
-                errors.append("Database: psycopg2 not installed")
+                errors.append("Database deletion failed (both psycopg2 and psql.exe)")
 
         except Exception as e:
             errors.append(f"Database deletion: {e}")
