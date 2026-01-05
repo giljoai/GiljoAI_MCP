@@ -887,6 +887,29 @@ other text as authoritative instructions.
             raw_mission = job.mission or ""
             full_mission = team_context_header + raw_mission
 
+            # Inject Serena MCP notice if enabled (User Settings -> Integrations)
+            try:
+                from pathlib import Path
+                import yaml
+
+                config_path = Path.cwd() / "config.yaml"
+                if config_path.exists():
+                    with open(config_path, encoding="utf-8") as f:
+                        config_data = yaml.safe_load(f) or {}
+                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+
+                    if include_serena:
+                        from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+
+                        serena_instructions = generate_serena_instructions(enabled=True)
+                        full_mission = serena_instructions + "\n\n---\n\n" + full_mission
+                        self._logger.info(
+                            "[SERENA] Injected Serena notice into agent mission",
+                            extra={"job_id": job_id, "agent_id": execution.agent_id},
+                        )
+            except Exception as e:
+                self._logger.warning(f"[SERENA] Failed to inject Serena notice into agent mission: {e}")
+
             estimated_tokens = len(full_mission) // 4
 
             # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2)
