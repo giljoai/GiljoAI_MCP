@@ -144,7 +144,6 @@ async def get_360_memory(
                     "returned_projects": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                     "error": "product_not_found"
                 }
             }
@@ -169,8 +168,7 @@ async def get_360_memory(
                     "limit": limit or 0,
                     "returned_projects": 0,
                     "has_more": False,
-                    "next_offset": None,
-                    "estimated_tokens": 0
+                    "next_offset": None
                 }
             }
 
@@ -196,8 +194,7 @@ async def get_360_memory(
                     "limit": limit or 0,
                     "returned_projects": 0,
                     "has_more": False,
-                    "next_offset": None,
-                    "estimated_tokens": 0
+                    "next_offset": None
                 }
             }
 
@@ -250,7 +247,6 @@ async def get_360_memory(
                 "limit": effective_limit,
                 "returned_projects": len(paginated_history),
                 "has_more": has_more,
-                "next_offset": next_offset,
-                "estimated_tokens": total_tokens
+                "next_offset": next_offset
             }
         }

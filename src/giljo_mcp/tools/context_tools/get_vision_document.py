@@ -246,7 +246,6 @@ async def get_vision_document(
                 "returned_chunks": 0,
                 "has_more": False,
                 "next_offset": None,
-                "estimated_tokens": 0,
             },
         }
 
@@ -281,7 +280,6 @@ async def get_vision_document(
                     "returned_chunks": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                     "error": "product_not_found",
                 },
             }
@@ -302,7 +300,6 @@ async def get_vision_document(
                     "returned_chunks": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                 },
             }
 
@@ -323,7 +320,6 @@ async def get_vision_document(
                     "returned_chunks": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                 },
             }
 
@@ -378,7 +374,6 @@ async def get_vision_document(
                     "returned_chunks": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                 },
             }
 
@@ -415,7 +410,6 @@ async def get_vision_document(
                     "returned_chunks": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "estimated_tokens": 0,
                     "error": "chunks_not_found",
                 },
             }

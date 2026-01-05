@@ -1553,13 +1553,11 @@ Partial reading defeats the purpose of this configuration."""
                 "tool": "fetch_context",
                 "category": "product_core",
                 "framing": "Product name, description, and core features. Essential foundation for all work.",
-                "estimated_tokens": 100,
             },
             "vision_documents": {
                 "tool": "fetch_context",
                 "category": "vision_documents",
                 "framing": "Product vision and strategic direction. Use pagination for large documents.",
-                "estimated_tokens": 5000,
                 "supports_pagination": True,
                 "depth_aware": True,
             },
@@ -1567,39 +1565,33 @@ Partial reading defeats the purpose of this configuration."""
                 "tool": "fetch_context",
                 "category": "tech_stack",
                 "framing": "Programming languages, frameworks, and databases. Critical for implementation decisions.",
-                "estimated_tokens": 200,
             },
             "architecture": {
                 "tool": "fetch_context",
                 "category": "architecture",
                 "framing": "System architecture patterns, API style, and design principles.",
-                "estimated_tokens": 400,
             },
             "testing": {
                 "tool": "fetch_context",
                 "category": "testing",
                 "framing": "Quality standards, testing strategy, and frameworks.",
-                "estimated_tokens": 300,
             },
             "memory_360": {
                 "tool": "fetch_context",
                 "category": "memory_360",
                 "framing": "Historical project outcomes and cumulative product knowledge.",
-                "estimated_tokens": 2000,
                 "depth_aware": True,
             },
             "git_history": {
                 "tool": "fetch_context",
                 "category": "git_history",
                 "framing": "Recent git commits aggregated across projects.",
-                "estimated_tokens": 1500,
                 "depth_aware": True,
             },
             "agent_templates": {
                 "tool": "fetch_context",
                 "category": "agent_templates",
                 "framing": "Available agent templates for spawning specialized agents.",
-                "estimated_tokens": 400,
                 "depth_aware": True,
             },
         }
@@ -1626,7 +1618,6 @@ Partial reading defeats the purpose of this configuration."""
                     "tenant_key": product.tenant_key,
                 },
                 "framing": self._get_tier_framing(tier, config["framing"]),
-                "estimated_tokens": config["estimated_tokens"],
             }
 
             # Add pagination support flag if applicable
@@ -1641,20 +1632,14 @@ Partial reading defeats the purpose of this configuration."""
                     vision_depth = depth_config.get("vision_documents", "light")
                     instruction["params"]["depth"] = vision_depth
 
-                    # Update framing and token estimate based on depth
+                    # Update framing based on depth
                     vision_framing = {
                         "light": "33% summarized vision document (single response).",
                         "medium": "66% summarized vision document (single response).",
                         "full": "Complete vision document (paginated, call until has_more=false).",
                     }
-                    vision_tokens = {
-                        "light": 4000,   # ~33% of typical vision doc
-                        "medium": 8000,  # ~66% of typical vision doc
-                        "full": 25000,   # Full content, paginated
-                    }
                     base_framing = vision_framing.get(vision_depth, vision_framing["light"])
                     instruction["framing"] = self._get_tier_framing(tier, base_framing)
-                    instruction["estimated_tokens"] = vision_tokens.get(vision_depth, 4000)
 
                     # Only add pagination params for full depth
                     if vision_depth == "full":
@@ -1674,7 +1659,6 @@ Partial reading defeats the purpose of this configuration."""
                     if agent_depth == "type_only":
                         continue  # Already inline - no fetch needed
                     instruction["params"]["depth"] = agent_depth
-                    instruction["estimated_tokens"] = 18000  # Full templates are ~18K tokens
                     instruction["framing"] = self._get_tier_framing(
                         tier, "Full agent templates with complete prompts for spawning."
                     )
