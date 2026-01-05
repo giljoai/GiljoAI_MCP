@@ -1,8 +1,8 @@
-# Handover 0408: Serena MCP Toggle Injection for Orchestrators and Agents
+# Handover 0408: Integration Toggles (Serena MCP + Git) in Orchestrator Instructions
 
 ## Summary
 
-Wire the Serena MCP toggle (`config.yaml → features.serena_mcp.use_in_prompts`) into both:
+Wire integration toggles into `get_orchestrator_instructions()` response and ensure proper cascade behavior:
 1. **Orchestrators** via `get_orchestrator_instructions()` - for staging/code research
 2. **Agents** via `spawn_agent_job()` mission injection - automatic, no reliance on orchestrator memory
 
@@ -309,9 +309,46 @@ If issues arise:
 
 ---
 
+## Amendment: Git Integration Toggle (Same Session)
+
+### Problem
+
+The "Enable Git Integration" toggle in the UI wasn't exposed in `get_orchestrator_instructions()` response, and when turned OFF, the git_history context toggle would "lock in place" instead of being forced OFF.
+
+### Solution
+
+1. **Backend**: Added `git_integration_enabled` to `integrations` field in `tool_accessor.py`:
+   ```python
+   "integrations": {
+       "serena_mcp_enabled": include_serena,
+       "git_integration_enabled": git_integration_enabled,
+   }
+   ```
+
+2. **Frontend**: Added watcher in `ContextPriorityConfig.vue` to force git_history OFF when git integration is disabled:
+   ```javascript
+   watch(() => props.gitIntegrationEnabled, (enabled) => {
+     if (!enabled && config.value.git_history?.enabled) {
+       config.value.git_history.enabled = false
+       config.value.git_history.priority = 4  // EXCLUDED
+       saveConfig()
+     }
+   }, { immediate: true })
+   ```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/tools/tool_accessor.py` | Added `git_integration_enabled` to `integrations` field |
+| `frontend/src/components/settings/ContextPriorityConfig.vue` | Added watcher to force git_history OFF |
+
+---
+
 ## References
 
 - Handover 0277: Simplified Serena MCP instructions (~50 tokens)
 - `src/giljo_mcp/prompt_generation/serena_instructions.py`: `generate_serena_instructions()`
 - `api/endpoints/serena.py`: Toggle endpoint storing to `config.yaml`
+- `api/endpoints/git.py`: Git integration toggle endpoint
 - Alpha testing conversation: Toggle not reflected in `get_orchestrator_instructions()`
