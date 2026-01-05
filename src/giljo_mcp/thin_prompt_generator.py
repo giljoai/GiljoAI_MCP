@@ -1042,7 +1042,7 @@ IDENTITY:
 └─────────────────────────────────────────────────────────────────────────────┘
 
                          ══════ SESSION BOUNDARY ══════
-    User runs /gil_launch or copies and pastes the implementation start prompt
+    User clicks Launch in UI or copies and pastes the implementation start prompt
                          ══════════════════════════════
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1373,8 +1373,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "### Handover (if needed)",
             "If you reach context limits before completion:",
-            "- Use `/gil_handover` slash command to trigger succession",
-            "- Or call orchestrator succession MCP tool",
+            "- Call mcp__giljo-mcp__gil_handover to trigger succession",
             "- A new orchestrator will continue from where you left off",
             "",
         ]
