@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import setupService from '@/services/setupService'
@@ -405,6 +405,16 @@ function navigateToIntegrations() {
   router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
 }
 
+// Handover 0408: Force git_history OFF when git integration is disabled
+watch(() => props.gitIntegrationEnabled, (enabled) => {
+  if (!enabled && config.value.git_history?.enabled) {
+    // Force git_history to OFF when git integration is disabled
+    config.value.git_history.enabled = false
+    config.value.git_history.priority = 4  // EXCLUDED
+    saveConfig()
+    console.log('[CONTEXT PRIORITY CONFIG] Git history forced OFF - Git integration disabled')
+  }
+}, { immediate: true })
 
 async function fetchVisionStats() {
   fetchingVisionStats.value = true
@@ -479,6 +489,14 @@ async function fetchConfig() {
     } catch (depthError) {
       // Depth endpoint is optional - continue with defaults if it fails
       console.warn('[CONTEXT PRIORITY CONFIG] Depth config not available, using defaults:', depthError)
+    }
+
+    // Handover 0408: Enforce git_history OFF if git integration is disabled (after config load)
+    if (!props.gitIntegrationEnabled && config.value.git_history?.enabled) {
+      config.value.git_history.enabled = false
+      config.value.git_history.priority = 4
+      saveConfig() // Persist the forced-OFF state
+      console.log('[CONTEXT PRIORITY CONFIG] Git history forced OFF after config load - Git integration disabled')
     }
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
