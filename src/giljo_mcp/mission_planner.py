@@ -36,32 +36,42 @@ from .repositories.context_repository import ContextRepository
 logger = logging.getLogger(__name__)
 
 
-# Default field priorities for context building (Handover 0302, 0303)
+# Default field priorities for context building (Handover 0302, 0303, 0266, 0357)
 # Applied when user has no custom field_priority_config
-# Ensures meaningful context even for new users who haven't customized priorities
-# Default field priorities for context building (Handover 0302, 0303, 0266)
-# Applied when user has no custom field_priority_config
-# Ensures meaningful context even for new users who haven't customized priorities
-# Updated to v2.0 format: Priority values 1-4, new category names (Handover 0266)
-DEFAULT_FIELD_PRIORITIES = {
-    # v2.0 categories with priority levels (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
-    "product_core": 1,  # CRITICAL - Always include product name, description, features
-    "vision_documents": 2,  # IMPORTANT - Include vision docs if budget allows
-    "agent_templates": 2,  # IMPORTANT - Agent templates for spawning
-    "project_description": 1,  # CRITICAL - Current project metadata (locked field)
-    "memory_360": 3,  # NICE_TO_HAVE - Historical project outcomes
-    "git_history": 3,  # NICE_TO_HAVE - Recent commits
-    "tech_stack": 2,  # IMPORTANT - Programming languages, frameworks, databases
-    "architecture": 2,  # IMPORTANT - Architecture patterns, API style, design patterns
-    "testing": 2,  # IMPORTANT - Quality standards, testing strategy, frameworks
-    # Legacy v1.0 fields (kept for backward compatibility during transition)
-    # These will be removed in v4.0
-    "product_memory.sequential_history": 3,  # Maps to NICE_TO_HAVE
-    "config_data.architecture": 4,  # Maps to EXCLUDED
-    "config_data.test_methodology": 2,  # Maps to IMPORTANT
-    "config_data.coding_standards": 3,  # Maps to NICE_TO_HAVE
-    "config_data.deployment_strategy": 4,  # Maps to EXCLUDED
-}
+# Imported from unified config.defaults module - normalized to integer format
+# v2.0 format: Priority values 1-4 (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
+def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
+    """
+    Normalize field_priorities from nested format to integer format.
+
+    Handover 0357: DEFAULT_FIELD_PRIORITIES uses {"field": {"toggle": True, "priority": X}} format
+    but mission_planner expects {"field": X} (just integers).
+
+    Args:
+        field_priorities: Dict with either nested or integer priority values
+
+    Returns:
+        Dict with integer priority values (1-4)
+    """
+    normalized = {}
+    for field_key, value in field_priorities.items():
+        if isinstance(value, dict) and "priority" in value:
+            # Extract priority from nested format, respecting toggle
+            if value.get("toggle", True):
+                normalized[field_key] = value["priority"]
+            else:
+                normalized[field_key] = 4  # EXCLUDED if toggle is off
+        elif isinstance(value, int):
+            # Already in integer format
+            normalized[field_key] = value
+        else:
+            # Unknown format, default to IMPORTANT
+            normalized[field_key] = 2
+    return normalized
+
+
+# Import and normalize unified defaults
+DEFAULT_FIELD_PRIORITIES = _normalize_field_priorities(DEFAULT_FIELD_PRIORITY.get("priorities", {}))
 
 
 class MissionPlanner:
