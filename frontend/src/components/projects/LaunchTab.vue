@@ -234,11 +234,6 @@ const projectId = computed(() => {
 })
 
 /**
- * Orchestrator avatar color (from design tokens)
- */
-const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from branding guide
-
-/**
  * Filter out orchestrator from agents list (since it's shown in Default Agent)
  */
 const nonOrchestratorAgents = computed(() => {
@@ -270,17 +265,10 @@ const needsOrchestratorRelaunch = computed(() => {
 })
 
 /**
- * Handover 0506: Get orchestrator avatar color based on status
+ * Orchestrator avatar color - always tan (agent's brand color)
+ * Status is shown via text label, not avatar color
  */
-const orchestratorAvatarColor = computed(() => {
-  if (!currentOrchestrator.value) return '#9e9e9e' // Grey for no orchestrator
-  const status = currentOrchestrator.value.status
-  if (status === 'working') return '#D4A574' // Tan for working
-  if (status === 'waiting') return '#ffd700' // Yellow for waiting
-  if (status === 'complete' || status === 'handed_over') return '#67bd6d' // Green for complete
-  if (status === 'blocked') return '#ff9800' // Orange for blocked
-  return '#D4A574' // Default tan
-})
+const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from branding guide
 
 /**
  * Check if execution mode is locked (Handover 0343)
