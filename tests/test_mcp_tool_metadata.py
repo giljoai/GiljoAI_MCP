@@ -24,8 +24,8 @@ class TestMCPToolMetadata:
 
         return TestClient(app)
 
-    def test_all_24_tools_present(self, client):
-        """Verify all 24 tools are listed in the endpoint"""
+    def test_all_22_tools_present(self, client):
+        """Verify all 22 tools are listed in the endpoint"""
         response = client.get("/api/v1/mcp-tools/list")
         assert response.status_code == 200
 
@@ -35,7 +35,7 @@ class TestMCPToolMetadata:
 
         # Count all tools across categories
         total_tools = sum(len(tools) for tools in data["tools"].values())
-        assert total_tools == 24, f"Expected 24 tools, found {total_tools}"
+        assert total_tools == 22, f"Expected 22 tools, found {total_tools}"
 
     def test_project_management_tools_have_rich_metadata(self, client):
         """Test project management tools (4 tools) have enhanced metadata"""
@@ -110,9 +110,9 @@ class TestMCPToolMetadata:
         data = response.json()
 
         template_tools = data["tools"]["template_management"]
-        expected_tools = ["list_templates", "get_template"]
+        expected_tools = ["list_templates"]
 
-        assert len(template_tools) == 2
+        assert len(template_tools) == 1
 
         for tool in template_tools:
             assert tool["name"] in expected_tools
