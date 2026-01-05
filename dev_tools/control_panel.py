@@ -2008,7 +2008,9 @@ pg_restore -l {backup_file.name} | head -20
         checks[".env"] = not (self.project_root / ".env").exists()
         checks["install_config.yaml"] = not (self.project_root / "install_config.yaml").exists()
 
-        # Check database deleted (requires psycopg2)
+        # Check database deleted (try psycopg2 first, fallback to psql CLI)
+        db_verified = False
+
         if psycopg2:
             try:
                 credentials = self.get_db_credentials()
@@ -2034,12 +2036,42 @@ pg_restore -l {backup_file.name} | head -20
                     checks["roles"] = cur.fetchone() is None
 
                 conn.close()
+                db_verified = True
             except Exception as e:
-                print(f"Warning: Could not verify database state: {e}")
-                checks["database"] = None
-                checks["roles"] = None
-        else:
-            # psycopg2 not installed
+                print(f"Warning: psycopg2 verification failed: {e}")
+
+        # Fallback to psql CLI if psycopg2 unavailable or failed
+        if not db_verified:
+            psql_path = self._find_psql_path()
+            if psql_path:
+                try:
+                    env = os.environ.copy()
+                    env["PGPASSWORD"] = "4010"
+
+                    # Check if database exists
+                    db_result = subprocess.run(
+                        [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432",
+                         "-d", "postgres", "-t", "-c",
+                         "SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'"],
+                        capture_output=True, text=True, env=env, timeout=10
+                    )
+                    # If output is empty (just whitespace), database doesn't exist
+                    checks["database"] = db_result.stdout.strip() == ""
+
+                    # Check if roles exist
+                    roles_result = subprocess.run(
+                        [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432",
+                         "-d", "postgres", "-t", "-c",
+                         "SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')"],
+                        capture_output=True, text=True, env=env, timeout=10
+                    )
+                    checks["roles"] = roles_result.stdout.strip() == ""
+                    db_verified = True
+                except Exception as e:
+                    print(f"Warning: psql CLI verification failed: {e}")
+
+        # If both methods failed, mark as unverifiable
+        if not db_verified:
             checks["database"] = None
             checks["roles"] = None
 
