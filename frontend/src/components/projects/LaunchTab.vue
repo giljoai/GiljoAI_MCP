@@ -68,9 +68,9 @@
                 <span class="agent-name">ORCHESTRATOR</span>
                 <div v-if="currentOrchestrator" class="text-caption text-medium-emphasis">
                   Instance #{{ currentOrchestrator.instance_number || 1 }} •
-                  ID:
+                  Agent ID:
                   <code data-testid="orchestrator-agent-id">
-                    {{ (currentOrchestrator?.job_id || currentOrchestrator?.agent_id || '').slice(0, 8) }}...
+                    {{ (currentOrchestrator?.agent_id || currentOrchestrator?.job_id || '').slice(0, 8) }}...
                   </code>
                 </div>
               </div>
