@@ -95,8 +95,12 @@ async def toggle_serena(request: SerenaToggleRequest):
 
         logger.info(f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}")
 
+        # Return format expected by frontend (success, enabled, message)
         return {
-            "use_in_prompts": request.use_in_prompts
+            "success": True,
+            "enabled": request.use_in_prompts,
+            "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
+            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}"
         }
 
     except Exception as e:
