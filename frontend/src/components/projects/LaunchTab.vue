@@ -59,8 +59,8 @@
         <div class="panel default-agent-panel" data-testid="agents-panel">
           <div class="panel-header">Default agent</div>
           <div class="panel-content">
-            <!-- Orchestrator Card -->
-            <div class="orchestrator-card">
+            <!-- Orchestrator Card (Handover 0506: Status-aware display) -->
+            <div class="orchestrator-card" :class="{ 'orchestrator-complete': needsOrchestratorRelaunch }">
               <v-avatar :color="orchestratorAvatarColor" size="40" class="agent-avatar">
                 <span class="orchestrator-text">OR</span>
               </v-avatar>
@@ -68,13 +68,32 @@
                 <span class="agent-name">ORCHESTRATOR</span>
                 <div v-if="currentOrchestrator" class="text-caption text-medium-emphasis">
                   Instance #{{ currentOrchestrator.instance_number || 1 }} •
+                  <span class="status-text" :class="'status-' + currentOrchestrator.status">
+                    {{ currentOrchestrator.status }}
+                  </span>
+                  •
                   Agent ID:
                   <code data-testid="orchestrator-agent-id">
                     {{ (currentOrchestrator?.agent_id || currentOrchestrator?.job_id || '').slice(0, 8) }}...
                   </code>
                 </div>
+                <div v-else class="text-caption text-medium-emphasis">
+                  No orchestrator - click Launch to create one
+                </div>
               </div>
-              <v-icon size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
+              <!-- Re-launch button when orchestrator is complete/null (Handover 0506) -->
+              <v-btn
+                v-if="needsOrchestratorRelaunch"
+                icon="mdi-rocket-launch"
+                size="small"
+                variant="text"
+                color="primary"
+                title="Launch new orchestrator"
+                class="relaunch-btn"
+                data-testid="relaunch-orchestrator"
+                @click="emit('launch-orchestrator')"
+              />
+              <v-icon v-else size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
               <v-icon
                 size="small"
                 class="info-icon"
@@ -199,6 +218,7 @@ const emit = defineEmits([
   'edit-mission',
   'execution-mode-changed', // Handover 0335: Notify parent when execution mode changes
   'edit-agent-mission',
+  'launch-orchestrator', // Handover 0506: Re-launch orchestrator when complete/null
 ])
 
 /**
@@ -237,6 +257,29 @@ const currentOrchestrator = computed(() => {
     .sort((a, b) => (b.instance_number || 0) - (a.instance_number || 0))
 
   return orchestrators[0] || null
+})
+
+/**
+ * Handover 0506: Check if orchestrator needs re-launch
+ * True when orchestrator is null or in terminal state (complete/handed_over)
+ */
+const needsOrchestratorRelaunch = computed(() => {
+  if (!currentOrchestrator.value) return true
+  const terminalStates = ['complete', 'handed_over', 'failed', 'cancelled', 'decommissioned']
+  return terminalStates.includes(currentOrchestrator.value.status)
+})
+
+/**
+ * Handover 0506: Get orchestrator avatar color based on status
+ */
+const orchestratorAvatarColor = computed(() => {
+  if (!currentOrchestrator.value) return '#9e9e9e' // Grey for no orchestrator
+  const status = currentOrchestrator.value.status
+  if (status === 'working') return '#D4A574' // Tan for working
+  if (status === 'waiting') return '#ffd700' // Yellow for waiting
+  if (status === 'complete' || status === 'handed_over') return '#67bd6d' // Green for complete
+  if (status === 'blocked') return '#ff9800' // Orange for blocked
+  return '#D4A574' // Default tan
 })
 
 /**
@@ -700,6 +743,32 @@ watch(
       &:hover {
         color: $color-text-highlight;
       }
+    }
+
+    // Handover 0506: Re-launch button styling
+    .relaunch-btn {
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+
+    // Handover 0506: Status text styling
+    .status-text {
+      text-transform: capitalize;
+      font-weight: 500;
+
+      &.status-waiting { color: #ffd700; }
+      &.status-working { color: #D4A574; }
+      &.status-complete { color: #67bd6d; }
+      &.status-handed_over { color: #9e9e9e; }
+      &.status-blocked { color: #ff9800; }
+      &.status-failed { color: #e53935; }
+      &.status-cancelled { color: #ff9800; }
+    }
+
+    // Handover 0506: Completed orchestrator styling
+    &.orchestrator-complete {
+      opacity: 0.8;
+      border-color: #67bd6d;
     }
   }
 

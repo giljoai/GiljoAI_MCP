@@ -49,17 +49,16 @@ export const ACTION_CONFIG = {
   },
 
   handOver: {
-    icon: 'mdi-hand-left',
+    icon: 'mdi-hand-wave',
     color: 'warning',
-    label: 'Hand Over',
-    tooltip: 'Trigger orchestrator succession and hand over context',
-    confirmation: true,
-    confirmationTitle: 'Trigger Orchestrator Handover?',
-    confirmationMessage:
-      'This will create a new orchestrator instance and transfer context. Continue?',
+    label: 'Initiate Handover',
+    tooltip: 'Get prompt to hand over to successor orchestrator',
+    // Handover 0506: No confirmation - copies prompt to clipboard immediately
+    // User pastes prompt into current orchestrator terminal to trigger handover
+    confirmation: false,
     requiresStatus: ['working'],
     requiresAgentType: 'orchestrator',
-    requiresContextThreshold: 0.9, // 90% context usage
+    // Handover 0506: Removed context threshold - user decides when to hand over
     excludeTerminalStates: true,
   },
 }
@@ -132,16 +131,15 @@ function shouldShowCancelAction(job) {
 
 /**
  * Check if hand over action should be shown
+ * Handover 0506: Always available for orchestrators in working status
  * @param {Object} job - Job object
  * @returns {Boolean}
  */
 function shouldShowHandOverAction(job) {
   if (job.agent_type !== 'orchestrator') return false
   if (job.status !== 'working') return false
-
-  // Check context usage (from job data)
-  const contextUsage = (job.context_used || 0) / (job.context_budget || 1)
-  return contextUsage >= 0.9
+  // Handover 0506: Removed context threshold - user decides when to hand over
+  return true
 }
 
 /**
@@ -202,17 +200,13 @@ export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
   }
 
   // Hand over action specific checks
+  // Handover 0506: Removed context threshold - user decides when to hand over
   if (actionName === 'handOver') {
     if (job.agent_type !== 'orchestrator') {
-      return 'Only orchestrator can trigger handover'
+      return 'Only orchestrator can initiate handover'
     }
     if (job.status !== 'working') {
-      return 'Orchestrator must be working to trigger handover'
-    }
-    const contextUsage = (job.context_used || 0) / (job.context_budget || 1)
-    if (contextUsage < 0.9) {
-      const percentage = Math.round(contextUsage * 100)
-      return `Context usage ${percentage} percent (requires 90 percent)`
+      return 'Orchestrator must be working to initiate handover'
     }
     return ''
   }
