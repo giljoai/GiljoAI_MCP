@@ -253,15 +253,21 @@ async function handleCancelJob(job) {
 }
 
 /**
- * Handover 0235: Handle orchestrator handover action from ActionIcons
+ * Handover 0506: Handle orchestrator handover action from ActionIcons
+ * Calls initiate-handover endpoint and copies prompt to clipboard
+ * User pastes prompt into current orchestrator terminal
  */
 async function handleHandOver(job) {
   try {
-    await api.orchestration.handOver(job.job_id, 'context_threshold')
-    showSnackbar('Orchestrator handover initiated', 'success')
+    const response = await api.agentJobs.initiateHandover(job.job_id)
+    const prompt = response.data.prompt
+
+    // Copy handover prompt to clipboard
+    await navigator.clipboard.writeText(prompt)
+    showSnackbar('Handover prompt copied! Paste into your current orchestrator terminal.', 'success')
   } catch (error) {
     console.error('[AgentTableView] Handover failed:', error)
-    showSnackbar('Failed to trigger handover', 'error')
+    showSnackbar('Failed to initiate handover', 'error')
   }
 }
 
