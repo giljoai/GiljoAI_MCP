@@ -1604,6 +1604,44 @@ class GiljoDevControlPanel:
         self.logger.warning("Could not find psql.exe in PATH or common locations")
         return None
 
+    def _find_pg_dump_path(self) -> Optional[str]:
+        """
+        Find pg_dump.exe path on Windows.
+
+        Search order:
+        1. PATH environment variable
+        2. Common PostgreSQL installation locations (C:/Program Files/PostgreSQL/*/bin/)
+
+        Returns:
+            Path to pg_dump.exe if found, None otherwise
+        """
+        import shutil
+
+        # Method 1: Check PATH
+        pg_dump_in_path = shutil.which("pg_dump")
+        if pg_dump_in_path:
+            self.logger.info(f"Found pg_dump in PATH: {pg_dump_in_path}")
+            return pg_dump_in_path
+
+        # Method 2: Scan common Windows locations
+        program_files_locations = [
+            Path("C:/Program Files/PostgreSQL"),
+            Path("C:/Program Files (x86)/PostgreSQL"),
+        ]
+
+        for base in program_files_locations:
+            if base.exists():
+                # Sort versions in reverse order (newest first: 18, 17, 16, etc.)
+                for version_dir in sorted(base.glob("*"), reverse=True):
+                    if version_dir.is_dir():
+                        pg_dump_path = version_dir / "bin" / "pg_dump.exe"
+                        if pg_dump_path.exists():
+                            self.logger.info(f"Found pg_dump at: {pg_dump_path}")
+                            return str(pg_dump_path)
+
+        self.logger.warning("Could not find pg_dump.exe in PATH or common locations")
+        return None
+
     def _delete_database_with_psql_cli(self) -> bool:
         """
         Delete database using Windows psql.exe command-line (fallback method).
@@ -1844,13 +1882,29 @@ DROP DATABASE IF EXISTS giljo_mcp;
             # Get database credentials
             credentials = self.get_db_credentials()
 
+            # Find pg_dump executable
+            pg_dump_path = self._find_pg_dump_path()
+            if not pg_dump_path:
+                self.update_status_message("pg_dump not found")
+                messagebox.showerror(
+                    "Error",
+                    "pg_dump not found!\n\n"
+                    "Could not find PostgreSQL in:\n"
+                    "- PATH environment variable\n"
+                    "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
+                    "Please ensure PostgreSQL is installed.",
+                )
+                return
+
+            self.update_status_message(f"Found pg_dump at: {pg_dump_path}")
+
             # Build pg_dump command
             # Using -Fc format (custom format) for better compression and restore options
             env = os.environ.copy()
             env["PGPASSWORD"] = credentials["password"]
 
             command = [
-                "pg_dump",
+                pg_dump_path,
                 "-h",
                 credentials["host"],
                 "-p",
