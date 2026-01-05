@@ -431,18 +431,6 @@ async def handle_tools_list(
                 "required": ["job_id", "tenant_key"],
             },
         },
-        # Slash Command Setup Tool (Handover 0093)
-        {
-            "name": "setup_slash_commands",
-            "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/.",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
-        # Agent Template Download Tool (Handover 0355)
-        {
-            "name": "get_agent_download_url",
-            "description": "Generate one-time download link for active agent templates. Returns URL for /gil_get_claude_agents slash command.",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
         {
             "name": "gil_handover",
             "description": "Trigger orchestrator succession for context handover. Creates successor orchestrator instance.",
@@ -592,10 +580,6 @@ async def handle_tools_call(
         # Succession Tools (Handover 0080)
         "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
         "check_succession_status": state.tool_accessor.check_succession_status,
-        # Slash Command Setup Tool (Handover 0093)
-        "setup_slash_commands": state.tool_accessor.setup_slash_commands,
-        # Agent Template Download Tool (Handover 0355)
-        "get_agent_download_url": state.tool_accessor.get_agent_download_url,
         "gil_handover": state.tool_accessor.gil_handover,
         # Handover 0083 - core /gil_* commands
         "gil_activate": state.tool_accessor.gil_activate,
@@ -610,25 +594,6 @@ async def handle_tools_call(
         raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
 
     try:
-        # Inject API key for download tools (HTTP mode support)
-        # These tools need API key to download from server endpoints
-        download_tools = {"setup_slash_commands", "get_agent_download_url"}
-        if tool_name in download_tools:
-            # Get API key from request headers
-            api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace(
-                "Bearer ", ""
-            )
-            arguments["_api_key"] = api_key_value
-
-            # Inject server URL from request (fix for 0.0.0.0 bind address issue)
-            # Extract scheme (http/https) and host from incoming request
-            scheme = request.url.scheme  # 'http' or 'https'
-            host = request.headers.get("host")  # e.g., '10.1.0.164:7272'
-            server_url = f"{scheme}://{host}"
-            arguments["_server_url"] = server_url
-
-            logger.debug(f"Injected server URL for download tool: {server_url}")
-
         # Execute tool
         tool_func = tool_map[tool_name]
         result = await tool_func(**arguments)
