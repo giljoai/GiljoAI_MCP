@@ -52,10 +52,8 @@ async def test_tool_registration():
 
         # Expected tools by category
         expected_tools = {
-            # Project tools (6)
-            "create_project": "project",
+            # Project tools (4)
             "list_projects": "project",
-            "switch_project": "project",
             "close_project": "project",
             "update_project_mission": "project",
             "project_status": "project",

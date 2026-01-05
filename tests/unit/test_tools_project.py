@@ -4,9 +4,7 @@ Target: Unknown% → 95%+ coverage
 
 Tests the project tool functions:
 - register_project_tools
-- create_project
 - list_projects
-- switch_project
 - close_project
 - update_project_mission
 - project_status
@@ -53,9 +51,7 @@ class TestProjectTools:
         # Should register project management tools
         registered_tools = registrar.get_all_tools()
         expected_tools = [
-            "create_project",
             "list_projects",
-            "switch_project",
             "close_project",
             "update_project_mission",
             "project_status",
@@ -65,34 +61,6 @@ class TestProjectTools:
             assert any(tool_name in tool_info.get("name", "") for tool_info in registered_tools), (
                 f"Tool {tool_name} not registered"
             )
-
-    @pytest.mark.asyncio
-    async def test_create_project_tool(self):
-        """Test create_project tool functionality"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock database operations
-        with patch.object(self.db_manager, "get_session") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            register_project_tools(mock_server, self.db_manager, self.tenant_manager)
-            create_project = registrar.get_registered_tool("create_project")
-
-            # Mock successful creation
-            mock_project = MagicMock()
-            mock_project.id = str(uuid.uuid4())
-            mock_db_session.flush = AsyncMock()
-            mock_db_session.commit = AsyncMock()
-            mock_db_session.add = MagicMock()
-
-            result = await create_project(
-                name="Test Project", mission="Test mission for project", agents=["agent1", "agent2"]
-            )
-
-            # Should handle project creation
-            assert isinstance(result, dict)
 
     @pytest.mark.asyncio
     async def test_list_projects_tool(self):
@@ -124,34 +92,6 @@ class TestProjectTools:
             result = await list_projects()
             assert isinstance(result, dict)
 
-    @pytest.mark.asyncio
-    async def test_switch_project_tool(self):
-        """Test switch_project tool functionality"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        with patch.object(self.db_manager, "get_session") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            # Mock project lookup
-            mock_project = MagicMock()
-            mock_project.id = str(uuid.uuid4())
-            mock_project.name = "Test Project"
-            mock_project.mission = "Test mission"
-            mock_project.tenant_key = "tk_" + "x" * 32
-            mock_project.context_used = 1000
-            mock_project.context_budget = 10000
-
-            mock_result = MagicMock()
-            mock_result.scalar_one_or_none.return_value = mock_project
-            mock_db_session.execute.return_value = mock_result
-
-            register_project_tools(mock_server, self.db_manager, self.tenant_manager)
-            switch_project = registrar.get_registered_tool("switch_project")
-
-            result = await switch_project(project_id=str(uuid.uuid4()))
-            assert isinstance(result, dict)
 
     @pytest.mark.asyncio
     async def test_close_project_tool(self):
@@ -250,23 +190,6 @@ class TestProjectTools:
             assert isinstance(result, dict)
 
     @pytest.mark.asyncio
-    async def test_project_tools_error_handling(self):
-        """Test project tools error handling"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        with patch.object(self.db_manager, "get_session") as mock_session:
-            # Mock database error
-            mock_session.side_effect = Exception("Database connection failed")
-
-            register_project_tools(mock_server, self.db_manager, self.tenant_manager)
-            create_project = registrar.get_registered_tool("create_project")
-
-            result = await create_project(name="Test", mission="Test")
-            assert isinstance(result, dict)
-            # Should handle error gracefully
-
-    @pytest.mark.asyncio
     async def test_project_not_found_scenarios(self):
         """Test scenarios where project is not found"""
         registrar = MockMCPToolRegistrar()
@@ -282,11 +205,6 @@ class TestProjectTools:
             mock_db_session.execute.return_value = mock_result
 
             register_project_tools(mock_server, self.db_manager, self.tenant_manager)
-
-            # Test switch to non-existent project
-            switch_project = registrar.get_registered_tool("switch_project")
-            result = await switch_project(project_id=str(uuid.uuid4()))
-            assert isinstance(result, dict)
 
             # Test close non-existent project
             close_project = registrar.get_registered_tool("close_project")
@@ -329,37 +247,6 @@ class TestProjectTools:
                 # Test without project_id (should use tenant context)
                 result = await project_status()
                 assert isinstance(result, dict)
-
-    @pytest.mark.asyncio
-    async def test_project_creation_with_agents(self):
-        """Test project creation with initial agents"""
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        with patch.object(self.db_manager, "get_session") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            # Mock successful creation
-            mock_project = MagicMock()
-            mock_project.id = str(uuid.uuid4())
-            mock_session = MagicMock()
-            mock_session.id = str(uuid.uuid4())
-
-            mock_db_session.flush = AsyncMock()
-            mock_db_session.commit = AsyncMock()
-            mock_db_session.add = MagicMock()
-
-            register_project_tools(mock_server, self.db_manager, self.tenant_manager)
-            create_project = registrar.get_registered_tool("create_project")
-
-            result = await create_project(
-                name="Multi-Agent Project",
-                mission="Project with multiple agents",
-                agents=["analyzer", "implementer", "tester"],
-            )
-
-            assert isinstance(result, dict)
 
     @pytest.mark.asyncio
     async def test_project_closure_inactive_project(self):

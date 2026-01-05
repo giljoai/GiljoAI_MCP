@@ -60,7 +60,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
         # Route to appropriate tool function
         tool_map = {
             # Project tools
-            "create_project": state.tool_accessor.create_project,
             "list_projects": state.tool_accessor.list_projects,
             "get_project": state.tool_accessor.get_project,
             "close_project": state.tool_accessor.close_project,
@@ -119,33 +118,6 @@ async def list_mcp_tools():
     """
     tools = {
         "project_management": [
-            {
-                "name": "create_project",
-                "description": "Create a new project with mission and optional product association",
-                "arguments": {
-                    "name": "string REQUIRED - Project name",
-                    "mission": "string REQUIRED - Project mission statement describing objectives",
-                    "product_id": "string (UUID) OPTIONAL - Product ID to associate project with",
-                    "tenant_key": "string (UUID) OPTIONAL - Tenant key (auto-generated if not provided)",
-                },
-                "examples": [
-                    {
-                        "description": "Create project without product association",
-                        "payload": {
-                            "name": "Authentication System",
-                            "mission": "Implement JWT authentication with refresh tokens",
-                        },
-                    },
-                    {
-                        "description": "Create project under specific product",
-                        "payload": {
-                            "name": "User Dashboard",
-                            "mission": "Build responsive user dashboard with real-time updates",
-                            "product_id": "prod-abc123-def456",
-                        },
-                    },
-                ],
-            },
             {
                 "name": "list_projects",
                 "description": "List all projects with optional status filter",

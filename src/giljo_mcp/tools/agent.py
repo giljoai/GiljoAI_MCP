@@ -753,7 +753,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 if not tenant_key:
                     return {
                         "success": False,
-                        "error": "No active project. Use switch_project first.",
+                        "error": "No active project. Use gil_activate first.",
                     }
 
                 # Find project by tenant key
