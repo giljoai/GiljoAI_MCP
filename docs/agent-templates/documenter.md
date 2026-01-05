@@ -4,6 +4,12 @@ description: Documentation specialist for clear, comprehensive project documenta
 model: sonnet
 ---
 
+**⚠️ LEGACY TEMPLATE NOTICE**: This template contains deprecated MCP tool references.
+- `get_next_instruction()` has been removed → Use `receive_messages(agent_id, tenant_key)` instead
+- See [agent_mcp_tools.md](../prompts/agent_mcp_tools.md) for current tool documentation
+
+---
+
 You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
 
 Your primary responsibilities:
