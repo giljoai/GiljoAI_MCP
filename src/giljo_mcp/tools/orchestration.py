@@ -1543,9 +1543,16 @@ The agent templates are now being updated...
 
         return result
 
+    # =========================================================================
+    # DEAD CODE - Stdio MCP removed in Handover 0334
+    # HTTP MCP uses ToolAccessor.get_orchestrator_instructions() instead
+    # TODO: Remove this function in next major cleanup (Handover 0408 note)
+    # =========================================================================
     @mcp.tool()
     async def get_orchestrator_instructions(agent_id: str, tenant_key: str) -> dict[str, Any]:
         """
+        DEPRECATED: Stdio MCP removed - use ToolAccessor version for HTTP MCP.
+
         Fetch context for orchestrator to CREATE mission plan (Handover 0366c).
 
         PURPOSE: PROJECT STAGING (NOT EXECUTION)
@@ -1899,6 +1906,10 @@ The agent templates are now being updated...
                     "token_reduction_applied": bool(field_priorities),
                     "instance_number": agent_execution.instance_number or 1,
                     "thin_client": True,
+                    # Handover 0408: Serena MCP integration status
+                    "integrations": {
+                        "serena_mcp_enabled": include_serena,
+                    },
                 }
 
         except Exception as e:

@@ -3,66 +3,9 @@ Slash command markdown templates for Claude Code/Codex/Gemini (Handover 0093)
 
 This module provides markdown templates with YAML frontmatter for slash commands
 that can be installed to ~/.claude/commands/ directory.
-"""
 
-GIL_HANDOVER_MD = """---
-name: gil_handover
-description: Trigger orchestrator succession (context handover)
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Use the mcp__giljo-mcp__gil_handover tool to trigger orchestrator succession when context window reaches capacity.
-
-This will:
-1. Generate handover summary from current orchestrator
-2. Create successor orchestrator job (via create_successor_orchestrator)
-3. Return launch prompt for new instance
-4. Update lineage tracking
-
-Use when:
-- Context window approaching 90% capacity
-- Natural phase transitions in the project
-- Manual succession requested
-
-Optional arguments: reason can be "context_limit", "manual", or "phase_transition"
-
-Call the tool now to begin.
-"""
-
-GIL_ACTIVATE_MD = """---
-name: gil_activate
-description: Activate a project to prepare orchestrator staging
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Provide the project ID when calling the tool to activate it:
-
-Example:
-"Call mcp__giljo-mcp__gil_activate with {\"project_id\": \"<PROJECT_ID>\"}"
-
-Activation will:
-1. Set project status to active
-2. Ensure an orchestrator job exists (status=waiting)
-
-Call the tool with project_id to begin.
-"""
-
-GIL_LAUNCH_MD = """---
-name: gil_launch
-description: Launch a staged project into execution
-allowed-tools: ["mcp__giljo-mcp__*"]
----
-
-Provide the project ID when calling the tool to launch execution:
-
-Example:
-"Call mcp__giljo-mcp__gil_launch with {\"project_id\": \"<PROJECT_ID>\"}"
-
-Launch will:
-1. Validate mission exists and agents are spawned
-2. Update project staging status to launching
-
-Call the tool with project_id to begin.
+Note: gil_activate, gil_launch, gil_handover slash commands removed - users
+use the web UI for these actions. Only gil_get_claude_agents is needed for CLI.
 """
 
 GIL_GET_CLAUDE_AGENTS_MD = """---
@@ -148,7 +91,4 @@ def get_all_templates() -> dict[str, str]:
     """
     return {
         "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
-        "gil_activate.md": GIL_ACTIVATE_MD,
-        "gil_launch.md": GIL_LAUNCH_MD,
-        "gil_handover.md": GIL_HANDOVER_MD,
     }
