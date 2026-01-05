@@ -125,7 +125,7 @@ ProjectService handles all project-related operations:
 
 #### Status & Metrics
 - `get_project_status()` - Comprehensive project status with agents and messages
-- `switch_project()` - Switch project context and manage sessions
+- `gil_activate()` - Activate project for orchestrator staging
 
 ### Integration with ToolAccessor
 

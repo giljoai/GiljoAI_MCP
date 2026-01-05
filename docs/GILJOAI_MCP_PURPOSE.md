@@ -193,7 +193,7 @@ Modern software development involves:
 ### 34+ MCP Tools for Agent Coordination
 
 **Project Management**:
-- `create_project()` - Initialize new development projects
+- REST API for project creation (`POST /api/v1/projects/`)
 - `get_product_config()` - Load architecture and constraints
 - `update_product_config()` - Modify project settings
 - `get_vision()` - Access project vision documents
