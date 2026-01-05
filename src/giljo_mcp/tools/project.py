@@ -127,129 +127,6 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     """Register project management tools with the MCP server"""
 
     @mcp.tool()
-    async def create_project(
-        name: str,
-        mission: str,
-        description: Optional[str] = None,
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
-        auto_create_orchestrator_job: bool = False,
-    ) -> dict[str, Any]:
-        """
-        Create a new project with mission
-
-        Args:
-            name: Project name
-            mission: Project mission statement
-            description: User-written project description (defaults to mission if not provided)
-            product_id: Optional product ID to associate the project with
-            tenant_key: Optional tenant key to use (generates new one if not provided)
-            auto_create_orchestrator_job: If True, creates AgentJob and AgentExecution for orchestrator
-
-        Returns:
-            Project creation details including ID and tenant key.
-            If auto_create_orchestrator_job=True, also includes job_id and agent_id.
-        """
-        try:
-            async with _SessionContext(db_manager) as session:
-                # Use provided tenant key or generate a new one
-                if not tenant_key:
-                    tenant_key = f"tk_{uuid4().hex}"
-
-                # Use mission as description if not provided (for backward compatibility)
-                if not description:
-                    description = mission
-
-                # Create project
-                project = Project(
-                    name=name,
-                    description=description,
-                    mission=mission,
-                    tenant_key=tenant_key,
-                    product_id=product_id,
-                    status="inactive",
-                    context_budget=150000,
-                    context_used=0,
-                    created_at=datetime.now(timezone.utc),
-                )
-
-                session.add(project)
-                await session.flush()
-
-                # Create initial session (Session model doesn't have status field)
-                initial_session = Session(
-                    project_id=project.id,
-                    tenant_key=tenant_key,
-                    session_number=1,
-                    title=f"Initial Session - {name}",
-                    started_at=datetime.now(timezone.utc),
-                )
-                session.add(initial_session)
-
-                result = {
-                    "success": True,
-                    "project_id": str(project.id),
-                    "name": name,
-                    "tenant_key": tenant_key,
-                    "product_id": product_id,
-                    "session_id": str(initial_session.id),
-                }
-
-                # Auto-create orchestrator job and execution if requested
-                if auto_create_orchestrator_job:
-                    # Create AgentJob
-                    agent_job = AgentJob(
-                        job_id=str(uuid4()),
-                        tenant_key=tenant_key,
-                        project_id=project.id,
-                        mission=mission,
-                        job_type="orchestrator",
-                        status="active",
-                        job_metadata={"auto_created": True},
-                    )
-                    session.add(agent_job)
-                    await session.flush()
-
-                    # Create AgentExecution
-                    agent_execution = AgentExecution(
-                        agent_id=str(uuid4()),
-                        job_id=agent_job.job_id,
-                        tenant_key=tenant_key,
-                        agent_type="orchestrator",
-                        instance_number=1,
-                        status="waiting",
-                        agent_name=f"{name} - Orchestrator #1",
-                        context_used=0,
-                        context_budget=150000,
-                        tool_type="claude-code",
-                    )
-                    session.add(agent_execution)
-
-                    # Add job and execution IDs to result
-                    result["job_id"] = agent_job.job_id
-                    result["agent_id"] = agent_execution.agent_id
-
-                # Save project_id before commit (which expires objects in test mode)
-                project_id_str = str(project.id)
-
-                await session.commit()
-
-                # Note: Not setting current tenant here since tenant may not exist in User table yet
-                # Tenant context will be set when switching to this project via switch_project()
-
-                logger.info(
-                    f"Created project '{name}' with ID {project_id_str}"
-                    + (f" under product {product_id}" if product_id else "")
-                    + (f" with orchestrator job {result.get('job_id')}" if auto_create_orchestrator_job else "")
-                )
-
-                return result
-
-        except Exception as e:
-            logger.exception(f"Failed to create project: {e}")
-            return {"success": False, "error": str(e)}
-
-    @mcp.tool()
     async def list_projects(status: Optional[str] = None) -> dict[str, Any]:
         """
         List all projects with optional status filter
@@ -314,72 +191,6 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
         except Exception as e:
             logger.exception(f"Failed to list projects: {e}")
-            return {"success": False, "error": str(e)}
-
-    @mcp.tool()
-    async def switch_project(project_id: str) -> dict[str, Any]:
-        """
-        Switch to a different project
-
-        Args:
-            project_id: UUID of the project to switch to
-
-        Returns:
-            Project details and activation status
-        """
-        try:
-            async with _SessionContext(db_manager) as session:
-                # Find project
-                query = select(Project).where(Project.id == project_id)
-                result = await session.execute(query)
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {
-                        "success": False,
-                        "error": f"Project {project_id} not found",
-                    }
-
-                # Set tenant context
-                tenant_manager.set_current_tenant(project.tenant_key)
-                current_tenant.set(project.tenant_key)
-
-                # Get the latest session or create new one if needed
-                session_query = (
-                    select(Session).where(Session.project_id == project.id).order_by(Session.session_number.desc())
-                )
-                session_result = await session.execute(session_query)
-                latest_session = session_result.scalar_one_or_none()
-
-                if not latest_session:
-                    # Create first session
-                    active_session = Session(
-                        project_id=project.id,
-                        tenant_key=project.tenant_key,
-                        session_number=1,
-                        title=f"Session 1 - {project.name}",
-                        started_at=datetime.now(timezone.utc),
-                    )
-                    session.add(active_session)
-                    await session.commit()
-                else:
-                    # Use latest session
-                    active_session = latest_session
-
-                logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
-
-                return {
-                    "success": True,
-                    "project_id": str(project.id),
-                    "name": project.name,
-                    "mission": project.mission,
-                    "tenant_key": project.tenant_key,
-                    "session_id": str(active_session.id),
-                    "context_usage": f"{project.context_used}/{project.context_budget}",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to switch project: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -608,7 +419,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     if not tenant_key:
                         return {
                             "success": False,
-                            "error": "No active project. Use switch_project first.",
+                            "error": "No active project. Use gil_activate first.",
                         }
 
                     # Find project by tenant key

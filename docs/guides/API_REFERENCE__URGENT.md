@@ -13,41 +13,9 @@ Complete API documentation with request/response examples for all 20 MCP tools.
 
 ## Project Management Tools
 
-### 1. create_project
+**Note**: Projects are created via REST API (`POST /api/v1/projects/`), not MCP tools. See REST API documentation for project creation.
 
-Creates a new project with mission and optional agent sequence.
-
-**Request:**
-
-```json
-{
-  "tool": "create_project",
-  "parameters": {
-    "name": "E-commerce Platform",
-    "mission": "Build a modern e-commerce platform with user authentication, product catalog, and payment processing",
-    "agents": ["orchestrator", "backend_dev", "frontend_dev", "tester"]
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "project": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "E-commerce Platform",
-    "mission": "Build a modern e-commerce platform...",
-    "status": "active",
-    "tenant_key": "tenant_123",
-    "created": "2025-09-16T10:30:00Z",
-    "agents": ["orchestrator", "backend_dev", "frontend_dev", "tester"]
-  }
-}
-```
-
-### 2. list_projects
+### 1. list_projects
 
 Lists all projects with optional status filter.
 
@@ -89,15 +57,15 @@ Lists all projects with optional status filter.
 }
 ```
 
-### 3. switch_project
+### 2. gil_activate
 
-Switches to a different project context.
+Activates a project to prepare orchestrator staging.
 
 **Request:**
 
 ```json
 {
-  "tool": "switch_project",
+  "tool": "gil_activate",
   "parameters": {
     "project_id": "550e8400-e29b-41d4-a716-446655440000"
   }
@@ -114,11 +82,11 @@ Switches to a different project context.
     "name": "E-commerce Platform",
     "status": "active"
   },
-  "message": "Switched to project: E-commerce Platform"
+  "message": "Project activated: E-commerce Platform. Orchestrator staging ready."
 }
 ```
 
-### 4. close_project
+### 3. close_project
 
 Closes a completed project with summary.
 
@@ -155,7 +123,7 @@ Closes a completed project with summary.
 }
 ```
 
-### 5. update_project_mission
+### 4. update_project_mission
 
 Updates the mission field after orchestrator analysis.
 
@@ -182,7 +150,7 @@ Updates the mission field after orchestrator analysis.
 }
 ```
 
-### 6. project_status
+### 5. project_status
 
 Gets comprehensive project status.
 
@@ -249,7 +217,7 @@ Gets comprehensive project status.
 
 ## Agent Management Tools
 
-### 7. ensure_agent
+### 6. ensure_agent
 
 Ensures an agent exists (idempotent - safe for workers).
 
@@ -284,7 +252,7 @@ Ensures an agent exists (idempotent - safe for workers).
 }
 ```
 
-### 8. activate_agent
+### 7. activate_agent
 
 Activates orchestrator agent (triggers immediate discovery workflow).
 
@@ -319,7 +287,7 @@ Activates orchestrator agent (triggers immediate discovery workflow).
 }
 ```
 
-### 9. assign_job
+### 8. assign_job
 
 Assigns a job to an agent with tasks and scope.
 
@@ -382,7 +350,7 @@ Assigns a job to an agent with tasks and scope.
 }
 ```
 
-### 10. handoff
+### 9. handoff
 
 Transfers work from one agent to another.
 
@@ -438,7 +406,7 @@ Transfers work from one agent to another.
 }
 ```
 
-### 11. agent_health
+### 10. agent_health
 
 Checks agent health and context usage.
 
@@ -502,7 +470,7 @@ Checks agent health and context usage.
 }
 ```
 
-### 12. decommission_agent
+### 11. decommission_agent
 
 Gracefully ends an agent's work.
 
@@ -543,7 +511,7 @@ Gracefully ends an agent's work.
 
 ## Message Communication Tools
 
-### 13. send_message
+### 12. send_message
 
 Sends message to one or more agents.
 
@@ -585,7 +553,7 @@ Sends message to one or more agents.
 }
 ```
 
-### 14. get_messages
+### 13. get_messages
 
 Retrieves pending messages for an agent.
 
@@ -640,7 +608,7 @@ Retrieves pending messages for an agent.
 }
 ```
 
-### 15. acknowledge_message
+### 14. acknowledge_message
 
 Marks message as received by agent.
 
@@ -668,7 +636,7 @@ Marks message as received by agent.
 }
 ```
 
-### 16. complete_message
+### 15. complete_message
 
 Marks message as completed with result.
 
@@ -698,7 +666,7 @@ Marks message as completed with result.
 }
 ```
 
-### 17. broadcast
+### 16. broadcast
 
 Broadcasts message to all agents in project.
 
@@ -731,7 +699,7 @@ Broadcasts message to all agents in project.
 }
 ```
 
-### 18. log_task
+### 17. log_task
 
 Quick task capture for tracking.
 
@@ -768,7 +736,7 @@ Quick task capture for tracking.
 
 ## Context & Vision Tools
 
-### 19. get_vision
+### 18. get_vision
 
 Gets vision document (auto-chunks for 50K+ tokens).
 
@@ -799,7 +767,7 @@ Gets vision document (auto-chunks for 50K+ tokens).
 }
 ```
 
-### 20. get_vision_index
+### 19. get_vision_index
 
 Gets vision document index for navigation (ORCHESTRATOR ONLY).
 
@@ -864,7 +832,7 @@ Gets vision document index for navigation (ORCHESTRATOR ONLY).
 }
 ```
 
-### 21. get_context_index
+### 20. get_context_index
 
 Gets context index for intelligent querying.
 
@@ -925,7 +893,7 @@ Gets context index for intelligent querying.
 }
 ```
 
-### 22. get_context_section
+### 21. get_context_section
 
 Retrieves specific content section.
 
@@ -956,7 +924,7 @@ Retrieves specific content section.
 }
 ```
 
-### 23. get_product_settings
+### 22. get_product_settings
 
 Gets all product settings for analysis.
 
@@ -1013,7 +981,7 @@ Gets all product settings for analysis.
 }
 ```
 
-### 24. session_info
+### 23. session_info
 
 Gets current session statistics.
 
@@ -1064,7 +1032,7 @@ Gets current session statistics.
 }
 ```
 
-### 25. recalibrate_mission
+### 24. recalibrate_mission
 
 Notifies agents about mission changes.
 
@@ -1101,7 +1069,7 @@ Notifies agents about mission changes.
 }
 ```
 
-### 26. help
+### 25. help
 
 Gets documentation for all available tools.
 
@@ -1120,24 +1088,25 @@ Gets documentation for all available tools.
 {
   "success": true,
   "help": {
-    "total_tools": 26,
+    "total_tools": 25,
     "categories": {
       "project_management": {
-        "count": 6,
+        "count": 5,
         "tools": [
-          {
-            "name": "create_project",
-            "description": "Create new project with mission and optional agent sequence",
-            "parameters": ["name", "mission", "agents"],
-            "example": "create_project(name='API Service', mission='Build REST API')"
-          },
           {
             "name": "list_projects",
             "description": "List all projects with optional status filter",
             "parameters": ["status"],
             "example": "list_projects(status='active')"
+          },
+          {
+            "name": "project_status",
+            "description": "Get comprehensive project status",
+            "parameters": ["project_id"],
+            "example": "project_status(project_id='uuid')"
           }
           // ... other project tools
+          // Note: Project creation uses REST API (POST /api/v1/projects/)
         ]
       },
       "agent_management": {

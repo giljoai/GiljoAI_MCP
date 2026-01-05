@@ -21,14 +21,15 @@ Tools for managing projects and their lifecycle.
 
 | Tool                     | File       | Description                                                 | Status         |
 | ------------------------ | ---------- | ----------------------------------------------------------- | -------------- |
-| `create_project`         | project.py | Create new project with mission and optional agent sequence | ✅ Implemented |
 | `list_projects`          | project.py | List all projects with optional status filter               | ✅ Implemented |
-| `switch_project`         | project.py | Switch to a different project                               | ✅ Implemented |
+| `gil_activate`           | project.py | Activate a project to prepare orchestrator staging          | ✅ Implemented |
 | `close_project`          | project.py | Close a completed project with summary                      | ✅ Implemented |
 | `update_project_mission` | project.py | Update the mission field after orchestrator analysis        | ✅ Implemented |
 | `project_status`         | project.py | Get comprehensive project status                            | ✅ Implemented |
 | `get_product_config`     | product.py | Get product configuration with role-based filtering         | ✅ Implemented |
 | `update_product_config`  | product.py | Update product configuration with validation                | ✅ Implemented |
+
+**Note**: Projects are created via REST API (`POST /api/v1/projects/`), not MCP tools. Use `gil_activate` to activate projects for orchestrator staging.
 
 #### 2. Agent Management Tools (6/6) ✅
 
@@ -89,12 +90,12 @@ Bonus tools discovered during implementation:
 ### 1. Project Management
 
 ```python
-# Create a new project
-result = await create_project(
-    name="AI Assistant",
-    mission="Build an intelligent coding assistant",
-    agents=["orchestrator", "implementer", "tester"]
-)
+# Note: Projects are created via REST API, not MCP tools
+# POST /api/v1/projects/
+# {
+#   "name": "AI Assistant",
+#   "description": "Build an intelligent coding assistant"
+# }
 
 # Get project status
 status = await project_status(project_id="uuid-here")

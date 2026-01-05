@@ -162,16 +162,6 @@ async def handle_tools_list(
             },
         },
         {
-            "name": "switch_project",
-            "description": "Switch to a different project context",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID to switch to"}},
-                "required": ["project_id"],
-            },
-        },
-
-        {
             "name": "update_project_mission",
             "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
             "inputSchema": {
@@ -618,7 +608,6 @@ async def handle_tools_call(
     tool_map = {
         # Project Management
         "create_project": state.tool_accessor.create_project,
-        "switch_project": state.tool_accessor.switch_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
         "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
