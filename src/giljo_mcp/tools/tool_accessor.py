@@ -734,6 +734,20 @@ class ToolAccessor:
                     # It is returned verbatim so agents know where the codebase lives locally.
                     project_path = getattr(product, "project_path", None)
 
+                # Handover 0408: Read Serena MCP toggle from config
+                include_serena = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                except Exception as e:
+                    logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
+
                 # Build framing-based response (Handover 0350b + Phase C)
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
@@ -767,6 +781,10 @@ class ToolAccessor:
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
+                    # Handover 0408: Serena MCP integration status
+                    "integrations": {
+                        "serena_mcp_enabled": include_serena,
+                    },
                 }
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
