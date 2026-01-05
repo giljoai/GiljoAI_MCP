@@ -119,8 +119,7 @@ async def get_agent_templates(
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
-                    "num_templates": 0,
-                    "estimated_tokens": 0
+                    "num_templates": 0
                 }
             }
 
@@ -175,7 +174,6 @@ async def get_agent_templates(
                 "product_id": product_id,
                 "tenant_key": tenant_key,
                 "num_templates": len(template_list),
-                "estimated_tokens": total_tokens,
                 "pagination_supported": False  # Reserved for future implementation
             }
         }
