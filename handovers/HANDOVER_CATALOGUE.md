@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-03 (0406 COMPLETE - Reactive Feedback for TodoWrite Compliance)
+**Last Updated:** 2026-01-04 (0388, 0389 COMPLETE - ID Confusion Fix + Dynamic Agent Names)
 
 ---
 
@@ -111,6 +111,8 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0389 | Dynamic Agent Name Examples in cli_mode_rules | **COMPLETE** (2026-01-04) |
+| 0388 | Fix Orchestrator ID vs Agent ID Confusion | **COMPLETE** (2026-01-04) |
 | 0383 | Spawn Response Task Tool Clarity | **COMPLETE** (2026-01-02) |
 | 0381 | Clean Contract - agent_id/job_id Separation | **COMPLETE** (2026-01-01) |
 | 0380 | update_agent_mission() MCP Tool | **COMPLETE** (2026-01-01) |
@@ -434,7 +436,7 @@ completed/reference/
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
 - **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
-- **0388-0401**: Gaps in 0301-0400 range
+- **0390-0401**: Gaps in 0301-0400 range (0388, 0389 now used)
 - **0404**: Gap in 0401-0500 range
 - **0407+**: Next sequential after current development
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
