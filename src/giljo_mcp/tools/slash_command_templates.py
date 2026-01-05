@@ -68,21 +68,28 @@ Call the tool with project_id to begin.
 GIL_GET_CLAUDE_AGENTS_MD = """---
 name: gil_get_claude_agents
 description: Download and install GiljoAI agent templates to Claude Code
-allowed-tools: ["mcp__giljo-mcp__get_agent_download_url"]
+allowed-tools: []
 ---
 
 Install GiljoAI agent templates to your Claude Code environment.
 
 ## STEP 1: Get Download URL
 
-Call the MCP tool to stage templates and get download URL:
+Call the HTTP endpoint to stage templates and get download URL.
 
-```
-Tool: mcp__giljo-mcp__get_agent_download_url
-Parameters: {}
+First, get the server URL and API key from the MCP config:
+- Server URL is typically `http://localhost:7272` or the URL you used to connect to GiljoAI
+- API key is in your MCP connection config (X-API-Key header value)
+
+Then make a POST request:
+
+```bash
+curl -X POST "http://localhost:7272/api/download/generate-token?content_type=agent_templates" \
+  -H "X-API-Key: YOUR_API_KEY_HERE" \
+  -H "Content-Type: application/json"
 ```
 
-Returns: `download_url` (valid 15 minutes, one-time use) and `template_count`
+Returns JSON with: `download_url` (valid 15 minutes, one-time use), `expires_at`, and `content_type`
 
 ## STEP 2: Download Templates
 
