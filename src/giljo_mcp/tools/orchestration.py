@@ -10,6 +10,7 @@ See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
 import os
+import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -2254,6 +2255,23 @@ async def get_orchestrator_instructions(
 
             full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
 
+            # Handover 0408: Serena MCP injection for orchestrators
+            include_serena = False
+            try:
+                config_path = Path.cwd() / "config.yaml"
+                if config_path.exists():
+                    with open(config_path, encoding="utf-8") as f:
+                        config_data = yaml.safe_load(f) or {}
+                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+            except Exception as e:
+                logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
+
+            if include_serena:
+                from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                serena_notice = generate_serena_instructions(enabled=True)
+                full_mission = serena_notice + "\n\n---\n\n" + full_mission
+                logger.info(f"[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
+
             # Calculate token estimate
             estimated_tokens = len(full_mission) // 4
 
@@ -2286,6 +2304,10 @@ async def get_orchestrator_instructions(
                 "error_handling": _get_error_handling(),
                 "agent_spawning_limits": _get_spawning_limits(),
                 "context_management": _get_context_management(agent_execution.context_budget or 150000),
+                # Handover 0408: Serena MCP integration status
+                "integrations": {
+                    "serena_mcp_enabled": include_serena,
+                },
             }
 
             # Handover 0260 Phase 5a + 0351: Add agent_spawning_constraint for Claude Code CLI mode

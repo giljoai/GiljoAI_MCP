@@ -570,12 +570,8 @@ export const api = {
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
   },
 
-  // Downloads (Natural Language Instructions via MCP Tools)
+  // Downloads
   downloads: {
-    // Slash commands - Generate token with natural language instructions (via MCP tool)
-    generateSlashCommandsInstructions: () =>
-      apiClient.post('/api/download/mcp/setup_slash_commands'),
-
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
