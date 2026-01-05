@@ -98,7 +98,6 @@ async def get_testing(
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
-                    "estimated_tokens": 0,
                     "error": "product_not_found"
                 }
             }
@@ -133,7 +132,6 @@ async def get_testing(
             "data": data,
             "metadata": {
                 "product_id": product_id,
-                "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens
+                "tenant_key": tenant_key
             }
         }

@@ -108,7 +108,6 @@ async def get_tech_stack(
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
-                    "estimated_tokens": 0,
                     "error": "product_not_found"
                 }
             }
@@ -145,7 +144,6 @@ async def get_tech_stack(
             "metadata": {
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens,
                 "pagination_supported": False  # Reserved for future implementation
             }
         }
