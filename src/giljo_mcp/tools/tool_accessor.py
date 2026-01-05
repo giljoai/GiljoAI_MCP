@@ -464,10 +464,6 @@ class ToolAccessor:
         """List available templates (delegates to TemplateService)"""
         return await self._template_service.list_templates()
 
-    async def get_template(self, template_name: str) -> dict[str, Any]:
-        """Get a specific template (delegates to TemplateService)"""
-        return await self._template_service.get_template(template_name=template_name)
-
     async def create_template(self, name: str, content: str, **kwargs) -> dict[str, Any]:
         """Create a new template (delegates to TemplateService)"""
         return await self._template_service.create_template(name=name, content=content, **kwargs)
@@ -885,69 +881,6 @@ class ToolAccessor:
         """Report job error (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_error(job_id=job_id, error=error)
 
-    async def get_next_instruction(self, job_id: str, agent_type: str, tenant_key: str) -> dict[str, Any]:
-        """Get next instructions for agent from message queue"""
-        from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-        try:
-            # Validate inputs
-            if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
-
-            if not agent_type or not agent_type.strip():
-                return {"status": "error", "error": "agent_type cannot be empty"}
-
-            if not tenant_key or not tenant_key.strip():
-                return {"status": "error", "error": "tenant_key cannot be empty"}
-
-            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-
-            # Get unread messages for this job
-            async with self.db_manager.get_session_async() as session:
-                result = await comm_queue.get_messages(
-                    session=session, job_id=job_id, tenant_key=tenant_key, to_agent=agent_type, unread_only=True
-                )
-
-                if result.get("status") != "success":
-                    return result
-
-                messages = result.get("messages", [])
-                has_updates = len(messages) > 0
-
-                # Extract and categorize instructions
-                instructions = []
-                handoff_requested = False
-                context_warning = False
-
-                for msg in messages:
-                    msg_type = msg.get("type")
-                    content = msg.get("content")
-
-                    if msg_type == "user_feedback":
-                        instructions.append(f"USER FEEDBACK: {content}")
-                    elif msg_type == "orchestrator_instruction":
-                        instructions.append(f"ORCHESTRATOR: {content}")
-                    elif msg_type == "handoff_request":
-                        handoff_requested = True
-                        instructions.append("HANDOFF REQUESTED: Prepare comprehensive summary and context handoff")
-                    elif msg_type == "context_warning":
-                        context_warning = True
-                        instructions.append(f"CONTEXT WARNING: {content} - Plan completion or handoff")
-                    elif msg_type == "error_recovery":
-                        instructions.append(f"ERROR RECOVERY GUIDANCE: {content}")
-
-                return {
-                    "status": "success",
-                    "has_updates": has_updates,
-                    "instructions": instructions,
-                    "handoff_requested": handoff_requested,
-                    "context_warning": context_warning,
-                    "message_count": len(messages),
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to get next instruction: {e}")
-            return {"status": "error", "error": str(e)}
 
     async def get_team_agents(
         self,
