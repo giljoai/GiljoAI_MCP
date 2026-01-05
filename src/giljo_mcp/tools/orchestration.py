@@ -565,7 +565,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             - agent_type: Type (backend, frontend, etc.)
             - mission: Agent-specific mission
             - project_description: Relevant project context
-            - estimated_tokens: Token count
             - thin_client: True (architecture flag)
 
         Example:
@@ -655,7 +654,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "mission": agent_job.mission or "",
                     "project_id": str(agent_job.project_id),
                     "parent_job_id": str(agent_execution.spawned_by) if agent_execution.spawned_by else None,
-                    "estimated_tokens": estimated_tokens,
                     "status": agent_execution.status,
                     "thin_client": True,
                 }
@@ -701,8 +699,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 "success": true,
                 "template": "<rendered prompt>",
                 "variables_injected": {...},
-                "protocol_version": "1.0",
-                "estimated_tokens": 2400
+                "protocol_version": "1.0"
             }
         """
         try:
@@ -738,7 +735,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "tenant_key": tenant_key,
                 },
                 "protocol_version": template.version,
-                "estimated_tokens": len(rendered) // 4,  # Rough estimate
             }
 
         except Exception as e:
@@ -1587,8 +1583,7 @@ The agent templates are now being updated...
                 'context_used': 0,
                 'agent_templates': [...],  # Available specialists (INPUT)
                 'field_priorities': {...},
-                'token_reduction_applied': True,
-                'estimated_tokens': 6000
+                'token_reduction_applied': True
             }
 
         Example:
@@ -1872,7 +1867,6 @@ The agent templates are now being updated...
                                 "agent_id": agent_id,
                                 "job_id": job_id,
                                 "project_id": str(project.id),
-                                "estimated_tokens": estimated_tokens,
                                 "status": "active",
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "thin_client": True,
@@ -1902,7 +1896,6 @@ The agent templates are now being updated...
                     "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
-                    "estimated_tokens": estimated_tokens,
                     "instance_number": agent_execution.instance_number or 1,
                     "thin_client": True,
                 }
@@ -2284,7 +2277,6 @@ async def get_orchestrator_instructions(
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
-                "estimated_tokens": estimated_tokens,
                 "instance_number": agent_execution.instance_number or 1,
                 "thin_client": True,
                 # Handover 0347c: Add 6 new guidance fields
@@ -2407,7 +2399,6 @@ async def get_agent_mission(
                 "agent_type": agent_execution.agent_type,
                 "mission": agent_job.mission or "",
                 "thin_client": True,
-                "estimated_tokens": estimated_tokens,
             }
 
         except Exception as e:
@@ -2450,8 +2441,7 @@ async def get_generic_agent_template(
                 "project_id": "...",
                 "tenant_key": "..."
             },
-            "protocol_version": "1.0",
-            "estimated_tokens": 2400
+            "protocol_version": "1.0"
         }
     """
     try:
@@ -2487,7 +2477,6 @@ async def get_generic_agent_template(
                 "tenant_key": tenant_key,
             },
             "protocol_version": template.version,
-            "estimated_tokens": len(rendered) // 4,  # Rough estimate
         }
 
     except Exception as e:

@@ -103,7 +103,6 @@ async def get_project(
                 "metadata": {
                     "project_id": project_id,
                     "tenant_key": tenant_key,
-                    "estimated_tokens": 0,
                     "error": "project_not_found"
                 }
             }
@@ -140,7 +139,6 @@ async def get_project(
             "data": data,
             "metadata": {
                 "project_id": project_id,
-                "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens
+                "tenant_key": tenant_key
             }
         }
