@@ -20,7 +20,6 @@ EXPECTED_TOOL_NAMES = {
     "acknowledge_job",
     "check_succession_status",
     "complete_job",
-    "create_project",
     "create_successor_orchestrator",
     "create_task",
     "fetch_context",
@@ -44,7 +43,6 @@ EXPECTED_TOOL_NAMES = {
     "send_message",
     "setup_slash_commands",
     "spawn_agent_job",
-    "switch_project",
     "update_agent_mission",
     "update_project_mission",
 }

@@ -251,15 +251,15 @@ frontend/src/
   "result": {
     "tools": [
       {
-        "name": "create_project",
-        "description": "Create a new project with mission and optional agent sequence",
+        "name": "get_orchestrator_instructions",
+        "description": "Fetch context for orchestrator to create mission plan",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "name": {"type": "string", "description": "Project name"},
-            "mission": {"type": "string", "description": "Project mission statement"}
+            "job_id": {"type": "string", "description": "Orchestrator job UUID"},
+            "tenant_key": {"type": "string", "description": "Tenant isolation key"}
           },
-          "required": ["name", "mission"]
+          "required": ["job_id", "tenant_key"]
         }
       }
     ]
@@ -347,14 +347,14 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 
 ### Example Tool Calls
 
-**Create a new project:**
+**Get orchestrator instructions:**
 ```
-> "Create a new project called 'Website Redesign' with the mission 'Modernize company website with Vue 3 and improve performance'"
+> "Fetch my orchestrator instructions for job abc123"
 ```
 
 **List all agents:**
 ```
-> "Show me all the agents working on the Website Redesign project"
+> "Show me all the agents working on the project"
 ```
 
 **Send a message:**
