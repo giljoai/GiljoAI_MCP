@@ -734,8 +734,9 @@ class ToolAccessor:
                     # It is returned verbatim so agents know where the codebase lives locally.
                     project_path = getattr(product, "project_path", None)
 
-                # Handover 0408: Read Serena MCP toggle from config
+                # Handover 0408: Read integration toggles from config
                 include_serena = False
+                git_integration_enabled = False
                 try:
                     from pathlib import Path
                     import yaml
@@ -744,9 +745,11 @@ class ToolAccessor:
                     if config_path.exists():
                         with open(config_path, encoding="utf-8") as f:
                             config_data = yaml.safe_load(f) or {}
-                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        features = config_data.get("features", {})
+                        include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
+                        git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
                 except Exception as e:
-                    logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
+                    logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
 
                 # Build framing-based response (Handover 0350b + Phase C)
                 # Includes: identity, project context, fetch instructions, AND agent templates
@@ -781,9 +784,10 @@ class ToolAccessor:
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
-                    # Handover 0408: Serena MCP integration status
+                    # Handover 0408: Integration toggles status
                     "integrations": {
                         "serena_mcp_enabled": include_serena,
+                        "git_integration_enabled": git_integration_enabled,
                     },
                 }
 
