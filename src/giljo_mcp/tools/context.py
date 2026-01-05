@@ -56,7 +56,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first.",
+                    "error": "No active project. Use gil_activate first.",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -256,7 +256,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first.",
+                    "error": "No active project. Use gil_activate first.",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -397,7 +397,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first.",
+                    "error": "No active project. Use gil_activate first.",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -626,7 +626,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first.",
+                    "error": "No active project. Use gil_activate first.",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -696,7 +696,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "session": {
                         "active_project": None,
                         "tenant_key": None,
-                        "message": "No active project. Use create_project or switch_project.",
+                        "message": "No active project. Use gil_activate to activate a project.",
                     },
                 }
 
@@ -822,7 +822,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first.",
+                    "error": "No active project. Use gil_activate first.",
                 }
 
             async with db_manager.get_session_async() as session:
@@ -1048,11 +1048,6 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "description": "List all projects with optional status filter",
                                 "parameters": {"status": "Optional status filter (active, completed, etc.)"},
                                 "returns": "List of projects with details",
-                            },
-                            "switch_project": {
-                                "description": "Switch to a different project",
-                                "parameters": {"project_id": "UUID of the project (required)"},
-                                "returns": "Project activation confirmation",
                             },
                             "close_project": {
                                 "description": "Close a completed project with summary",
