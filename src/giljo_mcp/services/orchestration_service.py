@@ -596,6 +596,29 @@ class OrchestrationService:
                 if context_chunks:
                     metadata_dict["context_chunks"] = context_chunks
 
+                # Handover 0408: Inject Serena instructions into agent mission if enabled
+                include_serena = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                except Exception as e:
+                    self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
+
+                if include_serena:
+                    from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                    serena_notice = generate_serena_instructions(enabled=True)
+                    mission = serena_notice + "\n\n---\n\n" + mission
+                    self._logger.info(
+                        f"[SERENA] Injected notice into agent mission",
+                        extra={"agent_name": agent_name, "agent_type": agent_type}
+                    )
+
                 # Create AgentJob (work order - WHAT)
                 agent_job = AgentJob(
                     job_id=job_id,
