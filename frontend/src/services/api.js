@@ -475,7 +475,7 @@ export const api = {
   // Serena MCP Integration
   serena: {
     getStatus: () => apiClient.get('/api/serena/status'),
-    toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
+    toggle: (enabled) => apiClient.post('/api/serena/toggle', { use_in_prompts: enabled }),
     getConfig: () => apiClient.get('/api/serena/config'),
     updateConfig: (data) => apiClient.post('/api/serena/config', data),
   },
@@ -514,6 +514,8 @@ export const api = {
     triggerSuccession: (jobId, reason = 'manual', notes = null) =>
       apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
     checkSuccessionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
+    // Handover 0506: Initiate handover - returns prompt for retiring orchestrator
+    initiateHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/initiate-handover`),
 
     // Message and communication endpoints (Handover 0066 - Kanban Dashboard)
     messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
@@ -568,12 +570,8 @@ export const api = {
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
   },
 
-  // Downloads (Natural Language Instructions via MCP Tools)
+  // Downloads
   downloads: {
-    // Slash commands - Generate token with natural language instructions (via MCP tool)
-    generateSlashCommandsInstructions: () =>
-      apiClient.post('/api/download/mcp/setup_slash_commands'),
-
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),

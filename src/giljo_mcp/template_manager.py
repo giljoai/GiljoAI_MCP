@@ -618,7 +618,7 @@ SUCCESS CRITERIA:
             # Read Serena config
             config_service = ConfigService()
             serena_config = config_service.get_serena_config()
-            variables["serena_enabled"] = serena_config.get("enabled", False)
+            variables["serena_enabled"] = serena_config.get("use_in_prompts", False)
 
             # Try cache → database cascade → legacy fallback
             template_content = None

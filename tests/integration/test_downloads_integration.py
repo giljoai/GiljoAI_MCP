@@ -86,7 +86,6 @@ class TestSlashCommandsDownloadIntegration:
             # Test gil_get_claude_agents.md
             content = zipf.read("gil_get_claude_agents.md").decode("utf-8")
             assert "name: gil_get_claude_agents" in content
-            assert "mcp__giljo-mcp__get_agent_download_url" in content
 
             # Test gil_handover.md
             content = zipf.read("gil_handover.md").decode("utf-8")

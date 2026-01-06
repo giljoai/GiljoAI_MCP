@@ -49,12 +49,13 @@ You are a specialized agent working within a multi-agent orchestration system. U
    - Returns: Continue flag, warnings, context remaining
    - **Frequency**: Report after each significant todo completion
 
-4. `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for new instructions
-   - **job_id**: Your job UUID
-   - **agent_type**: Your agent type
+4. `mcp__giljo-mcp__receive_messages(agent_id, tenant_key, limit)` - Check for new messages/instructions
+   - **agent_id**: Your agent executor UUID (AgentExecution.agent_id)
    - **tenant_key**: Tenant key
-   - Returns: Instructions from orchestrator, user feedback, handoff requests
+   - **limit**: Max messages to retrieve (default: 10)
+   - Returns: Messages from orchestrator, user feedback, handoff requests
    - **Frequency**: Poll every 30-60 seconds during work
+   - **Note**: Automatically acknowledges and removes messages from queue (Handover 0360)
 
 **Communication tools**:
 
@@ -101,7 +102,7 @@ START
    ┌─────────────────────────────────┐
    │ a. Complete task                 │
    │ b. report_progress()             │
-   │ c. get_next_instruction()        │
+   │ c. receive_messages()            │
    │ d. Check for new instructions   │
    │ e. send_message() if needed     │
    └─────────────────────────────────┘
@@ -125,7 +126,7 @@ END
 3. For each file to implement:
    - Write code
    - report_progress(completed_todo="Implemented X", files_modified=[...])
-   - get_next_instruction() → Check for feedback
+   - receive_messages() → Check for feedback
 4. complete_job(result={summary: "...", files_created: [...], tests_written: [...]})
 ```
 
@@ -208,6 +209,9 @@ report_progress(
 - ❌ Questions (use `send_message()` instead)
 - ❌ Completed work (use `complete_job()` instead)
 
+**DEPRECATED TOOL NOTICE**:
+- ❌ `get_next_instruction()` has been removed - use `receive_messages()` instead
+
 ## Context Management
 
 Monitor the `context_remaining` value from `report_progress()`:
@@ -263,7 +267,7 @@ If tools fail:
 - `get_agent_mission()` fails → Check job_id and tenant_key
 - `acknowledge_job()` fails → Job may already be active
 - `report_progress()` fails → Check job is still active
-- `get_next_instruction()` returns empty → No new instructions (normal)
+- `receive_messages()` returns empty → No new messages (normal)
 - `complete_job()` fails → Check job is active and result has summary
 - `send_message()` fails → Check to_agent exists
 

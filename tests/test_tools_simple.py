@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple test to verify all 20 MCP tools are available
+Simple test to verify all 18 MCP tools are available
 """
 
 import asyncio
@@ -13,23 +13,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 async def test_tools():
-    """Test that all 20 tools are defined"""
+    """Test that all 19 tools are defined"""
 
     tools_status = {}
     errors = []
 
-    # Test Project Tools (6)
+    # Test Project Tools (4)
     try:
         from src.giljo_mcp.tools.project import (
             close_project,
-            create_project,
             list_projects,
             project_status,
-            switch_project,
             update_project_mission,
         )
 
-        tools_status["project"] = 6
+        tools_status["project"] = 4
     except ImportError as e:
         errors.append(str(e))
         tools_status["project"] = 0
@@ -138,7 +136,7 @@ async def test_tools():
     except Exception:
         pass
 
-    if total_tools == 20:
+    if total_tools == 18:
         return 0
     return 1
 

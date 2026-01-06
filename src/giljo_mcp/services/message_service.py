@@ -249,21 +249,25 @@ class MessageService:
 
                 # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
                 # Handover 0372/0401: Runs ALWAYS, regardless of websocket_manager
-                # Uses resolved_to_agents which contains agent_ids for direct messages
+                # FIX: Call once per recipient with their own message_id (not shared message_id)
                 if messages:
                     try:
-                        await self._persist_message_to_agent_jsonb(
-                            session=session,
-                            message_id=message_id,
-                            from_agent=from_agent or "orchestrator",
-                            recipient_job_ids=resolved_to_agents,  # Contains agent_ids
-                            content=content,
-                            message_type=message_type,
-                            priority=priority,
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                        )
-                        self._logger.info(f"[PERSISTENCE] Saved message {message_id} to agent JSONB columns")
+                        for msg in messages:
+                            # Each message has a unique ID - use the correct one for this recipient
+                            recipient_id = msg.to_agents[0] if msg.to_agents else None
+                            if recipient_id:
+                                await self._persist_message_to_agent_jsonb(
+                                    session=session,
+                                    message_id=str(msg.id),  # THIS recipient's message_id
+                                    from_agent=from_agent or "orchestrator",
+                                    recipient_job_ids=[recipient_id],  # Only THIS recipient
+                                    content=content,
+                                    message_type=message_type,
+                                    priority=priority,
+                                    project_id=project.id,
+                                    tenant_key=project.tenant_key,
+                                )
+                        self._logger.info(f"[PERSISTENCE] Saved {len(messages)} messages to agent JSONB columns")
                     except Exception as persist_error:
                         self._logger.warning(f"Failed to persist message to JSONB: {persist_error}")
 
