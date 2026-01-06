@@ -637,50 +637,8 @@ class TestDownloadEndpointsWithTokens:
 # ============================================================================
 # INTEGRATION TESTS: MCP Tool Integration
 # ============================================================================
-
-
-class TestMCPToolDownloadIntegration:
-    """
-    Integration tests for MCP tool → token → download flow.
-
-    Tests:
-    - setup_slash_commands() returns download URL
-    - Download URLs work after tool invocation
-    """
-
-    @pytest.mark.asyncio
-    async def test_setup_slash_commands_returns_download_url(self, api_client, auth_headers):
-        """Test setup_slash_commands MCP tool returns valid download URL"""
-        response = await api_client.post(
-            "/api/mcp/tools/setup_slash_commands", headers=auth_headers, json={"platform": "linux"}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert "download_url" in data
-        assert "token" in data
-
-        # Verify download URL works
-        download_response = await api_client.get(data["download_url"])
-        assert download_response.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_token_expires_after_tool_invocation(self, api_client, auth_headers):
-        """Test token expires after 15 minutes (configurable)"""
-        # Generate token via tool
-        response = await api_client.post(
-            "/api/mcp/tools/setup_slash_commands", headers=auth_headers, json={"platform": "linux"}
-        )
-
-        data = response.json()
-        expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
-        created_at = datetime.now(timezone.utc)
-
-        # Verify expiration is ~15 minutes
-        delta = expires_at - created_at
-        assert 14 <= delta.total_seconds() / 60 <= 16  # 14-16 minutes tolerance
+# Note: Tests removed - setup_slash_commands() and get_agent_download_url()
+# MCP tools have been deprecated and removed from the codebase.
 
 
 # ============================================================================

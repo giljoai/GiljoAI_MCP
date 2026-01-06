@@ -498,10 +498,12 @@ async def generate_staging_prompt(
         claude_code_mode = (execution_mode == "claude_code_cli")
 
         # Use generate_staging_prompt for mode-specific content
+        # Handover 0388: Pass agent_id for correct MCP tool call in prompt
         staging_prompt = await generator.generate_staging_prompt(
             orchestrator_id=result["orchestrator_id"],
             project_id=project_id,
-            claude_code_mode=claude_code_mode
+            claude_code_mode=claude_code_mode,
+            agent_id=result.get("agent_id"),  # WHO - executor ID for MCP tool calls
         )
 
         # Calculate token estimate for staging prompt (1 token ≈ 4 chars)
@@ -514,6 +516,7 @@ async def generate_staging_prompt(
                 event_type="orchestrator:prompt_generated",
                 data={
                     "orchestrator_id": result["orchestrator_id"],
+                    "agent_id": result.get("agent_id"),  # Handover 0388: Include agent_id
                     "project_id": project_id,
                     "thin_client": True,
                     "tool": tool,
@@ -532,8 +535,10 @@ async def generate_staging_prompt(
 
         # Return response with 'prompt' key for frontend compatibility
         # Handover 0260: Use staging_prompt (mode-specific) instead of thin_prompt
+        # Handover 0388: Include agent_id in response
         return {
             "orchestrator_id": result["orchestrator_id"],
+            "agent_id": result.get("agent_id"),  # WHO - executor ID for MCP tool calls
             "prompt": staging_prompt,  # Mode-specific staging prompt
             "instance_number": result["instance_number"],
             "context_budget": result["context_budget"],
