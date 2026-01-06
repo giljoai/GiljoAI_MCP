@@ -124,7 +124,6 @@ async def get_git_history(
                     "tenant_key": tenant_key,
                     "total_commits": 0,
                     "returned_commits": 0,
-                    "estimated_tokens": 0,
                     "git_integration_enabled": False,
                     "error": "product_not_found"
                 }
@@ -146,7 +145,6 @@ async def get_git_history(
                     "tenant_key": tenant_key,
                     "total_commits": 0,
                     "returned_commits": 0,
-                    "estimated_tokens": 0,
                     "git_integration_enabled": False
                 }
             }
@@ -170,7 +168,6 @@ async def get_git_history(
                     "tenant_key": tenant_key,
                     "total_commits": 0,
                     "returned_commits": 0,
-                    "estimated_tokens": 0,
                     "git_integration_enabled": False,
                     "reason": "git_integration_disabled"
                 }
@@ -200,7 +197,6 @@ async def get_git_history(
                     "tenant_key": tenant_key,
                     "total_commits": 0,
                     "returned_commits": 0,
-                    "estimated_tokens": 0,
                     "git_integration_enabled": True
                 }
             }
@@ -233,7 +229,6 @@ async def get_git_history(
                 "tenant_key": tenant_key,
                 "total_commits": len(all_commits),
                 "returned_commits": len(filtered_commits),
-                "estimated_tokens": total_tokens,
                 "git_integration_enabled": True,
                 "pagination_supported": False  # Reserved for future implementation
             }

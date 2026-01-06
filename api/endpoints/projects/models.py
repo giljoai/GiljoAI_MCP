@@ -215,4 +215,4 @@ class OrchestratorResponse(BaseModel):
     """Response for GET /{project_id}/orchestrator."""
 
     success: bool
-    orchestrator: OrchestratorJobResponse
+    orchestrator: Optional[OrchestratorJobResponse] = None  # Handover 0506: Optional when no orchestrator exists

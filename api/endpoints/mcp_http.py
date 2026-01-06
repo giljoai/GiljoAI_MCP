@@ -145,33 +145,6 @@ async def handle_tools_list(
     tools = [
         # Project Management Tools
         {
-            "name": "create_project",
-            "description": "Create a new project with mission and optional agent sequence",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Project name"},
-                    "mission": {"type": "string", "description": "Project mission statement"},
-                    "agents": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Optional list of agent names to initialize",
-                    },
-                },
-                "required": ["name", "mission"],
-            },
-        },
-        {
-            "name": "switch_project",
-            "description": "Switch to a different project context",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"project_id": {"type": "string", "description": "Project ID to switch to"}},
-                "required": ["project_id"],
-            },
-        },
-
-        {
             "name": "update_project_mission",
             "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
             "inputSchema": {
@@ -305,16 +278,6 @@ async def handle_tools_list(
                 "required": ["title"],
             },
         },
-        # Template Management Tools (read-only via MCP)
-        {
-            "name": "get_template",
-            "description": "Get a specific agent template",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"template_name": {"type": "string", "description": "Template name"}},
-                "required": ["template_name"],
-            },
-        },
         # Health & Status Tools
         {
             "name": "health_check",
@@ -358,19 +321,6 @@ async def handle_tools_list(
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["job_id", "progress", "tenant_key"],
-            },
-        },
-        {
-            "name": "get_next_instruction",
-            "description": "Check for new instructions from orchestrator",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Job ID to check messages for"},
-                    "agent_type": {"type": "string", "description": "Agent type"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"},
-                },
-                "required": ["job_id", "agent_type", "tenant_key"],
             },
         },
         {
@@ -480,18 +430,6 @@ async def handle_tools_list(
                 },
                 "required": ["job_id", "tenant_key"],
             },
-        },
-        # Slash Command Setup Tool (Handover 0093)
-        {
-            "name": "setup_slash_commands",
-            "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/.",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
-        # Agent Template Download Tool (Handover 0355)
-        {
-            "name": "get_agent_download_url",
-            "description": "Generate one-time download link for active agent templates. Returns URL for /gil_get_claude_agents slash command.",
-            "inputSchema": {"type": "object", "properties": {}},
         },
         {
             "name": "gil_handover",
@@ -617,8 +555,6 @@ async def handle_tools_call(
     # Route to appropriate tool method
     tool_map = {
         # Project Management
-        "create_project": state.tool_accessor.create_project,
-        "switch_project": state.tool_accessor.switch_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
         "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
@@ -630,13 +566,10 @@ async def handle_tools_call(
         "list_messages": state.tool_accessor.list_messages,
         # Task Management (MCP tools retired Dec 2025 - only create_task kept)
         "create_task": state.tool_accessor.create_task,
-        # Template Management (read-only via MCP)
-        "get_template": state.tool_accessor.get_template,
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "acknowledge_job": state.tool_accessor.acknowledge_job,
         "report_progress": state.tool_accessor.report_progress,
-        "get_next_instruction": state.tool_accessor.get_next_instruction,
         "complete_job": state.tool_accessor.complete_job,
         "report_error": state.tool_accessor.report_error,
         # Orchestration Tools (Handover 0088)
@@ -647,10 +580,6 @@ async def handle_tools_call(
         # Succession Tools (Handover 0080)
         "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
         "check_succession_status": state.tool_accessor.check_succession_status,
-        # Slash Command Setup Tool (Handover 0093)
-        "setup_slash_commands": state.tool_accessor.setup_slash_commands,
-        # Agent Template Download Tool (Handover 0355)
-        "get_agent_download_url": state.tool_accessor.get_agent_download_url,
         "gil_handover": state.tool_accessor.gil_handover,
         # Handover 0083 - core /gil_* commands
         "gil_activate": state.tool_accessor.gil_activate,
@@ -665,25 +594,6 @@ async def handle_tools_call(
         raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
 
     try:
-        # Inject API key for download tools (HTTP mode support)
-        # These tools need API key to download from server endpoints
-        download_tools = {"setup_slash_commands", "get_agent_download_url"}
-        if tool_name in download_tools:
-            # Get API key from request headers
-            api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace(
-                "Bearer ", ""
-            )
-            arguments["_api_key"] = api_key_value
-
-            # Inject server URL from request (fix for 0.0.0.0 bind address issue)
-            # Extract scheme (http/https) and host from incoming request
-            scheme = request.url.scheme  # 'http' or 'https'
-            host = request.headers.get("host")  # e.g., '10.1.0.164:7272'
-            server_url = f"{scheme}://{host}"
-            arguments["_server_url"] = server_url
-
-            logger.debug(f"Injected server URL for download tool: {server_url}")
-
         # Execute tool
         tool_func = tool_map[tool_name]
         result = await tool_func(**arguments)

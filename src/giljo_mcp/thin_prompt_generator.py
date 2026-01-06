@@ -203,7 +203,8 @@ class ThinClientPromptGenerator:
 
         if existing_execution:
             # Reuse existing active orchestrator
-            orchestrator_id = existing_execution.job_id
+            orchestrator_id = existing_execution.job_id  # WHAT - work order ID
+            agent_id = existing_execution.agent_id  # WHO - executor ID (for MCP tool calls)
             instance_number = existing_execution.instance_number
 
             # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
@@ -305,8 +306,10 @@ class ThinClientPromptGenerator:
             )
 
         # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
+        # Handover 0388: Pass agent_id for correct MCP tool call in prompt
         thin_prompt = await self._generate_thin_prompt(
             orchestrator_id=orchestrator_id,
+            agent_id=agent_id,  # WHO - executor ID for MCP tool calls
             project_id=project_id,
             project=project,
             product=product,
@@ -344,7 +347,8 @@ class ThinClientPromptGenerator:
             logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
 
         return {
-            "orchestrator_id": orchestrator_id,
+            "orchestrator_id": orchestrator_id,  # WHAT - work order/job ID (backward compat)
+            "agent_id": agent_id,  # WHO - executor ID for MCP tool calls (Handover 0388)
             "thin_prompt": thin_prompt,
             "instance_number": instance_number,
             "context_budget": project.context_budget,
@@ -526,6 +530,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
     async def _generate_thin_prompt(
         self,
         orchestrator_id: str,
+        agent_id: str,  # Handover 0388: WHO - executor ID for MCP tool calls
         project_id: str,
         project: Any,
         product: Any,
@@ -542,7 +547,8 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         for on-demand context fetching.
 
         Args:
-            orchestrator_id: Orchestrator job UUID
+            orchestrator_id: Job ID (WHAT - work order UUID)
+            agent_id: Agent execution ID (WHO - executor UUID, use for MCP tool calls)
             project_id: Project UUID
             project: Project model
             product: Product model
@@ -586,10 +592,12 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
         # Build thin prompt with MCP tool reference (Monolithic Context Architecture)
+        # Handover 0388: Updated IDENTITY to show agent_id (WHO) and job_id (WHAT) separately
         prompt = f"""I am Orchestrator #{instance_number} for GiljoAI Project "{project.name}".
 
 IDENTITY:
-- Orchestrator ID: {orchestrator_id}
+- Orchestrator Agent ID: {agent_id}
+- Job ID: {orchestrator_id}
 - Project ID: {project_id}
 - Tenant Key: {self.tenant_key}
 
@@ -608,7 +616,7 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Mission: {project.mission or '(Mission will be created by you)'}
 
 WORKFLOW:
-1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{agent_id}', '{self.tenant_key}')
    → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
    → User priority configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
@@ -629,7 +637,7 @@ CRITICAL DISTINCTIONS:
 
 MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
-✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch complete prioritized context
+✓ mcp__giljo-mcp__get_orchestrator_instructions('{agent_id}', '{self.tenant_key}') - Fetch complete prioritized context
 ✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
 ✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
 ✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
@@ -939,7 +947,7 @@ No previous project history available. Starting fresh.
         return config.server.api_host
 
     async def generate_staging_prompt(
-        self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False
+        self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False, agent_id: str = None
     ) -> str:
         """
         Generate simple orchestrator staging prompt (Handover 0333).
@@ -948,9 +956,10 @@ No previous project history available. Starting fresh.
         Replaces the broken 7-task workflow with a simple ~50 line prompt.
 
         Args:
-            orchestrator_id: Orchestrator job UUID
+            orchestrator_id: Job ID (WHAT - work order UUID)
             project_id: Project UUID
             claude_code_mode: Use Claude Code CLI mode (default: False)
+            agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls, Handover 0388)
 
         Returns:
             Simple staging prompt (~50-60 lines)
@@ -963,6 +972,24 @@ No previous project history available. Starting fresh.
 
         if not project or not product:
             raise ValueError(f"Project {project_id} or its product not found")
+
+        # Handover 0388: If agent_id not provided, fetch from database
+        if not agent_id:
+            exec_stmt = (
+                select(AgentExecution)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
+                    AgentJob.job_id == orchestrator_id,
+                    AgentExecution.tenant_key == self.tenant_key,
+                )
+            )
+            exec_result = await self.db.execute(exec_stmt)
+            execution = exec_result.scalars().first()
+            if execution:
+                agent_id = execution.agent_id
+            else:
+                # Fallback: use orchestrator_id if no execution found (legacy)
+                agent_id = orchestrator_id
 
         # Get MCP server URL
         config = get_config()
@@ -977,7 +1004,7 @@ No previous project history available. Starting fresh.
             # Handover 0342: Trimmed CLI mode block - verbose version in get_orchestrator_instructions()
             mode_block = """CLI MODE CRITICAL:
 This project uses Claude Code CLI for implementation. When spawning agents:
-- agent_name: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (e.g., "implementer-frontend")
+- agent_name: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (see allowed_agent_names)
 - agent_type: Display category label (e.g., "implementer")
 - Template file: Each agent_name requires .claude/agents/{agent_name}.md
 
@@ -993,10 +1020,12 @@ Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_i
 - Each agent has [Copy Prompt] button in the Implementation tab
 - Coordinate agents via MCP messaging tools"""
 
+        # Handover 0388: Updated IDENTITY to show agent_id (WHO) and job_id (WHAT) separately
         prompt = f"""You are Orchestrator for project "{project.name}" managed by GiljoAI MCP Agent Orchestration Server.
 
 IDENTITY:
-- Orchestrator ID: {orchestrator_id}
+- Orchestrator Agent ID: {agent_id}
+- Job ID: {orchestrator_id}
 - Project ID: {project_id}
 - Tenant Key: {self.tenant_key}
 - Execution Mode: {execution_mode}
@@ -1013,7 +1042,7 @@ IDENTITY:
 └─────────────────────────────────────────────────────────────────────────────┘
 
                          ══════ SESSION BOUNDARY ══════
-    User runs /gil_launch or copies and pastes the implementation start prompt
+    User clicks Launch in UI or copies and pastes the implementation start prompt
                          ══════════════════════════════
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1037,7 +1066,7 @@ You are STAGING the project. Your job:
 
 STARTUP SEQUENCE:
 1. Verify MCP: health_check()
-2. Fetch context: get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
+2. Fetch context: get_orchestrator_instructions(agent_id='{agent_id}', tenant_key='{self.tenant_key}')
    Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
 3. CREATE MISSION: Analyze requirements and generate execution plan
 4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
@@ -1312,11 +1341,11 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "**WARNING: Agent Template Files Required**",
             "- Each agent_name needs a file: `.claude/agents/{agent_name}.md`",
             '- If file is missing: "Subagent type not found" error',
-            '- Example: agent_name="implementer-frontend" requires `.claude/agents/implementer-frontend.md`',
+            '- Example: agent_name="<agent_name>" requires `.claude/agents/<agent_name>.md`',
             "",
             "**WARNING: Exact Naming Required**",
             "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_type`",
-            '- agent_name: Template filename (e.g., "implementer-frontend")',
+            '- agent_name: Template filename (see allowed_agent_names in instructions)',
             '- agent_type: Display category (e.g., "implementer")',
             '- Using agent_type will fail with "Subagent type not found"',
             "",
@@ -1344,8 +1373,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "### Handover (if needed)",
             "If you reach context limits before completion:",
-            "- Use `/gil_handover` slash command to trigger succession",
-            "- Or call orchestrator succession MCP tool",
+            "- Call mcp__giljo-mcp__gil_handover to trigger succession",
             "- A new orchestrator will continue from where you left off",
             "",
         ]
