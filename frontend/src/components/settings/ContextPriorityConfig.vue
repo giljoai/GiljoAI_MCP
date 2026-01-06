@@ -1,6 +1,17 @@
 <template>
   <v-card>
-    <v-card-title>Context Priority Configuration</v-card-title>
+    <v-card-title class="d-flex justify-space-between align-center px-4">
+      <span>Context Priority Configuration</span>
+      <v-btn
+        variant="text"
+        size="small"
+        @click="resetToDefaults"
+        data-testid="reset-context-priority-btn"
+        style="width: 140px;"
+      >
+        Reset
+      </v-btn>
+    </v-card-title>
     <v-card-text>
       <!-- Git Integration Alert -->
       <v-alert
@@ -25,23 +36,31 @@
         </div>
       </v-alert>
 
-      <!-- Locked Project Description -->
-      <div class="context-row locked-row d-flex justify-space-between align-center py-3 mb-2">
-        <div class="d-flex align-center">
-          <v-icon size="small" color="primary" class="mr-2">mdi-lock</v-icon>
-          <span class="text-subtitle-2 font-weight-medium">Project Description</span>
-        </div>
-        <v-chip size="small" color="error" variant="flat">CRITICAL (Locked)</v-chip>
-      </div>
-
-      <v-divider class="mb-4" />
-
       <!-- Section: Priority Configuration -->
       <div class="mb-4">
         <div class="text-subtitle-2 font-weight-medium mb-2">Priority Configuration (What to Fetch)</div>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           Toggle fields on/off to include/exclude from context. Set priority for included fields.
         </v-alert>
+
+        <!-- Locked Project Description -->
+        <div class="context-row d-flex justify-space-between align-center py-2">
+          <div class="d-flex align-center flex-grow-1">
+            <span class="text-body-2 context-label">Project Description</span>
+            <v-tooltip text="Project Description is required" location="bottom">
+              <template #activator="{ props }">
+                <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-lock</v-icon>
+              </template>
+            </v-tooltip>
+          </div>
+          <v-tooltip text="Project Priority is always critical" location="bottom">
+            <template #activator="{ props }">
+              <v-chip v-bind="props" size="small" color="error" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">CRITICAL</span>
+              </v-chip>
+            </template>
+          </v-tooltip>
+        </div>
 
         <!-- Priority-only Context Rows -->
         <div
@@ -538,6 +557,31 @@ async function saveConfig() {
   }
 }
 
+function resetToDefaults() {
+  // Reset all context settings to sensible defaults
+  // Project Description is locked at CRITICAL (priority 1) - handled in convertToBackendFormat
+  config.value = {
+    product_description: { enabled: true, priority: 2 },      // IMPORTANT
+    tech_stack: { enabled: true, priority: 2 },               // IMPORTANT
+    architecture: { enabled: true, priority: 2 },             // IMPORTANT
+    testing: { enabled: true, priority: 3 },                  // REFERENCE
+    vision_documents: { enabled: true, priority: 3, depth: 'light' },  // REFERENCE, light
+    memory_360: { enabled: true, priority: 3, count: 3 },     // REFERENCE, 3 projects
+    git_history: { enabled: true, priority: 3, count: 25 },   // REFERENCE, 25 commits
+    agent_templates: { enabled: true, priority: 3, depth: 'type_only' },  // REFERENCE, type_only
+  }
+
+  // Enforce git_history OFF if git integration is disabled
+  if (!props.gitIntegrationEnabled) {
+    config.value.git_history.enabled = false
+    config.value.git_history.priority = 4  // EXCLUDED
+  }
+
+  // Persist to backend
+  saveConfig()
+  console.log('[CONTEXT PRIORITY CONFIG] Reset to defaults')
+}
+
 function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, number> {
   const backendPriorities: Record<string, number> = {}
 
@@ -582,6 +626,7 @@ defineExpose({
   updatePriority,
   updateDepth,
   saveConfig,
+  resetToDefaults,
   isContextDisabled,
   navigateToIntegrations,
   fetchVisionStats,
