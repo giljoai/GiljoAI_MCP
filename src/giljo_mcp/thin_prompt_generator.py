@@ -530,7 +530,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
     async def _generate_thin_prompt(
         self,
         orchestrator_id: str,
-        agent_id: str,  # Handover 0388: WHO - executor ID for MCP tool calls
+        agent_id: str,  # Handover 0388: WHO - executor ID (for identity tracking, NOT MCP tool calls)
         project_id: str,
         project: Any,
         product: Any,
@@ -548,7 +548,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
 
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
-            agent_id: Agent execution ID (WHO - executor UUID, use for MCP tool calls)
+            agent_id: Agent execution ID (WHO - executor UUID, for identity tracking only)
             project_id: Project UUID
             project: Project model
             product: Product model
@@ -616,7 +616,7 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Mission: {project.mission or '(Mission will be created by you)'}
 
 WORKFLOW:
-1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{agent_id}', '{self.tenant_key}')
+1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
    → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
    → User priority configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
@@ -637,7 +637,7 @@ CRITICAL DISTINCTIONS:
 
 MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
-✓ mcp__giljo-mcp__get_orchestrator_instructions('{agent_id}', '{self.tenant_key}') - Fetch complete prioritized context
+✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch complete prioritized context
 ✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
 ✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
 ✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
@@ -1066,7 +1066,7 @@ You are STAGING the project. Your job:
 
 STARTUP SEQUENCE:
 1. Verify MCP: health_check()
-2. Fetch context: get_orchestrator_instructions(agent_id='{agent_id}', tenant_key='{self.tenant_key}')
+2. Fetch context: get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
    Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
 3. CREATE MISSION: Analyze requirements and generate execution plan
 4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
