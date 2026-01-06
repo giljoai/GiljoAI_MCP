@@ -9,6 +9,7 @@
             <th>Instance</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
+            <th>Duration</th>
             <th>Job Acknowledged</th>
             <th>Steps</th>
             <th>Messages Sent</th>
@@ -60,6 +61,7 @@
             <!-- Agent Status: Dynamic binding from agent.status -->
             <td
               class="status-cell"
+              :class="{ 'status-working-pulse': agent.status === 'working' }"
               data-testid="status-chip"
               :style="{
                 color: getStatusColor(agent.status),
@@ -69,6 +71,10 @@
               {{ getStatusLabel(agent.status) }}
             </td>
 
+            <!-- Duration: Time from working to completed (or elapsed if still working) -->
+            <td class="duration-cell" data-testid="duration">
+              {{ formatDuration(agent) }}
+            </td>
 
             <!-- Job Acknowledged -->
             <td class="checkbox-cell">
@@ -492,6 +498,13 @@ function showLocalToast(options) {
 const projectId = computed(() => props.project?.project_id || props.project?.id)
 const loadingJobs = ref(false)
 
+/**
+ * Duration tracking - live timer for working agents
+ * Updates every second to show elapsed time
+ */
+const now = ref(Date.now())
+let durationTimer = null
+
 async function refreshJobs() {
   if (!projectId.value) return
   if (loadingJobs.value) return
@@ -522,10 +535,21 @@ onMounted(() => {
       refreshJobs()
     }
   })
+
+  // Start duration timer for live elapsed time display
+  durationTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
 })
 
 onUnmounted(() => {
   unsubscribeConnectionListener?.()
+
+  // Clean up duration timer
+  if (durationTimer) {
+    clearInterval(durationTimer)
+    durationTimer = null
+  }
 })
 
 /**
@@ -604,6 +628,42 @@ function formatAcknowledgmentTime(timestamp) {
 function formatAcknowledgmentTooltip(timestamp) {
   const formatted = formatAcknowledgmentTime(timestamp)
   return formatted ? `Acknowledged at ${formatted}` : 'Not yet acknowledged'
+}
+
+/**
+ * Format duration between started_at and completed_at (or now for working agents)
+ * Shows: "---" if not started, live elapsed time if working, final duration if completed
+ */
+function formatDuration(agent) {
+  if (!agent.started_at) {
+    return '---'
+  }
+
+  const start = new Date(agent.started_at).getTime()
+  // Use completed_at if available, otherwise use current time (for working agents)
+  const end = agent.completed_at ? new Date(agent.completed_at).getTime() : now.value
+  const durationMs = end - start
+
+  if (durationMs < 0) {
+    return '---'
+  }
+
+  // Less than a minute: show seconds
+  if (durationMs < 60000) {
+    return `${Math.round(durationMs / 1000)}s`
+  }
+
+  // Less than an hour: show minutes and seconds
+  if (durationMs < 3600000) {
+    const mins = Math.floor(durationMs / 60000)
+    const secs = Math.round((durationMs % 60000) / 1000)
+    return `${mins}m ${secs}s`
+  }
+
+  // Hours and minutes
+  const hours = Math.floor(durationMs / 3600000)
+  const mins = Math.floor((durationMs % 3600000) / 60000)
+  return `${hours}h ${mins}m`
 }
 
 /**
@@ -1044,6 +1104,29 @@ async function copyToClipboard(text) {
         &.status-cell {
           color: #ffd700;
           font-style: italic;
+
+          /* Pulsing animation for "Working" status */
+          &.status-working-pulse {
+            animation: pulse-glow 1.5s ease-in-out infinite;
+          }
+        }
+
+        @keyframes pulse-glow {
+          0%, 100% {
+            opacity: 1;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.4);
+          }
+          50% {
+            opacity: 0.6;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+          }
+        }
+
+        &.duration-cell {
+          text-align: center;
+          font-family: 'Roboto Mono', 'Courier New', monospace;
+          font-size: 13px;
+          color: #b0bec5;
         }
 
         &.checkbox-cell {

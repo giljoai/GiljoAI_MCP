@@ -68,12 +68,16 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   const jobs = computed(() => Array.from(jobsById.value.values()))
 
   const sortedJobs = computed(() => {
+    // Sort order: Working (top) -> Failed -> Blocked -> Waiting -> Completed (bottom)
     const priority = {
-      failed: 1,
-      blocked: 2,
-      waiting: 3,
-      working: 4,
+      working: 1,
+      failed: 2,
+      blocked: 3,
+      waiting: 4,
       complete: 5,
+      completed: 5,  // alias
+      cancelled: 6,
+      decommissioned: 7,
     }
 
     const list = Array.from(jobsById.value.values())
@@ -83,6 +87,23 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
       if (aPriority !== bPriority) return aPriority - bPriority
 
+      // Within same status group, apply timestamp-based sorting
+      if (a.status === 'working' && b.status === 'working') {
+        // Working: most recently started on top (descending by started_at)
+        const aStarted = a.started_at ? new Date(a.started_at).getTime() : 0
+        const bStarted = b.started_at ? new Date(b.started_at).getTime() : 0
+        if (aStarted !== bStarted) return bStarted - aStarted  // descending
+      }
+
+      if ((a.status === 'complete' || a.status === 'completed') &&
+          (b.status === 'complete' || b.status === 'completed')) {
+        // Completed: most recently completed on top (descending by completed_at)
+        const aCompleted = a.completed_at ? new Date(a.completed_at).getTime() : 0
+        const bCompleted = b.completed_at ? new Date(b.completed_at).getTime() : 0
+        if (aCompleted !== bCompleted) return bCompleted - aCompleted  // descending
+      }
+
+      // Orchestrators first within same status/timestamp
       const aIsOrchestrator = a.agent_type === 'orchestrator' ? 0 : 1
       const bIsOrchestrator = b.agent_type === 'orchestrator' ? 0 : 1
       if (aIsOrchestrator !== bIsOrchestrator) return aIsOrchestrator - bIsOrchestrator
