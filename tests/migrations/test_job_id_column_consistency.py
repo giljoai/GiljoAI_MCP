@@ -78,7 +78,7 @@ class TestJobIdColumnConsistency:
 
         assert len(result) == 1, "Should have exactly one FK constraint on job_id"
         fk = result[0]
-        assert fk["foreign_table_name"] == "agent_jobs", "FK should reference agent_jobs table"
+        assert fk["foreign_table_name"] == "mcp_agent_jobs", "FK should reference mcp_agent_jobs table"
         assert fk["foreign_column_name"] == "job_id", "FK should reference job_id column"
         assert "fk_task_job" in fk["constraint_name"], "FK constraint should have job naming"
 
