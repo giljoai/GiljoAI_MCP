@@ -81,21 +81,45 @@
             />
           </div>
 
-          <!-- Priority Select -->
-          <v-select
-            :model-value="config[context.key]?.priority"
-            @update:model-value="updatePriority(context.key, $event)"
-            :items="priorityOptions"
-            item-title="title"
-            item-value="value"
-            density="compact"
-            variant="outlined"
-            hide-details
-            :aria-label="`${context.label} priority setting`"
-            :data-testid="`priority-${context.key.replace('_', '-')}`"
-            class="priority-select"
+          <!-- Priority Pill Dropdown -->
+          <v-menu
+            v-model="priorityMenuOpen[context.key]"
+            :close-on-content-click="true"
+            location="bottom"
+            offset="4"
             :disabled="!config[context.key]?.enabled"
-          />
+          >
+            <template v-slot:activator="{ props: menuProps }">
+              <v-chip
+                v-bind="menuProps"
+                :color="config[context.key]?.enabled ? getPriorityConfig(config[context.key]?.priority).color : 'grey'"
+                variant="flat"
+                size="small"
+                class="priority-chip"
+                :class="{ 'priority-chip-disabled': !config[context.key]?.enabled }"
+                :aria-label="`${context.label} priority: ${getPriorityConfig(config[context.key]?.priority).title}. Click to change.`"
+                :data-testid="`priority-${context.key.replace('_', '-')}`"
+                role="button"
+                tabindex="0"
+              >
+                <span class="pill-text">{{ getPriorityConfig(config[context.key]?.priority).title }}</span>
+                <v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
+              </v-chip>
+            </template>
+
+            <v-list density="compact" class="priority-menu-list">
+              <v-list-item
+                v-for="option in priorityOptions"
+                :key="option.value"
+                :value="option.value"
+                @click="updatePriority(context.key, option.value)"
+                :class="{ 'v-list-item--active': config[context.key]?.priority === option.value }"
+              >
+                <v-list-item-title class="font-weight-medium">{{ option.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">{{ option.subtitle }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </div>
 
@@ -142,35 +166,85 @@
             </v-tooltip>
           </div>
 
-          <!-- Depth/Count Select -->
-          <v-select
-            :model-value="getDepthValue(context.key)"
-            @update:model-value="updateDepth(context.key, $event)"
-            :items="formatOptions(context)"
-            density="compact"
-            variant="outlined"
-            hide-details
-            :aria-label="`${context.label} depth setting`"
-            :data-testid="`depth-${context.key.replace('_', '-')}`"
-            class="depth-select mx-2"
+          <!-- Depth/Count Pill Dropdown -->
+          <v-menu
+            v-model="depthMenuOpen[context.key]"
+            :close-on-content-click="true"
+            location="bottom"
+            offset="4"
             :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
-          />
+          >
+            <template v-slot:activator="{ props: menuProps }">
+              <v-chip
+                v-bind="menuProps"
+                color="grey-darken-1"
+                variant="flat"
+                size="small"
+                class="depth-chip mx-2"
+                :class="{ 'depth-chip-disabled': !config[context.key]?.enabled || isContextDisabled(context.key) }"
+                :aria-label="`${context.label} depth setting`"
+                :data-testid="`depth-${context.key.replace('_', '-')}`"
+                role="button"
+                tabindex="0"
+              >
+                <span class="pill-text">{{ getDepthLabel(context.key) }}</span>
+                <v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
+              </v-chip>
+            </template>
 
-          <!-- Priority Select -->
-          <v-select
-            :model-value="config[context.key]?.priority"
-            @update:model-value="updatePriority(context.key, $event)"
-            :items="priorityOptions"
-            item-title="title"
-            item-value="value"
-            density="compact"
-            variant="outlined"
-            hide-details
-            :aria-label="`${context.label} priority setting`"
-            :data-testid="`priority-${context.key.replace('_', '-')}`"
-            class="priority-select"
+            <v-list density="compact" class="depth-menu-list">
+              <v-list-item
+                v-for="option in formatOptions(context)"
+                :key="option.value"
+                :value="option.value"
+                @click="updateDepth(context.key, option.value)"
+                :class="{ 'v-list-item--active': getDepthValue(context.key) === option.value }"
+              >
+                <v-list-item-title class="font-weight-medium">{{ option.title }}</v-list-item-title>
+                <v-list-item-subtitle v-if="option.subtitle" class="text-caption">{{ option.subtitle }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+
+          <!-- Priority Pill Dropdown -->
+          <v-menu
+            v-model="priorityMenuOpen[context.key]"
+            :close-on-content-click="true"
+            location="bottom"
+            offset="4"
             :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
-          />
+          >
+            <template v-slot:activator="{ props: menuProps }">
+              <v-chip
+                v-bind="menuProps"
+                :color="(config[context.key]?.enabled && !isContextDisabled(context.key)) ? getPriorityConfig(config[context.key]?.priority).color : 'grey'"
+                variant="flat"
+                size="small"
+                class="priority-chip"
+                :class="{ 'priority-chip-disabled': !config[context.key]?.enabled || isContextDisabled(context.key) }"
+                :aria-label="`${context.label} priority: ${getPriorityConfig(config[context.key]?.priority).title}. Click to change.`"
+                :data-testid="`priority-${context.key.replace('_', '-')}`"
+                role="button"
+                tabindex="0"
+              >
+                <span class="pill-text">{{ getPriorityConfig(config[context.key]?.priority).title }}</span>
+                <v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
+              </v-chip>
+            </template>
+
+            <v-list density="compact" class="priority-menu-list">
+              <v-list-item
+                v-for="option in priorityOptions"
+                :key="option.value"
+                :value="option.value"
+                @click="updatePriority(context.key, option.value)"
+                :class="{ 'v-list-item--active': config[context.key]?.priority === option.value }"
+              >
+                <v-list-item-title class="font-weight-medium">{{ option.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">{{ option.subtitle }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </div>
     </v-card-text>
@@ -259,21 +333,49 @@ const priorityOptions = [
     value: 1,
     title: 'CRITICAL',
     subtitle: 'Orchestrator MUST call this MCP tool',
-    color: 'red-darken-2'
+    color: 'error',
+    icon: 'mdi-alert-circle'
   },
   {
     value: 2,
     title: 'IMPORTANT',
     subtitle: 'Orchestrator SHOULD call if budget allows',
-    color: 'orange-darken-2'
+    color: 'warning',
+    icon: 'mdi-star'
   },
   {
     value: 3,
     title: 'REFERENCE',
     subtitle: 'Orchestrator MAY call if project scope requires',
-    color: 'blue-darken-2'
+    color: 'info',
+    icon: 'mdi-information'
   }
 ]
+
+// Menu state (one per context key)
+const priorityMenuOpen = ref<Record<string, boolean>>({})
+const depthMenuOpen = ref<Record<string, boolean>>({})
+
+// Get priority config by value
+function getPriorityConfig(value: number) {
+  return priorityOptions.find(p => p.value === value) || priorityOptions[2]
+}
+
+// Get depth label for display
+function getDepthLabel(key: string): string {
+  const value = getDepthValue(key)
+  if (key === 'memory_360') {
+    return `${value} projects`
+  } else if (key === 'git_history') {
+    return `${value} commits`
+  } else if (key === 'vision_documents') {
+    const labels: Record<string, string> = { light: 'Light', medium: 'Medium', full: 'Full' }
+    return labels[value as string] || 'Light'
+  } else if (key === 'agent_templates') {
+    return value === 'type_only' ? 'Type Only' : 'Full'
+  }
+  return String(value)
+}
 
 // State
 interface ContextConfig {
@@ -298,6 +400,7 @@ const loading = ref(false)
 const saving = ref(false)
 const fetchingVisionStats = ref(false)
 const visionStats = ref(null)
+const configLoaded = ref(false)  // Track if config has been loaded from server
 
 // Computed properties to split contexts into two groups
 const priorityOnlyContexts = computed(() => {
@@ -426,6 +529,10 @@ function navigateToIntegrations() {
 
 // Handover 0408: Force git_history OFF when git integration is disabled
 watch(() => props.gitIntegrationEnabled, (enabled) => {
+  // Only apply enforcement after config has been loaded from server
+  // This prevents race condition where watcher fires before fetchConfig completes
+  if (!configLoaded.value) return
+
   if (!enabled && config.value.git_history?.enabled) {
     // Force git_history to OFF when git integration is disabled
     config.value.git_history.enabled = false
@@ -510,16 +617,18 @@ async function fetchConfig() {
       console.warn('[CONTEXT PRIORITY CONFIG] Depth config not available, using defaults:', depthError)
     }
 
-    // Handover 0408: Enforce git_history OFF if git integration is disabled (after config load)
-    if (!props.gitIntegrationEnabled && config.value.git_history?.enabled) {
-      config.value.git_history.enabled = false
-      config.value.git_history.priority = 4
-      saveConfig() // Persist the forced-OFF state
-      console.log('[CONTEXT PRIORITY CONFIG] Git history forced OFF after config load - Git integration disabled')
-    }
+    // NOTE: We do NOT enforce git_history OFF here based on props.gitIntegrationEnabled
+    // because the parent component loads git settings asynchronously and the prop
+    // may still be false (default) at this point. Trust the server's saved state.
+    // The watcher will enforce when the prop actually changes from true to false.
+
+    // Mark config as loaded - this allows the watcher to enforce git integration rules
+    configLoaded.value = true
   } catch (error) {
     console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
     // Keep default values on error
+    // Still mark as loaded to allow watcher to work
+    configLoaded.value = true
   } finally {
     loading.value = false
   }
@@ -631,16 +740,33 @@ defineExpose({
   navigateToIntegrations,
   fetchVisionStats,
   formatTokenCount,
+  getPriorityConfig,
+  getDepthLabel,
+  priorityMenuOpen,
+  depthMenuOpen,
 })
 </script>
 
 <style scoped>
 .context-row {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  min-height: 52px;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
 }
 
 .context-row:last-of-type {
   border-bottom: none;
+}
+
+/* Make v-switch compact */
+.context-row :deep(.v-switch) {
+  margin: 0;
+  flex: none;
+}
+
+.context-row :deep(.v-switch .v-selection-control) {
+  min-height: auto;
 }
 
 .locked-row {
@@ -659,40 +785,111 @@ defineExpose({
   min-width: 140px;
 }
 
-.depth-select {
-  max-width: 140px;
-  min-width: 120px;
-}
-
-.depth-select :deep(.v-field__input) {
-  font-size: 0.75rem;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
-.depth-select :deep(.v-field) {
-  min-height: 32px;
-}
-
-.priority-select {
-  max-width: 140px;
-  min-width: 120px;
-}
-
-.priority-select :deep(.v-field__input) {
-  font-size: 0.75rem;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
-.priority-select :deep(.v-field) {
-  min-height: 32px;
-}
-
-.priority-select :deep(.v-select__selection-text) {
+/* Pill text styling - matches locked CRITICAL pill */
+.pill-text {
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Priority Pill Chip Styles */
+.priority-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  width: 140px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.priority-chip:not(.priority-chip-disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.priority-chip:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.priority-chip-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Depth Pill Chip Styles */
+.depth-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  width: 140px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.depth-chip:not(.depth-chip-disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.depth-chip:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.depth-chip-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Priority Menu List Styles */
+.priority-menu-list {
+  min-width: 280px;
+}
+
+.priority-menu-list .v-list-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.priority-menu-list .v-list-item:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.priority-menu-list .v-list-item:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
+  outline-offset: -2px;
+}
+
+.priority-menu-list .v-list-item--active {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+}
+
+/* Depth Menu List Styles */
+.depth-menu-list {
+  min-width: 280px;
+}
+
+.depth-menu-list .v-list-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.depth-menu-list .v-list-item:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.depth-menu-list .v-list-item:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
+  outline-offset: -2px;
+}
+
+.depth-menu-list .v-list-item--active {
+  background-color: rgba(var(--v-theme-primary), 0.12);
 }
 
 /* Mobile responsive */
@@ -706,9 +903,9 @@ defineExpose({
     margin-bottom: 8px;
   }
 
-  .depth-select,
-  .priority-select {
-    flex-grow: 1;
+  .priority-chip,
+  .depth-chip {
+    width: 120px;
   }
 }
 </style>
