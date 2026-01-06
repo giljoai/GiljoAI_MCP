@@ -463,7 +463,7 @@ You are taking over from Orchestrator Instance {instance}.
 
 1. get_agent_mission(job_id, tenant_key) - Read this mission
 2. get_team_agents(job_id, tenant_key) - List agents for any job
-3. get_orchestrator_instructions(agent_id, tenant_key) - Get product/project context
+3. get_orchestrator_instructions(job_id, tenant_key) - Get product/project context
 4. get_workflow_status(project_id, tenant_key) - Check agent counts
 
 ## FIRST ACTIONS
