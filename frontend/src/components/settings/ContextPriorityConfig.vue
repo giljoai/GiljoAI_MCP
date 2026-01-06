@@ -1,13 +1,13 @@
 <template>
   <v-card>
-    <v-card-title class="d-flex justify-space-between align-center px-4">
+    <v-card-title class="d-flex justify-space-between align-center">
       <span>Context Priority Configuration</span>
       <v-btn
         variant="text"
         size="small"
         @click="resetToDefaults"
         data-testid="reset-context-priority-btn"
-        style="width: 140px;"
+        style="width: 140px; margin-right: 16px;"
       >
         Reset
       </v-btn>
