@@ -243,3 +243,18 @@ class SuccessionStatusResponse(BaseModel):
             }
         }
     )
+
+
+class InitiateHandoverResponse(BaseModel):
+    """
+    Response for initiating orchestrator handover (Handover 0506).
+
+    Returns a prompt for the retiring orchestrator to spawn its successor.
+    The orchestrator pastes this prompt to gather context and spawn a new orchestrator.
+    """
+
+    prompt: str = Field(..., description="Prompt for retiring orchestrator to spawn successor")
+    job_id: str = Field(..., description="Current orchestrator's job UUID")
+    agent_id: str = Field(..., description="Current orchestrator's agent UUID")
+    project_id: str = Field(..., description="Project UUID")
+    instance_number: int = Field(..., description="Current instance number")

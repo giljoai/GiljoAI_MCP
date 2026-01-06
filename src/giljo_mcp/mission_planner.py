@@ -36,32 +36,42 @@ from .repositories.context_repository import ContextRepository
 logger = logging.getLogger(__name__)
 
 
-# Default field priorities for context building (Handover 0302, 0303)
+# Default field priorities for context building (Handover 0302, 0303, 0266, 0357)
 # Applied when user has no custom field_priority_config
-# Ensures meaningful context even for new users who haven't customized priorities
-# Default field priorities for context building (Handover 0302, 0303, 0266)
-# Applied when user has no custom field_priority_config
-# Ensures meaningful context even for new users who haven't customized priorities
-# Updated to v2.0 format: Priority values 1-4, new category names (Handover 0266)
-DEFAULT_FIELD_PRIORITIES = {
-    # v2.0 categories with priority levels (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
-    "product_core": 1,  # CRITICAL - Always include product name, description, features
-    "vision_documents": 2,  # IMPORTANT - Include vision docs if budget allows
-    "agent_templates": 2,  # IMPORTANT - Agent templates for spawning
-    "project_description": 1,  # CRITICAL - Current project metadata (locked field)
-    "memory_360": 3,  # NICE_TO_HAVE - Historical project outcomes
-    "git_history": 3,  # NICE_TO_HAVE - Recent commits
-    "tech_stack": 2,  # IMPORTANT - Programming languages, frameworks, databases
-    "architecture": 2,  # IMPORTANT - Architecture patterns, API style, design patterns
-    "testing": 2,  # IMPORTANT - Quality standards, testing strategy, frameworks
-    # Legacy v1.0 fields (kept for backward compatibility during transition)
-    # These will be removed in v4.0
-    "product_memory.sequential_history": 3,  # Maps to NICE_TO_HAVE
-    "config_data.architecture": 4,  # Maps to EXCLUDED
-    "config_data.test_methodology": 2,  # Maps to IMPORTANT
-    "config_data.coding_standards": 3,  # Maps to NICE_TO_HAVE
-    "config_data.deployment_strategy": 4,  # Maps to EXCLUDED
-}
+# Imported from unified config.defaults module - normalized to integer format
+# v2.0 format: Priority values 1-4 (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
+def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
+    """
+    Normalize field_priorities from nested format to integer format.
+
+    Handover 0357: DEFAULT_FIELD_PRIORITIES uses {"field": {"toggle": True, "priority": X}} format
+    but mission_planner expects {"field": X} (just integers).
+
+    Args:
+        field_priorities: Dict with either nested or integer priority values
+
+    Returns:
+        Dict with integer priority values (1-4)
+    """
+    normalized = {}
+    for field_key, value in field_priorities.items():
+        if isinstance(value, dict) and "priority" in value:
+            # Extract priority from nested format, respecting toggle
+            if value.get("toggle", True):
+                normalized[field_key] = value["priority"]
+            else:
+                normalized[field_key] = 4  # EXCLUDED if toggle is off
+        elif isinstance(value, int):
+            # Already in integer format
+            normalized[field_key] = value
+        else:
+            # Unknown format, default to IMPORTANT
+            normalized[field_key] = 2
+    return normalized
+
+
+# Import and normalize unified defaults
+DEFAULT_FIELD_PRIORITIES = _normalize_field_priorities(DEFAULT_FIELD_PRIORITY.get("priorities", {}))
 
 
 class MissionPlanner:
@@ -1543,13 +1553,11 @@ Partial reading defeats the purpose of this configuration."""
                 "tool": "fetch_context",
                 "category": "product_core",
                 "framing": "Product name, description, and core features. Essential foundation for all work.",
-                "estimated_tokens": 100,
             },
             "vision_documents": {
                 "tool": "fetch_context",
                 "category": "vision_documents",
                 "framing": "Product vision and strategic direction. Use pagination for large documents.",
-                "estimated_tokens": 5000,
                 "supports_pagination": True,
                 "depth_aware": True,
             },
@@ -1557,39 +1565,33 @@ Partial reading defeats the purpose of this configuration."""
                 "tool": "fetch_context",
                 "category": "tech_stack",
                 "framing": "Programming languages, frameworks, and databases. Critical for implementation decisions.",
-                "estimated_tokens": 200,
             },
             "architecture": {
                 "tool": "fetch_context",
                 "category": "architecture",
                 "framing": "System architecture patterns, API style, and design principles.",
-                "estimated_tokens": 400,
             },
             "testing": {
                 "tool": "fetch_context",
                 "category": "testing",
                 "framing": "Quality standards, testing strategy, and frameworks.",
-                "estimated_tokens": 300,
             },
             "memory_360": {
                 "tool": "fetch_context",
                 "category": "memory_360",
                 "framing": "Historical project outcomes and cumulative product knowledge.",
-                "estimated_tokens": 2000,
                 "depth_aware": True,
             },
             "git_history": {
                 "tool": "fetch_context",
                 "category": "git_history",
                 "framing": "Recent git commits aggregated across projects.",
-                "estimated_tokens": 1500,
                 "depth_aware": True,
             },
             "agent_templates": {
                 "tool": "fetch_context",
                 "category": "agent_templates",
                 "framing": "Available agent templates for spawning specialized agents.",
-                "estimated_tokens": 400,
                 "depth_aware": True,
             },
         }
@@ -1616,7 +1618,6 @@ Partial reading defeats the purpose of this configuration."""
                     "tenant_key": product.tenant_key,
                 },
                 "framing": self._get_tier_framing(tier, config["framing"]),
-                "estimated_tokens": config["estimated_tokens"],
             }
 
             # Add pagination support flag if applicable
@@ -1631,20 +1632,14 @@ Partial reading defeats the purpose of this configuration."""
                     vision_depth = depth_config.get("vision_documents", "light")
                     instruction["params"]["depth"] = vision_depth
 
-                    # Update framing and token estimate based on depth
+                    # Update framing based on depth
                     vision_framing = {
                         "light": "33% summarized vision document (single response).",
                         "medium": "66% summarized vision document (single response).",
                         "full": "Complete vision document (paginated, call until has_more=false).",
                     }
-                    vision_tokens = {
-                        "light": 4000,   # ~33% of typical vision doc
-                        "medium": 8000,  # ~66% of typical vision doc
-                        "full": 25000,   # Full content, paginated
-                    }
                     base_framing = vision_framing.get(vision_depth, vision_framing["light"])
                     instruction["framing"] = self._get_tier_framing(tier, base_framing)
-                    instruction["estimated_tokens"] = vision_tokens.get(vision_depth, 4000)
 
                     # Only add pagination params for full depth
                     if vision_depth == "full":
@@ -1664,7 +1659,6 @@ Partial reading defeats the purpose of this configuration."""
                     if agent_depth == "type_only":
                         continue  # Already inline - no fetch needed
                     instruction["params"]["depth"] = agent_depth
-                    instruction["estimated_tokens"] = 18000  # Full templates are ~18K tokens
                     instruction["framing"] = self._get_tier_framing(
                         tier, "Full agent templates with complete prompts for spawning."
                     )

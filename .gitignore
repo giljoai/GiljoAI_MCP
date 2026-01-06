@@ -132,6 +132,7 @@ desktop.ini
 data/giljo_mcp.db
 uploads/
 runtime/
+products/
 backups/*.backup
 
 # SSL certificates (never commit private keys)

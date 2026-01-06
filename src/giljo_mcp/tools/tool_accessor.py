@@ -464,10 +464,6 @@ class ToolAccessor:
         """List available templates (delegates to TemplateService)"""
         return await self._template_service.list_templates()
 
-    async def get_template(self, template_name: str) -> dict[str, Any]:
-        """Get a specific template (delegates to TemplateService)"""
-        return await self._template_service.get_template(template_name=template_name)
-
     async def create_template(self, name: str, content: str, **kwargs) -> dict[str, Any]:
         """Create a new template (delegates to TemplateService)"""
         return await self._template_service.create_template(name=name, content=content, **kwargs)
@@ -738,6 +734,23 @@ class ToolAccessor:
                     # It is returned verbatim so agents know where the codebase lives locally.
                     project_path = getattr(product, "project_path", None)
 
+                # Handover 0408: Read integration toggles from config
+                include_serena = False
+                git_integration_enabled = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        features = config_data.get("features", {})
+                        include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
+                        git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
+                except Exception as e:
+                    logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
+
                 # Build framing-based response (Handover 0350b + Phase C)
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
@@ -771,6 +784,11 @@ class ToolAccessor:
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
+                    # Handover 0408: Integration toggles status
+                    "integrations": {
+                        "serena_mcp_enabled": include_serena,
+                        "git_integration_enabled": git_integration_enabled,
+                    },
                 }
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
@@ -789,10 +807,14 @@ class ToolAccessor:
                         ),
                     }
 
+                    # Handover 0389: Build dynamic example from actual allowed agent names
+                    example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
+                    example_str = ", ".join(f"'{n}'" for n in example_agents) if example_agents else "'implementer'"
+
                     response["cli_mode_rules"] = {
                         "agent_name_usage": (
                             "SINGLE SOURCE OF TRUTH - MUST match template filename exactly for Task tool. "
-                            "This is the filename without .md extension (e.g., 'implementer-frontend')."
+                            f"This is the filename without .md extension (e.g., {example_str})."
                         ),
                         "agent_type_usage": "Display category label for UI only (e.g., 'implementer').",
                         "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
@@ -881,69 +903,6 @@ class ToolAccessor:
         """Report job error (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_error(job_id=job_id, error=error)
 
-    async def get_next_instruction(self, job_id: str, agent_type: str, tenant_key: str) -> dict[str, Any]:
-        """Get next instructions for agent from message queue"""
-        from giljo_mcp.agent_message_queue import AgentMessageQueue
-
-        try:
-            # Validate inputs
-            if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
-
-            if not agent_type or not agent_type.strip():
-                return {"status": "error", "error": "agent_type cannot be empty"}
-
-            if not tenant_key or not tenant_key.strip():
-                return {"status": "error", "error": "tenant_key cannot be empty"}
-
-            comm_queue = AgentMessageQueue(self.db_manager)  # Using compatibility layer
-
-            # Get unread messages for this job
-            async with self.db_manager.get_session_async() as session:
-                result = await comm_queue.get_messages(
-                    session=session, job_id=job_id, tenant_key=tenant_key, to_agent=agent_type, unread_only=True
-                )
-
-                if result.get("status") != "success":
-                    return result
-
-                messages = result.get("messages", [])
-                has_updates = len(messages) > 0
-
-                # Extract and categorize instructions
-                instructions = []
-                handoff_requested = False
-                context_warning = False
-
-                for msg in messages:
-                    msg_type = msg.get("type")
-                    content = msg.get("content")
-
-                    if msg_type == "user_feedback":
-                        instructions.append(f"USER FEEDBACK: {content}")
-                    elif msg_type == "orchestrator_instruction":
-                        instructions.append(f"ORCHESTRATOR: {content}")
-                    elif msg_type == "handoff_request":
-                        handoff_requested = True
-                        instructions.append("HANDOFF REQUESTED: Prepare comprehensive summary and context handoff")
-                    elif msg_type == "context_warning":
-                        context_warning = True
-                        instructions.append(f"CONTEXT WARNING: {content} - Plan completion or handoff")
-                    elif msg_type == "error_recovery":
-                        instructions.append(f"ERROR RECOVERY GUIDANCE: {content}")
-
-                return {
-                    "status": "success",
-                    "has_updates": has_updates,
-                    "instructions": instructions,
-                    "handoff_requested": handoff_requested,
-                    "context_warning": context_warning,
-                    "message_count": len(messages),
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to get next instruction: {e}")
-            return {"status": "error", "error": str(e)}
 
     async def get_team_agents(
         self,
@@ -1149,115 +1108,6 @@ class ToolAccessor:
             logger.exception(f"Failed to check succession status: {e}")
             return {"should_trigger": False, "error": str(e)}
 
-    # Slash Command Setup Tool (Handover 0093)
-
-    async def setup_slash_commands(
-        self, platform: str = None, _api_key: str = None, _server_url: str = None
-    ) -> dict[str, Any]:
-        """
-        Generate one-time download link for slash commands installation.
-
-        Returns download URL instead of executing file operations on server.
-        Client downloads and extracts files locally for proper installation.
-
-        Args:
-            platform: Optional platform hint (ignored, kept for compatibility)
-            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
-            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
-
-        Returns:
-            dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
-        """
-        try:
-            from giljo_mcp.config_manager import get_config
-            from giljo_mcp.downloads.token_manager import TokenManager
-            from giljo_mcp.file_staging import FileStaging
-
-            # 1. Verify API key (injected by MCP HTTP handler)
-            if not _api_key:
-                return {
-                    "success": False,
-                    "error": "API key not provided",
-                    "instructions": [
-                        "This tool is called via MCP HTTP and requires authentication",
-                        "Ensure you are connected to GiljoAI MCP server with valid API key",
-                    ],
-                }
-
-            # 2. Get tenant context
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active tenant"}
-
-            # 3. Generate token FIRST and stage with SAME token (single-token flow)
-            async with self.db_manager.get_session_async() as session:
-                token_manager = TokenManager(db_session=session)
-                download_token = await token_manager.generate_token(
-                    tenant_key=tenant_key,
-                    download_type="slash_commands",
-                    metadata={"filename": "slash_commands.zip"},
-                )
-                file_staging = FileStaging()
-                staging_path = await file_staging.create_staging_directory(tenant_key, download_token)
-                zip_path, message = await file_staging.stage_slash_commands(staging_path)
-                if not zip_path:
-                    await token_manager.mark_failed(download_token, message)
-                    await file_staging.cleanup(tenant_key, download_token)
-                    logger.error(f"Staging failed for token {download_token}: {message}")
-                    return {"success": False, "error": f"File staging failed: {message}"}
-                await token_manager.mark_ready(download_token)
-                logger.info(f"Staged slash commands ZIP for token {download_token}: {zip_path}")
-
-            # 5. Build download URL (use dynamically detected server URL)
-            if not _server_url:
-                config = get_config()
-
-                # Read external_host from config.yaml for public IP
-                config_path = Path.cwd() / "config.yaml"
-                with open(config_path) as f:
-                    config_data = yaml.safe_load(f)
-
-                host = config_data.get("services", {}).get("external_host", "localhost")
-                _server_url = f"http://{host}:{config.server.api_port}"
-                logger.warning(f"Server URL not provided, using fallback: {_server_url}")
-
-            download_url = f"{_server_url}/api/download/temp/{download_token}/slash_commands.zip"
-
-            # 6. Return explicit bash commands for AI agents
-            # Cross-platform: Bash tool uses Git Bash on Windows, bash on Linux/macOS
-            # Unix-style paths work on ALL platforms via the Bash tool
-            bash_cmd = (
-                f'curl -o /tmp/slash_commands.zip "{download_url}" && '
-                "mkdir -p ~/.claude/commands && "
-                "unzip -o /tmp/slash_commands.zip -d ~/.claude/commands/ && "
-                "rm /tmp/slash_commands.zip"
-            )
-            return {
-                "success": True,
-                "instructions": (
-                    "IMPORTANT: Use the Bash tool (not PowerShell) to run this command. "
-                    "This works on Windows, Linux, and macOS:\n\n"
-                    f"{bash_cmd}\n\n"
-                    "After running, tell the user: 'Slash commands installed to ~/.claude/commands/. "
-                    "Please restart Claude Code (Ctrl+C and relaunch) for the commands to become available. "
-                    "After restart, type / to see available commands.'"
-                ),
-                "bash_command": bash_cmd,
-                "download_url": download_url,
-                "expires_minutes": 15,
-                "unlimited_downloads": True,
-                "install_location": "~/.claude/commands/",
-                "cross_platform_note": (
-                    "The Bash tool uses Git Bash on Windows and bash on Linux/macOS. "
-                    "Unix-style paths (/tmp, ~/.claude/) work on ALL platforms. "
-                    "Do NOT use PowerShell or Windows paths like %TEMP%."
-                ),
-            }
-
-        except Exception as e:
-            logger.exception(f"Failed to generate slash commands download: {e}")
-            return {"success": False, "error": str(e)}
-
     # Slash Command Handler Wrapper (Handover 0084b)
 
     async def gil_handover(self, job_id: str = None, reason: str = "manual") -> dict[str, Any]:
@@ -1411,114 +1261,6 @@ class ToolAccessor:
             return {"success": True, "project_id": project_id, "agent_count": len(agents)}
         except Exception as e:
             logger.exception(f"gil_launch failed: {e}")
-            return {"success": False, "error": str(e)}
-
-    async def get_agent_download_url(
-        self, _api_key: str = None, _server_url: str = None
-    ) -> dict[str, Any]:
-        """
-        Generate one-time download link for active agent templates.
-
-        Stages active agent templates as ZIP and returns download URL.
-        Token-based authentication - no API key header needed for download.
-        Slash command handles user prompt for install location.
-
-        Args:
-            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
-            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
-
-        Returns:
-            dict with success, download_url, expires_minutes, template_count
-        """
-        try:
-            from giljo_mcp.config_manager import get_config
-            from giljo_mcp.downloads.token_manager import TokenManager
-            from giljo_mcp.file_staging import FileStaging
-
-            # 1. Verify API key (injected by MCP HTTP handler)
-            if not _api_key:
-                return {
-                    "success": False,
-                    "error": "API key not provided - connect via MCP with valid API key",
-                }
-
-            # 2. Get tenant context
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active tenant"}
-
-            # 3. Generate token and stage agent templates
-            async with self.db_manager.get_session_async() as session:
-                token_manager = TokenManager(db_session=session)
-                token = await token_manager.generate_token(
-                    tenant_key=tenant_key,
-                    download_type="agent_templates",
-                    metadata={"filename": "agent_templates.zip"},
-                )
-
-            # 4. Stage files in temp directory
-            file_staging = FileStaging(db_session=None)
-            async with self.db_manager.get_session_async() as session:
-                file_staging.db_session = session
-                staging_path = await file_staging.create_staging_directory(tenant_key, token)
-                zip_path, message = await file_staging.stage_agent_templates(
-                    staging_path, tenant_key, db_session=session
-                )
-
-                if not zip_path:
-                    await token_manager.mark_failed(token, message)
-                    await file_staging.cleanup(tenant_key, token)
-                    return {"success": False, "error": f"Staging failed: {message}"}
-
-                await token_manager.mark_ready(token)
-
-            # Count templates in ZIP
-            import zipfile
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                template_count = len(zf.namelist())
-
-            logger.info(f"Staged {template_count} agent templates for download: {zip_path}")
-
-            # 5. Update last_exported_at for all exported templates (Handover 0356)
-            from datetime import datetime, timezone
-            from sqlalchemy import select
-            from giljo_mcp.models import AgentTemplate
-
-            async with self.db_manager.get_session_async() as session:
-                stmt = select(AgentTemplate).where(
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.is_active == True
-                )
-                result = await session.execute(stmt)
-                templates = result.scalars().all()
-
-                export_timestamp = datetime.now(timezone.utc)
-                for template in templates:
-                    template.last_exported_at = export_timestamp
-
-                await session.commit()
-                logger.info(f"Updated last_exported_at for {len(templates)} templates")
-
-            # 6. Build download URL (token IS auth - no API key needed)
-            if not _server_url:
-                config = get_config()
-                config_path = Path.cwd() / "config.yaml"
-                with open(config_path) as f:
-                    config_data = yaml.safe_load(f)
-                host = config_data.get("services", {}).get("external_host", "localhost")
-                _server_url = f"http://{host}:{config.server.api_port}"
-
-            download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
-
-            return {
-                "success": True,
-                "download_url": download_url,
-                "expires_minutes": 15,
-                "template_count": template_count,
-            }
-
-        except Exception as e:
-            logger.exception(f"get_agent_download_url failed: {e}")
             return {"success": False, "error": str(e)}
 
     async def close_project_and_update_memory(
