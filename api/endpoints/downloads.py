@@ -735,52 +735,7 @@ async def download_temp_file(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-# REST endpoints for MCP tool calls (natural language instructions)
-@router.post("/mcp/setup_slash_commands", tags=["MCP Tools"])
-async def setup_slash_commands_rest(
-    request: Request,
-    current_user: User = Depends(get_current_active_user),
-) -> dict:
-    """
-    REST endpoint wrapper for setup_slash_commands MCP tool.
-    Returns natural language installation instructions with download token.
-    """
-    try:
-        import os
-
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        # Get database URL from environment
-        db_url = os.getenv("DATABASE_URL")
-        if not db_url:
-            raise ValueError("DATABASE_URL environment variable is required")
-
-        # Initialize dependencies
-        db_manager = DatabaseManager(database_url=db_url, is_async=True)
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(current_user.tenant_key)
-
-        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
-
-        # Extract server URL from request
-        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
-
-        # Call MCP tool (user already authenticated via JWT)
-        result = await tool_accessor.setup_slash_commands(
-            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
-            _server_url=server_url,
-        )
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Failed to generate slash commands instructions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
 #
 # NOTE: Legacy agent-template installers were removed in Jan 2026.
-# Use the `gil_get_claude_agents` slash command (which calls `get_agent_download_url`)
+# Use the `gil_get_claude_agents` slash command (which calls `/api/download/generate-token`)
 # for the supported download-and-install flow.

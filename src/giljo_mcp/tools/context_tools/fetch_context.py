@@ -160,7 +160,7 @@ async def fetch_context(
             "message": "fetch_context requires exactly ONE category per call. Call multiple times for multiple categories.",
             "valid_categories": ALL_CATEGORIES,
             "example": "fetch_context(categories=['tech_stack'], ...)",
-            "metadata": {"estimated_tokens": 0}
+            "metadata": {}
         }
 
     # Reject "all" - forces sequential calls
@@ -171,7 +171,7 @@ async def fetch_context(
             "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
             "valid_categories": ALL_CATEGORIES,
             "example": "fetch_context(categories=['vision_documents'], ...)",
-            "metadata": {"estimated_tokens": 0}
+            "metadata": {}
         }
 
     # Reject multi-category calls
@@ -186,7 +186,7 @@ async def fetch_context(
             "message": f"Only ONE category per call allowed. You requested {len(categories)}: {categories}",
             "valid_categories": ALL_CATEGORIES,
             "example": "Call fetch_context separately for each category",
-            "metadata": {"estimated_tokens": 0}
+            "metadata": {}
         }
 
     # Validate the single category
@@ -200,7 +200,7 @@ async def fetch_context(
         return {
             "error": f"Invalid category: {category}",
             "valid_categories": ALL_CATEGORIES,
-            "metadata": {"estimated_tokens": 0}
+            "metadata": {}
         }
 
     # Load user config if requested
@@ -221,7 +221,6 @@ async def fetch_context(
             db_manager=db_manager
         )
         data = result.get("data", {})
-        total_tokens = result.get("metadata", {}).get("estimated_tokens", 0)
         error = None
     except Exception as e:
         logger.error(
@@ -231,7 +230,6 @@ async def fetch_context(
             exc_info=True
         )
         data = {}
-        total_tokens = 0
         error = {"category": category, "error": str(e)}
 
     # Build response
@@ -241,7 +239,6 @@ async def fetch_context(
         "categories_returned": [category] if data else [],
         "data": {category: data} if format == "structured" else data,
         "metadata": {
-            "estimated_tokens": total_tokens,
             "format": format,
             "apply_user_config": apply_user_config,
             "depth_config_applied": {category: effective_depths.get(category)},
@@ -254,7 +251,6 @@ async def fetch_context(
     logger.info(
         "fetch_context_completed",
         category=category,
-        total_tokens=total_tokens,
         had_error=error is not None
     )
 
@@ -286,8 +282,7 @@ async def _fetch_category(
             return {
                 "data": {},
                 "metadata": {
-                    "error": "project_id required for 'project' category",
-                    "estimated_tokens": 0
+                    "error": "project_id required for 'project' category"
                 }
             }
         kwargs["project_id"] = project_id

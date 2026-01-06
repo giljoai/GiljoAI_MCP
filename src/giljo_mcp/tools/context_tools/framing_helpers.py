@@ -94,13 +94,26 @@ def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
 
 
 def _extract_priorities(config: Any) -> Dict[str, int]:
-    """Extract priority mapping from user config supporting legacy shapes."""
+    """Extract priority mapping from user config supporting legacy and nested formats."""
     if not isinstance(config, dict):
         return {}
 
+    # Handle nested format: {"priorities": {"category": {"toggle": True, "priority": X}}}
     if isinstance(config.get("priorities"), dict):
-        return config["priorities"]
+        priorities = config["priorities"]
+        # Check if values are nested dicts with "priority" key
+        extracted = {}
+        for key, value in priorities.items():
+            if isinstance(value, dict) and "priority" in value:
+                extracted[key] = value["priority"]
+            elif isinstance(value, int):
+                extracted[key] = value
+        if extracted:
+            return extracted
+        # Legacy format: {"priorities": {"category": X}}
+        return priorities
 
+    # Legacy format: {"fields": {"category": X}}
     if isinstance(config.get("fields"), dict):
         return config["fields"]
 
@@ -142,7 +155,13 @@ async def get_user_priority(
             f"Valid categories: {sorted(ALLOWED_PRIORITY_CATEGORIES)}"
         )
 
-    default_priority = DEFAULT_FIELD_PRIORITY["priorities"].get(category, 3)
+    # Handle nested format: {"category": {"toggle": True, "priority": X}}
+    category_config = DEFAULT_FIELD_PRIORITY["priorities"].get(category, {})
+    if isinstance(category_config, dict):
+        default_priority = category_config.get("priority", 3)
+    else:
+        # Fallback for legacy integer format
+        default_priority = category_config if isinstance(category_config, int) else 3
 
     if not user_id or db_manager is None:
         return default_priority

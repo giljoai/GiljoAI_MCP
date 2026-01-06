@@ -474,139 +474,6 @@ class TestReportProgress:
         assert "non-negative" in result["error"].lower()
 
 
-class TestGetNextInstruction:
-    """Test get_next_instruction coordination tool."""
-
-    def test_get_next_instruction_no_messages(self, coordination_tools, job_manager, tenant_key):
-        """Test get_next_instruction with no messages."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_type="implementer",
-            mission="Test",
-        )
-
-        get_next_instruction = coordination_tools["get_next_instruction"]
-        result = get_next_instruction(
-            job_id=job.job_id,
-            agent_type="implementer",
-            tenant_key=tenant_key,
-        )
-
-        assert result["status"] == "success"
-        assert result["has_updates"] is False
-        assert result["instructions"] == []
-        assert result["handoff_requested"] is False
-        assert result["context_warning"] is False
-        assert result["message_count"] == 0
-
-    def test_get_next_instruction_user_feedback(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
-        """Test receiving user feedback message."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_type="implementer",
-            mission="Test",
-        )
-
-        # Send user feedback message
-        with db_manager.get_session() as session:
-            comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="user",
-                to_agent="implementer",
-                message_type="user_feedback",
-                content="Please add error handling",
-                priority=2,
-            )
-
-        # Get next instruction
-        get_next_instruction = coordination_tools["get_next_instruction"]
-        result = get_next_instruction(
-            job_id=job.job_id,
-            agent_type="implementer",
-            tenant_key=tenant_key,
-        )
-
-        assert result["status"] == "success"
-        assert result["has_updates"] is True
-        assert len(result["instructions"]) == 1
-        assert "USER FEEDBACK" in result["instructions"][0]
-        assert "error handling" in result["instructions"][0]
-
-    def test_get_next_instruction_handoff_request(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
-        """Test receiving handoff request."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_type="implementer",
-            mission="Test",
-        )
-
-        # Send handoff request
-        with db_manager.get_session() as session:
-            comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="handoff_request",
-                content="Prepare handoff",
-                priority=2,
-            )
-
-        # Get next instruction
-        get_next_instruction = coordination_tools["get_next_instruction"]
-        result = get_next_instruction(
-            job_id=job.job_id,
-            agent_type="implementer",
-            tenant_key=tenant_key,
-        )
-
-        assert result["status"] == "success"
-        assert result["handoff_requested"] is True
-        assert any("HANDOFF REQUESTED" in i for i in result["instructions"])
-
-    def test_get_next_instruction_context_warning(
-        self, coordination_tools, job_manager, comm_queue, db_manager, tenant_key
-    ):
-        """Test receiving context warning."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_type="implementer",
-            mission="Test",
-        )
-
-        # Send context warning
-        with db_manager.get_session() as session:
-            comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="context_warning",
-                content="Context approaching limit",
-                priority=2,
-            )
-
-        # Get next instruction
-        get_next_instruction = coordination_tools["get_next_instruction"]
-        result = get_next_instruction(
-            job_id=job.job_id,
-            agent_type="implementer",
-            tenant_key=tenant_key,
-        )
-
-        assert result["status"] == "success"
-        assert result["context_warning"] is True
-        assert any("CONTEXT WARNING" in i for i in result["instructions"])
-
-
 class TestCompleteJob:
     """Test complete_job coordination tool."""
 
@@ -971,15 +838,11 @@ class TestMultiTenantIsolation:
             )
 
         # Try to read with wrong tenant key
-        get_next_instruction = coordination_tools["get_next_instruction"]
-        result = get_next_instruction(
-            job_id=job_t1.job_id,
-            agent_type="implementer",
-            tenant_key=other_tenant_key,  # Wrong tenant!
-        )
+        # Note: get_next_instruction tool has been removed
 
-        # Should fail or return no messages
-        assert result["status"] == "error" or result["message_count"] == 0
+
+        # Try to read with wrong tenant key
+        # This test now only validates message sending isolation above
 
 
 if __name__ == "__main__":

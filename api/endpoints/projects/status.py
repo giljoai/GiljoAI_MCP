@@ -139,12 +139,11 @@ async def get_project_orchestrator(
         HTTPException 500: Database error
 
     Note:
-        This endpoint auto-creates orchestrators for backward compatibility.
-        The orchestrator is essential for project launch flow.
+        Handover 0506: Removed auto-creation. Returns null orchestrator if none exists.
+        Frontend shows "Re-launch Orchestrator" button when orchestrator is null.
     """
     from sqlalchemy import select
     from sqlalchemy.orm import joinedload
-    from uuid import uuid4
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
@@ -178,7 +177,9 @@ async def get_project_orchestrator(
             AgentJob.project_id == project_id,
             AgentExecution.agent_type == "orchestrator",
             AgentExecution.tenant_key == current_user.tenant_key,
-            AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Only active statuses
+            # Include complete/handed_over to show finished orchestrators (Handover 0506)
+            # Previously excluded these, causing auto-spawn bug when viewing completed projects
+            AgentExecution.status.in_(["waiting", "working", "blocked", "complete", "handed_over"]),
         )
         .order_by(AgentExecution.instance_number.desc())
     )
@@ -186,51 +187,12 @@ async def get_project_orchestrator(
     orchestrator_execution = orch_result.scalars().first()
 
     if not orchestrator_execution:
-        # Auto-create orchestrator if missing (backward compatibility)
-        # Following pattern from tool_accessor.py:1477-1510
-        # Create both AgentJob (work order) and AgentExecution (executor instance)
-        job_id = str(uuid4())
-        agent_id = str(uuid4())
-
-        # Step 1: Create AgentJob (work order)
-        agent_job = AgentJob(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key,
-            project_id=project_id,
-            mission=(
-                "I am ready to create the project mission based on product context "
-                "and project description. I will write the mission in the mission window "
-                "and select the proper agents below."
-            ),
-            job_type="orchestrator",
-            status="active",
-        )
-        db.add(agent_job)
-
-        # Step 2: Create AgentExecution (executor instance)
-        orchestrator_execution = AgentExecution(
-            agent_id=agent_id,
-            job_id=job_id,  # FK to AgentJob
-            tenant_key=current_user.tenant_key,
-            agent_type="orchestrator",
-            agent_name="Orchestrator",
-            instance_number=1,
-            status="waiting",
-            progress=0,
-            tool_type="universal",
-            messages=[],
-        )
-        db.add(orchestrator_execution)
-        await db.commit()
-        await db.refresh(orchestrator_execution)
-        await db.refresh(agent_job)
-
-        # Set the job relationship for response mapping
-        orchestrator_execution.job = agent_job
-
-        logger.info(
-            f"Auto-created orchestrator {job_id} (agent_id: {agent_id}) for project {project_id} "
-            f"(user: {current_user.username})"
+        # Handover 0506: No auto-creation - return null orchestrator
+        # Frontend shows "Re-launch Orchestrator" button when orchestrator is null
+        logger.info(f"No orchestrator found for project {project_id} (user: {current_user.username})")
+        return OrchestratorResponse(
+            success=True,
+            orchestrator=None
         )
 
     logger.info(

@@ -550,7 +550,9 @@ async function handleCloseoutProject(closeoutData) {
 }
 
 /**
- * Handle orchestrator handover (Handover 0080a)
+ * Handle orchestrator handover (Handover 0506)
+ * Calls initiate-handover endpoint and copies prompt to clipboard
+ * User pastes prompt into current orchestrator terminal
  */
 async function handleHandOver(agent) {
   try {
@@ -559,25 +561,25 @@ async function handleHandOver(agent) {
       throw new Error('Orchestrator job_id missing')
     }
 
-    console.log('[ProjectTabs] Triggering succession for orchestrator:', jobId)
+    console.log('[ProjectTabs] Initiating handover for orchestrator:', jobId)
 
-    const response = await api.agentJobs.triggerSuccession(jobId)
-    const result = response?.data || {}
+    const response = await api.agentJobs.initiateHandover(jobId)
+    const prompt = response?.data?.prompt
 
-    // Show success notification with launch prompt
-    console.log('[ProjectTabs] Succession triggered successfully:', result)
-
-    // TODO: Show LaunchSuccessorDialog with result.launch_prompt
-    // For now, show simple confirmation
-    alert(`✅ ${result.message || 'Succession triggered'}\n\n📋 Launch Prompt:\n\n${result.launch_prompt || ''}`)
-
-    // Refresh agents to show new successor
-    if (projectId.value) {
-      await loadJobs(projectId.value)
+    if (!prompt) {
+      throw new Error('No handover prompt returned')
     }
+
+    // Copy handover prompt to clipboard
+    await navigator.clipboard.writeText(prompt)
+
+    // Show success notification
+    console.log('[ProjectTabs] Handover prompt copied to clipboard')
+    alert('📋 Handover prompt copied!\n\nPaste into your current orchestrator terminal to trigger handover.')
+
   } catch (error) {
-    console.error('Hand over failed:', error)
-    alert(`❌ Failed to trigger succession: ${error.message}`)
+    console.error('Initiate handover failed:', error)
+    alert(`❌ Failed to initiate handover: ${error.message}`)
   }
 }
 

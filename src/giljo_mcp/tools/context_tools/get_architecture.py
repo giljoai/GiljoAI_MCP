@@ -100,7 +100,6 @@ async def get_architecture(
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
-                    "estimated_tokens": 0,
                     "error": "product_not_found"
                 }
             }
@@ -139,8 +138,7 @@ Notes: {arch_notes}
                 },
                 "metadata": {
                     "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "estimated_tokens": 0
+                    "tenant_key": tenant_key
                 }
             }
 
@@ -169,7 +167,6 @@ Notes: {arch_notes}
             "data": data,
             "metadata": {
                 "product_id": product_id,
-                "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens
+                "tenant_key": tenant_key
             }
         }

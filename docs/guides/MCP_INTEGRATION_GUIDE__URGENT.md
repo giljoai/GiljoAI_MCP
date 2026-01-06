@@ -612,15 +612,15 @@ mv ~/.claude.json.tmp ~/.claude.json
 **Method 1: Check Tool UI**
 - Open your IDE (Claude Code, Cursor, Windsurf)
 - Look for GiljoAI MCP tools in available tools/commands
-- Should see tools like "create_project", "spawn_agent", etc.
+- Should see tools like "get_orchestrator_instructions", "spawn_agent_job", etc.
 
 **Method 2: Test Connection**
 Try using a simple GiljoAI MCP tool:
 ```
 # In Claude Code CLI
-@giljo-mcp list_projects
+@giljo-mcp health_check
 
-# Should return list of projects or empty array
+# Should return server health status
 ```
 
 **Method 3: Check Dashboard**

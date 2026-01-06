@@ -10,6 +10,7 @@ See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
 import os
+import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -18,6 +19,8 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
+from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
+from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.logging import get_logger, ErrorCode
 from giljo_mcp.models import AgentTemplate, Job, Product, Project
@@ -26,6 +29,12 @@ from giljo_mcp.orchestrator import ProjectOrchestrator
 
 
 logger = get_logger(__name__)
+
+# Extract inner structure for backward compatibility with existing code
+# defaults.py uses versioned structure: {"version": "2.1", "priorities": {...}}
+# This code expects flat structure: {"field": {"toggle": True, "priority": X}}
+DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
+DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
 
 
 # ============================================================================
@@ -112,25 +121,8 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
         return {"error": f"Failed to fetch project: {e!s}"}
 
 
-# Handover 0281 Phase 1: Default configurations for monolithic context
-DEFAULT_FIELD_PRIORITIES = {
-    "product_core": {"toggle": True, "priority": 1},
-    "project_description": {"toggle": True, "priority": 1},
-    "vision_documents": {"toggle": True, "priority": 2},
-    "tech_stack": {"toggle": True, "priority": 2},
-    "architecture": {"toggle": True, "priority": 3},
-    "testing_config": {"toggle": True, "priority": 3},
-    "memory_360": {"toggle": True, "priority": 2},
-    "git_history": {"toggle": False, "priority": 4},
-    "agent_templates": {"toggle": True, "priority": 2},
-}
-
-DEFAULT_DEPTH_CONFIG = {
-    "memory_360": 5,  # Number of projects in 360 Memory (1/3/5/10)
-    "git_history": 20,  # Number of commits in git log examples (5/10/25/50/100)
-    "agent_templates": "type_only",  # Agent template detail level ("type_only", "full") - Handover 0347d
-    "vision_documents": "light",  # Vision document depth ("light", "medium", "full") - Handover 0352
-}
+# Handover 0281 Phase 1: Default configurations imported from config/defaults.py
+# (DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG are now unified across the codebase)
 
 
 def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, int]:
@@ -574,7 +566,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             - agent_type: Type (backend, frontend, etc.)
             - mission: Agent-specific mission
             - project_description: Relevant project context
-            - estimated_tokens: Token count
             - thin_client: True (architecture flag)
 
         Example:
@@ -664,7 +655,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "mission": agent_job.mission or "",
                     "project_id": str(agent_job.project_id),
                     "parent_job_id": str(agent_execution.spawned_by) if agent_execution.spawned_by else None,
-                    "estimated_tokens": estimated_tokens,
                     "status": agent_execution.status,
                     "thin_client": True,
                 }
@@ -710,8 +700,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 "success": true,
                 "template": "<rendered prompt>",
                 "variables_injected": {...},
-                "protocol_version": "1.0",
-                "estimated_tokens": 2400
+                "protocol_version": "1.0"
             }
         """
         try:
@@ -747,7 +736,6 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "tenant_key": tenant_key,
                 },
                 "protocol_version": template.version,
-                "estimated_tokens": len(rendered) // 4,  # Rough estimate
             }
 
         except Exception as e:
@@ -770,6 +758,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         project_id: str,
         tenant_key: str,
         parent_job_id: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
         template_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
@@ -804,6 +793,10 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         - template_id links agent job to its source template
         - Enables (i) icon functionality to display template metadata
 
+        HANDOVER 0506:
+        - parent_agent_id enables orchestrator handover bypass
+        - Retiring orchestrator provides its own agent_id to spawn successor
+
         Args:
             agent_type: Type of agent (backend-tester, frontend-dev, etc.)
             agent_name: Human-readable name for the agent
@@ -811,6 +804,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             project_id: Project UUID
             tenant_key: Tenant isolation key
             parent_job_id: Optional parent orchestrator ID (for tracking)
+            parent_agent_id: Handover 0506 - Retiring orchestrator's agent_id to authorize successor spawn
             template_id: Optional template ID this job was spawned from (Handover 0244a)
 
         Returns:
@@ -855,25 +849,39 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     existing_orchestrator = result.scalar_one_or_none()
 
                     if existing_orchestrator:
-                        # Active orchestrator already exists - prevent duplicate
-                        logger.warning(
-                            f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
-                            extra={
-                                "project_id": project_id,
-                                "tenant_key": tenant_key,
+                        # Handover 0506: Allow spawning successor if parent_agent_id matches existing orchestrator
+                        # This enables retiring orchestrator to spawn its own replacement during handover
+                        if parent_agent_id and parent_agent_id == existing_orchestrator.agent_id:
+                            logger.info(
+                                f"Handover: Allowing successor spawn from orchestrator {parent_agent_id}",
+                                extra={
+                                    "project_id": project_id,
+                                    "tenant_key": tenant_key,
+                                    "parent_agent_id": parent_agent_id,
+                                    "existing_agent_id": existing_orchestrator.agent_id,
+                                },
+                            )
+                            # Continue with spawn - this is an authorized handover
+                        else:
+                            # Active orchestrator already exists - prevent duplicate
+                            logger.warning(
+                                f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                                extra={
+                                    "project_id": project_id,
+                                    "tenant_key": tenant_key,
+                                    "existing_agent_id": existing_orchestrator.agent_id,
+                                    "existing_job_id": existing_orchestrator.job_id,
+                                    "existing_status": existing_orchestrator.status,
+                                },
+                            )
+                            return {
+                                "success": False,
+                                "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                                f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                                 "existing_agent_id": existing_orchestrator.agent_id,
                                 "existing_job_id": existing_orchestrator.job_id,
                                 "existing_status": existing_orchestrator.status,
-                            },
-                        )
-                        return {
-                            "success": False,
-                            "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                            f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
-                            "existing_agent_id": existing_orchestrator.agent_id,
-                            "existing_job_id": existing_orchestrator.job_id,
-                            "existing_status": existing_orchestrator.status,
-                        }
+                            }
 
                 # No duplicate found (or not an orchestrator) - proceed with creation
                 # Create BOTH AgentJob (work order) AND AgentExecution (executor)
@@ -1535,9 +1543,16 @@ The agent templates are now being updated...
 
         return result
 
+    # =========================================================================
+    # DEAD CODE - Stdio MCP removed in Handover 0334
+    # HTTP MCP uses ToolAccessor.get_orchestrator_instructions() instead
+    # TODO: Remove this function in next major cleanup (Handover 0408 note)
+    # =========================================================================
     @mcp.tool()
     async def get_orchestrator_instructions(agent_id: str, tenant_key: str) -> dict[str, Any]:
         """
+        DEPRECATED: Stdio MCP removed - use ToolAccessor version for HTTP MCP.
+
         Fetch context for orchestrator to CREATE mission plan (Handover 0366c).
 
         PURPOSE: PROJECT STAGING (NOT EXECUTION)
@@ -1576,8 +1591,7 @@ The agent templates are now being updated...
                 'context_used': 0,
                 'agent_templates': [...],  # Available specialists (INPUT)
                 'field_priorities': {...},
-                'token_reduction_applied': True,
-                'estimated_tokens': 6000
+                'token_reduction_applied': True
             }
 
         Example:
@@ -1861,7 +1875,6 @@ The agent templates are now being updated...
                                 "agent_id": agent_id,
                                 "job_id": job_id,
                                 "project_id": str(project.id),
-                                "estimated_tokens": estimated_tokens,
                                 "status": "active",
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "thin_client": True,
@@ -1891,9 +1904,12 @@ The agent templates are now being updated...
                     "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                     "field_priorities": field_priorities,
                     "token_reduction_applied": bool(field_priorities),
-                    "estimated_tokens": estimated_tokens,
                     "instance_number": agent_execution.instance_number or 1,
                     "thin_client": True,
+                    # Handover 0408: Serena MCP integration status
+                    "integrations": {
+                        "serena_mcp_enabled": include_serena,
+                    },
                 }
 
         except Exception as e:
@@ -2250,6 +2266,23 @@ async def get_orchestrator_instructions(
 
             full_mission = f"{agent_job.mission}\n\n---\n\n{json.dumps(condensed_mission, indent=2)}"
 
+            # Handover 0408: Serena MCP injection for orchestrators
+            include_serena = False
+            try:
+                config_path = Path.cwd() / "config.yaml"
+                if config_path.exists():
+                    with open(config_path, encoding="utf-8") as f:
+                        config_data = yaml.safe_load(f) or {}
+                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+            except Exception as e:
+                logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
+
+            if include_serena:
+                from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                serena_notice = generate_serena_instructions(enabled=True)
+                full_mission = serena_notice + "\n\n---\n\n" + full_mission
+                logger.info(f"[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
+
             # Calculate token estimate
             estimated_tokens = len(full_mission) // 4
 
@@ -2273,7 +2306,6 @@ async def get_orchestrator_instructions(
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
-                "estimated_tokens": estimated_tokens,
                 "instance_number": agent_execution.instance_number or 1,
                 "thin_client": True,
                 # Handover 0347c: Add 6 new guidance fields
@@ -2283,6 +2315,10 @@ async def get_orchestrator_instructions(
                 "error_handling": _get_error_handling(),
                 "agent_spawning_limits": _get_spawning_limits(),
                 "context_management": _get_context_management(agent_execution.context_budget or 150000),
+                # Handover 0408: Serena MCP integration status
+                "integrations": {
+                    "serena_mcp_enabled": include_serena,
+                },
             }
 
             # Handover 0260 Phase 5a + 0351: Add agent_spawning_constraint for Claude Code CLI mode
@@ -2396,7 +2432,6 @@ async def get_agent_mission(
                 "agent_type": agent_execution.agent_type,
                 "mission": agent_job.mission or "",
                 "thin_client": True,
-                "estimated_tokens": estimated_tokens,
             }
 
         except Exception as e:
@@ -2439,8 +2474,7 @@ async def get_generic_agent_template(
                 "project_id": "...",
                 "tenant_key": "..."
             },
-            "protocol_version": "1.0",
-            "estimated_tokens": 2400
+            "protocol_version": "1.0"
         }
     """
     try:
@@ -2476,7 +2510,6 @@ async def get_generic_agent_template(
                 "tenant_key": tenant_key,
             },
             "protocol_version": template.version,
-            "estimated_tokens": len(rendered) // 4,  # Rough estimate
         }
 
     except Exception as e:
@@ -2499,6 +2532,7 @@ async def spawn_agent_job(
     project_id: str,
     tenant_key: str,
     parent_job_id: Optional[str] = None,
+    parent_agent_id: Optional[str] = None,
     db_manager: Optional["DatabaseManager"] = None,
     session: Optional["AsyncSession"] = None,
 ) -> dict[str, Any]:
@@ -2512,6 +2546,7 @@ async def spawn_agent_job(
         project_id: Project UUID
         tenant_key: Tenant isolation key
         parent_job_id: Optional parent job UUID
+        parent_agent_id: Handover 0506 - Retiring orchestrator's agent_id to authorize successor spawn
         db_manager: Optional DatabaseManager instance (for testing)
         session: Optional AsyncSession (for testing with transaction isolation)
 
@@ -2526,7 +2561,7 @@ async def spawn_agent_job(
     # If session is provided, use it directly (for testing with transaction isolation)
     if session is not None:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
     # Otherwise, create session from db_manager
@@ -2537,7 +2572,7 @@ async def spawn_agent_job(
 
     async with db_manager.get_session_async() as session:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id
+            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
 
@@ -2549,8 +2584,16 @@ async def _spawn_agent_job_impl(
     project_id: str,
     tenant_key: str,
     parent_job_id: Optional[str] = None,
+    parent_agent_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Internal implementation of spawn_agent_job."""
+    """
+    Internal implementation of spawn_agent_job.
+
+    Args:
+        parent_agent_id: Handover 0506 - If provided, bypasses orchestrator duplication check
+                        when spawning successor during handover. The retiring orchestrator
+                        provides its own agent_id to authorize successor creation.
+    """
     from uuid import uuid4
 
     from sqlalchemy import and_, select
@@ -2616,25 +2659,39 @@ async def _spawn_agent_job_impl(
             existing_orchestrator = result.scalar_one_or_none()
 
             if existing_orchestrator:
-                # Active orchestrator already exists - prevent duplicate
-                logger.warning(
-                    f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
-                    extra={
-                        "project_id": project_id,
-                        "tenant_key": tenant_key,
+                # Handover 0506: Allow spawning successor if parent_agent_id matches existing orchestrator
+                # This enables retiring orchestrator to spawn its own replacement during handover
+                if parent_agent_id and parent_agent_id == existing_orchestrator.agent_id:
+                    logger.info(
+                        f"Handover: Allowing successor spawn from orchestrator {parent_agent_id}",
+                        extra={
+                            "project_id": project_id,
+                            "tenant_key": tenant_key,
+                            "parent_agent_id": parent_agent_id,
+                            "existing_agent_id": existing_orchestrator.agent_id,
+                        },
+                    )
+                    # Continue with spawn - this is an authorized handover
+                else:
+                    # Active orchestrator already exists - prevent duplicate
+                    logger.warning(
+                        f"Orchestrator already exists for project {project_id} with status {existing_orchestrator.status}",
+                        extra={
+                            "project_id": project_id,
+                            "tenant_key": tenant_key,
+                            "existing_agent_id": existing_orchestrator.agent_id,
+                            "existing_job_id": existing_orchestrator.job_id,
+                            "existing_status": existing_orchestrator.status,
+                        },
+                    )
+                    return {
+                        "success": False,
+                        "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
+                        f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
                         "existing_agent_id": existing_orchestrator.agent_id,
                         "existing_job_id": existing_orchestrator.job_id,
                         "existing_status": existing_orchestrator.status,
-                    },
-                )
-                return {
-                    "success": False,
-                    "error": f"Orchestrator already exists for this project with status '{existing_orchestrator.status}'. "
-                    f"Only one active orchestrator is allowed during staging. Use succession for runtime handover.",
-                    "existing_agent_id": existing_orchestrator.agent_id,
-                    "existing_job_id": existing_orchestrator.job_id,
-                    "existing_status": existing_orchestrator.status,
-                }
+                    }
 
         # No duplicate found (or not an orchestrator) - proceed with creation
         # HIGH #3 FIX: Create BOTH AgentJob (work order) AND AgentExecution (executor)
