@@ -223,8 +223,8 @@ projects = client.list_projects()
 for p in projects:
     print(f"{p['name']}: {p['status']}")
 
-# Switch to a project
-client.switch_project(project_id)
+# Activate a project for orchestrator staging
+client.gil_activate(project_id)
 
 # Update mission after discovery
 client.update_project_mission(
