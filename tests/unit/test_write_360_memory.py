@@ -9,33 +9,37 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Patch flag_modified at module level since all our tests use mocked models
+pytestmark = pytest.mark.usefixtures("mock_flag_modified")
+
 from giljo_mcp.tools.write_360_memory import write_360_memory
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
+
+
+@pytest.fixture(autouse=True)
+def mock_flag_modified():
+    """Auto-patch flag_modified for all tests in this module."""
+    with patch('giljo_mcp.tools.write_360_memory.flag_modified'):
+        yield
+
+
+class AsyncContextManager:
+    """Helper class for async context manager mocking."""
+    def __init__(self, mock_session):
+        self.mock_session = mock_session
+
+    async def __aenter__(self):
+        return self.mock_session
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return None
 
 
 @pytest.fixture
 def mock_db_manager():
     """Mock DatabaseManager with session management."""
     manager = MagicMock()
-
-    # Mock async context manager for session
-    mock_session = AsyncMock(spec=AsyncSession)
-
-    async def mock_execute(stmt):
-        """Mock execute that returns mock results."""
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock()
-        return result
-
-    mock_session.execute = mock_execute
-    mock_session.flush = AsyncMock()
-    mock_session.commit = AsyncMock()
-
-    async def mock_get_session():
-        yield mock_session
-
-    manager.get_session_async = MagicMock(return_value=mock_get_session())
     return manager
 
 
@@ -81,14 +85,19 @@ async def test_write_360_memory_project_completion(mock_db_manager, mock_project
         product_result = MagicMock()
         product_result.scalar_one_or_none.return_value = mock_product
 
-        mock_session.execute.side_effect = [project_result, product_result]
+        # Mock agent job query (when author_job_id is provided)
+        agent_job_result = MagicMock()
+        mock_agent_job = MagicMock()
+        mock_agent_job.agent_name = "Test Agent"
+        mock_agent_job.job_type = "orchestrator"
+        agent_job_result.scalar_one_or_none.return_value = mock_agent_job
+
+        mock_session.execute.side_effect = [project_result, product_result, agent_job_result]
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -134,14 +143,19 @@ async def test_write_360_memory_handover_closeout(mock_db_manager, mock_project,
         product_result = MagicMock()
         product_result.scalar_one_or_none.return_value = mock_product
 
-        mock_session.execute.side_effect = [project_result, product_result]
+        # Mock agent job query
+        agent_job_result = MagicMock()
+        mock_agent_job = MagicMock()
+        mock_agent_job.agent_name = "Orchestrator"
+        mock_agent_job.job_type = "orchestrator"
+        agent_job_result.scalar_one_or_none.return_value = mock_agent_job
+
+        mock_session.execute.side_effect = [project_result, product_result, agent_job_result]
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -189,10 +203,8 @@ async def test_write_360_memory_increments_sequence(mock_db_manager, mock_projec
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -251,10 +263,8 @@ async def test_write_360_memory_with_github_integration(mock_db_manager, mock_pr
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -299,10 +309,8 @@ async def test_write_360_memory_without_github_integration(mock_db_manager, mock
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -366,10 +374,8 @@ async def test_write_360_memory_project_not_found(mock_db_manager):
 
         mock_session.execute.return_value = project_result
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
@@ -400,10 +406,8 @@ async def test_write_360_memory_product_not_found(mock_db_manager, mock_project)
 
         mock_session.execute.side_effect = [project_result, product_result]
 
-        async def mock_get_session():
-            yield mock_session
-
-        mock_db_manager.get_session_async.return_value = mock_get_session()
+        # Setup async context manager
+        mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
