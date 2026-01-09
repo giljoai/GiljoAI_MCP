@@ -228,6 +228,18 @@
       </table>
     </div>
 
+    <!-- Close Out Project Button (shown when orchestrator completes) -->
+    <v-btn
+      v-if="showCloseoutButton"
+      color="success"
+      size="large"
+      class="closeout-btn mt-4"
+      prepend-icon="mdi-check-circle"
+      @click="openCloseoutModal"
+    >
+      Close Out Project
+    </v-btn>
+
     <!-- Message Composer (Bottom) -->
     <div class="message-composer">
       <v-btn
@@ -354,6 +366,16 @@
       @close="showMessageAuditModal = false"
     />
 
+    <!-- Closeout Modal (Project completion) -->
+    <CloseoutModal
+      :show="showCloseoutModal"
+      :project-id="projectId"
+      :project-name="project.name"
+      @continue="handleContinue"
+      @complete="handleCloseout"
+      @close="showCloseoutModal = false"
+    />
+
     <!-- Local Snackbar for immediate feedback -->
     <v-snackbar
       v-model="localSnackbar.show"
@@ -379,6 +401,7 @@ import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
+import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
 /**
  * JobsTab Component - Handover 0241 + 0243c
@@ -456,6 +479,7 @@ const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
+const showCloseoutModal = ref(false)
 const messageAuditInitialTab = ref('waiting')
 const selectedJobId = ref(null)
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
@@ -497,6 +521,34 @@ function showLocalToast(options) {
 
 const projectId = computed(() => props.project?.project_id || props.project?.id)
 const loadingJobs = ref(false)
+
+/**
+ * Closeout button visibility logic
+ * Show button when orchestrator completes AND no active successor exists
+ */
+const showCloseoutButton = computed(() => {
+  // Find orchestrator job with status "complete" or "completed"
+  const orch = sortedAgents.value.find(
+    j => j.agent_type === 'orchestrator' &&
+         (j.status === 'complete' || j.status === 'completed')
+  )
+  // Only show if orchestrator exists and is complete
+  // AND no active successor (handover not in progress)
+  return orch !== null && !hasActiveSuccessor(orch)
+})
+
+/**
+ * Check if there's another orchestrator that succeeded this one
+ * and is not yet complete
+ */
+function hasActiveSuccessor(orchestrator) {
+  return sortedAgents.value.some(
+    j => j.agent_type === 'orchestrator' &&
+         j.spawned_by === orchestrator.job_id &&
+         j.status !== 'complete' &&
+         j.status !== 'completed'
+  )
+}
 
 /**
  * Duration tracking - live timer for working agents
@@ -966,6 +1018,43 @@ async function sendMessage() {
 }
 
 /**
+ * Open closeout modal
+ * Opens CloseoutModal for project completion
+ */
+function openCloseoutModal() {
+  showCloseoutModal.value = true
+}
+
+/**
+ * Handle Continue Working action from closeout modal
+ * Refreshes jobs to show new orchestrator
+ */
+async function handleContinue() {
+  showCloseoutModal.value = false
+  await refreshJobs()
+  showToast({
+    message: 'Project continues with new orchestrator',
+    type: 'info',
+    duration: 3000
+  })
+}
+
+/**
+ * Handle Close Out action from closeout modal
+ * Project is archived, navigate away or show success
+ */
+async function handleCloseout(data) {
+  showCloseoutModal.value = false
+  showToast({
+    message: 'Project closed out successfully',
+    type: 'success',
+    duration: 3000
+  })
+  // Emit event to parent component to handle navigation
+  emit('closeout-project', data)
+}
+
+/**
  * Copy helper with fallback
  */
 async function copyToClipboard(text) {
@@ -1270,6 +1359,21 @@ async function copyToClipboard(text) {
     margin: 0;
     max-height: 400px;
     overflow-y: auto;
+  }
+
+  /* Close Out Project Button */
+  .closeout-btn {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: none;
+    font-size: 15px;
+    padding: 12px 24px;
+    height: auto;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
   }
 }
 

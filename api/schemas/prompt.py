@@ -182,25 +182,17 @@ class ProjectCloseoutDataResponse(BaseModel):
     Schema for project closeout data response.
     GET /api/projects/{project_id}/closeout
 
-    Used by CloseoutModal.vue to display checklist and prompt.
+    Returns basic project metadata for closeout.
+    Frontend fetches 360 memory entries directly from the product.
     """
 
-    checklist: list[str] = Field(
-        ...,
-        description="Dynamic checklist items based on project state",
-        min_length=3,
-    )
-    closeout_prompt: str = Field(
-        ...,
-        description="Closeout prompt with MCP command template",
-        min_length=50,
-    )
-    project_name: str = Field(..., description="Project name")
     project_id: str = Field(..., description="Project UUID")
+    project_name: str = Field(..., description="Project name")
     agent_count: int = Field(..., ge=0, description="Number of agents in the project")
+    completed_agents: int = Field(..., ge=0, description="Number of completed agents")
+    failed_agents: int = Field(..., ge=0, description="Number of failed agents")
     all_agents_complete: bool = Field(..., description="Whether all agents finished work")
     has_failed_agents: bool = Field(..., description="Whether any agents failed")
-    has_git_commits: bool = Field(False, description="Whether Git integration is enabled with commits available")
 
     model_config = ConfigDict(from_attributes=True)
 

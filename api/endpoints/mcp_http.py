@@ -514,6 +514,61 @@ async def handle_tools_list(
                 "required": ["path", "tenant_key"]
             }
         },
+        # Project Closeout Tool (Handover 0411)
+        {
+            "name": "close_project_and_update_memory",
+            "description": "Close project and update 360 Memory with sequential history entry. Called by: ORCHESTRATOR at project completion. Updates Product.product_memory.sequential_history with project summary, key outcomes, decisions made, and Git commits (if GitHub integration enabled). Triggers WebSocket 'product_memory_updated' event for UI updates.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "UUID of the project to close"},
+                    "summary": {"type": "string", "description": "2-3 paragraph summary of project delivery focusing on outcomes and next steps"},
+                    "key_outcomes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of key deliverables and outcomes achieved"
+                    },
+                    "decisions_made": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of architectural or technical decisions made during the project"
+                    },
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                },
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made", "tenant_key"]
+            }
+        },
+        # 360 Memory Writing Tool (Handover 0412)
+        {
+            "name": "write_360_memory",
+            "description": "Write a 360 memory entry for project completion or handover. Called by orchestrator on completion, or by agents on handover. Appends to Product.product_memory.sequential_history.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "summary": {"type": "string", "description": "2-3 paragraph summary of work accomplished"},
+                    "key_outcomes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "3-5 specific achievements"
+                    },
+                    "decisions_made": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "3-5 architectural/design decisions"
+                    },
+                    "entry_type": {
+                        "type": "string",
+                        "enum": ["project_completion", "handover_closeout"],
+                        "description": "Type of 360 memory entry",
+                        "default": "project_completion"
+                    },
+                    "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"}
+                },
+                "required": ["project_id", "tenant_key", "summary", "key_outcomes", "decisions_made"]
+            }
+        },
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
@@ -588,6 +643,10 @@ async def handle_tools_call(
         "fetch_context": state.tool_accessor.fetch_context,
         # File Utilities (Handover 0360 Feature 3)
         "file_exists": state.tool_accessor.file_exists,
+        # Project Closeout (Handover 0411)
+        "close_project_and_update_memory": state.tool_accessor.close_project_and_update_memory,
+        # 360 Memory Writing (Handover 0412)
+        "write_360_memory": state.tool_accessor.write_360_memory,
     }
 
     if tool_name not in tool_map:
