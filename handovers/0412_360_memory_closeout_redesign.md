@@ -158,6 +158,11 @@ Multiple entries per project supported (completion + handovers).
 - Frontend must fetch 360 memory from product, not from closeout endpoint
 
 ## Commits
+- `6dc06960` - fix: Add product_memory to ProductResponse and pass productId to CloseoutModal
 - `2c4908e2` - test: Add tests for write_360_memory MCP tool
 - `0d3c0fcc` - feat: Complete write_360_memory MCP tool implementation
 - `5e06a6d9` - feat: Redesign 360 Memory closeout with auto-generation
+
+## Bug Fixes (Post-Implementation)
+- **404 Error on CloseoutModal**: Backend `ProductResponse` was missing `product_memory` field, and frontend wasn't passing `product-id` prop to CloseoutModal
+  - Fixed in: `api/endpoints/products/crud.py`, `lifecycle.py`, `JobsTab.vue`, `ProjectTabs.vue`
