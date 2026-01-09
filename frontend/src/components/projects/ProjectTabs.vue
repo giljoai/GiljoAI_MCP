@@ -122,6 +122,7 @@
       :show="showCloseoutModal"
       :project-id="project.project_id || project.id"
       :project-name="project.name"
+      :product-id="project.product_id"
       @close="showCloseoutModal = false"
       @complete="handleCloseoutComplete"
     />
