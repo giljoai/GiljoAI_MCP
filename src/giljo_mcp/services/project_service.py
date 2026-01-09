@@ -1350,92 +1350,17 @@ class ProjectService:
 
         all_agents_complete = total_agents > 0 and completed_agents == total_agents and active_agents == 0
         has_failed_agents = failed_agents > 0
-        has_git_commits = False
-
-        if project.product_id:
-            from giljo_mcp.models.products import Product
-
-            product_result = await session.execute(
-                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
-            )
-            product = product_result.scalar_one_or_none()
-
-            if product and product.product_memory:
-                git_config = product.product_memory.get("git_integration", {}) or {}
-                github_config = product.product_memory.get("github", {}) or {}
-                repo_name = git_config.get("repo_name") or github_config.get("repo_name")
-                integration_enabled = git_config.get("enabled") or github_config.get("enabled")
-                has_git_commits = bool(integration_enabled and repo_name)
-
-        checklist: list[str] = []
-
-        if all_agents_complete:
-            checklist.append("[PASS] All agents completed successfully")
-        else:
-            checklist.append(f"[WARN] {completed_agents}/{total_agents} agents completed")
-
-        if not has_failed_agents:
-            checklist.append("[PASS] No failed agents")
-        else:
-            checklist.append(f"[FAIL] {failed_agents} agent(s) failed")
-
-        if total_agents > 0:
-            checklist.append(f"[PASS] Project has meaningful work ({total_agents} agents)")
-        else:
-            checklist.append("[INFO] No agents in project (empty project)")
-
-        if has_git_commits:
-            checklist.append("[PASS] Git commits will be included in 360 Memory")
-        else:
-            checklist.append("[INFO] No Git integration (manual summary will be used)")
-
-        mission_preview = project.mission or ""
-        if len(mission_preview) > 200:
-            mission_preview = f"{mission_preview[:200]}..."
-
-        tenant_for_prompt = tenant_key or ""
-        closeout_prompt = (
-            f"# Project Closeout: {project.name}\n\n"
-            "## Project Summary\n"
-            f"Project ID: {project_id}\n"
-            f"Mission: {mission_preview}\n"
-            f"Agents: {total_agents} total ({completed_agents} completed, {failed_agents} failed)\n\n"
-            "## MCP Command Template\n\n"
-            "Use this command to close out the project and update 360 Memory:\n\n"
-            "close_project_and_update_memory(\n"
-            f'    project_id="{project_id}",\n'
-            '    summary="""\n'
-            "    Provide a concise 2-3 paragraph summary of the project delivery.\n"
-            "    Focus on outcomes, decisions, and next steps for the product team.\n"
-            '    """,\n'
-            "    key_outcomes=[\n"
-            '        "Outcome 1: Describe key deliverable",\n'
-            '        "Outcome 2: Describe key deliverable",\n'
-            '        "Outcome 3: Describe key deliverable",\n'
-            "    ],\n"
-            "    decisions_made=[\n"
-            '        "Decision 1: Document architectural or technical choice",\n'
-            '        "Decision 2: Document architectural or technical choice",\n'
-            "    ],\n"
-            f'    tenant_key="{tenant_for_prompt}"\n'
-            ")\n\n"
-            "## Guidance\n"
-            "- Summaries should explain what changed and why it matters.\n"
-            "- List measurable outcomes when possible (performance, reliability, coverage).\n"
-            "- Capture decisions that affect future work or context loading.\n"
-        )
 
         return {
             "success": True,
             "data": {
-                "checklist": checklist,
-                "closeout_prompt": closeout_prompt,
-                "project_name": project.name,
                 "project_id": project_id,
+                "project_name": project.name,
                 "agent_count": total_agents,
+                "completed_agents": completed_agents,
+                "failed_agents": failed_agents,
                 "all_agents_complete": all_agents_complete,
                 "has_failed_agents": has_failed_agents,
-                "has_git_commits": has_git_commits,
             },
         }
 

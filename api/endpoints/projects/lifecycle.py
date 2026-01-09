@@ -423,6 +423,85 @@ async def purge_deleted_project(
     )
 
 
+@router.post("/{project_id}/archive", response_model=ProjectResponse)
+async def archive_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectResponse:
+    """
+    Archive a completed project (Handover 0412).
+
+    Marks project as 'completed' and sets completed_at timestamp.
+    This is used when the user confirms project closeout and wants to archive it
+    without continuing work.
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        ProjectResponse with archived project
+
+    Raises:
+        HTTPException 404: Project not found
+        HTTPException 400: Archive failed
+    """
+    logger.info(f"User {current_user.username} archiving project {project_id}")
+
+    try:
+        # Get project first to validate
+        get_result = await project_service.get_project(project_id=project_id)
+        if not get_result.get("success"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+        proj = get_result.get("project", {})
+
+        # Use deactivate to mark as inactive (archived state)
+        result = await project_service.deactivate_project(
+            project_id=project_id,
+            reason="User archived project after completion"
+        )
+
+        if not result.get("success"):
+            error_msg = result.get("error", "Failed to archive project")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+        logger.info(f"Archived project {project_id}")
+
+        # Get updated project
+        get_result = await project_service.get_project(project_id=project_id)
+        proj = get_result.get("project", {})
+
+        return ProjectResponse(
+            id=proj.get("id"),
+            alias=proj.get("alias", ""),
+            name=proj.get("name"),
+            description=proj.get("description"),
+            mission=proj.get("mission", ""),
+            status=proj.get("status"),
+            product_id=proj.get("product_id"),
+            created_at=proj.get("created_at"),
+            updated_at=proj.get("updated_at"),
+            completed_at=proj.get("completed_at"),
+            context_budget=proj.get("context_budget", 150000),
+            context_used=proj.get("context_used", 0),
+            agent_count=proj.get("agent_count", 0),
+            message_count=proj.get("message_count", 0),
+            agents=[]
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to archive project: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to archive project: {str(e)}",
+        )
+
+
 @router.delete("/{project_id}", response_model=ProjectDeleteResponse)
 async def delete_project(
     project_id: str,
@@ -509,4 +588,65 @@ async def launch_project(
 
     # Return data as ProjectLaunchResponse
     launch_data = result.get("data", {})
+    return ProjectLaunchResponse(**launch_data)
+
+
+@router.post("/{project_id}/continue", response_model=ProjectLaunchResponse)
+async def continue_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectLaunchResponse:
+    """
+    Continue working on a completed project by spawning a new orchestrator (Handover 0412).
+
+    Validates orchestrator is in 'complete' status, then spawns a new orchestrator instance.
+    This allows the user to continue working after the orchestrator has completed.
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user (from dependency)
+        project_service: Project service (from dependency)
+
+    Returns:
+        ProjectLaunchResponse with new orchestrator job ID and launch prompt
+
+    Raises:
+        HTTPException 404: Project not found
+        HTTPException 400: Continue failed (orchestrator not complete)
+    """
+    logger.info(f"User {current_user.username} continuing project {project_id}")
+
+    # Resume project via ProjectService
+    result = await project_service.continue_working(
+        project_id=project_id,
+        tenant_key=current_user.tenant_key
+    )
+
+    # Check for errors
+    if not result.get("success"):
+        error_msg = result.get("error", "Failed to continue project")
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    logger.info(f"Resumed project {project_id}, now launching new orchestrator")
+
+    # Launch new orchestrator
+    launch_result = await project_service.launch_project(
+        project_id=project_id,
+        user_id=str(current_user.id),
+        launch_config=None
+    )
+
+    # Check for errors
+    if not launch_result.get("success"):
+        error_msg = launch_result.get("error", "Failed to launch new orchestrator")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    logger.info(f"Launched new orchestrator for project {project_id}")
+
+    # Return data as ProjectLaunchResponse
+    launch_data = launch_result.get("data", {})
     return ProjectLaunchResponse(**launch_data)
