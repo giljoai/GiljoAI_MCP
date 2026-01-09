@@ -1085,6 +1085,25 @@ STARTUP SEQUENCE:
    This allows fresh-session orchestrators to retrieve your execution strategy.
 7. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
+
+COMPLETION PROTOCOL:
+
+When your mission is complete:
+
+1. WRITE 360 MEMORY: Call write_360_memory() with:
+   - project_id: '{project_id}'
+   - tenant_key: '{self.tenant_key}'
+   - summary: 2-3 paragraph overview of mission accomplishments
+   - key_outcomes: 3-5 specific, measurable achievements
+   - decisions_made: 3-5 architectural/design decisions with rationale
+   - entry_type: "project_completion"
+   - author_job_id: '{orchestrator_id}'
+
+2. MARK COMPLETE: After 360 memory succeeds, call complete_job()
+
+3. WAIT: User reviews 360 memory in UI and chooses "Continue Working" or "Close Out Project"
+
+CRITICAL: Auto-generate content from your knowledge. Never ask user to fill placeholders.
 8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
 
    **Sequential Pattern**: Spawn agent → Poll via `receive_messages()` → Wait for completion → Send handoff message → Spawn next agent
