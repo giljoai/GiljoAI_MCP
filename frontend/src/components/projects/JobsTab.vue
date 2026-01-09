@@ -371,6 +371,7 @@
       :show="showCloseoutModal"
       :project-id="projectId"
       :project-name="project.name"
+      :product-id="project.product_id"
       @continue="handleContinue"
       @complete="handleCloseout"
       @close="showCloseoutModal = false"
