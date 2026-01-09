@@ -171,6 +171,7 @@ async def deactivate_product(
             config_data=product_data.get("config_data"),
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
+            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
         )
 
     except HTTPException:
@@ -292,6 +293,7 @@ async def restore_product(
             config_data=product_data.get("config_data"),
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
+            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
         )
 
     except HTTPException:
