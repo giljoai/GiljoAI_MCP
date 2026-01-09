@@ -464,7 +464,7 @@ async def test_closeout_multi_tenant_isolation_complete(
 async def test_get_closeout_data_endpoint_success(
     async_client: AsyncClient, db_session: AsyncSession, test_user: User, auth_headers: dict
 ):
-    """GET /closeout returns checklist and prompt for the project."""
+    """GET /closeout returns basic project metadata for closeout."""
     project = Project(
         id="closeout-data-1",
         tenant_key=test_user.tenant_key,
@@ -474,25 +474,39 @@ async def test_get_closeout_data_endpoint_success(
         status="active",
     )
     db_session.add(project)
+    await db_session.flush()
 
     # Mix of agent statuses
+    job1 = AgentJob(
+        job_id="closeout-complete-job-1",
+        tenant_key=test_user.tenant_key,
+        project_id=project.id,
+        job_type="developer",
+        mission="Implement",
+    )
+    db_session.add(job1)
     db_session.add(
         AgentExecution(
-            job_id="closeout-complete-1",
+            job_id=job1.job_id,
             tenant_key=test_user.tenant_key,
-            project_id=project.id,
             agent_type="developer",
-            mission="Implement",
             status="complete",
         )
     )
+
+    job2 = AgentJob(
+        job_id="closeout-working-job-1",
+        tenant_key=test_user.tenant_key,
+        project_id=project.id,
+        job_type="analyst",
+        mission="Analyze",
+    )
+    db_session.add(job2)
     db_session.add(
         AgentExecution(
-            job_id="closeout-working-1",
+            job_id=job2.job_id,
             tenant_key=test_user.tenant_key,
-            project_id=project.id,
             agent_type="analyst",
-            mission="Analyze",
             status="working",
         )
     )
@@ -505,10 +519,11 @@ async def test_get_closeout_data_endpoint_success(
 
     assert data["project_id"] == project.id
     assert data["project_name"] == project.name
-    assert "checklist" in data and len(data["checklist"]) >= 3
-    assert "close_project_and_update_memory" in data["closeout_prompt"]
     assert data["agent_count"] == 2
+    assert data["completed_agents"] == 1
+    assert data["failed_agents"] == 0
     assert data["all_agents_complete"] is False
+    assert data["has_failed_agents"] is False
 
 
 @pytest.mark.asyncio

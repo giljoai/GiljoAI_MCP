@@ -292,6 +292,19 @@ The backend monitors report_progress() calls. If todo_items is missing:
 1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="description")` - Marks job as BLOCKED
 2. STOP work and await orchestrator guidance
 
+## Handover on Context Exhaustion
+
+If you run out of context before completing:
+
+1. Call `write_360_memory(entry_type="handover_closeout")` with progress summary:
+   - summary: Brief overview of work completed so far
+   - key_outcomes: What you accomplished before running out of context
+   - decisions_made: Key decisions and rationale for successor
+2. Notify orchestrator via `send_message()` about context exhaustion
+3. Call `complete_job()` to mark yourself complete
+
+Do NOT write 360 memory on normal completion - orchestrator handles that.
+
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion

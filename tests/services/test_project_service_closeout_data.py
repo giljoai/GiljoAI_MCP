@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -30,13 +30,19 @@ async def test_get_closeout_data_all_agents_complete(
     await db_session.flush()
 
     for i in range(3):
+        job = AgentJob(
+            job_id=f"job-complete-{i}",
+            tenant_key=tenant_key,
+            project_id=project.id,
+            job_type="developer",
+            mission="Implement feature",
+        )
+        db_session.add(job)
         db_session.add(
             AgentExecution(
-                job_id=f"agent-complete-{i}",
+                job_id=job.job_id,
                 tenant_key=tenant_key,
-                project_id=project.id,
                 agent_type="developer",
-                mission="Implement feature",
                 status="complete",
             )
         )
@@ -48,10 +54,13 @@ async def test_get_closeout_data_all_agents_complete(
 
     assert result["success"] is True
     data = result["data"]
+    assert data["project_id"] == project.id
+    assert data["project_name"] == "Closeout Ready"
     assert data["agent_count"] == 3
+    assert data["completed_agents"] == 3
+    assert data["failed_agents"] == 0
     assert data["all_agents_complete"] is True
     assert data["has_failed_agents"] is False
-    assert "close_project_and_update_memory" in data["closeout_prompt"]
 
 
 @pytest.mark.asyncio
@@ -72,33 +81,53 @@ async def test_get_closeout_data_with_failed_agents(
     db_session.add(project)
     await db_session.flush()
 
+    job1 = AgentJob(
+        job_id="job-ok-1",
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="developer",
+        mission="Implement",
+    )
+    db_session.add(job1)
     db_session.add(
         AgentExecution(
-            job_id="agent-ok-1",
+            job_id=job1.job_id,
             tenant_key=tenant_key,
-            project_id=project.id,
             agent_type="developer",
-            mission="Implement",
             status="complete",
         )
     )
+
+    job2 = AgentJob(
+        job_id="job-failed-1",
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="tester",
+        mission="Test",
+    )
+    db_session.add(job2)
     db_session.add(
         AgentExecution(
-            job_id="agent-failed-1",
+            job_id=job2.job_id,
             tenant_key=tenant_key,
-            project_id=project.id,
             agent_type="tester",
-            mission="Test",
             status="failed",
         )
     )
+
+    job3 = AgentJob(
+        job_id="job-working-1",
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="analyst",
+        mission="Analyze",
+    )
+    db_session.add(job3)
     db_session.add(
         AgentExecution(
-            job_id="agent-working-1",
+            job_id=job3.job_id,
             tenant_key=tenant_key,
-            project_id=project.id,
             agent_type="analyst",
-            mission="Analyze",
             status="working",
         )
     )
@@ -110,9 +139,13 @@ async def test_get_closeout_data_with_failed_agents(
 
     assert result["success"] is True
     data = result["data"]
+    assert data["project_id"] == project.id
+    assert data["project_name"] == "Mixed Outcomes"
+    assert data["agent_count"] == 3
+    assert data["completed_agents"] == 1
+    assert data["failed_agents"] == 1
     assert data["all_agents_complete"] is False
     assert data["has_failed_agents"] is True
-    assert any("failed" in item.lower() for item in data["checklist"])
 
 
 @pytest.mark.asyncio
@@ -140,13 +173,23 @@ async def test_get_closeout_data_with_git_integration(
         status="active",
     )
     db_session.add(project)
+    await db_session.flush()
+
+    job = AgentJob(
+        job_id="job-complete-git",
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="developer",
+        mission="Implement",
+    )
+    db_session.add(job)
+    await db_session.flush()
+
     db_session.add(
         AgentExecution(
-            job_id="agent-complete-git",
+            job_id=job.job_id,
             tenant_key=tenant_key,
-            project_id=project.id,
             agent_type="developer",
-            mission="Implement",
             status="complete",
         )
     )
@@ -158,8 +201,13 @@ async def test_get_closeout_data_with_git_integration(
 
     assert result["success"] is True
     data = result["data"]
-    assert data["has_git_commits"] is True
-    assert any("git" in item.lower() for item in data["checklist"])
+    assert data["project_id"] == project.id
+    assert data["project_name"] == "Git Enabled Project"
+    assert data["agent_count"] == 1
+    assert data["completed_agents"] == 1
+    assert data["failed_agents"] == 0
+    assert data["all_agents_complete"] is True
+    assert data["has_failed_agents"] is False
 
 
 @pytest.mark.asyncio

@@ -166,5 +166,17 @@ export GILJO_PROJECT_ID={project_id}
 # Active Agents: {active_agents_count} agent{"s" if active_agents_count != 1 else ""}
 # Next Steps: {handover_summary.get("next_steps", "Continue project work")}
 
+## Before Decommissioning
+
+IMPORTANT: Before marking yourself complete, call write_360_memory() with:
+- project_id: {project_id}
+- summary: Brief summary of your progress during this session
+- key_outcomes: What you accomplished before handover
+- decisions_made: Key decisions for successor to know
+- entry_type: "handover_closeout"
+- author_job_id: {job_id}
+
+Then mark yourself complete via complete_job().
+
 codex mcp add giljo-orchestrator
 """.strip()

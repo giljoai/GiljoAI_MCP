@@ -2,7 +2,7 @@
   <v-dialog
     :model-value="show"
     :fullscreen="isMobile"
-    :max-width="isMobile ? undefined : '800'"
+    :max-width="isMobile ? undefined : '900'"
     persistent
     class="closeout-modal"
     role="dialog"
@@ -15,8 +15,8 @@
       <v-card-title id="closeout-modal-title" class="modal-title bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
-            <v-icon icon="mdi-check-circle-outline" size="large" class="mr-2" />
-            <span class="text-h6">Close Project: {{ projectName }}</span>
+            <v-icon icon="mdi-memory" size="large" class="mr-2" />
+            <span class="text-h6">Project 360 Memory: {{ projectName }}</span>
           </div>
           <v-btn icon variant="text" color="white" :aria-label="'Close modal'" @click="handleClose">
             <v-icon icon="mdi-close" />
@@ -37,19 +37,18 @@
           icon="mdi-information"
         >
           <template #title>
-            <span class="text-body-2 font-weight-medium">Why detailed closeout matters</span>
+            <span class="text-body-2 font-weight-medium">360 Memory Entries</span>
           </template>
           <span class="text-body-2">
-            This closeout data becomes part of your product's <strong>360 Memory</strong> and provides
-            context for future projects. The more detailed your summary and outcomes, the better
-            future orchestrators can learn from this work.
+            Review the cumulative knowledge and project history stored in this product's 360 Memory.
+            These entries provide context for future projects and orchestrator decision-making.
           </span>
         </v-alert>
 
         <!-- Loading state -->
         <div v-if="loading" class="text-center py-8">
           <v-progress-circular indeterminate color="primary" size="64" />
-          <div class="text-body-1 mt-4">Loading closeout checklist...</div>
+          <div class="text-body-1 mt-4">Loading 360 memory entries...</div>
         </div>
 
         <!-- Error state -->
@@ -57,82 +56,142 @@
           {{ error }}
         </v-alert>
 
-        <!-- Closeout content -->
-        <div v-if="!loading && closeoutData">
-          <!-- Closeout checklist -->
-          <div class="mb-6">
-            <h3 class="text-h6 mb-3">Closeout Checklist</h3>
-            <v-list>
-              <v-list-item
-                v-for="(item, index) in closeoutData.checklist"
-                :key="index"
-                class="checklist-item px-0"
-                :class="{ checked: checkedItems.includes(index) }"
-              >
-                <template #prepend>
-                  <v-checkbox
-                    :model-value="checkedItems.includes(index)"
-                    class="checklist-checkbox"
-                    color="primary"
-                    hide-details
-                    @update:model-value="toggleChecklistItem(index)"
-                  />
-                </template>
-                <v-list-item-title>{{ item }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
+        <!-- No entries state -->
+        <v-alert
+          v-if="!loading && !error && memoryEntries.length === 0"
+          type="info"
+          variant="outlined"
+          class="mb-4"
+        >
+          No 360 memory entries found for this project yet. Memory entries are created when
+          projects are completed or when orchestrators trigger handovers.
+        </v-alert>
+
+        <!-- Memory Entries -->
+        <div v-if="!loading && !error && memoryEntries.length > 0">
+          <div class="text-subtitle-1 font-weight-medium mb-3">
+            {{ memoryEntries.length }} Memory
+            {{ memoryEntries.length === 1 ? 'Entry' : 'Entries' }} Found
           </div>
 
-          <!-- Closeout prompt -->
-          <div class="mb-6">
-            <h3 class="text-h6 mb-3">Closeout Commands</h3>
-            <v-textarea
-              :model-value="closeoutData.closeout_prompt"
-              class="closeout-prompt"
-              readonly
-              variant="outlined"
-              rows="10"
-              no-resize
-              style="font-family: 'Courier New', monospace; font-size: 0.875rem"
-            />
-
-            <!-- Copy closeout prompt button -->
-            <v-btn
-              class="copy-closeout-btn"
-              color="primary"
-              variant="outlined"
-              prepend-icon="mdi-content-copy"
-              :aria-label="'Copy closeout prompt to clipboard'"
-              data-testid="copy-prompt-button"
-              @click="handleCopyCloseout"
+          <v-expansion-panels v-model="expandedPanels" multiple variant="accordion">
+            <v-expansion-panel
+              v-for="(entry, index) in memoryEntries"
+              :key="index"
+              :value="index"
             >
-              Copy Closeout Prompt
-            </v-btn>
+              <v-expansion-panel-title>
+                <div class="d-flex align-center w-100">
+                  <v-icon icon="mdi-book-open-page-variant" class="mr-2" size="small" />
+                  <span class="font-weight-medium">
+                    Entry #{{ entry.sequence }} - {{ formatEntryType(entry.type) }}
+                  </span>
+                  <v-spacer />
+                  <span class="text-caption text-grey">
+                    {{ formatDate(entry.timestamp) }}
+                  </span>
+                </div>
+              </v-expansion-panel-title>
 
-            <!-- Copy success message -->
-            <v-alert
-              v-if="copySuccess"
-              type="success"
-              variant="tonal"
-              density="compact"
-              class="copy-success-msg mt-2"
-            >
-              Copied to clipboard!
-            </v-alert>
-          </div>
+              <v-expansion-panel-text>
+                <!-- Summary section -->
+                <div v-if="entry.summary" class="mb-4">
+                  <h4 class="text-subtitle-2 font-weight-bold mb-2">Summary</h4>
+                  <div class="text-body-2 summary-text">{{ entry.summary }}</div>
+                </div>
 
-          <!-- Confirmation checkbox -->
-          <div class="mb-4">
-            <v-checkbox
-              v-model="confirmed"
-              class="confirm-checkbox"
-              color="success"
-              label="I have executed the closeout commands and verified completion"
-              hide-details
-              data-testid="confirm-checkbox"
-            />
-          </div>
+                <!-- Key Outcomes -->
+                <div v-if="entry.key_outcomes && entry.key_outcomes.length > 0" class="mb-4">
+                  <h4 class="text-subtitle-2 font-weight-bold mb-2">Key Outcomes</h4>
+                  <v-list density="compact" class="outcomes-list">
+                    <v-list-item
+                      v-for="(outcome, outcomeIndex) in entry.key_outcomes"
+                      :key="outcomeIndex"
+                      class="px-0"
+                    >
+                      <template #prepend>
+                        <v-icon icon="mdi-check-circle" color="success" size="small" class="mr-2" />
+                      </template>
+                      <v-list-item-title class="text-body-2">{{ outcome }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </div>
+
+                <!-- Decisions Made -->
+                <div v-if="entry.decisions_made && entry.decisions_made.length > 0" class="mb-4">
+                  <h4 class="text-subtitle-2 font-weight-bold mb-2">Decisions Made</h4>
+                  <v-list density="compact" class="decisions-list">
+                    <v-list-item
+                      v-for="(decision, decisionIndex) in entry.decisions_made"
+                      :key="decisionIndex"
+                      class="px-0"
+                    >
+                      <template #prepend>
+                        <v-icon icon="mdi-lightbulb" color="warning" size="small" class="mr-2" />
+                      </template>
+                      <v-list-item-title class="text-body-2">{{ decision }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </div>
+
+                <!-- Git Commits (if available) -->
+                <div v-if="entry.git_commits && entry.git_commits.length > 0" class="mb-4">
+                  <h4 class="text-subtitle-2 font-weight-bold mb-2">
+                    Git Commits ({{ entry.git_commits.length }})
+                  </h4>
+                  <v-list density="compact" class="git-commits-list" max-height="300" style="overflow-y: auto">
+                    <v-list-item
+                      v-for="(commit, commitIndex) in entry.git_commits"
+                      :key="commitIndex"
+                      class="px-2 py-1"
+                    >
+                      <template #prepend>
+                        <v-icon icon="mdi-source-commit" color="info" size="small" class="mr-2" />
+                      </template>
+                      <v-list-item-title class="text-body-2">
+                        {{ commit.message }}
+                      </v-list-item-title>
+                      <v-list-item-subtitle class="text-caption">
+                        {{ commit.author }} - {{ formatCommitDate(commit.timestamp) }}
+                      </v-list-item-subtitle>
+                    </v-list-item>
+                  </v-list>
+                </div>
+
+                <!-- Metadata -->
+                <div class="metadata-section mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.12)">
+                  <div class="d-flex text-caption text-grey">
+                    <div class="mr-4">
+                      <strong>Type:</strong> {{ entry.type }}
+                    </div>
+                    <div v-if="entry.sequence">
+                      <strong>Sequence:</strong> #{{ entry.sequence }}
+                    </div>
+                  </div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
+
+        <!-- Action Guidance -->
+        <v-alert
+          v-if="!loading && !error"
+          type="success"
+          variant="tonal"
+          density="compact"
+          class="mt-4"
+          icon="mdi-check-circle"
+        >
+          <template #title>
+            <span class="text-body-2 font-weight-medium">Next Steps</span>
+          </template>
+          <div class="text-body-2">
+            <strong>Continue Working:</strong> Keep this project active and continue development.
+            <br />
+            <strong>Close Out Project:</strong> Archive this project and mark it as completed in 360 Memory.
+          </div>
+        </v-alert>
       </v-card-text>
 
       <v-divider />
@@ -140,26 +199,37 @@
       <!-- Modal actions -->
       <v-card-actions class="pa-4">
         <v-btn
-          class="cancel-btn"
-          variant="text"
-          :aria-label="'Cancel closeout'"
-          @click="handleClose"
+          color="primary"
+          variant="elevated"
+          :loading="continueLoading"
+          :disabled="closeoutLoading"
+          prepend-icon="mdi-play-circle"
+          :aria-label="'Continue working on project'"
+          data-testid="continue-working-btn"
+          @click="handleContinueWorking"
         >
-          Cancel
+          Continue Working
+        </v-btn>
+        <v-btn
+          color="success"
+          variant="elevated"
+          :loading="closeoutLoading"
+          :disabled="continueLoading"
+          prepend-icon="mdi-check-circle"
+          :aria-label="'Close out project'"
+          data-testid="close-out-btn"
+          @click="handleCloseOutProject"
+        >
+          Close Out Project
         </v-btn>
         <v-spacer />
         <v-btn
-          class="complete-project-btn"
-          color="success"
-          variant="elevated"
-          :disabled="!confirmed"
-          :loading="completing"
-          :aria-label="'Complete project'"
-          data-testid="submit-closeout-btn"
-          @click="handleComplete"
+          variant="text"
+          :disabled="continueLoading || closeoutLoading"
+          :aria-label="'Cancel'"
+          @click="handleClose"
         >
-          <v-icon icon="mdi-check-circle" start />
-          Complete Project
+          Cancel
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -169,7 +239,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
-import { useClipboard } from '@/composables/useClipboard'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -185,32 +254,34 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  productId: {
+    type: String,
+    required: true,
+  },
 })
 
-const emit = defineEmits(['close', 'complete'])
+const emit = defineEmits(['close', 'continue', 'closeout'])
 
 // Vuetify display breakpoints
 const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value)
 
-// Composables
-const { copy } = useClipboard()
-
 // Reactive state
 const loading = ref(false)
 const error = ref(null)
-const closeoutData = ref(null)
-const checkedItems = ref([])
-const confirmed = ref(false)
-const copySuccess = ref(false)
-const completing = ref(false)
+const memoryEntries = ref([])
+const expandedPanels = ref([]) // Multiple panels can be expanded
+const continueLoading = ref(false)
+const closeoutLoading = ref(false)
 
 // Watch for modal open to load data
 watch(
   () => props.show,
   (newValue) => {
     if (newValue) {
-      loadCloseoutData()
+      loadMemoryEntries()
+      // Expand first entry by default
+      expandedPanels.value = [0]
     } else {
       resetState()
     }
@@ -218,112 +289,126 @@ watch(
 )
 
 // Methods
-const loadCloseoutData = async () => {
+const loadMemoryEntries = async () => {
   loading.value = true
   error.value = null
+  memoryEntries.value = []
 
   try {
-    const response = await api.projects.getCloseoutData(props.projectId)
-    closeoutData.value = {
-      project_id: props.projectId,
-      project_name: props.projectName,
-      checklist: response.data.checklist || [],
-      closeout_prompt: response.data.closeout_prompt || '',
-    }
+    // Fetch product data to get 360 memory
+    const response = await api.products.get(props.productId)
+    const productMemory = response.data.product_memory || {}
+    const sequentialHistory = productMemory.sequential_history || []
+
+    // Filter entries for this project
+    memoryEntries.value = sequentialHistory
+      .filter((entry) => entry.project_id === props.projectId)
+      .sort((a, b) => (b.sequence || 0) - (a.sequence || 0)) // Sort by sequence descending (newest first)
+
+    console.log(
+      `[CloseoutModal] Loaded ${memoryEntries.value.length} memory entries for project ${props.projectId}`,
+    )
   } catch (err) {
-    console.error('[CloseoutModal] Failed to load closeout data:', err)
-    error.value = err.response?.data?.message || 'Failed to load closeout data'
+    console.error('[CloseoutModal] Failed to load 360 memory:', err)
+    error.value =
+      err.response?.data?.message || err.message || 'Failed to load 360 memory entries'
   } finally {
     loading.value = false
   }
 }
 
-const toggleChecklistItem = (index) => {
-  const itemIndex = checkedItems.value.indexOf(index)
-  if (itemIndex > -1) {
-    checkedItems.value.splice(itemIndex, 1)
-  } else {
-    checkedItems.value.push(index)
-  }
-}
-
-const handleCopyCloseout = async () => {
-  copySuccess.value = false
+const handleContinueWorking = async () => {
+  continueLoading.value = true
+  error.value = null
 
   try {
-    const success = await copy(closeoutData.value.closeout_prompt)
+    // Call the continue-working endpoint to restore/reactivate project
+    await api.projects.restoreCompleted(props.projectId)
 
-    if (success) {
-      copySuccess.value = true
-      setTimeout(() => {
-        copySuccess.value = false
-      }, 3000)
-    } else {
-      // Try fallback method
-      await fallbackCopy(closeoutData.value.closeout_prompt)
-      copySuccess.value = true
-      setTimeout(() => {
-        copySuccess.value = false
-      }, 3000)
-    }
+    console.log(`[CloseoutModal] Continuing work on project ${props.projectId}`)
+
+    emit('continue')
+    emit('close')
   } catch (err) {
-    console.error('[CloseoutModal] Failed to copy closeout prompt:', err)
+    console.error('[CloseoutModal] Failed to continue working:', err)
+    error.value =
+      err.response?.data?.message || err.message || 'Failed to continue working on project'
+  } finally {
+    continueLoading.value = false
   }
 }
 
-const fallbackCopy = async (text) => {
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.style.position = 'fixed'
-  textarea.style.left = '-999999px'
-  document.body.appendChild(textarea)
-  textarea.select()
-  const successful = document.execCommand('copy')
-  document.body.removeChild(textarea)
+const handleCloseOutProject = async () => {
+  closeoutLoading.value = true
+  error.value = null
 
-  if (!successful) {
-    throw new Error('Fallback copy failed')
+  try {
+    // Call the complete endpoint to archive project
+    const response = await api.projects.complete(props.projectId)
+
+    console.log(`[CloseoutModal] Closed out project ${props.projectId}`)
+
+    emit('closeout', response.data)
+    emit('close')
+  } catch (err) {
+    console.error('[CloseoutModal] Failed to close out project:', err)
+    error.value = err.response?.data?.message || err.message || 'Failed to close out project'
+  } finally {
+    closeoutLoading.value = false
   }
 }
 
 const handleClose = () => {
-  emit('close')
-}
-
-const handleComplete = async () => {
-  if (!confirmed.value) return
-
-  completing.value = true
-  error.value = null
-
-  try {
-    const fallbackSummary =
-      closeoutData.value?.closeout_prompt?.slice(0, 400) ||
-      `Closeout executed for project ${props.projectName}`
-
-    const payload = {
-      summary: fallbackSummary,
-      key_outcomes: closeoutData.value?.checklist || ['Closeout checklist completed'],
-      decisions_made: [],
-      confirm_closeout: true,
-    }
-
-    const response = await api.projects.completeWithData(props.projectId, payload)
-
-    emit('complete', response.data || { project_id: props.projectId, sequence_number: 0 })
-  } catch (err) {
-    console.error('[CloseoutModal] Failed to complete project:', err)
-    error.value = err.response?.data?.message || 'Failed to complete project'
-  } finally {
-    completing.value = false
+  if (!continueLoading.value && !closeoutLoading.value) {
+    emit('close')
   }
 }
 
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'Unknown'
+  try {
+    const date = new Date(timestamp)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch (e) {
+    return timestamp
+  }
+}
+
+const formatCommitDate = (timestamp) => {
+  if (!timestamp) return ''
+  try {
+    const date = new Date(timestamp)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  } catch (e) {
+    return timestamp
+  }
+}
+
+const formatEntryType = (type) => {
+  if (!type) return 'Unknown'
+  // Convert snake_case to Title Case
+  return type
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 const resetState = () => {
-  checkedItems.value = []
-  confirmed.value = false
-  copySuccess.value = false
+  expandedPanels.value = []
   error.value = null
+  memoryEntries.value = []
+  continueLoading.value = false
+  closeoutLoading.value = false
 }
 </script>
 
@@ -334,20 +419,27 @@ const resetState = () => {
   z-index: 1;
 }
 
-.checklist-item {
-  transition: background-color 0.2s ease;
+.summary-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
 }
 
-.checklist-item.checked {
-  opacity: 0.7;
+.outcomes-list,
+.decisions-list {
+  background-color: transparent;
 }
 
-.checklist-item:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+.git-commits-list {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding: 8px 0;
 }
 
-.closeout-prompt {
-  font-family: 'Courier New', Courier, monospace;
+.metadata-section {
+  background-color: rgba(0, 0, 0, 0.02);
+  padding: 12px;
+  border-radius: 4px;
 }
 
 /* Focus trap for accessibility */
@@ -357,7 +449,7 @@ const resetState = () => {
 
 /* Ensure proper spacing */
 .v-list-item {
-  min-height: 48px;
+  min-height: 40px;
 }
 
 /* Mobile optimizations */
@@ -366,8 +458,18 @@ const resetState = () => {
     font-size: 1.125rem;
   }
 
-  .closeout-prompt {
-    font-size: 0.75rem;
+  .git-commits-list {
+    max-height: 200px;
   }
+}
+
+/* Expansion panel styling */
+:deep(.v-expansion-panel-title) {
+  font-size: 0.95rem;
+  padding: 12px 16px;
+}
+
+:deep(.v-expansion-panel-text__wrapper) {
+  padding: 16px 20px;
 }
 </style>
