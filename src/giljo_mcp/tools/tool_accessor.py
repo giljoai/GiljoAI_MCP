@@ -1299,6 +1299,48 @@ class ToolAccessor:
             db_manager=self.db_manager,
         )
 
+    async def write_360_memory(
+        self,
+        project_id: str,
+        tenant_key: str,
+        summary: str,
+        key_outcomes: list[str],
+        decisions_made: list[str],
+        entry_type: str = "project_completion",
+        author_job_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Write a 360 memory entry for project completion or handover (Handover 0412).
+
+        This method allows agents to append entries to Product.product_memory.sequential_history
+        during handovers or at project completion.
+
+        Args:
+            project_id: UUID of the project
+            tenant_key: Tenant isolation key
+            summary: 2-3 paragraph summary of work accomplished
+            key_outcomes: 3-5 specific achievements
+            decisions_made: 3-5 architectural/design decisions
+            entry_type: Type of entry ("project_completion" or "handover_closeout")
+            author_job_id: Job ID of agent writing entry (optional)
+
+        Returns:
+            Success/error response with sequence number
+        """
+        from giljo_mcp.tools.write_360_memory import write_360_memory as tool_func
+
+        # Inject dependencies into the tool function call
+        return await tool_func(
+            project_id=project_id,
+            tenant_key=tenant_key,
+            summary=summary,
+            key_outcomes=key_outcomes,
+            decisions_made=decisions_made,
+            entry_type=entry_type,
+            author_job_id=author_job_id,
+            db_manager=self.db_manager,
+        )
+
     # Unified Context Tool (Handover 0350a)
 
     async def fetch_context(
