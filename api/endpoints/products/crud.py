@@ -62,6 +62,11 @@ async def create_product(
         config_data = product_data.get("config_data") or None
         has_config_data = bool(config_data)
 
+        # Handover 0412: Ensure product_memory is never None
+        pm = product_data.get("product_memory")
+        if pm is None:
+            pm = {"github": {}, "sequential_history": [], "context": {}}
+
         return ProductResponse(
             id=product_data["id"],
             name=product_data["name"],
@@ -79,7 +84,7 @@ async def create_product(
             config_data=config_data,
             has_config_data=has_config_data,
             is_active=product_data.get("is_active", False),
-            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
+            product_memory=pm,  # Handover 0412: 360 Memory
         )
 
     except HTTPException:
@@ -111,6 +116,12 @@ async def list_products(
 
         logger.debug(f"Found {len(result['products'])} products")
 
+        # Handover 0412: Helper to ensure product_memory is never None
+        def ensure_product_memory(pm):
+            if pm is None:
+                return {"github": {}, "sequential_history": [], "context": {}}
+            return pm
+
         return [
             ProductResponse(
                 id=p["id"],
@@ -129,7 +140,7 @@ async def list_products(
                 config_data=p.get("config_data"),
                 has_config_data=p.get("has_config_data", False),
                 is_active=p.get("is_active", False),
-                product_memory=p.get("product_memory"),  # Handover 0412: 360 Memory
+                product_memory=ensure_product_memory(p.get("product_memory")),  # Handover 0412
             )
             for p in result["products"]
         ]
@@ -200,7 +211,13 @@ async def get_product(
 
         product_data = result["product"]
 
-        logger.debug(f"Retrieved product {product_id}")
+        # Handover 0412: Ensure product_memory is passed through correctly
+        # If None, use explicit default structure matching database schema
+        pm = product_data.get("product_memory")
+        if pm is None:
+            logger.warning(f"Product {product_id}: product_memory is None, using default")
+            pm = {"github": {}, "sequential_history": [], "context": {}}
+        logger.info(f"Product {product_id}: product_memory keys={list(pm.keys())}")
 
         return ProductResponse(
             id=product_data["id"],
@@ -219,7 +236,7 @@ async def get_product(
             config_data=product_data.get("config_data"),
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
-            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
+            product_memory=pm,  # Handover 0412: Always pass explicit value
         )
 
     except HTTPException:
@@ -263,6 +280,11 @@ async def update_product(
 
         product_data = product_result["product"]
 
+        # Handover 0412: Ensure product_memory is never None
+        pm = product_data.get("product_memory")
+        if pm is None:
+            pm = {"github": {}, "sequential_history": [], "context": {}}
+
         logger.info(f"Updated product {product_id}")
 
         return ProductResponse(
@@ -282,7 +304,7 @@ async def update_product(
             config_data=product_data.get("config_data"),
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
-            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
+            product_memory=pm,  # Handover 0412: 360 Memory
         )
 
     except HTTPException:

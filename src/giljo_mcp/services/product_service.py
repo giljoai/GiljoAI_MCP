@@ -213,6 +213,10 @@ class ProductService:
                 # Handover 0136: Ensure product_memory is initialized (backward compatibility)
                 await self._ensure_product_memory_initialized(session, product)
 
+                # Handover 0412: Force refresh to ensure we have latest DB data
+                await session.refresh(product)
+                self._logger.info(f"Product {product_id}: product_memory after refresh: {product.product_memory}")
+
                 # Normalize config_data so that an empty dict is treated as "no config"
                 # for API consumers, while preserving the raw structure for internal use.
                 config_data = product.config_data or None
