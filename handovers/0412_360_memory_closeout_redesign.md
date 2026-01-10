@@ -166,3 +166,18 @@ Multiple entries per project supported (completion + handovers).
 ## Bug Fixes (Post-Implementation)
 - **404 Error on CloseoutModal**: Backend `ProductResponse` was missing `product_memory` field, and frontend wasn't passing `product-id` prop to CloseoutModal
   - Fixed in: `api/endpoints/products/crud.py`, `lifecycle.py`, `JobsTab.vue`, `ProjectTabs.vue`
+
+- **422 Error on Close Out Project**: Frontend called `/complete` endpoint which expects `ProjectCompleteRequest` body, but new design uses simpler `/archive` endpoint
+  - Added `archive` method to `frontend/src/services/api.js`
+  - Updated `CloseoutModal.vue` to call `api.projects.archive()` instead of `api.projects.complete()`
+
+- **400 Error "Cannot deactivate project with status 'inactive'"**: Archive endpoint called deactivate unconditionally
+  - Partially fixed in `api/endpoints/projects/lifecycle.py` - added status check before deactivate
+  - **INCOMPLETE**: `update_project` in `project_service.py` line 1567 needs `status` and `completed_at` added to allowed_fields
+
+## Session Memory (Active Debugging)
+See: `handovers/0412_session_memory_closeout_fixes.md` for detailed debugging session notes and remaining issues:
+- Fix `update_project` allowed_fields (CRITICAL)
+- Toast/prompt copy issue (not investigated)
+- Button positioning issue (not investigated)
+- 360 memory writing verification needed

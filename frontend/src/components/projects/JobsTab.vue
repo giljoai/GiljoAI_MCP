@@ -208,7 +208,7 @@
 
               <!-- Hand Over button: only for working orchestrators (Handover 0243d) -->
               <v-tooltip
-                v-if="agent.agent_type === 'orchestrator' && agent.status === 'working'"
+                v-if="agent.agent_type === 'orchestrator' && ['working', 'complete', 'completed'].includes(agent.status)"
                 text="Hand over"
               >
                 <template #activator="{ props: tooltipProps }">
@@ -227,18 +227,6 @@
         </tbody>
       </table>
     </div>
-
-    <!-- Close Out Project Button (shown when orchestrator completes) -->
-    <v-btn
-      v-if="showCloseoutButton"
-      color="success"
-      size="large"
-      class="closeout-btn mt-4"
-      prepend-icon="mdi-check-circle"
-      @click="openCloseoutModal"
-    >
-      Close Out Project
-    </v-btn>
 
     <!-- Message Composer (Bottom) -->
     <div class="message-composer">
@@ -522,34 +510,6 @@ function showLocalToast(options) {
 
 const projectId = computed(() => props.project?.project_id || props.project?.id)
 const loadingJobs = ref(false)
-
-/**
- * Closeout button visibility logic
- * Show button when orchestrator completes AND no active successor exists
- */
-const showCloseoutButton = computed(() => {
-  // Find orchestrator job with status "complete" or "completed"
-  const orch = sortedAgents.value.find(
-    j => j.agent_type === 'orchestrator' &&
-         (j.status === 'complete' || j.status === 'completed')
-  )
-  // Only show if orchestrator exists and is complete
-  // AND no active successor (handover not in progress)
-  return orch !== null && !hasActiveSuccessor(orch)
-})
-
-/**
- * Check if there's another orchestrator that succeeded this one
- * and is not yet complete
- */
-function hasActiveSuccessor(orchestrator) {
-  return sortedAgents.value.some(
-    j => j.agent_type === 'orchestrator' &&
-         j.spawned_by === orchestrator.job_id &&
-         j.status !== 'complete' &&
-         j.status !== 'completed'
-  )
-}
 
 /**
  * Duration tracking - live timer for working agents
@@ -1016,14 +976,6 @@ async function sendMessage() {
   } finally {
     sending.value = false
   }
-}
-
-/**
- * Open closeout modal
- * Opens CloseoutModal for project completion
- */
-function openCloseoutModal() {
-  showCloseoutModal.value = true
 }
 
 /**

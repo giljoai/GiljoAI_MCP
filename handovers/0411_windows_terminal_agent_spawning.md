@@ -1,9 +1,10 @@
 # Handover 0411: Windows Terminal Agent Spawning
 
-**Status**: COMPLETED (Discovery & Validation)
+**Status**: Ready for Implementation
 **Priority**: HIGH (Core multi-terminal architecture enablement)
-**Estimated Effort**: N/A - Research & Discovery
+**Estimated Effort**: 2-3 hours (template updates + testing)
 **Created**: 2026-01-08
+**Validated**: 2026-01-08 (all commands tested successfully)
 
 ---
 
@@ -205,9 +206,73 @@ Bash("cmd //c start wt.exe ...", run_in_background=True)  # GOOD
 
 ---
 
+## Validated Commands (Exact Syntax Tested)
+
+The following commands were tested and validated during discovery on 2026-01-08:
+
+### 1. Spawn Claude Orchestrator (Opens New Window - Blue Tab)
+
+```powershell
+# From Claude Code Bash tool:
+cmd //c start "" wt.exe -d "F:\GiljoAI_MCP" --title "Agent 1 - Orchestrator" --tabColor "#2196F3" pwsh -NoExit -Command "claude --dangerously-skip-permissions 'Hello I am the Orchestrator agent with a blue tab'"
+```
+
+### 2. Spawn Claude Implementer (New Tab - Green)
+
+```powershell
+# From Claude Code Bash tool with run_in_background:
+cmd //c start "" wt.exe -w 0 new-tab -d "F:\GiljoAI_MCP" --title "Agent 2 - Implementer" --tabColor "#4CAF50" pwsh -NoExit -Command "claude --dangerously-skip-permissions 'Hello I am the Implementer agent with a green tab'"
+```
+
+### 3. Spawn Claude Tester (New Tab - Orange)
+
+```powershell
+cmd //c start "" wt.exe -w 0 new-tab -d "F:\GiljoAI_MCP" --title "Agent 3 - Tester" --tabColor "#FF9800" pwsh -NoExit -Command "claude --dangerously-skip-permissions 'Hello I am the Tester agent with an orange tab'"
+```
+
+### 4. Spawn Codex Agent (New Tab - Purple)
+
+```powershell
+cmd //c start "" wt.exe -w 0 new-tab -d "F:\GiljoAI_MCP" --title "Codex Agent" --tabColor "#9C27B0" pwsh -NoExit -Command "codex --dangerously-bypass-approvals-and-sandbox -C 'F:\GiljoAI_MCP' 'Hello I am Codex agent with a purple tab'"
+```
+
+### 5. Non-Blocking Spawn from Claude Code
+
+```python
+# Use run_in_background=True to prevent orchestrator from blocking:
+Bash(
+    command='cmd //c start "" wt.exe -w 0 new-tab ...',
+    run_in_background=True
+)
+# Returns immediately with task ID, orchestrator continues working
+```
+
+### Key Learnings from Testing
+
+1. **`-p` flag is NOT for prompt** - It means "print and exit". Prompt is positional argument.
+2. **Must use `wt.exe`** not `pwsh.exe` directly to get user profile/colors
+3. **First spawn omits `-w 0 new-tab`** - Opens new window
+4. **Subsequent spawns use `-w 0 new-tab`** - Joins existing window as tab
+5. **`run_in_background=True`** essential for orchestrator to continue working
+
+---
+
 ## Files Changed
 
-None - this was a discovery/validation handover.
+None - this was a discovery/validation handover. Test scripts were created temporarily on desktop and deleted after validation.
+
+---
+
+## Implementation Tasks (TODO)
+
+To fully integrate this capability into GiljoAI:
+
+- [ ] **Update orchestrator template** - Add terminal spawning instructions to orchestrator mission in `src/giljo_mcp/templates/` or database
+- [ ] **Add agent colors to database** - Store hex colors per agent type in `AgentTemplate` model
+- [ ] **Update `start_to_finish_agent_FLOW.md`** - Document new auto-spawn capability in Step 7B
+- [ ] **Add UI toggle** - "Auto-spawn Terminal Tabs" option in Implementation tab (optional)
+- [ ] **Platform detection** - Add OS detection for cross-platform terminal commands (future)
+- [ ] **Update thin prompt generator** - Include workspace path for `-d` flag
 
 ---
 

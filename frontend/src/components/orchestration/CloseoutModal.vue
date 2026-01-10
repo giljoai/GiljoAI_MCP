@@ -343,8 +343,8 @@ const handleCloseOutProject = async () => {
   error.value = null
 
   try {
-    // Call the complete endpoint to archive project
-    const response = await api.projects.complete(props.projectId)
+    // Call the archive endpoint to close out project (Handover 0412)
+    const response = await api.projects.archive(props.projectId)
 
     console.log(`[CloseoutModal] Closed out project ${props.projectId}`)
 
