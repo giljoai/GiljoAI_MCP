@@ -457,16 +457,25 @@ async def archive_project(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
         proj = get_result.get("project", {})
+        current_status = proj.get("status", "")
 
-        # Use deactivate to mark as inactive (archived state)
-        result = await project_service.deactivate_project(
+        # Only deactivate if not already inactive/completed
+        if current_status not in ("inactive", "completed", "archived"):
+            result = await project_service.deactivate_project(
+                project_id=project_id,
+                reason="User archived project after completion"
+            )
+            if not result.get("success"):
+                error_msg = result.get("error", "Failed to archive project")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+        # Set completed_at timestamp to mark as archived
+        update_result = await project_service.update_project(
             project_id=project_id,
-            reason="User archived project after completion"
+            updates={"status": "completed", "completed_at": datetime.utcnow()}
         )
-
-        if not result.get("success"):
-            error_msg = result.get("error", "Failed to archive project")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        if not update_result.get("success"):
+            logger.warning(f"Could not set completed status: {update_result.get('error')}")
 
         logger.info(f"Archived project {project_id}")
 
