@@ -62,8 +62,8 @@ class ProductResponse(BaseModel):
         None, description="File system path to product folder (required for agent export)"
     )
     product_memory: Optional[Dict[str, Any]] = Field(
-        default_factory=lambda: {"github": {}, "learnings": [], "context": {}},
-        description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
+        default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
+        description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412"
     )
 
 

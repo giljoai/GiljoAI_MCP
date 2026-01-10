@@ -1564,7 +1564,8 @@ class ProjectService:
                         }
 
                 # Update allowed fields (Handover 0260: Added execution_mode)
-                allowed_fields = {"name", "description", "mission", "execution_mode"}
+                # Handover 0412: Added status, completed_at for archive endpoint
+                allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at"}
                 for field, value in updates.items():
                     if field in allowed_fields:
                         setattr(project, field, value)
