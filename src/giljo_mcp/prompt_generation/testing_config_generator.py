@@ -217,22 +217,22 @@ Apply TDD approach: Write tests first, then implement code.
     def generate_for_agent(
         cls,
         testing_config: Optional[Dict[str, Any]],
-        agent_type: str
+        agent_display_name: str
     ) -> str:
         """
         Generate agent-specific testing guidance.
 
         Args:
             testing_config: Product testing configuration
-            agent_type: Type of agent (tester, implementer, reviewer, architect, etc.)
+            agent_display_name: Type of agent (tester, implementer, reviewer, architect, etc.)
 
         Returns:
             Testing context appropriate for the agent type
         """
-        if agent_type in ["tester", "implementer"]:
+        if agent_display_name in ["tester", "implementer"]:
             # Full config for testing-focused agents
             return cls.generate_context(testing_config, priority=1)
-        elif agent_type in ["reviewer"]:
+        elif agent_display_name in ["reviewer"]:
             # Standards only for reviewers
             return cls.generate_context(testing_config, priority=2)
         else:

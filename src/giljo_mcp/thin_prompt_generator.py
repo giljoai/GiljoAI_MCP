@@ -498,7 +498,7 @@ MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ health_check() - Verify MCP connection
 ✓ get_orchestrator_instructions(job_id, tenant_key) - Fetch context
 ✓ update_project_mission(project_id, mission) - Save mission plan
-✓ spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key) - Create agents
+✓ spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key) - Create agents
 ✓ get_workflow_status(project_id, tenant_key) - Check spawned agents
 ✓ send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
@@ -622,7 +622,7 @@ WORKFLOW:
    → Depth configuration (chunking, commit count, etc.) pre-configured
 2. Create condensed mission plan from fetched context
 3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}')
-4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}')
+4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}', '{self.tenant_key}')
 5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
 6. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Launch Jobs button in UI (REQUIRED)
@@ -639,7 +639,7 @@ MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
 ✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch complete prioritized context
 ✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
-✓ mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
+✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
 ✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
 ✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
@@ -1005,14 +1005,14 @@ No previous project history available. Starting fresh.
             mode_block = """CLI MODE CRITICAL:
 This project uses Claude Code CLI for implementation. When spawning agents:
 - agent_name: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (see allowed_agent_names)
-- agent_type: Display category label (e.g., "implementer")
+- agent_display_name: Display category label (e.g., "implementer")
 - Template file: Each agent_name requires .claude/agents/{agent_name}.md
 
 Example Task call (IMPLEMENTATION PHASE ONLY - not during staging):
-  Task(subagent_type="{agent_name}", instructions="...")
+  Task(subagent_display_name="{agent_name}", instructions="...")
 
 NOTE: Do NOT invoke Task tool during staging. This syntax is for PLANNING your execution strategy only.
-In implementation phase, Task(subagent_type=X) uses agent_name value, NOT agent_type.
+In implementation phase, Task(subagent_display_name=X) uses agent_name value, NOT agent_display_name.
 Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_instructions() response."""
         else:
             mode_block = """MULTI-TERMINAL MODE:
@@ -1072,7 +1072,7 @@ STARTUP SEQUENCE:
 4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
 5. SPAWN AGENTS: spawn_agent_job() for each specialist
    CRITICAL: agent_name MUST exactly match template name from Step 2
-   agent_type can be descriptive category (for UI display only)
+   agent_display_name can be descriptive category (for UI display only)
 6. WRITE YOUR EXECUTION PLAN: Persist how you will coordinate agents during implementation.
    Call update_agent_mission(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}', mission=YOUR_PLAN)
 
@@ -1216,7 +1216,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
         ]
 
-        # SECTION 2: Agent Jobs List (with CRITICAL agent_type field)
+        # SECTION 2: Agent Jobs List (with CRITICAL agent_display_name field)
         agent_spawn_lines = []
         if agent_jobs:
             for idx, agent in enumerate(agent_jobs, 1):
@@ -1244,7 +1244,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "## Agent Jobs to Execute",
             "",
             "Below are the specialist agents spawned during staging.",
-            "Each has a unique job_id and agent_type.",
+            "Each has a unique job_id and agent_display_name.",
             "",
         ] + agent_spawn_lines
 
@@ -1257,7 +1257,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "```python",
             "Task(",
-            '    subagent_type="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
+            '    subagent_display_name="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
             '    instructions="""',
             "    You are {agent_name} (job_id: {job_id})",
             "    Tenant: {tenant_key}",
@@ -1281,7 +1281,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                     "### Example: First Agent",
                     "```python",
                     "Task(",
-                    f'    subagent_type="{first.agent_name}",',
+                    f'    subagent_display_name="{first.agent_name}",',
                     '    instructions="""',
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
                     f"    Tenant: {self.tenant_key}",
@@ -1363,10 +1363,10 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             '- Example: agent_name="<agent_name>" requires `.claude/agents/<agent_name>.md`',
             "",
             "**WARNING: Exact Naming Required**",
-            "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_type`",
+            "- Task tool parameter `subagent_display_name` expects `agent_name`, NOT `agent_display_name`",
             '- agent_name: Template filename (see allowed_agent_names in instructions)',
-            '- agent_type: Display category (e.g., "implementer")',
-            '- Using agent_type will fail with "Subagent type not found"',
+            '- agent_display_name: Display category (e.g., "implementer")',
+            '- Using agent_display_name will fail with "Subagent type not found"',
             "",
             "**WARNING: MCP Communication Only**",
             "- All agents run in THIS terminal (Claude Code CLI mode)",

@@ -102,28 +102,28 @@ class AgentSelector:
 
         agents = []
 
-        for agent_type, priority in work_types.items():
+        for agent_display_name, priority in work_types.items():
             # Get template with priority cascade
-            # Note: agent_type from work_types is used as agent_name for template lookup
+            # Note: agent_display_name from work_types is used as agent_name for template lookup
             template = await self._get_template(
-                agent_name=agent_type,
+                agent_name=agent_display_name,
                 tenant_key=tenant_key,
                 product_id=product_id,
             )
 
             if template is None:
                 logger.warning(
-                    f"No template found for agent_name='{agent_type}', "
+                    f"No template found for agent_name='{agent_display_name}', "
                     f"tenant_key='{tenant_key}', product_id='{product_id}'. Skipping."
                 )
                 continue
 
             # Determine scope boundary
-            mission_scope = self._determine_scope(agent_type, priority)
+            mission_scope = self._determine_scope(agent_display_name, priority)
 
             # Create agent configuration
             agent_config = AgentConfig(
-                role=agent_type,
+                role=agent_display_name,
                 template_id=template.id,
                 template_content=template.template_content,
                 priority=priority,
@@ -256,7 +256,7 @@ class AgentSelector:
 
         return template
 
-    def _determine_scope(self, agent_type: str, _priority: str) -> str:
+    def _determine_scope(self, agent_display_name: str, _priority: str) -> str:
         """
         Determine scope boundary for agent based on type and priority.
 
@@ -264,7 +264,7 @@ class AgentSelector:
         providing clear constraints for agent operation.
 
         Args:
-            agent_type: Type/role of agent
+            agent_display_name: Type/role of agent
             _priority: Priority level (reserved for future use)
 
         Returns:
@@ -272,8 +272,8 @@ class AgentSelector:
         """
         # Get predefined scope or create generic one
         scope = self.SCOPE_TEMPLATES.get(
-            agent_type,
-            f"Focus on {agent_type} tasks. Follow project guidelines and coding standards.",
+            agent_display_name,
+            f"Focus on {agent_display_name} tasks. Follow project guidelines and coding standards.",
         )
 
         return scope

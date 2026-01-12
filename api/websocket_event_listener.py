@@ -166,7 +166,7 @@ class WebSocketEventListener:
                 - tenant_key: Tenant isolation key
                 - project_id: Project UUID
                 - agent_id: Agent job UUID
-                - agent_type: Agent type string
+                - agent_display_name: Agent type string
                 - agent_name: Human-readable name
                 - status: Agent status
         """
@@ -188,7 +188,7 @@ class WebSocketEventListener:
                 agent={
                     "id": agent_id,
                     "job_id": agent_id,
-                    "agent_type": data.get("agent_type", "unknown"),
+                    "agent_display_name": data.get("agent_display_name", "unknown"),
                     "agent_name": data.get("agent_name", "Unknown Agent"),
                     "status": data.get("status", "pending"),
                     "thin_client": data.get("thin_client", True),

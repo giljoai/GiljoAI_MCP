@@ -403,14 +403,14 @@ class MessageService:
                         "error": "No agent jobs found in project"
                     }
 
-                agent_types = [job.job_type for job in agent_jobs]
+                agent_display_names = [job.job_type for job in agent_jobs]
 
                 # Get tenant_key from first agent job for WebSocket broadcast
                 tenant_key = agent_jobs[0].tenant_key if agent_jobs else None
 
                 # Send message to all agents
                 result = await self.send_message(
-                    to_agents=agent_types,
+                    to_agents=agent_display_names,
                     content=content,
                     project_id=project_id,
                     message_type="broadcast",

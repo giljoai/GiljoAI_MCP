@@ -41,13 +41,13 @@ class ValidationRule(ABC):
     severity: str
 
     @abstractmethod
-    def validate(self, template_content: str, agent_type: str) -> Optional[ValidationError]:
+    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
         """
         Validate template content.
 
         Args:
             template_content: Full template text to validate
-            agent_type: Type of agent (orchestrator, implementer, etc.)
+            agent_display_name: Type of agent (orchestrator, implementer, etc.)
 
         Returns:
             ValidationError if rule fails, None if passes
@@ -79,7 +79,7 @@ class MCPToolsPresenceRule(ValidationRule):
         "receive_messages"
     ]
 
-    def validate(self, template_content: str, agent_type: str) -> Optional[ValidationError]:
+    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
         missing_tools = []
 
@@ -122,7 +122,7 @@ class PlaceholderVerificationRule(ValidationRule):
         "job_id"
     ]
 
-    def validate(self, template_content: str, agent_type: str) -> Optional[ValidationError]:
+    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check required placeholders are present and well-formed."""
         missing_placeholders = []
 
@@ -197,7 +197,7 @@ class InjectionDetectionRule(ValidationRule):
         r"<iframe[^>]*>"
     ]
 
-    def validate(self, template_content: str, agent_type: str) -> Optional[ValidationError]:
+    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Detect injection patterns in template content."""
         # Remove code blocks to avoid false positives
         content_without_code_blocks = self._remove_code_blocks(template_content)
@@ -267,7 +267,7 @@ class ToolUsageBestPracticesRule(ValidationRule):
         "gracefully"
     ]
 
-    def validate(self, template_content: str, agent_type: str) -> Optional[ValidationError]:
+    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check for best practice mentions."""
         # Check if error handling is mentioned
         error_handling_mentioned = any(
