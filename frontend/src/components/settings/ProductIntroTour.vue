@@ -128,7 +128,7 @@ const slides = computed(() => [
   {
     id: 'what',
     icon: 'mdi-rocket-launch-outline',
-    title: 'A local-first orchestration server for AI coding tools',
+    title: 'Your orchestration server for AI coding tools',
     body:
       'GiljoAI MCP is a web dashboard + backend that coordinates your AI coding tools via MCP over HTTP. It keeps your product context organized, enables multi-agent workflows, tracks projects for audit, and captures technical debt as tasks.',
     bodyMaxWidth: 760,
