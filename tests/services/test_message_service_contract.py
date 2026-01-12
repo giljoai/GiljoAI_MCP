@@ -100,8 +100,8 @@ async def test_project_with_agents(
             job_id=str(uuid4()),
             tenant_key=test_tenant_key,
             project_id=project.id,
-            job_type=agent_type,
-            mission=f"Test mission for {agent_type}",
+            job_type=agent_display_name,
+            mission=f"Test mission for {agent_display_name}",
             status="active",
         )
         db_session.add(job)
@@ -110,7 +110,7 @@ async def test_project_with_agents(
         agent = AgentExecution(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             status="waiting",
             instance_number=1,
             messages=[],  # Initialize empty JSONB array
@@ -185,12 +185,12 @@ class TestMessageCreationAndJSONBMirroring:
         # Act: Send message from orchestrator to analyzer
         # Handover 0372: Must pass tenant_key for agent-ID resolution
         result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Analyze the codebase for patterns",
             project_id=project.id,
             message_type="direct",
             priority="high",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
 
@@ -230,7 +230,7 @@ class TestMessageCreationAndJSONBMirroring:
                 break
 
         assert inbound_msg is not None, f"Message {message_id} should be in recipient's JSONB"
-        assert inbound_msg["from"] == orchestrator.agent_type
+        assert inbound_msg["from"] == orchestrator.agent_display_name
         assert inbound_msg["direction"] == "inbound"
         assert inbound_msg["status"] == "waiting", "Inbound message should have status='waiting'"
         assert inbound_msg["text"] == "Analyze the codebase for patterns"
@@ -247,7 +247,7 @@ class TestMessageCreationAndJSONBMirroring:
                 break
 
         assert outbound_msg is not None, f"Message {message_id} should be in sender's JSONB"
-        assert outbound_msg["from"] == orchestrator.agent_type
+        assert outbound_msg["from"] == orchestrator.agent_display_name
         assert outbound_msg["direction"] == "outbound"
         assert outbound_msg["status"] == "sent"
         # Handover 0372: to_agents contains agent_ids (executor) after resolution
@@ -283,10 +283,10 @@ class TestMessageCompletion:
         # Arrange: Send a message
         # Handover 0372: Must pass tenant_key for agent-ID resolution
         send_result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Implement feature X",
             project_id=project.id,
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
         assert send_result["success"] is True
@@ -305,14 +305,14 @@ class TestMessageCompletion:
         # Act: Complete the message
         complete_result = await message_service.complete_message(
             message_id=message_id,
-            agent_name=recipient.agent_type,
+            agent_name=recipient.agent_display_name,
             result="Feature X implemented successfully with 95% test coverage",
         )
 
         # Assert: Completion succeeded
         assert complete_result["success"] is True
         assert complete_result["message_id"] == message_id
-        assert complete_result["completed_by"] == recipient.agent_type
+        assert complete_result["completed_by"] == recipient.agent_display_name
 
         # Assert: Message status is "completed"
         msg_result = await db_session.execute(
@@ -322,7 +322,7 @@ class TestMessageCompletion:
         assert db_message is not None
         assert db_message.status == "completed"
         assert db_message.result == "Feature X implemented successfully with 95% test coverage"
-        assert db_message.completed_by == recipient.agent_type
+        assert db_message.completed_by == recipient.agent_display_name
         assert db_message.completed_at is not None
 
         # Assert: acknowledged_by is PRESERVED (not overwritten)
@@ -359,7 +359,7 @@ class TestBroadcastMessaging:
             project_id=project.id,
             message_type="broadcast",
             priority="normal",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
         )
 
         # Assert: Broadcast succeeded
@@ -377,7 +377,7 @@ class TestBroadcastMessaging:
         # Assert: EVERY agent (except possibly sender) has the message in JSONB
         for agent in other_agents:
             await db_session.refresh(agent)
-            assert agent.messages is not None, f"{agent.agent_type} should have messages"
+            assert agent.messages is not None, f"{agent.agent_display_name} should have messages"
 
             # Find broadcast message in agent's JSONB
             found_msg = None
@@ -387,8 +387,8 @@ class TestBroadcastMessaging:
                     break
 
             assert found_msg is not None, \
-                f"Broadcast message should be in {agent.agent_type}'s JSONB"
-            assert found_msg["from"] == orchestrator.agent_type
+                f"Broadcast message should be in {agent.agent_display_name}'s JSONB"
+            assert found_msg["from"] == orchestrator.agent_display_name
             assert found_msg["direction"] == "inbound"
             assert found_msg["status"] == "waiting"
             assert "Project status" in found_msg["text"]
@@ -462,7 +462,7 @@ class TestMultiTenantIsolation:
             job_id=str(uuid4()),
             tenant_key=tenant_a_key,
             project_id=project_a.id,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Analyze for tenant A",
             status="waiting",
             messages=[],
@@ -471,7 +471,7 @@ class TestMultiTenantIsolation:
             job_id=str(uuid4()),
             tenant_key=tenant_b_key,
             project_id=project_b.id,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Analyze for tenant B",
             status="waiting",
             messages=[],
@@ -490,7 +490,7 @@ class TestMultiTenantIsolation:
 
         # Act: Tenant A sends a message
         result_a = await service_a.send_message(
-            to_agents=[agent_a.agent_type],
+            to_agents=[agent_a.agent_display_name],
             content="Tenant A confidential data",
             project_id=project_a.id,
             from_agent="orchestrator",
@@ -500,7 +500,7 @@ class TestMultiTenantIsolation:
 
         # Act: Tenant B sends a message
         result_b = await service_b.send_message(
-            to_agents=[agent_b.agent_type],
+            to_agents=[agent_b.agent_display_name],
             content="Tenant B confidential data",
             project_id=project_b.id,
             from_agent="orchestrator",
@@ -565,10 +565,10 @@ class TestMessagePersistenceContract:
 
         # Act: Send message
         result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Message that should persist",
             project_id=project.id,
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
         )
         assert result["success"] is True
         message_id = result["message_id"]

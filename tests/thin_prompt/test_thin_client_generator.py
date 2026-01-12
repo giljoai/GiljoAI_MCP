@@ -94,7 +94,7 @@ class TestThinClientGeneratorBasic:
         # Verify orchestrator job created in database
         orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
         assert orchestrator is not None
-        assert orchestrator.agent_type == "orchestrator"
+        assert orchestrator.agent_display_name == "orchestrator"
         assert orchestrator.status == "pending"
         assert orchestrator.tenant_key == tenant_key
         assert orchestrator.project_id == str(project.id)
@@ -177,7 +177,7 @@ class TestThinClientGeneratorBasic:
         # Verify database persistence
         orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
         assert orchestrator is not None
-        assert orchestrator.agent_type == "orchestrator"
+        assert orchestrator.agent_display_name == "orchestrator"
         assert orchestrator.agent_name == "Orchestrator #2"
         assert orchestrator.status == "pending"
         assert orchestrator.tool_type == "codex"

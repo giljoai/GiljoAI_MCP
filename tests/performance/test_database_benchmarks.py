@@ -12,7 +12,7 @@ PRODUCTION REQUIREMENTS:
 TODO(0127a-2): This file needs comprehensive refactoring for MCPAgentJob model.
 All Agent references need to be replaced with MCPAgentJob with proper field mappings:
 - Agent.name → Not applicable (use mission or job_id)
-- Agent.role → AgentExecution.agent_type
+- Agent.role → AgentExecution.agent_display_name
 - Agent.status → AgentExecution.status (different values: pending, working, completed, failed)
 - Add required fields: tenant_key, mission, job_id
 See handovers/0127a-2_complete_test_refactoring.md for patterns.

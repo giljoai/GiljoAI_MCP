@@ -103,7 +103,7 @@ async def test_orchestrator_metadata_new_creation(
     orchestrator = result.scalar_one()
 
     assert orchestrator is not None
-    assert orchestrator.agent_type == "orchestrator"
+    assert orchestrator.agent_display_name == "orchestrator"
     assert orchestrator.status == "waiting"
     assert orchestrator.project_id == project.id
     assert orchestrator.tenant_key == test_user.tenant_key
@@ -180,7 +180,7 @@ async def test_orchestrator_metadata_reuse_updates(
         project_id=project.id,
         job_id="f73f6798-5922-4813-bc80-802c68ce1645",  # Use actual UUID from bug report
         agent_name="Orchestrator",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         status="waiting",
         mission="Old orchestrator mission",
         instance_number=1,

@@ -199,7 +199,7 @@ Database: PostgreSQL 18
             return {
                 "success": True,
                 "job_id": str(uuid.uuid4()),
-                "agent_type": params["agent_type"],
+                "agent_display_name": params["agent_display_name"],
                 "status": "waiting",
             }
 
@@ -212,9 +212,9 @@ Database: PostgreSQL 18
             assert "job_spawning" in simulator.staging_result
             assert simulator.staging_result["job_spawning"]["status"] == "completed"
             assert len(simulator.spawned_agents) == 3
-            assert simulator.spawned_agents[0]["agent_type"] == "implementer"
-            assert simulator.spawned_agents[1]["agent_type"] == "tester"
-            assert simulator.spawned_agents[2]["agent_type"] == "reviewer"
+            assert simulator.spawned_agents[0]["agent_display_name"] == "implementer"
+            assert simulator.spawned_agents[1]["agent_display_name"] == "tester"
+            assert simulator.spawned_agents[2]["agent_display_name"] == "reviewer"
 
     @pytest.mark.asyncio
     async def test_task7_activation(self, simulator: OrchestratorSimulator):
@@ -264,7 +264,7 @@ Database: PostgreSQL 18
                 return {
                     "success": True,
                     "job_id": str(uuid.uuid4()),
-                    "agent_type": params.get("agent_type", "unknown"),
+                    "agent_display_name": params.get("agent_display_name", "unknown"),
                     "status": "waiting",
                 }
             elif tool_name == "get_workflow_status":
@@ -334,8 +334,8 @@ Database: PostgreSQL 18
         job_ids = [str(uuid.uuid4()) for _ in range(2)]
 
         def mock_spawn_side_effect(tool_name, params):
-            idx = 0 if params["agent_type"] == "implementer" else 1
-            return {"success": True, "job_id": job_ids[idx], "agent_type": params["agent_type"], "status": "waiting"}
+            idx = 0 if params["agent_display_name"] == "implementer" else 1
+            return {"success": True, "job_id": job_ids[idx], "agent_display_name": params["agent_display_name"], "status": "waiting"}
 
         with patch(
             "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_spawn_side_effect
@@ -433,7 +433,7 @@ class TestOrchestratorSimulatorIntegration:
             elif tool_name == "fetch_tech_stack":
                 return {"success": True, "languages": ["Python"]}
             elif tool_name == "spawn_agent_job":
-                return {"success": True, "job_id": str(uuid.uuid4()), "agent_type": params.get("agent_type"), "status": "waiting"}
+                return {"success": True, "job_id": str(uuid.uuid4()), "agent_display_name": params.get("agent_display_name"), "status": "waiting"}
             elif tool_name == "get_workflow_status":
                 return {"success": True, "status": "active"}
             return {"success": True}

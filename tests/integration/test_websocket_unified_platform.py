@@ -121,12 +121,12 @@ async def test_agent_with_execution(
     Returns tuple of (job, execution) for testing the agent_id/job_id separation.
     """
     # Create work order (AgentJob)
-    # Note: AgentJob uses job_type (not agent_type), mission is required
+    # Note: AgentJob uses job_type (not agent_display_name), mission is required
     job = AgentJob(
         job_id=str(uuid4()),
         tenant_key=test_tenant_key,
         project_id=test_project.id,
-        job_type="implementer",  # AgentJob uses job_type, not agent_type
+        job_type="implementer",  # AgentJob uses job_type, not agent_display_name
         status="active",
         mission="Test agent for message persistence",
     )
@@ -134,12 +134,12 @@ async def test_agent_with_execution(
     await db_session.flush()
 
     # Create executor (AgentExecution) - this holds the messages
-    # Note: AgentExecution uses agent_type and agent_name
+    # Note: AgentExecution uses agent_display_name and agent_name
     execution = AgentExecution(
         agent_id=str(uuid4()),  # Different from job_id - this is executor UUID
         job_id=job.job_id,
         tenant_key=test_tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="test-implementer",
         status="working",
         messages=[],  # JSONB column for message copies
@@ -176,7 +176,7 @@ async def test_sender_agent(
         agent_id=str(uuid4()),
         job_id=job.job_id,
         tenant_key=test_tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="test-orchestrator",
         status="working",
         messages=[],
@@ -541,7 +541,7 @@ class TestMultiTenantIsolation:
             agent_id=str(uuid4()),
             job_id=job_a.job_id,
             tenant_key=tenant_a,
-            agent_type="implementer",
+            agent_display_name="implementer",
             status="working",
             messages=[],
         )
@@ -558,7 +558,7 @@ class TestMultiTenantIsolation:
             agent_id=str(uuid4()),
             job_id=job_b.job_id,
             tenant_key=tenant_b,
-            agent_type="implementer",
+            agent_display_name="implementer",
             status="working",
             messages=[],
         )

@@ -22,8 +22,8 @@ class JobCreateRequest(BaseModel):
     Schema for creating a new agent job (POST /api/agent-jobs).
     """
 
-    agent_type: str = Field(
-        ..., min_length=1, max_length=100, description="Agent type: orchestrator, implementer, tester, etc."
+    agent_display_name: str = Field(
+        ..., min_length=1, max_length=100, description="Human-readable display name for UI"
     )
     mission: str = Field(..., min_length=1, description="Mission/instructions for the agent")
     spawned_by: Optional[str] = Field(None, description="Job ID of parent job that spawned this job")
@@ -55,7 +55,7 @@ class JobResponse(BaseModel):
     id: int = Field(..., description="Database ID")
     job_id: str = Field(..., description="Unique job identifier (UUID)")
     tenant_key: str = Field(..., description="Tenant key for isolation")
-    agent_type: str = Field(..., description="Agent type")
+    agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Agent mission/instructions")
     status: str = Field(..., description="Job status: pending, active, completed, failed")
     spawned_by: Optional[str] = Field(None, description="Job ID of parent job")
@@ -128,7 +128,7 @@ class ChildJobSpec(BaseModel):
     Schema for child job specification in spawn request.
     """
 
-    agent_type: str = Field(..., min_length=1, max_length=100, description="Agent type for child job")
+    agent_display_name: str = Field(..., min_length=1, max_length=100, description="Human-readable display name for UI")
     mission: str = Field(..., min_length=1, description="Mission for child job")
     context_chunks: Optional[list[str]] = Field(None, description="Context chunks for child job")
 

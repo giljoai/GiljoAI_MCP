@@ -70,7 +70,7 @@ def sample_parent_job():
         id=1,
         tenant_key="test-tenant-123",
         job_id="parent-job-001",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Parent orchestrator mission",
         status="active",
         spawned_by=None,
@@ -91,7 +91,7 @@ def sample_child_jobs():
             id=2,
             tenant_key="test-tenant-123",
             job_id="child-job-001",
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Analyze codebase",
             status="completed",
             spawned_by="parent-job-001",
@@ -105,7 +105,7 @@ def sample_child_jobs():
             id=3,
             tenant_key="test-tenant-123",
             job_id="child-job-002",
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
             status="completed",
             spawned_by="parent-job-001",
@@ -119,7 +119,7 @@ def sample_child_jobs():
             id=4,
             tenant_key="test-tenant-123",
             job_id="child-job-003",
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test implementation",
             status="active",
             spawned_by="parent-job-001",
@@ -142,8 +142,8 @@ class TestJobSpawning:
         parent_job_id = "parent-job-001"
 
         child_specs = [
-            {"agent_type": "analyzer", "mission": "Analyze codebase", "context_chunks": ["chunk-1"]},
-            {"agent_type": "implementer", "mission": "Implement feature", "context_chunks": ["chunk-2"]},
+            {"agent_display_name": "analyzer", "mission": "Analyze codebase", "context_chunks": ["chunk-1"]},
+            {"agent_display_name": "implementer", "mission": "Implement feature", "context_chunks": ["chunk-2"]},
         ]
 
         # Mock create_job_batch to return job IDs
@@ -159,9 +159,9 @@ class TestJobSpawning:
 
         assert call_args["tenant_key"] == tenant_key
         assert len(call_args["jobs"]) == 2
-        assert call_args["jobs"][0]["agent_type"] == "analyzer"
+        assert call_args["jobs"][0]["agent_display_name"] == "analyzer"
         assert call_args["jobs"][0]["spawned_by"] == parent_job_id
-        assert call_args["jobs"][1]["agent_type"] == "implementer"
+        assert call_args["jobs"][1]["agent_display_name"] == "implementer"
         assert call_args["jobs"][1]["spawned_by"] == parent_job_id
 
         # Verify result
@@ -175,7 +175,7 @@ class TestJobSpawning:
         tenant_key = "test-tenant-123"
         parent_job_id = "parent-job-001"
 
-        child_specs = [{"agent_type": "analyzer", "mission": "Analyze codebase", "notify_on_complete": True}]
+        child_specs = [{"agent_display_name": "analyzer", "mission": "Analyze codebase", "notify_on_complete": True}]
 
         job_manager.create_job_batch.return_value = {"job_ids": ["child-001"], "count": 1}
 
@@ -193,7 +193,7 @@ class TestJobSpawning:
         tenant_key = "test-tenant-123"
         parent_job_id = "nonexistent-job"
 
-        child_specs = [{"agent_type": "analyzer", "mission": "Test"}]
+        child_specs = [{"agent_display_name": "analyzer", "mission": "Test"}]
 
         # Mock get_job to return None (job not found)
         job_manager.get_job.return_value = None
@@ -210,9 +210,9 @@ class TestJobSpawning:
         parent_job_id = "parent-job-001"
 
         parallel_specs = [
-            {"agent_type": "analyzer", "mission": "Analyze module A"},
-            {"agent_type": "analyzer", "mission": "Analyze module B"},
-            {"agent_type": "analyzer", "mission": "Analyze module C"},
+            {"agent_display_name": "analyzer", "mission": "Analyze module A"},
+            {"agent_display_name": "analyzer", "mission": "Analyze module B"},
+            {"agent_display_name": "analyzer", "mission": "Analyze module C"},
         ]
 
         job_manager.create_job_batch.return_value = {
@@ -251,8 +251,8 @@ class TestJobCoordination:
 
         # Create completed child jobs
         completed_jobs = [
-            Mock(job_id="child-001", status="completed", agent_type="analyzer"),
-            Mock(job_id="child-002", status="completed", agent_type="implementer"),
+            Mock(job_id="child-001", status="completed", agent_display_name="analyzer"),
+            Mock(job_id="child-002", status="completed", agent_display_name="implementer"),
         ]
 
         job_manager.get_jobs_by_spawner.return_value = completed_jobs
@@ -273,7 +273,7 @@ class TestJobCoordination:
         parent_job_id = "parent-job-001"
 
         # Jobs that never complete
-        active_jobs = [Mock(job_id="child-001", status="active", agent_type="analyzer")]
+        active_jobs = [Mock(job_id="child-001", status="active", agent_display_name="analyzer")]
 
         job_manager.get_jobs_by_spawner.return_value = active_jobs
 
@@ -295,18 +295,18 @@ class TestJobCoordination:
         parent_job_id = "parent-job-001"
 
         mixed_jobs = [
-            Mock(job_id="child-001", status="completed", agent_type="analyzer"),
-            Mock(job_id="child-002", status="failed", agent_type="implementer"),
-            Mock(job_id="child-003", status="active", agent_type="tester"),
+            Mock(job_id="child-001", status="completed", agent_display_name="analyzer"),
+            Mock(job_id="child-002", status="failed", agent_display_name="implementer"),
+            Mock(job_id="child-003", status="active", agent_display_name="tester"),
         ]
 
         # First call returns mixed, second call has active job completed
         job_manager.get_jobs_by_spawner.side_effect = [
             mixed_jobs,
             [
-                Mock(job_id="child-001", status="completed", agent_type="analyzer"),
-                Mock(job_id="child-002", status="failed", agent_type="implementer"),
-                Mock(job_id="child-003", status="completed", agent_type="tester"),
+                Mock(job_id="child-001", status="completed", agent_display_name="analyzer"),
+                Mock(job_id="child-002", status="failed", agent_display_name="implementer"),
+                Mock(job_id="child-003", status="completed", agent_display_name="tester"),
             ],
         ]
 
@@ -383,9 +383,9 @@ class TestJobDependencies:
         parent_job_id = "parent-job-001"
 
         chain_specs = [
-            {"agent_type": "analyzer", "mission": "Analyze first"},
-            {"agent_type": "implementer", "mission": "Implement second"},
-            {"agent_type": "tester", "mission": "Test third"},
+            {"agent_display_name": "analyzer", "mission": "Analyze first"},
+            {"agent_display_name": "implementer", "mission": "Implement second"},
+            {"agent_display_name": "tester", "mission": "Test third"},
         ]
 
         # Mock job creation to return job IDs sequentially
@@ -561,7 +561,7 @@ class TestMultiTenantIsolation:
         tenant_key = "tenant-A"
         parent_job_id = "parent-001"
 
-        child_specs = [{"agent_type": "analyzer", "mission": "Analyze"}]
+        child_specs = [{"agent_display_name": "analyzer", "mission": "Analyze"}]
 
         job_manager.create_job_batch.return_value = {"job_ids": ["child-001"], "count": 1}
 
@@ -620,7 +620,7 @@ class TestEdgeCases:
                 tenant_key="test-tenant",
                 parent_job_id="parent-001",
                 child_specs=[
-                    {"agent_type": "analyzer"}  # Missing mission
+                    {"agent_display_name": "analyzer"}  # Missing mission
                 ],
             )
 

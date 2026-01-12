@@ -134,7 +134,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -203,7 +203,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -251,7 +251,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -304,7 +304,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -414,7 +414,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn agent with valid agent_name
         result = await spawn_agent_job(
-            agent_type="worker",  # agent_type is still used for job categorization
+            agent_display_name="worker",  # agent_type is still used for job categorization
             agent_name="implementer",  # SSOT: Must match template name
             mission="Implement feature X",
             project_id=str(self.project.id),
@@ -444,7 +444,7 @@ class TestSpawnAgentJobValidationAgentName:
         # Test each valid agent name
         for agent_name in ["implementer", "tester"]:
             result = await spawn_agent_job(
-                agent_type="worker",
+                agent_display_name="worker",
                 agent_name=agent_name,  # SSOT: Match template name
                 mission=f"Test mission for {agent_name}",
                 project_id=str(self.project.id),
@@ -470,7 +470,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn agent with invented agent_name
         result = await spawn_agent_job(
-            agent_type="worker",
+            agent_display_name="worker",
             agent_name="backend-tester-for-api-validation",  # INVALID (doesn't match template)
             mission="Validate APIs",
             project_id=str(self.project.id),
@@ -520,7 +520,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn with extended descriptive name (common mistake)
         result = await spawn_agent_job(
-            agent_type="worker",
+            agent_display_name="worker",
             agent_name="Backend Tester Agent",  # WRONG (descriptive, doesn't match template)
             mission="Test backend APIs",
             project_id=str(self.project.id),
@@ -561,7 +561,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn with wrong case
         result = await spawn_agent_job(
-            agent_type="worker",
+            agent_display_name="worker",
             agent_name="Implementer",  # WRONG CASE (should be lowercase "implementer")
             mission="Implement feature",
             project_id=str(self.project.id),
@@ -607,7 +607,7 @@ class TestSpawnAgentJobValidationAgentName:
 
             # Try to spawn using inactive template name
             result = await spawn_agent_job(
-                agent_type="worker",
+                agent_display_name="worker",
                 agent_name="deprecated",  # Template exists but INACTIVE
                 mission="Test mission",
                 project_id=str(self.project.id),
@@ -639,7 +639,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn with invalid name
         result = await spawn_agent_job(
-            agent_type="worker",
+            agent_display_name="worker",
             agent_name="nonexistent",
             mission="Test mission",
             project_id=str(self.project.id),
@@ -671,7 +671,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn with invalid name
         result = await spawn_agent_job(
-            agent_type="worker",
+            agent_display_name="worker",
             agent_name="custom-backend-agent",
             mission="Develop backend",
             project_id=str(self.project.id),

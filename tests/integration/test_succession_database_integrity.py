@@ -180,7 +180,7 @@ async def test_instance_number_increments_correctly(
         select(AgentExecution)
         .where(
             AgentExecution.project_id == test_project.id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )
@@ -303,7 +303,7 @@ async def test_succession_reason_enum_constraint(
     # Query all
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
     result = await db_session.execute(stmt)
     instances = result.scalars().all()
@@ -392,7 +392,7 @@ async def test_instance_number_positive_constraint(
 async def test_succession_indexes_exist(db_session: AsyncSession):
     """
     Verify Handover 0080 indexes exist in database:
-    - idx_agent_jobs_instance (project_id, agent_type, instance_number)
+    - idx_agent_jobs_instance (project_id, agent_display_name, instance_number)
     - idx_agent_jobs_handover (handover_to)
     """
     # Get table metadata
@@ -447,7 +447,7 @@ async def test_succession_query_performance_with_index(
         EXPLAIN (FORMAT JSON)
         SELECT * FROM mcp_agent_jobs
         WHERE project_id = :project_id
-          AND agent_type = 'orchestrator'
+          AND agent_display_name = 'orchestrator'
         ORDER BY instance_number ASC
     """
     )

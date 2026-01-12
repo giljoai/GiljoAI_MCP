@@ -228,7 +228,7 @@ class TestOrchestratorSerenaIntegration:
                 job_id=f"orch_{uuid4().hex[:8]}",
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Orchestrator",
                 mission="Test mission",
                 status="working",

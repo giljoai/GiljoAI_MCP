@@ -307,7 +307,7 @@ async def test_concurrent_orchestrators_during_transition(
     # Query for active orchestrators (both might be in transition)
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
         AgentExecution.status.in_(["working", "waiting"]),
     )
     result = await db_session.execute(stmt)
@@ -347,7 +347,7 @@ async def test_concurrent_orchestrators_during_transition(
     # Query again - only Instance 2 should be waiting
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
         AgentExecution.status == "waiting",
     )
     result = await db_session.execute(stmt)
@@ -506,7 +506,7 @@ async def test_query_succession_chain_ordered(
         select(AgentExecution)
         .where(
             AgentExecution.project_id == project_id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )

@@ -178,7 +178,7 @@ class TestAgentJobWebSocketEvents:
                 "/api/agent/agent-jobs",
                 headers=auth_headers,
                 json={
-                    "agent_type": "orchestrator",
+                    "agent_display_name": "orchestrator",
                     "mission": "Coordinate implementation of feature X with comprehensive testing",
                     "spawned_by": None,
                     "context_chunks": [],
@@ -195,7 +195,7 @@ class TestAgentJobWebSocketEvents:
             assert event is not None, "Did not receive agent_job:created event"
             assert event["type"] == "agent_job:created"
             assert event["data"]["job_id"] == job_id
-            assert event["data"]["agent_type"] == "orchestrator"
+            assert event["data"]["agent_display_name"] == "orchestrator"
             assert (
                 event["data"]["mission_preview"]
                 == "Coordinate implementation of feature X with comprehensive testing"[:100]
@@ -218,7 +218,7 @@ class TestAgentJobWebSocketEvents:
             job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
-                agent_type="analyzer",
+                agent_display_name="analyzer",
                 mission="Analyze codebase structure",
                 status="waiting",
             )
@@ -270,7 +270,7 @@ class TestAgentJobWebSocketEvents:
             job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Implement authentication module",
                 status="active",
                 started_at=datetime.utcnow(),
@@ -327,7 +327,7 @@ class TestAgentJobWebSocketEvents:
             job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
-                agent_type="tester",
+                agent_display_name="tester",
                 mission="Run integration tests",
                 status="active",
                 started_at=datetime.utcnow(),
@@ -381,7 +381,7 @@ class TestAgentJobWebSocketEvents:
             job = AgentExecution(
                 tenant_key=test_tenant_key,
                 job_id=str(uuid4()),
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Coordinate implementation",
                 status="active",
             )
@@ -471,7 +471,7 @@ class TestMultiTenantIsolation:
                 job_a = AgentExecution(
                     tenant_key=tenant_a,
                     job_id=str(uuid4()),
-                    agent_type="orchestrator",
+                    agent_display_name="orchestrator",
                     mission="Tenant A mission",
                     status="waiting",
                 )
@@ -482,7 +482,7 @@ class TestMultiTenantIsolation:
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_created(
                     job_id=job_a.job_id,
-                    agent_type=job_a.agent_type,
+                    agent_display_name=job_a.agent_display_name,
                     tenant_key=tenant_a,
                     mission_preview=job_a.mission[:100],
                 )
@@ -540,7 +540,7 @@ class TestMultiTenantIsolation:
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=str(uuid4()),
-                    agent_type="analyzer",
+                    agent_display_name="analyzer",
                     tenant_key=tenant_a,
                     old_status="waiting",
                     new_status="active",
@@ -603,7 +603,7 @@ class TestWebSocketPerformance:
                 for i in range(10):
                     await state.websocket_manager.broadcast_job_created(
                         job_id=str(uuid4()),
-                        agent_type="orchestrator",
+                        agent_display_name="orchestrator",
                         tenant_key=tenant_key,
                         mission_preview=f"Mission {i}",
                     )
@@ -661,7 +661,7 @@ class TestErrorHandling:
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_created(
                     job_id=str(uuid4()),
-                    agent_type="orchestrator",
+                    agent_display_name="orchestrator",
                     tenant_key=tenant_key,
                     mission_preview="Test mission",
                 )

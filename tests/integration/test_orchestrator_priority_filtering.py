@@ -191,7 +191,7 @@ async def test_end_to_end_priority_filtering(
     # ASSERT 1: Orchestrator job created with user settings in metadata
     orchestrator_stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
         AgentExecution.tenant_key == test_user.tenant_key
     )
     orchestrator_result = await db_session.execute(orchestrator_stmt)

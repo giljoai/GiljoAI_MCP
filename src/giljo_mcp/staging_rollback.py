@@ -135,7 +135,7 @@ class StagingRollbackManager:
 
                 logger.info(
                     f"[StagingRollback] Found orchestrator: agent_id={orchestrator.agent_id}, "
-                    f"status={orchestrator.status}, agent_type={orchestrator.agent_type}"
+                    f"status={orchestrator.status}, agent_display_name={orchestrator.agent_display_name}"
                 )
 
                 # Step 2: Find all child agents spawned by this orchestrator
@@ -260,7 +260,7 @@ class StagingRollbackManager:
                 and_(
                     AgentJob.job_id == job_id,
                     AgentJob.tenant_key == tenant_key,
-                    AgentExecution.agent_type == "orchestrator",
+                    AgentExecution.agent_display_name == "orchestrator",
                 )
             )
         )
@@ -341,7 +341,7 @@ class StagingRollbackManager:
 
             logger.info(
                 f"[StagingRollback] HARD DELETE: agent={agent_id}, "
-                f"status={agent.status}, type={agent.agent_type}"
+                f"status={agent.status}, type={agent.agent_display_name}"
             )
 
         return deleted_ids
@@ -389,7 +389,7 @@ class StagingRollbackManager:
 
             logger.info(
                 f"[StagingRollback] SOFT DELETE: agent={agent_id}, "
-                f"old_status={old_status}, type={agent.agent_type}, "
+                f"old_status={old_status}, type={agent.agent_display_name}, "
                 f"reason={reason}"
             )
 

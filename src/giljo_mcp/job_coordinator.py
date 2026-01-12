@@ -63,7 +63,7 @@ class JobCoordinator:
             tenant_key: Tenant key for isolation
             parent_job_id: Parent job ID
             child_specs: List of child job specifications
-                Each spec must contain: agent_type, mission
+                Each spec must contain: agent_display_name, mission
                 Optional: context_chunks, initial_messages, notify_on_complete
             send_notifications: Whether to send notifications for spawned jobs
             validate_parent: Whether to validate parent job exists
@@ -89,8 +89,8 @@ class JobCoordinator:
 
         # Validate specs
         for spec in child_specs:
-            if "agent_type" not in spec:
-                raise ValueError("Invalid job specification: missing 'agent_type'")
+            if "agent_display_name" not in spec:
+                raise ValueError("Invalid job specification: missing 'agent_display_name'")
             if "mission" not in spec:
                 raise ValueError("Invalid job specification: missing 'mission'")
 
@@ -99,7 +99,7 @@ class JobCoordinator:
         for spec in child_specs:
             job_data = {
                 "tenant_key": tenant_key,
-                "agent_type": spec["agent_type"],
+                "agent_display_name": spec["agent_display_name"],
                 "mission": spec["mission"],
                 "spawned_by": parent_job_id,
                 "context_chunks": spec.get("context_chunks", []),
@@ -240,7 +240,7 @@ class JobCoordinator:
                 results.append(
                     {
                         "job_id": child.job_id,
-                        "agent_type": child.agent_type,
+                        "agent_display_name": child.agent_display_name,
                         "status": child.status,
                         "messages": child.messages or [],
                     }
@@ -287,7 +287,7 @@ class JobCoordinator:
         for i, spec in enumerate(chain_specs):
             job_data = {
                 "tenant_key": tenant_key,
-                "agent_type": spec["agent_type"],
+                "agent_display_name": spec["agent_display_name"],
                 "mission": spec["mission"],
                 "spawned_by": parent_job_id,
                 "context_chunks": spec.get("context_chunks", []),

@@ -86,7 +86,7 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job = MagicMock()
         mock_orchestrator_job.job_id = "orch-123"
         mock_orchestrator_job.tenant_key = "tenant-abc"
-        mock_orchestrator_job.agent_type = "orchestrator"
+        mock_orchestrator_job.agent_display_name = "orchestrator"
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
@@ -166,7 +166,7 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job = MagicMock()
         mock_orchestrator_job.job_id = "orch-123"
         mock_orchestrator_job.tenant_key = "tenant-abc"
-        mock_orchestrator_job.agent_type = "orchestrator"
+        mock_orchestrator_job.agent_display_name = "orchestrator"
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
@@ -240,7 +240,7 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job = MagicMock()
         mock_orchestrator_job.job_id = "orch-123"
         mock_orchestrator_job.tenant_key = "tenant-abc"
-        mock_orchestrator_job.agent_type = "orchestrator"
+        mock_orchestrator_job.agent_display_name = "orchestrator"
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
@@ -315,7 +315,7 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job = MagicMock()
         mock_orchestrator_job.job_id = "orch-123"
         mock_orchestrator_job.tenant_key = "tenant-abc"
-        mock_orchestrator_job.agent_type = "orchestrator"
+        mock_orchestrator_job.agent_display_name = "orchestrator"
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0

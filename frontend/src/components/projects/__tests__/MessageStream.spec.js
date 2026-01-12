@@ -40,7 +40,7 @@ describe('MessageStream', () => {
       content: 'Please implement the new feature',
       timestamp: '2023-04-29T09:30:00Z',
       from: 'agent',
-      agent_type: 'orchestrator',
+      agent_display_name: 'orchestrator',
       instance_number: 1,
     },
     {
@@ -51,7 +51,7 @@ describe('MessageStream', () => {
       content: 'Feature implementation started',
       timestamp: '2023-04-29T09:32:00Z',
       from: 'agent',
-      agent_type: 'implementor',
+      agent_display_name: 'implementor',
       instance_number: 1,
     },
     {
@@ -68,7 +68,7 @@ describe('MessageStream', () => {
       content: 'All agents: Status update required',
       timestamp: '2023-04-29T09:40:00Z',
       from: 'agent',
-      agent_type: 'orchestrator',
+      agent_display_name: 'orchestrator',
       instance_number: 1,
     },
   ]
@@ -176,7 +176,7 @@ describe('MessageStream', () => {
 
       const chatHead = wrapper.findComponent(ChatHeadBadge)
       expect(chatHead.exists()).toBe(true)
-      expect(chatHead.props('agentType')).toBe('orchestrator')
+      expect(chatHead.props('displayName')).toBe('orchestrator')
       expect(chatHead.props('instanceNumber')).toBe(1)
     })
 
@@ -498,7 +498,7 @@ describe('MessageStream', () => {
     it('gets correct agent type from message', () => {
       wrapper = createWrapper()
 
-      expect(wrapper.vm.getAgentType({ agent_type: 'analyzer' })).toBe('analyzer')
+      expect(wrapper.vm.getAgentType({ agent_display_name: 'analyzer' })).toBe('analyzer')
       expect(wrapper.vm.getAgentType({ from_agent: 'reviewer' })).toBe('reviewer')
       expect(wrapper.vm.getAgentType({})).toBe('orchestrator')
     })
@@ -592,13 +592,13 @@ describe('MessageStream', () => {
     it('handles missing agent type', () => {
       const noAgent = {
         ...mockMessages[0],
-        agent_type: null,
+        agent_display_name: null,
         from_agent: null,
       }
       wrapper = createWrapper({ messages: [noAgent] })
 
       const chatHead = wrapper.findComponent(ChatHeadBadge)
-      expect(chatHead.props('agentType')).toBe('orchestrator')
+      expect(chatHead.props('displayName')).toBe('orchestrator')
     })
 
     it('handles very long message content', () => {

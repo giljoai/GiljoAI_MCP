@@ -95,7 +95,7 @@ class TestOrchestrationTools:
             mock_orchestrator.process_product_vision = AsyncMock(
                 return_value={
                     "project_id": self.project.id,
-                    "mission_plan": {"missions": [{"agent_type": "implementer", "mission": "Implement features"}]},
+                    "mission_plan": {"missions": [{"agent_display_name": "implementer", "mission": "Implement features"}]},
                     "selected_agents": ["implementer", "tester"],
                     "spawned_jobs": ["job-1", "job-2"],
                     "workflow_result": Mock(status="completed"),
@@ -360,21 +360,21 @@ class TestOrchestrationTools:
                     id=1,
                     job_id="job-1",
                     status="completed",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                 ),
                 Mock(
                     spec=MCPAgentJob,
                     id=2,
                     job_id="job-2",
                     status="completed",
-                    agent_type="tester",
+                    agent_display_name="tester",
                 ),
                 Mock(
                     spec=MCPAgentJob,
                     id=3,
                     job_id="job-3",
                     status="active",
-                    agent_type="documenter",
+                    agent_display_name="documenter",
                 ),
             ]
 
@@ -508,14 +508,14 @@ class TestOrchestrationTools:
                     id=1,
                     job_id="job-1",
                     status="failed",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                 ),
                 Mock(
                     spec=MCPAgentJob,
                     id=2,
                     job_id="job-2",
                     status="completed",
-                    agent_type="tester",
+                    agent_display_name="tester",
                 ),
             ]
 

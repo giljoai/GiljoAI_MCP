@@ -127,8 +127,8 @@ class BaseIntegrationTest(BaseAsyncTest):
 
         # Create agent jobs
         agent_jobs = []
-        for agent_type in ["orchestrator", "analyzer", "implementer"]:
-            job_data = TestData.generate_agent_job_data(project.id, tenant_key, agent_type)
+        for agent_display_name in ["orchestrator", "analyzer", "implementer"]:
+            job_data = TestData.generate_agent_job_data(project.id, tenant_key, agent_display_name)
             job = AgentExecution(**job_data)
             db_session.add(job)
             agent_jobs.append(job)

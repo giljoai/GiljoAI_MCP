@@ -82,7 +82,7 @@ async def test_generate_execution_prompt_logs_deprecation_warning(
     orchestrator_job = AgentExecution(
         job_id="orch-dep-001",
         agent_name="orchestrator",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         project_id=project.id,
         tenant_key=tenant_key,
         status="working",
@@ -188,7 +188,7 @@ async def test_generate_execution_prompt_redirects_to_generate_staging_prompt(
     orchestrator_job = AgentExecution(
         job_id="orch-redirect-001",
         agent_name="orchestrator",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         project_id=project.id,
         tenant_key=tenant_key,
         status="working",
@@ -329,7 +329,7 @@ async def test_generate_execution_prompt_parameter_mapping_with_claude_code_mode
     orchestrator_job = AgentExecution(
         job_id="orch-cc-001",
         agent_name="orchestrator",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         project_id=project.id,
         tenant_key=tenant_key,
         status="working",

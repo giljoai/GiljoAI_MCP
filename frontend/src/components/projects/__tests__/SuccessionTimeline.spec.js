@@ -29,7 +29,7 @@ describe('SuccessionTimeline.vue', () => {
   const mockInstances = [
     {
       id: 'job-1',
-      agent_type: 'orchestrator',
+      agent_display_name: 'orchestrator',
       agent_name: 'Orchestrator',
       instance_number: 1,
       status: 'complete',
@@ -42,7 +42,7 @@ describe('SuccessionTimeline.vue', () => {
     },
     {
       id: 'job-2',
-      agent_type: 'orchestrator',
+      agent_display_name: 'orchestrator',
       agent_name: 'Orchestrator',
       instance_number: 2,
       status: 'working',
@@ -118,7 +118,7 @@ describe('SuccessionTimeline.vue', () => {
         ...mockInstances,
         {
           id: 'job-3',
-          agent_type: 'specialist',
+          agent_display_name: 'specialist',
           instance_number: 1,
         },
       ]
@@ -127,7 +127,7 @@ describe('SuccessionTimeline.vue', () => {
       await flushPromises()
 
       expect(wrapper.vm.instances).toHaveLength(2)
-      expect(wrapper.vm.instances.every((i) => i.agent_type === 'orchestrator')).toBe(true)
+      expect(wrapper.vm.instances.every((i) => i.agent_display_name === 'orchestrator')).toBe(true)
     })
 
     it('sorts instances by instance_number', async () => {

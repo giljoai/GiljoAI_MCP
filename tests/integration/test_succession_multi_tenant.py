@@ -130,7 +130,7 @@ async def test_succession_respects_tenant_boundaries(
     # Query Tenant A orchestrators only
     stmt_a = select(AgentExecution).where(
         AgentExecution.tenant_key == tenant_a_key,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
     result_a = await db_session.execute(stmt_a)
     tenant_a_orchestrators = result_a.scalars().all()
@@ -141,7 +141,7 @@ async def test_succession_respects_tenant_boundaries(
     # Query Tenant B orchestrators only
     stmt_b = select(AgentExecution).where(
         AgentExecution.tenant_key == tenant_b_key,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
     result_b = await db_session.execute(stmt_b)
     tenant_b_orchestrators = result_b.scalars().all()
@@ -363,7 +363,7 @@ async def test_succession_chain_query_tenant_isolation(
         .where(
             AgentExecution.project_id == project_a.id,
             AgentExecution.tenant_key == tenant_a_key,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )
@@ -382,7 +382,7 @@ async def test_succession_chain_query_tenant_isolation(
         .where(
             AgentExecution.project_id == project_b.id,
             AgentExecution.tenant_key == tenant_b_key,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )
@@ -483,7 +483,7 @@ async def test_concurrent_succession_different_tenants(
         # Query tenant's orchestrators
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant["tenant_key"],
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         result = await db_session.execute(stmt)
         tenant_orchestrators = result.scalars().all()

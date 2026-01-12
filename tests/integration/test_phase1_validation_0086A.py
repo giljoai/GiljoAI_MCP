@@ -485,7 +485,7 @@ class TestEventSchemaValidation:
         """Test EventFactory creates valid agent:created event."""
         agent_data = {
             "id": str(uuid4()),
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "status": "pending",
             "mission": "Coordinate implementation",
         }
@@ -501,7 +501,7 @@ class TestEventSchemaValidation:
         assert event["data"]["project_id"] == project_id
         assert event["data"]["tenant_key"] == tenant_key
         assert event["data"]["agent"]["id"] == agent_data["id"]
-        assert event["data"]["agent"]["agent_type"] == "orchestrator"
+        assert event["data"]["agent"]["agent_display_name"] == "orchestrator"
 
     def test_agent_status_changed_event_creation(self, project_id, tenant_key):
         """Test EventFactory creates valid agent:status_changed event."""
@@ -512,7 +512,7 @@ class TestEventSchemaValidation:
             tenant_key=tenant_key,
             old_status="waiting",
             new_status="active",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             project_id=project_id,
             duration_seconds=None,
         )
@@ -529,7 +529,7 @@ class TestEventSchemaValidation:
         # Missing 'status' field
         invalid_agent = {
             "id": str(uuid4()),
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             # "status": "pending",  # MISSING
         }
 
@@ -551,7 +551,7 @@ class TestEventSchemaValidation:
                 tenant_key=tenant_key,
                 old_status="waiting",
                 new_status="invalid_status",  # Invalid
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
             )
 
     def test_event_timestamp_validation(self, project_id, tenant_key):
@@ -604,14 +604,14 @@ class TestEventSchemaValidation:
             EventFactory.agent_created(
                 project_id=project_id,
                 tenant_key=tenant_key,
-                agent={"id": str(uuid4()), "agent_type": "test", "status": "pending"},
+                agent={"id": str(uuid4()), "agent_display_name": "test", "status": "pending"},
             ),
             EventFactory.agent_status_changed(
                 job_id=str(uuid4()),
                 tenant_key=tenant_key,
                 old_status="waiting",
                 new_status="active",
-                agent_type="test",
+                agent_display_name="test",
             ),
         ]
 
@@ -745,7 +745,7 @@ class TestPhase1Integration:
         # 1. Agent created
         agent_data = {
             "id": job_id,
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "status": "pending",
             "mission": "Coordinate implementation",
             "mode": "claude",
@@ -772,7 +772,7 @@ class TestPhase1Integration:
             tenant_key=tenant_key,
             old_status="waiting",
             new_status="active",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             project_id=project_id,
         )
 
@@ -791,7 +791,7 @@ class TestPhase1Integration:
             tenant_key=tenant_key,
             old_status="active",
             new_status="completed",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             project_id=project_id,
             duration_seconds=120.5,
         )

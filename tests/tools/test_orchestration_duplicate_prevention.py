@@ -64,7 +64,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         agent_id=existing_agent_id,
         job_id=existing_job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         instance_number=1,
         status="waiting",  # Staging status
@@ -76,7 +76,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
 
     # Attempt to create duplicate orchestrator (should fail)
     result = await spawn_agent_job(
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Duplicate Orchestrator",
         mission="Should not be created",
         project_id=project_id,
@@ -139,7 +139,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         agent_id=existing_agent_id,
         job_id=existing_job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         instance_number=1,
         status="working",  # Already running
@@ -151,7 +151,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
 
     # Attempt to create duplicate orchestrator (should fail)
     result = await spawn_agent_job(
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Another Orchestrator",
         mission="Should not be created",
         project_id=project_id,
@@ -210,7 +210,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         agent_id=completed_agent_id,
         job_id=completed_job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         instance_number=1,
         status="complete",  # Finished, succession allowed
@@ -222,7 +222,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
 
     # Attempt to create successor orchestrator (should succeed)
     result = await spawn_agent_job(
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #2",
         mission="Successor orchestrator mission",
         project_id=project_id,
@@ -296,7 +296,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         agent_id=orch_agent_id,
         job_id=orch_job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         instance_number=1,
         status="working",
@@ -321,7 +321,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         agent_id=impl1_agent_id,
         job_id=impl1_job_id,
         tenant_key=tenant_key,
-        agent_type="worker",  # agent_type for categorization
+        agent_display_name="worker",  # agent_type for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)
         instance_number=1,
         status="working",
@@ -334,7 +334,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
     # Attempt to create second implementer (should succeed)
     # Handover 0351: Use template name in agent_name
     result = await spawn_agent_job(
-        agent_type="worker",  # agent_type for categorization
+        agent_display_name="worker",  # agent_type for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)
         mission="Second implementer mission",
         project_id=project_id,
@@ -406,7 +406,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         agent_id=orch_a_agent_id,
         job_id=orch_a_job_id,
         tenant_key=tenant_a,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator A",
         instance_number=1,
         status="working",
@@ -418,7 +418,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
 
     # Attempt to create orchestrator in tenant_b (should succeed due to isolation)
     result = await spawn_agent_job(
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator B",
         mission="Tenant B orchestrator",
         project_id=project_b_id,  # Use project_b's ID

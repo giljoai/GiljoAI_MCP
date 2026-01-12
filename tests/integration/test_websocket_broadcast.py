@@ -183,7 +183,7 @@ class TestWebSocketBroadcast:
             agent_id=str(uuid4()),
             tenant_key=test_user_a.tenant_key,
             project_id=str(uuid4()),
-            agent_type="implementor",
+            agent_display_name="implementor",
             mission="Test mission",
             status="waiting",
         )

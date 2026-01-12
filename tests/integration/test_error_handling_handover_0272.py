@@ -336,7 +336,7 @@ class TestMissingRelationships:
             product_id=str(uuid4()),
             project_id=str(uuid4()),
             user_id=str(uuid4()),  # Non-existent user
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="staged",
             tenant_key=error_test_tenant,
         )

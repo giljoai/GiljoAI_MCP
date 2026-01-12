@@ -35,7 +35,7 @@ def mock_orchestrator(db_session, test_tenant, mock_project):
     """Create test orchestrator job"""
     orchestrator = AgentExecution(
         job_id="orch-test-12345",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         status="working",
         tenant_key=test_tenant.tenant_key,
         project_id=mock_project.id,
@@ -73,7 +73,7 @@ class TestHandleGilHandover:
         successor = successor_result.scalar_one()
 
         assert successor is not None
-        assert successor.agent_type == "orchestrator"
+        assert successor.agent_display_name == "orchestrator"
         assert successor.instance_number == 2
         assert successor.status == "waiting"
         assert successor.spawned_by == mock_orchestrator.job_id
@@ -84,7 +84,7 @@ class TestHandleGilHandover:
         # Create a non-orchestrator agent
         frontend_agent = AgentExecution(
             job_id="frontend-test-12345",
-            agent_type="frontend-dev",
+            agent_display_name="frontend-dev",
             status="working",
             tenant_key=test_tenant.tenant_key,
             project_id="test-project-id",
@@ -144,7 +144,7 @@ class TestHandleGilHandover:
         # Create orchestrator for different tenant
         other_orchestrator = AgentExecution(
             job_id="orch-other-12345",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="working",
             tenant_key="other-tenant-key",
             project_id="other-project-id",
@@ -207,7 +207,7 @@ class TestGenerateLaunchPrompt:
             handover_summary={
                 "project_name": "Test Project",
                 "project_status": 60,
-                "active_agents": [{"agent_type": "frontend-dev"}],
+                "active_agents": [{"agent_display_name": "frontend-dev"}],
                 "next_steps": "Continue development",
             },
         )
@@ -226,8 +226,8 @@ class TestGenerateLaunchPrompt:
                 "project_name": "Test Project",
                 "project_status": 60,
                 "active_agents": [
-                    {"agent_type": "frontend-dev"},
-                    {"agent_type": "backend-api"},
+                    {"agent_display_name": "frontend-dev"},
+                    {"agent_display_name": "backend-api"},
                 ],
                 "next_steps": "Continue development",
             },

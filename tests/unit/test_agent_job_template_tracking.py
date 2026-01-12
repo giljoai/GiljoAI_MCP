@@ -105,7 +105,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-123",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Test Implementer",
             mission="Implement feature X",
             status="waiting",
@@ -132,7 +132,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-456",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator",
             mission="Orchestrate project",
             status="working",
@@ -145,7 +145,7 @@ class TestAgentJobTemplateTracking:
 
         # Verify job is created successfully without template_id
         assert agent_job.template_id is None
-        assert agent_job.agent_type == "orchestrator"
+        assert agent_job.agent_display_name == "orchestrator"
 
     def test_template_relationship_if_exists(self, db_session, sample_project, sample_template):
         """Test that relationship to AgentTemplate exists (if implemented)."""
@@ -153,7 +153,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-789",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Test Implementer",
             mission="Implement feature Y",
             status="waiting",
@@ -177,7 +177,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-001",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer 1",
             mission="Task 1",
             status="waiting",
@@ -188,7 +188,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-002",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer 2",
             mission="Task 2",
             status="waiting",
@@ -214,7 +214,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="tenant-a",
             project_id=sample_project.id,
             job_id="job-a",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Agent A",
             mission="Task A",
             status="waiting",
@@ -237,7 +237,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="tenant-b",
             project_id=sample_project.id,
             job_id="job-b",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Agent B",
             mission="Task B",
             status="waiting",
@@ -277,7 +277,7 @@ class TestAgentJobTemplateTracking:
             tenant_key="test-tenant",
             project_id=sample_project.id,
             job_id="job-invalid",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Invalid Agent",
             mission="Invalid task",
             status="waiting",

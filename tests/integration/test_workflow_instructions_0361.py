@@ -79,7 +79,7 @@ class TestWorkflowInstructionsAllLayers:
         self, db_session, workflow_project, workflow_tenant, workflow_template
     ):
         result = await spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="implementer",  # Must match template name
             mission="Test mission",
             project_id=str(workflow_project.id),

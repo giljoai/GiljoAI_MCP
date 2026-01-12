@@ -88,7 +88,7 @@ class TenantFixture:
                     job_id=str(uuid.uuid4()),
                     tenant_key=tenant_key,
                     project_id=project.id,
-                    agent_type=random.choice(["analyzer", "implementer", "tester", "reviewer"]),
+                    agent_display_name=random.choice(["analyzer", "implementer", "tester", "reviewer"]),
                     mission=f"Test mission for agent {i}",
                     status="waiting",
                 )
@@ -313,7 +313,7 @@ class TenantFixture:
                         job_id=str(uuid.uuid4()),
                         tenant_key=tenant_key,
                         project_id=project.id,
-                        agent_type=random.choice(["analyzer", "implementer", "tester"]),
+                        agent_display_name=random.choice(["analyzer", "implementer", "tester"]),
                         mission=f"Random mission for agent {i}",
                         status="waiting",
                     )

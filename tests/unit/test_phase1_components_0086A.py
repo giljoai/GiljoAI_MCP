@@ -209,7 +209,7 @@ class TestEventSchemaStandalone:
         tenant_key = "test_tenant"
         agent_data = {
             "id": str(uuid4()),
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "status": "pending",
             "mission": "Test mission",
         }
@@ -246,7 +246,7 @@ class TestEventSchemaStandalone:
             tenant_key=tenant_key,
             old_status="waiting",
             new_status="active",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             project_id=str(uuid4()),
         )
 
@@ -275,7 +275,7 @@ class TestEventSchemaStandalone:
                 tenant_key="test",
                 old_status="waiting",
                 new_status="invalid_status",  # Invalid
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
             )
 
     def test_event_schema_validation_catches_missing_fields(self):
@@ -292,7 +292,7 @@ class TestEventSchemaStandalone:
 
         invalid_agent = {
             "id": str(uuid4()),
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             # Missing "status" field
         }
 

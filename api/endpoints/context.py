@@ -66,14 +66,14 @@ class SearchContextResponse(BaseModel):
 
 
 class LoadContextRequest(BaseModel):
-    agent_type: str = Field(..., description="Type of agent (e.g., 'backend', 'frontend')")
+    agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Mission or query for context selection")
     product_id: str = Field(..., description="Product ID")
     max_tokens: int = Field(10000, description="Maximum tokens to load")
 
 
 class LoadContextResponse(BaseModel):
-    agent_type: str
+    agent_display_name: str
     chunks: List[ContextChunk]
     total_chunks: int
     total_tokens: int
@@ -360,7 +360,7 @@ async def load_context_for_agent(
             tenant_key=tenant_key,
             product_id=request.product_id,
             query=request.mission,
-            role=request.agent_type,
+            role=request.agent_display_name,
             max_tokens=request.max_tokens,
         )
 
@@ -376,7 +376,7 @@ async def load_context_for_agent(
         ]
 
         return LoadContextResponse(
-            agent_type=request.agent_type,
+            agent_display_name=request.agent_display_name,
             chunks=context_chunks,
             total_chunks=result["total_chunks"],
             total_tokens=result["total_tokens"],

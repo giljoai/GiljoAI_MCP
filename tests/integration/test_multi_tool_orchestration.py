@@ -185,7 +185,7 @@ class TestPureCodexMode:
         """Test creating a Codex job."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement user authentication",
             context_chunks=["chunk1", "chunk2"],
         )
@@ -193,7 +193,7 @@ class TestPureCodexMode:
         # Assertions
         assert job is not None
         assert job.job_id is not None
-        assert job.agent_type == "implementer"
+        assert job.agent_display_name == "implementer"
         assert job.status == "pending"
         assert job.tenant_key == tenant_key
         assert job.created_at is not None
@@ -202,7 +202,7 @@ class TestPureCodexMode:
         """Test acknowledging a Codex job."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -222,19 +222,19 @@ class TestPureCodexMode:
         # Create multiple jobs
         job1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature 1",
         )
         job2 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature 2",
         )
 
         # Get pending jobs
         pending_jobs = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
 
         # Assertions
@@ -247,7 +247,7 @@ class TestPureCodexMode:
         """Test completing a Codex job."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -272,7 +272,7 @@ class TestPureCodexMode:
         """Test failing a Codex job with error."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -305,13 +305,13 @@ class TestPureGeminiMode:
         """Test creating a Gemini job."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Write comprehensive test suite",
         )
 
         # Assertions
         assert job is not None
-        assert job.agent_type == "tester"
+        assert job.agent_display_name == "tester"
         assert job.status == "pending"
 
     def test_gemini_job_workflow(self, db_manager, job_manager, tenant_key):
@@ -319,7 +319,7 @@ class TestPureGeminiMode:
         # Create job
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Write tests",
         )
 
@@ -352,20 +352,20 @@ class TestMixedModeOperations:
         # Create Codex implementer job
         impl_job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement features",
         )
 
         # Create Gemini tester job
         test_job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test features",
         )
 
         # Assertions
-        assert impl_job.agent_type == "implementer"
-        assert test_job.agent_type == "tester"
+        assert impl_job.agent_display_name == "implementer"
+        assert test_job.agent_display_name == "tester"
         assert impl_job.job_id != test_job.job_id
 
     def test_mixed_agents_pending_filtering(self, db_manager, job_manager, tenant_key):
@@ -373,19 +373,19 @@ class TestMixedModeOperations:
         # Create mixed jobs
         impl_job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
         )
         test_job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test",
         )
 
         # Get pending for implementer only
         pending_impl = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         assert len(pending_impl) == 1
         assert pending_impl[0].job_id == impl_job.job_id
@@ -393,7 +393,7 @@ class TestMixedModeOperations:
         # Get pending for tester only
         pending_test = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
         )
         assert len(pending_test) == 1
         assert pending_test[0].job_id == test_job.job_id
@@ -411,7 +411,7 @@ class TestMCPToolCoordination:
         """Test sending message from orchestrator to agent."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -436,7 +436,7 @@ class TestMCPToolCoordination:
         """Test agent retrieving next instructions."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -468,7 +468,7 @@ class TestMCPToolCoordination:
         """Test agent reporting progress."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -502,7 +502,7 @@ class TestMCPToolCoordination:
         """Test error message gets high priority."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -544,25 +544,25 @@ class TestMultiTenantIsolation:
         # Create jobs for two tenants
         job_t1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
         job_t2 = job_manager.create_job(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 job",
         )
 
         # Get pending for tenant 1
         pending_t1 = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
 
         # Get pending for tenant 2
         pending_t2 = job_manager.get_pending_jobs(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
 
         # Assertions: Each tenant only sees their own job
@@ -577,7 +577,7 @@ class TestMultiTenantIsolation:
         # Create job for tenant 1
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
 
@@ -593,12 +593,12 @@ class TestMultiTenantIsolation:
         # Create jobs for both tenants
         job_t1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
         job_t2 = job_manager.create_job(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 job",
         )
 
@@ -629,21 +629,21 @@ class TestMultiTenantIsolation:
         """CRITICAL: Jobs properly isolated by tenant."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
 
         # Get pending jobs for tenant 1 - should see it
         pending_t1 = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         assert any(j.job_id == job.job_id for j in pending_t1)
 
         # Get pending for tenant 2 - should NOT see it
         pending_t2 = job_manager.get_pending_jobs(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         assert not any(j.job_id == job.job_id for j in pending_t2)
 
@@ -660,7 +660,7 @@ class TestErrorRecoveryFlow:
         """Test error report updates job status."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -683,7 +683,7 @@ class TestErrorRecoveryFlow:
         """Test error message stored in job."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -719,7 +719,7 @@ class TestConcurrentOperations:
         for i in range(10):
             job = job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer" if i % 2 == 0 else "tester",
+                agent_display_name="implementer" if i % 2 == 0 else "tester",
                 mission=f"Feature {i}",
             )
             jobs.append(job)
@@ -732,11 +732,11 @@ class TestConcurrentOperations:
         # Verify retrieval
         pending = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         assert len(pending) == 5
 
-    def test_multiple_jobs_per_agent_type(self, db_manager, job_manager, tenant_key):
+    def test_multiple_jobs_per_agent_display_name(self, db_manager, job_manager, tenant_key):
         """Test multiple jobs per agent type."""
         impl_jobs = []
         test_jobs = []
@@ -745,7 +745,7 @@ class TestConcurrentOperations:
         for i in range(5):
             job = job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission=f"Implement feature {i}",
             )
             impl_jobs.append(job)
@@ -754,7 +754,7 @@ class TestConcurrentOperations:
         for i in range(3):
             job = job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="tester",
+                agent_display_name="tester",
                 mission=f"Test feature {i}",
             )
             test_jobs.append(job)
@@ -762,11 +762,11 @@ class TestConcurrentOperations:
         # Verify counts
         pending_impl = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         pending_test = job_manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
         )
 
         assert len(pending_impl) == 5
@@ -785,7 +785,7 @@ class TestJobStatusTransitions:
         """Test transition from pending to active."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
         )
         assert job.status == "pending"
@@ -800,7 +800,7 @@ class TestJobStatusTransitions:
         """Test transition from active to completed."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
         )
 
@@ -821,7 +821,7 @@ class TestJobStatusTransitions:
         """Test transition from active to failed."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
         )
 
@@ -852,7 +852,7 @@ class TestEdgeCases:
         with pytest.raises(ValueError):
             job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="",  # Empty!
             )
 
@@ -862,7 +862,7 @@ class TestEdgeCases:
 
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission=long_mission,
         )
 
@@ -875,7 +875,7 @@ class TestEdgeCases:
 
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission=special_mission,
         )
 
@@ -887,7 +887,7 @@ class TestEdgeCases:
         """Test messages with unicode characters."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -909,7 +909,7 @@ class TestEdgeCases:
         """Test acknowledging already-active job (idempotent)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
         )
 

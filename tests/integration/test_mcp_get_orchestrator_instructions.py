@@ -62,7 +62,7 @@ class TestGetOrchestratorInstructionsMCP:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
@@ -456,7 +456,7 @@ class TestGetOrchestratorInstructionsMCP:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Orchestrate test project with vision",
                 status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
                 context_budget=150000,
@@ -556,7 +556,7 @@ class TestErrorHandling:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=uuid4(),  # Non-existent project
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Test",
                 status="waiting",
             )

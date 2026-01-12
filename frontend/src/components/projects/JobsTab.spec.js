@@ -37,7 +37,7 @@ vi.mock('./AgentCardEnhanced.vue', () => ({
     template: `
       <div
         class="agent-card-mock"
-        :data-agent-type="agent.agent_type"
+        :data-agent-type="agent.agent_display_name"
         :data-status="agent.status"
         :data-instance="instanceNumber"
         :data-orchestrator="isOrchestrator"
@@ -80,7 +80,7 @@ const createMockProject = (overrides = {}) => ({
 const createMockAgent = (type, status, overrides = {}) => ({
   job_id: `job-${type}-${Math.random().toString(36).substr(2, 9)}`,
   agent_id: `agent-${type}`,
-  agent_type: type,
+  agent_display_name: type,
   status: status,
   mission: `Mission for ${type}`,
   progress: status === 'working' ? 50 : 0,
@@ -98,7 +98,7 @@ const createMockMessage = (from, content, overrides = {}) => ({
   type: from === 'agent' ? 'agent' : 'user',
   content: content,
   timestamp: new Date().toISOString(),
-  agent_type: from === 'agent' ? 'orchestrator' : null,
+  agent_display_name: from === 'agent' ? 'orchestrator' : null,
   instance_number: 1,
   ...overrides,
 })
@@ -231,7 +231,7 @@ describe('JobsTab Component', () => {
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const sortedTypes = agentCards.map((card) => card.props('agent').agent_type)
+      const sortedTypes = agentCards.map((card) => card.props('agent').agent_display_name)
 
       expect(sortedTypes[0]).toBe('orchestrator')
     })
@@ -250,7 +250,7 @@ describe('JobsTab Component', () => {
       })
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      const sortedTypes = agentCards.map((card) => card.props('agent').agent_type)
+      const sortedTypes = agentCards.map((card) => card.props('agent').agent_display_name)
 
       expect(sortedTypes).toEqual(['analyzer', 'implementor'])
     })
@@ -317,7 +317,7 @@ describe('JobsTab Component', () => {
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
       const implementorCards = agentCards.filter(
-        (card) => card.props('agent').agent_type === 'implementor',
+        (card) => card.props('agent').agent_display_name === 'implementor',
       )
 
       // All implementors should have unique instance numbers
@@ -342,13 +342,13 @@ describe('JobsTab Component', () => {
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
 
       const implementorCards = agentCards.filter(
-        (card) => card.props('agent').agent_type === 'implementor',
+        (card) => card.props('agent').agent_display_name === 'implementor',
       )
       const implementorInstances = implementorCards.map((card) => card.props('instanceNumber'))
       expect(implementorInstances).toEqual([1, 2])
 
       const analyzerCards = agentCards.filter(
-        (card) => card.props('agent').agent_type === 'analyzer',
+        (card) => card.props('agent').agent_display_name === 'analyzer',
       )
       const analyzerInstances = analyzerCards.map((card) => card.props('instanceNumber'))
       expect(analyzerInstances).toEqual([1])
@@ -372,12 +372,12 @@ describe('JobsTab Component', () => {
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
 
       const orchestratorCard = agentCards.find(
-        (card) => card.props('agent').agent_type === 'orchestrator',
+        (card) => card.props('agent').agent_display_name === 'orchestrator',
       )
       expect(orchestratorCard.props('isOrchestrator')).toBe(true)
 
       const implementorCard = agentCards.find(
-        (card) => card.props('agent').agent_type === 'implementor',
+        (card) => card.props('agent').agent_display_name === 'implementor',
       )
       expect(implementorCard.props('isOrchestrator')).toBe(false)
     })
@@ -399,12 +399,12 @@ describe('JobsTab Component', () => {
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
 
       const orchestratorCard = agentCards.find(
-        (card) => card.props('agent').agent_type === 'orchestrator',
+        (card) => card.props('agent').agent_display_name === 'orchestrator',
       )
       expect(orchestratorCard.props('showCloseoutButton')).toBe(true)
 
       const implementorCard = agentCards.find(
-        (card) => card.props('agent').agent_type === 'implementor',
+        (card) => card.props('agent').agent_display_name === 'implementor',
       )
       expect(implementorCard.props('showCloseoutButton')).toBe(false)
     })
@@ -757,7 +757,7 @@ describe('JobsTab Component', () => {
     })
 
     it('handles agents without job_id or agent_id', () => {
-      const agents = [{ agent_type: 'implementor', status: 'working', mission: 'Test' }]
+      const agents = [{ agent_display_name: 'implementor', status: 'working', mission: 'Test' }]
 
       wrapper = mount(JobsTab, {
         props: {
@@ -770,7 +770,7 @@ describe('JobsTab Component', () => {
       expect(wrapper.exists()).toBe(true)
     })
 
-    it('handles agents without agent_type', () => {
+    it('handles agents without agent_display_name', () => {
       const agents = [{ job_id: 'job-1', status: 'working', mission: 'Test' }]
 
       wrapper = mount(JobsTab, {

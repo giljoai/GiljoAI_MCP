@@ -55,7 +55,7 @@ async def orchestrator_job(db_session, tenant_key):
         agent_id=agent_id,
         job_id=job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         instance_number=1,
         status="working",

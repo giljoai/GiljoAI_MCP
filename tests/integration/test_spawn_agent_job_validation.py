@@ -148,7 +148,7 @@ async def cli_orchestrator(db_session, validation_project, validation_tenant, va
         job_id=str(uuid.uuid4()),
         project_id=validation_project.id,
         tenant_key=validation_tenant,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="CLI Orchestrator",
         status="waiting",
         mission="Test orchestration with validation",
@@ -177,11 +177,11 @@ class TestValidAgentSpawning:
         self, db_session, validation_project, validation_tenant, validation_templates
     ):
         """
-        INTEGRATION: Spawn implementer agent with valid agent_type through full workflow
+        INTEGRATION: Spawn implementer agent with valid agent_display_name through full workflow
         """
         # Spawn implementer (valid type)
         result = await spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Backend Implementer",
             mission="Implement user authentication",
             project_id=str(validation_project.id),
@@ -200,7 +200,7 @@ class TestValidAgentSpawning:
         agent_job = db_result.scalar_one_or_none()
 
         assert agent_job is not None, "Agent job should exist in database"
-        assert agent_job.agent_type == "implementer"
+        assert agent_job.agent_display_name == "implementer"
         assert agent_job.tenant_key == validation_tenant
         assert agent_job.status == "waiting"
 
@@ -212,11 +212,11 @@ class TestValidAgentSpawning:
         INTEGRATION: All valid agent types from templates can be spawned
         """
         # Spawn each valid type
-        for agent_type in ["implementer", "tester", "reviewer"]:
+        for agent_display_name in ["implementer", "tester", "reviewer"]:
             result = await spawn_agent_job(
-                agent_type=agent_type,
-                agent_name=f"Test {agent_type.title()}",
-                mission=f"Test mission for {agent_type}",
+                agent_display_name=agent_type,
+                agent_name=f"Test {agent_display_name.title()}",
+                mission=f"Test mission for {agent_display_name}",
                 project_id=str(validation_project.id),
                 tenant_key=validation_tenant,
                 session=db_session,
@@ -224,7 +224,7 @@ class TestValidAgentSpawning:
 
             # ASSERTION: Each spawn succeeds
             assert result["success"] is True, (
-                f"Failed to spawn valid agent_type '{agent_type}': {result.get('error')}"
+                f"Failed to spawn valid agent_display_name '{agent_type}': {result.get('error')}"
             )
 
             # ASSERTION: Agent exists in database
@@ -233,7 +233,7 @@ class TestValidAgentSpawning:
             db_result = await db_session.execute(stmt)
             agent_job = db_result.scalar_one()
 
-            assert agent_job.agent_type == agent_type
+            assert agent_job.agent_display_name == agent_type
 
 
 # ============================================================================
@@ -245,7 +245,7 @@ class TestInvalidAgentTypeRejection:
     """Test rejection of invalid agent types with helpful errors"""
 
     @pytest.mark.asyncio
-    async def test_spawn_invented_agent_type_rejected(
+    async def test_spawn_invented_agent_display_name_rejected(
         self, db_session, validation_project, validation_tenant, validation_templates
     ):
         """
@@ -253,7 +253,7 @@ class TestInvalidAgentTypeRejection:
         """
         # Attempt to spawn invented agent type
         result = await spawn_agent_job(
-            agent_type="backend-api-specialist",  # INVALID (invented)
+            agent_display_name="backend-api-specialist",  # INVALID (invented)
             agent_name="API Developer",
             mission="Develop APIs",
             project_id=str(validation_project.id),
@@ -269,7 +269,7 @@ class TestInvalidAgentTypeRejection:
         error_msg = result["error"]
 
         # ASSERTION 3: Error mentions invalid type
-        assert "Invalid agent_type" in error_msg
+        assert "Invalid agent_display_name" in error_msg
         assert "backend-api-specialist" in error_msg
 
         # ASSERTION 4: Error lists valid types
@@ -284,7 +284,7 @@ class TestInvalidAgentTypeRejection:
         # ASSERTION 6: No agent job created in database
         stmt = select(AgentExecution).where(
             AgentExecution.project_id == validation_project.id,
-            AgentExecution.agent_type == "backend-api-specialist",
+            AgentExecution.agent_display_name == "backend-api-specialist",
         )
         db_result = await db_session.execute(stmt)
         agent_job = db_result.scalar_one_or_none()
@@ -298,11 +298,11 @@ class TestInvalidAgentTypeRejection:
         self, db_session, validation_project, validation_tenant, validation_templates
     ):
         """
-        INTEGRATION: Descriptive names used as agent_type are rejected
+        INTEGRATION: Descriptive names used as agent_display_name are rejected
         """
-        # Attempt to use descriptive name as agent_type (common mistake)
+        # Attempt to use descriptive name as agent_display_name (common mistake)
         result = await spawn_agent_job(
-            agent_type="Backend Testing Specialist Agent",  # WRONG
+            agent_display_name="Backend Testing Specialist Agent",  # WRONG
             agent_name="Tester",
             mission="Test backend",
             project_id=str(validation_project.id),
@@ -314,14 +314,14 @@ class TestInvalidAgentTypeRejection:
         assert result["success"] is False
         assert "error" in result
 
-        # ASSERTION: Hint explains agent_name vs agent_type
+        # ASSERTION: Hint explains agent_name vs agent_display_name
         assert "hint" in result
         hint_lower = result["hint"].lower()
         assert "agent_name" in hint_lower
-        assert "agent_type" in hint_lower
+        assert "agent_display_name" in hint_lower
 
     @pytest.mark.asyncio
-    async def test_spawn_wrong_case_agent_type_rejected(
+    async def test_spawn_wrong_case_agent_display_name_rejected(
         self, db_session, validation_project, validation_tenant, validation_templates
     ):
         """
@@ -329,7 +329,7 @@ class TestInvalidAgentTypeRejection:
         """
         # Attempt to spawn with wrong case
         result = await spawn_agent_job(
-            agent_type="Implementer",  # WRONG CASE (should be lowercase)
+            agent_display_name="Implementer",  # WRONG CASE (should be lowercase)
             agent_name="Backend Developer",
             mission="Develop backend",
             project_id=str(validation_project.id),
@@ -387,7 +387,7 @@ class TestMultiTenantValidation:
 
         # Attempt to spawn agent from OTHER tenant's templates
         result = await spawn_agent_job(
-            agent_type="other_agent",  # Exists in other tenant, not current
+            agent_display_name="other_agent",  # Exists in other tenant, not current
             agent_name="Test Agent",
             mission="Test mission",
             project_id=str(validation_project.id),
@@ -492,7 +492,7 @@ class TestErrorMessageQuality:
         INTEGRATION: Error message lists ALL valid agent types for orchestrator
         """
         result = await spawn_agent_job(
-            agent_type="invalid",
+            agent_display_name="invalid",
             agent_name="Test Agent",
             mission="Test mission",
             project_id=str(validation_project.id),
@@ -516,7 +516,7 @@ class TestErrorMessageQuality:
         INTEGRATION: Hint field provides actionable guidance to fix error
         """
         result = await spawn_agent_job(
-            agent_type="custom-agent-type",
+            agent_display_name="custom-agent-type",
             agent_name="Custom Agent",
             mission="Test mission",
             project_id=str(validation_project.id),
@@ -532,8 +532,8 @@ class TestErrorMessageQuality:
         # ASSERTION: Hint explains agent_name for descriptive text
         assert "agent_name" in hint
 
-        # ASSERTION: Hint explains agent_type for exact match
-        assert "agent_type" in hint
+        # ASSERTION: Hint explains agent_display_name for exact match
+        assert "agent_display_name" in hint
 
         # ASSERTION: Hint mentions template requirement
         hint_lower = hint.lower()
@@ -570,7 +570,7 @@ class TestInactiveTemplateHandling:
 
         # Attempt to spawn inactive agent
         result = await spawn_agent_job(
-            agent_type="deprecated",
+            agent_display_name="deprecated",
             agent_name="Deprecated Agent",
             mission="Test mission",
             project_id=str(validation_project.id),

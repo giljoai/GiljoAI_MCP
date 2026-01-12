@@ -284,7 +284,7 @@ class TestHealthMonitoringStartup:
         # Create mock unhealthy job
         mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "test-job-123"
-        mock_job.agent_type = "implementer"
+        mock_job.agent_display_name = "implementer"
         mock_job.status = "waiting"
         mock_job.tenant_key = "tenant-123"
         mock_job.created_at = datetime.now(timezone.utc) - timedelta(minutes=10)  # Stuck for 10 minutes
@@ -365,7 +365,7 @@ class TestHealthMonitoringConfiguration:
         assert config.auto_fail_on_timeout is False
         assert config.notify_orchestrator is True
 
-    def test_agent_type_timeout_overrides(self):
+    def test_agent_display_name_timeout_overrides(self):
         """Test agent-specific timeout overrides work."""
         config = HealthCheckConfig()
 

@@ -146,7 +146,7 @@ class TestAgentCardRealTimeBroadcasting:
             result = await spawn_agent_job(
                 tenant_key=test_user_a.tenant_key,
                 project_id=test_project_0111.id,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 agent_name="implementer",
                 mission="Implement authentication module",
                 session=db_session,
@@ -163,7 +163,7 @@ class TestAgentCardRealTimeBroadcasting:
 
             payload = call_kwargs["data"]
             assert payload["project_id"] == test_project_0111.id
-            assert payload["agent_type"] == "implementer"
+            assert payload["agent_display_name"] == "implementer"
             assert payload["agent_name"] == "implementer"
             assert payload["thin_client"] is True
 
@@ -198,7 +198,7 @@ class TestAgentCardRealTimeBroadcasting:
             "project_id": test_project_0111.id,
             "agent_id": agent_id,
             "job_id": agent_id,
-            "agent_type": "tester",
+            "agent_display_name": "tester",
             "agent_name": "QA Tester",
             "status": "pending",
             "thin_client": True,
@@ -219,7 +219,7 @@ class TestAgentCardRealTimeBroadcasting:
             assert len(client.messages_sent) == 1
             message = client.messages_sent[0]
             assert message["type"] == "agent:created"
-            assert message["data"]["agent_type"] == "tester"
+            assert message["data"]["agent_display_name"] == "tester"
             assert message["data"]["agent_name"] == "QA Tester"
             assert message["data"]["project_id"] == test_project_0111.id
             assert message["data"]["thin_client"] is True
@@ -255,7 +255,7 @@ class TestAgentCardRealTimeBroadcasting:
             data={
                 "project_id": test_project_0111.id,
                 "agent_id": str(uuid4()),
-                "agent_type": "architect",
+                "agent_display_name": "architect",
                 "agent_name": "System Architect",
                 "status": "pending",
             },
@@ -306,7 +306,7 @@ class TestAgentCardRealTimeBroadcasting:
             data={
                 "project_id": str(uuid4()),
                 "agent_id": str(uuid4()),
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Backend Implementer",
                 "status": "pending",
             },
@@ -346,7 +346,7 @@ class TestAgentCardRealTimeBroadcasting:
             result = await spawn_agent_job(
                 tenant_key=test_user_a.tenant_key,
                 project_id=test_project_0111.id,
-                agent_type="tester",
+                agent_display_name="tester",
                 agent_name="tester",
                 mission="Run integration tests",
                 session=db_session,
@@ -364,7 +364,7 @@ class TestAgentCardRealTimeBroadcasting:
             result_query = await db_session.execute(stmt)
             agent_job = result_query.scalar_one_or_none()
             assert agent_job is not None
-            assert agent_job.agent_type == "tester"
+            assert agent_job.agent_display_name == "tester"
             assert agent_job.status in {"waiting", "working", "complete", "failed", "cancelled", "decommissioned"}
 
     """
@@ -394,7 +394,7 @@ class TestAgentCardRealTimeBroadcasting:
             result = await spawn_agent_job(
                 tenant_key=test_user_a.tenant_key,
                 project_id=test_project_0111.id,
-                agent_type="analyzer",
+                agent_display_name="analyzer",
                 agent_name="analyzer",
                 mission="Analyze codebase",
                 session=db_session,
@@ -438,14 +438,14 @@ class TestAgentCardRealTimeBroadcasting:
             ("tester", "QA Tester"),
         ]
 
-        for agent_type, agent_name in agents:
+        for agent_display_name, agent_name in agents:
             await ws_dep.broadcast_to_tenant(
                 tenant_key=test_user_a.tenant_key,
                 event_type="agent:created",
                 data={
                     "project_id": test_project_0111.id,
                     "agent_id": str(uuid4()),
-                    "agent_type": agent_type,
+                    "agent_display_name": agent_type,
                     "agent_name": agent_name,
                     "status": "pending",
                 },
@@ -455,9 +455,9 @@ class TestAgentCardRealTimeBroadcasting:
         assert len(client.messages_sent) == 3
 
         # Assert: Events are in order
-        assert client.messages_sent[0]["data"]["agent_type"] == "architect"
-        assert client.messages_sent[1]["data"]["agent_type"] == "implementer"
-        assert client.messages_sent[2]["data"]["agent_type"] == "tester"
+        assert client.messages_sent[0]["data"]["agent_display_name"] == "architect"
+        assert client.messages_sent[1]["data"]["agent_display_name"] == "implementer"
+        assert client.messages_sent[2]["data"]["agent_display_name"] == "tester"
 
         # Assert: All events have correct structure
         for message in client.messages_sent:

@@ -81,7 +81,7 @@ class TestIndexPerformance:
             job = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
-                agent_type=f"worker_{i}",
+                agent_display_name=f"worker_{i}",
                 mission=f"Test mission {i}",
                 status="working",
                 last_progress_at=now - timedelta(hours=i)
@@ -130,7 +130,7 @@ class TestIndexPerformance:
             job = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
-                agent_type=f"worker_{i}",
+                agent_display_name=f"worker_{i}",
                 mission=f"Test mission {i}",
                 status="working",
                 health_status=health_status
@@ -179,7 +179,7 @@ class TestIndexPerformance:
                 job = AgentExecution(
                     tenant_key=tenant_key,
                     project_id=project_id,
-                    agent_type=f"worker_{i}_{j}",
+                    agent_display_name=f"worker_{i}_{j}",
                     mission=f"Test mission {i}_{j}",
                     status=status,
                     last_progress_at=now - timedelta(hours=i * 2 + j)

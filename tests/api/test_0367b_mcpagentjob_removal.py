@@ -91,7 +91,7 @@ async def test_agent_execution_0367b(
         agent_id=str(uuid.uuid4()),
         job_id=test_agent_job_0367b.job_id,
         tenant_key=test_tenant_0367b,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         instance_number=1,
         status="working",
@@ -377,7 +377,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_execution_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Implementor #1",
             instance_number=1,
             status="complete",
@@ -390,7 +390,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_execution_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="Tester #1",
             instance_number=1,
             status="waiting",
@@ -442,7 +442,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_job_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
             instance_number=1,
             status="working",
@@ -455,7 +455,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_job_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="architect",
+            agent_display_name="architect",
             agent_name="Architect #1",
             instance_number=1,
             status="complete",
@@ -489,7 +489,7 @@ class TestStatisticsEndpointBehavior:
         Verifies:
         - Queries AgentExecution (not MCPAgentJob)
         - Returns agent_id as primary identifier
-        - Maps agent_type and agent_name from AgentExecution
+        - Maps agent_display_name and agent_name from AgentExecution
         - Status filtering works with AgentExecution statuses
         """
         # Create test executions
@@ -497,7 +497,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_job_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
             instance_number=1,
             status="working",
@@ -510,7 +510,7 @@ class TestStatisticsEndpointBehavior:
             agent_id=str(uuid.uuid4()),
             job_id=test_agent_job_0367b.job_id,
             tenant_key=test_tenant_0367b,
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Implementor #1",
             instance_number=1,
             status="waiting",
@@ -539,8 +539,8 @@ class TestStatisticsEndpointBehavior:
 
         assert len(working_list) == 1, "Should find 1 working agent"
         assert len(waiting_list) == 1, "Should find 1 waiting agent"
-        assert working_list[0].agent_type == "orchestrator"
-        assert waiting_list[0].agent_type == "implementor"
+        assert working_list[0].agent_display_name == "orchestrator"
+        assert waiting_list[0].agent_display_name == "implementor"
 
     @pytest.mark.asyncio
     async def test_agent_stats_status_filter_mapping(
@@ -564,7 +564,7 @@ class TestStatisticsEndpointBehavior:
                 agent_id=str(uuid.uuid4()),
                 job_id=test_agent_job_0367b.job_id,
                 tenant_key=test_tenant_0367b,
-                agent_type="test-agent",
+                agent_display_name="test-agent",
                 agent_name=f"Agent {status}",
                 instance_number=1,
                 status=status,

@@ -58,7 +58,7 @@ def mock_agent_job():
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="implementer-1",
         mission="Implement the user authentication module with JWT tokens.",
         status="waiting",
@@ -233,7 +233,7 @@ class TestGetAgentMissionFullProtocol:
         assert response.get("success") is True
         assert "job_id" in response
         assert "agent_name" in response
-        assert "agent_type" in response
+        assert "agent_display_name" in response
         assert "mission" in response
         assert "project_id" in response
         assert "estimated_tokens" in response

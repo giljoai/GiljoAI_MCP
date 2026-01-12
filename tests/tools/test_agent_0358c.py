@@ -141,7 +141,7 @@ async def test_agent_execution(db_session, tenant_key, test_agent_job):
         agent_id=str(uuid4()),
         job_id=test_agent_job.job_id,
         tenant_key=tenant_key,
-        agent_type="backend-implementor",
+        agent_display_name="backend-implementor",
         instance_number=1,
         status="waiting",
         agent_name="Backend Implementor #1",
@@ -272,7 +272,7 @@ async def test_ensure_agent_creates_both_models(db_session, tenant_key, test_pro
 
     assert agent_execution is not None, "AgentExecution should be created in database"
     assert agent_execution.job_id == result["job_id"], "AgentExecution should reference parent job"
-    assert agent_execution.agent_type == "backend-implementor", "AgentExecution.agent_type should match"
+    assert agent_execution.agent_display_name == "backend-implementor", "AgentExecution.agent_display_name should match"
     assert agent_execution.instance_number == 1, "First execution should have instance_number=1"
     assert agent_execution.status == "waiting", "AgentExecution.status should be 'waiting'"
 
@@ -468,7 +468,7 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
         agent_id=str(uuid4()),
         job_id=test_agent_job.job_id,  # SAME job (work order)
         tenant_key=tenant_key,
-        agent_type="backend-implementor",
+        agent_display_name="backend-implementor",
         instance_number=2,
         status="waiting",
         agent_name="backend-implementor #2",

@@ -167,10 +167,10 @@ class AgentExecution(Base):
     tenant_key = Column(String(50), nullable=False, index=True)
 
     # Executor identity
-    agent_type = Column(
+    agent_display_name = Column(
         String(100),
         nullable=False,
-        comment="Agent type: orchestrator, analyzer, implementer, tester, etc.",
+        comment="Human-readable display name for UI",
     )
     instance_number = Column(
         Integer,
@@ -338,7 +338,7 @@ class AgentExecution(Base):
     def __repr__(self):
         return (
             f"<AgentExecution(agent_id={self.agent_id}, job_id={self.job_id}, "
-            f"agent_type={self.agent_type}, status={self.status}, instance={self.instance_number})>"
+            f"agent_display_name={self.agent_display_name}, status={self.status}, instance={self.instance_number})>"
         )
 
 

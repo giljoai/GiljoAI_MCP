@@ -40,7 +40,7 @@ def test_status_transition_to_working_sets_mission_acknowledged_at(db_session, d
     # Create job in 'waiting' status
     job = manager.create_job(
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission",
     )
 
@@ -67,7 +67,7 @@ def test_mission_acknowledged_at_only_set_once(db_session, db_manager):
     # Create and transition to working
     job = manager.create_job(
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission",
     )
 
@@ -104,7 +104,7 @@ def test_other_status_transitions_dont_set_mission_acknowledged_at(db_session, d
 
     job = manager.create_job(
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission",
     )
 

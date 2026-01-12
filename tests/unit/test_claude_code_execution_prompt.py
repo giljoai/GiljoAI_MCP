@@ -37,14 +37,14 @@ class TestClaudeCodeExecutionPrompt:
         """Mock agent jobs list."""
         job1 = Mock()
         job1.job_id = "job-abc-123"
-        job1.agent_type = "implementer"  # CRITICAL: This field must be present
+        job1.agent_display_name = "implementer"  # CRITICAL: This field must be present
         job1.agent_name = "Folder Structure Implementer"
         job1.status = "waiting"
         job1.mission = "Create project folder structure with src/, tests/, docs/ directories"
 
         job2 = Mock()
         job2.job_id = "job-def-456"
-        job2.agent_type = "tester"
+        job2.agent_display_name = "tester"
         job2.agent_name = "Unit Test Developer"
         job2.status = "waiting"
         job2.mission = "Write comprehensive unit tests for folder structure validator"
@@ -231,7 +231,7 @@ class TestClaudeCodeExecutionPrompt:
         assert "WARNING" in prompt or "Warning" in prompt, "Missing warning language"
 
         # Naming conventions
-        assert "agent_type" in prompt, "Missing agent_type naming reference"
+        assert "agent_display_name" in prompt, "Missing agent_type naming reference"
         assert "agent_name" in prompt or "agent name" in prompt.lower(), "Missing agent_name distinction"
 
         # MCP communication
@@ -310,7 +310,7 @@ class TestClaudeCodeExecutionPrompt:
         """
         job = Mock()
         job.job_id = "job-123"
-        job.agent_type = "implementer"
+        job.agent_display_name = "implementer"
         job.agent_name = "Test Agent"
         job.status = "waiting"
         job.mission = "A" * 500  # Very long mission

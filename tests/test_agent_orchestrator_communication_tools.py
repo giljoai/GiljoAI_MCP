@@ -60,7 +60,7 @@ def test_job(db_session, job_manager):
     # Create job
     job = job_manager.create_job(
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Build authentication module with TDD",
     )
 
@@ -219,13 +219,13 @@ class TestCheckOrchestratorMessages:
         # Create jobs for different tenants
         job1 = job_manager.create_job(
             tenant_key=tenant1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 task",
         )
 
         job2 = job_manager.create_job(
             tenant_key=tenant2,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 task",
         )
 
@@ -444,7 +444,7 @@ class TestAcknowledgeMessage:
         # Create job for tenant 1
         job1 = job_manager.create_job(
             tenant_key=tenant1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 task",
         )
 
@@ -623,7 +623,7 @@ class TestReportStatus:
         # Create job for tenant 1
         job1 = job_manager.create_job(
             tenant_key=tenant1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 task",
         )
 

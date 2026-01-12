@@ -894,8 +894,8 @@ class TestProjectStatus:
         assert "orchestrator" in data
         orch = data["orchestrator"]
         assert "job_id" in orch
-        assert "agent_type" in orch
-        assert orch["agent_type"] == "orchestrator"
+        assert "agent_display_name" in orch
+        assert orch["agent_display_name"] == "orchestrator"
 
     @pytest.mark.asyncio
     async def test_get_project_orchestrator_not_found(

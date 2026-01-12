@@ -248,7 +248,7 @@ class TestProjectSoftDelete:
         agent = AgentExecution(
             tenant_key=test_tenant_key,
             project_id=project.id,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test mission",
         )
         task = Task(title="Test Task", tenant_key=test_tenant_key, product_id=test_product.id, project_id=project.id)

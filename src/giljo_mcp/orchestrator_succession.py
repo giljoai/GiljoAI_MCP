@@ -205,7 +205,7 @@ class OrchestratorSuccessionManager:
             agent_id=str(uuid4()),  # New executor ID
             job_id=current_execution.job_id,  # SAME work order
             tenant_key=self.tenant_key,
-            agent_type=current_execution.agent_type,
+            agent_display_name=current_execution.agent_display_name,
             instance_number=current_execution.instance_number + 1,
             status="waiting",  # Manual launch required
             spawned_by=current_execution.agent_id,  # Points to agent, not job
@@ -440,7 +440,7 @@ class OrchestratorSuccessionManager:
                 active_agents.append(
                     {
                         "job_id": msg.get("agent_id"),
-                        "type": msg.get("agent_type", "unknown"),
+                        "type": msg.get("agent_display_name", "unknown"),
                         "status": msg.get("status", "unknown"),
                     }
                 )

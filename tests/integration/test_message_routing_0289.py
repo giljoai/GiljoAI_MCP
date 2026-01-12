@@ -211,12 +211,12 @@ async def test_broadcast_message_emits_websocket_event(
             job_id=str(uuid4()),
             tenant_key=test_tenant_a,
             project_id=str(test_project_a.id),
-            agent_type=agent_type,
-            mission=f"Test mission for {agent_type}",
+            agent_display_name=agent_type,
+            mission=f"Test mission for {agent_display_name}",
             status="working",  # Valid status: waiting, working, blocked, complete, failed, cancelled, decommissioned
             created_at=datetime.now(timezone.utc),
         )
-        for agent_type in ["implementer", "tester", "analyzer"]
+        for agent_display_name in ["implementer", "tester", "analyzer"]
     ]
 
     for job in agent_jobs:

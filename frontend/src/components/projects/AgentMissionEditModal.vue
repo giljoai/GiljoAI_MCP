@@ -4,7 +4,7 @@
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" :color="agentColor">mdi-pencil</v-icon>
-        Edit {{ agent?.agent_type || 'Agent' }} Mission
+        Edit {{ agent?.agent_display_name || 'Agent' }} Mission
         <v-spacer />
         <div class="d-flex flex-column align-end mr-2">
           <v-chip size="small" variant="outlined">

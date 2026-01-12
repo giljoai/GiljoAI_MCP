@@ -32,7 +32,7 @@ class TestMetadataMigration:
         """Verify job_metadata defaults to empty JSON object."""
         # Create a minimal job without job_metadata
         job = AgentExecution(
-            tenant_key="test-tenant", project_id="test-project", agent_type="orchestrator", mission="test mission"
+            tenant_key="test-tenant", project_id="test-project", agent_display_name="orchestrator", mission="test mission"
         )
 
         db_session.add(job)
@@ -84,7 +84,7 @@ class TestMetadataFunctionality:
         job = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="test mission",
             job_metadata=job_metadata,
         )
@@ -104,7 +104,7 @@ class TestMetadataFunctionality:
         job1 = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project-1",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="mission 1",
             job_metadata={"tool": "claude-code", "created_via": "thin_client"},
         )
@@ -112,7 +112,7 @@ class TestMetadataFunctionality:
         job2 = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project-2",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="mission 2",
             job_metadata={"tool": "codex", "created_via": "thin_client"},
         )
@@ -131,7 +131,7 @@ class TestMetadataFunctionality:
         job = AgentExecution(
             tenant_key="test-tenant",
             project_id="test-project",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="test mission",
             job_metadata={"tool": "universal", "version": 1},
         )
@@ -158,7 +158,7 @@ class TestMultiTenantIsolation:
         job1 = AgentExecution(
             tenant_key="tenant-1",
             project_id="proj-1",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="mission 1",
             job_metadata={"secret": "tenant-1-secret", "field_priorities": {"vision": 10}},
         )
@@ -166,7 +166,7 @@ class TestMultiTenantIsolation:
         job2 = AgentExecution(
             tenant_key="tenant-2",
             project_id="proj-2",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="mission 2",
             job_metadata={"secret": "tenant-2-secret", "field_priorities": {"architecture": 8}},
         )
@@ -194,7 +194,7 @@ class TestMultiTenantIsolation:
             AgentExecution(
                 tenant_key=f"tenant-{i}",
                 project_id=f"proj-{i}",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission=f"mission {i}",
                 job_metadata={"tenant_id": f"tenant-{i}", "sequence": i},
             )
@@ -270,7 +270,7 @@ class TestDataMigration:
             conn.execute(
                 text("""
                 INSERT INTO mcp_agent_jobs (
-                    tenant_key, project_id, job_id, agent_type, mission,
+                    tenant_key, project_id, job_id, agent_display_name, mission,
                     handover_summary, job_metadata
                 )
                 VALUES (
@@ -332,7 +332,7 @@ class TestDataMigration:
             conn.execute(
                 text("""
                 INSERT INTO mcp_agent_jobs (
-                    tenant_key, project_id, job_id, agent_type, mission,
+                    tenant_key, project_id, job_id, agent_display_name, mission,
                     handover_summary, job_metadata
                 )
                 VALUES (

@@ -42,7 +42,7 @@ class TestJobPersistenceAcrossSuccession:
             agent_id="agent-001",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="complete",
             started_at=datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
@@ -56,7 +56,7 @@ class TestJobPersistenceAcrossSuccession:
             agent_id="agent-002",
             job_id=job.job_id,  # SAME job
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
@@ -97,7 +97,7 @@ class TestJobPersistenceAcrossSuccession:
                 agent_id=f"agent-{i:03d}",
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 instance_number=i,
                 status="complete" if i < 5 else "working",
                 spawned_by=prev_agent_id
@@ -147,7 +147,7 @@ class TestMissionDataNormalization:
                 agent_id=f"agent-norm-{i}",
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 instance_number=i,
                 status="complete" if i < 3 else "working"
             )
@@ -188,7 +188,7 @@ class TestMessageRoutingSemantics:
             agent_id="agent-sender",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working"
         )
@@ -196,7 +196,7 @@ class TestMessageRoutingSemantics:
             agent_id="agent-receiver",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             instance_number=1,
             status="working"
         )
@@ -245,7 +245,7 @@ class TestMessageRoutingSemantics:
             agent_id="agent-iso-001",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="complete",
             messages=[
@@ -260,7 +260,7 @@ class TestMessageRoutingSemantics:
             agent_id="agent-iso-002",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
@@ -304,7 +304,7 @@ class TestSuccessionChainIntegrity:
             agent_id="agent-chain-1",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="complete"
         )
@@ -315,7 +315,7 @@ class TestSuccessionChainIntegrity:
             agent_id="agent-chain-2",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=2,
             status="complete",
             spawned_by=exec1.agent_id
@@ -328,7 +328,7 @@ class TestSuccessionChainIntegrity:
             agent_id="agent-chain-3",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=3,
             status="working",
             spawned_by=exec2.agent_id
@@ -372,7 +372,7 @@ class TestSuccessionChainIntegrity:
                 agent_id=f"agent-history-{i}",
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 instance_number=i,
                 status="complete" if i < 4 else "working"
             )
@@ -412,7 +412,7 @@ class TestJobStatusTransitions:
             agent_id="agent-final",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working"
         )
@@ -461,7 +461,7 @@ class TestIndexPerformance:
                 agent_id=f"agent-idx-{i}",
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 instance_number=i,
                 status="complete"
             )
@@ -494,7 +494,7 @@ class TestIndexPerformance:
                 agent_id=f"agent-comp-{i}",
                 job_id=job.job_id,
                 tenant_key="tenant-xyz",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 instance_number=i,
                 status="complete"
             )

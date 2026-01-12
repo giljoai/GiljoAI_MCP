@@ -194,7 +194,7 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
     cc_indicators = [
         "Claude Code CLI",
         "Task tool",
-        "agent_type",
+        "agent_display_name",
         "get_agent_mission"
     ]
 

@@ -18,7 +18,7 @@ async def test_agent_job_has_mission_acknowledged_at_field_defaults_none(db_sess
     job = AgentExecution(
         job_id="test-job-001",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission",
         status="waiting",
@@ -39,7 +39,7 @@ async def test_agent_job_has_mission_acknowledged_at_field(db_session: AsyncSess
     job = AgentExecution(
         job_id="test-job-002",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission for handover 0233",
         status="waiting",
@@ -61,7 +61,7 @@ async def test_agent_job_can_update_mission_acknowledged_at(db_session: AsyncSes
     job = AgentExecution(
         job_id="test-job-003",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission",
         status="waiting",
@@ -94,7 +94,7 @@ async def test_agent_job_can_set_mission_acknowledged_at_timestamp(db_session: A
     job = AgentExecution(
         job_id="test-job-004",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission for handover 0233",
         status="waiting",
@@ -119,7 +119,7 @@ async def test_agent_job_mission_acknowledged_at_independent_of_status(db_sessio
     job = AgentExecution(
         job_id="test-job-005",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission",
         status="waiting",  # Still waiting
@@ -143,7 +143,7 @@ async def test_agent_job_mission_acknowledged_at_persists_across_sessions(db_ses
     job = AgentExecution(
         job_id="test-job-006",
         tenant_key="test-tenant",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
         mission="Test mission",
         status="working",

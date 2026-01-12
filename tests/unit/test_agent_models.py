@@ -280,7 +280,7 @@ class TestMCPAgentJob:
         """Test creating agent job with all fields."""
         agent_job = AgentExecution(
             tenant_key="test-tenant",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Coordinate development project tasks",
             status="waiting",
             spawned_by="parent-agent-id",
@@ -298,7 +298,7 @@ class TestMCPAgentJob:
         assert agent_job.id is not None
         assert agent_job.job_id is not None
         assert agent_job.tenant_key == "test-tenant"
-        assert agent_job.agent_type == "orchestrator"
+        assert agent_job.agent_display_name == "orchestrator"
         assert agent_job.mission == "Coordinate development project tasks"
         assert agent_job.status == "pending"
         assert agent_job.spawned_by == "parent-agent-id"
@@ -311,7 +311,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_status_workflow(self, db_session):
         """Test job status transitions."""
         agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze codebase structure", status="waiting"
+            tenant_key="test-tenant", agent_display_name="analyzer", mission="Analyze codebase structure", status="waiting"
         )
 
         db_session.add(agent_job)
@@ -344,12 +344,12 @@ class TestMCPAgentJob:
         """Test tenant isolation in agent jobs."""
         # Create job for tenant A
         job_a = AgentExecution(
-            tenant_key="tenant-a", agent_type="implementer", mission="Implement feature for tenant A", status="waiting"
+            tenant_key="tenant-a", agent_display_name="implementer", mission="Implement feature for tenant A", status="waiting"
         )
 
         # Create job for tenant B
         job_b = AgentExecution(
-            tenant_key="tenant-b", agent_type="tester", mission="Test feature for tenant B", status="active"
+            tenant_key="tenant-b", agent_display_name="tester", mission="Test feature for tenant B", status="active"
         )
 
         db_session.add_all([job_a, job_b])
@@ -359,20 +359,20 @@ class TestMCPAgentJob:
         tenant_a_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-a").all()
 
         assert len(tenant_a_jobs) == 1
-        assert tenant_a_jobs[0].agent_type == "implementer"
+        assert tenant_a_jobs[0].agent_display_name == "implementer"
         assert tenant_a_jobs[0].mission.endswith("tenant A")
 
         # Query for tenant B only
         tenant_b_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-b").all()
 
         assert len(tenant_b_jobs) == 1
-        assert tenant_b_jobs[0].agent_type == "tester"
+        assert tenant_b_jobs[0].agent_display_name == "tester"
         assert tenant_b_jobs[0].mission.endswith("tenant B")
 
     def test_mcp_agent_job_message_array(self, db_session):
         """Test agent job message array functionality."""
         agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_type="orchestrator", mission="Test message handling", status="active"
+            tenant_key="test-tenant", agent_display_name="orchestrator", mission="Test message handling", status="active"
         )
 
         db_session.add(agent_job)
@@ -400,7 +400,7 @@ class TestMCPAgentJob:
     def test_mcp_agent_job_context_chunks_array(self, db_session):
         """Test agent job context chunks array functionality."""
         agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_type="analyzer", mission="Analyze with context", status="waiting"
+            tenant_key="test-tenant", agent_display_name="analyzer", mission="Analyze with context", status="waiting"
         )
 
         db_session.add(agent_job)

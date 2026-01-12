@@ -19,8 +19,8 @@
         <!-- Agent Info Section (non-orchestrator) -->
         <div v-if="!isOrchestrator" class="mb-4">
           <div class="d-flex align-center gap-2 mb-2">
-            <v-chip size="small" :color="getAgentTypeColor(agent.agent_type)" label>
-              {{ agent.agent_type }}
+            <v-chip size="small" :color="getAgentDisplayNameColor(agent.agent_display_name)" label>
+              {{ agent.agent_display_name }}
             </v-chip>
             <span class="text-caption text-medium-emphasis">ID: {{ agent.id }}</span>
           </div>
@@ -310,7 +310,7 @@ const isOpen = computed({
 })
 
 const isOrchestrator = computed(() => {
-  return props.agent?.agent_type === 'orchestrator'
+  return props.agent?.agent_display_name === 'orchestrator'
 })
 
 // Methods
@@ -321,7 +321,7 @@ const handleClose = () => {
 /**
  * Get agent avatar color - matches BRANDING_GUIDE.md (Handover 0358)
  */
-const getAgentTypeColor = (agentType) => {
+const getAgentDisplayNameColor = (displayName) => {
   const colors = {
     orchestrator: '#D4A574', // Tan/Beige - Project coordination
     analyzer: '#E74C3C', // Red - Analysis & research
@@ -332,7 +332,7 @@ const getAgentTypeColor = (agentType) => {
     documenter: '#27AE60', // Green - Documentation
     researcher: '#27AE60', // Green - Research (alias)
   }
-  return colors[agentType] || 'grey'
+  return colors[displayName] || 'grey'
 }
 
 /**
@@ -350,12 +350,12 @@ const getCliToolIcon = (cliTool) => {
 }
 
 const fetchTemplateData = async () => {
-  // Handover 0358: Support fetching by template_id OR agent_type/agent_name
+  // Handover 0358: Support fetching by template_id OR agent_display_name/agent_name
   const hasTemplateId = !!props.agent?.template_id
-  const agentType = props.agent?.agent_type
+  const displayName = props.agent?.agent_display_name
   const agentName = props.agent?.agent_name
 
-  if (!hasTemplateId && !agentType && !agentName) {
+  if (!hasTemplateId && !displayName && !agentName) {
     error.value = null
     return
   }
@@ -374,11 +374,11 @@ const fetchTemplateData = async () => {
       const response = await apiClient.templates.list({ is_active: true })
       const templates = Array.isArray(response.data) ? response.data : (response.data?.templates || [])
 
-      console.log('[AgentDetailsModal] Searching for template matching:', { agentType, agentName })
+      console.log('[AgentDetailsModal] Searching for template matching:', { displayName, agentName })
       console.log('[AgentDetailsModal] Available templates:', templates.map(t => t.name))
 
       // Find matching template by name (case-insensitive)
-      const searchTerms = [agentType, agentName].filter(Boolean).map(s => s.toLowerCase())
+      const searchTerms = [displayName, agentName].filter(Boolean).map(s => s.toLowerCase())
       const match = templates.find(t => {
         const templateName = (t.name || '').toLowerCase()
         const templateRole = (t.role || '').toLowerCase()
@@ -445,7 +445,7 @@ watch(
       if (isOrchestrator.value) {
         fetchOrchestratorPrompt()
       } else {
-        // Handover 0358: Fetch template by template_id OR agent_type/agent_name
+        // Handover 0358: Fetch template by template_id OR agent_display_name/agent_name
         fetchTemplateData()
       }
     }

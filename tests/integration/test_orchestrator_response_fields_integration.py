@@ -48,7 +48,7 @@ async def test_new_fields_in_real_response():
         # Create orchestrator job
         orchestrator = AgentExecution(
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Test Orchestrator",
             status="pending",
             project_id=project.id,
@@ -92,7 +92,7 @@ async def test_new_fields_in_real_response():
     assert "agent_launching" in result["multi_terminal_mode_rules"]
 
     # Verify error_handling structure
-    assert "invalid_agent_type" in result["error_handling"]
+    assert "invalid_agent_display_name" in result["error_handling"]
     assert "spawn_failure" in result["error_handling"]
     assert "mcp_connection_lost" in result["error_handling"]
 
@@ -141,7 +141,7 @@ async def test_cli_mode_excludes_multi_terminal_rules():
         # Create orchestrator job
         orchestrator = AgentExecution(
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Test Orchestrator CLI",
             status="pending",
             project_id=project.id,

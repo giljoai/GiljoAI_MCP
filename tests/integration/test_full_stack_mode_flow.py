@@ -129,7 +129,7 @@ class TestFullStackModeFlow:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test mission for full stack flow",
             job_metadata={
@@ -238,7 +238,7 @@ class TestFullStackModeFlow:
         orchestrator_cc = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test Claude Code mode",
             job_metadata={
@@ -275,7 +275,7 @@ class TestFullStackModeFlow:
         orchestrator_mt = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test Multi-Terminal mode",
             job_metadata={
@@ -339,7 +339,7 @@ class TestFullStackModeFlow:
             orchestrator = AgentExecution(
                 project_id=test_project.id,
                 tenant_key=test_tenant,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 status="waiting",
                 mission=f"Test {mode} mode",
                 job_metadata={

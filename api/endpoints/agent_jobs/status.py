@@ -44,7 +44,7 @@ def job_to_response(job: dict) -> JobResponse:
         agent_id=job.get("agent_id"),  # Handover 0401: Executor UUID for WebSocket event matching
         tenant_key=job["tenant_key"],
         project_id=job.get("project_id"),
-        agent_type=job["agent_type"],
+        agent_display_name=job["agent_type"],
         agent_name=job.get("agent_name"),
         mission=job["mission"],
         status=job["status"],
@@ -66,7 +66,7 @@ def job_to_response(job: dict) -> JobResponse:
 async def list_jobs(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
     status: Optional[str] = Query(None, description="Filter by status (waiting, active, completed, failed)"),
-    agent_type: Optional[str] = Query(None, description="Filter by agent type (orchestrator, implementer, etc.)"),
+    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name (orchestrator, implementer, etc.)"),
     limit: int = Query(100, ge=1, le=500, description="Maximum results (default 100, max 500)"),
     offset: int = Query(0, ge=0, description="Pagination offset (default 0)"),
     current_user: User = Depends(get_current_active_user),
@@ -83,7 +83,7 @@ async def list_jobs(
     Args:
         project_id: Filter by project UUID (optional)
         status: Filter by job status (optional)
-        agent_type: Filter by agent type (optional)
+        agent_display_name: Filter by agent display name (optional)
         limit: Maximum results (default 100)
         offset: Pagination offset (default 0)
         current_user: Authenticated user (from dependency)
@@ -100,7 +100,7 @@ async def list_jobs(
     """
     logger.debug(
         f"User {current_user.username} listing jobs "
-        f"(project={project_id}, status={status}, type={agent_type}, "
+        f"(project={project_id}, status={status}, type={agent_display_name}, "
         f"limit={limit}, offset={offset})"
     )
 
@@ -108,7 +108,7 @@ async def list_jobs(
         tenant_key=current_user.tenant_key,
         project_id=project_id,
         status_filter=status,
-        agent_type=agent_type,
+        agent_display_name=agent_display_name,
         limit=limit,
         offset=offset,
     )
@@ -225,7 +225,7 @@ async def get_job(
         "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
         "job_id": result["job_id"],
         "tenant_key": current_user.tenant_key,
-        "agent_type": result.get("agent_type", "unknown"),
+        "agent_type": result.get("agent_display_name", "unknown"),
         "mission": result["mission"],
         "status": result["status"],
         "spawned_by": result.get("spawned_by"),

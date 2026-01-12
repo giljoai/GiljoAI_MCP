@@ -35,7 +35,7 @@ class SuccessionTestData:
             "job_id": str(uuid.uuid4()),  # UUID is exactly 36 chars, no prefix
             "tenant_key": tenant_key,
             "project_id": project_id,
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "mission": f"Orchestrate project development - Instance {instance_number}",
             "status": status,
             "instance_number": instance_number,

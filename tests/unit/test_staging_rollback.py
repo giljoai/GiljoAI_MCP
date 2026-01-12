@@ -99,7 +99,7 @@ async def orchestrator_job(
         orchestrator = AgentExecution(
             tenant_key=tenant_key,
             project_id=test_project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Orchestrate project execution",
             status="active",
             instance_number=1,
@@ -130,7 +130,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type=f"implementer_{i}",
+                    agent_display_name=f"implementer_{i}",
                     mission=f"Implement feature {i}",
                     status="waiting",
                     spawned_by=orchestrator_job.job_id,
@@ -193,7 +193,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type=f"tester_{i}",
+                    agent_display_name=f"tester_{i}",
                     mission=f"Test feature {i}",
                     status="waiting",
                     spawned_by=orchestrator_job.job_id,
@@ -247,7 +247,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type="implementer_1",
+                    agent_display_name="implementer_1",
                     mission="Feature 1",
                     status="waiting",  # Deletable
                     spawned_by=orchestrator_job.job_id,
@@ -255,7 +255,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type="implementer_2",
+                    agent_display_name="implementer_2",
                     mission="Feature 2",
                     status="active",  # Protected (already launched)
                     spawned_by=orchestrator_job.job_id,
@@ -263,7 +263,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type="implementer_3",
+                    agent_display_name="implementer_3",
                     mission="Feature 3",
                     status="working",  # Protected (already launched)
                     spawned_by=orchestrator_job.job_id,
@@ -271,7 +271,7 @@ class TestStagingRollbackBasic:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type="implementer_4",
+                    agent_display_name="implementer_4",
                     mission="Feature 4",
                     status="preparing",  # Deletable
                     spawned_by=orchestrator_job.job_id,
@@ -410,7 +410,7 @@ class TestStagingRollbackSecurity:
                 AgentExecution(
                     tenant_key=tenant_key,  # Tenant A
                     project_id=test_project.id,
-                    agent_type=f"implementer_a_{i}",
+                    agent_display_name=f"implementer_a_{i}",
                     mission=f"Feature A{i}",
                     status="waiting",
                     spawned_by=orchestrator_job.job_id,
@@ -423,7 +423,7 @@ class TestStagingRollbackSecurity:
                 AgentExecution(
                     tenant_key=tenant_key_2,  # Tenant B (different tenant)
                     project_id=test_project.id,
-                    agent_type=f"implementer_b_{i}",
+                    agent_display_name=f"implementer_b_{i}",
                     mission=f"Feature B{i}",
                     status="waiting",
                     spawned_by=orchestrator_job.job_id,
@@ -589,7 +589,7 @@ class TestStagingRollbackEdgeCases:
             orch_1 = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=test_project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Instance 1 mission",
                 status="complete",
                 instance_number=1,
@@ -601,7 +601,7 @@ class TestStagingRollbackEdgeCases:
             orch_2 = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=test_project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Instance 2 mission",
                 status="active",
                 instance_number=2,
@@ -616,7 +616,7 @@ class TestStagingRollbackEdgeCases:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type=f"implementer_{i}",
+                    agent_display_name=f"implementer_{i}",
                     mission=f"Feature {i}",
                     status="waiting",
                     spawned_by=orch_2.job_id,  # Spawned by instance 2
@@ -670,7 +670,7 @@ class TestStagingRollbackEdgeCases:
                 AgentExecution(
                     tenant_key=tenant_key,
                     project_id=test_project.id,
-                    agent_type=f"tester_{i}",
+                    agent_display_name=f"tester_{i}",
                     mission=f"Test {i}",
                     status="waiting",
                     spawned_by=orchestrator_job.job_id,

@@ -119,12 +119,12 @@ export const EVENT_MAP = {
       agentsStore.handleHealthAlert?.(payload)
 
       const { showToast } = useToast()
-      const { health_state, agent_type, issue_description } = payload
+      const { health_state, agent_display_name, issue_description } = payload
 
       if (health_state === 'critical' || health_state === 'timeout') {
         showToast({
           title: 'Agent Health Alert',
-          message: `${agent_type} - ${issue_description}`,
+          message: `${agent_display_name} - ${issue_description}`,
           color: health_state === 'timeout' ? 'error' : 'warning',
           icon: health_state === 'timeout' ? 'mdi-clock-remove' : 'mdi-alert-circle',
           timeout: 8000,
@@ -135,11 +135,11 @@ export const EVENT_MAP = {
   'agent:auto_failed': {
     handler: async (payload) => {
       const { showToast } = useToast()
-      const { agent_type, reason } = payload
+      const { agent_display_name, reason } = payload
 
       showToast({
         title: 'Agent Auto-Failed',
-        message: `${agent_type} - ${reason}`,
+        message: `${agent_display_name} - ${reason}`,
         color: 'error',
         icon: 'mdi-robot-dead',
         timeout: 10000,

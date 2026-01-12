@@ -14,7 +14,7 @@ Example usage:
     ...     tenant_key="tenant-abc",
     ...     api_key="test-api-key",
     ...     api_url="http://localhost:7272/mcp",
-    ...     agent_type="implementer"
+    ...     agent_display_name="implementer"
     ... )
     >>> await simulator.run()  # Complete execution in 5-10 seconds
 """
@@ -43,7 +43,7 @@ class MockAgentSimulator:
         tenant_key: Tenant isolation key
         api_key: MCP API key for authentication
         api_url: MCP HTTP endpoint URL
-        agent_type: Type of agent (implementer, tester, reviewer, documenter)
+        agent_display_name: Type of agent (implementer, tester, reviewer, documenter)
     """
 
     def __init__(
@@ -52,7 +52,7 @@ class MockAgentSimulator:
         tenant_key: str,
         api_key: str,
         api_url: str = "http://localhost:7272/mcp",
-        agent_type: str = "implementer",
+        agent_display_name: str = "implementer",
     ):
         """
         Initialize mock agent simulator.
@@ -62,17 +62,17 @@ class MockAgentSimulator:
             tenant_key: Tenant isolation key
             api_key: MCP API key for authentication
             api_url: MCP HTTP endpoint URL (default: http://localhost:7272/mcp)
-            agent_type: Type of agent (default: implementer)
+            agent_display_name: Type of agent (default: implementer)
         """
         self.job_id = job_id
         self.tenant_key = tenant_key
         self.api_key = api_key
         self.api_url = api_url
-        self.agent_type = agent_type
+        self.agent_display_name = agent_type
 
         self._session: Optional[ClientSession] = None
         self._request_id: int = 0
-        self._logger = logging.getLogger(f"{__name__}.{agent_type}")
+        self._logger = logging.getLogger(f"{__name__}.{agent_display_name}")
 
     async def _get_session(self) -> ClientSession:
         """
@@ -147,7 +147,7 @@ class MockAgentSimulator:
                 if content and len(content) > 0:
                     text = content[0].get("text", "{}")
                     result = json.loads(text)
-                    self._logger.info(f"Mission fetched successfully: {result.get('agent_type', 'unknown')}")
+                    self._logger.info(f"Mission fetched successfully: {result.get('agent_display_name', 'unknown')}")
                     return result
 
             self._logger.warning(f"Invalid mission response format: {response}")
@@ -333,7 +333,7 @@ class MockAgentSimulator:
         Completes in <15 seconds for E2E testing.
         """
         try:
-            self._logger.info(f"Starting mock agent execution: {self.agent_type} (job: {self.job_id})")
+            self._logger.info(f"Starting mock agent execution: {self.agent_display_name} (job: {self.job_id})")
 
             # Phase 1: Fetch mission
             mission = await self.fetch_mission(self.job_id, self.tenant_key)
@@ -355,21 +355,21 @@ class MockAgentSimulator:
                 {
                     "phase": "completion",
                     "completion": 100,
-                    "details": f"Mock {self.agent_type} work completed successfully",
+                    "details": f"Mock {self.agent_display_name} work completed successfully",
                 }
             )
 
             # Phase 5: Complete job
             completion_result = {
                 "status": "success",
-                "summary": f"Mock {self.agent_type} completed simulation",
-                "agent_type": self.agent_type,
+                "summary": f"Mock {self.agent_display_name} completed simulation",
+                "agent_display_name": self.agent_display_name,
                 "duration_seconds": "5-10",
             }
 
             await self.complete_job(completion_result)
 
-            self._logger.info(f"Mock agent execution completed: {self.agent_type}")
+            self._logger.info(f"Mock agent execution completed: {self.agent_display_name}")
 
         except Exception as e:
             self._logger.error(f"Error during agent execution: {e}", exc_info=True)
@@ -381,7 +381,7 @@ class MockAgentSimulator:
 
 # Standalone execution helper for testing
 async def run_mock_agent(
-    job_id: str, tenant_key: str, api_key: str, agent_type: str = "implementer", api_url: str = "http://localhost:7272/mcp"
+    job_id: str, tenant_key: str, api_key: str, agent_display_name: str = "implementer", api_url: str = "http://localhost:7272/mcp"
 ) -> None:
     """
     Standalone function to run a mock agent.
@@ -390,7 +390,7 @@ async def run_mock_agent(
         job_id: Agent job UUID
         tenant_key: Tenant isolation key
         api_key: MCP API key
-        agent_type: Agent type (default: implementer)
+        agent_display_name: Agent display name (default: implementer)
         api_url: MCP endpoint URL (default: http://localhost:7272/mcp)
 
     Example:
@@ -398,11 +398,11 @@ async def run_mock_agent(
         ...     job_id="job-123",
         ...     tenant_key="tenant-abc",
         ...     api_key="test-key",
-        ...     agent_type="implementer"
+        ...     agent_display_name="implementer"
         ... )
     """
     simulator = MockAgentSimulator(
-        job_id=job_id, tenant_key=tenant_key, api_key=api_key, api_url=api_url, agent_type=agent_type
+        job_id=job_id, tenant_key=tenant_key, api_key=api_key, api_url=api_url, agent_display_name=agent_type
     )
 
     await simulator.run()

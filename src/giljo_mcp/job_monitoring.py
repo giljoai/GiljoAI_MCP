@@ -133,7 +133,7 @@ async def monitor_agent_health(
                                             "minutes_stale": minutes_stale,
                                             "last_progress_at": last_progress_iso,
                                             "current_status": execution.status,
-                                            "agent_type": execution.agent_type,
+                                            "agent_display_name": execution.agent_display_name,
                                             "agent_name": execution.agent_name,
                                             "timestamp": now.isoformat(),
                                         }
