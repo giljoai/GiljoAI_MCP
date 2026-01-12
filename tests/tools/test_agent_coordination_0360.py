@@ -185,7 +185,7 @@ async def test_get_team_agents_returns_active_teammates(
     for member in result["team"]:
         assert "agent_id" in member, "Each team member should have agent_id"
         assert "job_id" in member, "Each team member should have job_id"
-        assert "agent_display_name" in member, "Each team member should have agent_type"
+        assert "agent_display_name" in member, "Each team member should have agent_display_name"
         assert "status" in member, "Each team member should have status"
         assert member["job_id"] == test_job.job_id, "All members should belong to same job"
 

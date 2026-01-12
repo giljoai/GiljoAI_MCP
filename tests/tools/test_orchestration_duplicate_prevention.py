@@ -321,7 +321,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         agent_id=impl1_agent_id,
         job_id=impl1_job_id,
         tenant_key=tenant_key,
-        agent_display_name="worker",  # agent_type for categorization
+        agent_display_name="worker",  # agent_display_name for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)
         instance_number=1,
         status="working",
@@ -334,7 +334,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
     # Attempt to create second implementer (should succeed)
     # Handover 0351: Use template name in agent_name
     result = await spawn_agent_job(
-        agent_display_name="worker",  # agent_type for categorization
+        agent_display_name="worker",  # agent_display_name for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)
         mission="Second implementer mission",
         project_id=project_id,

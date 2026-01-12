@@ -133,7 +133,7 @@ class TestAgentTemplateDetailControl:
         """
         GIVEN 5 agent templates
         WHEN depth="minimal"
-        THEN return only name + agent_type fields (~400 tokens)
+        THEN return only name + agent_display_name fields (~400 tokens)
         """
         pass
 

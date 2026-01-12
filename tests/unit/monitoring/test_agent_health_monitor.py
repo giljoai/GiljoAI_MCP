@@ -31,7 +31,7 @@ class TestHealthCheckConfig:
         assert config.auto_fail_on_timeout is False
         assert config.notify_orchestrator is True
 
-    def test_agent_type_timeout_overrides(self):
+    def test_agent_display_name_timeout_overrides(self):
         """Test agent-type-specific timeout overrides."""
         config = HealthCheckConfig()
 
@@ -335,7 +335,7 @@ class TestAgentHealthMonitor:
 
             assert len(unhealthy) == 0
 
-    async def test_agent_type_specific_timeouts(self, monitor):
+    async def test_agent_display_name_specific_timeouts(self, monitor):
         """Test orchestrators get longer timeout than other agents."""
         from tests.conftest import get_test_session
 

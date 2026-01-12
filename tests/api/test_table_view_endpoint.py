@@ -647,8 +647,8 @@ async def test_sort_by_agent_display_name(async_client: AsyncClient, test_jobs_w
     rows = response.json()["rows"]
 
     # Verify reverse alphabetical sorting
-    agent_types = [row["agent_display_name"] for row in rows]
-    assert agent_types == sorted(agent_types, reverse=True), "Rows not sorted by agent_display_name descending"
+    agent_display_names = [row["agent_display_name"] for row in rows]
+    assert agent_display_names == sorted(agent_display_names, reverse=True), "Rows not sorted by agent_display_name descending"
 
 
 # ============================================================================

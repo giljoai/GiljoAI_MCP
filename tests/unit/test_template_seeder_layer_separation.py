@@ -45,7 +45,7 @@ class TestLayer3TemplateSeparation:
         ]
 
         # Check each template's content
-        for agent_type, template_def in templates.items():
+        for agent_display_name, template_def in templates.items():
             behavioral_rules = template_def.get("behavioral_rules", [])
             success_criteria = template_def.get("success_criteria", [])
 
@@ -56,7 +56,7 @@ class TestLayer3TemplateSeparation:
 
             for command in mcp_commands:
                 assert command not in combined_text.lower(), (
-                    f"Found MCP command '{command}' in {agent_type} template. "
+                    f"Found MCP command '{command}' in {agent_display_name} template. "
                     f"Layer 3 templates should focus on role expertise, not MCP protocol. "
                     f"MCP commands belong in Layer 2 (GenericAgentTemplate)."
                 )
@@ -66,10 +66,10 @@ class TestLayer3TemplateSeparation:
         templates = _get_template_metadata()
 
         # Each template should have role-specific behavioral rules
-        for agent_type, template_def in templates.items():
+        for agent_display_name, template_def in templates.items():
             behavioral_rules = template_def.get("behavioral_rules", [])
 
-            assert len(behavioral_rules) > 0, f"{agent_type} has no behavioral rules"
+            assert len(behavioral_rules) > 0, f"{agent_display_name} has no behavioral rules"
 
             # Rules should focus on "what to do" not "how to communicate"
             # Check for role-specific keywords (not exhaustive, just examples)
@@ -81,5 +81,5 @@ class TestLayer3TemplateSeparation:
 
             # Should have role-specific content
             assert protocol_count < len(behavioral_rules), (
-                f"{agent_type} template is too focused on protocol, not role expertise"
+                f"{agent_display_name} template is too focused on protocol, not role expertise"
             )

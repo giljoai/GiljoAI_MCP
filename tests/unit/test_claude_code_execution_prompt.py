@@ -5,7 +5,7 @@ Tests for _build_claude_code_execution_prompt() method in ThinClientPromptGenera
 Validates all 7 required sections per Handover 0337 Task 3.
 
 Handover: 0337 Task 3
-Priority: P0 (Critical blocker - agent_type field missing)
+Priority: P0 (Critical blocker - agent_display_name field missing)
 """
 
 import pytest
@@ -78,26 +78,26 @@ class TestClaudeCodeExecutionPrompt:
         assert "orch-789" in prompt, "Missing orchestrator ID"
         assert "test-tenant-123" in prompt, "Missing tenant key"
 
-    def test_section_2_agent_type_field_present(self, generator, mock_project, mock_agent_jobs):
+    def test_section_2_agent_display_name_field_present(self, generator, mock_project, mock_agent_jobs):
         """
         Section 2: Agent Jobs List (CRITICAL P0 BLOCKER)
 
-        MUST include agent_type field for each job:
+        MUST include agent_display_name field for each job:
         - Agent Type: `implementer` (matches .claude/agents/implementer.md)
         - Job ID: job-abc-123
         - Status: waiting
         - Mission Summary: ...
 
-        WITHOUT agent_type: Task tool cannot spawn agents (blocker)
+        WITHOUT agent_display_name: Task tool cannot spawn agents (blocker)
         """
         prompt = generator._build_claude_code_execution_prompt(
             orchestrator_id="orch-789", project=mock_project, agent_jobs=mock_agent_jobs
         )
 
-        # CRITICAL: agent_type field must be present
+        # CRITICAL: agent_display_name field must be present
         assert "Agent Type:" in prompt, "CRITICAL BLOCKER: Missing 'Agent Type:' field"
-        assert "`implementer`" in prompt, "Missing agent_type value for first job"
-        assert "`tester`" in prompt, "Missing agent_type value for second job"
+        assert "`implementer`" in prompt, "Missing agent_display_name value for first job"
+        assert "`tester`" in prompt, "Missing agent_display_name value for second job"
 
         # Template file reference
         assert ".claude/agents/" in prompt, "Missing .claude/agents/ template file reference"
@@ -113,27 +113,27 @@ class TestClaudeCodeExecutionPrompt:
         assert "Folder Structure Implementer" in prompt, "Missing agent_name for first job"
         assert "Unit Test Developer" in prompt, "Missing agent_name for second job"
 
-    def test_section_2_agent_type_vs_agent_name_distinction(self, generator, mock_project, mock_agent_jobs):
+    def test_section_2_agent_display_name_vs_agent_name_distinction(self, generator, mock_project, mock_agent_jobs):
         """
-        Section 2: Verify agent_type vs agent_name distinction is clear.
+        Section 2: Verify agent_display_name vs agent_name distinction is clear.
 
-        agent_type: Technical ID (e.g., "implementer") - matches .claude/agents/implementer.md
+        agent_display_name: Technical ID (e.g., "implementer") - matches .claude/agents/implementer.md
         agent_name: Display name (e.g., "Folder Structure Implementer")
 
-        Task tool requires agent_type, NOT agent_name.
+        Task tool requires agent_display_name, NOT agent_name.
         """
         prompt = generator._build_claude_code_execution_prompt(
             orchestrator_id="orch-789", project=mock_project, agent_jobs=mock_agent_jobs
         )
 
         # Both should be present but clearly distinguished
-        assert "Agent Type:" in prompt, "Missing agent_type field"
-        assert "implementer" in prompt, "Missing agent_type value"
+        assert "Agent Type:" in prompt, "Missing agent_display_name field"
+        assert "implementer" in prompt, "Missing agent_display_name value"
         assert "Folder Structure Implementer" in prompt, "Missing agent_name value"
 
-        # Should reference that agent_type matches template file
+        # Should reference that agent_display_name matches template file
         assert (
-            ".claude/agents/implementer.md" in prompt or ".claude/agents/{agent_type}.md" in prompt
+            ".claude/agents/implementer.md" in prompt or ".claude/agents/{agent_display_name}.md" in prompt
         ), "Missing template file naming convention reference"
 
     def test_section_3_task_tool_template_present(self, generator, mock_project, mock_agent_jobs):
@@ -215,8 +215,8 @@ class TestClaudeCodeExecutionPrompt:
         Section 6: CLI Mode Constraints (CRITICAL P0 BLOCKER)
 
         MUST include:
-        - Template file warnings (.claude/agents/{agent_type}.md)
-        - Exact naming requirements (agent_type vs agent_name)
+        - Template file warnings (.claude/agents/{agent_display_name}.md)
+        - Exact naming requirements (agent_display_name vs agent_name)
         - MCP communication constraints
         """
         prompt = generator._build_claude_code_execution_prompt(
@@ -231,7 +231,7 @@ class TestClaudeCodeExecutionPrompt:
         assert "WARNING" in prompt or "Warning" in prompt, "Missing warning language"
 
         # Naming conventions
-        assert "agent_display_name" in prompt, "Missing agent_type naming reference"
+        assert "agent_display_name" in prompt, "Missing agent_display_name naming reference"
         assert "agent_name" in prompt or "agent name" in prompt.lower(), "Missing agent_name distinction"
 
         # MCP communication
@@ -375,7 +375,7 @@ class TestClaudeCodeExecutionPrompt:
         Master test: Verify all P0 blockers are resolved.
 
         P0 Blockers (from Deep Researcher analysis):
-        1. agent_type field in Section 2
+        1. agent_display_name field in Section 2
         2. Section 1 (Context Recap)
         3. Section 3 (Task Tool Template)
         4. Section 6 (CLI Mode Constraints)
@@ -384,9 +384,9 @@ class TestClaudeCodeExecutionPrompt:
             orchestrator_id="orch-789", project=mock_project, agent_jobs=mock_agent_jobs
         )
 
-        # P0 Blocker #1: agent_type field
-        assert "Agent Type:" in prompt, "P0 BLOCKER #1: Missing agent_type field"
-        assert "`implementer`" in prompt, "P0 BLOCKER #1: Missing agent_type value"
+        # P0 Blocker #1: agent_display_name field
+        assert "Agent Type:" in prompt, "P0 BLOCKER #1: Missing agent_display_name field"
+        assert "`implementer`" in prompt, "P0 BLOCKER #1: Missing agent_display_name value"
 
         # P0 Blocker #2: Context Recap
         assert "Who You Are" in prompt, "P0 BLOCKER #2: Missing Context Recap section"

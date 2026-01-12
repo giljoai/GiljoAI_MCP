@@ -165,9 +165,9 @@ async def test_agent_jobs(db_session, test_project) -> list[tuple[AgentJob, Agen
     Or access jobs only: jobs = [job for job, _ in test_agent_jobs]
     """
     jobs_and_executions = []
-    agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
+    agent_display_names = ["orchestrator", "analyzer", "implementer", "tester"]
 
-    for agent_type in agent_types:
+    for agent_display_name in agent_display_names:
         # Create AgentJob (work order)
         job_data = TestData.generate_agent_job_data(test_project.id, test_project.tenant_key, agent_display_name)
         job = AgentJob(**job_data)

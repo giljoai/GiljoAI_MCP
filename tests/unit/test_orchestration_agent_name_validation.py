@@ -1,21 +1,21 @@
 """
 Unit tests for Handover 0351 - agent_name as Single Source of Truth.
 
-Tests that orchestrators receive agent NAME constraints (not agent_type) and that
+Tests that orchestrators receive agent NAME constraints (not agent_display_name) and that
 spawn_agent_job validates agent_name against available template names.
 
 HANDOVER 0351 CHANGES:
-- allowed_agent_types → allowed_agent_names in CLI constraints
-- Validation checks agent_name (not agent_type) against template names
+- allowed_agent_display_names → allowed_agent_names in CLI constraints
+- Validation checks agent_name (not agent_display_name) against template names
 - agent_name is now the SINGLE SOURCE OF TRUTH for template matching
 
 Test Coverage:
-1. CLI mode: Response includes allowed_agent_names (not allowed_agent_types)
+1. CLI mode: Response includes allowed_agent_names (not allowed_agent_display_names)
 2. Constraint structure validation (mode, allowed_agent_names, instruction)
 3. allowed_agent_names matches available template names
 4. spawn_agent_job accepts valid agent names
 5. spawn_agent_job rejects invalid/invented agent names with helpful error
-6. Error messages reference agent_name field (not agent_type)
+6. Error messages reference agent_name field (not agent_display_name)
 
 TDD PHASE: RED - These tests should FAIL initially.
 """
@@ -35,7 +35,7 @@ from tests.utils.tools_helpers import ToolsTestHelper, MockMCPToolRegistrar
 class TestOrchestratorInstructionsConstraintAgentName:
     """
     Phase 1: Test allowed_agent_names in get_orchestrator_instructions response
-    (replacing allowed_agent_types per Handover 0351)
+    (replacing allowed_agent_display_names per Handover 0351)
     """
 
     @pytest_asyncio.fixture(autouse=True)
@@ -122,7 +122,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
     async def test_cli_mode_includes_allowed_agent_names_not_types(self):
         """
         HANDOVER 0351: get_orchestrator_instructions in CLI mode MUST
-        include allowed_agent_names (NOT allowed_agent_types).
+        include allowed_agent_names (NOT allowed_agent_display_names).
 
         agent_name is the SINGLE SOURCE OF TRUTH for template matching.
         """
@@ -163,12 +163,12 @@ class TestOrchestratorInstructionsConstraintAgentName:
 
             # ASSERTION 2: allowed_agent_names is present (NEW)
             assert "allowed_agent_names" in constraint, (
-                "Handover 0351: Constraint must use allowed_agent_names (not allowed_agent_types)"
+                "Handover 0351: Constraint must use allowed_agent_names (not allowed_agent_display_names)"
             )
 
-            # ASSERTION 3: allowed_agent_types should NOT be present (OLD)
-            assert "allowed_agent_types" not in constraint, (
-                "Handover 0351: allowed_agent_types is DEPRECATED, must use allowed_agent_names"
+            # ASSERTION 3: allowed_agent_display_names should NOT be present (OLD)
+            assert "allowed_agent_display_names" not in constraint, (
+                "Handover 0351: allowed_agent_display_names is DEPRECATED, must use allowed_agent_names"
             )
 
             # ASSERTION 4: allowed_agent_names is a list
@@ -193,7 +193,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
     async def test_cli_mode_instruction_references_agent_name_field(self):
         """
         HANDOVER 0351: Instruction text must reference agent_name field
-        (not agent_type) as the validation field.
+        (not agent_display_name) as the validation field.
         """
         from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
@@ -226,8 +226,8 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 "Handover 0351: Instruction must reference agent_name field"
             )
 
-            # ASSERTION 2: Instruction should NOT mention agent_type as validation field
-            # (agent_type may be mentioned for other purposes, but not as the SSOT)
+            # ASSERTION 2: Instruction should NOT mention agent_display_name as validation field
+            # (agent_display_name may be mentioned for other purposes, but not as the SSOT)
             instruction_lower = instruction.lower()
             assert "agent_name parameter must" in instruction_lower or "agent_name must" in instruction_lower, (
                 f"Instruction should specify agent_name as the validated parameter. Got: {instruction}"
@@ -336,7 +336,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
 class TestSpawnAgentJobValidationAgentName:
     """
     Phase 2: Test spawn_agent_job agent_name validation against template names
-    (replacing agent_type validation per Handover 0351)
+    (replacing agent_display_name validation per Handover 0351)
     """
 
     @pytest_asyncio.fixture(autouse=True)
@@ -414,7 +414,7 @@ class TestSpawnAgentJobValidationAgentName:
 
         # Spawn agent with valid agent_name
         result = await spawn_agent_job(
-            agent_display_name="worker",  # agent_type is still used for job categorization
+            agent_display_name="worker",  # agent_display_name is still used for job categorization
             agent_name="implementer",  # SSOT: Must match template name
             mission="Implement feature X",
             project_id=str(self.project.id),
@@ -464,7 +464,7 @@ class TestSpawnAgentJobValidationAgentName:
         HANDOVER 0351: spawn_agent_job should REJECT invented agent names that don't
         match any active template name.
 
-        Error message must reference agent_name field (not agent_type).
+        Error message must reference agent_name field (not agent_display_name).
         """
         from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
@@ -486,7 +486,7 @@ class TestSpawnAgentJobValidationAgentName:
         # ASSERTION 2: Error message present
         assert "error" in result, "Rejected spawn must include error message"
 
-        # ASSERTION 3: Error mentions invalid agent_name (NOT agent_type)
+        # ASSERTION 3: Error mentions invalid agent_name (NOT agent_display_name)
         error_msg = result["error"]
         assert "Invalid agent_name" in error_msg or "agent_name" in error_msg.lower(), (
             f"Handover 0351: Error message should mention 'agent_name' field. Got: {error_msg}"
