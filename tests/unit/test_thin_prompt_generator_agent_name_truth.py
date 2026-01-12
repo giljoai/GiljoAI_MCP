@@ -1,12 +1,12 @@
 """
 Unit Tests for Agent Name Single Source of Truth - Handover 0351
 
-Tests that staging prompts reference agent_name (not agent_type) as the single source
+Tests that staging prompts reference agent_name (not agent_display_name) as the single source
 of truth for agent spawning in Claude Code CLI mode.
 
 Test Coverage (TDD - RED Phase):
 1. Staging prompt contains "agent_name: SINGLE SOURCE OF TRUTH"
-2. Staging prompt does NOT contain "agent_type: SINGLE SOURCE OF TRUTH"
+2. Staging prompt does NOT contain "agent_display_name: SINGLE SOURCE OF TRUTH"
 3. Task tool examples use agent_name for subagent_type parameter
 4. Prompt agent_name matches template filename reference
 5. Multi-terminal mode is unaffected (no changes)
@@ -132,15 +132,15 @@ class TestAgentNameSingleSourceOfTruth:
             "CLI mode prompt must declare 'agent_name: SINGLE SOURCE OF TRUTH'"
 
     @pytest.mark.asyncio
-    async def test_staging_prompt_does_not_declare_agent_type_as_truth(
+    async def test_staging_prompt_does_not_declare_agent_display_name_as_truth(
         self, generator, test_project
     ):
         """
-        BEHAVIOR: CLI mode staging prompt MUST NOT declare agent_type as SINGLE SOURCE OF TRUTH
+        BEHAVIOR: CLI mode staging prompt MUST NOT declare agent_display_name as SINGLE SOURCE OF TRUTH
 
         GIVEN: Claude Code CLI mode enabled
         WHEN: Generating staging prompt
-        THEN: Prompt does NOT contain "agent_type: SINGLE SOURCE OF TRUTH"
+        THEN: Prompt does NOT contain "agent_display_name: SINGLE SOURCE OF TRUTH"
         """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
@@ -148,12 +148,12 @@ class TestAgentNameSingleSourceOfTruth:
             claude_code_mode=True
         )
 
-        # MUST NOT declare agent_type as single source of truth
-        assert "agent_type: SINGLE SOURCE OF TRUTH" not in prompt, \
-            "CLI mode prompt must NOT declare 'agent_type: SINGLE SOURCE OF TRUTH'"
+        # MUST NOT declare agent_display_name as single source of truth
+        assert "agent_display_name: SINGLE SOURCE OF TRUTH" not in prompt, \
+            "CLI mode prompt must NOT declare 'agent_display_name: SINGLE SOURCE OF TRUTH'"
 
     @pytest.mark.asyncio
-    async def test_task_tool_example_uses_agent_name_for_subagent_type(
+    async def test_task_tool_example_uses_agent_name_for_subagent_display_name(
         self, generator, test_project
     ):
         """
@@ -174,15 +174,15 @@ class TestAgentNameSingleSourceOfTruth:
             "Staging prompt must state 'Task(subagent_display_name=X) uses agent_name value'"
 
     @pytest.mark.asyncio
-    async def test_task_tool_example_does_not_use_agent_type_for_subagent_type(
+    async def test_task_tool_example_does_not_use_agent_type_for_subagent_display_name(
         self, generator, test_project
     ):
         """
-        BEHAVIOR: Task tool examples in CLI mode MUST NOT use {agent_type} for subagent_type
+        BEHAVIOR: Task tool examples in CLI mode MUST NOT use {agent_display_name} for subagent_type
 
         GIVEN: Claude Code CLI mode enabled
         WHEN: Generating staging prompt
-        THEN: Task tool example does NOT show subagent_display_name="{agent_type}"
+        THEN: Task tool example does NOT show subagent_display_name="{agent_display_name}"
         """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
@@ -190,9 +190,9 @@ class TestAgentNameSingleSourceOfTruth:
             claude_code_mode=True
         )
 
-        # Task tool example must NOT use agent_type
-        assert 'subagent_display_name="{agent_type}"' not in prompt, \
-            "Task tool example must NOT use subagent_display_name=\"{agent_type}\""
+        # Task tool example must NOT use agent_display_name
+        assert 'subagent_display_name="{agent_display_name}"' not in prompt, \
+            "Task tool example must NOT use subagent_display_name=\"{agent_display_name}\""
 
     @pytest.mark.asyncio
     async def test_prompt_references_agent_name_matching_template_filename(
@@ -246,15 +246,15 @@ class TestMultiTerminalModeUnaffected:
             "Multi-terminal mode should not contain CLI-specific agent_name truth declaration"
 
     @pytest.mark.asyncio
-    async def test_multi_terminal_does_not_mention_agent_type_truth(
+    async def test_multi_terminal_does_not_mention_agent_display_name_truth(
         self, generator, test_project
     ):
         """
-        BEHAVIOR: Multi-terminal mode should NOT mention agent_type as SINGLE SOURCE OF TRUTH
+        BEHAVIOR: Multi-terminal mode should NOT mention agent_display_name as SINGLE SOURCE OF TRUTH
 
         GIVEN: Multi-terminal mode (claude_code_mode=False)
         WHEN: Generating staging prompt
-        THEN: Prompt does NOT contain "agent_type: SINGLE SOURCE OF TRUTH"
+        THEN: Prompt does NOT contain "agent_display_name: SINGLE SOURCE OF TRUTH"
         """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
@@ -262,9 +262,9 @@ class TestMultiTerminalModeUnaffected:
             claude_code_mode=False
         )
 
-        # Multi-terminal should not have agent_type truth declaration either
-        assert "agent_type: SINGLE SOURCE OF TRUTH" not in prompt, \
-            "Multi-terminal mode should not contain agent_type truth declaration"
+        # Multi-terminal should not have agent_display_name truth declaration either
+        assert "agent_display_name: SINGLE SOURCE OF TRUTH" not in prompt, \
+            "Multi-terminal mode should not contain agent_display_name truth declaration"
 
 
 # ============================================================================
@@ -303,6 +303,6 @@ class TestAgentListSectionUsesAgentName:
         # Look for template path pattern using agent_name
         # The prompt should reference .claude/agents/{agent_name}.md
         if ".claude/agents" in prompt:
-            # Check that it uses agent_name variable, not agent_type
+            # Check that it uses agent_name variable, not agent_display_name
             assert "agent_name" in prompt.lower(), \
                 "Agent list template path should reference agent_name"

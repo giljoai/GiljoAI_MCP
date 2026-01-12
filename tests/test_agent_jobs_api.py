@@ -190,7 +190,7 @@ async def test_create_job_missing_required_fields(authenticated_client: tuple[As
     """Test job creation fails with missing required fields."""
     client, user = authenticated_client
 
-    # Missing agent_type
+    # Missing agent_display_name
     response = await client.post("/api/agent-jobs", json={"mission": "Test mission"})
 
     assert response.status_code == 422
@@ -251,7 +251,7 @@ async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
+async def test_list_jobs_filter_by_agent_display_name(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test filtering jobs by agent type."""
     client, user = authenticated_client
 

@@ -224,19 +224,19 @@ class TestAgentJobManagerCreation:
                 mission="Test mission",
             )
 
-    def test_create_job_invalid_agent_type(self, db_session, db_manager):
-        """Test that invalid agent_type raises ValueError."""
+    def test_create_job_invalid_agent_display_name(self, db_session, db_manager):
+        """Test that invalid agent_display_name raises ValueError."""
         tenant_key = str(uuid4())
         manager = AgentJobManager(db_manager)
 
-        with pytest.raises(ValueError, match="agent_type cannot be empty"):
+        with pytest.raises(ValueError, match="agent_display_name cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
                 agent_display_name="",
                 mission="Test mission",
             )
 
-        with pytest.raises(ValueError, match="agent_type cannot be empty"):
+        with pytest.raises(ValueError, match="agent_display_name cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
                 agent_display_name=None,
@@ -528,8 +528,8 @@ class TestAgentJobManagerRetrieval:
         assert pending_jobs[0].job_id == job2.job_id
         assert pending_jobs[0].status == "pending"
 
-    def test_get_pending_jobs_with_agent_type_filter(self, db_session, db_manager):
-        """Test retrieving pending jobs filtered by agent_type."""
+    def test_get_pending_jobs_with_agent_display_name_filter(self, db_session, db_manager):
+        """Test retrieving pending jobs filtered by agent_display_name."""
         tenant_key = str(uuid4())
         manager = AgentJobManager(db_manager)
 
@@ -610,8 +610,8 @@ class TestAgentJobManagerRetrieval:
         assert len(active_jobs) == 2
         assert all(job.status == "active" for job in active_jobs)
 
-    def test_get_active_jobs_with_agent_type_filter(self, db_session, db_manager):
-        """Test retrieving active jobs filtered by agent_type."""
+    def test_get_active_jobs_with_agent_display_name_filter(self, db_session, db_manager):
+        """Test retrieving active jobs filtered by agent_display_name."""
         tenant_key = str(uuid4())
         manager = AgentJobManager(db_manager)
 

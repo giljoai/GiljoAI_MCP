@@ -318,14 +318,14 @@ class TestContextAPIEndpoints:
             f"/api/v1/context/products/{sample_product.id}/chunk-vision", json={"force_rechunk": False}, headers=headers
         )
 
-        agent_types = ["backend", "frontend", "database", "devops"]
+        agent_display_names = ["backend", "frontend", "database", "devops"]
 
-        for agent_type in agent_types:
+        for agent_display_name in agent_display_names:
             response = await client.post(
                 "/api/v1/context/load-for-agent",
                 json={
-                    "agent_display_name": agent_type,
-                    "mission": f"Implement {agent_type} functionality",
+                    "agent_display_name": agent_display_name,
+                    "mission": f"Implement {agent_display_name} functionality",
                     "product_id": sample_product.id,
                     "max_tokens": 3000,
                 },
@@ -334,7 +334,7 @@ class TestContextAPIEndpoints:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["agent_display_name"] == agent_type
+            assert data["agent_display_name"] == agent_display_name
             assert data["total_tokens"] <= 3000
 
     @pytest.mark.asyncio

@@ -13,7 +13,7 @@ Semantic Contract (Phase C):
 - job_id = work order UUID (WHAT - persistent across succession)
 - agent_id = executor UUID (WHO - changes on succession)
 - AgentJob = work order (mission, job_type, status: active/completed/cancelled)
-- AgentExecution = executor (agent_type, instance_number, status: waiting/working/...)
+- AgentExecution = executor (agent_display_name, instance_number, status: waiting/working/...)
 
 API Response Contract:
 - MCP tools MUST return BOTH job_id and agent_id for backward compatibility

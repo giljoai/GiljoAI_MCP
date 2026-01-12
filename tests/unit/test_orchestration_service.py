@@ -410,8 +410,8 @@ class TestOrchestrationServiceWorkflow:
         assert result["jobs"][1]["job_id"] == "job-2"
 
     @pytest.mark.asyncio
-    async def test_get_pending_jobs_empty_agent_type(self):
-        """Test get_pending_jobs validation for empty agent_type"""
+    async def test_get_pending_jobs_empty_agent_display_name(self):
+        """Test get_pending_jobs validation for empty agent_display_name"""
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()

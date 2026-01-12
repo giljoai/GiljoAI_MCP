@@ -516,7 +516,7 @@ class TestCLIModeRulesInclusion:
             "CLI mode should enforce strict Task tool usage"
         )
 
-        assert "allowed_agent_types" in constraint, (
+        assert "allowed_agent_display_names" in constraint, (
             "Constraint should include list of allowed agent types"
         )
 
@@ -531,7 +531,7 @@ class TestCLIModeRulesInclusion:
 
         print(
             f"\n[CLI_MODE] Agent spawning constraint included with "
-            f"{len(constraint['allowed_agent_types'])} allowed types"
+            f"{len(constraint['allowed_agent_display_names'])} allowed types"
         )
 
 
