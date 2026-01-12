@@ -10,7 +10,7 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="d-flex align-center justify-space-between">
             <span>Setup Quick Start</span>
-            <v-chip size="small" variant="tonal" color="secondary" class="steps-chip"
+            <v-chip size="small" variant="tonal" :color="accentColor" class="steps-chip"
               >{{ steps.length }} steps</v-chip
             >
           </v-card-title>
@@ -27,7 +27,7 @@
                 <template #prepend>
                   <div class="d-flex align-center justify-center" style="width: 32px; height: 32px">
                     <GiljoFaceIcon v-if="step.useGiljoIcon" :active="true" :size="25" alt="Agent" />
-                    <v-icon v-else size="20" color="secondary">{{ step.icon }}</v-icon>
+                    <v-icon v-else size="20" :color="accentColor">{{ step.icon }}</v-icon>
                   </div>
                 </template>
 
@@ -39,19 +39,20 @@
                 </v-list-item-subtitle>
 
                 <template #append>
-                  <v-chip
+                  <v-btn
                     v-if="step.primaryAction"
                     size="small"
+                    density="compact"
                     variant="flat"
                     color="secondary"
-                    class="quickstart-go-chip"
-                    clickable
+                    rounded="pill"
+                    class="quickstart-go-btn"
                     @click.stop="runAction(step.primaryAction)"
                     data-testid="quickstart-primary-action"
                   >
                     Go!
                     <v-tooltip activator="parent" location="top">{{ step.primaryAction.label }}</v-tooltip>
-                  </v-chip>
+                  </v-btn>
                 </template>
               </v-list-item>
             </v-list>
@@ -73,7 +74,13 @@
         <v-card variant="outlined" class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-2">
-            <v-icon color="secondary">{{ selectedStep.icon }}</v-icon>
+            <GiljoFaceIcon
+              v-if="selectedStep.useGiljoIcon"
+              :active="true"
+              :size="29"
+              alt="GiljoAI"
+            />
+            <v-icon v-else :color="accentColor">{{ selectedStep.icon }}</v-icon>
             <span>{{ selectedStep.title }}</span>
           </div>
           <div class="d-flex ga-2">
@@ -116,6 +123,7 @@
                 :color="action.tone || 'primary'"
                 :variant="action.variant || 'tonal'"
                 size="small"
+                :style="action.textColor ? { color: `rgb(var(--v-theme-${action.textColor}))` } : undefined"
                 @click="runAction(action)"
               >
                 <v-icon v-if="action.icon" start>{{ action.icon }}</v-icon>
@@ -143,7 +151,13 @@
       <v-card>
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-2">
-            <v-icon color="secondary">{{ detailsStep?.icon }}</v-icon>
+            <GiljoFaceIcon
+              v-if="detailsStep?.useGiljoIcon"
+              :active="true"
+              :size="29"
+              alt="GiljoAI"
+            />
+            <v-icon v-else :color="accentColor">{{ detailsStep?.icon }}</v-icon>
             <span>{{ detailsStep?.title }}</span>
           </div>
           <v-btn icon="mdi-close" variant="text" @click="showDetails = false" />
@@ -258,6 +272,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import ToolConfigSnippet from '@/components/ToolConfigSnippet.vue'
 import GiljoFaceIcon from '@/components/icons/GiljoFaceIcon.vue'
 
@@ -267,6 +282,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const theme = useTheme()
 
 const showDetails = ref(false)
 const detailsStep = ref(null)
@@ -312,16 +328,24 @@ const steps = computed(() => [
       tab: 'integrations',
     },
     actions: [
-      {
-        id: 'open-system-settings',
-        label: 'System Settings (server)',
-        icon: 'mdi-server',
-        tone: 'secondary',
-        variant: 'tonal',
-        type: 'route',
-        route: { name: 'SystemSettings' },
-      },
     ],
+  },
+  {
+    id: 'slash',
+    icon: 'mdi-slash-forward',
+    title: 'Install slash commands',
+    subtitle: 'Required for best CLI flows',
+    body:
+      'Install the Giljo slash commands so your CLI tool can quickly call MCP tools and fetch instructions. This is the baseline for a great UX.',
+    details:
+      'Slash commands provide short, consistent “entry points” so you can fetch missions, refresh instructions, and run guided actions without copying large prompts around.',
+    primaryAction: {
+      id: 'open-slash-primary',
+      label: 'Configure Integrations',
+      type: 'userSettingsTab',
+      tab: 'integrations',
+    },
+    actions: [],
   },
   {
     id: 'templates',
@@ -339,53 +363,24 @@ const steps = computed(() => [
       type: 'userSettingsTab',
       tab: 'agents',
     },
-    actions: [
-      {
-        id: 'open-agents',
-        label: 'Agent Templates',
-        icon: 'mdi-robot',
-        tone: 'primary',
-        variant: 'tonal',
-        type: 'userSettingsTab',
-        tab: 'agents',
-      },
-      {
-        id: 'open-integrations-exports',
-        label: 'Claude/Codex setup',
-        icon: 'mdi-link-variant',
-        tone: 'secondary',
-        variant: 'tonal',
-        type: 'userSettingsTab',
-        tab: 'integrations',
-      },
-    ],
+    actions: [],
   },
   {
-    id: 'slash',
-    icon: 'mdi-slash-forward',
-    title: 'Install slash commands',
-    subtitle: 'Required for best CLI flows',
+    id: 'context',
+    icon: 'mdi-layers-triple',
+    title: 'Tune context',
+    subtitle: 'Define what agents get',
     body:
-      'Install the Giljo slash commands so your CLI tool can quickly call MCP tools and fetch instructions. This is the baseline for a great UX.',
+      'Define what information agents receive. Context settings let you control importance and depth so prepared tools and prompts stay aligned with your product.',
     details:
-      'Slash commands provide short, consistent “entry points” so you can fetch missions, refresh instructions, and run guided actions without copying large prompts around.',
+      'Context settings allow you to turn context sources on/off and define their level of importance. This frames how the MCP server prepares tools and prompts for agents. You can also configure context depth (how much information is provided) for selected sources.',
     primaryAction: {
-      id: 'open-slash-primary',
-      label: 'Open Slash Commands',
+      id: 'open-context-primary',
+      label: 'Open Context',
       type: 'userSettingsTab',
-      tab: 'integrations',
+      tab: 'context',
     },
-    actions: [
-      {
-        id: 'open-integrations-slash',
-        label: 'Integrations tab',
-        icon: 'mdi-puzzle',
-        tone: 'primary',
-        variant: 'tonal',
-        type: 'userSettingsTab',
-        tab: 'integrations',
-      },
-    ],
+    actions: [],
   },
   {
     id: 'product',
@@ -455,23 +450,15 @@ const steps = computed(() => [
       type: 'userSettingsTab',
       tab: 'integrations',
     },
-    actions: [
-      {
-        id: 'open-context-config',
-        label: 'Context settings',
-        icon: 'mdi-layers-triple',
-        tone: 'secondary',
-        variant: 'tonal',
-        type: 'userSettingsTab',
-        tab: 'context',
-      },
-    ],
+    actions: [],
   },
 ])
 
 const selectedStepId = ref(steps.value[0]?.id ?? 'tools')
 
 const selectedStep = computed(() => steps.value.find((s) => s.id === selectedStepId.value) ?? steps.value[0])
+
+const accentColor = computed(() => (theme.global.current.value.dark ? 'secondary' : 'primary'))
 
 const mcpHttpSnippet = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:7274'
@@ -493,7 +480,7 @@ const mcpHttpSnippet = computed(() => {
 function stepTone(step) {
   if (!step) return 'primary'
   if (step.id === 'advanced' && (props.gitEnabled || props.serenaEnabled)) return 'success'
-  return 'secondary'
+  return accentColor.value
 }
 
 function openDetails(step) {
@@ -529,16 +516,19 @@ function runAction(action) {
   filter: brightness(1.08);
 }
 
-.quickstart-go-chip {
+.quickstart-go-btn {
   border-radius: 9999px !important;
   font-weight: 700;
   letter-spacing: 0.02em;
-  padding-inline: 14px;
+  min-width: 56px;
+  --v-btn-height: 24px;
+  height: var(--v-btn-height) !important;
+  min-height: var(--v-btn-height) !important;
+  padding-inline: 14px !important;
   color: rgb(var(--v-theme-on-secondary)) !important;
 }
 
-.steps-chip,
-.quickstart-go-chip {
+.steps-chip {
   margin-right: 6px;
 }
 </style>
