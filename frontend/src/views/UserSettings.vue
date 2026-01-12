@@ -6,9 +6,21 @@
 
     <!-- Settings Tabs -->
     <v-tabs v-model="activeTab" class="mb-6 global-tabs">
-      <v-tab value="general">
-        <v-icon start>mdi-cog</v-icon>
-        Setup
+      <v-tab value="startup" data-testid="startup-settings-tab">
+        <v-icon start>mdi-rocket-launch</v-icon>
+        Startup
+        <v-btn
+          icon
+          size="x-small"
+          variant="text"
+          class="ml-1"
+          aria-label="What is GiljoAI MCP?"
+          @click.stop="openIntroTour"
+          data-testid="startup-intro-help"
+        >
+          <v-icon size="18">mdi-help-circle-outline</v-icon>
+          <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
+        </v-btn>
       </v-tab>
       <v-tab value="appearance">
         <v-icon start>mdi-palette</v-icon>
@@ -60,27 +72,13 @@
       </v-window-item>
 
       <!-- Setup Settings -->
-      <v-window-item value="general">
-        <v-card data-test="general-settings">
-          <v-card-title>Setup</v-card-title>
+      <v-window-item value="startup">
+        <v-card data-test="startup-settings">
+          <v-card-title>Startup</v-card-title>
+          <v-card-subtitle>Visual setup quick start</v-card-subtitle>
           <v-card-text>
-            <v-alert type="info" variant="tonal" density="compact">
-              This section is reserved for future setup settings.
-            </v-alert>
+            <StartupQuickStart :git-enabled="gitEnabled" :serena-enabled="serenaEnabled" />
           </v-card-text>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn variant="text" @click="resetGeneralSettings" data-test="reset-general-btn"
-              >Reset</v-btn
-            >
-            <v-btn
-              color="primary"
-              variant="flat"
-              @click="saveGeneralSettings"
-              data-test="save-general-btn"
-              >Save Changes</v-btn
-            >
-          </v-card-actions>
         </v-card>
       </v-window-item>
 
@@ -339,11 +337,14 @@
       :value="gitConfig"
       @save="saveGitConfig"
     />
+
+    <!-- Product intro tour (shown on first Startup visit unless hidden) -->
+    <ProductIntroTour v-model="showIntroTour" />
   </v-container>
 </template>
 
 <script setup>
-import { ref, provide, onMounted, onUnmounted } from 'vue'
+import { ref, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
@@ -355,6 +356,8 @@ import CodexCliIntegration from '@/components/CodexCliIntegration.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
+import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
+import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
 import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
@@ -370,9 +373,11 @@ const router = useRouter()
 const { on, off } = useWebSocketV2()
 
 // State
-const activeTab = ref('general')
+const activeTab = ref('startup')
 const serenaEnabled = ref(false)
 const toggling = ref(false)
+const showIntroTour = ref(false)
+const introTourShownThisSession = ref(false)
 
 // Git Integration state (system-level like Serena)
 // This state is shared with ContextPriorityConfig via props
@@ -418,15 +423,6 @@ const settings = ref({
 })
 
 // Methods
-async function saveGeneralSettings() {
-  try {
-    await settingsStore.updateSettings({ general: settings.value.general })
-    console.log('General settings saved')
-  } catch (error) {
-    console.error('Failed to save general settings:', error)
-  }
-}
-
 async function saveAppearanceSettings() {
   try {
     // Apply theme immediately
@@ -450,11 +446,6 @@ async function saveNotificationSettings() {
   } catch (error) {
     console.error('Failed to save notification settings:', error)
   }
-}
-
-function resetGeneralSettings() {
-  // Handover 0052: General settings are empty after projectName field removal
-  settings.value.general = {}
 }
 
 function resetAppearanceSettings() {
@@ -521,7 +512,7 @@ onMounted(async () => {
   const route = router.currentRoute.value
 
   if (route.query.tab) {
-    activeTab.value = route.query.tab
+    activeTab.value = route.query.tab === 'general' ? 'startup' : route.query.tab
   }
 
   // Check Serena MCP status
@@ -550,7 +541,22 @@ onMounted(async () => {
   // This ensures events are captured even when TemplateManager tab is not active
   on('template:exported', handleTemplateExportEvent)
   console.log('[USER SETTINGS] WebSocket listener registered for template export events')
+
+  // Preface Startup with the product intro tour, unless user hid it
+  maybeShowIntroTour()
 })
+
+watch(activeTab, () => {
+  maybeShowIntroTour()
+})
+
+watch(
+  () => router.currentRoute.value.query.tab,
+  (tab) => {
+    if (!tab) return
+    activeTab.value = tab === 'general' ? 'startup' : tab
+  },
+)
 
 onUnmounted(() => {
   // Clean up WebSocket listeners to prevent memory leaks
@@ -683,6 +689,27 @@ function handleTemplateExportEvent(data) {
     templateCount: data.template_ids?.length || 0,
     exportType: data.export_type,
   })
+}
+
+function isIntroTourHidden() {
+  try {
+    return localStorage.getItem('giljo_intro_tour_hidden') === '1'
+  } catch {
+    return false
+  }
+}
+
+function maybeShowIntroTour() {
+  if (introTourShownThisSession.value) return
+  if (activeTab.value !== 'startup') return
+  if (isIntroTourHidden()) return
+  showIntroTour.value = true
+  introTourShownThisSession.value = true
+}
+
+function openIntroTour() {
+  showIntroTour.value = true
+  introTourShownThisSession.value = true
 }
 </script>
 
