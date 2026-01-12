@@ -118,7 +118,7 @@ async def test_repeated_staging_reuses_orchestrator(
     orch_stmt = select(AgentExecution).where(
         and_(
             AgentExecution.project_id == test_project.id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.tenant_key == test_tenant_key
         )
     )

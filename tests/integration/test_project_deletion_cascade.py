@@ -77,7 +77,7 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     agent_job = AgentExecution(
         tenant_key=cascade_test_tenant_key,
         project_id=project.id,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test agent mission",
         messages=[{"content": "Embedded message", "status": "pending"}],
     )
@@ -497,7 +497,7 @@ class TestNuclearDeleteConsistency:
         agent_job = AgentExecution(
             tenant_key=cascade_test_tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Nuclear test agent",
         )
         task = Task(

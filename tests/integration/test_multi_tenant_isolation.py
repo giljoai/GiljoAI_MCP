@@ -457,7 +457,7 @@ class TestContextGenerationTenantRespect:
             product_id=product_in_tenant_a.id,
             project_id=project.id,
             user_id=user_in_tenant_a.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="staged",
             tenant_key=tenant_a,
             job_metadata={
@@ -564,7 +564,7 @@ class TestMCPToolTenantScoping:
             product_id=product_in_tenant_a.id,
             project_id=project.id,
             user_id=user_in_tenant_a.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             tenant_key=tenant_a,
             job_metadata={

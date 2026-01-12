@@ -43,8 +43,8 @@ export function useAgentData(agents) {
       if (diff !== 0) return diff
 
       // Secondary sort: orchestrator first
-      if (a.agent_type === 'orchestrator') return -1
-      if (b.agent_type === 'orchestrator') return 1
+      if (a.agent_display_name === 'orchestrator') return -1
+      if (b.agent_display_name === 'orchestrator') return 1
 
       // Tertiary sort: alphabetical by name
       return (a.agent_name || '').localeCompare(b.agent_name || '')
@@ -88,13 +88,13 @@ export function useAgentData(agents) {
   }
 
   /**
-   * Agent type color mapping
+   * Agent display name color mapping
    * Extracted from AgentCard.vue avatar logic
    *
-   * @param {String} agentType - Agent type (orchestrator, analyzer, etc.)
+   * @param {String} displayName - Agent display name (orchestrator, analyzer, etc.)
    * @returns {String} - Vuetify color name
    */
-  const getAgentTypeColor = (agentType) => {
+  const getAgentDisplayNameColor = (displayName) => {
     const colors = {
       orchestrator: 'orange',
       analyzer: 'red',
@@ -102,17 +102,17 @@ export function useAgentData(agents) {
       tester: 'yellow',
       reviewer: 'purple',
     }
-    return colors[agentType] || 'grey'
+    return colors[displayName] || 'grey'
   }
 
   /**
-   * Agent type abbreviation
+   * Agent display name abbreviation
    * Extracted from AgentCard.vue avatar text
    *
-   * @param {String} agentType - Agent type
+   * @param {String} displayName - Agent display name
    * @returns {String} - Two-letter abbreviation
    */
-  const getAgentAbbreviation = (agentType) => {
+  const getAgentAbbreviation = (displayName) => {
     const abbr = {
       orchestrator: 'Or',
       analyzer: 'An',
@@ -120,7 +120,7 @@ export function useAgentData(agents) {
       tester: 'Te',
       reviewer: 'Re',
     }
-    return abbr[agentType] || agentType.substring(0, 2).toUpperCase()
+    return abbr[displayName] || displayName.substring(0, 2).toUpperCase()
   }
 
   /**
@@ -164,7 +164,7 @@ export function useAgentData(agents) {
     sortedAgents,
     getMessageCounts,
     getStatusColor,
-    getAgentTypeColor,
+    getAgentDisplayNameColor,
     getAgentAbbreviation,
     getHealthColor,
     getHealthIcon,

@@ -72,7 +72,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         job_id="orchestrator-294",
         tenant_key=tenant_key,
         project_id="project-294",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         mission="Orchestrate the project",
         status="working",
@@ -86,7 +86,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         job_id="implementer-294",
         tenant_key=tenant_key,
         project_id="project-294",
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Backend Implementer",
         mission="Implement backend features",
         status="waiting",
@@ -99,7 +99,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         job_id="tester-294",
         tenant_key=tenant_key,
         project_id="project-294",
-        agent_type="tester",
+        agent_display_name="tester",
         agent_name="Integration Tester",
         mission="Run integration tests",
         status="waiting",
@@ -178,7 +178,7 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         select(AgentExecution)
         .where(AgentExecution.project_id == "project-294")
         .where(AgentExecution.tenant_key == tenant_key)
-        .order_by(AgentExecution.agent_type)
+        .order_by(AgentExecution.agent_display_name)
     )
     refreshed_agents = result.scalars().all()
 
@@ -195,9 +195,9 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         return {"sent": sent, "waiting": waiting, "acknowledged": acknowledged}
 
     # Find agents
-    orch = next(a for a in refreshed_agents if a.agent_type == "orchestrator")
-    impl = next(a for a in refreshed_agents if a.agent_type == "implementer")
-    test = next(a for a in refreshed_agents if a.agent_type == "tester")
+    orch = next(a for a in refreshed_agents if a.agent_display_name == "orchestrator")
+    impl = next(a for a in refreshed_agents if a.agent_display_name == "implementer")
+    test = next(a for a in refreshed_agents if a.agent_display_name == "tester")
 
     # Verify orchestrator counters
     orch_counters = compute_counters(orch)
@@ -269,7 +269,7 @@ async def test_table_view_endpoint_computes_message_counters(async_db_session: A
         job_id="agent-294-tv",
         tenant_key=tenant_key,
         project_id="project-294-tv",
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Test Implementer",
         mission="Test mission",
         status="working",
@@ -370,7 +370,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
         job_id="agent-with-unread",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Agent With Unread",
         mission="Test mission",
         status="working",
@@ -387,7 +387,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
         job_id="agent-all-read",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
-        agent_type="tester",
+        agent_display_name="tester",
         agent_name="Agent All Read",
         mission="Test mission",
         status="working",
@@ -404,7 +404,7 @@ async def test_jsonb_query_filtering_for_unread_messages(async_db_session: Async
         job_id="agent-no-messages",
         tenant_key=tenant_key,
         project_id="project-294-jsonb",
-        agent_type="documenter",
+        agent_display_name="documenter",
         agent_name="Agent No Messages",
         mission="Test mission",
         status="working",

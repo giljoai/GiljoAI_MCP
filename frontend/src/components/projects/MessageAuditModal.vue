@@ -242,7 +242,7 @@ const currentMessages = computed(() => {
 
 const agentLabel = computed(() => {
   if (!props.agent) return 'Unknown agent'
-  return props.agent.agent_name || props.agent.agent_type || 'Agent'
+  return props.agent.agent_name || props.agent.agent_display_name || 'Agent'
 })
 
 watch(

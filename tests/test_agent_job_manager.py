@@ -50,7 +50,7 @@ class TestAgentJobManagerCreation:
 
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature X following TDD principles",
             spawned_by=spawned_by,
             context_chunks=context_chunks,
@@ -59,7 +59,7 @@ class TestAgentJobManagerCreation:
         assert job is not None
         assert job.job_id is not None
         assert job.tenant_key == tenant_key
-        assert job.agent_type == "implementer"
+        assert job.agent_display_name == "implementer"
         assert job.mission == "Implement feature X following TDD principles"
         assert job.status == "pending"
         assert job.spawned_by == spawned_by
@@ -88,7 +88,7 @@ class TestAgentJobManagerCreation:
 
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Orchestrate project implementation",
             job_metadata=job_metadata,
         )
@@ -109,7 +109,7 @@ class TestAgentJobManagerCreation:
 
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission without metadata",
         )
 
@@ -133,7 +133,7 @@ class TestAgentJobManagerCreation:
         # Create job with metadata
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Write integration tests",
             job_metadata=job_metadata,
         )
@@ -155,14 +155,14 @@ class TestAgentJobManagerCreation:
 
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Analyze codebase structure",
         )
 
         assert job is not None
         assert job.job_id is not None
         assert job.tenant_key == tenant_key
-        assert job.agent_type == "analyzer"
+        assert job.agent_display_name == "analyzer"
         assert job.mission == "Analyze codebase structure"
         assert job.status == "pending"
         assert job.spawned_by is None
@@ -176,15 +176,15 @@ class TestAgentJobManagerCreation:
 
         job_specs = [
             {
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "mission": "Implement component A",
             },
             {
-                "agent_type": "tester",
+                "agent_display_name": "tester",
                 "mission": "Write tests for component A",
             },
             {
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "mission": "Implement component B",
             },
         ]
@@ -194,11 +194,11 @@ class TestAgentJobManagerCreation:
         jobs = manager.create_job_batch(tenant_key=tenant_key, job_specs=job_specs)
 
         assert len(jobs) == 3
-        assert jobs[0].agent_type == "implementer"
+        assert jobs[0].agent_display_name == "implementer"
         assert jobs[0].mission == "Implement component A"
-        assert jobs[1].agent_type == "tester"
+        assert jobs[1].agent_display_name == "tester"
         assert jobs[1].mission == "Write tests for component A"
-        assert jobs[2].agent_type == "implementer"
+        assert jobs[2].agent_display_name == "implementer"
         assert jobs[2].mission == "Implement component B"
 
         # All should have same tenant_key
@@ -213,14 +213,14 @@ class TestAgentJobManagerCreation:
         with pytest.raises(ValueError, match="tenant_key cannot be empty"):
             manager.create_job(
                 tenant_key="",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Test mission",
             )
 
         with pytest.raises(ValueError, match="tenant_key cannot be empty"):
             manager.create_job(
                 tenant_key=None,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Test mission",
             )
 
@@ -232,14 +232,14 @@ class TestAgentJobManagerCreation:
         with pytest.raises(ValueError, match="agent_type cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="",
+                agent_display_name="",
                 mission="Test mission",
             )
 
         with pytest.raises(ValueError, match="agent_type cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
-                agent_type=None,
+                agent_display_name=None,
                 mission="Test mission",
             )
 
@@ -251,14 +251,14 @@ class TestAgentJobManagerCreation:
         with pytest.raises(ValueError, match="mission cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="",
             )
 
         with pytest.raises(ValueError, match="mission cannot be empty"):
             manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission=None,
             )
 
@@ -274,7 +274,7 @@ class TestAgentJobManagerStatusManagement:
         # Create pending job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -297,7 +297,7 @@ class TestAgentJobManagerStatusManagement:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -328,7 +328,7 @@ class TestAgentJobManagerStatusManagement:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -357,7 +357,7 @@ class TestAgentJobManagerStatusManagement:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -383,7 +383,7 @@ class TestAgentJobManagerStatusManagement:
         # Create pending job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -406,7 +406,7 @@ class TestAgentJobManagerStatusManagement:
         # Create, acknowledge, and complete job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -432,7 +432,7 @@ class TestAgentJobManagerStatusManagement:
         # Create, acknowledge, and fail job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -462,7 +462,7 @@ class TestAgentJobManagerRetrieval:
         # Create job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -472,7 +472,7 @@ class TestAgentJobManagerRetrieval:
         assert retrieved_job is not None
         assert retrieved_job.job_id == job.job_id
         assert retrieved_job.tenant_key == tenant_key
-        assert retrieved_job.agent_type == "implementer"
+        assert retrieved_job.agent_display_name == "implementer"
 
     def test_get_job_not_found(self, db_session, db_manager):
         """Test retrieving non-existent job returns None."""
@@ -493,7 +493,7 @@ class TestAgentJobManagerRetrieval:
         # Create job for tenant1
         job = manager.create_job(
             tenant_key=tenant_key1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -510,12 +510,12 @@ class TestAgentJobManagerRetrieval:
         # Create multiple jobs
         job1 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Mission 1",
         )
         job2 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Mission 2",
         )
         # Acknowledge one
@@ -536,29 +536,29 @@ class TestAgentJobManagerRetrieval:
         # Create multiple jobs
         manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Mission 1",
         )
         job2 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Mission 2",
         )
         manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Mission 3",
         )
 
         # Get pending jobs for tester only
         pending_jobs = manager.get_pending_jobs(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
         )
 
         assert len(pending_jobs) == 1
         assert pending_jobs[0].job_id == job2.job_id
-        assert pending_jobs[0].agent_type == "tester"
+        assert pending_jobs[0].agent_display_name == "tester"
 
     def test_get_pending_jobs_with_limit(self, db_session, db_manager):
         """Test retrieving pending jobs with limit."""
@@ -569,7 +569,7 @@ class TestAgentJobManagerRetrieval:
         for i in range(5):
             manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission=f"Mission {i}",
             )
 
@@ -586,17 +586,17 @@ class TestAgentJobManagerRetrieval:
         # Create and acknowledge multiple jobs
         job1 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Mission 1",
         )
         job2 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Mission 2",
         )
         manager.create_job(
             tenant_key=tenant_key,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Mission 3",
         )
 
@@ -618,12 +618,12 @@ class TestAgentJobManagerRetrieval:
         # Create and acknowledge jobs
         job1 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Mission 1",
         )
         job2 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Mission 2",
         )
 
@@ -633,12 +633,12 @@ class TestAgentJobManagerRetrieval:
         # Get active implementer jobs only
         active_jobs = manager.get_active_jobs(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
 
         assert len(active_jobs) == 1
         assert active_jobs[0].job_id == job1.job_id
-        assert active_jobs[0].agent_type == "implementer"
+        assert active_jobs[0].agent_display_name == "implementer"
 
     def test_get_job_hierarchy(self, db_session, db_manager):
         """Test retrieving job hierarchy (parent + children)."""
@@ -648,20 +648,20 @@ class TestAgentJobManagerRetrieval:
         # Create parent job
         parent_job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Coordinate implementation",
         )
 
         # Create child jobs spawned by parent
         child1 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement component A",
             spawned_by=parent_job.job_id,
         )
         child2 = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test component A",
             spawned_by=parent_job.job_id,
         )
@@ -669,7 +669,7 @@ class TestAgentJobManagerRetrieval:
         # Create unrelated job
         manager.create_job(
             tenant_key=tenant_key,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             mission="Analyze something else",
         )
 
@@ -702,12 +702,12 @@ class TestAgentJobManagerTenantIsolation:
         # Create jobs for both tenants
         job1 = manager.create_job(
             tenant_key=tenant_key1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 mission",
         )
         job2 = manager.create_job(
             tenant_key=tenant_key2,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 mission",
         )
 
@@ -730,7 +730,7 @@ class TestAgentJobManagerTenantIsolation:
         # Create job for tenant 1
         job1 = manager.create_job(
             tenant_key=tenant_key1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 mission",
         )
 
@@ -762,7 +762,7 @@ class TestAgentJobManagerEdgeCases:
         # Create, acknowledge, and complete job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -788,7 +788,7 @@ class TestAgentJobManagerEdgeCases:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -817,7 +817,7 @@ class TestAgentJobManagerEdgeCases:
         # Create job with no children
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -852,7 +852,7 @@ class TestAgentJobManagerEdgeCases:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -900,7 +900,7 @@ class TestAgentJobDecommissioning:
         # Create a job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -943,7 +943,7 @@ class TestAgentJobDecommissioning:
         # Create, acknowledge, and complete job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -975,7 +975,7 @@ class TestAgentJobDecommissioning:
         # Create pending job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
 
@@ -994,7 +994,7 @@ class TestAgentJobDecommissioning:
         # Create and acknowledge job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -1014,7 +1014,7 @@ class TestAgentJobDecommissioning:
         # Create, acknowledge, and fail job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -1040,7 +1040,7 @@ class TestAgentJobDecommissioning:
         # Create and complete job for tenant1
         job = manager.create_job(
             tenant_key=tenant_key1,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key1, job_id=job.job_id)
@@ -1079,7 +1079,7 @@ class TestAgentJobDecommissioning:
         # Create, acknowledge, and complete job
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
         )
         job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -1116,7 +1116,7 @@ class TestAgentJobDecommissioning:
         for i in range(5):
             job = manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission=f"Mission {i}",
             )
             job = manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -1166,7 +1166,7 @@ class TestAgentJobMetadataIntegration:
         # Create orchestrator job with field priorities
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Orchestrate project implementation with context prioritization",
             job_metadata={
                 "field_priorities": field_priorities,
@@ -1196,7 +1196,7 @@ class TestAgentJobMetadataIntegration:
         # Create job with metadata
         job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
             job_metadata=job_metadata
         )
@@ -1230,7 +1230,7 @@ class TestAgentJobMetadataIntegration:
         # Create orchestrator job with field priorities
         orchestrator_job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Orchestrate",
             job_metadata={
                 "field_priorities": {"product_core": 1, "vision_documents": 2},
@@ -1241,7 +1241,7 @@ class TestAgentJobMetadataIntegration:
         # Create implementer job with different metadata
         implementer_job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement",
             job_metadata={
                 "assigned_component": "backend",
@@ -1252,7 +1252,7 @@ class TestAgentJobMetadataIntegration:
         # Create tester job with no metadata
         tester_job = manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Test"
         )
 

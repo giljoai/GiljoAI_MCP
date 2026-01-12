@@ -131,7 +131,7 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
         progress=0,
@@ -241,7 +241,7 @@ async def test_spawn_agent_job_returns_agent_id(
     Will FAIL initially: tool_accessor.py uses MCPAgentJob, doesn't return agent_id.
     """
     result = await tool_accessor.spawn_agent_job(
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="impl-auth",
         mission="Implement user authentication",
         project_id=test_project.id,
@@ -417,7 +417,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
         agent_id=str(uuid4()),
         job_id=job1.job_id,
         tenant_key=tenant_key,
-        agent_type="analyzer",
+        agent_display_name="analyzer",
         instance_number=1,
         status="waiting",
     )
@@ -425,7 +425,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
         agent_id=str(uuid4()),
         job_id=job2.job_id,
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         instance_number=1,
         status="working",
     )
@@ -486,7 +486,7 @@ async def test_multi_tenant_isolation_for_mcp_tools(
         agent_id=str(uuid4()),
         job_id=job_a.job_id,
         tenant_key=tenant_a,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
     )
@@ -594,7 +594,7 @@ async def test_get_agent_mission_handles_succession(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="decommissioned",
     )
@@ -602,7 +602,7 @@ async def test_get_agent_mission_handles_succession(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=2,
         status="working",
         spawned_by=exec1.agent_id,

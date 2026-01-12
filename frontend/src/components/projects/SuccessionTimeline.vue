@@ -30,7 +30,7 @@
               <v-chip :color="getStatusColor(instance)" size="small" class="mr-2">
                 {{ instance.status }}
               </v-chip>
-              {{ instance.agent_type || 'Agent' }}
+              {{ instance.agent_display_name || 'Agent' }}
               <div class="text-caption text-medium-emphasis mt-1">
                 Agent ID: <code data-testid="agent-id">{{ instance.agent_id }}</code>
               </div>

@@ -287,7 +287,7 @@ class AgentJobTasks(TaskSet):
             json={
                 "project_id": project["id"],
                 "agent_name": f"load_test_agent_{random.randint(1, 1000)}",
-                "agent_type": random.choice(["implementer", "tester", "reviewer"]),
+                "agent_display_name": random.choice(["implementer", "tester", "reviewer"]),
                 "mission": "Load testing mission"
             },
             name="/api/agent-jobs [CREATE]",

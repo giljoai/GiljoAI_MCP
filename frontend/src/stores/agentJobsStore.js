@@ -104,11 +104,11 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       }
 
       // Orchestrators first within same status/timestamp
-      const aIsOrchestrator = a.agent_type === 'orchestrator' ? 0 : 1
-      const bIsOrchestrator = b.agent_type === 'orchestrator' ? 0 : 1
+      const aIsOrchestrator = a.agent_display_name === 'orchestrator' ? 0 : 1
+      const bIsOrchestrator = b.agent_display_name === 'orchestrator' ? 0 : 1
       if (aIsOrchestrator !== bIsOrchestrator) return aIsOrchestrator - bIsOrchestrator
 
-      return (a.agent_type || '').localeCompare(b.agent_type || '')
+      return (a.agent_display_name || '').localeCompare(b.agent_display_name || '')
     })
 
     return list
@@ -242,9 +242,9 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       }
     }
 
-    // Legacy fallback: from_agent may be agent_type (e.g., "orchestrator").
+    // Legacy fallback: from_agent may be agent_display_name (e.g., "orchestrator").
     for (const job of jobsById.value.values()) {
-      if (job.agent_type === identifier || job.agent_name === identifier) {
+      if (job.agent_display_name === identifier || job.agent_name === identifier) {
         return job.job_id
       }
     }

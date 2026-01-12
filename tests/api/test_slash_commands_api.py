@@ -58,7 +58,7 @@ async def mock_orchestrator(db_session, test_tenant_key, mock_project):
     """Create test orchestrator job"""
     orchestrator = AgentExecution(
         job_id="orch-test-12345",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         status="working",
         tenant_key=test_tenant_key,
         project_id=mock_project.id,
@@ -182,7 +182,7 @@ class TestTriggerSuccessionEndpoint:
         # Create non-orchestrator agent
         frontend_agent = AgentExecution(
             job_id="frontend-test-12345",
-            agent_type="frontend-dev",
+            agent_display_name="frontend-dev",
             status="working",
             tenant_key=test_tenant_key,
             project_id=mock_project.id,
@@ -239,7 +239,7 @@ class TestTriggerSuccessionEndpoint:
         successor = result.scalar_one()
 
         assert successor.status == "waiting"
-        assert successor.agent_type == "orchestrator"
+        assert successor.agent_display_name == "orchestrator"
         assert successor.instance_number == 2
         assert successor.spawned_by == mock_orchestrator.job_id
 

@@ -46,7 +46,7 @@ class TestSpawnAgentJob:
         mock_ws_dep = AsyncMock()
 
         request = SpawnAgentRequest(
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
             project_id="proj-123"
         )
@@ -74,7 +74,7 @@ class TestSpawnAgentJob:
         mock_user.tenant_key = "test_tenant"
 
         request = SpawnAgentRequest(
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
             project_id="proj-123"
         )
@@ -102,7 +102,7 @@ class TestSpawnAgentJob:
         mock_service.spawn_agent_job.return_value = {"error": "Failed to spawn"}
 
         request = SpawnAgentRequest(
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
             project_id="proj-123"
         )

@@ -111,8 +111,8 @@ async def test_orchestrator_included_in_agent_jobs_list_after_auto_creation(
 
     # Verify the orchestrator has correct type
     orchestrator = orchestrator_in_list[0]
-    assert orchestrator.get("agent_type") == "orchestrator", (
-        f"Agent type should be 'orchestrator', got '{orchestrator.get('agent_type')}'"
+    assert orchestrator.get("agent_display_name") == "orchestrator", (
+        f"Agent type should be 'orchestrator', got '{orchestrator.get('agent_display_name')}'"
     )
 
 

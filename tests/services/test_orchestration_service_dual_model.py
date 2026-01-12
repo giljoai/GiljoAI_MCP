@@ -90,7 +90,7 @@ class TestSpawnAgentJobDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement authentication system",
             project_id=test_project.id,
@@ -123,7 +123,7 @@ class TestSpawnAgentJobDualModel:
         execution = exec_result.scalar_one_or_none()
         assert execution is not None
         assert execution.job_id == result["job_id"]
-        assert execution.agent_type == "implementer"
+        assert execution.agent_display_name == "implementer"
         assert execution.tenant_key == test_tenant_key
         assert execution.instance_number == 1
 
@@ -137,7 +137,7 @@ class TestSpawnAgentJobDualModel:
 
         mission = "Build OAuth2 authentication with JWT tokens"
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="auth-impl",
             mission=mission,
             project_id=test_project.id,
@@ -166,7 +166,7 @@ class TestSpawnAgentJobDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="test-1",
             mission="Write integration tests",
             project_id=test_project.id,
@@ -195,7 +195,7 @@ class TestSpawnAgentJobDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze codebase architecture",
             project_id=test_project.id,
@@ -237,7 +237,7 @@ class TestSuccessionDualModel:
 
         # Spawn initial orchestrator
         initial = await service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator-1",
             mission="Orchestrate project development",
             project_id=test_project.id,
@@ -281,7 +281,7 @@ class TestSuccessionDualModel:
 
         # Spawn initial orchestrator
         initial = await service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator-1",
             mission="Orchestrate project",
             project_id=test_project.id,
@@ -313,7 +313,7 @@ class TestSuccessionDualModel:
 
         # Spawn initial orchestrator
         initial = await service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator-1",
             mission="Orchestrate project",
             project_id=test_project.id,
@@ -345,7 +345,7 @@ class TestSuccessionDualModel:
 
         # Spawn initial orchestrator
         initial = await service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator-1",
             mission="Orchestrate project",
             project_id=test_project.id,
@@ -401,7 +401,7 @@ class TestQueryMethodsDualModel:
 
         # Spawn an agent
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature X",
             project_id=test_project.id,
@@ -430,7 +430,7 @@ class TestQueryMethodsDualModel:
 
         # Spawn waiting agent
         waiting_result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-waiting",
             mission="Waiting task",
             project_id=test_project.id,
@@ -439,7 +439,7 @@ class TestQueryMethodsDualModel:
 
         # Spawn working agent
         working_result = await service.spawn_agent_job(
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="test-working",
             mission="Working task",
             project_id=test_project.id,
@@ -454,7 +454,7 @@ class TestQueryMethodsDualModel:
         await db_session.commit()
 
         # Get pending jobs for implementer type (waiting only)
-        pending_result = await service.get_pending_jobs(agent_type="implementer", tenant_key=test_tenant_key)
+        pending_result = await service.get_pending_jobs(agent_display_name="implementer", tenant_key=test_tenant_key)
         pending_jobs = pending_result.get("jobs", [])
 
         # Verify only waiting job of type implementer is returned
@@ -472,7 +472,7 @@ class TestQueryMethodsDualModel:
 
         mission = "Build comprehensive test suite"
         result = await service.spawn_agent_job(
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="tester-1",
             mission=mission,
             project_id=test_project.id,
@@ -498,14 +498,14 @@ class TestQueryMethodsDualModel:
 
         # Spawn multiple agents
         await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Task 1",
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
         await service.spawn_agent_job(
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="test-1",
             mission="Task 2",
             project_id=test_project.id,
@@ -547,7 +547,7 @@ class TestUpdateMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",
             project_id=test_project.id,
@@ -576,7 +576,7 @@ class TestUpdateMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",
             project_id=test_project.id,
@@ -611,7 +611,7 @@ class TestUpdateMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement feature",
             project_id=test_project.id,
@@ -647,7 +647,7 @@ class TestUpdateMethodsDualModel:
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         result = await service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orch-1",
             mission="Orchestrate project",
             project_id=test_project.id,

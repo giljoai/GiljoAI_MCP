@@ -54,7 +54,7 @@ async def agent_a(db_session, test_project_0360):
         agent_id="agent-a-0360",
         job_id=job.job_id,
         tenant_key="tenant-0360",
-        agent_type="tdd-implementor",
+        agent_display_name="tdd-implementor",
         status="working",
         instance_number=1
     )
@@ -80,7 +80,7 @@ async def agent_b(db_session, test_project_0360):
         agent_id="agent-b-0360",
         job_id=job.job_id,
         tenant_key="tenant-0360",
-        agent_type="database-expert",
+        agent_display_name="database-expert",
         status="working",
         instance_number=1
     )

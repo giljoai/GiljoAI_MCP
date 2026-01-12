@@ -43,7 +43,7 @@ class TestAgentStatusTool:
             tenant_key=self.tenant_key,
             project_id=self.project.id,
             job_id=str(uuid.uuid4()),
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test mission",
             status=status,
             progress=progress,

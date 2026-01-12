@@ -65,7 +65,7 @@ export const ACTION_CONFIG = {
 
 /**
  * Get available actions for a job
- * @param {Object} job - Job object with status, agent_type, context_used, context_budget
+ * @param {Object} job - Job object with status, agent_display_name, context_used, context_budget
  * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
  * @returns {Array<string>} List of available action names
  */
@@ -105,13 +105,13 @@ export function getAvailableActions(job, claudeCodeCliMode = false) {
  * - JobsTab.vue:shouldShowCopyButton() (lines 577-590)
  * - AgentTableView.vue:canLaunchAgent() (lines 208-227)
  *
- * @param {Object} job - Job object with status and agent_type
+ * @param {Object} job - Job object with status and agent_display_name
  * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
  * @returns {Boolean} True if launch action should be shown
  */
 export function shouldShowLaunchAction(job, claudeCodeCliMode) {
   // In Claude Code CLI mode, only orchestrator gets launch button
-  if (claudeCodeCliMode && job.agent_type !== 'orchestrator') {
+  if (claudeCodeCliMode && job.agent_display_name !== 'orchestrator') {
     return false
   }
 
@@ -136,7 +136,7 @@ function shouldShowCancelAction(job) {
  * @returns {Boolean}
  */
 function shouldShowHandOverAction(job) {
-  if (job.agent_type !== 'orchestrator') return false
+  if (job.agent_display_name !== 'orchestrator') return false
   if (job.status !== 'working') return false
   // Handover 0506: Removed context threshold - user decides when to hand over
   return true
@@ -185,7 +185,7 @@ export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
     if (job.status !== 'waiting') {
       return 'Agent must be in waiting status to launch'
     }
-    if (claudeCodeCliMode && job.agent_type !== 'orchestrator') {
+    if (claudeCodeCliMode && job.agent_display_name !== 'orchestrator') {
       return 'Only orchestrator can be launched in Claude Code CLI mode'
     }
     return ''
@@ -202,7 +202,7 @@ export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
   // Hand over action specific checks
   // Handover 0506: Removed context threshold - user decides when to hand over
   if (actionName === 'handOver') {
-    if (job.agent_type !== 'orchestrator') {
+    if (job.agent_display_name !== 'orchestrator') {
       return 'Only orchestrator can initiate handover'
     }
     if (job.status !== 'working') {

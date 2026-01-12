@@ -117,13 +117,13 @@
                   :key="agent.job_id || agent.agent_id || agent.id"
                   class="agent-slim-card"
                   data-testid="agent-card"
-                  :data-agent-type="agent.agent_type"
+                  :data-agent-display-name="agent.agent_display_name"
                 >
-                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_type) }">
-                    {{ getAgentInitials(agent.agent_type) }}
+                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_display_name) }">
+                    {{ getAgentInitials(agent.agent_display_name) }}
                   </div>
-                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_type?.toUpperCase() || '' }}</span>
-                  <span class="agent-type" data-testid="agent-type" style="display: none;">{{ agent.agent_type || '' }}</span>
+                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
+                  <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
                   <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
                   <v-icon
                     size="small"
@@ -237,7 +237,7 @@ const projectId = computed(() => {
  * Filter out orchestrator from agents list (since it's shown in Default Agent)
  */
 const nonOrchestratorAgents = computed(() => {
-  return sortedJobs.value.filter((agent) => agent.agent_type !== 'orchestrator')
+  return sortedJobs.value.filter((agent) => agent.agent_display_name !== 'orchestrator')
 })
 
 /**
@@ -248,7 +248,7 @@ const currentOrchestrator = computed(() => {
 
   // Find orchestrator jobs
   const orchestrators = sortedJobs.value
-    .filter((agent) => agent.agent_type === 'orchestrator')
+    .filter((agent) => agent.agent_display_name === 'orchestrator')
     .sort((a, b) => (b.instance_number || 0) - (a.instance_number || 0))
 
   return orchestrators[0] || null
@@ -282,7 +282,7 @@ const isExecutionModeLocked = computed(() => {
 /**
  * Get agent color based on type
  */
-const getAgentColor = (agentType) => {
+const getAgentColor = (displayName) => {
   const colors = {
     orchestrator: '#D4A574', // Tan/Beige - Project coordination
     analyzer: '#E74C3C',     // Red - Analysis & research
@@ -293,15 +293,15 @@ const getAgentColor = (agentType) => {
     documenter: '#27AE60',   // Green - Documentation
     researcher: '#27AE60',   // Green - Research (alias)
   }
-  return colors[agentType?.toLowerCase()] || '#90A4AE' // Gray for custom agents
+  return colors[displayName?.toLowerCase()] || '#90A4AE' // Gray for custom agents
 }
 
 /**
  * Get agent initials
  */
-const getAgentInitials = (agentType) => {
-  if (!agentType) return '??'
-  const type = agentType.toLowerCase()
+const getAgentInitials = (displayName) => {
+  if (!displayName) return '??'
+  const type = displayName.toLowerCase()
   if (type === 'orchestrator') return 'OR'
   if (type === 'analyzer') return 'AN'
   if (type === 'implementer') return 'IM'
@@ -310,7 +310,7 @@ const getAgentInitials = (agentType) => {
   if (type === 'reviewer') return 'RV'
   if (type === 'documenter') return 'DO'
   if (type === 'researcher') return 'RE'
-  return agentType.substring(0, 2).toUpperCase()
+  return displayName.substring(0, 2).toUpperCase()
 }
 
 const { showToast: showToastNotification } = useToast()
@@ -342,10 +342,10 @@ const usingClaudeCodeSubagents = ref(false)
  * Get instance number for multi-instance agents
  */
 function getInstanceNumber(agent) {
-  const agentType = agent.agent_type?.toLowerCase()
-  if (!agentType) return 1
+  const displayName = agent.agent_display_name?.toLowerCase()
+  if (!displayName) return 1
 
-  const sameTypeAgents = sortedJobs.value.filter((a) => a.agent_type?.toLowerCase() === agentType)
+  const sameTypeAgents = sortedJobs.value.filter((a) => a.agent_display_name?.toLowerCase() === displayName)
   const index = sameTypeAgents.findIndex(
     (a) => (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id),
   )
@@ -423,7 +423,7 @@ function handleEditAgentMission(agent) {
  */
 function handleOrchestratorInfo() {
   selectedAgent.value = {
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     agent_name: 'Orchestrator',
     id: 'orchestrator',
   }
@@ -445,7 +445,7 @@ function handleAgentInfo(agent) {
  * Handle Edit icon click for Agent Team members
  */
 function handleAgentEdit(agent) {
-  if (agent.agent_type === 'orchestrator') {
+  if (agent.agent_display_name === 'orchestrator') {
     // Orchestrators don't have editable missions
     showToastNotification({
       message: 'Orchestrator configuration cannot be edited here',

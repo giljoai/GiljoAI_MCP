@@ -157,7 +157,7 @@ class TestWebSocketEventListener:
             "tenant_key": "tenant_123",
             "project_id": "proj_456",
             "agent_id": "agent_789",
-            "agent_type": "implementer",
+            "agent_display_name": "implementer",
             "agent_name": "Backend Implementer",
             "status": "pending",
         })

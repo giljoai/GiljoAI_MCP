@@ -50,7 +50,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
 
     # Spawn agent with different name/type
     result = await spawn_agent_job(
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="implementer-frontend",
         mission="Build frontend components",
         project_id=project_id,
@@ -62,7 +62,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
     assert "task_tool_usage" in result, "Response must include task_tool_usage field"
 
     # Verify it uses agent_name (not agent_type)
-    expected_usage = "Task(subagent_type='implementer-frontend', ...)"
+    expected_usage = "Task(subagent_display_name='implementer-frontend', ...)"
     assert result["task_tool_usage"] == expected_usage, (
         f"task_tool_usage should use agent_name. "
         f"Expected: {expected_usage}, Got: {result['task_tool_usage']}"
@@ -106,7 +106,7 @@ async def test_spawn_response_warning_when_names_differ(db_session, db_manager):
 
     # Spawn agent with different name/type
     result = await spawn_agent_job(
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="implementer-frontend",  # Different from agent_type!
         mission="Build frontend components",
         project_id=project_id,
@@ -120,7 +120,7 @@ async def test_spawn_response_warning_when_names_differ(db_session, db_manager):
     # Verify warning content mentions both fields
     warning = result["warning"]
     assert "agent_name" in warning, "Warning should mention agent_name"
-    assert "agent_type" in warning, "Warning should mention agent_type"
+    assert "agent_display_name" in warning, "Warning should mention agent_type"
     assert "implementer-frontend" in warning, "Warning should include actual agent_name value"
     assert "implementer" in warning, "Warning should include actual agent_type value"
     assert "MUST use agent_name" in warning, "Warning should emphasize using agent_name"
@@ -163,7 +163,7 @@ async def test_spawn_response_no_warning_when_names_match(db_session, db_manager
 
     # Spawn agent with matching name/type
     result = await spawn_agent_job(
-        agent_type="analyzer",
+        agent_display_name="analyzer",
         agent_name="analyzer",  # Same as agent_type!
         mission="Analyze codebase",
         project_id=project_id,
@@ -179,7 +179,7 @@ async def test_spawn_response_no_warning_when_names_match(db_session, db_manager
 
     # But task_tool_usage should still be present
     assert "task_tool_usage" in result, "task_tool_usage should always be present"
-    assert result["task_tool_usage"] == "Task(subagent_type='analyzer', ...)"
+    assert result["task_tool_usage"] == "Task(subagent_display_name='analyzer', ...)"
 
 
 @pytest.mark.asyncio
@@ -219,7 +219,7 @@ async def test_spawn_response_preserves_existing_fields(db_session, db_manager):
 
     # Spawn agent
     result = await spawn_agent_job(
-        agent_type="tester",
+        agent_display_name="tester",
         agent_name="backend-tester",
         mission="Run backend tests",
         project_id=project_id,
@@ -246,9 +246,9 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
     from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
     test_cases = [
-        ("backend-tester", "backend-tester", "Task(subagent_type='backend-tester', ...)", False),
-        ("implementer", "frontend-dev", "Task(subagent_type='frontend-dev', ...)", True),
-        ("analyzer", "code-reviewer", "Task(subagent_type='code-reviewer', ...)", True),
+        ("backend-tester", "backend-tester", "Task(subagent_display_name='backend-tester', ...)", False),
+        ("implementer", "frontend-dev", "Task(subagent_display_name='frontend-dev', ...)", True),
+        ("analyzer", "code-reviewer", "Task(subagent_display_name='code-reviewer', ...)", True),
     ]
 
     for idx, (agent_type, agent_name, expected_usage, should_warn) in enumerate(test_cases):
@@ -283,7 +283,7 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
 
         # Spawn agent
         result = await spawn_agent_job(
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             agent_name=agent_name,
             mission=f"Mission for {agent_name}",
             project_id=project_id,

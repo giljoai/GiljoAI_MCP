@@ -36,13 +36,13 @@ describe('LaunchTab.vue - Pencil Edit Icons', () => {
         agents: [
           {
             id: 'agent-1',
-            agent_type: 'analyzer',
+            agent_display_name: 'analyzer',
             agent_name: 'Analyzer Agent',
             status: 'active',
           },
           {
             id: 'agent-2',
-            agent_type: 'implementor',
+            agent_display_name: 'implementor',
             agent_name: 'Implementor Agent',
             status: 'active',
           },
@@ -169,13 +169,13 @@ describe('LaunchTab.vue - Pencil Edit Icons', () => {
         agents: [
           {
             id: 'orchestrator-1',
-            agent_type: 'orchestrator',
+            agent_display_name: 'orchestrator',
             agent_name: 'Orchestrator',
             status: 'active',
           },
           {
             id: 'agent-1',
-            agent_type: 'analyzer',
+            agent_display_name: 'analyzer',
             agent_name: 'Analyzer Agent',
             status: 'active',
           },
@@ -200,19 +200,19 @@ describe('LaunchTab.vue - Pencil Edit Icons', () => {
         agents: [
           {
             id: 'agent-1',
-            agent_type: 'implementor',
+            agent_display_name: 'implementor',
             agent_name: 'Implementor #1',
             status: 'active',
           },
           {
             id: 'agent-2',
-            agent_type: 'implementor',
+            agent_display_name: 'implementor',
             agent_name: 'Implementor #2',
             status: 'active',
           },
           {
             id: 'agent-3',
-            agent_type: 'tester',
+            agent_display_name: 'tester',
             agent_name: 'Tester',
             status: 'active',
           },
@@ -265,7 +265,7 @@ describe('LaunchTab.vue - Pencil Edit Icons', () => {
     const wrapper = createWrapper()
     const agentCards = wrapper.findAll('.agent-slim-card')
 
-    const agentTypes = {
+    const displayNames = {
       analyzer: '#e1564b',
       implementor: '#3493bf',
     }

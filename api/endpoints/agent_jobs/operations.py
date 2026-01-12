@@ -390,7 +390,7 @@ async def update_agent_mission(
             "agent:mission_updated",
             {
                 "job_id": job_id,
-                "agent_type": current_execution.agent_type if current_execution else job.job_type,
+                "agent_display_name": current_execution.agent_type if current_execution else job.job_type,
                 "agent_name": current_execution.agent_name if current_execution else None,
                 "mission": job.mission,
                 "project_id": job.project_id,

@@ -40,10 +40,10 @@ export function useStalenessMonitor(jobs, emitStaleWarning = null) {
           notificationStore.addNotification({
             type: 'agent_health',
             title: 'Agent Inactive',
-            message: `${job.agent_name || job.agent_type} has been inactive for over 10 minutes`,
+            message: `${job.agent_name || job.agent_display_name} has been inactive for over 10 minutes`,
             metadata: {
               job_id: job.job_id,
-              agent_type: job.agent_type
+              agent_display_name: job.agent_display_name
             }
           })
         }
