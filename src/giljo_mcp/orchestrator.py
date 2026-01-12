@@ -1295,10 +1295,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 raise ValueError("Agents must be in same project")
 
             # Generate handoff instructions
-            AgentRole(from_execution.agent_type)
-            AgentRole(to_execution.agent_type)
-            context.get("summary", "Work completed by previous agent")
-
             handoff_instructions = self.template_generator.generate_handoff_instructions(
                 from_agent=from_execution.agent_name,
                 to_agent=to_execution.agent_name,

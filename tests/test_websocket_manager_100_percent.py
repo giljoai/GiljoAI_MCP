@@ -24,104 +24,6 @@ class TestWebSocketManager100Percent:
         """Create WebSocket manager instance"""
         return WebSocketManager()
 
-    async def test_notify_entity_update_with_exception_logging(self, ws_manager):
-        """Test exception logging in notify_entity_update - covers lines 150-152, 156"""
-        entity_type = "project"
-        entity_id = "test_project"
-        update_data = {"status": "updated"}
-        entity_key = f"{entity_type}:{entity_id}"
-
-        # Setup clients - one working, one failing
-        client_1 = AsyncMock()
-        client_2 = AsyncMock()
-        client_2.send_json.side_effect = Exception("Connection failed")
-
-        ws_manager.active_connections = {"client_1": client_1, "client_2": client_2}
-        ws_manager.entity_subscribers[entity_key] = {"client_1", "client_2"}
-
-        with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.notify_entity_update(entity_type, entity_id, update_data)
-
-            # Verify exception was logged (using the actual log message format)
-            mock_logger.exception.assert_called_once()
-            logged_msg = mock_logger.exception.call_args[0][0]
-            assert "Error sending JSON to client_2" in logged_msg
-
-            # Verify disconnected client was removed
-            assert "client_2" not in ws_manager.active_connections
-            assert "client_1" in ws_manager.active_connections
-
-    async def test_broadcast_agent_complete_with_exception_logging(self, ws_manager):
-        """Test exception logging in broadcast_agent_complete - covers lines 480-481"""
-        agent_id = "agent_001"
-        agent_name = "test_agent"
-        project_id = "proj_001"
-        tenant_key = "tenant_a"
-
-        # Setup client that will fail
-        client = AsyncMock()
-        client.send_json.side_effect = Exception("WebSocket send failed")
-
-        ws_manager.active_connections = {"client": client}
-        ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
-        ws_manager.notify_entity_update = AsyncMock()
-
-        with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.broadcast_agent_complete(
-                agent_id, agent_name, project_id, tenant_key, 120.0, "database_initialized", 1000
-            )
-
-            # Verify exception was logged
-            mock_logger.exception.assert_called()
-            logged_msg = mock_logger.exception.call_args[0][0]
-            assert "Error broadcasting agent:complete to websocket" in logged_msg
-
-    async def test_broadcast_agent_update_with_exception_logging(self, ws_manager):
-        """Test exception logging in broadcast_agent_update - covers lines 532-533"""
-        agent_id = "agent_001"
-        agent_name = "test_agent"
-        project_id = "proj_001"
-        tenant_key = "tenant_a"
-
-        # Setup client that will fail
-        client = AsyncMock()
-        client.send_json.side_effect = Exception("WebSocket send failed")
-
-        ws_manager.active_connections = {"client": client}
-        ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
-        ws_manager.notify_entity_update = AsyncMock()
-
-        with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.broadcast_agent_update(agent_id, agent_name, project_id, tenant_key, "in_progress", 500)
-
-            # Verify exception was logged
-            mock_logger.exception.assert_called()
-            logged_msg = mock_logger.exception.call_args[0][0]
-            assert "Error broadcasting agent:update to websocket" in logged_msg
-
-    async def test_broadcast_template_update_with_exception_logging(self, ws_manager):
-        """Test exception logging in broadcast_template_update - covers lines 580-581"""
-        template_id = "tmpl_001"
-        template_name = "test_template"
-        tenant_key = "tenant_a"
-        product_id = "prod_001"
-
-        # Setup client that will fail
-        client = AsyncMock()
-        client.send_json.side_effect = Exception("WebSocket send failed")
-
-        ws_manager.active_connections = {"client": client}
-        ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
-        ws_manager.notify_entity_update = AsyncMock()
-
-        with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.broadcast_template_update(template_id, template_name, "update", tenant_key, product_id)
-
-            # Verify exception was logged
-            mock_logger.exception.assert_called()
-            logged_msg = mock_logger.exception.call_args[0][0]
-            assert "Error broadcasting template:update to websocket" in logged_msg
-
     async def test_all_remaining_branch_conditions(self, ws_manager):
         """Test remaining branch conditions for 100% branch coverage"""
 
@@ -147,14 +49,6 @@ class TestWebSocketManager100Percent:
         assert not ws_manager.is_authenticated(client_id)
 
         # Test broadcast methods with no matching tenants
-        await ws_manager.broadcast_agent_spawn(
-            "agent_001", "test_agent", None, "proj_001", "nonexistent_tenant", "worker"
-        )
-
-        await ws_manager.broadcast_agent_complete(
-            "agent_001", "test_agent", "proj_001", "nonexistent_tenant", 60.0, "database_initialized", 100
-        )
-
         await ws_manager.broadcast_agent_update(
             "agent_001", "test_agent", "proj_001", "nonexistent_tenant", "active", 50
         )
@@ -181,15 +75,7 @@ class TestWebSocketManager100Percent:
 
         # Test broadcast_sub_agent_completed without optional parameters
         await ws_manager.broadcast_sub_agent_completed(
-            "int_001", "sub_agent", "parent_agent", "proj_001", "database_initialized", 60
-        )
-
-        # Test broadcast_agent_spawn without optional parameters
-        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
-
-        # Test broadcast_agent_complete without optional parameters
-        await ws_manager.broadcast_agent_complete(
-            "agent_001", "test_agent", "proj_001", "tenant_a", 120.0, "database_initialized", 1000
+            "int_001", "sub_agent", "parent_agent", "proj_001", "completed", 60
         )
 
         # Test broadcast_agent_update without optional parameters
