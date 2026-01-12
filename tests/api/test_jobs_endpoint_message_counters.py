@@ -47,13 +47,13 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
         {
             "job_id": "job-001",
             "agent_name": "Orchestrator",
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "messages": []  # No messages
         },
         {
             "job_id": "job-002",
             "agent_name": "Backend Implementer",
-            "agent_type": "implementer",
+            "agent_display_name": "implementer",
             "messages": [
                 {"id": "msg-1", "from": "orchestrator", "to": ["job-002"], "content": "Start coding", "status": "pending"},
                 {"id": "msg-2", "from": "orchestrator", "to": ["job-002"], "content": "Check status", "status": "pending"},
@@ -62,7 +62,7 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
         {
             "job_id": "job-003",
             "agent_name": "Backend Tester",
-            "agent_type": "tester",
+            "agent_display_name": "tester",
             "messages": [
                 {"id": "msg-3", "from": "orchestrator", "to": ["job-003"], "content": "Write tests", "status": "acknowledged"},
                 {"id": "msg-4", "from": "job-003", "to": ["orchestrator"], "content": "Tests complete", "status": "pending"},
@@ -71,7 +71,7 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
         {
             "job_id": "job-004",
             "agent_name": "Frontend Developer",
-            "agent_type": "implementer",
+            "agent_display_name": "implementer",
             "messages": [
                 {"id": "msg-5", "from": "orchestrator", "to": ["job-004"], "content": "Build UI", "status": "acknowledged"},
                 {"id": "msg-6", "from": "orchestrator", "to": ["job-004"], "content": "Add tests", "status": "pending"},
@@ -87,7 +87,7 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
             project_id=project.id,
             job_id=job_data["job_id"],
             agent_name=job_data["agent_name"],
-            agent_type=job_data["agent_type"],
+            agent_display_name=job_data["agent_display_name"],
             mission=f"Mission for {job_data['agent_name']}",
             status="working",
             tool_type="claude-code",
@@ -131,7 +131,7 @@ async def test_project_with_messages(db_session: AsyncSession, tenant_manager: T
         project_id=project.id,
         job_id="job-counter-test",
         agent_name="Counter Test Agent",
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test message counter logic",
         status="working",
         tool_type="claude-code",
@@ -197,7 +197,7 @@ class TestJobsEndpointMessageCounters:
             status=None,
             health_status=None,
             has_unread=None,
-            agent_type=None,
+            agent_display_name=None,
             sort_by="created_at",
             sort_order="asc",
             limit=50,
@@ -257,7 +257,7 @@ class TestJobsEndpointMessageCounters:
             status=None,
             health_status=None,
             has_unread=None,
-            agent_type=None,
+            agent_display_name=None,
             sort_by="created_at",
             sort_order="asc",
             limit=50,
@@ -314,7 +314,7 @@ class TestJobsEndpointMessageCounters:
             status=None,
             health_status=None,
             has_unread=None,
-            agent_type=None,
+            agent_display_name=None,
             sort_by="created_at",
             sort_order="asc",
             limit=50,
@@ -362,7 +362,7 @@ class TestJobsEndpointMessageCounters:
             status=None,
             health_status=None,
             has_unread=None,
-            agent_type=None,
+            agent_display_name=None,
             sort_by="created_at",
             sort_order="asc",
             limit=50,

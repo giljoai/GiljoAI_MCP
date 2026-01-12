@@ -53,7 +53,7 @@ const createMockProject = (overrides = {}) => ({
 const createMockAgent = (type, status, overrides = {}) => ({
   job_id: `job-${type}-${Date.now()}`,
   agent_id: `agent-${type}`,
-  agent_type: type,
+  agent_display_name: type,
   status: status,
   mission: `Mission for ${type}`,
   progress: status === 'working' ? 0 : 0,
@@ -71,7 +71,7 @@ const createMockMessage = (from, content, overrides = {}) => ({
   type: from === 'agent' ? 'agent' : 'user',
   content: content,
   timestamp: new Date().toISOString(),
-  agent_type: from === 'agent' ? 'orchestrator' : null,
+  agent_display_name: from === 'agent' ? 'orchestrator' : null,
   instance_number: 1,
   ...overrides,
 })
@@ -119,7 +119,7 @@ describe('JobsTab Integration Tests', () => {
 
       // Verify event was emitted
       expect(wrapper.emitted('launch-agent')).toBeTruthy()
-      expect(wrapper.emitted('launch-agent')[0][0].agent_type).toBe('implementor')
+      expect(wrapper.emitted('launch-agent')[0][0].agent_display_name).toBe('implementor')
     })
 
     it('completes send message workflow', async () => {
@@ -169,7 +169,7 @@ describe('JobsTab Integration Tests', () => {
       // Find orchestrator card
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
       const orchestratorCard = agentCards.find(
-        (card) => card.props('agent').agent_type === 'orchestrator',
+        (card) => card.props('agent').agent_display_name === 'orchestrator',
       )
 
       expect(orchestratorCard.props('showCloseoutButton')).toBe(true)
@@ -357,7 +357,7 @@ describe('JobsTab Integration Tests', () => {
 
       // Initial order: orchestrator, implementor, analyzer
       let agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      let order = agentCards.map((card) => card.props('agent').agent_type)
+      let order = agentCards.map((card) => card.props('agent').agent_display_name)
       expect(order).toEqual(['orchestrator', 'implementor', 'analyzer'])
 
       // Implementor fails (should move to top)
@@ -372,7 +372,7 @@ describe('JobsTab Integration Tests', () => {
 
       // New order: implementor (failed), orchestrator (working), analyzer (complete)
       agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
-      order = agentCards.map((card) => card.props('agent').agent_type)
+      order = agentCards.map((card) => card.props('agent').agent_display_name)
       expect(order).toEqual(['implementor', 'orchestrator', 'analyzer'])
     })
   })
@@ -485,7 +485,7 @@ describe('JobsTab Integration Tests', () => {
 
       const agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
       const implementorCards = agentCards.filter(
-        (card) => card.props('agent').agent_type === 'implementor',
+        (card) => card.props('agent').agent_display_name === 'implementor',
       )
 
       expect(implementorCards).toHaveLength(3)
@@ -552,7 +552,7 @@ describe('JobsTab Integration Tests', () => {
       // Now 1 agent
       agentCards = wrapper.findAllComponents({ name: 'AgentCardEnhanced' })
       expect(agentCards).toHaveLength(1)
-      expect(agentCards[0].props('agent').agent_type).toBe('orchestrator')
+      expect(agentCards[0].props('agent').agent_display_name).toBe('orchestrator')
     })
   })
 
@@ -669,7 +669,7 @@ describe('JobsTab Integration Tests', () => {
       const project = createMockProject()
       const agents = [
         createMockAgent('orchestrator', 'working'),
-        { status: 'working' }, // Missing agent_type and job_id
+        { status: 'working' }, // Missing agent_display_name and job_id
       ]
 
       wrapper = mount(JobsTab, {

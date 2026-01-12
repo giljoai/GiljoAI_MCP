@@ -301,23 +301,23 @@ class OrchestratorSimulator:
         # Spawn 3 agents: implementer, tester, reviewer
         agents_to_spawn = ["implementer", "tester", "reviewer"]
 
-        for agent_type in agents_to_spawn:
+        for agent_display_name in agents_to_spawn:
             # Find matching agent in discovered agents
-            agent_info = next((a for a in agents if a["name"] == agent_type), None)
+            agent_info = next((a for a in agents if a["name"] == agent_display_name), None)
 
             if not agent_info:
-                logger.warning(f"[TASK 6] Agent type '{agent_type}' not found, skipping")
+                logger.warning(f"[TASK 6] Agent type '{agent_display_name}' not found, skipping")
                 continue
 
             # Create agent-specific mission
-            agent_mission = self._create_agent_mission(agent_type)
+            agent_mission = self._create_agent_mission(agent_display_name)
 
             # Call spawn_agent_job() MCP tool
             spawn_response = await self._call_mcp_tool(
                 "spawn_agent_job",
                 {
-                    "agent_type": agent_type,
-                    "agent_name": agent_type.capitalize(),
+                    "agent_display_name": agent_type,
+                    "agent_name": agent_display_name.capitalize(),
                     "mission": agent_mission,
                     "project_id": self.project_id,
                     "tenant_key": self.tenant_key,
@@ -327,21 +327,21 @@ class OrchestratorSimulator:
             if spawn_response.get("success"):
                 job_info = {
                     "job_id": spawn_response.get("job_id"),
-                    "agent_type": agent_type,
+                    "agent_display_name": agent_type,
                     "status": spawn_response.get("status", "waiting"),
                     "mission": agent_mission,
                 }
                 self.spawned_agents.append(job_info)
-                logger.info(f"[TASK 6] Spawned {agent_type} agent: {job_info['job_id']}")
+                logger.info(f"[TASK 6] Spawned {agent_display_name} agent: {job_info['job_id']}")
             else:
-                logger.error(f"[TASK 6] Failed to spawn {agent_type} agent")
+                logger.error(f"[TASK 6] Failed to spawn {agent_display_name} agent")
 
         # Record task completion
         self.staging_result["job_spawning"] = {
             "status": "completed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_spawned": len(self.spawned_agents),
-            "agent_types": [a["agent_type"] for a in self.spawned_agents],
+            "agent_types": [a["agent_display_name"] for a in self.spawned_agents],
         }
 
         logger.info(f"[TASK 6] Agent job spawning complete ({len(self.spawned_agents)} agents)")
@@ -495,12 +495,12 @@ class OrchestratorSimulator:
             logger.error(f"MCP tool call exception: {e}", exc_info=True)
             raise
 
-    def _create_agent_mission(self, agent_type: str) -> str:
+    def _create_agent_mission(self, agent_display_name: str) -> str:
         """
         Create agent-specific mission from main mission.
 
         Args:
-            agent_type: Type of agent (implementer, tester, reviewer)
+            agent_display_name: Type of agent (implementer, tester, reviewer)
 
         Returns:
             Agent-specific mission string
@@ -511,7 +511,7 @@ class OrchestratorSimulator:
             "reviewer": f"Review the implementation and tests: {self.mission}\n\nCheck for code quality, security, and best practices.",
         }
 
-        return missions.get(agent_type, f"Execute: {self.mission}")
+        return missions.get(agent_display_name, f"Execute: {self.mission}")
 
 
 # Example usage
@@ -537,6 +537,6 @@ if __name__ == "__main__":
         print(f"  Agents Spawned: {result['spawned_agents_count']}")
         print(f"\nSpawned Agents:")
         for agent in result["spawned_agents"]:
-            print(f"  - {agent['agent_type']}: {agent['job_id']}")
+            print(f"  - {agent['agent_display_name']}: {agent['job_id']}")
 
     asyncio.run(main())

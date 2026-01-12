@@ -69,7 +69,7 @@ async def test_spawn_agent_job_captures_template_id():
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-123",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Test Implementer",
             mission="Implement feature X",
             status="waiting",
@@ -140,7 +140,7 @@ async def test_agent_job_without_template_id():
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-no-template",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator",
             mission="Orchestrate project",
             status="working",
@@ -152,7 +152,7 @@ async def test_agent_job_without_template_id():
 
         # Verify job is created successfully without template_id
         assert agent_job.template_id is None
-        assert agent_job.agent_type == "orchestrator"
+        assert agent_job.agent_display_name == "orchestrator"
 
         # Cleanup
         await session.delete(agent_job)
@@ -211,7 +211,7 @@ async def test_multiple_jobs_same_template():
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-1",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer 1",
             mission="Task 1",
             status="waiting",
@@ -222,7 +222,7 @@ async def test_multiple_jobs_same_template():
             tenant_key=tenant_key,
             project_id=project.id,
             job_id="test-job-2",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer 2",
             mission="Task 2",
             status="waiting",

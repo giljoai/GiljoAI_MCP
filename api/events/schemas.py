@@ -173,7 +173,7 @@ class AgentCreatedData(BaseModel):
         Raises:
             ValueError: If required fields are missing
         """
-        required_fields = ["id", "agent_type", "status"]
+        required_fields = ["id", "agent_display_name", "status"]
         missing = [f for f in required_fields if f not in v]
         if missing:
             raise ValueError(f"Agent data missing required fields: {missing}")
@@ -204,7 +204,7 @@ class AgentCreatedEvent(BaseModel):
                     "tenant_key": "tenant_123",
                     "agent": {
                         "id": "660e8400-e29b-41d4-a716-446655440000",
-                        "agent_type": "orchestrator",
+                        "agent_display_name": "orchestrator",
                         "status": "pending",
                         "mission": "Coordinate project implementation",
                         "mode": "claude",
@@ -228,7 +228,7 @@ class AgentStatusChangedData(BaseModel):
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
     old_status: str = Field(..., min_length=1, description="Previous status")
     new_status: str = Field(..., min_length=1, description="New status")
-    agent_type: str = Field(..., min_length=1, description="Type of agent")
+    agent_display_name: str = Field(..., min_length=1, description="Human-readable display name for UI")
     duration_seconds: Optional[float] = Field(None, ge=0, description="Job duration for completed/failed status")
 
     @field_validator("new_status")
@@ -278,7 +278,7 @@ class AgentStatusChangedEvent(BaseModel):
                     "tenant_key": "tenant_123",
                     "old_status": "pending",
                     "new_status": "active",
-                    "agent_type": "orchestrator",
+                    "agent_display_name": "orchestrator",
                     "duration_seconds": None,
                 },
             }
@@ -506,7 +506,7 @@ class EventFactory:
         Args:
             project_id: Project UUID (str or UUID object)
             tenant_key: Tenant identifier
-            agent: Complete agent job data (must include: id, agent_type, status)
+            agent: Complete agent job data (must include: id, agent_display_name, status)
 
         Returns:
             Event dict ready for JSON serialization
@@ -520,7 +520,7 @@ class EventFactory:
             ...     tenant_key="tenant_123",
             ...     agent={
             ...         "id": "660e8400-e29b-41d4-a716-446655440000",
-            ...         "agent_type": "orchestrator",
+            ...         "agent_display_name": "orchestrator",
             ...         "status": "pending",
             ...         "mission": "Coordinate implementation"
             ...     }
@@ -546,7 +546,7 @@ class EventFactory:
         tenant_key: str,
         old_status: str,
         new_status: str,
-        agent_type: str,
+        agent_display_name: str,
         project_id: Optional[Union[str, UUID]] = None,
         duration_seconds: Optional[float] = None,
     ) -> dict:
@@ -558,7 +558,7 @@ class EventFactory:
             tenant_key: Tenant identifier
             old_status: Previous status
             new_status: New status (pending, active, completed, failed, cancelled)
-            agent_type: Type of agent
+            agent_display_name: Human-readable display name for UI
             project_id: Optional project UUID
             duration_seconds: Optional job duration (for completed/failed)
 
@@ -574,7 +574,7 @@ class EventFactory:
             ...     tenant_key="tenant_123",
             ...     old_status="pending",
             ...     new_status="active",
-            ...     agent_type="orchestrator",
+            ...     agent_display_name="orchestrator",
             ...     project_id="550e8400-e29b-41d4-a716-446655440000"
             ... )
             >>> await ws.send_json(event)
@@ -591,7 +591,7 @@ class EventFactory:
                 tenant_key=tenant_key,
                 old_status=old_status,
                 new_status=new_status,
-                agent_type=agent_type,
+                agent_display_name=agent_display_name,
                 duration_seconds=duration_seconds,
             ),
         )

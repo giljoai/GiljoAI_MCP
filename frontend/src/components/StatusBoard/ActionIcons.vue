@@ -158,7 +158,7 @@ export default {
       default: () => ({
         job_id: '',
         status: 'waiting',
-        agent_type: 'implementer',
+        agent_display_name: 'implementer',
         unread_count: 0,
         context_used: 0,
         context_budget: 0,

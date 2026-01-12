@@ -259,7 +259,7 @@ class TestMultiTenantIsolation:
         orchestrator_a = AgentExecution(
             project_id=project_a.id,
             tenant_key=tenant_a_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator A",
             context_used=90000,
@@ -272,7 +272,7 @@ class TestMultiTenantIsolation:
         orchestrator_b = AgentExecution(
             project_id=project_b.id,
             tenant_key=tenant_b_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator B",
             context_used=90000,
@@ -413,7 +413,7 @@ class TestMultiTenantIsolation:
         orchestrator_a = AgentExecution(
             project_id=None,  # Will be set after project creation
             tenant_key=tenant_a_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="A",
             job_metadata={"user_id": tenant_a_user.id}

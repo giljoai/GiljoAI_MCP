@@ -191,7 +191,7 @@ class ThinClientPromptGenerator:
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .where(
                 AgentJob.project_id == project_id,
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == self.tenant_key,
                 AgentExecution.status.in_(["waiting", "working"]),
             )
@@ -249,7 +249,7 @@ class ThinClientPromptGenerator:
                     .where(
                         AgentJob.tenant_key == self.tenant_key,
                         AgentJob.project_id == project_id,
-                        AgentExecution.agent_type == "orchestrator",
+                        AgentExecution.agent_display_name == "orchestrator",
                     )
                 )
                 exec_instance_result = await self.db.execute(exec_instance_stmt)
@@ -285,7 +285,7 @@ class ThinClientPromptGenerator:
                 agent_id=agent_id,
                 job_id=orchestrator_id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name=f"Orchestrator #{instance_number}",
                 instance_number=instance_number,
                 status="waiting",
@@ -1230,7 +1230,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                     [
                         f"**{idx}. {agent.agent_name}**",
                         f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)",
-                        f"   - Agent Type: `{agent.agent_type}` (display category)",
+                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
                         f"   - Job ID: `{agent.job_id}`",
                         f"   - Status: {agent.status}",
                         f"   - Mission Summary: {mission_summary}",

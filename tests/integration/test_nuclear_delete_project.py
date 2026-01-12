@@ -63,7 +63,7 @@ async def test_project_with_data(db_session: AsyncSession, test_user):
             job_id=f"agent-{i}",
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type=f"test-agent-{i}",
+            agent_display_name=f"test-agent-{i}",
             agent_name=f"Test Agent {i}",
             mission=f"Test mission for agent {i}",  # Required field
             status="waiting",  # Valid status: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'

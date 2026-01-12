@@ -145,7 +145,7 @@ class NewUserOnboarding(SequentialTaskSet):
             json={
                 "project_id": project["id"],
                 "agent_name": "my_first_agent",
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "mission": "Help me build something amazing"
             },
             name="Onboarding: Create First Agent Job",
@@ -273,7 +273,7 @@ class PowerUserWorkflow(SequentialTaskSet):
             json={
                 "project_id": project["id"],
                 "agent_name": "orchestrator_main",
-                "agent_type": "orchestrator",
+                "agent_display_name": "orchestrator",
                 "mission": "Coordinate development tasks"
             },
             name="Power User: Create Orchestrator",
@@ -296,7 +296,7 @@ class PowerUserWorkflow(SequentialTaskSet):
                 json={
                     "project_id": project["id"],
                     "agent_name": agent_name,
-                    "agent_type": "implementer",
+                    "agent_display_name": "implementer",
                     "mission": f"Implement feature {i+1}"
                 },
                 name="Power User: Create Implementer",
@@ -458,7 +458,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
             json={
                 "project_id": project["id"],
                 "agent_name": f"team_task_{random.randint(1, 100)}",
-                "agent_type": random.choice(["implementer", "reviewer", "tester"]),
+                "agent_display_name": random.choice(["implementer", "reviewer", "tester"]),
                 "mission": "Team collaboration task"
             },
             name="Team: Create Task",

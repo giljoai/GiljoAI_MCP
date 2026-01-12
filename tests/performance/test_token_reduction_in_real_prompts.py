@@ -142,7 +142,7 @@ class TestTokenReductionInRealPrompts:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test staging prompt",
             job_metadata={
@@ -195,7 +195,7 @@ class TestTokenReductionInRealPrompts:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Test execution prompt",
             job_metadata={
@@ -256,7 +256,7 @@ class TestTokenReductionInRealPrompts:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Test no embedded templates",
             job_metadata={
@@ -321,7 +321,7 @@ class TestTokenReductionInRealPrompts:
             orchestrator = AgentExecution(
                 project_id=test_project.id,
                 tenant_key=test_user.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 status="active",
                 mission=f"Test {mode}",
                 job_metadata={
@@ -392,7 +392,7 @@ class TestTokenReductionInRealPrompts:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Scale test",
             job_metadata={

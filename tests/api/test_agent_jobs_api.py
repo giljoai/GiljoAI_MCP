@@ -238,7 +238,7 @@ async def tenant_a_agent_job(api_client: AsyncClient, tenant_a_admin_token: str,
     response = await api_client.post(
         "/api/agent-jobs/spawn",
         json={
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "agent_name": "Test Orchestrator",
             "mission": "Test orchestration mission",
             "project_id": tenant_a_project["id"],
@@ -256,7 +256,7 @@ async def tenant_b_agent_job(api_client: AsyncClient, tenant_b_admin_token: str,
     response = await api_client.post(
         "/api/agent-jobs/spawn",
         json={
-            "agent_type": "orchestrator",
+            "agent_display_name": "orchestrator",
             "agent_name": "Test Orchestrator B",
             "mission": "Test orchestration mission B",
             "project_id": tenant_b_project["id"],
@@ -283,7 +283,7 @@ class TestAgentJobLifecycle:
         response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
@@ -308,7 +308,7 @@ class TestAgentJobLifecycle:
         response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
@@ -328,7 +328,7 @@ class TestAgentJobLifecycle:
         response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
@@ -926,7 +926,7 @@ class TestAgentJobStateTransitions:
         spawn_response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Lifecycle Test",
                 "mission": "Complete lifecycle test",
                 "project_id": tenant_a_project["id"],
@@ -963,7 +963,7 @@ class TestAgentJobStateTransitions:
         spawn_response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Error Test",
                 "mission": "Test error handling",
                 "project_id": tenant_a_project["id"],
@@ -999,7 +999,7 @@ class TestAgentJobStateTransitions:
         spawn_response = await api_client.post(
             "/api/agent-jobs/spawn",
             json={
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "agent_name": "Cancel Test",
                 "mission": "Test cancellation",
                 "project_id": tenant_a_project["id"],

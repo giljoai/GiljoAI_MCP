@@ -55,7 +55,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
             job_id=str(uuid.uuid4()),
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="TestOrchestrator",
             status="waiting",
             mission="Test orchestrator mission",
@@ -153,7 +153,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             job_id=str(uuid.uuid4()),
             tenant_key=tenant_key_1,
             project_id=project1.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator1",
             status="waiting",
             mission="Mission 1",
@@ -188,7 +188,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             job_id=orchestrator1.job_id,  # Same job_id
             tenant_key=tenant_key_2,  # Different tenant
             project_id=project2.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator2",
             status="waiting",
             mission="Mission 2",

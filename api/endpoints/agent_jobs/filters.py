@@ -31,7 +31,7 @@ class FilterOptions(BaseModel):
     """Available filter options for status board"""
 
     statuses: list[str]
-    agent_types: list[str]
+    agent_display_names: list[str]
     health_statuses: list[str]
     tool_types: list[str]
     has_unread_jobs: bool
@@ -52,7 +52,7 @@ async def get_filter_options(
 
     Returns lists of unique values for:
     - Status (waiting, working, blocked, complete, etc.)
-    - Agent types (orchestrator, analyzer, implementer, etc.)
+    - Agent display names (orchestrator, analyzer, implementer, etc.)
     - Health statuses (healthy, warning, critical, timeout)
     - Tool types (claude-code, codex, gemini, universal)
     - Has unread jobs (boolean)
@@ -78,8 +78,8 @@ async def get_filter_options(
     status_result = await db.execute(status_query)
     statuses = sorted([s for s in status_result.scalars().all() if s])
 
-    # Get distinct agent types
-    agent_type_query = (
+    # Get distinct agent display names
+    agent_display_name_query = (
         select(AgentExecution.agent_type)
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
@@ -87,8 +87,8 @@ async def get_filter_options(
         .where(AgentExecution.agent_type.is_not(None))
         .distinct()
     )
-    agent_type_result = await db.execute(agent_type_query)
-    agent_types = sorted([a for a in agent_type_result.scalars().all() if a])
+    agent_display_name_result = await db.execute(agent_display_name_query)
+    agent_display_names = sorted([a for a in agent_display_name_result.scalars().all() if a])
 
     # Get distinct health statuses
     health_query = (
@@ -133,7 +133,7 @@ async def get_filter_options(
 
     return FilterOptions(
         statuses=statuses,
-        agent_types=agent_types,
+        agent_display_names=agent_display_names,
         health_statuses=health_statuses,
         tool_types=tool_types,
         has_unread_jobs=has_unread_jobs,

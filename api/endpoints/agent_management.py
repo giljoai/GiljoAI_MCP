@@ -55,7 +55,7 @@ class ContextSearchRequest(BaseModel):
 
 
 class AgentJobCreate(BaseModel):
-    agent_type: str = Field(..., description="Agent type (orchestrator, analyzer, etc.)")
+    agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Agent mission/instructions")
     spawned_by: Optional[str] = Field(None, description="Agent ID that spawned this job")
     context_chunks: List[str] = Field(default_factory=list, description="Context chunk IDs")
@@ -63,7 +63,7 @@ class AgentJobCreate(BaseModel):
 
 class AgentJobResponse(BaseModel):
     job_id: str
-    agent_type: str
+    agent_display_name: str
     mission: str
     status: str
     spawned_by: Optional[str]
@@ -97,7 +97,7 @@ class TokenReductionStats(BaseModel):
 
 @router.get("/agent-jobs/active", response_model=List[AgentJobResponse])
 async def get_active_agent_jobs(
-    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
+    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name"),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """List all active agent jobs for tenant."""
@@ -110,12 +110,12 @@ async def get_active_agent_jobs(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
-            jobs = job_repo.get_active_jobs(db, tenant_key, agent_type)
+            jobs = job_repo.get_active_jobs(db, tenant_key, agent_display_name)
 
             return [
                 AgentJobResponse(
                     job_id=job.job_id,
-                    agent_type=job.job_type,
+                    agent_display_name=job.job_type,
                     mission=job.mission,
                     status=job.status,
                     spawned_by=job.spawned_by,
@@ -148,7 +148,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
             job = job_repo.create_job(
                 db,
                 tenant_key,
-                agent_type=job_data.agent_type,
+                agent_display_name=job_data.agent_display_name,
                 mission=job_data.mission,
                 spawned_by=job_data.spawned_by,
                 context_chunks=job_data.context_chunks,
@@ -160,7 +160,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_created(
                     job_id=job.job_id,
-                    agent_type=job.job_type,
+                    agent_display_name=job.job_type,
                     tenant_key=tenant_key,
                     project_id=str(job.project_id) if getattr(job, "project_id", None) else None,
                     agent_name=getattr(job, "agent_name", None),
@@ -172,7 +172,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
 
             return AgentJobResponse(
                 job_id=job.job_id,
-                agent_type=job.job_type,
+                agent_display_name=job.job_type,
                 mission=job.mission,
                 status=job.status,
                 spawned_by=job.spawned_by,
@@ -229,7 +229,7 @@ async def update_agent_job_status(
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
-                    agent_type=job.job_type,
+                    agent_display_name=job.job_type,
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status=status_update.status,
@@ -274,7 +274,7 @@ async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_ten
             if state.websocket_manager and old_status == "pending":
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
-                    agent_type=job.job_type,
+                    agent_display_name=job.job_type,
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status="active",  # Acknowledgment implies active status
@@ -458,7 +458,7 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
 
 @router.get("/agent-jobs/stats", response_model=dict)
 async def get_agent_job_statistics(
-    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
+    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name"),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get agent job statistics for tenant."""
@@ -471,7 +471,7 @@ async def get_agent_job_statistics(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
-            stats = job_repo.get_job_statistics(db, tenant_key, agent_type)
+            stats = job_repo.get_job_statistics(db, tenant_key, agent_display_name)
             return stats
 
     except Exception as e:

@@ -290,7 +290,7 @@ class E2ECloseoutFixtures:
             agent = AgentExecution(
                 tenant_key=tenant_key,
                 project_id=project_id,
-                agent_type=config["type"],
+                agent_display_name=config["type"],
                 agent_name=config["name"],
                 mission=config["mission"],
                 status="complete",  # All agents marked as completed
@@ -312,7 +312,7 @@ class E2ECloseoutFixtures:
 
         print(f"[OK] Created {len(agents)} test agents:")
         for agent in agents:
-            print(f"  - {agent.agent_name} ({agent.agent_type}) - Status: {agent.status}")
+            print(f"  - {agent.agent_name} ({agent.agent_display_name}) - Status: {agent.status}")
 
         return agents
 

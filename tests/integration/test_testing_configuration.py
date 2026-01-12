@@ -256,7 +256,7 @@ class TestAgentSpecificGuidance:
         """Tester agents should receive full testing configuration"""
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=sample_testing_config,
-            agent_type="tester"
+            agent_display_name="tester"
         )
 
         # Tester should get full priority 1 config
@@ -269,7 +269,7 @@ class TestAgentSpecificGuidance:
         """Implementer agents should receive full testing configuration"""
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=sample_testing_config,
-            agent_type="implementer"
+            agent_display_name="implementer"
         )
 
         # Implementer should get full priority 1 config
@@ -281,7 +281,7 @@ class TestAgentSpecificGuidance:
         """Reviewer agents should receive standards and frameworks only"""
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=sample_testing_config,
-            agent_type="reviewer"
+            agent_display_name="reviewer"
         )
 
         # Reviewer should get priority 2 (standards)
@@ -295,7 +295,7 @@ class TestAgentSpecificGuidance:
         """Architect agents should receive summary"""
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=sample_testing_config,
-            agent_type="architect"
+            agent_display_name="architect"
         )
 
         # Architect should get priority 3 (summary)
@@ -308,7 +308,7 @@ class TestAgentSpecificGuidance:
         """Unknown agent types should receive summary"""
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=sample_testing_config,
-            agent_type="unknown_agent"
+            agent_display_name="unknown_agent"
         )
 
         # Unknown should default to priority 3
@@ -417,7 +417,7 @@ class TestTestingConfigContextIntegration:
 
         context = TestingConfigGenerator.generate_for_agent(
             testing_config=testing_config,
-            agent_type="tester"
+            agent_display_name="tester"
         )
 
         # Should have full config

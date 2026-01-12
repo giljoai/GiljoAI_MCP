@@ -401,7 +401,7 @@ async def get_agent_statistics(
                     AgentStatsResponse(
                         agent_id=str(agent_execution.agent_id),
                         name=agent_execution.agent_name,
-                        role=agent_execution.agent_type,
+                        role=agent_execution.agent_display_name,
                         status=agent_execution.status,
                         project_id=str(agent_job.project_id) if agent_job else "unknown",
                         created_at=created_ts,

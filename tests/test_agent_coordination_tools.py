@@ -77,20 +77,20 @@ class TestGetPendingJobs:
         # Create test jobs
         job1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature X",
             context_chunks=["chunk1", "chunk2"],
         )
         job2 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature Y",
             context_chunks=["chunk3"],
         )
 
         # Call tool
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="implementer", tenant_key=tenant_key)
+        result = get_pending_jobs(agent_display_name="implementer", tenant_key=tenant_key)
 
         # Assertions
         assert result["status"] == "success"
@@ -104,17 +104,17 @@ class TestGetPendingJobs:
         # Verify job structure
         for job in result["jobs"]:
             assert "job_id" in job
-            assert "agent_type" in job
+            assert "agent_display_name" in job
             assert "mission" in job
             assert "context_chunks" in job
             assert "priority" in job
             assert "created_at" in job
-            assert job["agent_type"] == "implementer"
+            assert job["agent_display_name"] == "implementer"
 
     def test_get_pending_jobs_empty(self, coordination_tools, tenant_key):
         """Test get_pending_jobs with no pending jobs."""
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="tester", tenant_key=tenant_key)
+        result = get_pending_jobs(agent_display_name="tester", tenant_key=tenant_key)
 
         assert result["status"] == "success"
         assert result["count"] == 0
@@ -125,41 +125,41 @@ class TestGetPendingJobs:
         # Create jobs for different agent types
         job_impl = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
         job_test = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Write tests",
         )
 
         # Get implementer jobs only
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="implementer", tenant_key=tenant_key)
+        result = get_pending_jobs(agent_display_name="implementer", tenant_key=tenant_key)
 
         assert result["status"] == "success"
         assert result["count"] == 1
         assert result["jobs"][0]["job_id"] == job_impl.job_id
-        assert result["jobs"][0]["agent_type"] == "implementer"
+        assert result["jobs"][0]["agent_display_name"] == "implementer"
 
     def test_get_pending_jobs_tenant_isolation(self, coordination_tools, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Test multi-tenant isolation."""
         # Create jobs for two different tenants
         job_tenant1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
         job_tenant2 = job_manager.create_job(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 job",
         )
 
         # Get jobs for tenant 1
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="implementer", tenant_key=tenant_key)
+        result = get_pending_jobs(agent_display_name="implementer", tenant_key=tenant_key)
 
         # Should only see tenant 1 jobs
         assert result["status"] == "success"
@@ -173,7 +173,7 @@ class TestGetPendingJobs:
     def test_get_pending_jobs_validation_empty_agent_type(self, coordination_tools, tenant_key):
         """Test validation for empty agent_type."""
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="", tenant_key=tenant_key)
+        result = get_pending_jobs(agent_display_name="", tenant_key=tenant_key)
 
         assert result["status"] == "error"
         assert "agent_type cannot be empty" in result["error"]
@@ -182,7 +182,7 @@ class TestGetPendingJobs:
     def test_get_pending_jobs_validation_empty_tenant_key(self, coordination_tools):
         """Test validation for empty tenant_key."""
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result = get_pending_jobs(agent_type="implementer", tenant_key="")
+        result = get_pending_jobs(agent_display_name="implementer", tenant_key="")
 
         assert result["status"] == "error"
         assert "tenant_key cannot be empty" in result["error"]
@@ -197,7 +197,7 @@ class TestAcknowledgeJob:
         # Create pending job
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
 
@@ -220,7 +220,7 @@ class TestAcknowledgeJob:
         """Test that acknowledging same job twice is idempotent."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             mission="Write tests",
         )
 
@@ -248,7 +248,7 @@ class TestAcknowledgeJob:
         # Create job for tenant 1
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
 
@@ -309,7 +309,7 @@ class TestReportProgress:
         # Create and acknowledge job
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -356,7 +356,7 @@ class TestReportProgress:
         """Test warning at 25K tokens (83%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Large feature",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -378,7 +378,7 @@ class TestReportProgress:
         """Test warning at 28K tokens (93%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Large feature",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -400,7 +400,7 @@ class TestReportProgress:
         """Test critical warning at 29K tokens (97%)."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Large feature",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -437,7 +437,7 @@ class TestReportProgress:
         """Test validation for empty completed_todo."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -457,7 +457,7 @@ class TestReportProgress:
         """Test validation for negative context_used."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -482,7 +482,7 @@ class TestCompleteJob:
         # Create and acknowledge job
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -510,12 +510,12 @@ class TestCompleteJob:
         # Create two jobs
         job1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature 1",
         )
         job2 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Implement feature 2",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job1.job_id)
@@ -550,7 +550,7 @@ class TestCompleteJob:
         """Test validation for result without summary."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -569,7 +569,7 @@ class TestCompleteJob:
         """CRITICAL: Test tenant isolation in job completion."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -593,7 +593,7 @@ class TestReportError:
         """Test successful error reporting."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -644,7 +644,7 @@ class TestReportError:
             # Create new job for each error
             job = job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission=f"Test {error_type}",
             )
             job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -665,7 +665,7 @@ class TestReportError:
         """Test validation for invalid error_type."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
         job_manager.acknowledge_job(tenant_key=tenant_key, job_id=job.job_id)
@@ -690,7 +690,7 @@ class TestSendMessage:
         """Test successful message sending."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -725,7 +725,7 @@ class TestSendMessage:
         """Test all priority levels."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -746,7 +746,7 @@ class TestSendMessage:
         """Test validation for invalid priority."""
         job = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test",
         )
 
@@ -771,19 +771,19 @@ class TestMultiTenantIsolation:
         # Create jobs for different tenants
         job_t1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
         job_t2 = job_manager.create_job(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 job",
         )
 
         # Test get_pending_jobs isolation
         get_pending_jobs = coordination_tools["get_pending_jobs"]
-        result_t1 = get_pending_jobs(agent_type="implementer", tenant_key=tenant_key)
-        result_t2 = get_pending_jobs(agent_type="implementer", tenant_key=other_tenant_key)
+        result_t1 = get_pending_jobs(agent_display_name="implementer", tenant_key=tenant_key)
+        result_t2 = get_pending_jobs(agent_display_name="implementer", tenant_key=other_tenant_key)
 
         assert result_t1["count"] == 1
         assert result_t2["count"] == 1
@@ -815,12 +815,12 @@ class TestMultiTenantIsolation:
         # Create jobs for different tenants
         job_t1 = job_manager.create_job(
             tenant_key=tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 1 job",
         )
         job_t2 = job_manager.create_job(
             tenant_key=other_tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Tenant 2 job",
         )
 

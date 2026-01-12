@@ -59,7 +59,7 @@ def orchestrator_job(session: Session, tenant_key: str):
     job = AgentExecution(
         tenant_key=tenant_key,
         job_id=str(uuid4()),
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator mission",
         status="working",
         instance_number=1,
@@ -550,7 +550,7 @@ async def test_full_succession_workflow(
         orchestrator = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test project orchestration",
             status="working",
             instance_number=1,
@@ -613,7 +613,7 @@ async def test_multiple_successive_handovers(
         orch1 = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Instance 1",
             status="working",
             instance_number=1,
@@ -681,7 +681,7 @@ async def test_multi_tenant_isolation_during_succession(
         orch_a = AgentExecution(
             tenant_key=tenant_a,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Tenant A project",
             status="working",
             instance_number=1,
@@ -691,7 +691,7 @@ async def test_multi_tenant_isolation_during_succession(
         orch_b = AgentExecution(
             tenant_key=tenant_b,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Tenant B project",
             status="working",
             instance_number=1,
@@ -748,7 +748,7 @@ async def test_concurrent_orchestrators_during_transition(
         orch1 = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Instance 1",
             status="working",
             instance_number=1,
@@ -800,7 +800,7 @@ async def test_failed_succession_creates_blocked_status(
         orch = AgentExecution(
             tenant_key=tenant_key,
             job_id=str(uuid4()),
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test project",
             status="working",
             instance_number=1,

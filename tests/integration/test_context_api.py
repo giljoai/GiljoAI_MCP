@@ -288,7 +288,7 @@ class TestContextAPIEndpoints:
         response = await client.post(
             "/api/v1/context/load-for-agent",
             json={
-                "agent_type": "backend",
+                "agent_display_name": "backend",
                 "mission": "Implement authentication service",
                 "product_id": sample_product.id,
                 "max_tokens": 5000,
@@ -299,7 +299,7 @@ class TestContextAPIEndpoints:
         assert response.status_code == 200
         data = response.json()
 
-        assert data["agent_type"] == "backend"
+        assert data["agent_display_name"] == "backend"
         assert len(data["chunks"]) > 0
         assert data["total_chunks"] > 0
         assert data["total_tokens"] <= 5000
@@ -324,7 +324,7 @@ class TestContextAPIEndpoints:
             response = await client.post(
                 "/api/v1/context/load-for-agent",
                 json={
-                    "agent_type": agent_type,
+                    "agent_display_name": agent_type,
                     "mission": f"Implement {agent_type} functionality",
                     "product_id": sample_product.id,
                     "max_tokens": 3000,
@@ -334,7 +334,7 @@ class TestContextAPIEndpoints:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["agent_type"] == agent_type
+            assert data["agent_display_name"] == agent_type
             assert data["total_tokens"] <= 3000
 
     @pytest.mark.asyncio
@@ -514,7 +514,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_load_context_missing_fields(self, client, headers):
         """Test loading context with missing required fields"""
-        response = await client.post("/api/v1/context/load-for-agent", json={"agent_type": "backend"}, headers=headers)
+        response = await client.post("/api/v1/context/load-for-agent", json={"agent_display_name": "backend"}, headers=headers)
 
         assert response.status_code == 422
 

@@ -77,7 +77,7 @@ class TestAgentHealthStatus:
 
         status = AgentHealthStatus(
             job_id="test-job-1",
-            agent_type="implementer",
+            agent_display_name="implementer",
             current_status="active",
             health_state="warning",
             last_update=now,
@@ -87,7 +87,7 @@ class TestAgentHealthStatus:
         )
 
         assert status.job_id == "test-job-1"
-        assert status.agent_type == "implementer"
+        assert status.agent_display_name == "implementer"
         assert status.current_status == "active"
         assert status.health_state == "warning"
         assert status.last_update == now
@@ -184,7 +184,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-waiting-1",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="waiting",
                 mission="Test mission",
                 created_at=datetime.now(timezone.utc) - timedelta(minutes=3),
@@ -211,7 +211,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-waiting-2",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="waiting",
                 mission="Test mission",
                 created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
@@ -235,7 +235,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-stalled-1",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -265,7 +265,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-stalled-2",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -292,7 +292,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-stalled-3",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -319,7 +319,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-active-healthy",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=recent_time,
@@ -346,7 +346,7 @@ class TestAgentHealthMonitor:
             orch_job = AgentExecution(
                 job_id="orch-1",
                 tenant_key="test-tenant",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 status="active",
                 mission="Test mission",
                 started_at=silent_time,
@@ -359,7 +359,7 @@ class TestAgentHealthMonitor:
             impl_job = AgentExecution(
                 job_id="impl-1",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=silent_time,
@@ -390,7 +390,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-silent-1",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=silent_time,
@@ -417,7 +417,7 @@ class TestAgentHealthMonitor:
         job = AgentExecution(
             job_id="test-job-1",
             tenant_key="test-tenant",
-            agent_type="implementer",
+            agent_display_name="implementer",
             status="active",
             mission="Test mission",
             started_at=datetime.now(timezone.utc) - timedelta(minutes=10),
@@ -438,7 +438,7 @@ class TestAgentHealthMonitor:
         job = AgentExecution(
             job_id="test-job-2",
             tenant_key="test-tenant",
-            agent_type="implementer",
+            agent_display_name="implementer",
             status="active",
             mission="Test mission",
             started_at=started_time,
@@ -458,7 +458,7 @@ class TestAgentHealthMonitor:
         job = AgentExecution(
             job_id="test-job-3",
             tenant_key="test-tenant",
-            agent_type="implementer",
+            agent_display_name="implementer",
             status="active",
             mission="Test mission",
             created_at=now - timedelta(minutes=10),
@@ -481,7 +481,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-warning",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 created_at=datetime.now(timezone.utc),
@@ -495,7 +495,7 @@ class TestAgentHealthMonitor:
             # Create health status
             health_status = AgentHealthStatus(
                 job_id="test-job-warning",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 current_status="active",
                 health_state="warning",
                 last_update=datetime.now(timezone.utc) - timedelta(minutes=6),
@@ -532,7 +532,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="test-job-timeout-1",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 created_at=datetime.now(timezone.utc),
@@ -546,7 +546,7 @@ class TestAgentHealthMonitor:
             # Create health status
             health_status = AgentHealthStatus(
                 job_id="test-job-timeout-1",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 current_status="active",
                 health_state="timeout",
                 last_update=datetime.now(timezone.utc) - timedelta(minutes=15),
@@ -583,7 +583,7 @@ class TestAgentHealthMonitor:
             job = AgentExecution(
                 job_id="timeout-job",
                 tenant_key="test-tenant",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=datetime.now(timezone.utc) - timedelta(minutes=15),
@@ -598,7 +598,7 @@ class TestAgentHealthMonitor:
             # Create health status
             health_status = AgentHealthStatus(
                 job_id="timeout-job",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 current_status="active",
                 health_state="timeout",
                 last_update=job.started_at,
@@ -637,7 +637,7 @@ class TestAgentHealthMonitor:
             job_tenant_a = AgentExecution(
                 job_id="job-tenant-a",
                 tenant_key="tenant-a",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -649,7 +649,7 @@ class TestAgentHealthMonitor:
             job_tenant_b = AgentExecution(
                 job_id="job-tenant-b",
                 tenant_key="tenant-b",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -711,7 +711,7 @@ class TestAgentHealthMonitor:
                 AgentExecution(
                     job_id=f"job-{i}",
                     tenant_key=f"tenant-{i % 3}",  # 3 unique tenants
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                     status="active",
                     mission="Test mission",
                     created_at=datetime.now(timezone.utc),
@@ -742,7 +742,7 @@ class TestAgentHealthMonitor:
                 AgentExecution(
                     job_id="waiting-timeout",
                     tenant_key="test-tenant",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                     status="waiting",
                     mission="Test mission",
                     created_at=now - timedelta(minutes=3),
@@ -752,7 +752,7 @@ class TestAgentHealthMonitor:
                 AgentExecution(
                     job_id="stalled-job",
                     tenant_key="test-tenant",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                     status="active",
                     mission="Test mission",
                     started_at=now - timedelta(minutes=6),
@@ -764,7 +764,7 @@ class TestAgentHealthMonitor:
                 AgentExecution(
                     job_id="heartbeat-fail",
                     tenant_key="test-tenant",
-                    agent_type="tester",  # 8min timeout
+                    agent_display_name="tester",  # 8min timeout
                     status="active",
                     mission="Test mission",
                     started_at=now - timedelta(minutes=12),
