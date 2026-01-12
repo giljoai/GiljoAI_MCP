@@ -342,7 +342,7 @@ async def list_mcp_tools():
                 "name": "spawn_agent_job",
                 "description": "Create agent job for multi-agent coordination (orchestrator use)",
                 "arguments": {
-                    "agent_type": "string REQUIRED - Agent role: 'implementer', 'tester', 'reviewer', 'documenter', etc.",
+                    "agent_display_name": "string REQUIRED - Agent role: 'implementer', 'tester', 'reviewer', 'documenter', etc.",
                     "agent_name": "string REQUIRED - User-readable agent name",
                     "mission": "string REQUIRED - Agent-specific mission/tasks",
                     "project_id": "string (UUID) REQUIRED - Project ID",
@@ -352,7 +352,7 @@ async def list_mcp_tools():
                     {
                         "description": "Spawn backend implementer agent",
                         "payload": {
-                            "agent_type": "implementer",
+                            "agent_display_name": "implementer",
                             "agent_name": "backend-implementer",
                             "mission": "Implement JWT authentication endpoints with RS256 signing",
                             "project_id": "proj-abc123-def456",
@@ -362,7 +362,7 @@ async def list_mcp_tools():
                     {
                         "description": "Spawn tester agent",
                         "payload": {
-                            "agent_type": "tester",
+                            "agent_display_name": "tester",
                             "agent_name": "backend-tester",
                             "mission": "Write comprehensive tests for authentication system",
                             "project_id": "proj-abc123-def456",
@@ -428,21 +428,21 @@ async def list_mcp_tools():
                 "name": "get_pending_jobs",
                 "description": "Get jobs waiting for agent of this type (agent polling)",
                 "arguments": {
-                    "agent_type": "string REQUIRED - Agent type/role to query for",
+                    "agent_display_name": "string REQUIRED - Agent type/role to query for",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
                 },
                 "examples": [
                     {
                         "description": "Backend implementer checks for pending jobs",
                         "payload": {
-                            "agent_type": "implementer",
+                            "agent_display_name": "implementer",
                             "tenant_key": "tk-tenant123-456",
                         },
                     },
                     {
                         "description": "Tester checks for pending work",
                         "payload": {
-                            "agent_type": "tester",
+                            "agent_display_name": "tester",
                             "tenant_key": "tk-tenant123-456",
                         },
                     },
