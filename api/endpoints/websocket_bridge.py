@@ -73,7 +73,7 @@ async def emit_websocket_event(
                     "data": {
                         "project_id": "proj_123",
                         "agent_id": "agent_456",
-                        "agent_type": "implementer",
+                        "agent_display_name": "implementer",
                         "agent_name": "Backend Implementer",
                         "status": "pending"
                     }

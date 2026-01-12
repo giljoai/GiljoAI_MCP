@@ -761,7 +761,7 @@ class WebSocketManager:
     async def broadcast_job_created(
         self,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         tenant_key: str,
         spawned_by: Optional[str] = None,
         mission_preview: Optional[str] = None,
@@ -779,7 +779,7 @@ class WebSocketManager:
             data={
                 "tenant_key": tenant_key,
                 "job_id": job_id,
-                "agent_type": agent_type,
+                "agent_display_name": agent_display_name,
                 "spawned_by": spawned_by,
                 "mission_preview": mission_preview,
                 "created_at": created_ts,
@@ -800,7 +800,7 @@ class WebSocketManager:
                     "tenant_key": tenant_key,
                     "project_id": project_id,
                     "job_id": job_id,
-                    "agent_type": agent_type,
+                    "agent_display_name": agent_display_name,
                     "agent_name": agent_name,
                     "status": status,
                 },
@@ -810,13 +810,13 @@ class WebSocketManager:
             await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=agent_event)
 
         logger.info(
-            f"Broadcast agent_job:created - {job_id} (type: {agent_type}, spawned_by: {spawned_by}, project_id: {project_id})"
+            f"Broadcast agent_job:created - {job_id} (type: {agent_display_name}, spawned_by: {spawned_by}, project_id: {project_id})"
         )
 
     async def broadcast_job_status_update(
         self,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         tenant_key: str,
         old_status: str,
         new_status: str,
@@ -828,7 +828,7 @@ class WebSocketManager:
 
         message_data: dict[str, Any] = {
             "job_id": job_id,
-            "agent_type": agent_type,
+            "agent_display_name": agent_display_name,
             "old_status": old_status,
             "status": new_status,
             "tenant_key": tenant_key,
@@ -1083,14 +1083,14 @@ class WebSocketManager:
         self,
         tenant_key: str,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         health_status: Any,
     ):
         """Broadcast agent health alert."""
         message_data: dict[str, Any] = {
             "tenant_key": tenant_key,
             "job_id": job_id,
-            "agent_type": agent_type,
+            "agent_display_name": agent_display_name,
             "health_state": health_status.health_state,
             "issue_description": health_status.issue_description,
             "minutes_since_update": health_status.minutes_since_update,
@@ -1117,14 +1117,14 @@ class WebSocketManager:
         self,
         tenant_key: str,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         reason: str,
     ):
         """Broadcast agent auto-fail event."""
         message_data: dict[str, Any] = {
             "tenant_key": tenant_key,
             "job_id": job_id,
-            "agent_type": agent_type,
+            "agent_display_name": agent_display_name,
             "reason": reason,
             "auto_failed": True,
         }

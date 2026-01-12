@@ -45,17 +45,17 @@ class HealthCheckConfig:
     auto_fail_on_timeout: bool = False  # Conservative default
     notify_orchestrator: bool = True
 
-    def get_timeout_for_agent(self, agent_type: str) -> int:
+    def get_timeout_for_agent(self, agent_display_name: str) -> int:
         """
         Get timeout for specific agent type.
 
         Args:
-            agent_type: Type of agent (orchestrator, implementer, etc.)
+            agent_display_name: Type of agent (orchestrator, implementer, etc.)
 
         Returns:
             Timeout in minutes for this agent type
         """
-        return self.timeout_overrides.get(agent_type, self.heartbeat_timeout_minutes)
+        return self.timeout_overrides.get(agent_display_name, self.heartbeat_timeout_minutes)
 
 
 @dataclass
@@ -65,7 +65,7 @@ class AgentHealthStatus:
 
     Attributes:
         job_id: Unique job identifier
-        agent_type: Type of agent (orchestrator, implementer, etc.)
+        agent_display_name: Type of agent (orchestrator, implementer, etc.)
         current_status: Current job status (waiting, active, etc.)
         health_state: Health state (healthy, warning, critical, timeout)
         last_update: Timestamp of last activity
@@ -75,7 +75,7 @@ class AgentHealthStatus:
     """
 
     job_id: str
-    agent_type: str
+    agent_display_name: str
     current_status: str  # Job status (waiting, active, etc.)
     health_state: str  # Health state (healthy, warning, critical, timeout)
     last_update: datetime

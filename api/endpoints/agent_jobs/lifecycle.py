@@ -60,7 +60,7 @@ async def spawn_agent_job(
         HTTPException 403: User not authorized
         HTTPException 400: Invalid request or spawn failed
     """
-    logger.debug(f"User {current_user.username} spawning agent job: {request.agent_type}")
+    logger.debug(f"User {current_user.username} spawning agent job: {request.agent_display_name}")
 
     # Permission check - only admins can spawn agents
     if current_user.role != "admin":
