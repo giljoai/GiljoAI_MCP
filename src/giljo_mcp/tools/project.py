@@ -457,7 +457,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "agent_id": str(execution.agent_id),
                                 "instance_number": execution.instance_number,
                                 "status": execution.status,
-                                "agent_type": execution.agent_type,
+                                "agent_display_name": execution.agent_display_name,
                                 "agent_name": execution.agent_name,
                                 "progress": execution.progress,
                                 "health_status": execution.health_status,

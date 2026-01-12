@@ -280,7 +280,7 @@ class ExternalAgentCoordinationTools:
 
     async def create_agent_job(
         self,
-        agent_type: str,
+        agent_display_name: str,
         mission: str,
         context_chunks: Optional[List[str]] = None,
         spawned_by: Optional[str] = None,
@@ -289,7 +289,7 @@ class ExternalAgentCoordinationTools:
         Create a new agent job via POST /api/agent-jobs.
 
         Args:
-            agent_type: Agent type (e.g., 'implementer', 'tester', 'reviewer')
+            agent_display_name: Agent type (e.g., 'implementer', 'tester', 'reviewer')
             mission: Mission instructions for the agent
             context_chunks: Optional list of context chunk IDs
             spawned_by: Optional parent job_id
@@ -307,24 +307,24 @@ class ExternalAgentCoordinationTools:
             - Only admins can create jobs (enforced server-side)
 
         Validation:
-            - agent_type cannot be empty
+            - agent_display_name cannot be empty
             - mission cannot be empty
         """
         # Input validation
-        if not agent_type or not agent_type.strip():
-            return {"status": "error", "error": "agent_type cannot be empty"}
+        if not agent_display_name or not agent_display_name.strip():
+            return {"status": "error", "error": "agent_display_name cannot be empty"}
 
         if not mission or not mission.strip():
             return {"status": "error", "error": "mission cannot be empty"}
 
         payload = {
-            "agent_type": agent_type.strip(),
+            "agent_display_name": agent_display_name.strip(),
             "mission": mission.strip(),
             "context_chunks": context_chunks or [],
             "spawned_by": spawned_by,
         }
 
-        logger.info(f"[create_agent_job] Creating job for agent_type={agent_type}, mission_length={len(mission)}")
+        logger.info(f"[create_agent_job] Creating job for agent_display_name={agent_display_name}, mission_length={len(mission)}")
 
         response = await self._make_request(method="POST", endpoint="/api/agent-jobs", json_data=payload)
 
@@ -401,7 +401,7 @@ class ExternalAgentCoordinationTools:
                 'status': 'success' | 'error',
                 'job': dict (if success) with keys:
                     - job_id: str
-                    - agent_type: str
+                    - agent_display_name: str
                     - mission: str
                     - status: str
                     - acknowledged: bool
@@ -562,14 +562,14 @@ class ExternalAgentCoordinationTools:
         return response
 
     async def list_active_agent_jobs(
-        self, status: Optional[str] = None, agent_type: Optional[str] = None, limit: int = 100
+        self, status: Optional[str] = None, agent_display_name: Optional[str] = None, limit: int = 100
     ) -> Dict[str, Any]:
         """
         List active agent jobs via GET /api/agent-jobs.
 
         Args:
             status: Optional status filter ('pending', 'active', 'completed', 'failed')
-            agent_type: Optional agent type filter
+            agent_display_name: Optional agent type filter
             limit: Maximum number of results (default 100)
 
         Returns:
@@ -589,11 +589,11 @@ class ExternalAgentCoordinationTools:
         if status:
             params["status"] = status
 
-        if agent_type:
-            params["agent_type"] = agent_type
+        if agent_display_name:
+            params["agent_display_name"] = agent_display_name
 
         logger.info(
-            f"[list_active_agent_jobs] Listing jobs with status={status}, agent_type={agent_type}, limit={limit}"
+            f"[list_active_agent_jobs] Listing jobs with status={status}, agent_display_name={agent_display_name}, limit={limit}"
         )
 
         response = await self._make_request(method="GET", endpoint="/api/agent-jobs", params=params)
