@@ -10,7 +10,9 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="d-flex align-center justify-space-between">
             <span>Setup Quick Start</span>
-            <v-chip size="small" variant="tonal" color="secondary">{{ steps.length }} steps</v-chip>
+            <v-chip size="small" variant="tonal" color="secondary" class="steps-chip"
+              >{{ steps.length }} steps</v-chip
+            >
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
@@ -39,8 +41,8 @@
                 <template #append>
                   <v-chip
                     v-if="step.primaryAction"
-                    size="x-small"
-                    variant="tonal"
+                    size="small"
+                    variant="flat"
                     color="secondary"
                     class="quickstart-go-chip"
                     clickable
@@ -532,5 +534,11 @@ function runAction(action) {
   font-weight: 700;
   letter-spacing: 0.02em;
   padding-inline: 14px;
+  color: rgb(var(--v-theme-on-secondary)) !important;
+}
+
+.steps-chip,
+.quickstart-go-chip {
+  margin-right: 6px;
 }
 </style>
