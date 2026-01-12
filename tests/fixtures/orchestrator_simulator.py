@@ -316,7 +316,7 @@ class OrchestratorSimulator:
             spawn_response = await self._call_mcp_tool(
                 "spawn_agent_job",
                 {
-                    "agent_display_name": agent_type,
+                    "agent_display_name": agent_display_name,
                     "agent_name": agent_display_name.capitalize(),
                     "mission": agent_mission,
                     "project_id": self.project_id,
@@ -327,7 +327,7 @@ class OrchestratorSimulator:
             if spawn_response.get("success"):
                 job_info = {
                     "job_id": spawn_response.get("job_id"),
-                    "agent_display_name": agent_type,
+                    "agent_display_name": agent_display_name,
                     "status": spawn_response.get("status", "waiting"),
                     "mission": agent_mission,
                 }
@@ -341,7 +341,7 @@ class OrchestratorSimulator:
             "status": "completed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_spawned": len(self.spawned_agents),
-            "agent_types": [a["agent_display_name"] for a in self.spawned_agents],
+            "agent_display_names": [a["agent_display_name"] for a in self.spawned_agents],
         }
 
         logger.info(f"[TASK 6] Agent job spawning complete ({len(self.spawned_agents)} agents)")

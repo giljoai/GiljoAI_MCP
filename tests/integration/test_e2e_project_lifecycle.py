@@ -73,13 +73,13 @@ class MockAgentSimulator:
 
         Args:
             job_id: Agent job ID
-            agent_type: Type of agent display name (orchestrator, implementer, tester, etc.)
+            agent_display_name: Type of agent display name (orchestrator, implementer, tester, etc.)
             db_session: Database session
             should_fail: If True, agent will fail during execution
             work_duration: Simulated work duration in seconds
         """
         self.job_id = job_id
-        self.agent_display_name = agent_type
+        self.agent_display_name = agent_display_name
         self.db_session = db_session
         self.should_fail = should_fail
         self.work_duration = work_duration
@@ -513,7 +513,7 @@ async def mock_agent_simulator_factory(db_session):
     ) -> MockAgentSimulator:
         return MockAgentSimulator(
             job_id=job_id,
-            agent_display_name=agent_type,
+            agent_display_name=agent_display_name,
             db_session=db_session,
             should_fail=should_fail,
             work_duration=work_duration,
@@ -954,7 +954,7 @@ class TestCompleteProjectLifecycle:
             job = AgentExecution(
                 tenant_key=test_user.tenant_key,
                 project_id=test_project.id,
-                agent_display_name=agent_type,
+                agent_display_name=agent_display_name,
                 agent_name=f"Test {agent_display_name}",
                 mission=f"Test mission for {agent_display_name}",
                 status="waiting",

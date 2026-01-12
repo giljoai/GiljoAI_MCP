@@ -1,17 +1,17 @@
 """
-Tests for agent_type → agent_display_name migration (Handover 0414b).
+Tests for agent_display_name → agent_display_name migration (Handover 0414b).
 
 RED Phase (TDD): These tests define expected behavior AFTER migration.
-Tests will FAIL because agent_display_name doesn't exist yet - agent_type is the current field.
+Tests will FAIL because agent_display_name doesn't exist yet - agent_display_name is the current field.
 
 Semantic Meaning:
 - agent_name = NORTH STAR (template lookup key) - KEEP
 - agent_display_name = UI LABEL (what humans see) - NEW NAME
-- agent_type = OLD ambiguous name - WILL BE RENAMED
+- agent_display_name = OLD ambiguous name - WILL BE RENAMED
 
 Migration Target:
-- Database: agent_type column → agent_display_name column
-- Model: AgentExecution.agent_type → AgentExecution.agent_display_name
+- Database: agent_display_name column → agent_display_name column
+- Model: AgentExecution.agent_display_name → AgentExecution.agent_display_name
 - Keep: agent_name unchanged (template lookup key)
 
 Expected Failures:
@@ -38,7 +38,7 @@ class TestAgentDisplayNameModelAttribute:
         Test that AgentExecution model has agent_display_name attribute.
 
         EXPECTED FAILURE: AttributeError - 'AgentExecution' object has no attribute 'agent_display_name'
-        Reason: Field is currently named 'agent_type' in the model.
+        Reason: Field is currently named 'agent_display_name' in the model.
         """
         # Create parent job
         job = AgentJob(
@@ -69,12 +69,12 @@ class TestAgentDisplayNameModelAttribute:
         assert execution.agent_display_name == "System Architect"
 
     @pytest.mark.asyncio
-    async def test_agent_execution_does_not_have_agent_type_attribute(self, db_session: AsyncSession):
+    async def test_agent_execution_does_not_have_agent_display_name_attribute(self, db_session: AsyncSession):
         """
-        Test that AgentExecution model does NOT have agent_type attribute after migration.
+        Test that AgentExecution model does NOT have agent_display_name attribute after migration.
 
         EXPECTED FAILURE: Test will pass NOW but should FAIL after migration
-        Reason: agent_type currently exists but should be removed after migration.
+        Reason: agent_display_name currently exists but should be removed after migration.
         """
         # Create parent job
         job = AgentJob(
@@ -101,7 +101,7 @@ class TestAgentDisplayNameModelAttribute:
         await db_session.commit()
 
         # Verify OLD attribute does NOT exist
-        assert not hasattr(execution, "agent_type"), "agent_type should not exist after migration"
+        assert not hasattr(execution, "agent_display_name"), "agent_display_name should not exist after migration"
 
     @pytest.mark.asyncio
     async def test_agent_execution_agent_name_still_exists(self, db_session: AsyncSession):
@@ -149,10 +149,10 @@ class TestAgentDisplayNameDatabaseColumn:
     @pytest.mark.asyncio
     async def test_database_column_named_agent_display_name(self, db_session: AsyncSession):
         """
-        Test that database column is named agent_display_name, not agent_type.
+        Test that database column is named agent_display_name, not agent_display_name.
 
         EXPECTED FAILURE: OperationalError - column agent_display_name does not exist
-        Reason: Database column is currently named 'agent_type'.
+        Reason: Database column is currently named 'agent_display_name'.
         """
         # Create parent job
         job = AgentJob(
@@ -183,7 +183,7 @@ class TestAgentDisplayNameDatabaseColumn:
         columns = [col["name"] for col in inspector.get_columns("agent_executions")]
 
         assert "agent_display_name" in columns, "Database should have agent_display_name column"
-        assert "agent_type" not in columns, "Database should NOT have agent_type column after migration"
+        assert "agent_display_name" not in columns, "Database should NOT have agent_display_name column after migration"
 
     @pytest.mark.asyncio
     async def test_agent_display_name_column_not_null_constraint(self, db_session: AsyncSession):
@@ -224,7 +224,7 @@ class TestAgentDisplayNameDatabaseColumn:
     @pytest.mark.asyncio
     async def test_agent_display_name_column_max_length(self, db_session: AsyncSession):
         """
-        Test that agent_display_name column has VARCHAR(100) constraint (same as agent_type).
+        Test that agent_display_name column has VARCHAR(100) constraint (same as agent_display_name).
 
         EXPECTED FAILURE: Column doesn't exist yet
         Reason: Will fail on column access before constraint can be tested.
@@ -265,7 +265,7 @@ class TestAgentDisplayNameQueryOperations:
         Test that we can filter executions by agent_display_name.
 
         EXPECTED FAILURE: OperationalError - no such column: agent_display_name
-        Reason: Column is currently named agent_type.
+        Reason: Column is currently named agent_display_name.
         """
         # Create parent job
         job = AgentJob(
@@ -314,7 +314,7 @@ class TestAgentDisplayNameQueryOperations:
         Test that we can order executions by agent_display_name.
 
         EXPECTED FAILURE: OperationalError - no such column: agent_display_name
-        Reason: Column is currently named agent_type.
+        Reason: Column is currently named agent_display_name.
         """
         # Create parent job
         job = AgentJob(
@@ -369,10 +369,10 @@ class TestAgentDisplayNameReprMethod:
     @pytest.mark.asyncio
     async def test_repr_includes_agent_display_name(self, db_session: AsyncSession):
         """
-        Test that AgentExecution.__repr__() includes agent_display_name, not agent_type.
+        Test that AgentExecution.__repr__() includes agent_display_name, not agent_display_name.
 
         EXPECTED FAILURE: AttributeError - AgentExecution has no attribute 'agent_display_name'
-        Reason: __repr__ currently uses agent_type field.
+        Reason: __repr__ currently uses agent_display_name field.
         """
         # Create parent job
         job = AgentJob(
@@ -401,4 +401,4 @@ class TestAgentDisplayNameReprMethod:
         # Test __repr__ output
         repr_str = repr(execution)
         assert "agent_display_name=Documentation Manager" in repr_str
-        assert "agent_type=" not in repr_str, "__repr__ should not include agent_type after migration"
+        assert "agent_display_name=" not in repr_str, "__repr__ should not include agent_display_name after migration"

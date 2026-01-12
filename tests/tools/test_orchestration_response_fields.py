@@ -86,12 +86,12 @@ class TestHelperFunctions:
         result = _get_error_handling()
 
         assert isinstance(result, dict)
-        assert "invalid_agent_type" in result
+        assert "invalid_agent_name" in result
         assert "spawn_failure" in result
         assert "mcp_connection_lost" in result
 
-        assert "allowed_agent_types" in result["invalid_agent_type"]
-        assert "spawn_agent_job" in result["invalid_agent_type"]
+        assert "allowed_agent_display_names" in result["invalid_agent_name"]
+        assert "spawn_agent_job" in result["invalid_agent_name"]
         assert "report_error()" in result["spawn_failure"]
         assert "do not proceed" in result["spawn_failure"]
         assert "Abort staging" in result["mcp_connection_lost"]
@@ -101,7 +101,7 @@ class TestHelperFunctions:
         result = _get_spawning_limits()
 
         assert isinstance(result, dict)
-        assert result["max_agent_types"] == 8
+        assert result["max_agent_display_names"] == 8
         assert result["max_instances_per_type"] == "unlimited"
         assert "2-5 agents" in result["recommended_total"]
 
@@ -173,10 +173,10 @@ class TestOrchestratorInstructionsIntegration:
         assert "agent_launching" in response["multi_terminal_mode_rules"]
 
         # Verify error_handling structure
-        assert "invalid_agent_type" in response["error_handling"]
+        assert "invalid_agent_name" in response["error_handling"]
 
         # Verify agent_spawning_limits structure
-        assert response["agent_spawning_limits"]["max_agent_types"] == 8
+        assert response["agent_spawning_limits"]["max_agent_display_names"] == 8
 
         # Verify context_management structure
         assert response["context_management"]["context_budget"] == 150000

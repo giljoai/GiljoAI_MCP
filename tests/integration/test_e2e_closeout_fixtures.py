@@ -65,10 +65,10 @@ async def test_e2e_closeout_fixtures_creates_all_data(e2e_closeout_fixtures):
         assert agent.project_id == project.id
 
     # Verify agent types
-    agent_types = {agent.agent_display_name for agent in agents}
-    assert "orchestrator" in agent_types
-    assert "implementer" in agent_types
-    assert "tester" in agent_types
+    agent_display_names = {agent.agent_display_name for agent in agents}
+    assert "orchestrator" in agent_display_names
+    assert "implementer" in agent_display_names
+    assert "tester" in agent_display_names
 
 
 @pytest.mark.asyncio

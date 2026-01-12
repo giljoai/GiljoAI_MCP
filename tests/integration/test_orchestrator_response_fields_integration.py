@@ -97,7 +97,7 @@ async def test_new_fields_in_real_response():
     assert "mcp_connection_lost" in result["error_handling"]
 
     # Verify agent_spawning_limits structure
-    assert result["agent_spawning_limits"]["max_agent_types"] == 8
+    assert result["agent_spawning_limits"]["max_agent_display_names"] == 8
     assert result["agent_spawning_limits"]["max_instances_per_type"] == "unlimited"
 
     # Verify context_management structure

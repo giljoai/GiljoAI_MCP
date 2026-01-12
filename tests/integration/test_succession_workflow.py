@@ -459,9 +459,9 @@ async def test_succession_preserves_project_continuity(
 
     # Verify active agents preserved
     assert len(instance1.handover_summary["active_agents"]) == 2
-    active_agent_types = [agent["type"] for agent in instance1.handover_summary["active_agents"]]
-    assert "database-dev" in active_agent_types
-    assert "api-dev" in active_agent_types
+    active_agent_display_names = [agent["type"] for agent in instance1.handover_summary["active_agents"]]
+    assert "database-dev" in active_agent_display_names
+    assert "api-dev" in active_agent_display_names
 
     # Verify pending decisions preserved
     assert len(instance1.handover_summary["pending_decisions"]) == 2

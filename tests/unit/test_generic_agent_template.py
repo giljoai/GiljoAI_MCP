@@ -182,21 +182,21 @@ class TestGenericAgentTemplateMCPTool:
         assert result["variables_injected"]["project_id"] == project_id
         assert result["variables_injected"]["tenant_key"] == test_tenant
 
-    async def test_works_for_multiple_agent_types(self, db_session, test_tenant):
+    async def test_works_for_multiple_agent_display_names(self, db_session, test_tenant):
         """Same template works for all agent types"""
         from src.giljo_mcp.tools.orchestration import get_generic_agent_template
 
-        agent_types = ["implementer", "tester", "reviewer", "documenter", "analyzer"]
+        agent_display_names = ["implementer", "tester", "reviewer", "documenter", "analyzer"]
 
-        for agent_type in agent_types:
+        for agent_display_name in agent_display_names:
             result = await get_generic_agent_template(
                 session=db_session,
-                agent_id=f"{agent_type}-{str(uuid4())}",
+                agent_id=f"{agent_display_name}-{str(uuid4())}",
                 job_id=str(uuid4()),
                 product_id=str(uuid4()),
                 project_id=str(uuid4()),
                 tenant_key=test_tenant
             )
 
-            assert result["success"] is True, f"Failed for {agent_type}"
+            assert result["success"] is True, f"Failed for {agent_display_name}"
             assert len(result["template"]) > 0

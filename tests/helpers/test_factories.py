@@ -81,7 +81,7 @@ class TestDataFactory:
             "agent_id": str(uuid.uuid4()),
             "job_id": job_id,
             "tenant_key": tenant_key,
-            "agent_display_name": agent_type,
+            "agent_display_name": agent_display_name,
             "agent_name": agent_name,
             "instance_number": instance_number,
             "status": status,
@@ -125,7 +125,7 @@ class TestDataFactory:
             job_id=job_data["job_id"],
             tenant_key=tenant_key,
             agent_name=agent_name,
-            agent_display_name=agent_type,
+            agent_display_name=agent_display_name,
             status=status,
         )
 
