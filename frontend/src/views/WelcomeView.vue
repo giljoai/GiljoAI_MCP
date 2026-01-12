@@ -68,6 +68,22 @@
               </v-btn>
             </v-col>
           </v-row>
+
+          <v-row class="mt-3" justify="center">
+            <v-col cols="12" md="8">
+              <v-btn
+                :to="{ name: 'UserSettings', query: { tab: 'startup' } }"
+                color="secondary"
+                variant="flat"
+                size="large"
+                block
+                prepend-icon="mdi-rocket-launch"
+                class="startup-cta"
+              >
+                Setup Quick Start
+              </v-btn>
+            </v-col>
+          </v-row>
         </v-card>
       </v-col>
     </v-row>
@@ -181,5 +197,10 @@ onMounted(async () => {
 }
 .mascot-frame {
   background: transparent;
+}
+
+.startup-cta {
+  color: rgb(var(--v-theme-primary)) !important;
+  font-weight: 700;
 }
 </style>
