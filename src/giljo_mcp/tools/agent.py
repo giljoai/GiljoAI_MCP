@@ -221,7 +221,7 @@ async def _ensure_agent_with_session(
         agent_id=agent_id,
         job_id=job_id,
         tenant_key=project.tenant_key,
-        agent_type=agent_name,
+        agent_display_name=agent_name,
         instance_number=1,
         status="waiting",
         agent_name=f"{agent_name} #1",
