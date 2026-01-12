@@ -14,14 +14,109 @@ Rename `agent_type` to `agent_display_name` across the entire application for se
 **Current State**: Clean baseline where everything uses `agent_type`
 **Target State**: All references use `agent_display_name`
 
-**Field Definitions (Canonical)**:
+---
+
+## Semantic Purpose: Why This Rename Matters
+
+### The Two Key Fields
+
+**`agent_name`** = The NORTH STAR for agent identity
+- This is the **template filename** (e.g., `"tdd-implementor"`, `"backend-tester"`)
+- Links to `AgentTemplate.name` in the database
+- Determines ALL agent behavior:
+  - **Color**: Avatar background color, status indicators, Claude Code terminal theme
+  - **Rules**: Agent behavior rules from template
+  - **Capabilities**: What tools and permissions the agent has
+  - **System Prompt**: The agent's personality and expertise
+- This is the **lookup key** for template matching
+- Never changes during agent lifecycle
+
+**`agent_display_name`** = The UI LABEL for humans
+- This is what appears on **agent cards** in the dashboard
+- Assigned by the **orchestrator** when spawning an agent
+- Can be customized per mission (e.g., "Backend API Developer" for a `tdd-implementor` working on APIs)
+- Appears in:
+  - Agent card headers
+  - Status board table rows
+  - Job details panels
+  - Claude Code status line
+- Does NOT affect agent behavior - purely cosmetic
+
+### Visual Flow
+
+```
+Orchestrator spawns agent with:
+├── agent_name: "tdd-implementor"           ← Template lookup key
+│   └── Resolves to AgentTemplate:
+│       ├── color: "#4CAF50" (green)        ← Card avatar color
+│       ├── rules: {...}                     ← Agent behavior
+│       └── system_prompt: "..."             ← Agent personality
+│
+└── agent_display_name: "Backend API Dev"   ← UI label only
+    └── Shown on agent card header
+```
+
+### Agent Card Anatomy
+
+```
+┌─────────────────────────────────────────┐
+│ [Avatar]  Backend API Developer         │ ← agent_display_name
+│  (green)  tdd-implementor               │ ← agent_name (smaller, secondary)
+│           ────────────────              │
+│           Status: Working               │
+│           Progress: 45%                 │
+│           Mission: Implement login API  │
+└─────────────────────────────────────────┘
+     ↑
+     Avatar color comes from AgentTemplate.color
+     looked up via agent_name
+```
+
+### Claude Code Integration
+
+When an agent runs in Claude Code CLI:
+- **Status line** shows `agent_display_name` (what the human sees)
+- **Terminal theme** color comes from template (via `agent_name` lookup)
+- **Behavior/rules** come from template (via `agent_name` lookup)
+
+### Why Rename from `agent_type`?
+
+The old name `agent_type` was **ambiguous**:
+- Is it the type of agent? (template category like "implementer")
+- Is it the template name? (like "tdd-implementor")
+- Is it the display label? (like "Backend API Developer")
+
+`agent_display_name` is **unambiguous**:
+- It's clearly a display/UI label
+- Distinct from `agent_name` (the template identifier)
+- Self-documenting in code
+
+---
+
+## Field Definitions (Canonical)
 
 | Field | Table | Purpose | Example | Set By |
 |-------|-------|---------|---------|--------|
 | `agent_id` | AgentExecution | Unique instance UUID | `"abc-123-def"` | System |
-| `agent_display_name` | AgentExecution | Human-readable UI label | `"Backend API Developer"` | Orchestrator |
-| `agent_name` | AgentExecution | Template filename | `"tdd-implementor"` | Orchestrator |
+| `agent_display_name` | AgentExecution | Human-readable UI label for cards | `"Backend API Developer"` | Orchestrator |
+| `agent_name` | AgentExecution | Template filename (NORTH STAR) | `"tdd-implementor"` | Orchestrator |
 | `job_id` | AgentJob | Work order UUID | `"xyz-789-uvw"` | System |
+
+### Template Lookup Flow
+
+```
+agent_name = "tdd-implementor"
+    ↓
+AgentTemplate.name = "tdd-implementor"
+    ↓
+┌────────────────────────────────────┐
+│ color: "#4CAF50"                   │ → Avatar, status indicators
+│ role: "implementer"                │ → Template category
+│ rules: { max_files: 10, ... }      │ → Behavior constraints
+│ system_prompt: "You are a TDD..."  │ → Agent personality
+│ tools: ["read", "write", "test"]   │ → Available capabilities
+└────────────────────────────────────┘
+```
 
 ---
 
