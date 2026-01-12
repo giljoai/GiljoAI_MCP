@@ -119,7 +119,7 @@
                   data-testid="agent-card"
                   :data-agent-display-name="agent.agent_display_name"
                 >
-                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_display_name) }">
+                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
                     {{ getAgentInitials(agent.agent_display_name) }}
                   </div>
                   <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
