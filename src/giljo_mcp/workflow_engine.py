@@ -347,7 +347,7 @@ class WorkflowEngine:
         for agent_config in stage.agents:
             job_id = await self.job_manager.create_job(
                 tenant_key=tenant_key,
-                agent_type=agent_config.role,
+                agent_display_name=agent_config.role,
                 mission=agent_config.mission.content if agent_config.mission else "",
                 spawned_by="workflow_engine",
                 context_chunks=(agent_config.context_chunks if agent_config.context_chunks else []),

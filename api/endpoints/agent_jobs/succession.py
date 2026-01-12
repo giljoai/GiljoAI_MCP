@@ -430,7 +430,7 @@ Think about:
 Call spawn_agent_job with a RICH mission:
 
 mcp__giljo-mcp__spawn_agent_job(
-    agent_type="orchestrator",
+    agent_display_name="orchestrator",
     agent_name="Orchestrator",
     mission='''
 ## HANDOVER CONTEXT

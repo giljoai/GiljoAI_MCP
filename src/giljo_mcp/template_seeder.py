@@ -749,7 +749,7 @@ You have access to MCP tools for agent coordination. The most important ones:
 
 - `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Get your mission + full_protocol
 - `mcp__giljo-mcp__report_progress(job_id, progress)` – Report incremental progress
-- `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` – Check for instructions
+- `mcp__giljo-mcp__get_next_instruction(job_id, agent_display_name, tenant_key)` – Check for instructions
 - `mcp__giljo-mcp__send_message(to_agents, content, project_id)` – Message orchestrator
 - `mcp__giljo-mcp__complete_job(job_id, result)` – Mark work complete
 - `mcp__giljo-mcp__report_error(job_id, error)` – Report blocking errors
@@ -809,7 +809,7 @@ As an orchestrator, you have access to comprehensive MCP tools for project orche
 
 ### Phase 3: AGENT SPAWNING
 
-7. `mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key)` - Spawn agent
+7. `mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key)` - Spawn agent
 
 ### Phase 4: COORDINATION & MONITORING
 
@@ -954,7 +954,7 @@ If your mission objectives are unclear or require broader project context:
    - ❌ Bad: "REQUEST_CONTEXT: Tell me everything about the project"
 
 3. **Wait for orchestrator response**:
-   - Check: `mcp__giljo-mcp__get_next_instruction(job_id="{job_id}", agent_type="{agent_type}", tenant_key="{tenant_key}")`
+   - Check: `mcp__giljo-mcp__get_next_instruction(job_id="{job_id}", agent_display_name="{agent_display_name}", tenant_key="{tenant_key}")`
    - Orchestrator will provide filtered context excerpt
    - Continue work after receiving clarification
 
