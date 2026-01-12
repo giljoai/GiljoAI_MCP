@@ -104,7 +104,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_a,
         project_id=project_a.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator mission A",
         status="working",  # Valid status for active agent
         created_at=datetime.now(timezone.utc),
@@ -116,7 +116,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_b,
         project_id=project_b.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator mission B",
         status="working",  # Valid status for active agent
         created_at=datetime.now(timezone.utc),

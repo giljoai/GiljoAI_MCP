@@ -48,7 +48,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
   const mockAgents = [
     {
       job_id: 'agent-1',
-      agent_type: 'orchestrator',
+      agent_display_name: 'orchestrator',
       agent_name: 'Orchestrator',
       status: 'working',
       tenant_key: 'test-tenant',
@@ -60,7 +60,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
     },
     {
       job_id: 'agent-2',
-      agent_type: 'implementor',
+      agent_display_name: 'implementor',
       agent_name: 'Implementor',
       status: 'waiting',
       tenant_key: 'test-tenant',
@@ -72,7 +72,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
     },
     {
       job_id: 'agent-3',
-      agent_type: 'tester',
+      agent_display_name: 'tester',
       agent_name: 'Tester',
       status: 'complete',
       tenant_key: 'test-tenant',
@@ -84,7 +84,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
     },
     {
       job_id: 'agent-4',
-      agent_type: 'analyzer',
+      agent_display_name: 'analyzer',
       agent_name: 'Analyzer',
       status: 'failed',
       tenant_key: 'test-tenant',
@@ -96,7 +96,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
     },
     {
       job_id: 'agent-5',
-      agent_type: 'reviewer',
+      agent_display_name: 'reviewer',
       agent_name: 'Reviewer',
       status: 'cancelled',
       tenant_key: 'test-tenant',
@@ -262,7 +262,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
     it('displays "Unknown" for invalid status values (graceful degradation)', () => {
       const invalidAgent = {
         job_id: 'agent-6',
-        agent_type: 'invalid',
+        agent_display_name: 'invalid',
         agent_name: 'Invalid',
         status: 'invalid-status',
         tenant_key: 'test-tenant',

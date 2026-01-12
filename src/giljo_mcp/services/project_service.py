@@ -1708,7 +1708,7 @@ class ProjectService:
                         and_(
                             AgentExecution.tenant_key == tenant_key,
                             AgentJob.project_id == project_id,
-                            AgentExecution.agent_type == "orchestrator",
+                            AgentExecution.agent_display_name == "orchestrator",
                         )
                     )
                 )
@@ -1738,7 +1738,7 @@ class ProjectService:
                     agent_id=str(uuid4()),
                     job_id=orchestrator_job_id,
                     tenant_key=tenant_key,
-                    agent_type="orchestrator",
+                    agent_display_name="orchestrator",
                     agent_name=f"Orchestrator #{instance_number}",
                     instance_number=instance_number,
                     status="waiting",

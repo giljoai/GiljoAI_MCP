@@ -326,7 +326,7 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
         agent_id=str(uuid.uuid4()),
         job_id=job.job_id,
         tenant_key=test_tenant_key,
-        agent_type="worker",
+        agent_display_name="worker",
         agent_name="Test Worker Agent",
         instance_number=1,
         status="waiting",  # AgentExecution: 7 statuses

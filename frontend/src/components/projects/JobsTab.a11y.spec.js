@@ -35,7 +35,7 @@ const createMockProject = (overrides = {}) => ({
 const createMockAgent = (type, status, overrides = {}) => ({
   job_id: `job-${type}-${Math.random().toString(36).substr(2, 9)}`,
   agent_id: `agent-${type}`,
-  agent_type: type,
+  agent_display_name: type,
   status: status,
   mission: `Mission for ${type}`,
   progress: status === 'working' ? 50 : 0,

@@ -189,7 +189,7 @@ async def test_succession_query_performance(
         .where(
             AgentExecution.project_id == test_project.id,
             AgentExecution.tenant_key == test_tenant_key,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )
@@ -291,7 +291,7 @@ async def test_concurrent_successions_different_projects(
     # Verify all successions completed
     stmt = select(AgentExecution).where(
         AgentExecution.tenant_key == test_tenant_key,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
     result = await db_session.execute(stmt)
     all_orchestrators = result.scalars().all()
@@ -402,7 +402,7 @@ async def test_succession_chain_query_scaling(
         select(AgentExecution)
         .where(
             AgentExecution.project_id == test_project.id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
         )
         .order_by(AgentExecution.instance_number.asc())
     )

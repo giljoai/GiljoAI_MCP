@@ -147,7 +147,7 @@ async def test_job(db_session: AsyncSession, admin_user: User) -> AgentExecution
     """Create test job for testing."""
     job = AgentExecution(
         tenant_key=admin_user.tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test implementation task",
         status="waiting",
         spawned_by=None,
@@ -173,7 +173,7 @@ async def test_create_job_success(authenticated_client: tuple[AsyncClient, User]
     response = await client.post(
         "/api/agent-jobs",
         json={
-            "agent_type": "implementer",
+            "agent_display_name": "implementer",
             "mission": "Implement user authentication",
             "context_chunks": ["chunk_1", "chunk_2"],
         },
@@ -195,7 +195,7 @@ async def test_create_job_missing_required_fields(authenticated_client: tuple[As
 
     assert response.status_code == 422
     error_detail = response.json()["detail"]
-    assert any("agent_type" in str(err.get("loc", [])) for err in error_detail)
+    assert any("agent_display_name" in str(err.get("loc", [])) for err in error_detail)
 
 
 @pytest.mark.asyncio
@@ -206,7 +206,7 @@ async def test_create_job_admin_only(api_client: AsyncClient, regular_user: User
 
     app.dependency_overrides[get_current_active_user] = override_current_user(regular_user)
 
-    response = await api_client.post("/api/agent-jobs", json={"agent_type": "implementer", "mission": "Test mission"})
+    response = await api_client.post("/api/agent-jobs", json={"agent_display_name": "implementer", "mission": "Test mission"})
 
     assert response.status_code == 403
     assert "Admin access required" in response.json()["detail"]
@@ -255,13 +255,13 @@ async def test_list_jobs_filter_by_agent_type(authenticated_client: tuple[AsyncC
     """Test filtering jobs by agent type."""
     client, user = authenticated_client
 
-    response = await client.get(f"/api/agent-jobs?agent_type={test_job.agent_type}")
+    response = await client.get(f"/api/agent-jobs?agent_display_name={test_job.agent_display_name}")
 
     assert response.status_code == 200
     data = response.json()
 
     for job in data["jobs"]:
-        assert job["agent_type"] == test_job.agent_type
+        assert job["agent_display_name"] == test_job.agent_display_name
 
 
 @pytest.mark.asyncio
@@ -274,7 +274,7 @@ async def test_get_job_success(authenticated_client: tuple[AsyncClient, User], t
     assert response.status_code == 200
     data = response.json()
     assert data["job_id"] == test_job.job_id
-    assert data["agent_type"] == test_job.agent_type
+    assert data["agent_display_name"] == test_job.agent_display_name
     assert data["mission"] == test_job.mission
     assert data["status"] == test_job.status
 
@@ -324,7 +324,7 @@ async def test_multi_tenant_isolation_list_jobs(
     # Create job for other tenant
     other_job = AgentExecution(
         tenant_key=other_tenant_user.tenant_key,
-        agent_type="tester",
+        agent_display_name="tester",
         mission="Other tenant job",
         status="waiting",
         messages=[],
@@ -534,8 +534,8 @@ async def test_spawn_children_jobs(authenticated_client: tuple[AsyncClient, User
         f"/api/agent-jobs/{test_job.job_id}/spawn-children",
         json={
             "children": [
-                {"agent_type": "implementer", "mission": "Implement frontend", "context_chunks": ["chunk_1"]},
-                {"agent_type": "tester", "mission": "Write tests", "context_chunks": ["chunk_2"]},
+                {"agent_display_name": "implementer", "mission": "Implement frontend", "context_chunks": ["chunk_1"]},
+                {"agent_display_name": "tester", "mission": "Write tests", "context_chunks": ["chunk_2"]},
             ]
         },
     )
@@ -557,7 +557,7 @@ async def test_get_job_hierarchy(
     # Create child jobs
     child1 = AgentExecution(
         tenant_key=test_job.tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Child job 1",
         status="waiting",
         spawned_by=test_job.job_id,
@@ -565,7 +565,7 @@ async def test_get_job_hierarchy(
     )
     child2 = AgentExecution(
         tenant_key=test_job.tenant_key,
-        agent_type="tester",
+        agent_display_name="tester",
         mission="Child job 2",
         status="waiting",
         spawned_by=test_job.job_id,
@@ -641,7 +641,7 @@ async def test_invalid_status_transition_returns_400(
     # Create completed job
     completed_job = AgentExecution(
         tenant_key=admin_user.tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Completed job",
         status="completed",
         messages=[],
@@ -668,7 +668,7 @@ async def test_complete_job_workflow(authenticated_client: tuple[AsyncClient, Us
     # Step 1: Create job
     create_response = await client.post(
         "/api/agent-jobs",
-        json={"agent_type": "implementer", "mission": "Implement feature X", "context_chunks": ["chunk_1"]},
+        json={"agent_display_name": "implementer", "mission": "Implement feature X", "context_chunks": ["chunk_1"]},
     )
     assert create_response.status_code == 201
     job_id = create_response.json()["job_id"]
@@ -706,7 +706,7 @@ async def test_job_spawn_hierarchy_workflow(authenticated_client: tuple[AsyncCli
 
     # Step 1: Create parent job
     parent_response = await client.post(
-        "/api/agent-jobs", json={"agent_type": "orchestrator", "mission": "Coordinate implementation"}
+        "/api/agent-jobs", json={"agent_display_name": "orchestrator", "mission": "Coordinate implementation"}
     )
     assert parent_response.status_code == 201
     parent_job_id = parent_response.json()["job_id"]
@@ -716,9 +716,9 @@ async def test_job_spawn_hierarchy_workflow(authenticated_client: tuple[AsyncCli
         f"/api/agent-jobs/{parent_job_id}/spawn-children",
         json={
             "children": [
-                {"agent_type": "implementer", "mission": "Backend implementation"},
-                {"agent_type": "implementer", "mission": "Frontend implementation"},
-                {"agent_type": "tester", "mission": "Integration tests"},
+                {"agent_display_name": "implementer", "mission": "Backend implementation"},
+                {"agent_display_name": "implementer", "mission": "Frontend implementation"},
+                {"agent_display_name": "tester", "mission": "Integration tests"},
             ]
         },
     )

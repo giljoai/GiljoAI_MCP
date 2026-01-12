@@ -2,7 +2,7 @@
 Security Tests for Orchestrator Succession (Handover 0080)
 
 Critical security tests ensuring succession is secure and authorized:
-- Only orchestrator agent_type can create successors
+- Only orchestrator agent_display_name can create successors
 - Succession enforces RBAC and permissions
 - Handover summary contains no sensitive data
 - Multi-tenant isolation enforced
@@ -33,7 +33,7 @@ async def test_non_orchestrator_cannot_create_successor(
     test_tenant_key: str,
 ):
     """
-    Only orchestrator agent_type can spawn successors.
+    Only orchestrator agent_display_name can spawn successors.
 
     Other agent types (analyzer, implementer, etc.) should not create successors.
     """
@@ -42,7 +42,7 @@ async def test_non_orchestrator_cannot_create_successor(
         job_id=f"impl-{uuid.uuid4()}",
         tenant_key=test_tenant_key,
         project_id=test_project.id,
-        agent_type="implementer",  # NOT orchestrator
+        agent_display_name="implementer",  # NOT orchestrator
         mission="Implement feature X",
         status="working",
         instance_number=1,
@@ -57,9 +57,9 @@ async def test_non_orchestrator_cannot_create_successor(
     # ========== VERIFICATIONS ==========
 
     # Implementer should NOT have succession capabilities
-    assert implementer.agent_type != "orchestrator"
+    assert implementer.agent_display_name != "orchestrator"
 
-    # In real implementation, MCP tool create_successor would check agent_type
+    # In real implementation, MCP tool create_successor would check agent_display_name
     # and reject non-orchestrator attempts
 
     # Verify implementer cannot set succession fields
@@ -75,7 +75,7 @@ async def test_orchestrator_role_enforcement(
     test_tenant_key: str,
 ):
     """
-    Only agents with agent_type='orchestrator' can use succession features.
+    Only agents with agent_display_name='orchestrator' can use succession features.
     """
     # Create orchestrator
     orchestrator = AgentExecution(
@@ -96,7 +96,7 @@ async def test_orchestrator_role_enforcement(
     # ========== VERIFICATIONS ==========
 
     # Orchestrator can use succession features
-    assert orchestrator.agent_type == "orchestrator"
+    assert orchestrator.agent_display_name == "orchestrator"
     assert orchestrator.instance_number is not None
     assert orchestrator.context_used is not None
     assert orchestrator.context_budget is not None
@@ -305,7 +305,7 @@ async def test_sql_injection_in_succession_queries(
     # Use parameterized query (SAFE)
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == malicious_input,  # Treated as literal string
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
 
     result = await db_session.execute(stmt)
@@ -442,7 +442,7 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == project_b.id,
         AgentExecution.tenant_key == tenant_a_key,  # Wrong tenant key!
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
 
     result = await db_session.execute(stmt)
@@ -457,7 +457,7 @@ async def test_tenant_cannot_access_other_tenant_succession_chain(
     correct_stmt = select(AgentExecution).where(
         AgentExecution.project_id == project_b.id,
         AgentExecution.tenant_key == tenant_b_key,  # Correct tenant key
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
 
     correct_result = await db_session.execute(correct_stmt)

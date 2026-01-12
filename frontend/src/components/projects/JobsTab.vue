@@ -5,7 +5,7 @@
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
-            <th>Agent Type</th>
+            <th>Agent Display Name</th>
             <th>Instance</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
@@ -20,19 +20,19 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-type="agent.agent_type" :data-agent-status="agent.status">
-            <!-- Agent Type: Avatar + Name -->
-            <td class="agent-type-cell">
-              <v-avatar :color="getAgentColor(agent.agent_type)" size="32" class="agent-avatar">
-                <span class="avatar-text">{{ getAgentAbbr(agent.agent_type) }}</span>
+          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
+            <!-- Agent Display Name: Avatar + Name -->
+            <td class="agent-display-name-cell">
+              <v-avatar :color="getAgentColor(agent.agent_display_name)" size="32" class="agent-avatar">
+                <span class="avatar-text">{{ getAgentAbbr(agent.agent_display_name) }}</span>
               </v-avatar>
               <div class="agent-info">
-                <span class="agent-name-primary">{{ agent.agent_name || agent.agent_type }}</span>
+                <span class="agent-name-primary">{{ agent.agent_name || agent.agent_display_name }}</span>
                 <span
-                  v-if="agent.agent_name && agent.agent_name !== agent.agent_type"
-                  class="agent-type-secondary"
+                  v-if="agent.agent_name && agent.agent_name !== agent.agent_display_name"
+                  class="agent-display-name-secondary"
                 >
-                  {{ agent.agent_type }}
+                  {{ agent.agent_display_name }}
                 </span>
               </div>
             </td>
@@ -208,7 +208,7 @@
 
               <!-- Hand Over button: only for working orchestrators (Handover 0243d) -->
               <v-tooltip
-                v-if="agent.agent_type === 'orchestrator' && ['working', 'complete', 'completed'].includes(agent.status)"
+                v-if="agent.agent_display_name === 'orchestrator' && ['working', 'complete', 'completed'].includes(agent.status)"
                 text="Hand over"
               >
                 <template #activator="{ props: tooltipProps }">
@@ -278,7 +278,7 @@
           The agent will stop work on its next check-in. This action cannot be undone.
 
           <div class="agent-info mt-4">
-            <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_type }}</div>
+            <div><strong>Agent Display Name:</strong> {{ selectedAgent?.agent_display_name }}</div>
             <div><strong>Job ID:</strong> {{ selectedAgent?.job_id }}</div>
           </div>
         </v-card-text>
@@ -308,10 +308,10 @@
     <v-dialog v-model="showAgentJobModal" max-width="700" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-avatar :color="getAgentColor(selectedAgent?.agent_type)" size="32" class="agent-avatar mr-2">
-            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_type) }}</span>
+          <v-avatar :color="getAgentColor(selectedAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
+            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_display_name) }}</span>
           </v-avatar>
-          <span style="text-transform: capitalize">{{ selectedAgent?.agent_name || selectedAgent?.agent_type }}</span>&nbsp;- Assigned Job
+          <span style="text-transform: capitalize">{{ selectedAgent?.agent_name || selectedAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
           <v-spacer></v-spacer>
           <v-btn icon variant="text" @click="showAgentJobModal = false" aria-label="Close">
             <v-icon>mdi-close</v-icon>
@@ -568,7 +568,7 @@ onUnmounted(() => {
 /**
  * Get agent avatar color - matches BRANDING_GUIDE.md
  */
-function getAgentColor(agentType) {
+function getAgentColor(displayName) {
   const colors = {
     orchestrator: '#D4A574', // Tan/Beige - Project coordination
     analyzer: '#E74C3C', // Red - Analysis & research
@@ -579,13 +579,13 @@ function getAgentColor(agentType) {
     documenter: '#27AE60', // Green - Documentation
     researcher: '#27AE60', // Green - Research (alias)
   }
-  return colors[agentType?.toLowerCase()] || '#90A4AE' // Gray for custom agents
+  return colors[displayName?.toLowerCase()] || '#90A4AE' // Gray for custom agents
 }
 
 /**
  * Get agent avatar abbreviation - updated to match branding
  */
-function getAgentAbbr(agentType) {
+function getAgentAbbr(displayName) {
   const abbrs = {
     orchestrator: 'OR',
     analyzer: 'AN',
@@ -596,7 +596,7 @@ function getAgentAbbr(agentType) {
     documenter: 'DO',
     researcher: 'RE',
   }
-  return abbrs[agentType?.toLowerCase()] || agentType?.slice(0, 2).toUpperCase()
+  return abbrs[displayName?.toLowerCase()] || displayName?.slice(0, 2).toUpperCase()
 }
 
 /**
@@ -746,7 +746,7 @@ function shouldShowCopyButton(agent) {
 async function handlePlay(agent) {
   try {
     // Handover 0337: CLI mode implementation prompt for orchestrator
-    if (agent.agent_type === 'orchestrator') {
+    if (agent.agent_display_name === 'orchestrator') {
       // CLI mode: Generate implementation prompt
       if (props.project?.execution_mode === 'claude_code_cli') {
         try {
@@ -803,7 +803,7 @@ async function handlePlay(agent) {
  * Opens Message Audit Modal for selected agent (Waiting tab)
  */
 function handleMessages(agent) {
-  console.log('[JobsTab] Messages action:', agent.agent_type)
+  console.log('[JobsTab] Messages action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   messageAuditInitialTab.value = 'waiting'
   showMessageAuditModal.value = true
@@ -832,7 +832,7 @@ function handleStepsClick(agent) {
  * Opens AgentDetailsModal to show template or orchestrator prompt
  */
 function handleAgentRole(agent) {
-  console.log('[JobsTab] Agent role action:', agent.agent_type)
+  console.log('[JobsTab] Agent role action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   showAgentDetailsModal.value = true
 }
@@ -842,7 +842,7 @@ function handleAgentRole(agent) {
  * Opens modal to show agent's assigned job/mission
  */
 function handleAgentJob(agent) {
-  console.log('[JobsTab] Agent job action:', agent.agent_type)
+  console.log('[JobsTab] Agent job action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   showAgentJobModal.value = true
 }
@@ -1077,7 +1077,7 @@ async function copyToClipboard(text) {
         color: #e0e0e0;
         font-size: 14px;
 
-        &.agent-type-cell {
+        &.agent-display-name-cell {
           display: flex;
           align-items: center;
           gap: 12px;
@@ -1101,7 +1101,7 @@ async function copyToClipboard(text) {
               text-transform: capitalize;
             }
 
-            .agent-type-secondary {
+            .agent-display-name-secondary {
               font-size: 0.75rem;
               color: #999;
               text-transform: capitalize;

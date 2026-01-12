@@ -108,7 +108,7 @@ class TestExternalAgentCoordinationTools:
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
             result = await tools.create_agent_job(
-                agent_type="implementer", mission="Implement feature X", context_chunks=["chunk1", "chunk2"]
+                agent_display_name="implementer", mission="Implement feature X", context_chunks=["chunk1", "chunk2"]
             )
 
         assert result["status"] == "success"
@@ -147,7 +147,7 @@ class TestExternalAgentCoordinationTools:
                 "id": 1,
                 "job_id": job_id,
                 "tenant_key": tenant_key,
-                "agent_type": "implementer",
+                "agent_display_name": "implementer",
                 "mission": "Test mission",
                 "status": "active",
                 "spawned_by": None,
@@ -270,7 +270,7 @@ class TestExternalAgentCoordinationTools:
                         "id": 1,
                         "job_id": job_id,
                         "tenant_key": tenant_key,
-                        "agent_type": "implementer",
+                        "agent_display_name": "implementer",
                         "mission": "Test mission",
                         "status": "active",
                         "spawned_by": None,
@@ -407,7 +407,7 @@ class TestExternalAgentCoordinationTools:
             from src.giljo_mcp.tools.agent_coordination_external import ExternalAgentCoordinationTools
 
             tools = ExternalAgentCoordinationTools(mock_session, mock_config)
-            result = await tools.create_agent_job(agent_type="", mission="Test mission")
+            result = await tools.create_agent_job(agent_display_name="", mission="Test mission")
 
         assert result["status"] == "error"
         assert "empty" in result["error"].lower() or "required" in result["error"].lower()

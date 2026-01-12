@@ -52,7 +52,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
   const mockOrchestratorAgent = {
     id: 'job-1',
     job_id: 'job-1',
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     agent_name: 'Orchestrator',
     status: 'working',
     project_id: 'proj-123',
@@ -67,7 +67,7 @@ describe('AgentCardEnhanced.vue - Succession Integration (Handover 0509)', () =>
     ...mockOrchestratorAgent,
     id: 'job-2',
     job_id: 'job-2',
-    agent_type: 'specialist',
+    agent_display_name: 'specialist',
     agent_name: 'Specialist',
   }
 

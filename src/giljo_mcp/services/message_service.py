@@ -157,7 +157,7 @@ class MessageService:
                         "error": "Project not found or access denied"
                     }
 
-                # Resolve agent_type strings to agent_id UUIDs (executor, not work order)
+                # Resolve agent_display_name strings to agent_id UUIDs (executor, not work order)
                 # Handover 0372: This enables succession - messages route to NEW executor after handover
                 resolved_to_agents = []
                 for agent_ref in to_agents:
@@ -175,10 +175,10 @@ class MessageService:
                         executions = exec_result.scalars().all()
 
                         # Expand to individual recipients (excluding sender)
-                        sender_type = from_agent or "orchestrator"
+                        sender_display_name = from_agent or "orchestrator"
                         for execution in executions:
                             # Skip sender
-                            if execution.agent_type == sender_type:
+                            if execution.agent_display_name == sender_display_name:
                                 continue
                             resolved_to_agents.append(execution.agent_id)
                             self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
@@ -186,12 +186,12 @@ class MessageService:
                         # Already a UUID (agent_id) - use directly
                         resolved_to_agents.append(agent_ref)
                     else:
-                        # Agent type string (e.g., "orchestrator") - resolve to active execution agent_id
+                        # Agent display name string (e.g., "Orchestrator") - resolve to active execution agent_id
                         exec_result = await session.execute(
                             select(AgentExecution).join(AgentJob).where(
                                 and_(
                                     AgentJob.project_id == project_id,
-                                    AgentExecution.agent_type == agent_ref,
+                                    AgentExecution.agent_display_name == agent_ref,
                                     AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Active statuses
                                     AgentExecution.tenant_key == tenant_key
                                 )
@@ -201,13 +201,13 @@ class MessageService:
                         if execution:
                             resolved_to_agents.append(execution.agent_id)
                             self._logger.info(
-                                f"[RESOLVER] Resolved agent_type '{agent_ref}' to agent_id '{execution.agent_id}'"
+                                f"[RESOLVER] Resolved agent_display_name '{agent_ref}' to agent_id '{execution.agent_id}'"
                             )
                         else:
                             # Could not resolve - keep original (will fail to deliver)
                             resolved_to_agents.append(agent_ref)
                             self._logger.warning(
-                                f"[RESOLVER] Could not resolve agent_type '{agent_ref}' to active execution in project {project_id}"
+                                f"[RESOLVER] Could not resolve agent_display_name '{agent_ref}' to active execution in project {project_id}"
                             )
 
                 # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
@@ -295,14 +295,14 @@ class MessageService:
                             )
                             all_executions = result.scalars().all()
                             # Exclude sender from recipients to prevent self-notification
-                            sender_agent_type = from_agent or "orchestrator"
+                            sender_agent_display_name = from_agent or "orchestrator"
                             recipient_agent_ids = [
                                 exec.agent_id for exec in all_executions
-                                if exec.agent_type != sender_agent_type
+                                if exec.agent_display_name != sender_agent_display_name
                             ]
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
-                                f"(excluded sender: {sender_agent_type})"
+                                f"(excluded sender: {sender_agent_display_name})"
                             )
                         else:
                             # Direct message: resolved_to_agents already contains agent_ids
@@ -458,7 +458,7 @@ class MessageService:
         Args:
             project_id: Project ID to broadcast to
             content: Message content
-            from_agent: Sender agent_id or agent_type (default: "orchestrator")
+            from_agent: Sender agent_id or agent_display_name (default: "orchestrator")
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
@@ -1191,7 +1191,7 @@ class MessageService:
                         AgentJob.project_id == project_id,
                         or_(
                             AgentExecution.agent_id == from_agent,
-                            AgentExecution.agent_type == from_agent
+                            AgentExecution.agent_display_name == from_agent
                         )
                     )
                 ).limit(1)
@@ -1259,7 +1259,7 @@ class MessageService:
                     flag_modified(recipient_agent, "messages")
 
                     self._logger.info(
-                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_type} "
+                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_display_name} "
                         f"({recipient_agent_id}) JSONB column (flagged modified)"
                     )
 

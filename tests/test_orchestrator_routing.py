@@ -255,7 +255,7 @@ async def test_spawn_claude_code_agent_creates_agent(orchestrator, test_project,
 
     assert job is not None
     assert job.tool_type == "claude"
-    assert job.agent_type == "implementer"
+    assert job.agent_display_name == "implementer"
     assert job.status == "active"
     assert job.job_id is not None  # Job ID always exists in MCPAgentJob
     assert job.tenant_key == test_project.tenant_key
@@ -324,7 +324,7 @@ async def test_spawn_generic_agent_creates_job(orchestrator, test_project, codex
         db_job = result.scalar_one_or_none()
 
         assert db_job is not None
-        assert db_job.agent_type == "tester"
+        assert db_job.agent_display_name == "tester"
         assert db_job.status == "pending"
         assert db_job.tenant_key == test_project.tenant_key
 
@@ -617,7 +617,7 @@ def test_generate_cli_prompt_includes_job_info(orchestrator, test_project, codex
     # Create mock job
     job = AgentExecution(
         tenant_key=test_project.tenant_key,
-        agent_type="tester",
+        agent_display_name="tester",
         mission="Test mission",
         status="waiting",
     )
@@ -638,7 +638,7 @@ def test_generate_cli_prompt_copy_paste_ready(orchestrator, test_project, gemini
     """Test CLI prompt is copy-paste ready with all sections."""
     job = AgentExecution(
         tenant_key=test_project.tenant_key,
-        agent_type="reviewer",
+        agent_display_name="reviewer",
         mission="Review code",
         status="waiting",
     )

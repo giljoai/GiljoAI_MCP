@@ -152,7 +152,7 @@ async def monolithic_test_orchestrator(
         job_id=str(uuid4()),
         tenant_key=test_tenant_key,
         project_id=monolithic_test_project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Monolithic Test Orchestrator",
         mission="Initial mission to be replaced by get_orchestrator_instructions",
         status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned

@@ -44,7 +44,7 @@ class TestData:
         }
 
     @staticmethod
-    def generate_agent_job_data(project_id: str, tenant_key: str, agent_type: Optional[str] = None) -> dict[str, Any]:
+    def generate_agent_job_data(project_id: str, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
         """
         Generate test AgentJob data (work order - the WHAT).
 
@@ -55,8 +55,8 @@ class TestData:
             "job_id": str(uuid.uuid4()),
             "tenant_key": tenant_key,
             "project_id": project_id,
-            "job_type": agent_type or "worker",
-            "mission": f"Test mission for {agent_type or 'worker'} agent",
+            "job_type": agent_display_name or "worker",
+            "mission": f"Test mission for {agent_display_name or 'worker'} agent",
             "status": "active",  # AgentJob has 3 statuses: active/completed/cancelled
             "created_at": datetime.now(timezone.utc),
             "job_metadata": {},
@@ -64,7 +64,7 @@ class TestData:
 
     @staticmethod
     def generate_agent_execution_data(
-        job_id: str, tenant_key: str, agent_type: Optional[str] = None, instance_number: int = 1
+        job_id: str, tenant_key: str, agent_display_name: Optional[str] = None, instance_number: int = 1
     ) -> dict[str, Any]:
         """
         Generate test AgentExecution data (executor - the WHO).
@@ -76,8 +76,8 @@ class TestData:
             "agent_id": str(uuid.uuid4()),
             "job_id": job_id,
             "tenant_key": tenant_key,
-            "agent_type": agent_type or "worker",
-            "agent_name": f"Test {agent_type or 'worker'} Agent",
+            "agent_display_name": agent_display_name or "worker",
+            "agent_name": f"Test {agent_display_name or 'worker'} Agent",
             "instance_number": instance_number,
             "status": "waiting",  # AgentExecution has 7 statuses
             "progress": 0,
@@ -169,12 +169,12 @@ async def test_agent_jobs(db_session, test_project) -> list[tuple[AgentJob, Agen
 
     for agent_type in agent_types:
         # Create AgentJob (work order)
-        job_data = TestData.generate_agent_job_data(test_project.id, test_project.tenant_key, agent_type)
+        job_data = TestData.generate_agent_job_data(test_project.id, test_project.tenant_key, agent_display_name)
         job = AgentJob(**job_data)
         db_session.add(job)
 
         # Create AgentExecution (executor)
-        execution_data = TestData.generate_agent_execution_data(job.job_id, test_project.tenant_key, agent_type)
+        execution_data = TestData.generate_agent_execution_data(job.job_id, test_project.tenant_key, agent_display_name)
         execution = AgentExecution(**execution_data)
         db_session.add(execution)
 

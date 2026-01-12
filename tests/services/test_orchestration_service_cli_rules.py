@@ -59,7 +59,7 @@ class TestCLIModeRules:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Mode Orchestrator",
                 mission="CLI mode orchestrator mission for testing",
                 status="waiting",
@@ -128,7 +128,7 @@ class TestCLIModeRules:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Multi-Terminal Orchestrator",
                 mission="Multi-terminal orchestrator mission for testing",
                 status="waiting",
@@ -159,7 +159,7 @@ class TestCLIModeRules:
         CLI mode response includes cli_mode_rules object.
 
         Verifies that when execution_mode == 'claude_code_cli', the response
-        contains a cli_mode_rules dict with agent_type/agent_name usage instructions.
+        contains a cli_mode_rules dict with agent_display_name/agent_name usage instructions.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -190,7 +190,7 @@ class TestCLIModeRules:
         Verify cli_mode_rules contains all required fields.
 
         Required fields per Handover 0335:
-        - agent_type_usage: Instructions for agent_type parameter
+        - agent_display_name_usage: Instructions for agent_type parameter
         - agent_name_usage: Instructions for agent_name parameter
         - task_tool_mapping: How Task tool maps to templates
         - validation: "soft" (warn but don't block)
@@ -212,7 +212,7 @@ class TestCLIModeRules:
 
         # Required fields per Handover 0335
         required_fields = [
-            "agent_type_usage",
+            "agent_display_name_usage",
             "agent_name_usage",
             "task_tool_mapping",
             "validation",
@@ -237,7 +237,7 @@ class TestCLIModeRules:
         """
         CLI mode response includes spawning_examples.
 
-        spawning_examples shows correct usage of agent_type vs agent_name.
+        spawning_examples shows correct usage of agent_display_name vs agent_name.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -291,13 +291,13 @@ class TestCLIModeRules:
         assert "cli_mode_rules" not in result, "Multi-terminal mode should NOT include cli_mode_rules"
         assert "spawning_examples" not in result, "Multi-terminal mode should NOT include spawning_examples"
 
-    async def test_cli_mode_rules_agent_type_usage_mentions_template_name(
+    async def test_cli_mode_rules_agent_display_name_usage_mentions_template_name(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,
     ):
         """
-        agent_type_usage explains that agent_type must match template name.
+        agent_display_name_usage explains that agent_type must match template name.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -311,12 +311,12 @@ class TestCLIModeRules:
         )
 
         cli_rules = result.get("cli_mode_rules", {})
-        agent_type_usage = cli_rules.get("agent_type_usage", "")
+        agent_display_name_usage = cli_rules.get("agent_display_name_usage", "")
 
         # Should mention template name requirement
-        assert "template" in agent_type_usage.lower(), "agent_type_usage should mention template"
-        assert "exact" in agent_type_usage.lower() or "match" in agent_type_usage.lower(), \
-            "agent_type_usage should emphasize exact matching"
+        assert "template" in agent_display_name_usage.lower(), "agent_display_name_usage should mention template"
+        assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), \
+            "agent_display_name_usage should emphasize exact matching"
 
     async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_type(
         self,
@@ -324,7 +324,7 @@ class TestCLIModeRules:
         cli_mode_context: dict,
     ):
         """
-        task_tool_mapping explains the Task(subagent_type=X) pattern.
+        task_tool_mapping explains the Task(subagent_display_name=X) pattern.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -353,7 +353,7 @@ class TestCLIModeRules:
         Verify cli_mode_rules contains new fields from Handover 0336.
 
         New fields:
-        - agent_type_is_truth: Dict with SSOT explanation
+        - agent_display_name_is_ui_label: Dict with SSOT explanation
         - forbidden_patterns: List of forbidden pattern dicts
         - lifecycle_flow: List of 4-phase lifecycle dicts
         """
@@ -373,7 +373,7 @@ class TestCLIModeRules:
 
         # New fields from Handover 0336
         new_fields = [
-            "agent_type_is_truth",
+            "agent_display_name_is_ui_label",
             "forbidden_patterns",
             "lifecycle_flow",
         ]
@@ -382,20 +382,20 @@ class TestCLIModeRules:
             assert field in cli_rules, f"cli_mode_rules missing new field: {field}"
 
         # Verify field types
-        assert isinstance(cli_rules["agent_type_is_truth"], dict), \
-            "agent_type_is_truth should be a dict"
+        assert isinstance(cli_rules["agent_display_name_is_ui_label"], dict), \
+            "agent_display_name_is_ui_label should be a dict"
         assert isinstance(cli_rules["forbidden_patterns"], list), \
             "forbidden_patterns should be a list"
         assert isinstance(cli_rules["lifecycle_flow"], list), \
             "lifecycle_flow should be a list"
 
-    async def test_cli_mode_rules_agent_type_is_truth_structure(
+    async def test_cli_mode_rules_agent_display_name_is_ui_label_structure(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,
     ):
         """
-        Verify agent_type_is_truth field contains required sub-fields.
+        Verify agent_display_name_is_ui_label field contains required sub-fields.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -409,16 +409,16 @@ class TestCLIModeRules:
         )
 
         cli_rules = result.get("cli_mode_rules", {})
-        agent_type_is_truth = cli_rules.get("agent_type_is_truth", {})
+        agent_display_name_is_ui_label = cli_rules.get("agent_display_name_is_ui_label", {})
 
         # Should have required sub-fields
         required_sub_fields = ["statement", "usage", "agent_name_purpose"]
         for field in required_sub_fields:
-            assert field in agent_type_is_truth, \
-                f"agent_type_is_truth missing sub-field: {field}"
+            assert field in agent_display_name_is_ui_label, \
+                f"agent_display_name_is_ui_label missing sub-field: {field}"
 
         # Verify statement content
-        statement = agent_type_is_truth["statement"]
+        statement = agent_display_name_is_ui_label["statement"]
         assert "SINGLE SOURCE OF TRUTH" in statement, \
             "statement should mention 'SINGLE SOURCE OF TRUTH'"
 
@@ -530,7 +530,7 @@ class TestCLIModeRulesBackwardCompatibility:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Mode Orchestrator",
                 mission="CLI mode orchestrator mission",
                 status="waiting",

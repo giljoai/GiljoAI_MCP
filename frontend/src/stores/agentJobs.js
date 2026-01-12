@@ -27,7 +27,7 @@ export const useAgentJobsStore = defineStore('agentJobs', () => {
   const tableFilters = ref({
     status: [],
     health_status: [],
-    agent_type: [],
+    agent_display_name: [],
     has_unread: null,
   })
 
@@ -52,9 +52,9 @@ export const useAgentJobsStore = defineStore('agentJobs', () => {
       )
     }
 
-    if (tableFilters.value.agent_type.length) {
+    if (tableFilters.value.agent_display_name.length) {
       filtered = filtered.filter((a) =>
-        tableFilters.value.agent_type.includes(a.agent_type),
+        tableFilters.value.agent_display_name.includes(a.agent_display_name),
       )
     }
 
@@ -152,7 +152,7 @@ export const useAgentJobsStore = defineStore('agentJobs', () => {
     tableFilters.value = {
       status: [],
       health_status: [],
-      agent_type: [],
+      agent_display_name: [],
       has_unread: null,
     }
   }

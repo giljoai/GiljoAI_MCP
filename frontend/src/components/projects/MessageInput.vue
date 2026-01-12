@@ -105,7 +105,7 @@ const props = defineProps({
   },
   /**
    * Array of active agents
-   * Each agent: { agent_id, agent_type, instance_number }
+   * Each agent: { agent_id, agent_display_name, instance_number }
    */
   agents: {
     type: Array,
@@ -133,9 +133,9 @@ const recipientOptions = computed(() => {
 
   props.agents.forEach((agent) => {
     const instanceNum = agent.instance_number || 1
-    const agentType = agent.agent_type || 'Unknown'
+    const displayName = agent.agent_display_name || 'Unknown'
     const truncatedId = agent.agent_id ? agent.agent_id.slice(0, 8) + '...' : 'unknown'
-    const label = `${agentType} (Instance ${instanceNum}) - ${truncatedId}`
+    const label = `${displayName} (Instance ${instanceNum}) - ${truncatedId}`
     options.push({ label, value: agent.agent_id })
   })
 

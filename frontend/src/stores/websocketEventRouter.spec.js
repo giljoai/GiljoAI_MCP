@@ -74,7 +74,7 @@ describe('websocketEventRouter - normalization + routing', () => {
     await routeWebsocketEvent(
       {
         type: 'agent:created',
-        data: { job_id: 'job-1', agent_type: 'tester' },
+        data: { job_id: 'job-1', agent_display_name: 'tester' },
       },
       { eventMap: EVENT_MAP, storeRegistry },
     )
@@ -101,7 +101,7 @@ describe('websocketEventRouter - normalization + routing', () => {
           agent: {
             id: 'job-1',
             job_id: 'job-1',
-            agent_type: 'tester',
+            agent_display_name: 'tester',
             agent_name: 'Tester',
             status: 'waiting',
           },
@@ -112,7 +112,7 @@ describe('websocketEventRouter - normalization + routing', () => {
 
     expect(agentJobsStore.handleCreated).toHaveBeenCalledTimes(1)
     expect(agentJobsStore.handleCreated).toHaveBeenCalledWith(
-      expect.objectContaining({ job_id: 'job-1', agent_type: 'tester' }),
+      expect.objectContaining({ job_id: 'job-1', agent_display_name: 'tester' }),
     )
   })
 

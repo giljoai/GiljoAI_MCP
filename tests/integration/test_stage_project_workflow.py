@@ -154,7 +154,7 @@ class TestStageProjectWorkflow:
         agent_selector = AgentSelector(db_manager=db_manager)
         agent_data = await agent_selector.create_agent_for_project(
             project_id=test_project.id,
-            agent_type="implementor",
+            agent_display_name="implementor",
             mission="Implement feature X",
             user_id=test_user.id,
             ws_dep=mock_ws_dep,
@@ -166,7 +166,7 @@ class TestStageProjectWorkflow:
             select(AgentExecution).filter_by(
                 project_id=test_project.id,
                 tenant_key=test_user.tenant_key,
-                agent_type="implementor"
+                agent_display_name="implementor"
             )
         )
         agent = result.scalar_one_or_none()

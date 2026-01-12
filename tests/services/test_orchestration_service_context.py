@@ -60,7 +60,7 @@ def mock_orchestrator_job():
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="orchestrator-1",
         mission="Test orchestrator mission",
         status="working",
@@ -91,7 +91,7 @@ async def test_report_progress_todo_updates_job_metadata_steps(mock_db_manager, 
         job_id=str(uuid4()),
         tenant_key="tenant-test-steps",
         project_id=str(uuid4()),
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="impl-steps-1",
         mission="Test mission for TODO steps",
         status="working",
@@ -148,7 +148,7 @@ async def test_report_progress_non_todo_does_not_set_steps(mock_db_manager, mock
         job_id=str(uuid4()),
         tenant_key="tenant-test-steps",
         project_id=str(uuid4()),
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="impl-progress-1",
         mission="Test mission for regular progress",
         status="working",
@@ -372,7 +372,7 @@ async def test_trigger_succession_rejects_non_orchestrator(orchestration_service
         job_id=str(uuid4()),
         tenant_key="tenant-test",
         project_id=str(uuid4()),
-        agent_type="implementer",  # Not orchestrator
+        agent_display_name="implementer",  # Not orchestrator
         agent_name="impl-1",
         mission="Test mission",
         status="working",
@@ -471,7 +471,7 @@ async def test_spawn_agent_job_sets_context_fields_for_orchestrator(orchestratio
 
         # Test: Spawn orchestrator agent
         result = await orchestration_service.spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator-1",
             mission="Test orchestrator mission for context tracking",
             project_id=project.id,
@@ -485,7 +485,7 @@ async def test_spawn_agent_job_sets_context_fields_for_orchestrator(orchestratio
         # Verify context fields were set
         assert len(added_jobs) == 1
         job = added_jobs[0]
-        assert job.agent_type == "orchestrator"
+        assert job.agent_display_name == "orchestrator"
         assert job.context_budget == 200000
         assert job.context_used is not None
         assert job.context_used > 0  # Should estimate initial mission tokens
@@ -530,7 +530,7 @@ async def test_spawn_agent_job_does_not_set_context_for_non_orchestrator(orchest
 
         # Test: Spawn implementer agent
         result = await orchestration_service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="Test implementer mission",
             project_id=project.id,
@@ -543,6 +543,6 @@ async def test_spawn_agent_job_does_not_set_context_for_non_orchestrator(orchest
         # Verify context fields were NOT set
         assert len(added_jobs) == 1
         job = added_jobs[0]
-        assert job.agent_type == "implementer"
+        assert job.agent_display_name == "implementer"
         assert job.context_budget is None
         assert job.context_used is None

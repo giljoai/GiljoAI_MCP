@@ -215,10 +215,10 @@ class TestStagingPromptContentByMode:
         assert 'SINGLE SOURCE OF TRUTH' in prompt
 
     @pytest.mark.asyncio
-    async def test_cli_mode_includes_agent_type_guidance(
+    async def test_cli_mode_includes_agent_display_name_guidance(
         self, api_client: AsyncClient, test_project_for_prompts
     ):
-        """CLI mode prompt must include agent_type vs agent_name guidance"""
+        """CLI mode prompt must include agent_display_name vs agent_name guidance"""
         project, token = test_project_for_prompts
 
         response = await api_client.get(
@@ -229,10 +229,10 @@ class TestStagingPromptContentByMode:
         assert response.status_code == 200
         prompt = response.json()['prompt']
 
-        # Handover 0342: Concise agent_type guidance
-        assert 'agent_type' in prompt
+        # Handover 0342: Concise agent_display_name guidance
+        assert 'agent_display_name' in prompt
         assert 'agent_name' in prompt
-        # Must explain agent_type is for templates, agent_name is for display
+        # Must explain agent_display_name is for UI labels, agent_name is for template lookup
         assert 'template' in prompt.lower() or 'EXACTLY match' in prompt
         assert 'display' in prompt.lower() or 'Descriptive' in prompt
 
@@ -254,7 +254,7 @@ class TestStagingPromptContentByMode:
         # Handover 0342: Full rules deferred to MCP response
         assert 'get_orchestrator_instructions' in prompt
         # Should mention that full rules are in the response
-        assert 'cli_mode_rules' in prompt or 'allowed_agent_types' in prompt
+        assert 'cli_mode_rules' in prompt or 'allowed_agent_display_names' in prompt
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_task_tool_reference(
@@ -272,9 +272,9 @@ class TestStagingPromptContentByMode:
         prompt = response.json()['prompt']
 
         # Handover 0342: Concise Task tool reference
-        assert 'Task(subagent_type=' in prompt or 'subagent_type' in prompt
-        # Must clarify that agent_type (not agent_name) is used
-        assert 'NOT agent_name' in prompt or 'agent_type value' in prompt
+        assert 'Task(subagent_display_name=' in prompt or 'subagent_type' in prompt
+        # Must clarify field distinction between agent_display_name and agent_name
+        assert 'NOT agent_name' in prompt or 'agent_display_name value' in prompt
 
 
 # ============================================================================

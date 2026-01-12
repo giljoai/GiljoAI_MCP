@@ -13,7 +13,7 @@ describe('agentJobsStore (map-based)', () => {
   })
 
   it('updates immutably on create/update/status change', () => {
-    store.handleCreated({ job_id: 'job-1', agent_type: 'implementer', status: 'working' })
+    store.handleCreated({ job_id: 'job-1', agent_display_name: 'implementer', status: 'working' })
 
     const jobBefore = store.getJob('job-1')
     expect(jobBefore).toBeDefined()
@@ -41,8 +41,8 @@ describe('agentJobsStore (map-based)', () => {
   })
 
   it('updates message counters for sent/received/acknowledged', () => {
-    store.handleCreated({ job_id: 'job-a', agent_type: 'orchestrator', status: 'working' })
-    store.handleCreated({ job_id: 'job-b', agent_type: 'implementer', status: 'waiting' })
+    store.handleCreated({ job_id: 'job-a', agent_display_name: 'orchestrator', status: 'working' })
+    store.handleCreated({ job_id: 'job-b', agent_display_name: 'implementer', status: 'waiting' })
 
     const senderBefore = store.getJob('job-a')
     store.handleMessageSent({
@@ -84,7 +84,7 @@ describe('agentJobsStore (map-based)', () => {
       // Setup: Job with existing metadata
       store.setJobs([{
         job_id: 'test-1',
-        agent_type: 'orchestrator',
+        agent_display_name: 'orchestrator',
         status: 'working',
         job_metadata: { existing: true }
       }])
@@ -92,10 +92,10 @@ describe('agentJobsStore (map-based)', () => {
       // Action: Progress update without todo_steps
       store.handleProgressUpdate({ job_id: 'test-1', progress: 50 })
 
-      // Assert: Existing metadata and agent_type preserved
+      // Assert: Existing metadata and agent_display_name preserved
       const job = store.getJob('test-1')
       expect(job.job_metadata).toEqual({ existing: true })
-      expect(job.agent_type).toBe('orchestrator')
+      expect(job.agent_display_name).toBe('orchestrator')
       expect(job.progress).toBe(50)
     })
 
@@ -116,7 +116,7 @@ describe('agentJobsStore (map-based)', () => {
       // Setup: Complete job with all fields
       store.setJobs([{
         job_id: 'test-1',
-        agent_type: 'implementer',
+        agent_display_name: 'implementer',
         agent_name: 'frontend-implementer',
         status: 'working',
         mission: 'Implement feature X',
@@ -130,7 +130,7 @@ describe('agentJobsStore (map-based)', () => {
 
       // Assert: All original fields preserved
       const job = store.getJob('test-1')
-      expect(job.agent_type).toBe('implementer')
+      expect(job.agent_display_name).toBe('implementer')
       expect(job.agent_name).toBe('frontend-implementer')
       expect(job.status).toBe('working')
       expect(job.mission).toBe('Implement feature X')
@@ -142,14 +142,14 @@ describe('agentJobsStore (map-based)', () => {
 
   describe('upsertJob undefined filtering', () => {
     it('should filter undefined values and preserve existing fields', () => {
-      store.setJobs([{ job_id: 'test-1', agent_type: 'implementer', status: 'waiting' }])
+      store.setJobs([{ job_id: 'test-1', agent_display_name: 'implementer', status: 'waiting' }])
 
-      // Patch with undefined value - should NOT overwrite agent_type
-      store.upsertJob({ job_id: 'test-1', status: 'working', agent_type: undefined })
+      // Patch with undefined value - should NOT overwrite agent_display_name
+      store.upsertJob({ job_id: 'test-1', status: 'working', agent_display_name: undefined })
 
       const job = store.getJob('test-1')
       expect(job.status).toBe('working')
-      expect(job.agent_type).toBe('implementer')  // Preserved, not overwritten
+      expect(job.agent_display_name).toBe('implementer')  // Preserved, not overwritten
     })
 
     it('should allow explicit null values (distinct from undefined)', () => {
@@ -165,7 +165,7 @@ describe('agentJobsStore (map-based)', () => {
     it('should handle multiple undefined fields without corruption', () => {
       store.setJobs([{
         job_id: 'test-1',
-        agent_type: 'orchestrator',
+        agent_display_name: 'orchestrator',
         agent_name: 'main-orchestrator',
         status: 'working',
         progress: 50,
@@ -175,14 +175,14 @@ describe('agentJobsStore (map-based)', () => {
       // Patch with multiple undefined fields
       store.upsertJob({
         job_id: 'test-1',
-        agent_type: undefined,
+        agent_display_name: undefined,
         agent_name: undefined,
         progress: 75,
         job_metadata: undefined
       })
 
       const job = store.getJob('test-1')
-      expect(job.agent_type).toBe('orchestrator')
+      expect(job.agent_display_name).toBe('orchestrator')
       expect(job.agent_name).toBe('main-orchestrator')
       expect(job.progress).toBe(75)
       expect(job.job_metadata).toEqual({ key: 'value' })

@@ -118,7 +118,7 @@ async def orchestrator_job(db_manager, test_user, test_project):
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_user._test_tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="orchestrator",
             status="working",
             mission="Test orchestrator for unified messaging",

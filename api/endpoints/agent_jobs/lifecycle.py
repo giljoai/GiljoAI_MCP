@@ -72,8 +72,8 @@ async def spawn_agent_job(
 
     # Spawn agent job via OrchestrationService
     result = await orchestration_service.spawn_agent_job(
-        agent_type=request.agent_type,
-        agent_name=request.agent_name or request.agent_type,
+        agent_display_name=request.agent_display_name,
+        agent_name=request.agent_name or request.agent_display_name,
         mission=request.mission,
         project_id=request.project_id,
         tenant_key=current_user.tenant_key,
@@ -97,7 +97,7 @@ async def spawn_agent_job(
             data={
                 "project_id": request.project_id,
                 "job_id": result["job_id"],
-                "agent_type": request.agent_type,
+                "agent_display_name": request.agent_display_name,
                 "status": "waiting"
             }
         )

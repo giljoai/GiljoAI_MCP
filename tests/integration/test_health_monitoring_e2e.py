@@ -83,7 +83,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-waiting-timeout",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="waiting",
                 mission="Test mission",
                 created_at=datetime.now(timezone.utc) - timedelta(minutes=2),
@@ -119,7 +119,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-stalled-job",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=stale_time,
@@ -159,7 +159,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-auto-fail",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=timeout_time,
@@ -199,7 +199,7 @@ class TestHealthMonitoringE2E:
                 AgentExecution(
                     job_id=f"e2e-tenant-{i}-job",
                     tenant_key=f"tenant-{i}",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                     status="active",
                     mission="Test mission",
                     started_at=stale_time,
@@ -239,7 +239,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-healthy-job",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=recent_time,
@@ -276,7 +276,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-degrading-job",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=initial_time,
@@ -324,7 +324,7 @@ class TestHealthMonitoringE2E:
                 AgentExecution(
                     job_id=f"e2e-concurrent-{i}",
                     tenant_key="test-tenant-e2e",
-                    agent_type="implementer",
+                    agent_display_name="implementer",
                     status="active",
                     mission="Test mission",
                     started_at=stale_time,
@@ -382,7 +382,7 @@ class TestHealthMonitoringE2E:
             job = AgentExecution(
                 job_id="e2e-transitions",
                 tenant_key="test-tenant-e2e",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 status="active",
                 mission="Test mission",
                 started_at=datetime.now(timezone.utc),

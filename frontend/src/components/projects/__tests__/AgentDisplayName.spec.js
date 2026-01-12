@@ -6,15 +6,15 @@
  *
  * Semantic Naming:
  * - agent_name = NORTH STAR (template lookup key, DO NOT CHANGE)
- * - agent_display_name = NEW UI LABEL (what humans see, replaces agent_type)
- * - agent_type = DEPRECATED (being replaced by agent_display_name)
+ * - agent_display_name = NEW UI LABEL (what humans see, replaces agent_display_name)
+ * - agent_display_name = DEPRECATED (being replaced by agent_display_name)
  *
  * Migration Path:
  * Phase 0414a: Schema & backend (agent_display_name field added to database)
  * Phase 0414b: RED Tests (this file - tests fail, define expected behavior)
  * Phase 0414c: GREEN Patch (backend migration - populate agent_display_name)
  * Phase 0414d: REFACTOR (update frontend props/attributes/functions)
- * Phase 0414e: PASS Tests (agent_display_name fully integrated, agent_type removed)
+ * Phase 0414e: PASS Tests (agent_display_name fully integrated, agent_display_name removed)
  *
  * Test Coverage:
  * 1. JobsTab Component - agent_display_name field, attributes, function names
@@ -132,12 +132,12 @@ vi.mock('@/stores/user', () => ({
 
 /**
  * Factory function for mock agent data
- * Currently uses agent_type (to be replaced by agent_display_name)
+ * Currently uses agent_display_name (to be replaced by agent_display_name)
  */
 const createMockAgent = (overrides = {}) => ({
   job_id: 'job-' + Math.random().toString(36).slice(2, 9),
   agent_id: 'agent-' + Math.random().toString(36).slice(2, 9),
-  agent_type: 'implementer', // OLD - being replaced
+  agent_display_name: 'implementer', // OLD - being replaced
   // agent_display_name would go here after migration
   agent_name: 'implementer',
   status: 'waiting',
@@ -176,11 +176,11 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
       it('should contain agent_display_name field in agent data (WILL FAIL - field missing)', () => {
         /**
          * EXPECTED BEHAVIOR AFTER MIGRATION:
-         * Agent objects should have agent_display_name field instead of agent_type
+         * Agent objects should have agent_display_name field instead of agent_display_name
          * This is the UI label showing what users see (e.g., "Frontend Tester")
          */
         const agent = createMockAgent({
-          agent_type: 'tester',
+          agent_display_name: 'tester',
           // agent_display_name: 'Frontend Tester', // This should exist after migration
         })
 
@@ -188,19 +188,19 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         expect(agent).toHaveProperty('agent_display_name')
       })
 
-      it('should deprecate agent_type field in favor of agent_display_name (WILL FAIL)', () => {
+      it('should deprecate agent_display_name field in favor of agent_display_name (WILL FAIL)', () => {
         /**
          * EXPECTED BEHAVIOR:
-         * After migration, components should not use agent.agent_type
+         * After migration, components should not use agent.agent_display_name
          * Components should instead reference agent.agent_display_name
-         * agent_type will be deprecated but may remain for backward compat
+         * agent_display_name will be deprecated but may remain for backward compat
          */
         const agent = createMockAgent({
           agent_display_name: 'Frontend Tester',
-          // agent_type should NOT be used by new code
+          // agent_display_name should NOT be used by new code
         })
 
-        expect(agent).not.toHaveProperty('agent_type')
+        expect(agent).not.toHaveProperty('agent_display_name')
       })
     })
 
@@ -210,7 +210,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * EXPECTED BEHAVIOR:
          * JobsTab table rows should have data-agent-display-name attribute
          * for test selectors and data attributes
-         * CURRENT: :data-agent-type="agent.agent_type"
+         * CURRENT: :data-agent-type="agent.agent_display_name"
          * EXPECTED: :data-agent-display-name="agent.agent_display_name"
          */
         const agent = createMockAgent({
@@ -304,7 +304,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * EXPECTED BEHAVIOR:
          * JobsTab.vue should have a function getAgentDisplayName(agent)
          * that returns the display name from agent.agent_display_name
-         * OLD FUNCTION: getAgentType(agentType) - takes string parameter
+         * OLD FUNCTION: getAgentType(displayName) - takes string parameter
          * NEW FUNCTION: getAgentDisplayName(agent) - takes agent object parameter
          */
         // This would be tested by checking if function exists in component
@@ -322,13 +322,13 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         /**
          * EXPECTED BEHAVIOR:
          * JobsTab agent row should display agent_display_name
-         * CURRENT: Line 30 shows {{ agent.agent_name || agent.agent_type }}
+         * CURRENT: Line 30 shows {{ agent.agent_name || agent.agent_display_name }}
          * EXPECTED: {{ agent.agent_name || agent.agent_display_name }}
          */
         const agent = createMockAgent({
           agent_name: 'My Custom Tester',
           agent_display_name: 'Frontend Tester',
-          agent_type: 'tester', // Old field
+          agent_display_name: 'tester', // Old field
         })
 
         const wrapper = mount(JobsTab, {
@@ -360,7 +360,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
           },
         })
 
-        // Should display agent_display_name, not agent_type
+        // Should display agent_display_name, not agent_display_name
         expect(wrapper.text()).toContain('Frontend Tester')
       })
 
@@ -368,12 +368,12 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         /**
          * EXPECTED BEHAVIOR:
          * Cancel dialog (line 281) should show agent_display_name
-         * CURRENT: <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_type }}</div>
+         * CURRENT: <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_display_name }}</div>
          * EXPECTED: <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_display_name }}</div>
          */
         const agent = createMockAgent({
           agent_display_name: 'Code Reviewer',
-          agent_type: 'reviewer', // Old field
+          agent_display_name: 'reviewer', // Old field
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -382,10 +382,10 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
     })
 
     describe('JobsTab hand-over button conditional', () => {
-      it('should check agent_display_name === "orchestrator" instead of agent_type (WILL FAIL)', async () => {
+      it('should check agent_display_name === "orchestrator" instead of agent_display_name (WILL FAIL)', async () => {
         /**
          * EXPECTED BEHAVIOR:
-         * Line 211 checks: v-if="agent.agent_type === 'orchestrator'"
+         * Line 211 checks: v-if="agent.agent_display_name === 'orchestrator'"
          * Should be: v-if="agent.agent_name === 'orchestrator'" (uses agent_name as north star)
          * OR keep as is but use agent.agent_display_name === 'Orchestrator'
          */
@@ -412,12 +412,12 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
       it('should use data-agent-display-name instead of data-agent-type in agent cards (WILL FAIL)', async () => {
         /**
          * EXPECTED BEHAVIOR:
-         * LaunchTab line 120: :data-agent-type="agent.agent_type"
+         * LaunchTab line 120: :data-agent-type="agent.agent_display_name"
          * Should be: :data-agent-display-name="agent.agent_display_name"
          */
         const agent = createMockAgent({
           agent_display_name: 'Code Implementer',
-          agent_type: 'implementer',
+          agent_display_name: 'implementer',
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -461,14 +461,14 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
       it('should render agent_display_name on agent slim cards (WILL FAIL)', async () => {
         /**
          * EXPECTED BEHAVIOR:
-         * LaunchTab line 125: {{ agent.agent_type?.toUpperCase() || '' }}
+         * LaunchTab line 125: {{ agent.agent_display_name?.toUpperCase() || '' }}
          * Should use agent_display_name instead for display label
          * agent_name should be used for template lookup (north star)
          */
         const agent = createMockAgent({
           agent_name: 'implementer', // North star - template lookup
           agent_display_name: 'Code Implementation Specialist', // UI display
-          agent_type: 'implementer', // Old field
+          agent_display_name: 'implementer', // Old field
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -478,7 +478,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
       it('should remove display:none agent-type span and use agent-display-name (WILL FAIL)', async () => {
         /**
          * EXPECTED BEHAVIOR:
-         * LaunchTab line 126: hidden span for agent_type should be removed
+         * LaunchTab line 126: hidden span for agent_display_name should be removed
          * New span should use agent_display_name
          * This is used for testing/data access
          */
@@ -528,7 +528,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
       it('should export getAgentDisplayNameColor() not getAgentTypeColor() (WILL FAIL)', () => {
         /**
          * EXPECTED BEHAVIOR:
-         * useAgentData.js line 97: getAgentTypeColor(agentType)
+         * useAgentData.js line 97: getAgentTypeColor(displayName)
          * Should be: getAgentDisplayNameColor(displayName)
          * Function returns Vuetify color for avatar background based on display name
          */
@@ -607,7 +607,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         const agent = createMockAgent({
           agent_name: 'tester',
           agent_display_name: 'Frontend Test Specialist',
-          agent_type: 'tester',
+          agent_display_name: 'tester',
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -617,14 +617,14 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         /**
          * EXPECTED BEHAVIOR:
          * AgentDetailsModal should show agent_display_name prominently
-         * Not agent_type
+         * Not agent_display_name
          */
         const agent = createMockAgent({
           agent_display_name: 'Frontend Test Specialist',
-          agent_type: 'tester',
+          agent_display_name: 'tester',
         })
 
-        // Component should display agent_display_name, not agent_type
+        // Component should display agent_display_name, not agent_display_name
         expect(agent.agent_display_name).toBe('Frontend Test Specialist')
       })
     })
@@ -637,7 +637,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * EXPECTED BEHAVIOR:
          * JobsTab, LaunchTab, AgentDetailsModal should all receive
          * agent objects with agent_display_name field
-         * No component should need to transform agent_type -> agent_display_name
+         * No component should need to transform agent_display_name -> agent_display_name
          */
         const agent = createMockAgent({
           agent_display_name: 'Code Reviewer Specialist',
@@ -647,22 +647,22 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         expect(agent).toHaveProperty('agent_display_name')
       })
 
-      it('should not have conditional fallbacks from agent_type to agent_display_name (WILL FAIL)', () => {
+      it('should not have conditional fallbacks from agent_display_name to agent_display_name (WILL FAIL)', () => {
         /**
          * EXPECTED BEHAVIOR:
          * After migration, no template logic like:
-         *   agent.agent_display_name || agent.agent_type
+         *   agent.agent_display_name || agent.agent_display_name
          * Should just be:
          *   agent.agent_display_name
          *
-         * agent_type should be completely removed from frontend
+         * agent_display_name should be completely removed from frontend
          */
         const agent = createMockAgent({
           agent_display_name: 'Security Reviewer',
-          // agent_type should not exist
+          // agent_display_name should not exist
         })
 
-        expect(agent).not.toHaveProperty('agent_type')
+        expect(agent).not.toHaveProperty('agent_display_name')
       })
     })
   })
@@ -674,11 +674,11 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * EXPECTED BEHAVIOR AFTER MIGRATION:
          * Every agent object should have non-empty agent_display_name
          * Migration should populate this from:
-         * - Existing agent_type values
+         * - Existing agent_display_name values
          * - Template configuration
          * - User customization
          */
-        const agentTypes = [
+        const displayNames = [
           'orchestrator',
           'analyzer',
           'implementer',
@@ -689,7 +689,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
           'researcher',
         ]
 
-        agentTypes.forEach((type) => {
+        displayNames.forEach((type) => {
           const agent = createMockAgent({
             agent_name: type,
             agent_display_name: null, // This should be populated!
@@ -699,11 +699,11 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         })
       })
 
-      it('should validate no components remain using agent_type directly (WILL FAIL)', () => {
+      it('should validate no components remain using agent_display_name directly (WILL FAIL)', () => {
         /**
          * EXPECTED BEHAVIOR:
          * Grep should find no references to:
-         * - agent.agent_type in components (post-migration)
+         * - agent.agent_display_name in components (post-migration)
          * - getAgentType() function calls
          * - data-agent-type attributes in templates
          *
@@ -723,7 +723,7 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      * REQUIRED CHANGES IN JobsTab.vue:
      *
      * 1. Line 23: Change :data-agent-type to :data-agent-display-name
-     *    BEFORE: :data-agent-type="agent.agent_type"
+     *    BEFORE: :data-agent-type="agent.agent_display_name"
      *    AFTER:  :data-agent-display-name="agent.agent_display_name"
      *
      * 2. Line 25-30: Update CSS class from agent-type-cell to agent-display-name-cell
@@ -731,27 +731,27 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      *    AFTER:  <td class="agent-display-name-cell">
      *
      * 3. Line 30-35: Use agent_display_name in fallback
-     *    BEFORE: {{ agent.agent_name || agent.agent_type }}
+     *    BEFORE: {{ agent.agent_name || agent.agent_display_name }}
      *    AFTER:  {{ agent.agent_name || agent.agent_display_name }}
      *
      * 4. Line 33: Update secondary label class
      *    BEFORE: <span class="agent-type-secondary">
      *    AFTER:  <span class="agent-display-name-secondary">
      *
-     * 5. Line 35: Show agent_display_name instead of agent_type
-     *    BEFORE: {{ agent.agent_type }}
+     * 5. Line 35: Show agent_display_name instead of agent_display_name
+     *    BEFORE: {{ agent.agent_display_name }}
      *    AFTER:  {{ agent.agent_display_name }}
      *
      * 6. Line 211: Check agent_name for orchestrator (north star)
-     *    BEFORE: v-if="agent.agent_type === 'orchestrator'"
+     *    BEFORE: v-if="agent.agent_display_name === 'orchestrator'"
      *    AFTER:  v-if="agent.agent_name === 'orchestrator'"
      *
      * 7. Line 281: Show agent_display_name in dialog
-     *    BEFORE: <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_type }}</div>
+     *    BEFORE: <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_display_name }}</div>
      *    AFTER:  <div><strong>Agent Type:</strong> {{ selectedAgent?.agent_display_name }}</div>
      *
      * 8. Rename function getAgentColor() -> getAgentDisplayNameColor()
-     *    Signature changes from: getAgentColor(agentType: String)
+     *    Signature changes from: getAgentColor(displayName: String)
      *    To: getAgentDisplayNameColor(displayName: String)
      */
   })
@@ -761,19 +761,19 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      * REQUIRED CHANGES IN LaunchTab.vue:
      *
      * 1. Line 120: Change :data-agent-type to :data-agent-display-name
-     *    BEFORE: :data-agent-type="agent.agent_type"
+     *    BEFORE: :data-agent-type="agent.agent_display_name"
      *    AFTER:  :data-agent-display-name="agent.agent_display_name"
      *
      * 2. Line 122-126: Update to use agent_display_name
-     *    BEFORE: {{ getAgentColor(agent.agent_type) }}
+     *    BEFORE: {{ getAgentColor(agent.agent_display_name) }}
      *    AFTER:  {{ getAgentColor(agent.agent_display_name) }}
      *
      * 3. Line 125: Update display name
-     *    BEFORE: {{ agent.agent_type?.toUpperCase() || '' }}
+     *    BEFORE: {{ agent.agent_display_name?.toUpperCase() || '' }}
      *    AFTER:  {{ agent.agent_display_name?.toUpperCase() || '' }}
      *
      * 4. Line 126: Change hidden span from agent-type to agent-display-name
-     *    BEFORE: <span class="agent-type" style="display: none;">{{ agent.agent_type || '' }}</span>
+     *    BEFORE: <span class="agent-type" style="display: none;">{{ agent.agent_display_name || '' }}</span>
      *    AFTER:  <span class="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
      *
      * 5. CSS: Rename .agent-type-cell to .agent-display-name-cell
@@ -789,11 +789,11 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      * REQUIRED CHANGES IN useAgentData.js:
      *
      * 1. Line 97: Rename function from getAgentTypeColor to getAgentDisplayNameColor
-     *    BEFORE: const getAgentTypeColor = (agentType) => {
+     *    BEFORE: const getAgentTypeColor = (displayName) => {
      *    AFTER:  const getAgentDisplayNameColor = (displayName) => {
      *
      * 2. Update function parameter from string to string (stays same type, different semantic)
-     *    Parameter name changes: agentType -> displayName
+     *    Parameter name changes: displayName -> displayName
      *
      * 3. Update color mapping to use display name semantics
      *    BEFORE maps: orchestrator, analyzer, implementer, tester, etc.
@@ -828,7 +828,7 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      *    - May be user-customized or template-specific
      *    - Changes frequently, user-facing
      *
-     * 3. agent_type (DEPRECATED - BEING REMOVED)
+     * 3. agent_display_name (DEPRECATED - BEING REMOVED)
      *    - Old ambiguous name being replaced
      *    - Currently holds template key (same as agent_name)
      *    - Confusing because it was repurposed for display labels
@@ -837,7 +837,7 @@ describe('PHASE 0414b: Notes for Implementation Team', () => {
      * MIGRATION RULE:
      * - If comparing identity (if === 'orchestrator'): use agent_name
      * - If displaying to user (template, headers, etc.): use agent_display_name
-     * - Never create new code using agent_type
+     * - Never create new code using agent_display_name
      */
   })
 })

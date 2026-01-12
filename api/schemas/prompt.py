@@ -52,7 +52,7 @@ class AgentPromptResponse(BaseModel):
     prompt: str = Field(..., description="Multi-line bash commands for agent execution")
     agent_id: str = Field(..., description="Agent job ID")
     agent_name: str = Field(..., description="Agent display name")
-    agent_type: str = Field(..., description="Agent type")
+    agent_display_name: str = Field(..., description="Human-readable display name for UI")
     tool_type: str = Field(..., description="Tool assigned: claude-code, codex, gemini, universal")
     instructions: str = Field(..., description="User-readable instructions for using the prompt")
     mission_preview: str = Field(..., description="First 200 chars of mission")

@@ -34,7 +34,7 @@ class TestOrchestratorStatusFiltering:
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
             status="cancelled",
             instance_number=2,
@@ -48,7 +48,7 @@ class TestOrchestratorStatusFiltering:
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator #2",
             status="waiting",
             instance_number=1,
@@ -62,7 +62,7 @@ class TestOrchestratorStatusFiltering:
             select(AgentExecution)
             .where(
                 AgentExecution.project_id == test_project.id,
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
             )
             .order_by(AgentExecution.instance_number.desc())
@@ -78,7 +78,7 @@ class TestOrchestratorStatusFiltering:
             select(AgentExecution)
             .where(
                 AgentExecution.project_id == test_project.id,
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
@@ -104,7 +104,7 @@ class TestOrchestratorStatusFiltering:
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Cancelled Orchestrator",
             status="cancelled",
             instance_number=1,
@@ -116,7 +116,7 @@ class TestOrchestratorStatusFiltering:
             job_id=str(uuid4()),
             project_id=test_project.id,
             tenant_key=test_project.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Failed Orchestrator",
             status="failed",
             instance_number=2,
@@ -130,7 +130,7 @@ class TestOrchestratorStatusFiltering:
             select(AgentExecution)
             .where(
                 AgentExecution.project_id == test_project.id,
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )

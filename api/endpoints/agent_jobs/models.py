@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 class SpawnAgentRequest(BaseModel):
     """Request model for spawning a new agent job."""
 
-    agent_type: str = Field(..., description="Agent type (orchestrator, implementer, etc.)")
+    agent_display_name: str = Field(..., description="Human-readable display name for UI")
     agent_name: Optional[str] = Field(None, description="User-readable agent name")
     mission: str = Field(..., description="Agent mission/instructions")
     project_id: str = Field(..., description="Project UUID")
@@ -91,7 +91,7 @@ class JobResponse(BaseModel):
     agent_id: Optional[str] = None  # Handover 0401: Executor UUID for WebSocket event matching
     tenant_key: str
     project_id: Optional[str] = None
-    agent_type: str
+    agent_display_name: str
     agent_name: Optional[str] = None
     mission: str
     status: str

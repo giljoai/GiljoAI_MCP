@@ -175,7 +175,7 @@ async def get_project_orchestrator(
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(
             AgentJob.project_id == project_id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.tenant_key == current_user.tenant_key,
             # Include complete/handed_over to show finished orchestrators (Handover 0506)
             # Previously excluded these, causing auto-spawn bug when viewing completed projects
@@ -209,7 +209,7 @@ async def get_project_orchestrator(
             id=None,  # Deprecated field (Handover 0366a)
             job_id=orchestrator_execution.job_id,  # AgentJob.job_id
             agent_id=orchestrator_execution.agent_id,  # AgentExecution.agent_id (executor UUID)
-            agent_type=orchestrator_execution.agent_type,  # From AgentExecution
+            agent_display_name=orchestrator_execution.agent_type,  # From AgentExecution
             agent_name=orchestrator_execution.agent_name,  # From AgentExecution
             mission=orchestrator_execution.job.mission,  # From AgentJob
             status=orchestrator_execution.status,  # From AgentExecution

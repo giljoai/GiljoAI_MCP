@@ -47,17 +47,17 @@ class TestBroadcastFanoutSendMessage:
         # Mock active agent executions (3 agents)
         orch_execution = Mock(spec=AgentExecution)
         orch_execution.agent_id = str(uuid4())
-        orch_execution.agent_type = "orchestrator"
+        orch_execution.agent_display_name = "orchestrator"
         orch_execution.status = "working"
 
         impl_execution = Mock(spec=AgentExecution)
         impl_execution.agent_id = str(uuid4())
-        impl_execution.agent_type = "implementer"
+        impl_execution.agent_display_name = "implementer"
         impl_execution.status = "waiting"
 
         analyzer_execution = Mock(spec=AgentExecution)
         analyzer_execution.agent_id = str(uuid4())
-        analyzer_execution.agent_type = "analyzer"
+        analyzer_execution.agent_display_name = "analyzer"
         analyzer_execution.status = "working"
 
         active_executions = [orch_execution, impl_execution, analyzer_execution]
@@ -146,12 +146,12 @@ class TestBroadcastFanoutSendMessage:
         # Mock executions including sender
         sender_execution = Mock(spec=AgentExecution)
         sender_execution.agent_id = sender_agent_id
-        sender_execution.agent_type = "orchestrator"
+        sender_execution.agent_display_name = "orchestrator"
         sender_execution.status = "working"
 
         other_execution = Mock(spec=AgentExecution)
         other_execution.agent_id = str(uuid4())
-        other_execution.agent_type = "implementer"
+        other_execution.agent_display_name = "implementer"
         other_execution.status = "waiting"
 
         active_executions = [sender_execution, other_execution]
@@ -219,13 +219,13 @@ class TestBroadcastFanoutSendMessage:
         # Only active agents returned (status filter)
         active_execution = Mock(spec=AgentExecution)
         active_execution.agent_id = str(uuid4())
-        active_execution.agent_type = "implementer"
+        active_execution.agent_display_name = "implementer"
         active_execution.status = "waiting"
 
         # This execution is completed - should NOT be in fan-out query results
         completed_execution = Mock(spec=AgentExecution)
         completed_execution.agent_id = completed_agent_id
-        completed_execution.agent_type = "analyzer"
+        completed_execution.agent_display_name = "analyzer"
         completed_execution.status = "completed"
 
         # Fan-out query should only return active agents
@@ -472,7 +472,7 @@ class TestBroadcastFanoutEdgeCases:
         # Only sender in project
         sender_execution = Mock(spec=AgentExecution)
         sender_execution.agent_id = str(uuid4())
-        sender_execution.agent_type = "orchestrator"
+        sender_execution.agent_display_name = "orchestrator"
         sender_execution.status = "working"
 
         added_messages = []
@@ -527,7 +527,7 @@ class TestBroadcastFanoutEdgeCases:
         # Mock resolved agent execution
         target_execution = Mock(spec=AgentExecution)
         target_execution.agent_id = target_agent_id
-        target_execution.agent_type = "implementer"
+        target_execution.agent_display_name = "implementer"
         target_execution.status = "waiting"
         target_execution.instance_number = 1
 

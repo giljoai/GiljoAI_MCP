@@ -41,7 +41,7 @@ async def test_generate_orchestrator_prompt_claude_code(
             job_id=f"agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission=f"Implement feature {i}",
             status="working",
         )
@@ -146,7 +146,7 @@ async def test_generate_agent_prompt(
         job_id="agent-backend-001",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="backend-developer",
+        agent_display_name="backend-developer",
         agent_name="Backend API Agent",
         tool_type="claude-code",
         mission="Implement REST API endpoints with FastAPI and PostgreSQL database integration",
@@ -165,7 +165,7 @@ async def test_generate_agent_prompt(
     assert "prompt" in data
     assert "agent_id" in data
     assert "agent_name" in data
-    assert "agent_type" in data
+    assert "agent_display_name" in data
     assert "tool_type" in data
     assert "instructions" in data
     assert "mission_preview" in data
@@ -173,7 +173,7 @@ async def test_generate_agent_prompt(
     # Validate content
     assert data["agent_id"] == "agent-backend-001"
     assert data["agent_name"] == "Backend API Agent"
-    assert data["agent_type"] == "backend-developer"
+    assert data["agent_display_name"] == "backend-developer"
     assert data["tool_type"] == "claude-code"
     assert "Implement REST API endpoints" in data["mission_preview"]
 
@@ -243,7 +243,7 @@ async def test_multi_tenant_isolation_agent(
     agent = AgentExecution(
         job_id="tenant1-agent",
         tenant_key=test_user.tenant_key,
-        agent_type="developer",
+        agent_display_name="developer",
         mission="Build feature",
         status="working",
     )
@@ -264,7 +264,7 @@ async def test_agent_prompt_universal_tool_type(
     agent = AgentExecution(
         job_id="universal-agent-001",
         tenant_key=test_user.tenant_key,
-        agent_type="tester",
+        agent_display_name="tester",
         tool_type="universal",
         mission="Write comprehensive tests",
         status="working",
@@ -289,7 +289,7 @@ async def test_agent_prompt_with_long_mission(
     agent = AgentExecution(
         job_id="long-mission-agent",
         tenant_key=test_user.tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission=long_mission,
         status="working",
     )
@@ -351,7 +351,7 @@ async def test_execution_endpoint_logs_deprecation_warning(
         job_id="exec-deprecate-orch-001",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator for deprecation",
         status="working",
     )
@@ -417,7 +417,7 @@ async def test_execution_endpoint_includes_deprecation_flags(
         job_id="exec-deprecate-orch-002",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator for response flags",
         status="working",
     )
@@ -491,7 +491,7 @@ async def test_execution_endpoint_redirects_to_universal_generator(
         job_id="exec-deprecate-orch-003",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator for generator redirect",
         status="working",
     )
@@ -583,7 +583,7 @@ async def test_execution_endpoint_backward_compatibility_maintained(
         job_id="exec-deprecate-orch-004",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test orchestrator for backward compatibility",
         status="working",
     )
@@ -595,7 +595,7 @@ async def test_execution_endpoint_backward_compatibility_maintained(
             job_id=f"exec-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission=f"Implement feature {i}",
             status="working",
         )

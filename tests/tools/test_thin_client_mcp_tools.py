@@ -105,7 +105,7 @@ async def test_orchestrator_job(db_session, tenant_key, test_project_with_produc
         job_id=str(uuid4()),
         tenant_key=tenant_key,
         project_id=test_project_with_product.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         mission="Condensed mission content with priorities applied",
         status="waiting",
@@ -425,7 +425,7 @@ async def test_get_agent_mission_thin_client(db_session, tenant_key, test_projec
         job_id=str(uuid4()),
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Backend Implementer",
         mission="Implement user authentication system with JWT tokens",
         status="waiting",
@@ -445,7 +445,7 @@ async def test_get_agent_mission_thin_client(db_session, tenant_key, test_projec
     # Verify agent identity
     assert result["job_id"] == agent_job.job_id
     assert result["agent_name"] == "Backend Implementer"
-    assert result["agent_type"] == "implementer"
+    assert result["agent_display_name"] == "implementer"
 
     # Verify mission content
     assert "mission" in result
@@ -484,7 +484,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
 
     # Call spawn_agent_job
     result = await spawn_agent_job(
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Backend Implementer",
         mission=mission_content,
         project_id=str(test_project.id),
@@ -524,7 +524,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, tenant_key, test_project)
     db_agent = await db_session.get(AgentExecution, job_id)
     assert db_agent is not None
     assert db_agent.mission == mission_content
-    assert db_agent.agent_type == "implementer"
+    assert db_agent.agent_display_name == "implementer"
 
 
 # ========================================================================
@@ -624,7 +624,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
         job_id=str(uuid4()),
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         mission="Condensed mission",
         status="waiting",
@@ -644,7 +644,7 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
 
     # Step 3: Orchestrator spawns agent
     spawn_result = await spawn_agent_job(
-        agent_type="implementer",
+        agent_display_name="implementer",
         agent_name="Backend Agent",
         mission="Build authentication system",
         project_id=str(test_project.id),

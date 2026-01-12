@@ -96,7 +96,7 @@ class AgentJobManager:
     def create_job(
         self,
         tenant_key: str,
-        agent_type: str,
+        agent_display_name: str,
         mission: str,
         spawned_by: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
@@ -107,7 +107,7 @@ class AgentJobManager:
 
         Args:
             tenant_key: Tenant key for isolation
-            agent_type: Type of agent (orchestrator, implementer, tester, etc.)
+            agent_display_name: Display name of agent (UI label - what humans see)
             mission: Mission/instructions for the agent
             spawned_by: Optional job_id of parent job that spawned this job
             context_chunks: Optional list of chunk_ids for context loading
@@ -122,15 +122,15 @@ class AgentJobManager:
         # Validate required parameters
         if not tenant_key:
             raise ValueError("tenant_key cannot be empty")
-        if not agent_type:
-            raise ValueError("agent_type cannot be empty")
+        if not agent_display_name:
+            raise ValueError("agent_display_name cannot be empty")
         if not mission:
             raise ValueError("mission cannot be empty")
 
         # Create job
         job = AgentJob(
             tenant_key=tenant_key,
-            agent_type=agent_type,
+            agent_display_name=agent_display_name,
             mission=mission,
             status="waiting",
             spawned_by=spawned_by,
@@ -148,7 +148,7 @@ class AgentJobManager:
         job.status = self._expose_status(job.status)
 
         logger.info(
-            f"Created job {job.job_id} for tenant {tenant_key}, agent_type={agent_type}, spawned_by={spawned_by}"
+            f"Created job {job.job_id} for tenant {tenant_key}, agent_display_name={agent_display_name}, spawned_by={spawned_by}"
         )
 
         return job
@@ -164,7 +164,7 @@ class AgentJobManager:
         Args:
             tenant_key: Tenant key for isolation
             job_specs: List of job specifications, each containing:
-                - agent_type (required)
+                - agent_display_name (required)
                 - mission (required)
                 - spawned_by (optional)
                 - context_chunks (optional)
@@ -185,15 +185,15 @@ class AgentJobManager:
         with self.db_manager.get_session() as session:
             for spec in job_specs:
                 # Validate spec
-                if not spec.get("agent_type"):
-                    raise ValueError("agent_type is required in job spec")
+                if not spec.get("agent_display_name"):
+                    raise ValueError("agent_display_name is required in job spec")
                 if not spec.get("mission"):
                     raise ValueError("mission is required in job spec")
 
                 # Create job
                 job = AgentJob(
                     tenant_key=tenant_key,
-                    agent_type=spec["agent_type"],
+                    agent_display_name=spec["agent_display_name"],
                     mission=spec["mission"],
                     status="waiting",  # Fixed: was "pending" but constraint only allows "waiting"
                     spawned_by=spec.get("spawned_by"),
@@ -632,7 +632,7 @@ class AgentJobManager:
     def get_pending_jobs(
         self,
         tenant_key: str,
-        agent_type: Optional[str] = None,
+        agent_display_name: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[AgentJob]:
         """
@@ -640,7 +640,7 @@ class AgentJobManager:
 
         Args:
             tenant_key: Tenant key for isolation
-            agent_type: Optional filter by agent type
+            agent_display_name: Optional filter by agent display name
             limit: Optional limit on number of jobs returned
 
         Returns:
@@ -652,8 +652,8 @@ class AgentJobManager:
                 AgentJob.status == "waiting",
             )
 
-            if agent_type:
-                stmt = stmt.where(AgentJob.job_type == agent_type)
+            if agent_display_name:
+                stmt = stmt.where(AgentJob.agent_display_name == agent_display_name)
 
             # Order by created_at to get oldest first
             stmt = stmt.order_by(AgentJob.created_at)
@@ -673,7 +673,7 @@ class AgentJobManager:
     def get_active_jobs(
         self,
         tenant_key: str,
-        agent_type: Optional[str] = None,
+        agent_display_name: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[AgentJob]:
         """
@@ -681,7 +681,7 @@ class AgentJobManager:
 
         Args:
             tenant_key: Tenant key for isolation
-            agent_type: Optional filter by agent type
+            agent_display_name: Optional filter by agent display name
             limit: Optional limit on number of jobs returned
 
         Returns:
@@ -693,8 +693,8 @@ class AgentJobManager:
                 AgentJob.status == "working",
             )
 
-            if agent_type:
-                stmt = stmt.where(AgentJob.job_type == agent_type)
+            if agent_display_name:
+                stmt = stmt.where(AgentJob.agent_display_name == agent_display_name)
 
             # Order by started_at to get oldest first
             stmt = stmt.order_by(AgentJob.started_at)

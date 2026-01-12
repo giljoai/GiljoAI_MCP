@@ -50,7 +50,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             job_id=agent1_id,
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer Agent",
             mission="Implement features",
             status="working"
@@ -59,7 +59,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             job_id=agent2_id,
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="Tester Agent",
             mission="Run tests",
             status="working"
@@ -68,7 +68,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             job_id=agent3_id,
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             agent_name="Analyzer Agent",
             mission="Analyze code",
             status="working"
@@ -295,7 +295,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             job_id=agent1_id,
             tenant_key=tenant_key_1,
             project_id=project1.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Tenant 1 Agent",
             mission="Work for tenant 1",
             status="working"
@@ -304,7 +304,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             job_id=agent2_id,
             tenant_key=tenant_key_2,
             project_id=project2.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Tenant 2 Agent",
             mission="Work for tenant 2",
             status="working"
@@ -488,7 +488,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             job_id=sender_agent_id,
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Orchestrator",
             mission="Coordinate agents",
             status="working"
@@ -499,7 +499,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             job_id=other_agent_id,
             tenant_key=tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Implementer",
             mission="Implement features",
             status="working"
@@ -514,7 +514,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
         to_agents=["all"],
         content="Status update: All agents complete staging",
         project_id=project_id,
-        from_agent=sender_agent.agent_type,
+        from_agent=sender_agent.agent_display_name,
         message_type="broadcast"
     )
 

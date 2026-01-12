@@ -42,7 +42,7 @@ class TestAgentExecutionCreation:
             agent_id="agent-abc-123",
             job_id="job-exec-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="waiting"
         )
@@ -60,7 +60,7 @@ class TestAgentExecutionCreation:
         execution = AgentExecution(
             agent_id="agent-abc-456",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="waiting"
             # job_id missing - should FAIL
@@ -89,7 +89,7 @@ class TestAgentExecutionCreation:
         execution = AgentExecution(
             agent_id="agent-abc-789",
             job_id="job-exec-002",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="waiting"
             # tenant_key missing - should FAIL
@@ -118,7 +118,7 @@ class TestAgentExecutionCreation:
         execution = AgentExecution(
             job_id="job-exec-003",
             tenant_key="tenant-abc",
-            agent_type="analyzer",
+            agent_display_name="analyzer",
             instance_number=1,
             status="waiting"
             # agent_id NOT provided - should auto-generate
@@ -151,7 +151,7 @@ class TestAgentExecutionForeignKey:
             agent_id="agent-fk-001",
             job_id="job-fk-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="waiting"
         )
@@ -169,7 +169,7 @@ class TestAgentExecutionForeignKey:
             agent_id="agent-fk-002",
             job_id="nonexistent-job-id",  # Does NOT exist
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="waiting"
         )
@@ -212,7 +212,7 @@ class TestAgentExecutionStatusConstraint:
             agent_id=f"agent-status-{status}",
             job_id=f"job-status-{status}",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status=status
         )
@@ -239,7 +239,7 @@ class TestAgentExecutionStatusConstraint:
             agent_id="agent-status-invalid",
             job_id="job-status-invalid",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="invalid_status"  # NOT in allowed list
         )
@@ -273,7 +273,7 @@ class TestAgentExecutionProgressConstraint:
             agent_id="agent-progress-001",
             job_id="job-progress-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             progress=50
@@ -301,7 +301,7 @@ class TestAgentExecutionProgressConstraint:
             agent_id="agent-progress-002",
             job_id="job-progress-002",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             progress=-10  # INVALID - negative
@@ -331,7 +331,7 @@ class TestAgentExecutionProgressConstraint:
             agent_id="agent-progress-003",
             job_id="job-progress-003",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             progress=150  # INVALID - exceeds 100
@@ -365,7 +365,7 @@ class TestAgentExecutionInstanceConstraint:
             agent_id="agent-instance-001",
             job_id="job-instance-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=5,  # Valid
             status="working"
         )
@@ -392,7 +392,7 @@ class TestAgentExecutionInstanceConstraint:
             agent_id="agent-instance-002",
             job_id="job-instance-002",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=0,  # INVALID
             status="working"
         )
@@ -426,7 +426,7 @@ class TestAgentExecutionSuccessionChain:
             agent_id="agent-001",
             job_id="job-succession-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="complete",
             succeeded_by="agent-002"  # Points to next execution
@@ -439,7 +439,7 @@ class TestAgentExecutionSuccessionChain:
             agent_id="agent-002",
             job_id="job-succession-001",  # SAME job
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=2,
             status="working",
             spawned_by="agent-001"  # Points to previous execution
@@ -474,7 +474,7 @@ class TestAgentExecutionContextTracking:
             agent_id="agent-context-001",
             job_id="job-context-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             context_used=75000,
@@ -505,7 +505,7 @@ class TestAgentExecutionContextTracking:
             agent_id="agent-context-002",
             job_id="job-context-002",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             context_used=200000,  # Exceeds budget
@@ -549,7 +549,7 @@ class TestAgentExecutionHealthMonitoring:
             agent_id=f"agent-health-{health_status}",
             job_id=f"job-health-{health_status}",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             health_status=health_status
@@ -577,7 +577,7 @@ class TestAgentExecutionHealthMonitoring:
             agent_id="agent-health-tracking",
             job_id="job-health-tracking",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             health_status="warning",
@@ -620,7 +620,7 @@ class TestAgentExecutionToolAssignment:
             agent_id=f"agent-tool-{tool_type}",
             job_id=f"job-tool-{tool_type}",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             tool_type=tool_type
@@ -648,7 +648,7 @@ class TestAgentExecutionToolAssignment:
             agent_id="agent-tool-invalid",
             job_id="job-tool-invalid",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             tool_type="invalid-tool"  # NOT in allowed list
@@ -682,7 +682,7 @@ class TestAgentExecutionMessages:
             agent_id="agent-messages-001",
             job_id="job-messages-001",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working",
             messages=[
@@ -715,7 +715,7 @@ class TestAgentExecutionMessages:
             agent_id="agent-messages-002",
             job_id="job-messages-002",
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="working"
             # messages NOT provided

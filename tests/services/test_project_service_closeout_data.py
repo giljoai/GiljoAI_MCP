@@ -42,7 +42,7 @@ async def test_get_closeout_data_all_agents_complete(
             AgentExecution(
                 job_id=job.job_id,
                 tenant_key=tenant_key,
-                agent_type="developer",
+                agent_display_name="developer",
                 status="complete",
             )
         )
@@ -93,7 +93,7 @@ async def test_get_closeout_data_with_failed_agents(
         AgentExecution(
             job_id=job1.job_id,
             tenant_key=tenant_key,
-            agent_type="developer",
+            agent_display_name="developer",
             status="complete",
         )
     )
@@ -110,7 +110,7 @@ async def test_get_closeout_data_with_failed_agents(
         AgentExecution(
             job_id=job2.job_id,
             tenant_key=tenant_key,
-            agent_type="tester",
+            agent_display_name="tester",
             status="failed",
         )
     )
@@ -127,7 +127,7 @@ async def test_get_closeout_data_with_failed_agents(
         AgentExecution(
             job_id=job3.job_id,
             tenant_key=tenant_key,
-            agent_type="analyst",
+            agent_display_name="analyst",
             status="working",
         )
     )
@@ -189,7 +189,7 @@ async def test_get_closeout_data_with_git_integration(
         AgentExecution(
             job_id=job.job_id,
             tenant_key=tenant_key,
-            agent_type="developer",
+            agent_display_name="developer",
             status="complete",
         )
     )

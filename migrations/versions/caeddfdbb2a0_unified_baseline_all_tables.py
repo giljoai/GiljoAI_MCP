@@ -832,7 +832,7 @@ def upgrade() -> None:
     sa.Column('agent_id', sa.String(length=36), nullable=False),
     sa.Column('job_id', sa.String(length=36), nullable=False, comment='Foreign key to parent AgentJob'),
     sa.Column('tenant_key', sa.String(length=50), nullable=False),
-    sa.Column('agent_type', sa.String(length=100), nullable=False, comment='Agent type: orchestrator, analyzer, implementer, tester, etc.'),
+    sa.Column('agent_display_name', sa.String(length=100), nullable=False, comment='Human-readable display name for UI'),
     sa.Column('instance_number', sa.Integer(), nullable=False, comment='Sequential instance number for succession (1, 2, 3, ...)'),
     sa.Column('status', sa.String(length=50), nullable=False, comment='Execution status: waiting, working, blocked, complete, failed, cancelled, decommissioned'),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),

@@ -50,7 +50,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
 
   const mockOrchestrator = {
     job_id: 'orch-uuid-12345',
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     agent_name: 'Test Orchestrator',
     mission: 'Test mission',
     status: 'waiting',
@@ -632,7 +632,7 @@ describe('LaunchTab Component - Simplified UI (No Dialog)', () => {
 
       // Set some state
       wrapper.vm.missionText = 'Test mission'
-      wrapper.vm.agents.push({ id: 'agent-1', agent_type: 'Tester' })
+      wrapper.vm.agents.push({ id: 'agent-1', agent_display_name: 'Tester' })
       wrapper.vm.missionError = 'Some error'
 
       // Reset

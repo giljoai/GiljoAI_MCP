@@ -50,7 +50,7 @@ async def test_can_close_all_agents_complete(
             job_id=f"complete-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission=f"Implement feature {i}",
             status="complete",
         )
@@ -98,7 +98,7 @@ async def test_can_close_some_agents_failed(
             job_id=f"success-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission=f"Implement feature {i}",
             status="complete",
         )
@@ -109,7 +109,7 @@ async def test_can_close_some_agents_failed(
             job_id=f"failed-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="tester",
+            agent_display_name="tester",
             mission=f"Test feature {i}",
             status="failed",
             block_reason="Dependencies missing",
@@ -152,7 +152,7 @@ async def test_can_close_agents_still_working(
             job_id=f"working-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission="Implement",
             status="working",
         )
@@ -203,7 +203,7 @@ async def test_generate_closeout_prompt(
             job_id=f"closeout-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="backend-dev",
+            agent_display_name="backend-dev",
             mission="Implement endpoints",
             status="complete",
         )
@@ -269,7 +269,7 @@ async def test_complete_project_closeout(
             job_id=f"final-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission="Develop",
             status="complete",
         )
@@ -347,7 +347,7 @@ async def test_closeout_workflow_end_to_end(
             job_id=f"workflow-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission=f"Implement module {i}",
             status="complete",
         )
@@ -489,7 +489,7 @@ async def test_get_closeout_data_endpoint_success(
         AgentExecution(
             job_id=job1.job_id,
             tenant_key=test_user.tenant_key,
-            agent_type="developer",
+            agent_display_name="developer",
             status="complete",
         )
     )
@@ -506,7 +506,7 @@ async def test_get_closeout_data_endpoint_success(
         AgentExecution(
             job_id=job2.job_id,
             tenant_key=test_user.tenant_key,
-            agent_type="analyst",
+            agent_display_name="analyst",
             status="working",
         )
     )

@@ -46,7 +46,7 @@ class TestDataFactory:
 
         Migration Note (0367d): Replaced MCPAgentJob with AgentJob.
         Field mappings:
-        - AgentExecution.agent_type → AgentJob.job_type
+        - AgentExecution.agent_display_name → AgentJob.job_type
         - AgentExecution.status values → AgentJob.status (active/completed/cancelled)
         """
         return {
@@ -65,7 +65,7 @@ class TestDataFactory:
         job_id: str,
         tenant_key: str,
         agent_name: str = "test_agent",
-        agent_type: str = "worker",
+        agent_display_name: str = "worker",
         status: str = "waiting",
         instance_number: int = 1,
     ) -> dict[str, Any]:
@@ -81,7 +81,7 @@ class TestDataFactory:
             "agent_id": str(uuid.uuid4()),
             "job_id": job_id,
             "tenant_key": tenant_key,
-            "agent_type": agent_type,
+            "agent_display_name": agent_type,
             "agent_name": agent_name,
             "instance_number": instance_number,
             "status": status,
@@ -98,7 +98,7 @@ class TestDataFactory:
         project_id: str,
         tenant_key: str,
         agent_name: str = "test_agent",
-        agent_type: str = "worker",
+        agent_display_name: str = "worker",
         mission: str = "Test mission for agent job",
         status: str = "waiting"
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -116,7 +116,7 @@ class TestDataFactory:
         job_data = TestDataFactory.create_agent_job_data(
             project_id=project_id,
             tenant_key=tenant_key,
-            job_type=agent_type,
+            job_type=agent_display_name,
             mission=mission,
             status=job_status,
         )
@@ -125,7 +125,7 @@ class TestDataFactory:
             job_id=job_data["job_id"],
             tenant_key=tenant_key,
             agent_name=agent_name,
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             status=status,
         )
 

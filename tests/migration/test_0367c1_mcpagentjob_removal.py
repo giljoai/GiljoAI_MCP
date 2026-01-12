@@ -116,7 +116,7 @@ class TestHealthMonitorBehavior:
             agent_id=str(uuid4()),
             job_id=job.job_id,
             tenant_key="test-tenant",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="test-orchestrator",
             instance_number=1,
             status="active",
@@ -158,7 +158,7 @@ class TestHealthMonitorBehavior:
             agent_id=str(uuid4()),
             job_id=str(uuid4()),
             tenant_key="tenant-a",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="test-impl-a",
             instance_number=1,
             status="active",
@@ -202,7 +202,7 @@ class TestHealthMonitorBehavior:
             agent_id=str(uuid4()),
             job_id=str(uuid4()),
             tenant_key="test-tenant",
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="test-impl",
             instance_number=1,
             status="active",
@@ -219,7 +219,7 @@ class TestHealthMonitorBehavior:
         # Create health status
         health_status = AgentHealthStatus(
             job_id=execution.job_id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             current_status="active",
             health_state="warning",
             last_update=datetime.now(timezone.utc) - timedelta(minutes=6),
@@ -281,7 +281,7 @@ class TestOrchestratorSpawningBehavior:
         # Spawn agent
         try:
             result = await orchestrator.spawn_agent(
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Implement feature X"
             )
 
@@ -323,7 +323,7 @@ class TestOrchestratorSpawningBehavior:
 
         try:
             result = await orchestrator.spawn_agent(
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Implement feature X"
             )
 
@@ -370,7 +370,7 @@ class TestOrchestratorSpawningBehavior:
 
         try:
             result = await orchestrator.spawn_agent(
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Implement feature X"
             )
 
@@ -412,7 +412,7 @@ class TestOrchestratorSpawningBehavior:
 
         try:
             result = await orchestrator.spawn_agent(
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Implement feature X"
             )
 
@@ -463,7 +463,7 @@ class TestSuccessionBehavior:
             agent_id=old_agent_id,
             job_id=existing_job_id,
             tenant_key="test-tenant",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="test-orch-1",
             instance_number=1,
             status="completed",
@@ -527,7 +527,7 @@ class TestSuccessionBehavior:
             agent_id=old_agent_id,
             job_id=existing_job_id,
             tenant_key="test-tenant",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="test-orch-1",
             instance_number=1,  # First instance
             status="completed",
@@ -591,7 +591,7 @@ class TestSuccessionBehavior:
             agent_id=old_agent_id,
             job_id=existing_job_id,
             tenant_key="test-tenant",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="test-orch-1",
             instance_number=1,
             status="completed",

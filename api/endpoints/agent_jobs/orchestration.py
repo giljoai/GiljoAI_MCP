@@ -64,7 +64,7 @@ class AgentInfo(BaseModel):
     """Agent information for launch response."""
     agent_id: str
     job_id: str
-    agent_type: str
+    agent_display_name: str
     agent_name: Optional[str]
     status: str
     mission: str
@@ -406,7 +406,7 @@ async def launch_project(
         AgentInfo(
             agent_id=str(agent.agent_id),
             job_id=agent.job_id,
-            agent_type=agent.agent_type,
+            agent_display_name=agent.agent_display_name,
             agent_name=agent.agent_name,
             status=agent.status,
             mission=agent.job.mission,  # Mission is on the job, not execution

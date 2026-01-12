@@ -179,7 +179,7 @@ class TestClaudeCodeCLIModePrompts:
 
         # Must contain example template names (we use 'implementer' as example)
         # Check for agent_type usage in examples
-        assert 'implementer' in prompt or 'agent_type' in prompt
+        assert 'implementer' in prompt or 'agent_display_name' in prompt
 
     @pytest.mark.asyncio
     async def test_cli_mode_includes_forbidden_examples(
@@ -214,7 +214,7 @@ class TestClaudeCodeCLIModePrompts:
         )
 
         # Must explain Task tool parameters
-        assert 'agent_type' in prompt
+        assert 'agent_display_name' in prompt
         assert 'agent_name' in prompt
 
         # Must mention parameter requirements (new wording uses "must match")

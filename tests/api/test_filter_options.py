@@ -261,7 +261,7 @@ async def project_without_unread(db_manager, tenant_a_admin):
             job_id=str(uuid4()),
             tenant_key=tenant_a_admin.tenant_key,
             project_id=project.project_id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             tool_type="claude-code",
             status="working",
             mission="Test mission",

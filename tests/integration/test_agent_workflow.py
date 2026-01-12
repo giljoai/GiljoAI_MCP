@@ -218,7 +218,7 @@ class TestAgentJobLifecycle:
             job = job_repo.create_job(
                 session,
                 "test-tenant",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Coordinate development tasks for new feature",
                 spawned_by="parent-orchestrator",
                 context_chunks=["chunk-1", "chunk-2", "chunk-3"],
@@ -227,7 +227,7 @@ class TestAgentJobLifecycle:
             await session.commit()
 
             assert job.status == "pending"
-            assert job.agent_type == "orchestrator"
+            assert job.agent_display_name == "orchestrator"
             assert job.spawned_by == "parent-orchestrator"
             assert job.context_chunks == ["chunk-1", "chunk-2", "chunk-3"]
             assert job.acknowledged is False
@@ -312,7 +312,7 @@ class TestAgentJobLifecycle:
             parent_job = job_repo.create_job(
                 session,
                 "test-tenant",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Main project coordination",
                 spawned_by=None,  # Top-level job
             )
@@ -328,10 +328,10 @@ class TestAgentJobLifecycle:
                 child_job = job_repo.create_job(
                     session,
                     "test-tenant",
-                    agent_type=agent_type,
-                    mission=f"Execute {agent_type} tasks",
+                    agent_display_name=agent_type,
+                    mission=f"Execute {agent_display_name} tasks",
                     spawned_by=parent_job_id,
-                    context_chunks=[f"{agent_type}-context-1", f"{agent_type}-context-2"],
+                    context_chunks=[f"{agent_display_name}-context-1", f"{agent_type}-context-2"],
                 )
                 child_jobs.append(child_job)
 
@@ -341,7 +341,7 @@ class TestAgentJobLifecycle:
             spawned_jobs = job_repo.get_jobs_by_spawner(session, "test-tenant", parent_job_id)
             assert len(spawned_jobs) == 3
 
-            spawned_agent_types = [job.agent_type for job in spawned_jobs]
+            spawned_agent_types = [job.agent_display_name for job in spawned_jobs]
             assert "analyzer" in spawned_agent_types
             assert "implementer" in spawned_agent_types
             assert "tester" in spawned_agent_types
@@ -354,10 +354,10 @@ class TestAgentJobLifecycle:
             stats = job_repo.get_job_statistics(session, "test-tenant")
             assert stats["total_jobs"] == 4  # 1 parent + 3 children
             assert stats["by_status"]["pending"] == 4  # All pending initially
-            assert stats["by_agent_type"]["orchestrator"] == 1
-            assert stats["by_agent_type"]["analyzer"] == 1
-            assert stats["by_agent_type"]["implementer"] == 1
-            assert stats["by_agent_type"]["tester"] == 1
+            assert stats["by_agent_display_name"]["orchestrator"] == 1
+            assert stats["by_agent_display_name"]["analyzer"] == 1
+            assert stats["by_agent_display_name"]["implementer"] == 1
+            assert stats["by_agent_display_name"]["tester"] == 1
 
 
 class TestMultiTenantIsolation:
@@ -417,7 +417,7 @@ class TestMultiTenantIsolation:
             job_a = job_repo.create_job(
                 session,
                 "tenant-a",
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Secret mission for tenant A",
                 context_chunks=["chunk-a-1", "chunk-a-2"],
             )
@@ -446,7 +446,7 @@ class TestMultiTenantIsolation:
             job_b = job_repo.create_job(
                 session,
                 "tenant-b",
-                agent_type="implementer",
+                agent_display_name="implementer",
                 mission="Classified mission for tenant B",
                 context_chunks=["chunk-b-1", "chunk-b-2"],
             )
@@ -508,8 +508,8 @@ class TestMultiTenantIsolation:
 
             assert stats_a["total_jobs"] == 1
             assert stats_b["total_jobs"] == 1
-            assert stats_a["by_agent_type"]["orchestrator"] == 1
-            assert stats_b["by_agent_type"]["implementer"] == 1
+            assert stats_a["by_agent_display_name"]["orchestrator"] == 1
+            assert stats_b["by_agent_display_name"]["implementer"] == 1
 
 
 if __name__ == "__main__":

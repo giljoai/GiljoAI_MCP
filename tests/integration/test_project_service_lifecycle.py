@@ -238,43 +238,43 @@ class TestProjectLifecycleMethods:
             # Add jobs with different statuses
             jobs = [
                 AgentExecution(
-                    agent_type="architect",
+                    agent_display_name="architect",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="implementor",
+                    agent_display_name="implementor",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="tester",
+                    agent_display_name="tester",
                     status="completed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="reviewer",
+                    agent_display_name="reviewer",
                     status="active",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="orchestrator",
+                    agent_display_name="orchestrator",
                     status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="helper",
+                    agent_display_name="helper",
                     status="waiting",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()
                 ),
                 AgentExecution(
-                    agent_type="analyzer",
+                    agent_display_name="analyzer",
                     status="failed",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant()

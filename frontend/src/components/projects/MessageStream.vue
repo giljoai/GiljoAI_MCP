@@ -46,7 +46,7 @@
           <!-- Chat Head Badge (for agent messages) -->
           <ChatHeadBadge
             v-if="!isUserMessage(message)"
-            :agent-type="getAgentType(message)"
+            :agent-display-name="getAgentDisplayName(message)"
             :instance-number="getInstanceNumber(message)"
             size="default"
             class="message-stream__chat-head"
@@ -153,7 +153,7 @@ const props = defineProps({
    * - content: message text
    * - timestamp: ISO timestamp
    * - from: 'agent' | 'developer'
-   * - agent_type: agent type (for chat head color)
+   * - agent_display_name: agent display name (for chat head color)
    * - instance_number: agent instance number (optional, defaults to 1)
    */
   messages: {
@@ -219,8 +219,8 @@ function isBroadcast(message) {
 /**
  * Get agent type from message
  */
-function getAgentType(message) {
-  return message.agent_type || message.from_agent || 'orchestrator'
+function getAgentDisplayName(message) {
+  return message.agent_display_name || message.from_agent || 'orchestrator'
 }
 
 /**
@@ -233,9 +233,9 @@ function getInstanceNumber(message) {
 /**
  * Format agent name for display
  */
-function formatAgentName(agentType) {
-  if (!agentType) return 'Unknown'
-  return agentType.charAt(0).toUpperCase() + agentType.slice(1)
+function formatAgentName(displayName) {
+  if (!displayName) return 'Unknown'
+  return displayName.charAt(0).toUpperCase() + displayName.slice(1)
 }
 
 /**

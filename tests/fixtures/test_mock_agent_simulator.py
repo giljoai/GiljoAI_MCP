@@ -54,7 +54,7 @@ def mock_mission_response() -> dict[str, Any]:
                             "success": True,
                             "job_id": "job-123-test",
                             "agent_name": "implementer",
-                            "agent_type": "implementer",
+                            "agent_display_name": "implementer",
                             "mission": "Create REST API endpoint for user management",
                             "project_id": "project-456",
                             "parent_job_id": "orchestrator-789",
@@ -164,7 +164,7 @@ class TestMockAgentSimulatorMethods:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         yield simulator
 
@@ -185,7 +185,7 @@ class TestMockAgentSimulatorMethods:
 
             assert result["success"] is True
             assert result["job_id"] == mock_job_id
-            assert result["agent_type"] == "implementer"
+            assert result["agent_display_name"] == "implementer"
             assert "mission" in result
             assert result["thin_client"] is True
 
@@ -328,7 +328,7 @@ class TestMockAgentSimulatorExecution:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         yield simulator
 
@@ -414,7 +414,7 @@ class TestMockAgentSimulatorExecution:
                                     {
                                         "success": True,
                                         "job_id": "job-123",
-                                        "agent_type": "implementer",
+                                        "agent_display_name": "implementer",
                                         "mission": "Quick test",
                                         "thin_client": True,
                                     }
@@ -452,7 +452,7 @@ class TestMockAgentSimulatorErrorHandling:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
         yield simulator
 
@@ -561,13 +561,13 @@ class TestMockAgentSimulatorCrossPlatform:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_type="implementer",
+            agent_display_name="implementer",
         )
 
         assert simulator.job_id == mock_job_id
         assert simulator.tenant_key == mock_tenant_key
         assert simulator.api_key == mock_api_key
-        assert simulator.agent_type == "implementer"
+        assert simulator.agent_display_name == "implementer"
 
         # Cleanup
         if simulator._session and not simulator._session.closed:
@@ -579,7 +579,7 @@ class TestMockAgentSimulatorAgentTypes:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "agent_type,expected_duration_min,expected_duration_max",
+        "agent_display_name,expected_duration_min,expected_duration_max",
         [
             ("implementer", 5, 10),
             ("tester", 5, 10),
@@ -587,8 +587,8 @@ class TestMockAgentSimulatorAgentTypes:
             ("documenter", 5, 10),
         ],
     )
-    async def test_agent_type_simulation(
-        self, agent_type, expected_duration_min, expected_duration_max, mock_api_key, mock_tenant_key, mock_job_id
+    async def test_agent_display_name_simulation(
+        self, agent_display_name, expected_duration_min, expected_duration_max, mock_api_key, mock_tenant_key, mock_job_id
     ):
         """Test simulation for different agent types"""
         from tests.fixtures.mock_agent_simulator import MockAgentSimulator
@@ -598,15 +598,15 @@ class TestMockAgentSimulatorAgentTypes:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_type=agent_type,
+            agent_display_name=agent_type,
         )
 
-        assert simulator.agent_type == agent_type
+        assert simulator.agent_display_name == agent_type
 
         # Test work execution timing
         import time
 
-        mission_data = {"mission": f"Test {agent_type} work"}
+        mission_data = {"mission": f"Test {agent_display_name} work"}
 
         start_time = time.time()
         await simulator.execute_work(mission_data)
@@ -614,7 +614,7 @@ class TestMockAgentSimulatorAgentTypes:
 
         assert (
             expected_duration_min - 1 <= elapsed_time <= expected_duration_max + 2
-        ), f"{agent_type} work took {elapsed_time:.2f}s"
+        ), f"{agent_display_name} work took {elapsed_time:.2f}s"
 
         # Cleanup
         if simulator._session and not simulator._session.closed:

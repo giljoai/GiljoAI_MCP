@@ -32,12 +32,12 @@ describe('MessageInput - Agent ID Selection', () => {
     const mockAgents = [
       {
         agent_id: 'abc12345-6789-0123-4567-890abcdef123',
-        agent_type: 'orchestrator',
+        agent_display_name: 'orchestrator',
         instance_number: 1,
       },
       {
         agent_id: 'def67890-1234-5678-9012-345678901234',
-        agent_type: 'implementor',
+        agent_display_name: 'implementor',
         instance_number: 2,
       },
     ]
@@ -97,7 +97,7 @@ describe('MessageInput - Agent ID Selection', () => {
     const mockAgents = [
       {
         agent_id: 'abc12345-6789-0123-4567-890abcdef123',
-        agent_type: 'orchestrator',
+        agent_display_name: 'orchestrator',
         instance_number: 1,
       },
     ]

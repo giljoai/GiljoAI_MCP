@@ -73,7 +73,7 @@ async def test_agent_job_data(db_session, test_project):
         job_id=str(uuid.uuid4()),
         tenant_key=test_project.tenant_key,
         project_id=test_project.id,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission for implementer agent",
         status="waiting",  # Valid status: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
         created_at=datetime.now(timezone.utc),
@@ -128,7 +128,7 @@ async def test_status_change_emits_agent_status_changed_event(
     # Valid statuses: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
     await manager.broadcast_job_status_update(
         job_id=test_agent_job_data.job_id,
-        agent_type=test_agent_job_data.agent_type,
+        agent_display_name=test_agent_job_data.agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -309,7 +309,7 @@ async def test_status_payload_includes_status_field_not_new_status(
     # Broadcast status update
     await manager.broadcast_job_status_update(
         job_id=test_agent_job_data.job_id,
-        agent_type=test_agent_job_data.agent_type,
+        agent_display_name=test_agent_job_data.agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -400,7 +400,7 @@ async def test_all_events_include_tenant_key_in_payload(
     # Test 1: Status update event
     await manager.broadcast_job_status_update(
         job_id=test_agent_job_data.job_id,
-        agent_type=test_agent_job_data.agent_type,
+        agent_display_name=test_agent_job_data.agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="active"
@@ -499,7 +499,7 @@ async def test_events_only_broadcast_to_matching_tenant():
     # Broadcast to tenant1 only
     await manager.broadcast_job_status_update(
         job_id=str(uuid.uuid4()),
-        agent_type="worker",
+        agent_display_name="worker",
         tenant_key=tenant1_key,
         old_status="waiting",
         new_status="working"
@@ -529,7 +529,7 @@ async def test_status_change_event_complete_structure(
         "job_id": "...",
         "status": "active",
         "tenant_key": "...",
-        "agent_type": "implementer"
+        "agent_display_name": "implementer"
       },
       "timestamp": "2025-01-15T10:00:00Z"
     }
@@ -540,7 +540,7 @@ async def test_status_change_event_complete_structure(
 
     await manager.broadcast_job_status_update(
         job_id=test_agent_job_data.job_id,
-        agent_type=test_agent_job_data.agent_type,
+        agent_display_name=test_agent_job_data.agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -561,13 +561,13 @@ async def test_status_change_event_complete_structure(
     assert "job_id" in data
     assert "status" in data
     assert "tenant_key" in data
-    assert "agent_type" in data
+    assert "agent_display_name" in data
 
     # Verify data values
     assert data["job_id"] == test_agent_job_data.job_id
     assert data["status"] == "working"
     assert data["tenant_key"] == tenant_key
-    assert data["agent_type"] == test_agent_job_data.agent_type
+    assert data["agent_display_name"] == test_agent_job_data.agent_display_name
 
 
 @pytest.mark.asyncio

@@ -3,8 +3,8 @@ Table View Endpoint Tests - Handover 0226
 
 Tests for GET /api/agent-jobs/table-view endpoint covering:
 - Basic table view retrieval with pagination
-- Advanced filtering (status, health_status, has_unread, agent_type)
-- Flexible sorting (last_progress, created_at, status, agent_type)
+- Advanced filtering (status, health_status, has_unread, agent_display_name)
+- Flexible sorting (last_progress, created_at, status, agent_display_name)
 - Multi-tenant isolation
 - Message count aggregation
 - Staleness detection
@@ -55,7 +55,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Main Orchestrator",
                 tool_type="claude-code",
                 status="working",
@@ -78,7 +78,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 agent_name="Backend Developer",
                 tool_type="codex",
                 status="waiting",
@@ -95,7 +95,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="tester",
+                agent_display_name="tester",
                 agent_name="Test Engineer",
                 tool_type="gemini",
                 status="working",
@@ -116,7 +116,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="analyzer",
+                agent_display_name="analyzer",
                 agent_name="Code Analyzer",
                 tool_type="universal",
                 status="complete",
@@ -138,7 +138,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="implementer",
+                agent_display_name="implementer",
                 agent_name="Frontend Developer",
                 tool_type="claude-code",
                 status="failed",
@@ -160,7 +160,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 job_id=str(uuid4()),
                 tenant_key=tenant_a_admin.tenant_key,
                 project_id=project.project_id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Successor Orchestrator",
                 tool_type="claude-code",
                 status="working",
@@ -263,7 +263,7 @@ async def test_table_row_structure(async_client: AsyncClient, test_jobs_with_var
     row = rows[0]
     required_fields = [
         "job_id",
-        "agent_type",
+        "agent_display_name",
         "agent_name",
         "tool_type",
         "status",
@@ -398,7 +398,7 @@ async def test_filter_by_health_status(async_client: AsyncClient, test_jobs_with
 
 
 @pytest.mark.asyncio
-async def test_filter_by_agent_type(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
+async def test_filter_by_agent_display_name(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
     """Test filtering by agent type."""
     # Login
     login_response = await async_client.post(
@@ -411,12 +411,12 @@ async def test_filter_by_agent_type(async_client: AsyncClient, test_jobs_with_va
     token = login_response.json()["access_token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
-    # Filter by agent_type=orchestrator
+    # Filter by agent_display_name=orchestrator
     response = await async_client.get(
         "/api/agent-jobs/table-view",
         params={
             "project_id": test_jobs_with_varied_data["project"].project_id,
-            "agent_type": ["orchestrator"],
+            "agent_display_name": ["orchestrator"],
         },
         headers=auth_headers,
     )
@@ -427,7 +427,7 @@ async def test_filter_by_agent_type(async_client: AsyncClient, test_jobs_with_va
     # Verify all returned rows are orchestrators
     assert len(data["rows"]) == 2  # Jobs 1, 6 are orchestrators
     for row in data["rows"]:
-        assert row["agent_type"] == "orchestrator"
+        assert row["agent_display_name"] == "orchestrator"
         assert row["is_orchestrator"] is True
 
 
@@ -619,8 +619,8 @@ async def test_sort_by_status(async_client: AsyncClient, test_jobs_with_varied_d
 
 
 @pytest.mark.asyncio
-async def test_sort_by_agent_type(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
-    """Test sorting by agent_type (alphabetical)."""
+async def test_sort_by_agent_display_name(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
+    """Test sorting by agent_display_name (alphabetical)."""
     # Login
     login_response = await async_client.post(
         "/api/auth/login",
@@ -632,12 +632,12 @@ async def test_sort_by_agent_type(async_client: AsyncClient, test_jobs_with_vari
     token = login_response.json()["access_token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
-    # Sort by agent_type descending
+    # Sort by agent_display_name descending
     response = await async_client.get(
         "/api/agent-jobs/table-view",
         params={
             "project_id": test_jobs_with_varied_data["project"].project_id,
-            "sort_by": "agent_type",
+            "sort_by": "agent_display_name",
             "sort_order": "desc",
         },
         headers=auth_headers,
@@ -647,8 +647,8 @@ async def test_sort_by_agent_type(async_client: AsyncClient, test_jobs_with_vari
     rows = response.json()["rows"]
 
     # Verify reverse alphabetical sorting
-    agent_types = [row["agent_type"] for row in rows]
-    assert agent_types == sorted(agent_types, reverse=True), "Rows not sorted by agent_type descending"
+    agent_types = [row["agent_display_name"] for row in rows]
+    assert agent_types == sorted(agent_types, reverse=True), "Rows not sorted by agent_display_name descending"
 
 
 # ============================================================================

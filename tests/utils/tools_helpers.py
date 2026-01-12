@@ -44,7 +44,7 @@ class ToolsTestHelper:
         agent_job = AgentExecution(
             job_id=str(uuid.uuid4()),
             agent_name=name,
-            agent_type="worker",
+            agent_display_name="worker",
             status="active",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(name),

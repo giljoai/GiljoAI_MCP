@@ -331,7 +331,7 @@ class TestAgentSelector:
         mock_session.execute = AsyncMock(return_value=mock_result_product)
 
         template = await agent_selector._get_template(
-            agent_type="implementer", tenant_key="tenant-a", product_id="product-1"
+            agent_display_name="implementer", tenant_key="tenant-a", product_id="product-1"
         )
 
         assert template is not None

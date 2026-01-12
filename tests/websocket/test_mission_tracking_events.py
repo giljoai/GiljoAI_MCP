@@ -70,7 +70,7 @@ async def test_orchestrator(db_session: AsyncSession, test_project: Project, ten
         job_id="orch-test-123",
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test mission",
         agent_name="Test Orchestrator",
         status="waiting",
@@ -175,7 +175,7 @@ async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
         job_id="agent-test-456",
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission",
         agent_name="Test Implementer",
         status="waiting",
@@ -248,7 +248,7 @@ async def test_mission_acknowledged_event_not_emitted_for_other_status_transitio
         job_id="agent-test-789",
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="tester",
+        agent_display_name="tester",
         mission="Test mission",
         agent_name="Test Tester",
         status="waiting",
@@ -323,7 +323,7 @@ async def test_mission_tracking_events_scoped_to_tenant(
     )
     orch_a = AgentExecution(
         job_id="orch-a", tenant_key=tenant_a, project_id=project_a.id,
-        agent_type="orchestrator", agent_name="Orch A", mission="Tenant A orch mission",
+        agent_display_name="orchestrator", agent_name="Orch A", mission="Tenant A orch mission",
         status="waiting"
     )
 
@@ -337,7 +337,7 @@ async def test_mission_tracking_events_scoped_to_tenant(
     )
     orch_b = AgentExecution(
         job_id="orch-b", tenant_key=tenant_b, project_id=project_b.id,
-        agent_type="orchestrator", agent_name="Orch B", mission="Tenant B orch mission",
+        agent_display_name="orchestrator", agent_name="Orch B", mission="Tenant B orch mission",
         status="waiting"
     )
 
@@ -398,7 +398,7 @@ async def test_mission_acknowledged_event_has_correct_payload_structure(
         job_id="agent-payload-test",
         tenant_key=tenant_key,
         project_id=test_project.id,
-        agent_type="implementer",
+        agent_display_name="implementer",
         mission="Test mission",
         agent_name="Test Agent",
         status="waiting",

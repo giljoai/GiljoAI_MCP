@@ -228,7 +228,7 @@ class TestAgentJobRelationships:
             agent_id="agent-001",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=1,
             status="complete"
         )
@@ -240,7 +240,7 @@ class TestAgentJobRelationships:
             agent_id="agent-002",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             instance_number=2,
             status="working"
         )

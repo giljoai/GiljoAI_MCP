@@ -304,7 +304,7 @@ async def generate_agent_prompt(
 
 cd {project_path}
 export AGENT_ID={agent.agent_id}
-export AGENT_TYPE={agent.agent_type}
+export AGENT_DISPLAY_NAME={agent.agent_type}
 export PROJECT_ID={agent.job.project_id if agent.job else "none"}
 
 # Create mission file
@@ -320,7 +320,7 @@ EOF
 
 Agent Details:
 - Name: {agent_display_name}
-- Type: {agent.agent_type}
+- Display Name: {agent.agent_type}
 - Tool: {tool_type}
 - Status: {agent.status}
 
@@ -333,7 +333,7 @@ Prerequisites:
         prompt=prompt,
         agent_id=agent.agent_id,
         agent_name=agent_display_name,
-        agent_type=agent.agent_type,
+        agent_display_name=agent.agent_type,
         tool_type=tool_type,
         instructions=instructions,
         mission_preview=mission_preview,
@@ -644,7 +644,7 @@ async def get_execution_prompt(
                 detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible",
             )
 
-        if (execution.agent_type or '').lower() != 'orchestrator':
+        if (execution.agent_display_name or '').lower() != 'orchestrator':
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Execution prompt is only available for orchestrator jobs",
@@ -676,7 +676,7 @@ async def get_execution_prompt(
             select(func.count(AgentExecution.agent_id))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_type != 'orchestrator',
+                AgentExecution.agent_display_name != 'orchestrator',
             )
             .join(
                 AgentJob,
@@ -820,7 +820,7 @@ async def get_implementation_prompt(
             .options(joinedload(AgentExecution.job))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_type == 'orchestrator',
+                AgentExecution.agent_display_name == 'orchestrator',
                 AgentExecution.status.in_(['waiting', 'working'])
             )
             .join(
@@ -866,7 +866,7 @@ async def get_implementation_prompt(
                 .options(joinedload(AgentExecution.job))
                 .where(
                     AgentExecution.tenant_key == current_user.tenant_key,
-                    AgentExecution.agent_type != 'orchestrator',  # Exclude orchestrator itself
+                    AgentExecution.agent_display_name != 'orchestrator',  # Exclude orchestrator itself
                     AgentExecution.status.in_(['waiting', 'working'])
                 )
                 .join(
@@ -896,7 +896,7 @@ async def get_implementation_prompt(
         agent_jobs_list = [
             {
                 'job_id': agent_exec.job_id,
-                'agent_type': agent_exec.agent_type,
+                'agent_display_name': agent_exec.agent_type,
                 'agent_name': agent_exec.agent_name or agent_exec.agent_type,
                 'status': agent_exec.status,
                 'mission': agent_exec.job.mission if agent_exec.job else '(No mission assigned)'

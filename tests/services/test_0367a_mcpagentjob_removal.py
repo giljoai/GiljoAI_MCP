@@ -83,7 +83,7 @@ async def test_agent_execution_0367a(
         agent_id=str(uuid.uuid4()),
         job_id=test_agent_job_0367a.job_id,
         tenant_key=test_tenant_0367a,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         instance_number=1,
         status="working",

@@ -272,7 +272,7 @@ const showCloseoutButton = computed(() => {
   const allComplete = jobs.every((job) => job.status === 'complete')
   if (!allComplete) return false
 
-  const orchestrator = jobs.find((job) => job.agent_type === 'orchestrator')
+  const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
   return Boolean(orchestrator && orchestrator.status === 'complete')
 })
 

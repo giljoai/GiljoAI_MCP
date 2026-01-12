@@ -170,7 +170,7 @@ const canLaunchAgent = (agent) => {
 
   // Claude Code mode: only orchestrator can be launched
   if (props.usingClaudeCodeSubagents) {
-    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+    return agent.is_orchestrator || agent.agent_display_name === 'orchestrator'
   }
 
   // General CLI mode: all non-terminal agents can be launched
@@ -190,7 +190,7 @@ const canCopyPrompt = (agent) => {
 
   // Claude Code mode: only orchestrator prompts can be copied
   if (props.usingClaudeCodeSubagents) {
-    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+    return agent.is_orchestrator || agent.agent_display_name === 'orchestrator'
   }
 
   // General CLI mode: all agent prompts can be copied
