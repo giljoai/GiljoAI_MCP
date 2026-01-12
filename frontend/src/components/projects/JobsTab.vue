@@ -23,8 +23,8 @@
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Avatar + Name -->
             <td class="agent-display-name-cell">
-              <v-avatar :color="getAgentColor(agent.agent_display_name)" size="32" class="agent-avatar">
-                <span class="avatar-text">{{ getAgentAbbr(agent.agent_display_name) }}</span>
+              <v-avatar :color="getAgentColor(agent.agent_name || agent.agent_display_name)" size="32" class="agent-avatar">
+                <span class="avatar-text">{{ getAgentAbbr(agent.agent_name || agent.agent_display_name) }}</span>
               </v-avatar>
               <div class="agent-info">
                 <span class="agent-name-primary">{{ agent.agent_name || agent.agent_display_name }}</span>
@@ -308,8 +308,8 @@
     <v-dialog v-model="showAgentJobModal" max-width="700" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-avatar :color="getAgentColor(selectedAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
-            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_display_name) }}</span>
+          <v-avatar :color="getAgentColor(selectedAgent?.agent_name || selectedAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
+            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_name || selectedAgent?.agent_display_name) }}</span>
           </v-avatar>
           <span style="text-transform: capitalize">{{ selectedAgent?.agent_name || selectedAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
           <v-spacer></v-spacer>
