@@ -322,16 +322,16 @@ class TestAgentJobLifecycle:
 
             # Spawn child jobs
             child_jobs = []
-            agent_types = ["analyzer", "implementer", "tester"]
+            agent_display_names = ["analyzer", "implementer", "tester"]
 
-            for agent_type in agent_types:
+            for agent_display_name in agent_display_names:
                 child_job = job_repo.create_job(
                     session,
                     "test-tenant",
-                    agent_display_name=agent_type,
+                    agent_display_name=agent_display_name,
                     mission=f"Execute {agent_display_name} tasks",
                     spawned_by=parent_job_id,
-                    context_chunks=[f"{agent_display_name}-context-1", f"{agent_type}-context-2"],
+                    context_chunks=[f"{agent_display_name}-context-1", f"{agent_display_name}-context-2"],
                 )
                 child_jobs.append(child_job)
 
@@ -341,10 +341,10 @@ class TestAgentJobLifecycle:
             spawned_jobs = job_repo.get_jobs_by_spawner(session, "test-tenant", parent_job_id)
             assert len(spawned_jobs) == 3
 
-            spawned_agent_types = [job.agent_display_name for job in spawned_jobs]
-            assert "analyzer" in spawned_agent_types
-            assert "implementer" in spawned_agent_types
-            assert "tester" in spawned_agent_types
+            spawned_agent_display_names = [job.agent_display_name for job in spawned_jobs]
+            assert "analyzer" in spawned_agent_display_names
+            assert "implementer" in spawned_agent_display_names
+            assert "tester" in spawned_agent_display_names
 
             # Verify all children reference parent
             for job in spawned_jobs:

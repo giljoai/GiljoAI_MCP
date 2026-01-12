@@ -598,10 +598,10 @@ class TestMockAgentSimulatorAgentTypes:
             tenant_key=mock_tenant_key,
             api_key=mock_api_key,
             api_url="http://localhost:7272/mcp",
-            agent_display_name=agent_type,
+            agent_display_name=agent_display_name,
         )
 
-        assert simulator.agent_display_name == agent_type
+        assert simulator.agent_display_name == agent_display_name
 
         # Test work execution timing
         import time

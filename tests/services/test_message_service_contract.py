@@ -92,9 +92,9 @@ async def test_project_with_agents(
     await db_session.refresh(project)
 
     # Create agent jobs and executions (Handover 0372: Separate work order from executor)
-    agent_types = ["orchestrator", "analyzer", "implementer", "tester"]
+    agent_display_names = ["orchestrator", "analyzer", "implementer", "tester"]
     agents = []
-    for agent_type in agent_types:
+    for agent_display_name in agent_display_names:
         # Create work order (AgentJob)
         job = AgentJob(
             job_id=str(uuid4()),
@@ -110,7 +110,7 @@ async def test_project_with_agents(
         agent = AgentExecution(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
-            agent_display_name=agent_type,
+            agent_display_name=agent_display_name,
             status="waiting",
             instance_number=1,
             messages=[],  # Initialize empty JSONB array
