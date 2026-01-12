@@ -6,7 +6,7 @@ Provides optimized column data for table display with minimal payload size.
 Features:
 - Minimal payload (only table columns, ~50% smaller than full JobResponse)
 - Advanced filtering (status, health, unread messages, agent type)
-- Flexible sorting (last_progress, created_at, status, agent_type)
+- Flexible sorting (last_progress, created_at, status, agent_display_name)
 - Pagination support
 - Multi-tenant isolation
 - Message count aggregation
@@ -95,8 +95,8 @@ async def get_agent_jobs_table_view(
     status: Optional[list[str]] = Query(None, description="Filter by status (can specify multiple)"),
     health_status: Optional[list[str]] = Query(None, description="Filter by health status"),
     has_unread: Optional[bool] = Query(None, description="Filter jobs with unread messages"),
-    agent_type: Optional[list[str]] = Query(None, description="Filter by agent type"),
-    sort_by: Literal["last_progress", "created_at", "status", "agent_type"] = Query(
+    agent_display_name: Optional[list[str]] = Query(None, description="Filter by agent type"),
+    sort_by: Literal["last_progress", "created_at", "status", "agent_display_name"] = Query(
         "last_progress", description="Sort column"
     ),
     sort_order: Literal["asc", "desc"] = Query("desc", description="Sort direction"),
@@ -111,7 +111,7 @@ async def get_agent_jobs_table_view(
     Features:
     - Minimal payload size (only table columns)
     - Advanced filtering (status, health, unread messages, agent type)
-    - Flexible sorting (last_progress, created_at, status, agent_type)
+    - Flexible sorting (last_progress, created_at, status, agent_display_name)
     - Pagination support
     - Multi-tenant isolation
     - Message count aggregation
@@ -146,9 +146,9 @@ async def get_agent_jobs_table_view(
         query = query.where(AgentExecution.health_status.in_(health_status))
         filters_applied["health_status"] = health_status
 
-    if agent_type:
-        query = query.where(AgentExecution.agent_display_name.in_(agent_type))
-        filters_applied["agent_type"] = agent_type
+    if agent_display_name:
+        query = query.where(AgentExecution.agent_display_name.in_(agent_display_name))
+        filters_applied["agent_display_name"] = agent_display_name
 
     if has_unread is not None:
         if has_unread:
@@ -173,7 +173,7 @@ async def get_agent_jobs_table_view(
         sort_column = AgentExecution.started_at
     elif sort_by == "status":
         sort_column = AgentExecution.status
-    elif sort_by == "agent_type":
+    elif sort_by == "agent_display_name":
         sort_column = AgentExecution.agent_display_name
 
     if sort_order == "desc":
