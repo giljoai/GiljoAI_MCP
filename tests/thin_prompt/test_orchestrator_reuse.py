@@ -69,7 +69,7 @@ class TestOrchestratorReuse:
         stmt = select(AgentExecution).where(
             and_(
                 AgentExecution.project_id == str(project.id),
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key
             )
         )
@@ -92,7 +92,7 @@ class TestOrchestratorReuse:
         result = await db_session.execute(stmt)
         orchestrator = result.scalar_one_or_none()
         assert orchestrator is not None
-        assert orchestrator.agent_type == "orchestrator"
+        assert orchestrator.agent_display_name == "orchestrator"
         assert orchestrator.project_id == str(project.id)
         assert orchestrator.tenant_key == tenant_key
         assert orchestrator.status == "waiting"
@@ -162,7 +162,7 @@ class TestOrchestratorReuse:
         stmt = select(AgentExecution).where(
             and_(
                 AgentExecution.project_id == str(project.id),
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key
             )
         )
@@ -227,7 +227,7 @@ class TestOrchestratorReuse:
         stmt = select(AgentExecution).where(
             and_(
                 AgentExecution.project_id == str(project.id),
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key
             )
         )
@@ -305,7 +305,7 @@ class TestOrchestratorReuse:
             stmt = select(AgentExecution).where(
                 and_(
                     AgentExecution.project_id == str(project.id),
-                    AgentExecution.agent_type == "orchestrator",
+                    AgentExecution.agent_display_name == "orchestrator",
                     AgentExecution.tenant_key == tenant_key
                 )
             )
@@ -453,7 +453,7 @@ class TestOrchestratorReuse:
         stmt = select(AgentExecution).where(
             and_(
                 AgentExecution.project_id == str(project.id),
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key
             )
         )
@@ -668,7 +668,7 @@ class TestOrchestratorReuse:
             project_id=str(project.id),
             job_id=str(uuid4()),
             agent_name="Orchestrator #1",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Mission 1",
             instance_number=1,
@@ -687,7 +687,7 @@ class TestOrchestratorReuse:
             project_id=str(project.id),
             job_id=str(uuid4()),
             agent_name="Orchestrator #2",
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Mission 2",
             instance_number=2,
@@ -716,7 +716,7 @@ class TestOrchestratorReuse:
         stmt = select(AgentExecution).where(
             and_(
                 AgentExecution.project_id == str(project.id),
-                AgentExecution.agent_type == "orchestrator",
+                AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key
             )
         )

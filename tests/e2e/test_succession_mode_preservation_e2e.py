@@ -100,7 +100,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator A",
             context_used=10000,
@@ -203,7 +203,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator A",
             job_metadata={
@@ -226,7 +226,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_d = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Orchestrator D",
             job_metadata={
@@ -275,7 +275,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator A",
             context_used=90000,
@@ -373,7 +373,7 @@ class TestSuccessionModePreservationE2E:
         orchestrator_a = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Orchestrator A",
             context_used=90000,

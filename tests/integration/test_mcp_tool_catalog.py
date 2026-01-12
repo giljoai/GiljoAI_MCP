@@ -61,7 +61,7 @@ class TestMCPToolCatalog:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
@@ -222,11 +222,11 @@ class TestMCPToolCatalog:
         }
 
         for agent_type, expected_tools in agent_types.items():
-            catalog = generator.generate_for_agent(agent_type)
+            catalog = generator.generate_for_agent(agent_display_name)
             assert isinstance(catalog, str)
             # At least one expected tool should be in the catalog
             has_expected = any(tool in catalog for tool in expected_tools)
-            assert has_expected or len(catalog) > 50, f"Empty or invalid catalog for {agent_type}"
+            assert has_expected or len(catalog) > 50, f"Empty or invalid catalog for {agent_display_name}"
 
     async def test_tool_catalog_format(self, tenant_context):
         """
@@ -316,7 +316,7 @@ class TestMCPToolCatalog:
         assert elapsed < 1.0, f"Catalog generation took {elapsed:.2f}s"
         assert len(full_catalog) > 1000, "Catalog too small"
 
-    async def test_agent_type_specific_exclusions(self, tenant_context):
+    async def test_agent_display_name_specific_exclusions(self, tenant_context):
         """
         Test: Agent gets only relevant tools, not all tools
         """
@@ -404,7 +404,7 @@ class TestMCPToolCatalogIntegration:
                 job_id=orchestrator_id,
                 tenant_key=tenant_key,
                 project_id=project.id,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 mission="Orchestrate integration test",
                 status="waiting",
                 context_budget=150000,

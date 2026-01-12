@@ -103,7 +103,7 @@ def sample_orchestrator(sample_project):
     """Create sample orchestrator job for testing."""
     orchestrator = AgentExecution(
         job_id="test-orchestrator-id",
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         tenant_key="test-tenant",
         project_id=sample_project.id,

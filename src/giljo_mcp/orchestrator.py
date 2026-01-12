@@ -287,7 +287,7 @@ class ProjectOrchestrator:
             agent_id=agent_id,
             job_id=job_id,
             tenant_key=project.tenant_key,
-            agent_type=role.value,
+            agent_display_name=role.value,
             agent_name=role.value,
             instance_number=1,
             status="waiting",
@@ -549,7 +549,7 @@ class ProjectOrchestrator:
             agent_id=agent_id,
             job_id=job_id,
             tenant_key=project.tenant_key,
-            agent_type=role.value,
+            agent_display_name=role.value,
             agent_name=role.value,
             instance_number=1,
             status="waiting_acknowledgment",
@@ -575,7 +575,7 @@ class ProjectOrchestrator:
         # 3. Generate CLI prompt with direct parameters
         cli_prompt = self._generate_cli_prompt(
             job_id=job_id,
-            agent_type=role.value,
+            agent_display_name=role.value,
             mission=full_mission,
             status="waiting_acknowledgment",
             template=template,
@@ -698,7 +698,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
     def _generate_cli_prompt(
         self,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         mission: str,
         status: str,
         template: AgentTemplate,
@@ -709,7 +709,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         Generate copy-paste ready CLI prompt for Codex/Gemini agents.
 
         Includes:
-        - Job information (job_id, agent_type)
+        - Job information (job_id, agent_display_name)
         - Mission text
         - Behavioral rules from template
         - Success criteria from template
@@ -717,7 +717,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
         Args:
             job_id: Job ID
-            agent_type: Agent role/type for display purposes
+            agent_display_name: Agent role/type for display purposes
             mission: Mission text
             status: Job status
             template: AgentTemplate instance
@@ -740,14 +740,14 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 f"- {criterion}" for criterion in template.success_criteria
             )
 
-        mcp_instructions = self._generate_mcp_instructions(tenant_key, agent_type, mission)
+        mcp_instructions = self._generate_mcp_instructions(tenant_key, agent_display_name, mission)
 
         return f"""
 # {template.name} Agent - Job {job_id}
 
 ## Job Information
 - **Job ID**: `{job_id}`
-- **Agent Type**: `{agent_type}`
+- **Agent Type**: `{agent_display_name}`
 - **Project**: {project.name}
 - **Tenant**: `{tenant_key}`
 - **Status**: {status}
@@ -767,7 +767,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
    ```
    acknowledge_job(
        job_id="{job_id}",
-       agent_id="{agent_type}",
+       agent_id="{agent_display_name}",
        tenant_key="{tenant_key}"
    )
    ```
@@ -1142,7 +1142,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 agent_id=agent_id,
                 job_id=job_id,
                 tenant_key=project.tenant_key,
-                agent_type=role.value,
+                agent_display_name=role.value,
                 agent_name=role.value,
                 instance_number=1,
                 status="waiting",
@@ -1648,7 +1648,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                     agent_report = await optimizer.generate_savings_report(execution.agent_id)
                     agent_reports[execution.agent_id] = {
                         "agent_name": execution.agent_name,
-                        "agent_role": execution.agent_type,
+                        "agent_role": execution.agent_display_name,
                         "report": agent_report,
                     }
 
@@ -1659,7 +1659,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                     logger.warning(f"Failed to get optimization report for agent {execution.agent_id}: {e}")
                     agent_reports[execution.agent_id] = {
                         "agent_name": execution.agent_name,
-                        "agent_role": execution.agent_type,
+                        "agent_role": execution.agent_display_name,
                         "report": {"error": str(e)},
                     }
 

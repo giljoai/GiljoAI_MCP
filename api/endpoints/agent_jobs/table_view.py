@@ -39,7 +39,7 @@ class TableRowData(BaseModel):
 
     job_id: str
     agent_id: Optional[str] = None  # Handover 0401b: Executor UUID for WebSocket event matching
-    agent_type: str
+    agent_display_name: str
     agent_name: Optional[str] = None
     tool_type: str  # claude-code, codex, gemini, universal
     status: str  # waiting, working, blocked, complete, failed, cancelled, decommissioned
@@ -147,7 +147,7 @@ async def get_agent_jobs_table_view(
         filters_applied["health_status"] = health_status
 
     if agent_type:
-        query = query.where(AgentExecution.agent_type.in_(agent_type))
+        query = query.where(AgentExecution.agent_display_name.in_(agent_type))
         filters_applied["agent_type"] = agent_type
 
     if has_unread is not None:
@@ -174,7 +174,7 @@ async def get_agent_jobs_table_view(
     elif sort_by == "status":
         sort_column = AgentExecution.status
     elif sort_by == "agent_type":
-        sort_column = AgentExecution.agent_type
+        sort_column = AgentExecution.agent_display_name
 
     if sort_order == "desc":
         query = query.order_by(sort_column.desc().nulls_last())
@@ -246,7 +246,7 @@ async def get_agent_jobs_table_view(
             TableRowData(
                 job_id=execution.job_id,
                 agent_id=execution.agent_id,  # Handover 0401b: WebSocket event matching
-                agent_type=execution.agent_type,
+                agent_display_name=execution.agent_display_name,
                 agent_name=execution.agent_name,
                 tool_type=execution.tool_type,
                 status=execution.status,
@@ -264,7 +264,7 @@ async def get_agent_jobs_table_view(
                 completed_at=execution.completed_at,
                 mission_acknowledged_at=execution.mission_acknowledged_at,  # Handover 0233
                 instance_number=instance_number,
-                is_orchestrator=(execution.agent_type == "orchestrator"),
+                is_orchestrator=(execution.agent_display_name == "orchestrator"),
                 steps_total=steps_total,
                 steps_completed=steps_completed,
             )

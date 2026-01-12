@@ -81,7 +81,7 @@ async def test_implementation_prompt_happy_path(
             job_id=orch_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Test Orchestrator",
             mission="Orchestrate implementation",
             status="working",  # CRITICAL: Must be working (active state)
@@ -94,7 +94,7 @@ async def test_implementation_prompt_happy_path(
             job_id=agent1_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="tdd-implementor",
+            agent_display_name="tdd-implementor",
             agent_name="TDD Implementor",
             mission="Implement feature with TDD",
             status="waiting",  # Waiting for orchestrator to spawn
@@ -106,7 +106,7 @@ async def test_implementation_prompt_happy_path(
             job_id=agent2_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="backend-integration-tester",
+            agent_display_name="backend-integration-tester",
             agent_name="Backend Tester",
             mission="Test API endpoints",
             status="waiting",
@@ -294,7 +294,7 @@ async def test_implementation_prompt_no_active_orchestrator(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test orchestrator",
             status="complete",  # NOT working (valid status but wrong state)
         )
@@ -368,7 +368,7 @@ async def test_implementation_prompt_no_spawned_agents(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test orchestrator",
             status="working",
         )
@@ -442,7 +442,7 @@ async def test_implementation_prompt_tenant_isolation(
             job_id=f"impl-orch-{uuid4().hex[:12]}",
             tenant_key=tenant_key_a,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test orchestrator",
             status="working",
         )
@@ -452,7 +452,7 @@ async def test_implementation_prompt_tenant_isolation(
             job_id=f"impl-agent-{uuid4().hex[:12]}",
             tenant_key=tenant_key_a,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test agent",
             status="waiting",
             spawned_by=orchestrator.job_id,
@@ -554,7 +554,7 @@ async def test_implementation_prompt_includes_context_used(
             job_id=orch_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             mission="Test orchestrator",
             status="working",
             context_used=8500,  # 85% of typical 10K budget
@@ -567,7 +567,7 @@ async def test_implementation_prompt_includes_context_used(
             job_id=agent_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="implementer",
+            agent_display_name="implementer",
             mission="Test agent",
             status="waiting",
             spawned_by=orchestrator.job_id,

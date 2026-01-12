@@ -66,24 +66,24 @@ const AGENT_SYNONYMS = {
 }
 
 /**
- * Get agent color by agent type
- * @param {string} agentType - Agent type (orchestrator, analyzer, etc.)
+ * Get agent color by agent display name
+ * @param {string} displayName - Agent display name (orchestrator, analyzer, etc.)
  * @returns {Object} Color configuration object
  */
-export function getAgentColor(agentType) {
-  const normalizedType = agentType?.toLowerCase() || ''
+export function getAgentColor(displayName) {
+  const normalizedType = displayName?.toLowerCase() || ''
   const canonical = AGENT_SYNONYMS[normalizedType] || normalizedType
   return AGENT_COLORS[canonical] || AGENT_COLORS.orchestrator
 }
 
 /**
  * Get agent badge ID with instance number
- * @param {string} agentType - Agent type
+ * @param {string} displayName - Agent display name
  * @param {number} instanceNumber - Instance number (1, 2, 3, etc.)
  * @returns {string} Badge ID (e.g., "Im", "I2", "I3")
  */
-export function getAgentBadgeId(agentType, instanceNumber = 1) {
-  const color = getAgentColor(agentType)
+export function getAgentBadgeId(displayName, instanceNumber = 1) {
+  const color = getAgentColor(displayName)
 
   if (instanceNumber === 1) {
     return color.badge

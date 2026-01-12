@@ -71,7 +71,7 @@ const props = defineProps({
   agents: {
     type: Array,
     default: () => [],
-    // Each agent: { agent_id, agent_type, instance_number }
+    // Each agent: { agent_id, agent_display_name, instance_number }
   },
 })
 

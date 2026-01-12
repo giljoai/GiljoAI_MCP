@@ -62,14 +62,14 @@ class TestMCPToolCatalogMessaging:
         """Agent tool mappings should reference canonical communication tools."""
         mappings = catalog_generator.AGENT_TOOL_MAPPINGS
 
-        for agent_type, tools in mappings.items():
+        for agent_display_name, tools in mappings.items():
             comm_tools = [t for t in tools if t.startswith("communication.")]
 
             for tool_ref in comm_tools:
                 tool_name = tool_ref.split(".")[-1]
                 # Should not reference legacy tools
                 assert tool_name not in ["get_messages", "broadcast_message"], \
-                    f"{agent_type} should not reference legacy {tool_name}"
+                    f"{agent_display_name} should not reference legacy {tool_name}"
 
     def test_full_catalog_mentions_canonical_tools(self, catalog_generator):
         """Generated full catalog should mention canonical tools."""

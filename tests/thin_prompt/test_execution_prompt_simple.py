@@ -40,7 +40,7 @@ def mock_orchestrator_job(orchestrator_job_id, project_id, tenant_key):
     job.job_id = orchestrator_job_id
     job.project_id = project_id
     job.tenant_key = tenant_key
-    job.agent_type = "orchestrator"
+    job.agent_display_name = "orchestrator"
     job.agent_name = "Orchestrator #1"
     job.instance_number = 1
     job.status = "working"
@@ -69,7 +69,7 @@ def mock_agent_jobs(project_id, tenant_key):
     # Implementer
     impl = MagicMock()
     impl.job_id = str(uuid4())
-    impl.agent_type = "implementer"
+    impl.agent_display_name = "implementer"
     impl.agent_name = "Implementer1"
     impl.mission = "Implement user authentication endpoints"
     impl.project_id = project_id
@@ -80,7 +80,7 @@ def mock_agent_jobs(project_id, tenant_key):
     # Tester
     tester = MagicMock()
     tester.job_id = str(uuid4())
-    tester.agent_type = "tester"
+    tester.agent_display_name = "tester"
     tester.agent_name = "Tester1"
     tester.mission = "Write integration tests for auth system"
     tester.project_id = project_id

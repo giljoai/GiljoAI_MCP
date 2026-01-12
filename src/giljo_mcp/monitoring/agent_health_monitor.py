@@ -186,7 +186,7 @@ class AgentHealthMonitor:
         return [
             AgentHealthStatus(
                 job_id=execution.job_id,
-                agent_type=execution.agent_type,
+                agent_display_name=execution.agent_display_name,
                 current_status="waiting",
                 health_state="critical",
                 last_update=execution.job.created_at,
@@ -257,7 +257,7 @@ class AgentHealthMonitor:
 
                 stalled.append(AgentHealthStatus(
                     job_id=execution.job_id,
-                    agent_type=execution.agent_type,
+                    agent_display_name=execution.agent_display_name,
                     current_status="active",
                     health_state=health_state,
                     last_update=last_progress,
@@ -307,7 +307,7 @@ class AgentHealthMonitor:
         failures = []
         for execution in executions:
             # Apply agent-type-specific timeouts
-            timeout_minutes = self.config.get_timeout_for_agent(execution.agent_type)
+            timeout_minutes = self.config.get_timeout_for_agent(execution.agent_display_name)
             threshold = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
             last_activity = self._get_last_activity_time(execution)
 
@@ -316,7 +316,7 @@ class AgentHealthMonitor:
 
                 failures.append(AgentHealthStatus(
                     job_id=execution.job_id,
-                    agent_type=execution.agent_type,
+                    agent_display_name=execution.agent_display_name,
                     current_status=execution.status,
                     health_state="timeout",
                     last_update=last_activity,
@@ -345,7 +345,7 @@ class AgentHealthMonitor:
             f"Unhealthy job detected: {health_status.job_id}",
             extra={
                 "job_id": health_status.job_id,
-                "agent_type": health_status.agent_type,
+                "agent_display_name": health_status.agent_display_name,
                 "health_state": health_status.health_state,
                 "minutes_since_update": health_status.minutes_since_update
             }
@@ -377,7 +377,7 @@ class AgentHealthMonitor:
             await self.ws.broadcast_agent_auto_failed(
                 tenant_key=tenant_key,
                 job_id=health_status.job_id,
-                agent_type=health_status.agent_type,
+                agent_display_name=health_status.agent_display_name,
                 reason=health_status.issue_description
             )
         else:
@@ -385,7 +385,7 @@ class AgentHealthMonitor:
             await self.ws.broadcast_health_alert(
                 tenant_key=tenant_key,
                 job_id=health_status.job_id,
-                agent_type=health_status.agent_type,
+                agent_display_name=health_status.agent_display_name,
                 health_status=health_status
             )
 

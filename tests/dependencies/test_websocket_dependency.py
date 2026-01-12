@@ -348,7 +348,7 @@ async def test_send_to_project(mock_websocket_manager):
 
     # Act
     sent_count = await ws_dep.send_to_project(
-        tenant_key="tenant_abc", project_id="proj_123", event_type="agent:created", data={"agent_type": "orchestrator"}
+        tenant_key="tenant_abc", project_id="proj_123", event_type="agent:created", data={"agent_display_name": "orchestrator"}
     )
 
     # Assert
@@ -357,7 +357,7 @@ async def test_send_to_project(mock_websocket_manager):
     # Verify project_id was added to data
     call_args = mock_websocket_manager.active_connections["client_1"].send_json.call_args[0][0]
     assert call_args["data"]["project_id"] == "proj_123"
-    assert call_args["data"]["agent_type"] == "orchestrator"
+    assert call_args["data"]["agent_display_name"] == "orchestrator"
 
 
 # ============================================================================

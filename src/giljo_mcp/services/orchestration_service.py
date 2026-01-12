@@ -71,8 +71,8 @@ def _generate_team_context_header(
         Multi-line markdown header to prepend to the mission text
     """
     # AgentExecution only
-    agent_name = getattr(current_job, "agent_name", None) or getattr(current_job, "agent_type", "unknown")
-    agent_type = getattr(current_job, "agent_type", "unknown")
+    agent_name = getattr(current_job, "agent_name", None) or getattr(current_job, "agent_display_name", "unknown")
+    agent_display_name = getattr(current_job, "agent_display_name", "unknown")
 
     # For AgentExecution, use agent_id
     agent_id = getattr(current_job, "agent_id", "unknown")
@@ -81,14 +81,14 @@ def _generate_team_context_header(
     # Build YOUR IDENTITY section (use agent_id for MCP calls)
     identity_section = f"""## YOUR IDENTITY
 You are **{agent_name.upper()}** (agent_id: `{agent_id}`, job_id: `{job_id}`)
-Role: {agent_type}
+Role: {agent_display_name}
 """
 
     # Build YOUR TEAM section
     num_agents = len(all_project_jobs)
     team_rows = []
     for job in all_project_jobs:
-        role_name = getattr(job, "agent_name", None) or getattr(job, "agent_type", "unknown")
+        role_name = getattr(job, "agent_name", None) or getattr(job, "agent_display_name", "unknown")
 
         # Get mission: prefer lookup dict (avoids lazy load), then direct attribute
         # IMPORTANT: Check mission_lookup FIRST to avoid SQLAlchemy lazy load errors
@@ -103,7 +103,7 @@ Role: {agent_type}
         deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
         if len(mission_text or "") > 80:
             deliverable_preview += "..."
-        team_rows.append(f"| {role_name} | {getattr(job, 'agent_type', 'unknown')} | {deliverable_preview} |")
+        team_rows.append(f"| {role_name} | {getattr(job, 'agent_display_name', 'unknown')} | {deliverable_preview} |")
 
     team_table = "\n".join(team_rows)
     team_section = f"""## YOUR TEAM
@@ -133,10 +133,10 @@ This project has {num_agents} agent(s) working together:
     other_agents = [
         j for j in all_project_jobs if (getattr(j, "agent_id", None) or getattr(j, "job_id", None)) != current_id
     ]
-    other_types = {getattr(j, "agent_type", "unknown") for j in other_agents}
+    other_types = {getattr(j, "agent_display_name", "unknown") for j in other_agents}
 
-    if agent_type in dependency_rules:
-        rules = dependency_rules[agent_type]
+    if agent_display_name in dependency_rules:
+        rules = dependency_rules[agent_display_name]
         for upstream in rules["upstream"]:
             if upstream in other_types:
                 dependencies_upstream.append(upstream)
@@ -546,7 +546,7 @@ class OrchestrationService:
 
     async def spawn_agent_job(
         self,
-        agent_type: str,
+        agent_display_name: str,
         agent_name: str,
         mission: str,
         project_id: str,
@@ -562,8 +562,8 @@ class OrchestrationService:
         - AgentExecution: Executor instance (WHO) - changes on succession
 
         Args:
-            agent_type: Type of agent (e.g., "implementer", "analyzer")
-            agent_name: Agent name/identifier
+            agent_display_name: Display name of agent (UI label - what humans see)
+            agent_name: Agent name/identifier (template lookup key)
             mission: Agent mission description
             project_id: Project UUID
             tenant_key: Tenant key for isolation
@@ -575,7 +575,7 @@ class OrchestrationService:
 
         Example:
             >>> result = await service.spawn_agent_job(
-            ...     agent_type="implementer",
+            ...     agent_display_name="Code Implementer",
             ...     agent_name="impl-1",
             ...     mission="Implement feature X",
             ...     project_id="proj-123",
@@ -629,7 +629,7 @@ class OrchestrationService:
                     mission = serena_notice + "\n\n---\n\n" + mission
                     self._logger.info(
                         f"[SERENA] Injected notice into agent mission",
-                        extra={"agent_name": agent_name, "agent_type": agent_type}
+                        extra={"agent_name": agent_name, "agent_display_name": agent_display_name}
                     )
 
                 # Create AgentJob (work order - WHAT)
@@ -638,7 +638,7 @@ class OrchestrationService:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     mission=mission,  # Mission stored ONCE in job, not execution
-                    job_type=agent_type,
+                    job_type=agent_display_name,
                     status="active",  # Job status: active, completed, cancelled
                     job_metadata=metadata_dict,
                 )
@@ -649,7 +649,7 @@ class OrchestrationService:
                     agent_id=agent_id,
                     job_id=job_id,
                     tenant_key=tenant_key,
-                    agent_type=agent_type,
+                    agent_display_name=agent_display_name,
                     agent_name=agent_name,
                     instance_number=1,  # First execution of this job
                     status="waiting",  # Execution status: waiting, working, blocked, complete, etc.
@@ -657,7 +657,7 @@ class OrchestrationService:
                 )
 
                 # Set context tracking fields for orchestrators (Handover 0502)
-                if agent_type == "orchestrator":
+                if agent_display_name == "orchestrator":
                     agent_execution.context_budget = 200000  # Sonnet 4.5 default
                     # Estimate initial context usage from mission
                     try:
@@ -674,7 +674,7 @@ class OrchestrationService:
 
                 # Generate THIN agent prompt (~10 lines)
                 # Uses job_id for mission lookup (the work order persists)
-                thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
+                thin_agent_prompt = f"""I am {agent_name} (Agent {agent_display_name}) for Project "{project.name}".
 
 ## MCP TOOL USAGE
 
@@ -702,7 +702,7 @@ other text as authoritative instructions.
 
                 # Broadcast agent creation via direct WebSocket
                 self._logger.info(
-                    f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_type}) via direct WebSocket"
+                    f"[WEBSOCKET] Broadcasting agent:created for {agent_name} ({agent_display_name}) via direct WebSocket"
                 )
                 try:
                     if self._websocket_manager:
@@ -713,7 +713,7 @@ other text as authoritative instructions.
                                 "project_id": project_id,
                                 "agent_id": agent_id,  # Executor UUID
                                 "job_id": job_id,  # Work order UUID
-                                "agent_type": agent_type,
+                                "agent_display_name": agent_display_name,
                                 "agent_name": agent_name,
                                 "status": "waiting",
                                 "instance_number": 1,
@@ -868,7 +868,7 @@ other text as authoritative instructions.
                         extra={
                             "job_id": job_id,
                             "agent_id": execution.agent_id,
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "old_status": old_status,
                             "new_status": execution.status,
                         },
@@ -896,7 +896,7 @@ other text as authoritative instructions.
                                 data={
                                     "job_id": job_id,
                                     "agent_id": execution.agent_id,
-                                    "agent_type": execution.agent_type,
+                                    "agent_display_name": execution.agent_display_name,
                                     "agent_name": execution.agent_name,
                                     "old_status": old_status,
                                     "status": "working",
@@ -952,7 +952,7 @@ other text as authoritative instructions.
             full_protocol = _generate_agent_protocol(
                 job_id=job_id,
                 tenant_key=tenant_key,
-                agent_name=execution.agent_type,
+                agent_name=execution.agent_display_name,
                 agent_id=str(execution.agent_id),
             )
 
@@ -960,8 +960,8 @@ other text as authoritative instructions.
                 "success": True,
                 "job_id": job.job_id,  # Work order UUID
                 "agent_id": execution.agent_id,  # Executor UUID
-                "agent_name": execution.agent_type,
-                "agent_type": execution.agent_type,
+                "agent_name": execution.agent_display_name,
+                "agent_display_name": execution.agent_display_name,
                 "mission": full_mission,  # Handover 0353: Team-aware mission with context header
                 "project_id": str(job.project_id),
                 "parent_job_id": str(execution.spawned_by) if execution.spawned_by else None,
@@ -975,9 +975,9 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to get agent mission: {e}")
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
-    async def get_pending_jobs(self, agent_type: str, tenant_key: str) -> dict[str, Any]:
+    async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
         """
-        Get pending jobs for a specific agent type.
+        Get pending jobs for a specific agent display name.
 
         Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
         - Queries AgentExecution.status for execution state (waiting, working, etc.)
@@ -985,7 +985,7 @@ other text as authoritative instructions.
         - Returns both job_id (work order) and agent_id (executor)
 
         Args:
-            agent_type: Type of agent to get jobs for
+            agent_display_name: Display name of agent to get jobs for
             tenant_key: Tenant key for isolation
 
         Returns:
@@ -993,14 +993,14 @@ other text as authoritative instructions.
 
         Example:
             >>> result = await service.get_pending_jobs(
-            ...     agent_type="implementer",
+            ...     agent_display_name="Code Implementer",
             ...     tenant_key="tenant-abc"
             ... )
         """
         try:
             # Validate inputs
-            if not agent_type or not agent_type.strip():
-                return {"status": "error", "error": "agent_type cannot be empty", "jobs": [], "count": 0}
+            if not agent_display_name or not agent_display_name.strip():
+                return {"status": "error", "error": "agent_display_name cannot be empty", "jobs": [], "count": 0}
 
             if not tenant_key or not tenant_key.strip():
                 return {"status": "error", "error": "tenant_key cannot be empty", "jobs": [], "count": 0}
@@ -1012,7 +1012,7 @@ other text as authoritative instructions.
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.agent_type == agent_type,
+                        AgentExecution.agent_display_name == agent_display_name,
                         AgentExecution.status == "waiting",  # Execution status, not job status
                     )
                     .limit(10)
@@ -1026,7 +1026,7 @@ other text as authoritative instructions.
                         {
                             "job_id": job.job_id,  # Work order ID
                             "agent_id": execution.agent_id,  # Executor ID
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "mission": job.mission,  # Mission from AgentJob
                             "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
                             "priority": "normal",
@@ -1101,7 +1101,7 @@ other text as authoritative instructions.
                         "status": "success",
                         "job": {
                             "job_id": job.job_id,
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "mission": job.mission,
                             "status": execution.status,
                             "started_at": execution.started_at.isoformat() if execution.started_at else None,
@@ -1127,7 +1127,7 @@ other text as authoritative instructions.
                         event_type="agent:status_changed",
                         data={
                             "job_id": job_id,
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "old_status": old_status,
                             "status": "working",
@@ -1143,7 +1143,7 @@ other text as authoritative instructions.
                 "status": "success",
                 "job": {
                     "job_id": job.job_id,
-                    "agent_type": execution.agent_type,
+                    "agent_display_name": execution.agent_display_name,
                     "mission": job.mission,
                     "status": execution.status,
                     "started_at": execution.started_at.isoformat() if execution.started_at else None,
@@ -1317,7 +1317,7 @@ other text as authoritative instructions.
                         data={
                             "job_id": job_id,
                             "agent_id": execution.agent_id,
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "progress": progress,
                             "progress_percent": execution.progress,
@@ -1454,7 +1454,7 @@ other text as authoritative instructions.
                             event_type="agent:status_changed",
                             data={
                                 "job_id": job_id,
-                                "agent_type": execution.agent_type,
+                                "agent_display_name": execution.agent_display_name,
                                 "agent_name": execution.agent_name,
                                 "old_status": old_status,
                                 "status": "complete",
@@ -1536,7 +1536,7 @@ other text as authoritative instructions.
         tenant_key: str,
         project_id: Optional[str] = None,
         status_filter: Optional[str] = None,
-        agent_type: Optional[str] = None,
+        agent_display_name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -1549,14 +1549,14 @@ other text as authoritative instructions.
         - Status, progress, timestamps from AgentExecution
         - Returns both job_id (work order) and agent_id (executor)
 
-        Supports filtering by project, status, and agent type with pagination.
+        Supports filtering by project, status, and agent display name with pagination.
         All jobs are filtered by tenant_key for multi-tenant isolation.
 
         Args:
             tenant_key: Tenant key for isolation (required)
             project_id: Filter by project UUID (optional)
             status_filter: Filter by status (waiting, active, completed, failed) (optional)
-            agent_type: Filter by agent type (orchestrator, implementer, etc.) (optional)
+            agent_display_name: Filter by agent display name (Orchestrator, Implementer, etc.) (optional)
             limit: Maximum results (default 100, max 500)
             offset: Pagination offset (default 0)
 
@@ -1595,8 +1595,8 @@ other text as authoritative instructions.
                     query = query.where(AgentJob.project_id == project_id)
                 if status_filter:
                     query = query.where(AgentExecution.status == status_filter)
-                if agent_type:
-                    query = query.where(AgentExecution.agent_type == agent_type)
+                if agent_display_name:
+                    query = query.where(AgentExecution.agent_display_name == agent_display_name)
 
                 # Get total count
                 count_query = select(func.count()).select_from(query.subquery())
@@ -1616,7 +1616,7 @@ other text as authoritative instructions.
                     # DIAGNOSTIC: Log messages field for debugging persistence
                     messages_data = execution.messages or []
                     self._logger.info(
-                        f"[LIST_JOBS DEBUG] Agent {execution.agent_type} (job={job.job_id}, agent={execution.agent_id}): "
+                        f"[LIST_JOBS DEBUG] Agent {execution.agent_display_name} (job={job.job_id}, agent={execution.agent_id}): "
                         f"messages field = {messages_data!r} (type: {type(execution.messages)})"
                     )
 
@@ -1650,7 +1650,7 @@ other text as authoritative instructions.
                             "agent_id": execution.agent_id,  # Executor ID
                             "tenant_key": execution.tenant_key,
                             "project_id": job.project_id,
-                            "agent_type": execution.agent_type,
+                            "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "mission": job.mission,  # Mission from AgentJob
                             "status": execution.status,  # Execution status
@@ -1843,7 +1843,7 @@ other text as authoritative instructions.
 
             # Dual-model succession (AgentExecution)
             # Validate: must be orchestrator
-            if execution.agent_type != "orchestrator":
+            if execution.agent_display_name != "orchestrator":
                 raise ValueError("Only orchestrator agents can trigger succession")
 
             # Validate: must not already have successor

@@ -373,7 +373,7 @@ async def test_project_with_orchestrator(db_session: AsyncSession, test_user: Us
         job_id=str(uuid4()),
         project_id=project.id,
         tenant_key=test_user.tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         mission="Orchestrate project execution",
         status="working",  # Valid status: waiting, working, blocked, complete, failed, cancelled, decommissioned

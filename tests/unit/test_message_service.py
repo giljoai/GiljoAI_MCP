@@ -87,10 +87,10 @@ class TestMessageServiceSending:
 
         # Mock agent jobs
         mock_job1 = Mock(spec=AgentExecution)
-        mock_job1.agent_type = "implementer"
+        mock_job1.agent_display_name = "implementer"
 
         mock_job2 = Mock(spec=AgentExecution)
-        mock_job2.agent_type = "analyzer"
+        mock_job2.agent_display_name = "analyzer"
 
         # Mock project
         mock_project = Mock(spec=Project)

@@ -160,7 +160,7 @@ async def test_activate_project_does_not_compile_instructions(
     orch_stmt = select(AgentExecution).where(
         and_(
             AgentExecution.project_id == test_project.id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.tenant_key == test_tenant_key
         )
     )
@@ -225,7 +225,7 @@ async def test_stage_project_compiles_orchestrator_prompt(
     orch_stmt = select(AgentExecution).where(
         and_(
             AgentExecution.job_id == orchestrator_id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.tenant_key == test_tenant_key
         )
     )
@@ -470,7 +470,7 @@ async def test_repeated_stage_project_reuses_orchestrator(
     orch_stmt = select(AgentExecution).where(
         and_(
             AgentExecution.project_id == test_project.id,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.tenant_key == test_tenant_key
         )
     )

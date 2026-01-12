@@ -2,7 +2,7 @@
   <v-card
     class="agent-card"
     :class="[
-      `agent-card--${agent.agent_type}`,
+      `agent-card--${agent.agent_display_name}`,
       `status--${agent.status}`,
       { 'priority-card': isPriorityState },
     ]"
@@ -12,7 +12,7 @@
   >
     <!-- Colored Header with Agent Type -->
     <div class="agent-card__header" :style="headerStyles">
-      <span class="agent-header-text">{{ agentTypeLabel }}</span>
+      <span class="agent-header-text">{{ agentDisplayNameLabel }}</span>
     </div>
 
     <!-- Card Body -->
@@ -403,7 +403,7 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (value) => {
-      return value && typeof value === 'object' && 'agent_type' in value && 'status' in value
+      return value && typeof value === 'object' && 'agent_display_name' in value && 'status' in value
     },
   },
   mode: {
@@ -444,9 +444,9 @@ const emit = defineEmits([
 /**
  * Agent color configuration
  */
-const agentColor = computed(() => getAgentColor(props.agent.agent_type))
+const agentColor = computed(() => getAgentColor(props.agent.agent_display_name))
 
-const agentTypeLabel = computed(() => agentColor.value.name)
+const agentDisplayNameLabel = computed(() => agentColor.value.name)
 
 /**
  * Card styling with agent colors
@@ -524,7 +524,7 @@ const truncatedMission = computed(() => {
  * Accessibility label
  */
 const cardAriaLabel = computed(() => {
-  const type = agentTypeLabel.value
+  const type = agentDisplayNameLabel.value
   const status = statusConfig.value.label
   return `${type} agent - ${status}`
 })

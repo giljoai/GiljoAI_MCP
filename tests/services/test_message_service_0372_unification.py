@@ -99,8 +99,8 @@ async def test_project_with_agents(
             job_id=str(uuid4()),
             tenant_key=test_tenant_key,
             project_id=project.id,
-            job_type=agent_type,
-            mission=f"Test mission for {agent_type}",
+            job_type=agent_display_name,
+            mission=f"Test mission for {agent_display_name}",
             status="active",
         )
         db_session.add(job)
@@ -110,7 +110,7 @@ async def test_project_with_agents(
             job_id=job.job_id,
             agent_id=str(uuid4()),  # Explicit agent_id for executor identity
             tenant_key=test_tenant_key,
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             status="waiting",
             instance_number=1,  # Must be >= 1 per check constraint
             messages=[],  # Initialize empty JSONB array
@@ -173,12 +173,12 @@ class TestMessageService0372AgentIDRouting:
         orchestrator = agents[0]
         recipient = agents[1]  # analyzer
 
-        # Act: Send message using agent_type (should resolve to agent_id)
+        # Act: Send message using agent_display_name (should resolve to agent_id)
         result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Test message for agent-ID routing",
             project_id=project.id,
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
 
@@ -222,7 +222,7 @@ class TestMessageService0372AgentIDRouting:
             job_id=old_orchestrator.job_id,  # Same work order
             agent_id=str(uuid4()),  # Different executor
             tenant_key=project.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="working",
             instance_number=2,  # Higher instance number (old was 1)
             messages=[],
@@ -283,7 +283,7 @@ class TestMessageService0372Filtering:
             to_agents=["all"],
             content="Broadcast from orchestrator",
             project_id=project.id,
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
         assert send_result["success"] is True
@@ -326,22 +326,22 @@ class TestMessageService0372Filtering:
 
         # Arrange: Send progress message
         progress_result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Progress: 50% complete",
             project_id=project.id,
             message_type="progress",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
         assert progress_result["success"] is True
 
         # Arrange: Send regular message
         direct_result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Direct message",
             project_id=project.id,
             message_type="direct",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
         assert direct_result["success"] is True
@@ -379,29 +379,29 @@ class TestMessageService0372Filtering:
 
         # Arrange: Send messages of different types
         await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Direct message",
             project_id=project.id,
             message_type="direct",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
 
         await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Broadcast message",
             project_id=project.id,
             message_type="broadcast",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
 
         await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="System message",
             project_id=project.id,
             message_type="system",
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
 
@@ -465,7 +465,7 @@ class TestMessageService0372NewMethods:
                     if "Project-wide announcement" in msg.get("text", ""):
                         found = True
                         break
-            assert found, f"{agent.agent_type} should receive broadcast"
+            assert found, f"{agent.agent_display_name} should receive broadcast"
 
     @pytest.mark.asyncio
     async def test_acknowledge_message_explicit_works(
@@ -483,10 +483,10 @@ class TestMessageService0372NewMethods:
 
         # Arrange: Send message
         send_result = await message_service.send_message(
-            to_agents=[recipient.agent_type],
+            to_agents=[recipient.agent_display_name],
             content="Message to acknowledge",
             project_id=project.id,
-            from_agent=orchestrator.agent_type,
+            from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
         assert send_result["success"] is True

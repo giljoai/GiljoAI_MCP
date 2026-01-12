@@ -167,7 +167,7 @@ class TestCompleteSettingsPersistence:
             product_id=product_with_all_features.id,
             project_id=project_ready_to_stage.id,
             user_id=fully_configured_user.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="staged",
             tenant_key=integration_tenant_key,
             job_metadata={
@@ -362,7 +362,7 @@ class TestOrchestratorContextDelivery:
             product_id=product_with_all_features.id,
             project_id=project_ready_to_stage.id,
             user_id=fully_configured_user.id,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             tenant_key=integration_tenant_key,
             job_metadata={

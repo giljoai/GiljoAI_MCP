@@ -98,7 +98,7 @@ class TestCLIValidationSection:
 
         # Should contain the spawning rules table with key columns
         assert "| Parameter" in prompt, "Should include parameter table header"
-        assert "agent_type" in prompt, "Should mention agent_type parameter"
+        assert "agent_display_name" in prompt, "Should mention agent_type parameter"
         assert "agent_name" in prompt, "Should mention agent_name parameter"
         assert "Template name" in prompt or "template" in prompt.lower(), "Should explain template name purpose"
 
@@ -108,7 +108,7 @@ class TestCLIValidationSection:
         staging_context: dict,
     ):
         """
-        CLI mode staging prompt explains Task(subagent_type=X) pattern.
+        CLI mode staging prompt explains Task(subagent_display_name=X) pattern.
         """
         prompt = await self._generate_staging_prompt(
             db_manager=db_manager,

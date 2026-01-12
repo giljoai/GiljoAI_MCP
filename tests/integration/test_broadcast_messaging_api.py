@@ -41,7 +41,7 @@ async def test_broadcast_message_success(
             job_id=f"agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type=f"developer-{i}",
+            agent_display_name=f"developer-{i}",
             mission=f"Develop feature {i}",
             status="working",
         )
@@ -212,7 +212,7 @@ async def test_broadcast_multi_tenant_isolation(
             job_id=f"tenant1-agent-{i}",
             tenant_key=test_user.tenant_key,
             project_id=project.id,
-            agent_type="developer",
+            agent_display_name="developer",
             mission="Develop",
             status="working",
         )
@@ -256,7 +256,7 @@ async def test_broadcast_preserves_existing_messages(
         job_id="agent-with-msgs",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="developer",
+        agent_display_name="developer",
         mission="Develop",
         status="working",
         messages=[
@@ -308,7 +308,7 @@ async def test_broadcast_multiple_broadcasts_same_project(
         job_id="multi-agent",
         tenant_key=test_user.tenant_key,
         project_id=project.id,
-        agent_type="developer",
+        agent_display_name="developer",
         mission="Develop",
         status="working",
     )
