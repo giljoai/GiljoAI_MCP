@@ -73,7 +73,7 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
 # Module-level functions for direct import (Handover 0366c)
 async def spawn_agent(
     job_id: str,
-    agent_type: str,
+    agent_display_name: str,
     tenant_key: str,
     spawned_by_agent_id: str = None,
 ) -> Dict[str, Any]:
@@ -91,7 +91,7 @@ async def spawn_agent(
 
     Args:
         job_id: AgentJob UUID to spawn execution for (must exist)
-        agent_type: Agent type for this executor (e.g., "implementer", "tester")
+        agent_display_name: Agent display name for this executor (e.g., "implementer", "tester")
         tenant_key: Tenant key for multi-tenant isolation
         spawned_by_agent_id: Parent executor's agent_id (for succession tracking)
 
@@ -121,10 +121,10 @@ async def spawn_agent(
                 "error": "job_id cannot be empty",
             }
 
-        if not agent_type or not agent_type.strip():
+        if not agent_display_name or not agent_display_name.strip():
             return {
                 "success": False,
-                "error": "agent_type cannot be empty",
+                "error": "agent_display_name cannot be empty",
             }
 
         if not tenant_key or not tenant_key.strip():
@@ -175,11 +175,11 @@ async def spawn_agent(
                 agent_id=new_agent_id,
                 job_id=job_id,
                 tenant_key=tenant_key,
-                agent_type=agent_type,
+                agent_display_name=agent_display_name,
                 instance_number=instance_number,
                 status="waiting",
                 spawned_by=spawned_by_agent_id,  # Link to parent executor
-                agent_name=f"{agent_type.title()} #{instance_number}",
+                agent_name=f"{agent_display_name.title()} #{instance_number}",
                 context_used=0,
                 context_budget=50000,
                 tool_type="universal",
@@ -233,11 +233,11 @@ async def spawn_agent(
                     agent_id=new_agent_id,
                     job_id=job_id,
                     tenant_key=tenant_key,
-                    agent_type=agent_type,
+                    agent_display_name=agent_display_name,
                     instance_number=instance_number,
                     status="waiting",
                     spawned_by=spawned_by_agent_id,  # Link to parent executor
-                    agent_name=f"{agent_type.title()} #{instance_number}",
+                    agent_name=f"{agent_display_name.title()} #{instance_number}",
                     context_used=0,
                     context_budget=50000,
                     tool_type="universal",
@@ -356,7 +356,7 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                 "progress": execution.progress,
                 "health_status": execution.health_status,
                 "instance_number": execution.instance_number,
-                "agent_type": execution.agent_type,
+                "agent_display_name": execution.agent_display_name,
                 "agent_name": execution.agent_name,
                 "current_task": execution.current_task,
                 "started_at": execution.started_at.isoformat() if execution.started_at else None,
@@ -394,7 +394,7 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                     "progress": execution.progress,
                     "health_status": execution.health_status,
                     "instance_number": execution.instance_number,
-                    "agent_type": execution.agent_type,
+                    "agent_display_name": execution.agent_display_name,
                     "agent_name": execution.agent_name,
                     "current_task": execution.current_task,
                     "started_at": execution.started_at.isoformat() if execution.started_at else None,
@@ -441,7 +441,7 @@ async def get_team_agents(
                 {
                     "agent_id": str (executor UUID),
                     "job_id": str (work order UUID),
-                    "agent_type": str (agent role),
+                    "agent_display_name": str (agent role),
                     "status": str (execution status),
                     "instance_number": int (succession tracking),
                     "agent_name": str (display name),
@@ -536,15 +536,15 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
     job_manager = AgentJobManager(db_manager)
     comm_queue = AgentMessageQueue(db_manager)  # Using compatibility layer for AgentCommunicationQueue API
 
-    def get_pending_jobs(agent_type: str, tenant_key: str) -> Dict[str, Any]:
+    def get_pending_jobs(agent_display_name: str, tenant_key: str) -> Dict[str, Any]:
         """
-        Get pending jobs assigned to this agent type.
+        Get pending jobs assigned to this agent display name.
 
         Multi-tenant coordination tool that retrieves jobs waiting for agent acknowledgment.
         Supports job queue pattern for Codex/Gemini CLI agents and hybrid mode for Claude Code.
 
         Args:
-            agent_type: Agent type/role (e.g., "implementer", "tester", "reviewer")
+            agent_display_name: Agent display name/role (e.g., "implementer", "tester", "reviewer")
             tenant_key: Tenant identifier for multi-tenant isolation
 
         Returns:
@@ -553,7 +553,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "jobs": [
                     {
                         "job_id": str,
-                        "agent_type": str,
+                        "agent_display_name": str,
                         "mission": str,
                         "context_chunks": list[str],
                         "priority": str,
@@ -575,10 +575,10 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
         """
         try:
             # Validate input parameters
-            if not agent_type or not agent_type.strip():
+            if not agent_display_name or not agent_display_name.strip():
                 return {
                     "status": "error",
-                    "error": "agent_type cannot be empty",
+                    "error": "agent_display_name cannot be empty",
                     "jobs": [],
                     "count": 0,
                 }
@@ -592,7 +592,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 }
 
             # Get pending jobs with tenant isolation
-            jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=agent_type, limit=10)
+            jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_display_name=agent_display_name, limit=10)
 
             # Format jobs for response
             formatted_jobs = []
@@ -600,7 +600,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 formatted_jobs.append(
                     {
                         "job_id": job.job_id,
-                        "agent_type": job.job_type,
+                        "agent_display_name": job.job_type,
                         "mission": job.mission,
                         "context_chunks": job.context_chunks or [],
                         "priority": "normal",  # Default priority
@@ -610,7 +610,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
 
             logger.info(
                 f"[get_pending_jobs] Retrieved {len(formatted_jobs)} jobs for "
-                f"agent_type={agent_type}, tenant={tenant_key}"
+                f"agent_display_name={agent_display_name}, tenant={tenant_key}"
             )
 
             return {
@@ -696,7 +696,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "status": "success",
                 "job": {
                     "job_id": job.job_id,
-                    "agent_type": job.job_type,
+                    "agent_display_name": job.job_type,
                     "mission": job.mission,
                     "status": job.status,
                     "started_at": job.started_at.isoformat() if job.started_at else None,
@@ -903,7 +903,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             # AgentJob status is authoritative and updated via AgentJobManager
 
             # Check for next job (optional chaining)
-            next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_type=job.job_type, limit=1)
+            next_jobs = job_manager.get_pending_jobs(tenant_key=tenant_key, agent_display_name=job.job_type, limit=1)
 
             next_job_info = None
             if next_jobs:
@@ -911,7 +911,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 next_job_info = {
                     "job_id": next_job.job_id,
                     "mission": next_job.mission,
-                    "agent_type": next_job.job_type,
+                    "agent_display_name": next_job.job_type,
                 }
 
             logger.info(
