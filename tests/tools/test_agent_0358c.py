@@ -7,7 +7,7 @@ Semantic Contract (Handover 0358c):
 - job_id = work order UUID (the WHAT - persistent across succession)
 - agent_id = executor UUID (the WHO - specific agent instance)
 - AgentJob = work order (mission, job_type, status: active/completed/cancelled)
-- AgentExecution = executor (agent_type, instance_number, status: waiting/working/blocked/complete/failed/cancelled/decommissioned)
+- AgentExecution = executor (agent_display_name, instance_number, status: waiting/working/blocked/complete/failed/cancelled/decommissioned)
 
 Test Philosophy (TDD RED Phase):
 - These tests WILL FAIL initially (correct for RED phase)
@@ -214,7 +214,7 @@ async def test_ensure_agent_creates_both_models(db_session, tenant_key, test_pro
 
     Expected behavior (NEW dual-model architecture):
     - Creates AgentJob (work order) with mission, job_type
-    - Creates AgentExecution (executor) with agent_type, instance_number=1
+    - Creates AgentExecution (executor) with agent_display_name, instance_number=1
     - Links execution to job via foreign key (AgentExecution.job_id)
     - Returns both job_id and agent_id in response
     - Both models share tenant_key for isolation

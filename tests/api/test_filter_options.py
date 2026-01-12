@@ -48,14 +48,14 @@ async def test_get_filter_options_basic(async_client: AsyncClient, test_jobs_wit
 
     # Verify response structure
     assert "statuses" in data
-    assert "agent_types" in data
+    assert "agent_display_names" in data
     assert "health_statuses" in data
     assert "tool_types" in data
     assert "has_unread_jobs" in data
 
     # Verify data types
     assert isinstance(data["statuses"], list)
-    assert isinstance(data["agent_types"], list)
+    assert isinstance(data["agent_display_names"], list)
     assert isinstance(data["health_statuses"], list)
     assert isinstance(data["tool_types"], list)
     assert isinstance(data["has_unread_jobs"], bool)
@@ -90,10 +90,10 @@ async def test_filter_options_contains_expected_values(async_client: AsyncClient
     expected_statuses = {"working", "waiting", "complete", "failed"}
     assert set(data["statuses"]) == expected_statuses
 
-    # Verify expected agent_types (from test fixture):
+    # Verify expected agent_display_names (from test fixture):
     # orchestrator, implementer, tester, analyzer
-    expected_agent_types = {"orchestrator", "implementer", "tester", "analyzer"}
-    assert set(data["agent_types"]) == expected_agent_types
+    expected_agent_display_names = {"orchestrator", "implementer", "tester", "analyzer"}
+    assert set(data["agent_display_names"]) == expected_agent_display_names
 
     # Verify expected health_statuses (from test fixture):
     # healthy, warning, critical, timeout
@@ -139,7 +139,7 @@ async def test_filter_options_are_sorted(async_client: AsyncClient, test_jobs_wi
 
     # Verify all lists are sorted
     assert data["statuses"] == sorted(data["statuses"]), "Statuses not sorted"
-    assert data["agent_types"] == sorted(data["agent_types"]), "Agent types not sorted"
+    assert data["agent_display_names"] == sorted(data["agent_display_names"]), "Agent types not sorted"
     assert data["health_statuses"] == sorted(data["health_statuses"]), "Health statuses not sorted"
     assert data["tool_types"] == sorted(data["tool_types"]), "Tool types not sorted"
 
@@ -174,7 +174,7 @@ async def test_filter_options_are_distinct(async_client: AsyncClient, test_jobs_
 
     # Verify no duplicates (length equals unique set length)
     assert len(data["statuses"]) == len(set(data["statuses"])), "Duplicate statuses found"
-    assert len(data["agent_types"]) == len(set(data["agent_types"])), "Duplicate agent_types found"
+    assert len(data["agent_display_names"]) == len(set(data["agent_display_names"])), "Duplicate agent_display_names found"
     assert len(data["health_statuses"]) == len(set(data["health_statuses"])), "Duplicate health_statuses found"
     assert len(data["tool_types"]) == len(set(data["tool_types"])), "Duplicate tool_types found"
 
@@ -228,7 +228,7 @@ async def test_filter_options_empty_project(async_client: AsyncClient, empty_pro
 
     # Verify empty lists
     assert data["statuses"] == []
-    assert data["agent_types"] == []
+    assert data["agent_display_names"] == []
     assert data["health_statuses"] == []
     assert data["tool_types"] == []
     assert data["has_unread_jobs"] is False
@@ -335,7 +335,7 @@ async def test_filter_options_multi_tenant_isolation(async_client: AsyncClient, 
 
     # Should return empty results (no cross-tenant data leakage)
     assert data["statuses"] == []
-    assert data["agent_types"] == []
+    assert data["agent_display_names"] == []
     assert data["health_statuses"] == []
     assert data["tool_types"] == []
     assert data["has_unread_jobs"] is False

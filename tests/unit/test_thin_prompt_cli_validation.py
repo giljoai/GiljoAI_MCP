@@ -86,7 +86,7 @@ class TestCLIValidationSection:
         """
         CLI mode staging prompt includes agent spawning rules table.
 
-        The table explains agent_type vs agent_name distinction.
+        The table explains agent_display_name vs agent_name distinction.
         """
         prompt = await self._generate_staging_prompt(
             db_manager=db_manager,
@@ -98,7 +98,7 @@ class TestCLIValidationSection:
 
         # Should contain the spawning rules table with key columns
         assert "| Parameter" in prompt, "Should include parameter table header"
-        assert "agent_display_name" in prompt, "Should mention agent_type parameter"
+        assert "agent_display_name" in prompt, "Should mention agent_display_name parameter"
         assert "agent_name" in prompt, "Should mention agent_name parameter"
         assert "Template name" in prompt or "template" in prompt.lower(), "Should explain template name purpose"
 
@@ -226,7 +226,7 @@ class TestCLIValidationSection:
 
         # Should include spawn example
         assert "spawn_agent_job" in prompt, "Should include spawn_agent_job example"
-        assert "implementer" in prompt.lower(), "Should include implementer as example agent_type"
+        assert "implementer" in prompt.lower(), "Should include implementer as example agent_display_name"
 
     async def test_cli_mode_prompt_explains_file_not_found_risk(
         self,
@@ -234,7 +234,7 @@ class TestCLIValidationSection:
         staging_context: dict,
     ):
         """
-        CLI mode staging prompt explains FILE NOT FOUND risk for wrong agent_type.
+        CLI mode staging prompt explains FILE NOT FOUND risk for wrong agent_display_name.
         """
         prompt = await self._generate_staging_prompt(
             db_manager=db_manager,
@@ -246,4 +246,4 @@ class TestCLIValidationSection:
 
         # Should explain the FILE NOT FOUND risk
         assert "FILE NOT FOUND" in prompt or "not found" in prompt.lower(), \
-            "Should explain FILE NOT FOUND risk for wrong agent_type"
+            "Should explain FILE NOT FOUND risk for wrong agent_display_name"

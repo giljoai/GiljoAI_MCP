@@ -72,7 +72,7 @@ class TestCLIModeRules:
             )
             session.add(orchestrator)
 
-            # Create agent template (for allowed_agent_types query)
+            # Create agent template (for allowed_agent_display_names query)
             template = AgentTemplate(
                 tenant_key=tenant_key,
                 name="implementer",
@@ -190,7 +190,7 @@ class TestCLIModeRules:
         Verify cli_mode_rules contains all required fields.
 
         Required fields per Handover 0335:
-        - agent_display_name_usage: Instructions for agent_type parameter
+        - agent_display_name_usage: Instructions for agent_display_name parameter
         - agent_name_usage: Instructions for agent_name parameter
         - task_tool_mapping: How Task tool maps to templates
         - validation: "soft" (warn but don't block)
@@ -297,7 +297,7 @@ class TestCLIModeRules:
         cli_mode_context: dict,
     ):
         """
-        agent_display_name_usage explains that agent_type must match template name.
+        agent_display_name_usage explains that agent_display_name must match template name.
         """
         from giljo_mcp.tenant import TenantManager
         from giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -318,7 +318,7 @@ class TestCLIModeRules:
         assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), \
             "agent_display_name_usage should emphasize exact matching"
 
-    async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_type(
+    async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_display_name(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,

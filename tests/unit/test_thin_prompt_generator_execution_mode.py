@@ -178,7 +178,7 @@ class TestClaudeCodeCLIModePrompts:
         )
 
         # Must contain example template names (we use 'implementer' as example)
-        # Check for agent_type usage in examples
+        # Check for agent_display_name usage in examples
         assert 'implementer' in prompt or 'agent_display_name' in prompt
 
     @pytest.mark.asyncio

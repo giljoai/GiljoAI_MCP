@@ -68,7 +68,7 @@ class MockAgentSimulator:
         self.tenant_key = tenant_key
         self.api_key = api_key
         self.api_url = api_url
-        self.agent_display_name = agent_type
+        self.agent_display_name = agent_display_name
 
         self._session: Optional[ClientSession] = None
         self._request_id: int = 0
@@ -402,7 +402,7 @@ async def run_mock_agent(
         ... )
     """
     simulator = MockAgentSimulator(
-        job_id=job_id, tenant_key=tenant_key, api_key=api_key, api_url=api_url, agent_display_name=agent_type
+        job_id=job_id, tenant_key=tenant_key, api_key=api_key, api_url=api_url, agent_display_name=agent_display_name
     )
 
     await simulator.run()

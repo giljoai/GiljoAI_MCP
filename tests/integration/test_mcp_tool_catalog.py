@@ -213,7 +213,7 @@ class TestMCPToolCatalog:
         """
         generator = MCPToolCatalogGenerator()
 
-        agent_types = {
+        agent_display_names = {
             "orchestrator": ["get_orchestrator_instructions", "spawn_agent_job"],
             "implementer": ["send_message", "get_agent_mission"],
             "tester": ["get_workflow_status"],
@@ -221,7 +221,7 @@ class TestMCPToolCatalog:
             "documenter": ["send_message"],
         }
 
-        for agent_type, expected_tools in agent_types.items():
+        for agent_display_name, expected_tools in agent_display_names.items():
             catalog = generator.generate_for_agent(agent_display_name)
             assert isinstance(catalog, str)
             # At least one expected tool should be in the catalog
