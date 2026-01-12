@@ -205,7 +205,7 @@ const slides = computed(() => [
   {
     id: 'flow',
     icon: 'mdi-transit-connection-variant',
-    title: 'Orchestrator workflow (v3.2)',
+    title: 'Orchestrator workflow',
     body:
       'GiljoAI follows a predictable pipeline: staging → discovery → spawning → execution. Jobs are tracked, progress is visible, and communication is logged.',
     imageSrc: '/onboarding/workflow.jpg',
