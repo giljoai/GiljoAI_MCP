@@ -44,7 +44,7 @@ def job_to_response(job: dict) -> JobResponse:
         agent_id=job.get("agent_id"),  # Handover 0401: Executor UUID for WebSocket event matching
         tenant_key=job["tenant_key"],
         project_id=job.get("project_id"),
-        agent_display_name=job["agent_type"],
+        agent_display_name=job["agent_display_name"],
         agent_name=job.get("agent_name"),
         mission=job["mission"],
         status=job["status"],
@@ -225,7 +225,7 @@ async def get_job(
         "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
         "job_id": result["job_id"],
         "tenant_key": current_user.tenant_key,
-        "agent_type": result.get("agent_display_name", "unknown"),
+        "agent_display_name": result.get("agent_display_name", "unknown"),
         "mission": result["mission"],
         "status": result["status"],
         "spawned_by": result.get("spawned_by"),
