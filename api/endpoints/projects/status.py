@@ -209,7 +209,7 @@ async def get_project_orchestrator(
             id=None,  # Deprecated field (Handover 0366a)
             job_id=orchestrator_execution.job_id,  # AgentJob.job_id
             agent_id=orchestrator_execution.agent_id,  # AgentExecution.agent_id (executor UUID)
-            agent_display_name=orchestrator_execution.agent_type,  # From AgentExecution
+            agent_display_name=orchestrator_execution.agent_display_name,  # From AgentExecution
             agent_name=orchestrator_execution.agent_name,  # From AgentExecution
             mission=orchestrator_execution.job.mission,  # From AgentJob
             status=orchestrator_execution.status,  # From AgentExecution
