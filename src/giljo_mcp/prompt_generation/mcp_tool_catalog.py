@@ -50,7 +50,7 @@ templates = instructions.get('agent_templates', [])
             },
             "spawn_agent_job": {
                 "params": [
-                    "agent_type: str",
+                    "agent_display_name: str",
                     "agent_name: str",
                     "mission: str",
                     "project_id: str",
@@ -66,7 +66,7 @@ templates = instructions.get('agent_templates', [])
                 ],
                 "example": """# Orchestrator spawns implementer agent
 result = await spawn_agent_job(
-    agent_type='implementer',
+    agent_display_name='implementer',
     agent_name='Backend Developer',
     mission='Implement user authentication system',
     project_id='proj-123',
@@ -155,7 +155,7 @@ agents = await get_available_agents(
     active_only=True
 )
 
-agent_types = [a['agent_type'] for a in agents['agents']]
+agent_display_names = [a['agent_display_name'] for a in agents['agents']]
 # Returns: ['implementer', 'tester', 'architect', 'documenter', ...]
 """,
             },
@@ -430,7 +430,7 @@ members = await get_project_members(
 )
 
 for agent in members['agents']:
-    agent_type = agent['agent_type']
+    agent_display_name = agent['agent_display_name']
     status = agent['status']  # working, waiting, complete
     assignment = agent['assignment']  # Their specific mission
 """,
@@ -637,16 +637,16 @@ await update_project_mission(
 
 # Step 4: Spawn agents
 spawned_agents = {}
-for agent_type, agent_name, work_mission in agents_needed:
+for agent_display_name, agent_name, work_mission in agents_needed:
     result = await spawn_agent_job(
-        agent_type=agent_type,
+        agent_display_name=agent_display_name,
         agent_name=agent_name,
         mission=work_mission,
         project_id='proj-id',
         tenant_key='tenant-key',
         parent_job_id='orch-id'
     )
-    spawned_agents[agent_type] = result['job_id']
+    spawned_agents[agent_display_name] = result['job_id']
     print(f"Spawned {agent_name}: {result['agent_prompt']}")
 
 # Step 5: Monitor progress
@@ -736,26 +736,26 @@ await complete_agent_job(
 """
         return workflow
 
-    def generate_for_agent(self, agent_type: str) -> str:
+    def generate_for_agent(self, agent_display_name: str) -> str:
         """
         Generate agent-type-specific tool subset.
 
         Args:
-            agent_type: Type of agent (implementer, tester, architect, etc.)
+            agent_display_name: Type of agent (implementer, tester, architect, etc.)
 
         Returns:
             Formatted Markdown string with relevant tools only
         """
         # Get tool references for this agent type
-        tool_refs = self.AGENT_TOOL_MAPPINGS.get(agent_type, [])
+        tool_refs = self.AGENT_TOOL_MAPPINGS.get(agent_display_name, [])
 
         if not tool_refs:
-            logger.warning(f"Unknown agent type: {agent_type}")
+            logger.warning(f"Unknown agent type: {agent_display_name}")
             return ""
 
         # Build catalog with only relevant tools
-        catalog = f"# MCP Tools for {agent_type.title()} Agent\n\n"
-        catalog += f"This is a curated subset of MCP tools relevant for {agent_type} work.\n\n"
+        catalog = f"# MCP Tools for {agent_display_name.title()} Agent\n\n"
+        catalog += f"This is a curated subset of MCP tools relevant for {agent_display_name} work.\n\n"
 
         seen_categories = set()
 
@@ -807,7 +807,7 @@ await complete_agent_job(
             catalog += "---\n\n"
 
         # Add workflow section relevant to agent type
-        if agent_type == "orchestrator":
+        if agent_display_name == "orchestrator":
             catalog += self._generate_usage_workflow()
         else:
             catalog += "## Quick Start\n\n1. Call `get_agent_mission()` to fetch your assignment\n"

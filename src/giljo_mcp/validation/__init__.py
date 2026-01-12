@@ -14,7 +14,7 @@ Usage:
     from src.giljo_mcp.validation import TemplateValidator
 
     validator = TemplateValidator(redis_client=redis)
-    result = validator.validate(template, template_id, agent_type)
+    result = validator.validate(template, template_id, agent_display_name)
 
     if not result.is_valid:
         for error in result.errors:

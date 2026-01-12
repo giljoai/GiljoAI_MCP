@@ -272,7 +272,7 @@ async def _decommission_agent_with_session(
             "error": f"Project {project_id} not found",
         }
 
-    # Find agent execution by agent_name pattern (matches agent_type or agent_name)
+    # Find agent execution by agent_name pattern (matches agent_display_name or agent_name)
     execution_query = select(AgentExecution).where(
         and_(
             AgentExecution.tenant_key == project.tenant_key,

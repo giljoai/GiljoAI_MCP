@@ -284,7 +284,7 @@ async def generate_agent_prompt(
             project_path = project.meta_data.get("path", ".")
 
     # Generate agent display name if not set
-    agent_display_name = agent.agent_name or f"{agent.agent_type.title()} Agent"
+    agent_display_name = agent.agent_name or f"{agent.agent_display_name.title()} Agent"
 
     # Truncate mission for preview (first 200 chars) - mission is in job
     mission = agent.job.mission if agent.job else ""
@@ -298,13 +298,13 @@ async def generate_agent_prompt(
 
     # Generate universal prompt
     prompt = f"""# Agent: {agent_display_name}
-# Type: {agent.agent_type}
+# Type: {agent.agent_display_name}
 # Tool: {tool_type}
 # Mission: {mission_preview}
 
 cd {project_path}
 export AGENT_ID={agent.agent_id}
-export AGENT_DISPLAY_NAME={agent.agent_type}
+export AGENT_DISPLAY_NAME={agent.agent_display_name}
 export PROJECT_ID={agent.job.project_id if agent.job else "none"}
 
 # Create mission file
@@ -320,7 +320,7 @@ EOF
 
 Agent Details:
 - Name: {agent_display_name}
-- Display Name: {agent.agent_type}
+- Display Name: {agent.agent_display_name}
 - Tool: {tool_type}
 - Status: {agent.status}
 
@@ -333,7 +333,7 @@ Prerequisites:
         prompt=prompt,
         agent_id=agent.agent_id,
         agent_name=agent_display_name,
-        agent_display_name=agent.agent_type,
+        agent_display_name=agent.agent_display_name,
         tool_type=tool_type,
         instructions=instructions,
         mission_preview=mission_preview,
@@ -896,8 +896,8 @@ async def get_implementation_prompt(
         agent_jobs_list = [
             {
                 'job_id': agent_exec.job_id,
-                'agent_display_name': agent_exec.agent_type,
-                'agent_name': agent_exec.agent_name or agent_exec.agent_type,
+                'agent_display_name': agent_exec.agent_display_name,
+                'agent_name': agent_exec.agent_name or agent_exec.agent_display_name,
                 'status': agent_exec.status,
                 'mission': agent_exec.job.mission if agent_exec.job else '(No mission assigned)'
             }

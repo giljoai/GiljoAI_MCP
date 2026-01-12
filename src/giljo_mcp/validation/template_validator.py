@@ -74,7 +74,7 @@ class TemplateValidator:
 
     Usage:
         validator = TemplateValidator(redis_client=redis)
-        result = validator.validate(template, template_id, agent_type)
+        result = validator.validate(template, template_id, agent_display_name)
 
         if not result.is_valid:
             # Handle validation failure
@@ -102,7 +102,7 @@ class TemplateValidator:
         self,
         template_content: str,
         template_id: str,
-        agent_type: str,
+        agent_display_name: str,
         use_cache: bool = True
     ) -> TemplateValidationResult:
         """
@@ -111,7 +111,7 @@ class TemplateValidator:
         Args:
             template_content: Full template text to validate
             template_id: Unique template identifier
-            agent_type: Type of agent (orchestrator, implementer, etc.)
+            agent_display_name: Type of agent (orchestrator, implementer, etc.)
             use_cache: Whether to use Redis caching (default: True)
 
         Returns:
@@ -129,7 +129,7 @@ class TemplateValidator:
 
         # Run validation
         start_time = time.time()
-        errors, warnings = self._run_all_rules(template_content, agent_type)
+        errors, warnings = self._run_all_rules(template_content, agent_display_name)
         duration_ms = (time.time() - start_time) * 1000
 
         # Determine if valid (no critical errors)
@@ -163,14 +163,14 @@ class TemplateValidator:
     def _run_all_rules(
         self,
         template_content: str,
-        agent_type: str
+        agent_display_name: str
     ) -> tuple[List[ValidationError], List[ValidationError]]:
         """
         Execute all validation rules.
 
         Args:
             template_content: Template text to validate
-            agent_type: Agent type
+            agent_display_name: Agent type
 
         Returns:
             Tuple of (errors, warnings)
@@ -179,7 +179,7 @@ class TemplateValidator:
         warnings = []
 
         for rule in self.rules:
-            result = rule.validate(template_content, agent_type)
+            result = rule.validate(template_content, agent_display_name)
 
             if result is not None:
                 if result.severity == "critical":

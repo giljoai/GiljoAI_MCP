@@ -671,7 +671,7 @@ report_error(
 ```
 get_next_instruction(
     job_id="<your-job-id>",
-    agent_type="{agent_role}",
+    agent_display_name="{agent_role}",
     tenant_key="{tenant_key}"
 )
 ```
