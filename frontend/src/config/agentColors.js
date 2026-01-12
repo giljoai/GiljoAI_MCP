@@ -63,6 +63,19 @@ const AGENT_SYNONYMS = {
   'back-end-implementer': 'implementer',
   'backend-implementer': 'implementer',
   documentor: 'documenter',
+  // Claude Code agent template mappings
+  'tdd-implementor': 'implementer',
+  'backend-integration-tester': 'tester',
+  'frontend-tester': 'tester',
+  'database-expert': 'analyzer',
+  'deep-researcher': 'analyzer',
+  'system-architect': 'analyzer',
+  'documentation-manager': 'documenter',
+  'network-security-engineer': 'reviewer',
+  'ux-designer': 'implementer',
+  'version-manager': 'reviewer',
+  'installation-flow-agent': 'implementer',
+  'orchestrator-coordinator': 'orchestrator',
 }
 
 /**
