@@ -80,11 +80,11 @@ async def get_filter_options(
 
     # Get distinct agent display names
     agent_display_name_query = (
-        select(AgentExecution.agent_type)
+        select(AgentExecution.agent_display_name)
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
         .where(AgentJob.project_id == project_id)
-        .where(AgentExecution.agent_type.is_not(None))
+        .where(AgentExecution.agent_display_name.is_not(None))
         .distinct()
     )
     agent_display_name_result = await db.execute(agent_display_name_query)

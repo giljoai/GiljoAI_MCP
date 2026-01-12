@@ -291,7 +291,7 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
             "progress": int (0-100%),
             "health_status": str,
             "instance_number": int,
-            "agent_type": str,
+            "agent_display_name": str,
             "agent_name": str
         }
 
@@ -469,7 +469,7 @@ async def get_team_agents(
         ...     include_inactive=False
         ... )
         >>> for member in result["team"]:
-        ...     print(f"{member['agent_type']}: {member['status']}")
+        ...     print(f"{member['agent_display_name']}: {member['status']}")
     """
     try:
         # Validate input parameters
@@ -645,7 +645,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "status": "success" | "error",
                 "job": {
                     "job_id": str,
-                    "agent_type": str,
+                    "agent_display_name": str,
                     "mission": str,
                     "status": str,
                     "started_at": str (ISO datetime)
@@ -865,7 +865,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             - Result data stored in tenant-isolated message queue
 
         Post-Completion:
-            - Checks for next pending job of same agent_type
+            - Checks for next pending job of same agent_display_name
             - Provides seamless job chaining for agents
         """
         try:

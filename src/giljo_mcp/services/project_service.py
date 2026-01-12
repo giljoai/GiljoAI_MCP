@@ -229,7 +229,7 @@ class ProjectService:
                     {
                         "id": job.job_id,
                         "job_id": job.job_id,
-                        "agent_type": job.job_type,
+                        "agent_display_name": job.job_type,
                         "agent_name": execution.agent_name,
                         "status": execution.status,
                         "messages": execution.messages or [],

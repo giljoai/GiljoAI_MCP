@@ -78,17 +78,17 @@ class RequirementAnalysis:
     estimated_agents_needed: int
     feature_categories: Optional[list[str]] = None
 
-    def get_agent_priority(self, agent_type: str) -> str:
+    def get_agent_priority(self, agent_display_name: str) -> str:
         """
         Get the priority level for a specific agent type.
 
         Args:
-            agent_type: The type of agent to get priority for
+            agent_display_name: The type of agent to get priority for
 
         Returns:
             str: Priority level from work_types, or 'low' if not found
         """
-        return self.work_types.get(agent_type, "low")
+        return self.work_types.get(agent_display_name, "low")
 
 
 @dataclass
