@@ -1,9 +1,54 @@
 <template>
   <div class="startup-quickstart">
-    <v-alert type="info" variant="tonal" density="comfortable" class="mb-4">
-      This is a guided quick start to get you connected and productive. It’s intentionally lightweight for now
-      (we’ll expand it into full docs, tutorials, and admin onboarding later).
-    </v-alert>
+    <v-card variant="outlined" class="mb-4 setup-checklist">
+      <v-card-text>
+        <div class="d-flex flex-column align-center ga-1 mb-3 text-center">
+          <div class="text-h6 font-weight-bold">My setup check list!</div>
+        </div>
+
+        <div class="checklist-grid">
+          <!-- Checkbox + label (fixed spacing between items) -->
+          <div class="checklist-items-row">
+            <div v-for="item in checklistItems" :key="item.id" class="checklist-item">
+              <v-checkbox-btn
+                v-model="checklist[item.id]"
+                density="compact"
+                hide-details
+                color="secondary"
+                class="checklist-item-checkbox"
+                :aria-label="item.label"
+                @update:model-value="() => handleChecklistToggle(item)"
+              />
+              <div class="checklist-item-label">
+                {{ item.label }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress bar + dots (dots sit on the line) -->
+          <div
+            class="checklist-bar"
+            aria-label="Setup progress"
+            :style="{
+              '--progress': checklistProgress,
+              '--progress-color': checklistCompleted === checklistItems.length ? 'rgb(var(--v-theme-success))' : 'rgb(var(--v-theme-secondary))',
+            }"
+          >
+            <div class="checklist-progress-track" />
+            <div class="checklist-progress-fill" />
+            <div class="checklist-dots">
+              <div
+                v-for="item in checklistItems"
+                :key="`${item.id}-dot`"
+                class="checklist-dot"
+                :class="{ done: checklist[item.id] }"
+                :title="item.label"
+              />
+            </div>
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
 
     <v-row>
       <v-col cols="12" lg="5">
@@ -17,7 +62,7 @@
           <v-card-text>
             <v-list density="compact">
               <v-list-item
-                v-for="(step, index) in steps"
+                v-for="step in setupSteps"
                 :key="step.id"
                 :active="selectedStepId === step.id"
                 @click="selectedStepId = step.id"
@@ -32,7 +77,51 @@
                 </template>
 
                 <v-list-item-title class="text-body-2">
-                  {{ index + 1 }}. {{ step.title }}
+                  {{ stepIndexById[step.id] }}. {{ step.title }}
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ step.subtitle }}
+                </v-list-item-subtitle>
+
+                <template #append>
+                  <v-btn
+                    v-if="step.primaryAction"
+                    size="small"
+                    density="compact"
+                    variant="flat"
+                    color="secondary"
+                    rounded="pill"
+                    class="quickstart-go-btn"
+                    @click.stop="runAction(step.primaryAction)"
+                    data-testid="quickstart-primary-action"
+                  >
+                    Go!
+                    <v-tooltip activator="parent" location="top">{{ step.primaryAction.label }}</v-tooltip>
+                  </v-btn>
+                </template>
+              </v-list-item>
+
+              <div class="setup-phase-divider my-3" role="separator" aria-label="Product usage steps">
+                <span class="setup-phase-divider-text">Start building</span>
+              </div>
+
+              <v-list-item
+                v-for="step in productSteps"
+                :key="step.id"
+                :active="selectedStepId === step.id"
+                @click="selectedStepId = step.id"
+                class="rounded"
+                data-testid="quickstart-step"
+              >
+                <template #prepend>
+                  <div class="d-flex align-center justify-center" style="width: 32px; height: 32px">
+                    <GiljoFaceIcon v-if="step.useGiljoIcon" :active="true" :size="25" alt="Agent" />
+                    <v-icon v-else size="20" :color="accentColor">{{ step.icon }}</v-icon>
+                  </div>
+                </template>
+
+                <v-list-item-title class="text-body-2">
+                  {{ stepIndexById[step.id] }}. {{ step.title }}
                 </v-list-item-title>
                 <v-list-item-subtitle class="text-caption">
                   {{ step.subtitle }}
@@ -270,7 +359,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import ToolConfigSnippet from '@/components/ToolConfigSnippet.vue'
@@ -288,6 +377,24 @@ const showDetails = ref(false)
 const detailsStep = ref(null)
 const showShortcuts = ref(false)
 const showHelpMock = ref(false)
+
+const CHECKLIST_STORAGE_KEY = 'giljo_startup_checklist_v1'
+const checklistItems = [
+  { id: 'tools', label: 'Installed agentic CLI tools', stepId: 'tools' },
+  { id: 'connect', label: 'Attach MCP server', stepId: 'connect' },
+  { id: 'slash', label: 'Install slash commands', stepId: 'slash' },
+  { id: 'templates', label: 'Reviewed agents', stepId: 'templates' },
+  { id: 'context', label: 'Tuned context', stepId: 'context' },
+  { id: 'integrations', label: 'Configure integrations', stepId: 'integrations' },
+]
+const checklist = ref({
+  tools: false,
+  connect: false,
+  slash: false,
+  templates: false,
+  context: false,
+  integrations: false,
+})
 
 const steps = computed(() => [
   {
@@ -383,6 +490,23 @@ const steps = computed(() => [
     actions: [],
   },
   {
+    id: 'integrations',
+    icon: 'mdi-puzzle',
+    title: 'Configure integrations',
+    subtitle: 'Connect tools + enable power-ups',
+    body:
+      'Configure integrations to connect your AI tools via MCP, and optionally enable power-ups like Git and Serena.',
+    details:
+      'Configure integrations to connect your AI tools via MCP, install helpers like slash commands, and optionally enable power-ups like Git and Serena. These settings affect how prompts and tools are prepared and how agents can operate.',
+    primaryAction: {
+      id: 'open-integrations-primary',
+      label: 'Configure Integrations',
+      type: 'userSettingsTab',
+      tab: 'integrations',
+    },
+    actions: [],
+  },
+  {
     id: 'product',
     icon: 'mdi-package-variant-closed',
     title: 'Add a product',
@@ -419,36 +543,17 @@ const steps = computed(() => [
   {
     id: 'tasks',
     icon: 'mdi-clipboard-check-outline',
-    title: 'Run & track tasks',
+    title: 'Add tasks',
     subtitle: 'User-managed TODO tracking',
     body:
-      'Use tasks to break work down, track progress, and keep orchestrations aligned. This is also where “technical” housekeeping work can live.',
+      'Add tasks to capture technical debt and ideas as you work, and keep your execution aligned without breaking focus.',
     details:
-      'Tasks are user-managed, visible tracking. They’re ideal for splitting work into small, auditable pieces and keeping agents aligned with the current plan.',
+      'Tasks are user-managed, visible tracking. They’re ideal for capturing technical debt and ideas, then converting work into clear execution steps later.',
     primaryAction: {
       id: 'open-tasks-primary',
       label: 'Open Tasks',
       type: 'route',
       route: { name: 'Tasks' },
-    },
-    actions: [],
-  },
-  {
-    id: 'advanced',
-    icon: 'mdi-cog-outline',
-    title: 'Advanced integrations',
-    subtitle: 'Git, Serena, and more',
-    body:
-      'Enable advanced integrations like Git and Serena prompt-injection helpers. These are optional, but can significantly improve workflows.',
-    details:
-      `Current status: Git is ${props.gitEnabled ? 'enabled' : 'disabled'}; Serena is ${
-        props.serenaEnabled ? 'enabled' : 'disabled'
-      }. Configure these (and more) under Integrations.`,
-    primaryAction: {
-      id: 'open-integrations-advanced-primary',
-      label: 'Open Integrations',
-      type: 'userSettingsTab',
-      tab: 'integrations',
     },
     actions: [],
   },
@@ -459,6 +564,20 @@ const selectedStepId = ref(steps.value[0]?.id ?? 'tools')
 const selectedStep = computed(() => steps.value.find((s) => s.id === selectedStepId.value) ?? steps.value[0])
 
 const accentColor = computed(() => (theme.global.current.value.dark ? 'secondary' : 'primary'))
+
+const setupSteps = computed(() =>
+  steps.value.filter((s) => ['tools', 'connect', 'slash', 'templates', 'context', 'integrations'].includes(s.id)),
+)
+const productSteps = computed(() => steps.value.filter((s) => ['product', 'project', 'tasks'].includes(s.id)))
+const stepIndexById = computed(() => Object.fromEntries(steps.value.map((s, idx) => [s.id, idx + 1])))
+
+const checklistCompleted = computed(() => checklistItems.filter((i) => checklist.value[i.id]).length)
+const checklistProgress = computed(() => {
+  const total = checklistItems.length
+  if (total <= 1) return checklistCompleted.value ? 1 : 0
+  const filledSegments = Math.max(0, checklistCompleted.value - 1)
+  return Math.min(1, filledSegments / (total - 1))
+})
 
 const mcpHttpSnippet = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:7274'
@@ -479,13 +598,37 @@ const mcpHttpSnippet = computed(() => {
 
 function stepTone(step) {
   if (!step) return 'primary'
-  if (step.id === 'advanced' && (props.gitEnabled || props.serenaEnabled)) return 'success'
+  if (step.id === 'integrations' && (props.gitEnabled || props.serenaEnabled)) return 'success'
   return accentColor.value
 }
 
 function openDetails(step) {
   detailsStep.value = step
   showDetails.value = true
+}
+
+function loadChecklist() {
+  try {
+    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    checklist.value = { ...checklist.value, ...parsed }
+  } catch {
+    // ignore
+  }
+}
+
+function saveChecklist() {
+  try {
+    localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklist.value))
+  } catch {
+    // ignore
+  }
+}
+
+function handleChecklistToggle(item) {
+  if (item?.stepId) selectedStepId.value = item.stepId
+  saveChecklist()
 }
 
 function goUserSettingsTab(tab) {
@@ -503,6 +646,10 @@ function runAction(action) {
     return
   }
 }
+
+onMounted(() => {
+  loadChecklist()
+})
 </script>
 
 <style scoped>
@@ -530,5 +677,123 @@ function runAction(action) {
 
 .steps-chip {
   margin-right: 6px;
+}
+
+.setup-phase-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.setup-phase-divider::before,
+.setup-phase-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 2px solid rgba(var(--v-theme-on-surface), 0.85);
+}
+
+.setup-phase-divider-text {
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.setup-checklist {
+  border-radius: 18px;
+}
+
+.checklist-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checklist-items-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 36px; /* double "tab" between items */
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px; /* fixed checkbox→label spacing */
+  min-height: 26px;
+  white-space: nowrap;
+}
+
+.checklist-item-label {
+  text-align: left;
+  font-size: 0.82rem;
+  line-height: 1.1;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+
+.checklist-progress-track,
+.checklist-progress-fill {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+}
+
+.checklist-bar {
+  position: relative;
+  height: 18px;
+}
+
+.checklist-progress-track {
+  background: rgba(var(--v-theme-on-surface), 0.18);
+}
+
+.checklist-progress-fill {
+  background: var(--progress-color, rgb(var(--v-theme-secondary)));
+  right: auto;
+  width: calc((100% - 16px) * var(--progress));
+}
+
+.checklist-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: rgba(var(--v-theme-on-surface), 0.35);
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.25);
+}
+
+.checklist-dot.done {
+  background: rgb(var(--v-theme-secondary));
+  border-color: rgb(var(--v-theme-secondary));
+}
+
+.checklist-dots {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.startup-quickstart :deep(.checklist-item-checkbox .v-selection-control) {
+  min-height: 0;
+}
+
+.startup-quickstart :deep(.checklist-item-checkbox .v-selection-control__wrapper) {
+  width: 20px;
+  height: 20px;
 }
 </style>
