@@ -65,7 +65,7 @@ async def test_e2e_closeout_fixtures_creates_all_data(e2e_closeout_fixtures):
         assert agent.project_id == project.id
 
     # Verify agent types
-    agent_types = {agent.agent_type for agent in agents}
+    agent_types = {agent.agent_display_name for agent in agents}
     assert "orchestrator" in agent_types
     assert "implementer" in agent_types
     assert "tester" in agent_types

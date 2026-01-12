@@ -502,7 +502,7 @@ async def test_succession_reason_enum_validation(
     # Query all and verify
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
     )
     result = await db_session.execute(stmt)
     instances = result.scalars().all()

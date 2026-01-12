@@ -36,7 +36,7 @@ const props = defineProps({
   /**
    * Agent type (orchestrator, analyzer, implementor, researcher, reviewer, tester)
    */
-  agentType: {
+  agentDisplayName: {
     type: String,
     required: true,
     validator: (value) => {
@@ -80,7 +80,7 @@ const props = defineProps({
  * Normalized agent type (lowercase for consistency)
  */
 const normalizedAgentType = computed(() => {
-  return props.agentType?.toLowerCase() || 'orchestrator'
+  return props.agentDisplayName?.toLowerCase() || 'orchestrator'
 })
 
 /**

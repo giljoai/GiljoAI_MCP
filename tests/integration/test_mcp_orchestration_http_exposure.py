@@ -61,11 +61,11 @@ class TestOrchestrationToolsHTTPExposure:
         tenant_manager = TenantManager()
         tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
-        # Call with empty agent_type
+        # Call with empty agent_display_name
         result = await tool_accessor.get_pending_jobs("", "tenant_key")
 
         assert result["status"] == "error"
-        assert "agent_type" in result["error"]
+        assert "agent_display_name" in result["error"]
 
     @pytest.mark.asyncio
     async def test_acknowledge_job_validation(self, db_manager):
@@ -161,7 +161,7 @@ class TestOrchestrationToolsHTTPExposure:
         fake_project_id = str(uuid4())
         tenant_key = f"tk_{uuid4().hex}"
         result = await tool_accessor.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Test Agent",
             mission="Test mission",
             project_id=fake_project_id,

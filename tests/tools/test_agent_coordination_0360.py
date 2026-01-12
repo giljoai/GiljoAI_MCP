@@ -11,8 +11,8 @@ Expected Response:
     {
         "success": true,
         "team": [
-            {"agent_id": "ae-001", "job_id": "job-abc", "agent_type": "orchestrator", "status": "working"},
-            {"agent_id": "ae-002", "job_id": "job-abc", "agent_type": "implementer", "status": "waiting"}
+            {"agent_id": "ae-001", "job_id": "job-abc", "agent_display_name": "orchestrator", "status": "working"},
+            {"agent_id": "ae-002", "job_id": "job-abc", "agent_display_name": "implementer", "status": "waiting"}
         ]
     }
 
@@ -140,7 +140,7 @@ async def test_get_team_agents_returns_active_teammates(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
         agent_name="Orchestrator Instance 1",
@@ -149,7 +149,7 @@ async def test_get_team_agents_returns_active_teammates(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=2,
         status="waiting",
         agent_name="Orchestrator Instance 2",
@@ -158,7 +158,7 @@ async def test_get_team_agents_returns_active_teammates(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         instance_number=1,
         status="blocked",
         agent_name="Backend Implementer",
@@ -185,7 +185,7 @@ async def test_get_team_agents_returns_active_teammates(
     for member in result["team"]:
         assert "agent_id" in member, "Each team member should have agent_id"
         assert "job_id" in member, "Each team member should have job_id"
-        assert "agent_type" in member, "Each team member should have agent_type"
+        assert "agent_display_name" in member, "Each team member should have agent_type"
         assert "status" in member, "Each team member should have status"
         assert member["job_id"] == test_job.job_id, "All members should belong to same job"
 
@@ -207,7 +207,7 @@ async def test_get_team_agents_excludes_inactive_by_default(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
     )
@@ -215,7 +215,7 @@ async def test_get_team_agents_excludes_inactive_by_default(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=2,
         status="complete",
         completed_at=datetime.now(timezone.utc),
@@ -224,7 +224,7 @@ async def test_get_team_agents_excludes_inactive_by_default(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         instance_number=1,
         status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
@@ -233,7 +233,7 @@ async def test_get_team_agents_excludes_inactive_by_default(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="tester",
+        agent_display_name="tester",
         instance_number=1,
         status="failed",
         completed_at=datetime.now(timezone.utc),
@@ -275,7 +275,7 @@ async def test_get_team_agents_includes_inactive_when_requested(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
     )
@@ -283,7 +283,7 @@ async def test_get_team_agents_includes_inactive_when_requested(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=2,
         status="complete",
         completed_at=datetime.now(timezone.utc),
@@ -292,7 +292,7 @@ async def test_get_team_agents_includes_inactive_when_requested(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="implementer",
+        agent_display_name="implementer",
         instance_number=1,
         status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
@@ -338,7 +338,7 @@ async def test_get_team_agents_tenant_isolation(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
     )
@@ -356,7 +356,7 @@ async def test_get_team_agents_tenant_isolation(
         agent_id=str(uuid4()),
         job_id=other_job.job_id,
         tenant_key=other_tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
     )
@@ -431,7 +431,7 @@ async def test_get_team_agents_returns_all_required_fields(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
         agent_name="Test Orchestrator",
@@ -454,7 +454,7 @@ async def test_get_team_agents_returns_all_required_fields(
     # Required fields
     assert member["agent_id"] == execution.agent_id
     assert member["job_id"] == test_job.job_id
-    assert member["agent_type"] == "orchestrator"
+    assert member["agent_display_name"] == "orchestrator"
     assert member["status"] == "working"
 
     # Optional but useful fields

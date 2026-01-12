@@ -59,7 +59,7 @@ async def test_agent_job(db_session, test_project):
     """Create test agent job"""
     job = AgentExecution(
         project_id=test_project.id,
-        agent_type="test-agent",
+        agent_display_name="test-agent",
         agent_name="Test Agent",
         status="running",
         tenant_key=test_project.tenant_key,

@@ -48,7 +48,7 @@ class AgentSimple(BaseModel):
     """Simple agent schema for project response."""
     id: str  # job_id
     job_id: str
-    agent_type: str
+    agent_display_name: str
     agent_name: Optional[str] = None
     status: str
     thin_client: bool = True
@@ -199,7 +199,7 @@ class OrchestratorJobResponse(BaseModel):
     id: Optional[int] = None  # Deprecated after AgentExecution refactor (Handover 0366a)
     job_id: str
     agent_id: str  # Alias for backward compatibility
-    agent_type: str
+    agent_display_name: str
     agent_name: Optional[str]
     mission: str
     status: str

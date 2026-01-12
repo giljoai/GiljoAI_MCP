@@ -114,7 +114,7 @@ class TestClaudeCodeModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission=f"Orchestrate {project.name}",
             job_metadata={
@@ -228,7 +228,7 @@ class TestClaudeCodeModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Test agent spawning",
             job_metadata={
@@ -262,7 +262,7 @@ class TestClaudeCodeModeWorkflow:
             "Prompt must reference get_available_agents() for dynamic discovery"
 
         # Claude Code mode should spawn agents like this:
-        # Task(description="...", prompt="...", subagent_type="implementer")
+        # Task(description="...", prompt="...", subagent_display_name="implementer")
         assert "subagent" in prompt.lower() or "spawn" in prompt.lower(), \
             "Prompt should include agent spawning instructions"
 
@@ -299,7 +299,7 @@ class TestClaudeCodeModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={

@@ -368,7 +368,7 @@ class TestAgentTemplateDepthIntegration:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
                 job_id=str(uuid4()),
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
                 project_id=project.id,
                 mission="Test mission",
@@ -447,7 +447,7 @@ class TestAgentTemplateDepthIntegration:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
                 job_id=str(uuid4()),
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
                 project_id=project.id,
                 mission="Test mission",
@@ -525,7 +525,7 @@ class TestAgentTemplateDepthIntegration:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
                 job_id=str(uuid4()),
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
                 project_id=project.id,
                 mission="Test mission",
@@ -582,7 +582,7 @@ class TestAgentTemplateDepthIntegration:
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
                 job_id=str(uuid4()),
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
                 project_id=project.id,
                 mission="Test mission",

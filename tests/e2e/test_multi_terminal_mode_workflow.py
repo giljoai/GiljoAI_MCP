@@ -116,7 +116,7 @@ class TestMultiTerminalModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission=f"Orchestrate {project.name}",
             job_metadata={
@@ -234,7 +234,7 @@ class TestMultiTerminalModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="active",
             mission="Test message passing",
             job_metadata={
@@ -268,7 +268,7 @@ class TestMultiTerminalModeWorkflow:
             "Prompt must reference agent discovery or spawning"
 
         # Multi-Terminal mode should spawn agents like this:
-        # spawn_agent_job(agent_type="implementer", ...)
+        # spawn_agent_job(agent_display_name="implementer", ...)
         # send_message(to_agent="...", message="...")
         assert "spawn" in prompt.lower() or "agent_job" in prompt, \
             "Prompt should include agent spawning instructions"
@@ -306,7 +306,7 @@ class TestMultiTerminalModeWorkflow:
         orchestrator = AgentExecution(
             project_id=project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={
@@ -374,7 +374,7 @@ class TestMultiTerminalModeWorkflow:
         orchestrator = AgentExecution(
             project_id=legacy_project.id,
             tenant_key=tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Legacy test",
             job_metadata={

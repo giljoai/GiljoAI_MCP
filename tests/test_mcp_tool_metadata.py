@@ -293,7 +293,7 @@ class TestSpecificToolExamples:
         assert spawn_tool is not None
 
         # Check required parameters
-        required_params = ["agent_type", "agent_name", "mission", "project_id", "tenant_key"]
+        required_params = ["agent_display_name", "agent_name", "mission", "project_id", "tenant_key"]
         for param in required_params:
             assert param in spawn_tool["arguments"], f"Missing parameter '{param}'"
             assert "REQUIRED" in spawn_tool["arguments"][param], f"Parameter '{param}' should be marked REQUIRED"

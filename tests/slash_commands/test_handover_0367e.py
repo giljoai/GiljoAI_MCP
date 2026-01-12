@@ -46,7 +46,7 @@ async def test_orchestrator_execution_0367e(
         agent_id=str(uuid.uuid4()),
         job_id=test_orchestrator_job_0367e.job_id,
         tenant_key=test_tenant_0367e,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         instance_number=1,
         status="working",
         progress=10,

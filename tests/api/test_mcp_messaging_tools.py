@@ -239,12 +239,12 @@ async def test_agents(
         ("agent2", "tester", "Testing agent"),
     ]
 
-    for agent_name, agent_type, mission in agent_configs:
+    for agent_name, agent_display_name, mission in agent_configs:
         agent = AgentExecution(
             tenant_key=test_project.tenant_key,
             project_id=test_project.id,
             job_id=str(uuid.uuid4()),
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             agent_name=agent_name,
             mission=mission,
             status="working",

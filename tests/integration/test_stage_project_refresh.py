@@ -420,7 +420,7 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
     # ASSERT: Only one orchestrator exists in database
     stmt = select(AgentExecution).where(
         AgentExecution.project_id == project.id,
-        AgentExecution.agent_type == "orchestrator",
+        AgentExecution.agent_display_name == "orchestrator",
         AgentExecution.tenant_key == tenant_key,
     )
     result = await db_session.execute(stmt)

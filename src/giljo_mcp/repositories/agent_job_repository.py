@@ -38,7 +38,7 @@ class AgentJobRepository:
         self,
         session: Session,
         tenant_key: str,
-        agent_type: str,
+        agent_display_name: str,
         mission: str,
         spawned_by: Optional[str] = None,
         context_chunks: Optional[List[str]] = None,
@@ -49,7 +49,7 @@ class AgentJobRepository:
         Args:
             session: Database session
             tenant_key: Tenant key for isolation
-            agent_type: Type of agent (orchestrator, analyzer, implementer, etc.)
+            agent_display_name: Display name of agent (UI label - what humans see)
             mission: Agent mission/instructions
             spawned_by: Optional agent ID that spawned this job
             context_chunks: Optional list of chunk IDs for context loading
@@ -60,7 +60,7 @@ class AgentJobRepository:
         return self.base_repo.create(
             session,
             tenant_key,
-            agent_type=agent_type,
+            agent_display_name=agent_display_name,
             mission=mission,
             status="pending",
             spawned_by=spawned_by,
@@ -124,22 +124,22 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_type: Optional[str] = None) -> List[Job]:
+    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> List[Job]:
         """
         Get all active jobs (pending or active status).
 
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            agent_type: Optional filter by agent type
+            agent_display_name: Optional filter by agent display name
 
         Returns:
             List of active Job instances
         """
         stmt = select(Job).where(Job.tenant_key == tenant_key, Job.status.in_(["pending", "active"]))
 
-        if agent_type:
-            stmt = stmt.where(Job.agent_type == agent_type)
+        if agent_display_name:
+            stmt = stmt.where(Job.agent_display_name == agent_display_name)
 
         stmt = stmt.order_by(Job.created_at)
         result = await session.execute(stmt)
@@ -259,42 +259,42 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_job_statistics(self, session: AsyncSession, tenant_key: str, agent_type: Optional[str] = None) -> Dict[str, Any]:
+    async def get_job_statistics(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Get job statistics for a tenant.
 
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            agent_type: Optional filter by agent type
+            agent_display_name: Optional filter by agent display name
 
         Returns:
             Dictionary with job statistics
         """
         # Count total jobs
         stmt = select(func.count()).select_from(Job).where(Job.tenant_key == tenant_key)
-        if agent_type:
-            stmt = stmt.where(Job.agent_type == agent_type)
+        if agent_display_name:
+            stmt = stmt.where(Job.agent_display_name == agent_display_name)
         result = await session.execute(stmt)
         total_jobs = result.scalar()
 
         # Count by status
         status_stmt = select(Job.status, func.count(Job.id)).where(Job.tenant_key == tenant_key)
-        if agent_type:
-            status_stmt = status_stmt.where(Job.agent_type == agent_type)
+        if agent_display_name:
+            status_stmt = status_stmt.where(Job.agent_display_name == agent_display_name)
         status_stmt = status_stmt.group_by(Job.status)
         result = await session.execute(status_stmt)
         status_counts = result.all()
 
-        # Count by agent type
-        type_stmt = select(Job.agent_type, func.count(Job.id)).where(Job.tenant_key == tenant_key).group_by(Job.agent_type)
+        # Count by agent display name
+        type_stmt = select(Job.agent_display_name, func.count(Job.id)).where(Job.tenant_key == tenant_key).group_by(Job.agent_display_name)
         result = await session.execute(type_stmt)
         type_counts = result.all()
 
         return {
             "total_jobs": total_jobs,
             "by_status": {status: count for status, count in status_counts},
-            "by_agent_type": {agent_type: count for agent_type, count in type_counts},
+            "by_agent_display_name": {agent_display_name: count for agent_display_name, count in type_counts},
             "active_jobs": len([s for s, c in status_counts if s in ["pending", "active"]]),
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
             "failed_jobs": len([s for s, c in status_counts if s == "failed"]),

@@ -271,7 +271,7 @@ async def check_succession_status(
             )
 
         # Validate: must be orchestrator
-        if execution.agent_type != "orchestrator":
+        if execution.agent_display_name != "orchestrator":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Can only check succession for orchestrators"
@@ -385,7 +385,7 @@ async def initiate_handover(
             )
 
         # Validate: must be orchestrator
-        if execution.agent_type != "orchestrator":
+        if execution.agent_display_name != "orchestrator":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Can only initiate handover for orchestrators"

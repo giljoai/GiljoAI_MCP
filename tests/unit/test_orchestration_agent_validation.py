@@ -129,7 +129,7 @@ class TestOrchestratorInstructionsConstraint:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="Multi-Terminal Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -172,7 +172,7 @@ class TestOrchestratorInstructionsConstraint:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -250,7 +250,7 @@ class TestOrchestratorInstructionsConstraint:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -306,7 +306,7 @@ class TestOrchestratorInstructionsConstraint:
                 job_id=str(uuid.uuid4()),
                 project_id=self.project.id,
                 tenant_key=self.tenant_key,
-                agent_type="orchestrator",
+                agent_display_name="orchestrator",
                 agent_name="CLI Orchestrator",
                 status="waiting",
                 mission="Test mission",
@@ -415,7 +415,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn agent with valid agent_type
         result = await spawn_agent_job(
-            agent_type="implementer",  # Valid type (matches template)
+            agent_display_name="implementer",  # Valid type (matches template)
             agent_name="Test Implementer",
             mission="Implement feature X",
             project_id=str(self.project.id),
@@ -445,7 +445,7 @@ class TestSpawnAgentJobValidation:
         # Test each valid agent type
         for agent_type in ["implementer", "tester"]:
             result = await spawn_agent_job(
-                agent_type=agent_type,
+                agent_display_name=agent_type,
                 agent_name=f"Test {agent_type.title()}",
                 mission=f"Test mission for {agent_type}",
                 project_id=str(self.project.id),
@@ -471,7 +471,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn agent with invented agent_type
         result = await spawn_agent_job(
-            agent_type="backend-tester-for-api-validation",  # INVALID (invented)
+            agent_display_name="backend-tester-for-api-validation",  # INVALID (invented)
             agent_name="API Validator",
             mission="Validate APIs",
             project_id=str(self.project.id),
@@ -522,7 +522,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn with extended name as agent_type (common mistake)
         result = await spawn_agent_job(
-            agent_type="Backend Tester Agent",  # WRONG (descriptive, should be agent_name)
+            agent_display_name="Backend Tester Agent",  # WRONG (descriptive, should be agent_name)
             agent_name="API Tester",
             mission="Test backend APIs",
             project_id=str(self.project.id),
@@ -542,7 +542,7 @@ class TestSpawnAgentJobValidation:
         assert "hint" in result, "Hint field must be present for guidance"
 
         hint_lower = result["hint"].lower()
-        assert "agent_name" in hint_lower and "agent_type" in hint_lower, (
+        assert "agent_name" in hint_lower and "agent_display_name" in hint_lower, (
             f"Hint should explain agent_name vs agent_type distinction. Got: {result['hint']}"
         )
 
@@ -558,7 +558,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn with wrong case
         result = await spawn_agent_job(
-            agent_type="Implementer",  # WRONG CASE (should be lowercase "implementer")
+            agent_display_name="Implementer",  # WRONG CASE (should be lowercase "implementer")
             agent_name="Test Implementer",
             mission="Implement feature",
             project_id=str(self.project.id),
@@ -604,7 +604,7 @@ class TestSpawnAgentJobValidation:
 
             # Try to spawn inactive agent
             result = await spawn_agent_job(
-                agent_type="deprecated",  # Exists but INACTIVE
+                agent_display_name="deprecated",  # Exists but INACTIVE
                 agent_name="Deprecated Agent",
                 mission="Test mission",
                 project_id=str(self.project.id),
@@ -636,7 +636,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn with invalid type
         result = await spawn_agent_job(
-            agent_type="nonexistent",
+            agent_display_name="nonexistent",
             agent_name="Test Agent",
             mission="Test mission",
             project_id=str(self.project.id),
@@ -668,7 +668,7 @@ class TestSpawnAgentJobValidation:
 
         # Spawn with invalid type
         result = await spawn_agent_job(
-            agent_type="custom-backend-agent",
+            agent_display_name="custom-backend-agent",
             agent_name="Backend Developer",
             mission="Develop backend",
             project_id=str(self.project.id),
@@ -685,7 +685,7 @@ class TestSpawnAgentJobValidation:
         assert "agent_name" in hint, "Hint should mention agent_name field"
 
         # ASSERTION: Hint explains agent_type requirement
-        assert "agent_type" in hint, "Hint should mention agent_type field"
+        assert "agent_display_name" in hint, "Hint should mention agent_type field"
 
         # ASSERTION: Hint mentions exact match requirement
         hint_lower = hint.lower()

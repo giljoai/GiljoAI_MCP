@@ -236,7 +236,7 @@ class TestMCPCoordinationSection:
             # Placeholders should be in angle brackets: <AGENT_TYPE>, <TENANT_KEY>
             if "mcp__giljo_mcp__" in content.lower():
                 # If MCP tools are referenced, placeholders should be present
-                assert "<AGENT_TYPE>" in content or "agent_type=" in content.lower(), (
+                assert "<AGENT_TYPE>" in content or "agent_display_name=" in content.lower(), (
                     f"{template.role} should use AGENT_TYPE placeholder or parameter"
                 )
                 assert "<TENANT_KEY>" in content or "tenant_key=" in content.lower(), (

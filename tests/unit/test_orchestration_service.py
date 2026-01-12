@@ -72,7 +72,7 @@ class TestOrchestrationServiceJobManagement:
 
             # Act
             result = await service.spawn_agent_job(
-                agent_type="implementer",
+                agent_display_name="implementer",
                 agent_name="impl-1",
                 mission="Implement feature X",
                 project_id="project-id",
@@ -102,7 +102,7 @@ class TestOrchestrationServiceJobManagement:
 
         # Act
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="test",
             project_id="nonexistent",
@@ -122,7 +122,7 @@ class TestOrchestrationServiceJobManagement:
         # Mock agent job
         mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
-        mock_job.agent_type = "implementer"
+        mock_job.agent_display_name = "implementer"
         mock_job.mission = "Implement feature X with unit tests"
         mock_job.project_id = "project-id"
         mock_job.spawned_by = "parent-job-id"
@@ -152,7 +152,7 @@ class TestOrchestrationServiceJobManagement:
         # Assert
         assert result["success"] is True
         assert result["job_id"] == "job-123"
-        assert result["agent_type"] == "implementer"
+        assert result["agent_display_name"] == "implementer"
         assert "Implement feature X" in result["mission"]
         assert result["thin_client"] is True
 
@@ -167,7 +167,7 @@ class TestOrchestrationServiceJobManagement:
         # Mock job
         mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
-        mock_job.agent_type = "implementer"
+        mock_job.agent_display_name = "implementer"
         mock_job.mission = "Test mission"
         mock_job.acknowledged = False
         mock_job.status = "waiting"
@@ -204,7 +204,7 @@ class TestOrchestrationServiceJobManagement:
         # Mock already-acknowledged job
         mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
-        mock_job.agent_type = "implementer"
+        mock_job.agent_display_name = "implementer"
         mock_job.mission = "Test mission"
         mock_job.acknowledged = True
         mock_job.status = "working"
@@ -378,14 +378,14 @@ class TestOrchestrationServiceWorkflow:
         # Mock pending jobs
         mock_job1 = Mock(spec=AgentExecution)
         mock_job1.job_id = "job-1"
-        mock_job1.agent_type = "implementer"
+        mock_job1.agent_display_name = "implementer"
         mock_job1.mission = "Mission 1"
         mock_job1.context_chunks = []
         mock_job1.created_at = datetime.now()
 
         mock_job2 = Mock(spec=AgentExecution)
         mock_job2.job_id = "job-2"
-        mock_job2.agent_type = "implementer"
+        mock_job2.agent_display_name = "implementer"
         mock_job2.mission = "Mission 2"
         mock_job2.context_chunks = []
         mock_job2.created_at = datetime.now()
@@ -398,7 +398,7 @@ class TestOrchestrationServiceWorkflow:
 
         # Act
         result = await service.get_pending_jobs(
-            agent_type="implementer",
+            agent_display_name="implementer",
             tenant_key="test-tenant"
         )
 
@@ -419,7 +419,7 @@ class TestOrchestrationServiceWorkflow:
 
         # Act
         result = await service.get_pending_jobs(
-            agent_type="",
+            agent_display_name="",
             tenant_key="test-tenant"
         )
 
@@ -446,7 +446,7 @@ class TestOrchestrationServiceErrorHandling:
 
         # Act
         result = await service.spawn_agent_job(
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="impl-1",
             mission="test",
             project_id="project-id",
@@ -515,7 +515,7 @@ class TestOrchestrationServiceTodoWarnings:
         mock_execution = Mock(spec=AgentExecution)
         mock_execution.job_id = "job-123"
         mock_execution.status = "working"
-        mock_execution.agent_type = "implementer"
+        mock_execution.agent_display_name = "implementer"
         mock_execution.agent_id = "agent-123"
         mock_execution.agent_name = "test-agent"
         mock_execution.progress = 0
@@ -563,7 +563,7 @@ class TestOrchestrationServiceTodoWarnings:
         mock_execution = Mock(spec=AgentExecution)
         mock_execution.job_id = "job-123"
         mock_execution.status = "working"
-        mock_execution.agent_type = "implementer"
+        mock_execution.agent_display_name = "implementer"
         mock_execution.agent_id = "agent-123"
         mock_execution.agent_name = "test-agent"
         mock_execution.progress = 0
@@ -617,7 +617,7 @@ class TestOrchestrationServiceTodoWarnings:
         mock_execution = Mock(spec=AgentExecution)
         mock_execution.job_id = "job-123"
         mock_execution.status = "working"
-        mock_execution.agent_type = "implementer"
+        mock_execution.agent_display_name = "implementer"
         mock_execution.agent_id = "agent-123"
         mock_execution.agent_name = "test-agent"
         mock_execution.progress = 0
@@ -680,7 +680,7 @@ class TestOrchestrationServiceTodoWarnings:
         mock_execution = Mock(spec=AgentExecution)
         mock_execution.job_id = "job-123"
         mock_execution.status = "working"
-        mock_execution.agent_type = "implementer"
+        mock_execution.agent_display_name = "implementer"
         mock_execution.agent_id = "agent-123"
         mock_execution.agent_name = "test-agent"
         mock_execution.progress = 0

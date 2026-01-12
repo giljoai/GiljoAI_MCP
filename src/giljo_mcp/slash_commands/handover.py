@@ -128,13 +128,13 @@ async def _get_active_orchestrator(
     Get active orchestrator execution for project/tenant.
 
     Returns the AgentExecution representing the current orchestrator
-    (agent_type='orchestrator', status='working'). Optionally filters
+    (agent_display_name='orchestrator', status='working'). Optionally filters
     by job_id and/or project_id.
     """
     stmt = select(AgentExecution).where(
         and_(
             AgentExecution.tenant_key == tenant_key,
-            AgentExecution.agent_type == "orchestrator",
+            AgentExecution.agent_display_name == "orchestrator",
             AgentExecution.status == "working",
         )
     )

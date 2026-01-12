@@ -44,7 +44,7 @@ async def test_update_agent_mission_success(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Implementor",
             mission="Original mission text",
             status="waiting",
@@ -79,7 +79,7 @@ async def test_update_agent_mission_success(
         assert call_args[0][1] == "agent:mission_updated"
         event_data = call_args[0][2]
         assert event_data["job_id"] == agent_job.job_id
-        assert event_data["agent_type"] == "implementor"
+        assert event_data["agent_display_name"] == "implementor"
         assert event_data["agent_name"] == "Test Implementor"
         assert event_data["mission"] == new_mission
         assert event_data["project_id"] == "test-project-001"
@@ -98,7 +98,7 @@ async def test_update_mission_tenant_isolation(
             job_id="other-tenant-job",
             tenant_key="other-tenant-key-999",
             project_id="other-project",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Other Agent",
             mission="Original mission",
             status="waiting",
@@ -133,7 +133,7 @@ async def test_update_mission_validation_empty_mission(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -167,7 +167,7 @@ async def test_update_mission_validation_too_long(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -204,7 +204,7 @@ async def test_update_mission_validation_max_length_boundary(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -261,7 +261,7 @@ async def test_update_mission_missing_field(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -293,7 +293,7 @@ async def test_update_mission_unauthorized(
             job_id=f"test-job-{unique_id}",
             tenant_key=f"test_tenant_{unique_id}",
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -327,7 +327,7 @@ async def test_update_mission_preserves_other_fields(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="working",
@@ -382,7 +382,7 @@ async def test_update_mission_updates_timestamp(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",
@@ -430,7 +430,7 @@ async def test_update_mission_with_special_characters(
             job_id=f"test-job-{unique_id}",
             tenant_key=tenant_key,
             project_id="test-project-001",
-            agent_type="implementor",
+            agent_display_name="implementor",
             agent_name="Test Agent",
             mission="Original mission",
             status="waiting",

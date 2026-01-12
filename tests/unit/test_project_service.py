@@ -122,7 +122,7 @@ class TestProjectServiceCRUD:
         # Mock agent
         mock_agent = Mock(spec=AgentExecution)
         mock_agent.job_id = "agent-1"
-        mock_agent.agent_type = "implementer"
+        mock_agent.agent_display_name = "implementer"
         mock_agent.agent_name = "Test Agent"
         mock_agent.status = "active"
 
@@ -602,7 +602,7 @@ class TestProjectServiceLifecycle:
         assert "launch_prompt" in result["data"]
         assert mock_project.status == "active"
         assert len(created_jobs) == 1
-        assert created_jobs[0].agent_type == "orchestrator"
+        assert created_jobs[0].agent_display_name == "orchestrator"
 
 
 class TestProjectServiceStatus:
@@ -631,7 +631,7 @@ class TestProjectServiceStatus:
 
         # Mock agent job
         mock_agent = Mock(spec=AgentExecution)
-        mock_agent.agent_type = "implementer"
+        mock_agent.agent_display_name = "implementer"
         mock_agent.status = "active"
 
         # Mock message count

@@ -103,7 +103,7 @@ async def test_execution_plan_section_in_implementation_prompt(
         orchestrator = AgentExecution(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Test Orchestrator",
             status="working",
         )
@@ -123,7 +123,7 @@ async def test_execution_plan_section_in_implementation_prompt(
         agent = AgentExecution(
             job_id=job_id,
             tenant_key=test_user.tenant_key,
-            agent_type="implementer",
+            agent_display_name="implementer",
             agent_name="Test Implementer",
             status="waiting",
             spawned_by=orchestrator.agent_id,
@@ -233,7 +233,7 @@ async def test_execution_plan_section_formatting(
         orchestrator = AgentExecution(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Test Orchestrator",
             status="working",
         )

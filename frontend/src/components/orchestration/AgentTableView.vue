@@ -9,20 +9,20 @@
     @click:row="handleRowClick"
   >
     <!-- Agent Type Column -->
-    <template #item.agent_type="{ item }">
+    <template #item.agent_display_name="{ item }">
       <div class="d-flex align-center">
-        <v-avatar :color="getAgentTypeColor(item.agent_type)" size="32" class="mr-2">
+        <v-avatar :color="getAgentDisplayNameColor(item.agent_display_name)" size="32" class="mr-2">
           <span class="text-caption font-weight-bold white--text">
-            {{ getAgentAbbreviation(item.agent_type) }}
+            {{ getAgentAbbreviation(item.agent_display_name) }}
           </span>
         </v-avatar>
         <div class="d-flex flex-column">
-          <span class="font-weight-medium text-capitalize">{{ item.agent_name || item.agent_type }}</span>
+          <span class="font-weight-medium text-capitalize">{{ item.agent_name || item.agent_display_name }}</span>
           <span
-            v-if="item.agent_name && item.agent_name !== item.agent_type"
+            v-if="item.agent_name && item.agent_name !== item.agent_display_name"
             class="text-caption text-grey text-capitalize"
           >
-            {{ item.agent_type }}
+            {{ item.agent_display_name }}
           </span>
         </div>
       </div>
@@ -177,7 +177,7 @@ const emit = defineEmits(['row-click', 'launch-agent'])
 // Reuse shared logic from composable (NO DUPLICATION)
 const {
   getStatusColor,
-  getAgentTypeColor,
+  getAgentDisplayNameColor,
   getAgentAbbreviation,
   getMessageCounts,
   getHealthColor,
@@ -194,7 +194,7 @@ useStalenessMonitor(computed(() => props.agents))
 
 // Table headers configuration (Handover 0240b, updated for Steps column; Handover 0366d-1: Added Instance and Job ID)
 const headers = [
-  { title: 'Agent Type', key: 'agent_type', sortable: true },
+  { title: 'Agent Type', key: 'agent_display_name', sortable: true },
   { title: 'Instance', key: 'instance_number', sortable: true, align: 'center' },
   { title: 'Agent ID', key: 'agent_id', sortable: false },
   { title: 'Job ID', key: 'job_id', sortable: false },
@@ -321,7 +321,7 @@ function canCopyPrompt(agent) {
 
   // Claude Code mode: only orchestrator prompts can be copied
   if (props.usingClaudeCodeSubagents) {
-    return agent.is_orchestrator || agent.agent_type === 'orchestrator'
+    return agent.is_orchestrator || agent.agent_display_name === 'orchestrator'
   }
 
   // General CLI mode: all agent prompts can be copied

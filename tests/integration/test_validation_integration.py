@@ -384,7 +384,7 @@ class TestValidationWithRealTemplates:
         - complete_job(job_id, result, tenant_key)
         - send_message(to_agent, message, tenant_key)
         - receive_messages(agent_id, tenant_key)
-        - spawn_agent_job(agent_type, mission, tenant_key)
+        - spawn_agent_job(agent_display_name, mission, tenant_key)
         - get_agent_status(agent_id, tenant_key)
 
         Follow orchestration best practices and handle errors gracefully.

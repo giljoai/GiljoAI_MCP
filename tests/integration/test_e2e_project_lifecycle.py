@@ -63,7 +63,7 @@ class MockAgentSimulator:
     def __init__(
         self,
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         db_session: AsyncSession,
         should_fail: bool = False,
         work_duration: float = 0.1,
@@ -73,13 +73,13 @@ class MockAgentSimulator:
 
         Args:
             job_id: Agent job ID
-            agent_type: Type of agent (orchestrator, implementer, tester, etc.)
+            agent_type: Type of agent display name (orchestrator, implementer, tester, etc.)
             db_session: Database session
             should_fail: If True, agent will fail during execution
             work_duration: Simulated work duration in seconds
         """
         self.job_id = job_id
-        self.agent_type = agent_type
+        self.agent_display_name = agent_type
         self.db_session = db_session
         self.should_fail = should_fail
         self.work_duration = work_duration
@@ -103,7 +103,7 @@ class MockAgentSimulator:
             await self._do_work()
 
             # 4. Send messages to other agents (inter-agent communication)
-            if self.agent_type != "orchestrator":
+            if self.agent_display_name != "orchestrator":
                 await self._send_messages()
 
             # 5. Complete job
@@ -161,7 +161,7 @@ class MockAgentSimulator:
         job = result.scalar_one()
 
         job.progress = 50
-        job.current_task = f"Executing {self.agent_type} tasks"
+        job.current_task = f"Executing {self.agent_display_name} tasks"
         job.last_progress_at = datetime.now(timezone.utc)
 
         await self.db_session.flush()
@@ -172,7 +172,7 @@ class MockAgentSimulator:
         # Update progress again
         await self.db_session.refresh(job)
         job.progress = 100
-        job.current_task = f"Finalizing {self.agent_type} work"
+        job.current_task = f"Finalizing {self.agent_display_name} work"
         job.last_progress_at = datetime.now(timezone.utc)
 
         await self.db_session.flush()
@@ -198,7 +198,7 @@ class MockAgentSimulator:
             message = Message(
                 from_agent=self.job_id,
                 to_agent=target_agent.job_id,
-                content=f"Message from {self.agent_type} agent",
+                content=f"Message from {self.agent_display_name} agent",
                 project_id=job.project_id,
                 status="waiting",
                 created_at=datetime.now(timezone.utc),
@@ -332,7 +332,7 @@ class OrchestratorSimulator:
         agents = []
         for template in templates:
             agents.append({
-                "agent_type": template.role,  # role is the agent type
+                "agent_display_name": template.role,  # role is the agent type
                 "agent_name": template.name,
                 "template_id": template.id,
             })
@@ -340,9 +340,9 @@ class OrchestratorSimulator:
         # If no templates, use defaults
         if not agents:
             agents = [
-                {"agent_type": "implementer", "agent_name": "Code Implementer", "template_id": None},
-                {"agent_type": "tester", "agent_name": "Test Engineer", "template_id": None},
-                {"agent_type": "reviewer", "agent_name": "Code Reviewer", "template_id": None},
+                {"agent_display_name": "implementer", "agent_name": "Code Implementer", "template_id": None},
+                {"agent_display_name": "tester", "agent_name": "Test Engineer", "template_id": None},
+                {"agent_display_name": "reviewer", "agent_name": "Code Reviewer", "template_id": None},
             ]
 
         return agents
@@ -363,7 +363,7 @@ class OrchestratorSimulator:
             job = AgentExecution(
                 tenant_key=self.tenant_key,
                 project_id=self.project_id,
-                agent_type=config["agent_type"],
+                agent_display_name=config["agent_display_name"],
                 agent_name=config["agent_name"],
                 mission=f"Test mission for {config['agent_name']}",
                 status="waiting",
@@ -469,7 +469,7 @@ async def orchestrator_job(db_session, test_project, test_user) -> AgentExecutio
     job = AgentExecution(
         tenant_key=test_user.tenant_key,
         project_id=test_project.id,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         agent_name="Orchestrator",
         mission="Execute staging workflow and spawn agents",
         status="waiting",
@@ -507,13 +507,13 @@ async def mock_agent_simulator_factory(db_session):
 
     def _create_simulator(
         job_id: str,
-        agent_type: str,
+        agent_display_name: str,
         should_fail: bool = False,
         work_duration: float = 0.1,
     ) -> MockAgentSimulator:
         return MockAgentSimulator(
             job_id=job_id,
-            agent_type=agent_type,
+            agent_display_name=agent_type,
             db_session=db_session,
             should_fail=should_fail,
             work_duration=work_duration,
@@ -658,7 +658,7 @@ class TestCompleteProjectLifecycle:
                 message = Message(
                     tenant_key=tenant_key,
                     to_agents=[other_job.job_id],
-                    content=f"Message from {job.agent_type} agent",
+                    content=f"Message from {job.agent_display_name} agent",
                     project_id=project_id,
                     status="waiting",
                     created_at=datetime.now(timezone.utc),
@@ -950,13 +950,13 @@ class TestCompleteProjectLifecycle:
         """Test messages sent/received correctly between agents"""
         # Create 3 agent jobs
         jobs = []
-        for agent_type in ["implementer", "tester", "reviewer"]:
+        for agent_display_name in ["implementer", "tester", "reviewer"]:
             job = AgentExecution(
                 tenant_key=test_user.tenant_key,
                 project_id=test_project.id,
-                agent_type=agent_type,
-                agent_name=f"Test {agent_type}",
-                mission=f"Test mission for {agent_type}",
+                agent_display_name=agent_type,
+                agent_name=f"Test {agent_display_name}",
+                mission=f"Test mission for {agent_display_name}",
                 status="waiting",
                 tool_type="claude-code",
                 instance_number=1,
@@ -984,7 +984,7 @@ class TestCompleteProjectLifecycle:
             message = Message(
                 tenant_key=test_user.tenant_key,
                 to_agents=[other_job.job_id],
-                content=f"Message from {job.agent_type} agent",
+                content=f"Message from {job.agent_display_name} agent",
                 project_id=test_project.id,
                 status="waiting",
                 created_at=datetime.now(timezone.utc),

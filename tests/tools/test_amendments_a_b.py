@@ -47,7 +47,7 @@ async def test_orchestrator_job(db_session, test_project, test_tenant):
         job_id=str(uuid4()),
         project_id=test_project.id,
         tenant_key=test_tenant.tenant_key,
-        agent_type="orchestrator",
+        agent_display_name="orchestrator",
         mission="Test condensed mission with field priorities applied",
         status="waiting",
         context_budget=150000,
@@ -73,7 +73,7 @@ async def test_agent_job(db_session, test_project, test_tenant, test_orchestrato
         job_id=str(uuid4()),
         project_id=test_project.id,
         tenant_key=test_tenant.tenant_key,
-        agent_type="backend",
+        agent_display_name="backend",
         mission="Implement authentication system with JWT tokens",
         status="waiting",
         spawned_by=test_orchestrator_job.job_id,
@@ -225,7 +225,7 @@ async def test_get_agent_mission_thin_client(db_session, test_agent_job, test_te
     # Verify result structure
     assert result["success"] is True
     assert result["job_id"] == test_agent_job.job_id
-    assert result["agent_type"] == "backend"
+    assert result["agent_display_name"] == "backend"
     assert result["mission"] == test_agent_job.mission
     assert result["project_id"] == str(test_agent_job.project_id)
     assert result["thin_client"] is True
@@ -295,7 +295,7 @@ async def test_spawn_agent_job_thin_prompt(db_session, test_project, test_tenant
         mission_text = "Implement user authentication with JWT tokens, password hashing, and session management"
 
         result = await spawn_agent_job(
-            agent_type="backend",
+            agent_display_name="backend",
             agent_name="Backend Implementer",
             mission=mission_text,
             project_id=str(test_project.id),
@@ -358,7 +358,7 @@ async def test_agent_prompt_is_thin(db_session, test_project, test_tenant):
         large_mission = "\n".join([f"Task {i}: Do something complex" for i in range(500)])
 
         result = await spawn_agent_job(
-            agent_type="frontend",
+            agent_display_name="frontend",
             agent_name="Frontend Builder",
             mission=large_mission,
             project_id=str(test_project.id),
@@ -398,7 +398,7 @@ async def test_agent_mission_stored_not_embedded(db_session, test_project, test_
         mission = "SECRET_MISSION_TEXT_12345"  # Unique identifier
 
         result = await spawn_agent_job(
-            agent_type="tester",
+            agent_display_name="tester",
             agent_name="QA Tester",
             mission=mission,
             project_id=str(test_project.id),
@@ -441,7 +441,7 @@ async def test_websocket_broadcast_agent_created(db_session, test_project, test_
         from giljo_mcp.tools.orchestration import spawn_agent_job
 
         result = await spawn_agent_job(
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             agent_name="Sub-Orchestrator",
             mission="Coordinate sub-agents",
             project_id=str(test_project.id),
@@ -456,7 +456,7 @@ async def test_websocket_broadcast_agent_created(db_session, test_project, test_
 
         data = call_args.kwargs["data"]
         assert data["job_id"] == result["job_id"]
-        assert data["agent_type"] == "orchestrator"
+        assert data["agent_display_name"] == "orchestrator"
         assert data["agent_name"] == "Sub-Orchestrator"
         assert data["thin_client"] is True
         assert "prompt_tokens" in data

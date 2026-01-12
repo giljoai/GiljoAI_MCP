@@ -479,7 +479,7 @@ class PerformanceHelper:
                     tenant_key=tenant_key,
                     project_id=project.id,
                     agent_name=f"load_test_agent_{uuid.uuid4().hex[:8]}",
-                    agent_type="tester",
+                    agent_display_name="tester",
                     mission="Load testing mission",
                     status="waiting",
                 )

@@ -91,7 +91,7 @@ class AgentJobManager:
     async def spawn_agent(
         self,
         project_id: str,
-        agent_type: str,
+        agent_display_name: str,
         mission: str,
         tenant_key: str,
         agent_name: Optional[str] = None,
@@ -111,10 +111,10 @@ class AgentJobManager:
 
         Args:
             project_id: Project ID this agent belongs to
-            agent_type: Type of agent (orchestrator, analyzer, implementer, etc.)
+            agent_display_name: Display name of agent (UI label - what humans see)
             mission: Mission/instructions for the agent
             tenant_key: Tenant key for multi-tenant isolation
-            agent_name: Optional human-readable name
+            agent_name: Optional human-readable name (template lookup key)
             tool_type: AI coding tool assigned (claude-code, codex, gemini, universal)
             context_budget: Maximum context window budget in tokens
             spawned_by: Optional agent_id of parent agent that spawned this agent
@@ -126,7 +126,7 @@ class AgentJobManager:
         Example:
             >>> result = await manager.spawn_agent(
             ...     project_id="project-123",
-            ...     agent_type="analyzer",
+            ...     agent_display_name="Code Analyzer",
             ...     mission="Analyze codebase for security vulnerabilities",
             ...     tenant_key="tenant-abc"
             ... )
@@ -140,7 +140,7 @@ class AgentJobManager:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     mission=mission,
-                    job_type=agent_type,
+                    job_type=agent_display_name,
                     status="active",
                     job_metadata=job_metadata or {},
                 )
@@ -150,7 +150,7 @@ class AgentJobManager:
                     agent_id=str(uuid4()),
                     job_id=job.job_id,
                     tenant_key=tenant_key,
-                    agent_type=agent_type,
+                    agent_display_name=agent_display_name,
                     instance_number=1,  # First instance
                     status="waiting",  # Waiting to be launched
                     spawned_by=spawned_by,
@@ -167,14 +167,14 @@ class AgentJobManager:
 
                 self._logger.info(
                     f"Spawned agent: job_id={job.job_id}, agent_id={execution.agent_id}, "
-                    f"agent_type={agent_type}, project_id={project_id}"
+                    f"agent_display_name={agent_display_name}, project_id={project_id}"
                 )
 
                 return {
                     "success": True,
                     "job_id": job.job_id,
                     "agent_id": execution.agent_id,
-                    "agent_type": agent_type,
+                    "agent_display_name": agent_display_name,
                     "status": execution.status,
                 }
 
@@ -615,7 +615,7 @@ class AgentJobManager:
         Handover 0360 Feature 2: Team Discovery Tool.
 
         Enables agents to discover teammates working on the same job/project.
-        Returns execution details (agent_id, job_id, agent_type, status).
+        Returns execution details (agent_id, job_id, agent_display_name, status).
 
         Args:
             job_id: Job ID to get teammates for
@@ -628,7 +628,7 @@ class AgentJobManager:
                 {
                     "agent_id": "ae-001",
                     "job_id": "job-abc",
-                    "agent_type": "orchestrator",
+                    "agent_display_name": "Orchestrator",
                     "status": "working",
                     "instance_number": 1,
                     "agent_name": "Orchestrator Instance 1",
@@ -644,7 +644,7 @@ class AgentJobManager:
             ...     include_inactive=False
             ... )
             >>> for member in teammates:
-            ...     print(f"{member['agent_type']}: {member['status']}")
+            ...     print(f"{member['agent_display_name']}: {member['status']}")
         """
         try:
             async with self._get_session() as session:
@@ -673,7 +673,7 @@ class AgentJobManager:
                     team_members.append({
                         "agent_id": execution.agent_id,
                         "job_id": execution.job_id,
-                        "agent_type": execution.agent_type,
+                        "agent_display_name": execution.agent_display_name,
                         "status": execution.status,
                         "instance_number": execution.instance_number,
                         "agent_name": execution.agent_name,

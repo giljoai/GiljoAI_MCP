@@ -90,7 +90,7 @@ class TestOrchestratorTokenReduction:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test orchestrator for token reduction",
             job_metadata={
@@ -147,7 +147,7 @@ class TestOrchestratorTokenReduction:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={
@@ -198,7 +198,7 @@ class TestOrchestratorTokenReduction:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={
@@ -242,7 +242,7 @@ class TestOrchestratorTokenReduction:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={
@@ -304,7 +304,7 @@ class TestOrchestratorTokenReduction:
         orchestrator = AgentExecution(
             project_id=test_project.id,
             tenant_key=test_tenant,
-            agent_type="orchestrator",
+            agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
             job_metadata={
