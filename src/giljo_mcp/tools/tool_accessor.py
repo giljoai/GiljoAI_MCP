@@ -816,7 +816,7 @@ class ToolAccessor:
                             "SINGLE SOURCE OF TRUTH - MUST match template filename exactly for Task tool. "
                             f"This is the filename without .md extension (e.g., {example_str})."
                         ),
-                        "agent_type_usage": "Display category label for UI only (e.g., 'implementer').",
+                        "agent_display_name_usage": "Display category label for UI only (e.g., 'implementer').",
                         "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
                         "validation": "soft",
                         "template_locations": [
@@ -852,7 +852,7 @@ class ToolAccessor:
 
     async def spawn_agent_job(
         self,
-        agent_type: str,
+        agent_display_name: str,
         agent_name: str,
         mission: str,
         project_id: str,
@@ -861,7 +861,7 @@ class ToolAccessor:
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
         return await self._orchestration_service.spawn_agent_job(
-            agent_type=agent_type,
+            agent_display_name=agent_display_name,
             agent_name=agent_name,
             mission=mission,
             project_id=project_id,
@@ -883,9 +883,9 @@ class ToolAccessor:
 
     # Agent Coordination Tools
 
-    async def get_pending_jobs(self, agent_type: str, tenant_key: str) -> dict[str, Any]:
-        """Get pending jobs for agent type (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_pending_jobs(agent_type=agent_type, tenant_key=tenant_key)
+    async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
+        """Get pending jobs for agent display name (delegates to OrchestrationService)"""
+        return await self._orchestration_service.get_pending_jobs(agent_display_name=agent_display_name, tenant_key=tenant_key)
 
     async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
@@ -929,7 +929,7 @@ class ToolAccessor:
                     {
                         "agent_id": str,
                         "job_id": str,
-                        "agent_type": str,
+                        "agent_display_name": str,
                         "status": str,
                         "instance_number": int,
                         "agent_name": str,
@@ -1010,7 +1010,7 @@ class ToolAccessor:
                     agent_id=successor_agent_id,
                     job_id=current_job_id,  # SAME job_id (work order persists)
                     tenant_key=tenant_key,
-                    agent_type="orchestrator",
+                    agent_display_name="orchestrator",
                     agent_name=current_execution.agent_name or "Orchestrator",
                     instance_number=successor_instance,
                     status="waiting",
@@ -1214,7 +1214,7 @@ class ToolAccessor:
                         agent_id=agent_id,
                         job_id=job_id,
                         tenant_key=tenant_key,
-                        agent_type="orchestrator",
+                        agent_display_name="orchestrator",
                         agent_name="Orchestrator",
                         instance_number=1,
                         status="waiting",

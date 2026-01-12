@@ -323,7 +323,7 @@ You can spawn specialist agents as sub-agents using the Task tool.
 ```python
 # Step 1: Create agent job via MCP
 result = await spawn_agent_job(
-    agent_type="implementer",
+    agent_display_name="implementer",
     agent_name="Backend Implementer",
     mission="Implement user authentication",
     project_id=project_id,
@@ -563,7 +563,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
             - agent_id: UUID (WHO is executing)
             - job_id: UUID (WHAT work order)
             - agent_name: Human-readable name
-            - agent_type: Type (backend, frontend, etc.)
+            - agent_display_name: Type (backend, frontend, etc.)
             - mission: Agent-specific mission
             - project_description: Relevant project context
             - thin_client: True (architecture flag)
@@ -634,7 +634,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_execution.mission_acknowledged_at = datetime.now(timezone.utc)
                     await session.commit()
                     logger.info(
-                        f"[JOB SIGNALING] Mission acknowledged: {agent_execution.agent_type}",
+                        f"[JOB SIGNALING] Mission acknowledged: {agent_execution.agent_display_name}",
                         extra={"agent_id": agent_id, "job_id": job_id},
                     )
 
@@ -642,7 +642,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 estimated_tokens = len(agent_job.mission or "") // 4
 
                 logger.info(
-                    f"[THIN CLIENT] Agent mission fetched: {agent_execution.agent_type}",
+                    f"[THIN CLIENT] Agent mission fetched: {agent_execution.agent_display_name}",
                     extra={"agent_id": agent_id, "job_id": job_id, "tokens": estimated_tokens},
                 )
 
@@ -650,8 +650,8 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     "success": True,
                     "agent_id": agent_id,  # Phase C: WHO is executing
                     "job_id": job_id,  # Phase C: WHAT work order
-                    "agent_name": agent_execution.agent_name or agent_execution.agent_type,
-                    "agent_type": agent_execution.agent_type,
+                    "agent_name": agent_execution.agent_name or agent_execution.agent_display_name,
+                    "agent_display_name": agent_execution.agent_display_name,
                     "mission": agent_job.mission or "",
                     "project_id": str(agent_job.project_id),
                     "parent_job_id": str(agent_execution.spawned_by) if agent_execution.spawned_by else None,
@@ -752,7 +752,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
 
     @mcp.tool()
     async def spawn_agent_job(
-        agent_type: str,
+        agent_display_name: str,
         agent_name: str,
         mission: str,
         project_id: str,
@@ -798,7 +798,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
         - Retiring orchestrator provides its own agent_id to spawn successor
 
         Args:
-            agent_type: Type of agent (backend-tester, frontend-dev, etc.)
+            agent_display_name: Type of agent (backend-tester, frontend-dev, etc.)
             agent_name: Human-readable name for the agent
             mission: Agent's specific job assignment (portion of overall Project.mission)
             project_id: Project UUID
@@ -832,7 +832,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
 
                 # ORCHESTRATOR DUPLICATION PREVENTION
                 # Check if we're trying to create an orchestrator
-                if agent_type == "orchestrator":
+                if agent_display_name == "orchestrator":
                     # Query for existing orchestrator EXECUTIONS in this project with active statuses
                     result = await session.execute(
                         select(AgentExecution)
@@ -841,7 +841,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                             and_(
                                 AgentJob.project_id == project_id,
                                 AgentJob.tenant_key == tenant_key,
-                                AgentExecution.agent_type == "orchestrator",
+                                AgentExecution.agent_display_name == "orchestrator",
                                 AgentExecution.status.in_(["waiting", "working"]),
                             )
                         )
@@ -893,7 +893,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     tenant_key=tenant_key,
                     project_id=project_id,
                     mission=mission,  # STORED HERE, not in prompt
-                    job_type=agent_type,  # AgentJob uses job_type
+                    job_type=agent_display_name,  # AgentJob uses job_type
                     status="active",  # AgentJob uses 'active'
                     job_metadata={
                         "created_via": "thin_client_spawn",
@@ -911,7 +911,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     agent_id=agent_id,
                     job_id=job_id,
                     tenant_key=tenant_key,
-                    agent_type=agent_type,
+                    agent_display_name=agent_display_name,
                     agent_name=agent_name,
                     instance_number=1,  # First instance
                     status="waiting",  # AgentExecution uses 'waiting'
@@ -923,7 +923,7 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 await session.commit()
 
                 # Generate THIN agent prompt (~10 lines)
-                thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
+                thin_agent_prompt = f"""I am {agent_name} (Agent {agent_display_name}) for Project "{project.name}".
 
 ## CRITICAL: MCP TOOL USAGE
 
@@ -977,7 +977,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                                 "project_id": project_id,
                                 "agent_id": agent_id,  # Executor UUID
                                 "job_id": job_id,  # Work order UUID
-                                "agent_type": agent_type,
+                                "agent_display_name": agent_display_name,
                                 "agent_name": agent_name,
                                 "status": "waiting",
                                 "thin_client": True,
@@ -985,7 +985,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                                 "mission_tokens": mission_tokens,
                             },
                         )
-                        logger.info(f"[WEBSOCKET] Agent spawned broadcast sent: {agent_name} ({agent_type})")
+                        logger.info(f"[WEBSOCKET] Agent spawned broadcast sent: {agent_name} ({agent_display_name})")
                 except Exception as ws_error:
                     logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
@@ -998,14 +998,14 @@ Your full mission is in the database. Call get_agent_mission to retrieve it.
                     "prompt_tokens": prompt_tokens,
                     "mission_tokens": mission_tokens,
                     # Handover 0383 Option B: Explicit Task tool usage
-                    "task_tool_usage": f"Task(subagent_type='{agent_name}', ...)",
+                    "task_tool_usage": f"Task(subagent_display_name='{agent_name}', ...)",
                 }
 
-                # Handover 0383 Option C: Warning when agent_name != agent_type
-                if agent_name != agent_type:
+                # Handover 0383 Option C: Warning when agent_name != agent_display_name
+                if agent_name != agent_display_name:
                     response["warning"] = (
-                        f"agent_name '{agent_name}' differs from agent_type '{agent_type}'. "
-                        "Task tool MUST use agent_name (template filename), NOT agent_type."
+                        f"agent_name '{agent_name}' differs from agent_display_name '{agent_display_name}'. "
+                        "Task tool MUST use agent_name (template filename), NOT agent_display_name."
                     )
 
                 return response
@@ -2034,7 +2034,7 @@ def _get_spawning_limits() -> dict:
         Dict with agent spawning limits
     """
     return {
-        "max_agent_types": 8,
+        "max_agent_display_names": 8,
         "max_instances_per_type": "unlimited",
         "recommended_total": "2-5 agents for typical projects",
     }
@@ -2340,7 +2340,7 @@ async def get_orchestrator_instructions(
                     "instruction": (
                         "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
                         "The agent_name parameter must EXACTLY match one of the allowed template names. "
-                        "Use agent_type for display category labels. "
+                        "Use agent_display_name for display category labels. "
                         f"Allowed agent names: {allowed_agent_names}"
                     ),
                 }
@@ -2428,8 +2428,8 @@ async def get_agent_mission(
             return {
                 "agent_id": agent_id,  # Phase C: WHO is executing
                 "job_id": job_id,  # Phase C: WHAT work order
-                "agent_name": agent_execution.agent_name or agent_execution.agent_type,
-                "agent_type": agent_execution.agent_type,
+                "agent_name": agent_execution.agent_name or agent_execution.agent_display_name,
+                "agent_display_name": agent_execution.agent_display_name,
                 "mission": agent_job.mission or "",
                 "thin_client": True,
             }
@@ -2526,7 +2526,7 @@ async def get_generic_agent_template(
 
 
 async def spawn_agent_job(
-    agent_type: str,
+    agent_display_name: str,
     agent_name: str,
     mission: str,
     project_id: str,
@@ -2540,7 +2540,7 @@ async def spawn_agent_job(
     Spawn agent job (standalone for testing).
 
     Args:
-        agent_type: Type of agent
+        agent_display_name: Type of agent
         agent_name: Name of agent
         mission: Agent mission
         project_id: Project UUID
@@ -2561,7 +2561,7 @@ async def spawn_agent_job(
     # If session is provided, use it directly (for testing with transaction isolation)
     if session is not None:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
+            session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
     # Otherwise, create session from db_manager
@@ -2572,13 +2572,13 @@ async def spawn_agent_job(
 
     async with db_manager.get_session_async() as session:
         return await _spawn_agent_job_impl(
-            session, agent_type, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
+            session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
 
 async def _spawn_agent_job_impl(
     session,
-    agent_type: str,
+    agent_display_name: str,
     agent_name: str,
     mission: str,
     project_id: str,
@@ -2602,10 +2602,10 @@ async def _spawn_agent_job_impl(
     from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
     try:
-        # Handover 0351: Validate agent_name against active templates (NOT agent_type)
+        # Handover 0351: Validate agent_name against active templates (NOT agent_display_name)
         # agent_name is the SINGLE SOURCE OF TRUTH for template matching
         # Skip validation for orchestrator (special case handled separately)
-        if agent_type != "orchestrator":
+        if agent_display_name != "orchestrator":
             # Fetch active agent template names
             template_result = await session.execute(
                 select(AgentTemplate.name).where(
@@ -2623,7 +2623,7 @@ async def _spawn_agent_job_impl(
                     f"Invalid agent_name '{agent_name}' - not in valid templates",
                     extra={
                         "agent_name": agent_name,
-                        "agent_type": agent_type,
+                        "agent_display_name": agent_display_name,
                         "valid_names": valid_agent_names,
                         "project_id": project_id,
                         "tenant_key": tenant_key,
@@ -2635,14 +2635,14 @@ async def _spawn_agent_job_impl(
                     "hint": (
                         "Handover 0351: The agent_name parameter must EXACTLY match a template name (e.g., 'implementer', 'tester'). "
                         "agent_name is the SINGLE SOURCE OF TRUTH for template matching. "
-                        "Use agent_type for categorization (e.g., 'worker', 'reviewer')."
+                        "Use agent_display_name for categorization (e.g., 'worker', 'reviewer')."
                     ),
                     "valid_agent_names": valid_agent_names,
                 }
 
         # ORCHESTRATOR DUPLICATION PREVENTION
         # Check if we're trying to create an orchestrator
-        if agent_type == "orchestrator":
+        if agent_display_name == "orchestrator":
             # Query for existing orchestrator EXECUTIONS in this project with active statuses
             result = await session.execute(
                 select(AgentExecution)
@@ -2651,7 +2651,7 @@ async def _spawn_agent_job_impl(
                     and_(
                         AgentJob.project_id == project_id,
                         AgentJob.tenant_key == tenant_key,
-                        AgentExecution.agent_type == "orchestrator",
+                        AgentExecution.agent_display_name == "orchestrator",
                         AgentExecution.status.in_(["waiting", "working"]),
                     )
                 )
@@ -2703,7 +2703,7 @@ async def _spawn_agent_job_impl(
             tenant_key=tenant_key,
             project_id=project_id,
             mission=mission,
-            job_type=agent_type,  # AgentJob uses job_type
+            job_type=agent_display_name,  # AgentJob uses job_type
             status="active",  # AgentJob uses 'active'
             job_metadata={},
         )
@@ -2716,7 +2716,7 @@ async def _spawn_agent_job_impl(
             agent_id=agent_id,
             job_id=job_id,
             tenant_key=tenant_key,
-            agent_type=agent_type,
+            agent_display_name=agent_display_name,
             agent_name=agent_name,
             instance_number=1,  # First instance
             status="waiting",  # AgentExecution uses 'waiting'
@@ -2789,7 +2789,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "project_id": project_id,
                         "agent_id": agent_id,  # Executor UUID
                         "job_id": job_id,  # Work order UUID
-                        "agent_type": agent_type,
+                        "agent_display_name": agent_display_name,
                         "agent_name": agent_name,
                         "status": "waiting",
                         "thin_client": True,
@@ -2809,14 +2809,14 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,
             # Handover 0383 Option B: Explicit Task tool usage
-            "task_tool_usage": f"Task(subagent_type='{agent_name}', ...)",
+            "task_tool_usage": f"Task(subagent_display_name='{agent_name}', ...)",
         }
 
-        # Handover 0383 Option C: Warning when agent_name != agent_type
-        if agent_name != agent_type:
+        # Handover 0383 Option C: Warning when agent_name != agent_display_name
+        if agent_name != agent_display_name:
             response["warning"] = (
-                f"agent_name '{agent_name}' differs from agent_type '{agent_type}'. "
-                "Task tool MUST use agent_name (template filename), NOT agent_type."
+                f"agent_name '{agent_name}' differs from agent_display_name '{agent_display_name}'. "
+                "Task tool MUST use agent_name (template filename), NOT agent_display_name."
             )
 
         return response

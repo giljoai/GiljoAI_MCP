@@ -1414,7 +1414,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "success": True,
                     "agent_id": execution.agent_id,
                     "job_id": execution.job_id,
-                    "agent_type": execution.agent_type,
+                    "agent_display_name": execution.agent_display_name,
                     "instance_number": execution.instance_number,
                     "context_history": context_history,
                 }
@@ -1478,7 +1478,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     succession_chain.append({
                         "agent_id": execution.agent_id,
                         "instance_number": execution.instance_number,
-                        "agent_type": execution.agent_type,
+                        "agent_display_name": execution.agent_display_name,
                         "status": execution.status,
                         "context_used": execution.context_used,
                         "context_budget": execution.context_budget,
@@ -1912,7 +1912,7 @@ async def get_context_history(
                 "success": True,
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
-                "agent_type": execution.agent_type,
+                "agent_display_name": execution.agent_display_name,
                 "instance_number": execution.instance_number,
                 "context_history": context_history,
             }
@@ -1980,7 +1980,7 @@ async def get_succession_context(
                 succession_chain.append({
                     "agent_id": execution.agent_id,
                     "instance_number": execution.instance_number,
-                    "agent_type": execution.agent_type,
+                    "agent_display_name": execution.agent_display_name,
                     "status": execution.status,
                     "context_used": execution.context_used,
                     "context_budget": execution.context_budget,

@@ -247,7 +247,7 @@ async def get_agent_status(
         - agent_id: Executor UUID
         - job_id: Work order UUID (context - which job is this agent working on)
         - status: Execution status (waiting, working, blocked, complete, etc.)
-        - agent_type: Type of agent (orchestrator, implementer, etc.)
+        - agent_display_name: Type of agent (orchestrator, implementer, etc.)
         - instance_number: Sequential instance number (1, 2, 3, ...)
         - progress: Completion progress (0-100%)
         - current_task: Description of current task
@@ -339,7 +339,7 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
         "agent_id": execution.agent_id,
         "job_id": execution.job_id,  # Context: which job is this agent working on
         "status": execution.status,
-        "agent_type": execution.agent_type,
+        "agent_display_name": execution.agent_display_name,
         "instance_number": execution.instance_number,
         "progress": execution.progress,
     }

@@ -291,10 +291,10 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "agent_type": {"type": "string", "description": "Agent type (implementer, tester, etc.)"},
+                    "agent_display_name": {"type": "string", "description": "Agent type (implementer, tester, etc.)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["agent_type", "tenant_key"],
+                "required": ["agent_display_name", "tenant_key"],
             },
         },
         {
@@ -380,13 +380,13 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "agent_type": {"type": "string", "description": "Type of agent"},
+                    "agent_display_name": {"type": "string", "description": "Type of agent"},
                     "agent_name": {"type": "string", "description": "Agent name"},
                     "mission": {"type": "string", "description": "Agent mission"},
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_type", "agent_name", "mission", "project_id", "tenant_key"],
+                "required": ["agent_display_name", "agent_name", "mission", "project_id", "tenant_key"],
             },
         },
         {
