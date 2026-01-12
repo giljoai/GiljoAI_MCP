@@ -27,7 +27,7 @@ import pytest_asyncio
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.services.message_service_0366b import MessageService
+from src.giljo_mcp.services.message_service import MessageService
 
 
 # ============================================================================

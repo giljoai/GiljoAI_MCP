@@ -13,35 +13,6 @@ class WebSocketService:
     """Service class for WebSocket operations"""
 
     @staticmethod
-    async def notify_agent_status(websocket_manager, agent_name: str, project_id: str, status: str, **kwargs):
-        """
-        Helper to notify agent status changes.
-        
-        Handover 0113: Added support for failure_reason and decommissioned_at.
-        """
-        if not websocket_manager:
-            return
-
-        try:
-            # Use the modern WebSocket API with proper parameters
-            await websocket_manager.broadcast_agent_update(
-                agent_id=kwargs.get("agent_id", agent_name),
-                agent_name=agent_name,
-                project_id=project_id,
-                tenant_key=kwargs.get("tenant_key", "default"),
-                status=status,
-                context_usage=kwargs.get("context_usage", 0),
-                context_delta=kwargs.get("context_delta"),
-                current_task=kwargs.get("current_task"),
-                progress_percentage=kwargs.get("progress_percentage"),
-                meta_data=kwargs.get("meta_data", {}),
-                failure_reason=kwargs.get("failure_reason"),  # Handover 0113
-                decommissioned_at=kwargs.get("decommissioned_at"),  # Handover 0113
-            )
-        except Exception:
-            logger.exception("Failed to broadcast agent status")
-
-    @staticmethod
     async def notify_message(websocket_manager, message_id: str, project_id: str, update_type: str, **kwargs):
         """Helper to notify message updates"""
         if not websocket_manager:
@@ -186,65 +157,6 @@ class WebSocketService:
             message=message,
             project_id=project_id,
         )
-
-    @staticmethod
-    async def notify_sub_agent_spawned(
-        websocket_manager,
-        interaction_id: str,
-        parent_agent_name: str,
-        sub_agent_name: str,
-        project_id: str,
-        mission: str,
-        start_time: str,
-        **kwargs,
-    ):
-        """Helper to notify sub-agent spawn events"""
-        if not websocket_manager:
-            return
-
-        try:
-            await websocket_manager.broadcast_sub_agent_spawned(
-                interaction_id=interaction_id,
-                parent_agent_name=parent_agent_name,
-                sub_agent_name=sub_agent_name,
-                project_id=project_id,
-                mission=mission,
-                start_time=start_time,
-                meta_data=kwargs,
-            )
-        except Exception:
-            logger.exception("Failed to broadcast sub-agent spawn")
-
-    @staticmethod
-    async def notify_sub_agent_completed(
-        websocket_manager,
-        interaction_id: str,
-        sub_agent_name: str,
-        parent_agent_name: str,
-        project_id: str,
-        status: str,
-        duration_seconds: int,
-        **kwargs,
-    ):
-        """Helper to notify sub-agent completion events"""
-        if not websocket_manager:
-            return
-
-        try:
-            await websocket_manager.broadcast_sub_agent_completed(
-                interaction_id=interaction_id,
-                sub_agent_name=sub_agent_name,
-                parent_agent_name=parent_agent_name,
-                project_id=project_id,
-                status=status,
-                duration_seconds=duration_seconds,
-                tokens_used=kwargs.get("tokens_used"),
-                result=kwargs.get("result"),
-                error_message=kwargs.get("error_message"),
-                meta_data=kwargs.get("meta_data"),
-            )
-        except Exception:
-            logger.exception("Failed to broadcast sub-agent completion")
 
     @staticmethod
     def get_connection_stats(websocket_manager) -> dict[str, Any]:
