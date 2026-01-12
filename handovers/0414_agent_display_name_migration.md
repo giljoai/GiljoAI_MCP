@@ -2,8 +2,52 @@
 
 **Status**: ACTIVE
 **Created**: 2026-01-11
-**Work In**: `master` branch (commit `75b9a4a9`)
+**Work In**: `master` branch
 **Methodology**: TDD with Subagents
+
+---
+
+## Fresh Agent Start Prompt
+
+Copy this prompt to start a new agent on this handover:
+
+```
+You are starting Handover 0414: Rename `agent_type` to `agent_display_name` across the GiljoAI MCP codebase.
+
+READ FIRST:
+1. F:\GiljoAI_MCP\CLAUDE.md (project context)
+2. F:\GiljoAI_MCP\handovers\0414_agent_display_name_migration.md (this handover - full details)
+3. F:\GiljoAI_MCP\handovers\Reference_docs\QUICK_LAUNCH.txt (TDD discipline)
+
+CRITICAL CONTEXT:
+- `agent_name` = NORTH STAR (template lookup key for color, rules, behavior)
+- `agent_display_name` = UI LABEL ONLY (what humans see on agent cards)
+- The old field `agent_type` was ambiguous - we're renaming it to `agent_display_name`
+
+START WITH PHASE 0414a (Inventory):
+Your first task is to create a COMPLETE inventory of ALL `agent_type` occurrences before changing anything.
+
+Use the `deep-researcher` subagent to search:
+- Backend: src/giljo_mcp/, api/, tests/
+- Frontend: frontend/src/
+- Database: Check actual column names
+
+Categorize findings into:
+1. DATABASE (SQLAlchemy models, migrations)
+2. API_SCHEMA (Pydantic models, WebSocket events)
+3. SERVICE_LAYER (services, repositories)
+4. MCP_TOOLS (tool parameters/responses)
+5. FRONTEND (Vue components, composables, stores)
+6. TEST_FIXTURES (test data, assertions)
+7. ZOMBIE_CODE (candidates for removal in 0414c)
+
+Output: Create F:\GiljoAI_MCP\handovers\0414a_inventory_agent_type.md with complete categorized inventory.
+
+DO NOT make any code changes until inventory is complete and approved.
+DO NOT skip phases - they are sequential for a reason.
+
+Principles: Inventory first, TDD, subagents, no bandaids, Chrome extension testing.
+```
 
 ---
 
