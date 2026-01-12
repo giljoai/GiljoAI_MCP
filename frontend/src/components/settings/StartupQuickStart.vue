@@ -16,6 +16,8 @@
                 hide-details
                 color="secondary"
                 class="checklist-item-checkbox"
+                false-icon="mdi-radiobox-blank"
+                true-icon="mdi-radiobox-marked"
                 :aria-label="item.label"
                 @update:model-value="() => handleChecklistToggle(item)"
               />
