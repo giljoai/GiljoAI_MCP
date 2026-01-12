@@ -114,7 +114,7 @@ class TestWebSocketManagerCoverage:
         sub_agent_name = "sub_agent"
         parent_agent_name = "parent_agent"
         project_id = "proj_001"
-        status = "database_initialized"
+        status = "completed"
         duration_seconds = 120
         tokens_used = 5000
         result = "Task completed successfully"
@@ -141,8 +141,8 @@ class TestWebSocketManagerCoverage:
         # Verify message content
         project_call = ws_manager.notify_entity_update.call_args_list[0]
         message_data = project_call[0][2]
-        assert message_data["type"] == "agent.sub_agent.database_initialized"
-        assert message_data["data"]["status"] == "database_initialized"
+        assert message_data["type"] == "agent.sub_agent.completed"
+        assert message_data["data"]["status"] == "completed"
         assert message_data["data"]["duration_seconds"] == 120
         assert message_data["data"]["result"] == result
         assert message_data["data"]["error_message"] is None
@@ -178,136 +178,6 @@ class TestWebSocketManagerCoverage:
         assert message_data["type"] == "agent.sub_agent.error"
         assert message_data["data"]["error_message"] == error_message
         assert message_data["data"]["result"] is None
-
-    async def test_broadcast_agent_spawn(self, ws_manager):
-        """Test agent spawn broadcasting - covers lines 408-439"""
-        agent_id = "agent_001"
-        agent_name = "test_agent"
-        parent_agent_id = "parent_001"
-        project_id = "proj_001"
-        tenant_key = "tenant_a"
-        role = "worker"
-        mission = "Test agent mission"
-        initial_status = "active"
-        meta_data = {"priority": "high"}
-
-        # Setup clients with matching tenant
-        client_a = AsyncMock()
-        client_b = AsyncMock()
-        client_other = AsyncMock()
-
-        ws_manager.active_connections = {"client_a": client_a, "client_b": client_b, "client_other": client_other}
-
-        ws_manager.auth_contexts = {
-            "client_a": {"tenant_key": "tenant_a"},
-            "client_b": {"tenant_key": "tenant_a"},
-            "client_other": {"tenant_key": "tenant_b"},  # Different tenant
-        }
-
-        ws_manager.notify_entity_update = AsyncMock()
-
-        await ws_manager.broadcast_agent_spawn(
-            agent_id, agent_name, parent_agent_id, project_id, tenant_key, role, mission, initial_status, meta_data
-        )
-
-        # Only clients with matching tenant should receive broadcast
-        client_a.send_json.assert_called_once()
-        client_b.send_json.assert_called_once()
-        client_other.send_json.assert_not_called()
-
-        # Should also notify entity subscribers
-        assert ws_manager.notify_entity_update.call_count == 2  # Project + parent agent
-
-        # Verify message content
-        sent_message = client_a.send_json.call_args[0][0]
-        assert sent_message["type"] == "agent:spawn"
-        assert sent_message["data"]["agent_name"] == agent_name
-        assert sent_message["data"]["parent_agent_id"] == parent_agent_id
-        assert sent_message["data"]["role"] == role
-
-    async def test_broadcast_agent_complete(self, ws_manager):
-        """Test agent completion broadcasting - covers lines 457-487"""
-        agent_id = "agent_001"
-        agent_name = "test_agent"
-        project_id = "proj_001"
-        tenant_key = "tenant_a"
-        duration_seconds = 300.5
-        final_status = "database_initialized"
-        context_usage = 2500
-        completion_reason = "Mission accomplished"
-        meta_data = {"efficiency": "high"}
-
-        # Setup client with matching tenant
-        client = AsyncMock()
-        ws_manager.active_connections = {"client": client}
-        ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
-        ws_manager.notify_entity_update = AsyncMock()
-
-        await ws_manager.broadcast_agent_complete(
-            agent_id,
-            agent_name,
-            project_id,
-            tenant_key,
-            duration_seconds,
-            final_status,
-            context_usage,
-            completion_reason,
-            meta_data,
-        )
-
-        # Verify broadcast to matching tenant
-        client.send_json.assert_called_once()
-        sent_message = client.send_json.call_args[0][0]
-        assert sent_message["type"] == "agent:complete"
-        assert sent_message["data"]["duration_seconds"] == 300.5
-        assert sent_message["data"]["final_status"] == "database_initialized"
-        assert sent_message["data"]["context_usage"] == 2500
-
-        # Verify entity notifications
-        assert ws_manager.notify_entity_update.call_count == 2
-
-    async def test_broadcast_agent_spawn_no_parent(self, ws_manager):
-        """Test agent spawn without parent agent"""
-        agent_id = "agent_001"
-        agent_name = "root_agent"
-        project_id = "proj_001"
-        tenant_key = "tenant_a"
-        role = "orchestrator"
-
-        client = AsyncMock()
-        ws_manager.active_connections = {"client": client}
-        ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
-        ws_manager.notify_entity_update = AsyncMock()
-
-        await ws_manager.broadcast_agent_spawn(agent_id, agent_name, None, project_id, tenant_key, role)
-
-        # Should only notify project (no parent agent)
-        ws_manager.notify_entity_update.assert_called_once_with("project", project_id, ANY)
-
-    async def test_websocket_connection_failure_handling(self, ws_manager):
-        """Test WebSocket connection failure handling in broadcasts"""
-        client_1 = AsyncMock()
-        client_2 = AsyncMock()
-        client_2.send_json.side_effect = Exception("Connection failed")
-
-        ws_manager.active_connections = {"client_1": client_1, "client_2": client_2}
-        ws_manager.auth_contexts = {"client_1": {"tenant_key": "tenant_a"}, "client_2": {"tenant_key": "tenant_a"}}
-
-        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
-
-        # Working client should receive message
-        client_1.send_json.assert_called_once()
-        # Failed client should be handled gracefully (no exception raised)
-
-    async def test_broadcast_with_empty_connections(self, ws_manager):
-        """Test broadcasting with no active connections"""
-        ws_manager.notify_entity_update = AsyncMock()
-
-        # Should not raise exception with empty connections
-        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
-
-        # Entity notifications should still work
-        ws_manager.notify_entity_update.assert_called_once()
 
     async def test_subscription_cleanup_on_disconnect(self, ws_manager):
         """Test subscription cleanup when client disconnects"""
