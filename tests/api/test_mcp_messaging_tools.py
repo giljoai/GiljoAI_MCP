@@ -244,7 +244,7 @@ async def test_agents(
             tenant_key=test_project.tenant_key,
             project_id=test_project.id,
             job_id=str(uuid.uuid4()),
-            agent_display_name=agent_type,
+            agent_display_name=agent_display_name,
             agent_name=agent_name,
             mission=mission,
             status="working",

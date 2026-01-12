@@ -120,8 +120,8 @@ class TestGetPendingJobs:
         assert result["count"] == 0
         assert result["jobs"] == []
 
-    def test_get_pending_jobs_filters_by_agent_type(self, coordination_tools, job_manager, tenant_key):
-        """Test that get_pending_jobs filters by agent_type."""
+    def test_get_pending_jobs_filters_by_agent_display_name(self, coordination_tools, job_manager, tenant_key):
+        """Test that get_pending_jobs filters by agent_display_name."""
         # Create jobs for different agent types
         job_impl = job_manager.create_job(
             tenant_key=tenant_key,
@@ -170,13 +170,13 @@ class TestGetPendingJobs:
         job_ids = [job["job_id"] for job in result["jobs"]]
         assert job_tenant2.job_id not in job_ids
 
-    def test_get_pending_jobs_validation_empty_agent_type(self, coordination_tools, tenant_key):
-        """Test validation for empty agent_type."""
+    def test_get_pending_jobs_validation_empty_agent_display_name(self, coordination_tools, tenant_key):
+        """Test validation for empty agent_display_name."""
         get_pending_jobs = coordination_tools["get_pending_jobs"]
         result = get_pending_jobs(agent_display_name="", tenant_key=tenant_key)
 
         assert result["status"] == "error"
-        assert "agent_type cannot be empty" in result["error"]
+        assert "agent_display_name cannot be empty" in result["error"]
         assert result["count"] == 0
 
     def test_get_pending_jobs_validation_empty_tenant_key(self, coordination_tools):

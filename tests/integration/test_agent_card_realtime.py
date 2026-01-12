@@ -445,7 +445,7 @@ class TestAgentCardRealTimeBroadcasting:
                 data={
                     "project_id": test_project_0111.id,
                     "agent_id": str(uuid4()),
-                    "agent_display_name": agent_type,
+                    "agent_display_name": agent_display_name,
                     "agent_name": agent_name,
                     "status": "pending",
                 },

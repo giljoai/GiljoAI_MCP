@@ -155,7 +155,7 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
 
     Per Handover 0333, Claude Code mode should:
     - Explain Task tool usage
-    - Clarify agent_type vs agent_name parameters
+    - Clarify agent_display_name vs agent_name parameters
     - NOT include shell commands
     """
     tenant_key = "test-tenant-3"

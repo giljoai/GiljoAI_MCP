@@ -1,18 +1,18 @@
 """
-Tests for agent_type → agent_display_name in API schemas (Handover 0414b).
+Tests for agent_display_name → agent_display_name in API schemas (Handover 0414b).
 
 RED Phase (TDD): These tests define expected behavior AFTER migration.
-Tests will FAIL because API schemas still use agent_type field.
+Tests will FAIL because API schemas still use agent_display_name field.
 
 Semantic Meaning:
 - agent_name = NORTH STAR (template lookup key) - KEEP
 - agent_display_name = UI LABEL (what humans see) - NEW NAME
-- agent_type = OLD ambiguous name - WILL BE RENAMED
+- agent_display_name = OLD ambiguous name - WILL BE RENAMED
 
 Migration Target:
-- Request schemas: agent_type → agent_display_name
-- Response schemas: agent_type → agent_display_name
-- WebSocket events: agent_type → agent_display_name
+- Request schemas: agent_display_name → agent_display_name
+- Response schemas: agent_display_name → agent_display_name
+- WebSocket events: agent_display_name → agent_display_name
 - Keep: agent_name unchanged (template lookup key)
 
 Affected Schemas:
@@ -23,7 +23,7 @@ Affected Schemas:
 Expected Failures:
 - ValidationError: Field 'agent_display_name' not found in schema
 - KeyError: 'agent_display_name' not in response JSON
-- AssertionError: 'agent_type' should not be present after migration
+- AssertionError: 'agent_display_name' should not be present after migration
 """
 
 import pytest
@@ -44,7 +44,7 @@ class TestSpawnAgentRequestSchema:
         Test that SpawnAgentRequest schema has agent_display_name field.
 
         EXPECTED FAILURE: ValidationError - 'agent_display_name' is not a valid field
-        Reason: Schema currently uses 'agent_type' field.
+        Reason: Schema currently uses 'agent_display_name' field.
         """
         # Create request with NEW field name (will fail)
         request = SpawnAgentRequest(
@@ -58,12 +58,12 @@ class TestSpawnAgentRequestSchema:
         assert request.agent_display_name == "System Architect"
         assert request.agent_name == "system-architect"
 
-    def test_spawn_agent_request_does_not_have_agent_type_field(self):
+    def test_spawn_agent_request_does_not_have_agent_display_name_field(self):
         """
-        Test that SpawnAgentRequest does NOT have agent_type field after migration.
+        Test that SpawnAgentRequest does NOT have agent_display_name field after migration.
 
         EXPECTED FAILURE: Test will pass NOW but should FAIL after migration
-        Reason: agent_type currently exists but should be removed.
+        Reason: agent_display_name currently exists but should be removed.
         """
         request_dict = {
             "agent_display_name": "TDD Implementor",
@@ -77,15 +77,15 @@ class TestSpawnAgentRequestSchema:
         request = SpawnAgentRequest(**request_dict)
         assert hasattr(request, "agent_display_name")
 
-        # Should NOT have agent_type attribute
-        assert not hasattr(request, "agent_type"), "agent_type should not exist after migration"
+        # Should NOT have agent_display_name attribute
+        assert not hasattr(request, "agent_display_name"), "agent_display_name should not exist after migration"
 
     def test_spawn_agent_request_validation(self):
         """
         Test that SpawnAgentRequest validates agent_display_name field.
 
         EXPECTED FAILURE: ValidationError on missing agent_display_name
-        Reason: Schema currently requires agent_type, not agent_display_name.
+        Reason: Schema currently requires agent_display_name, not agent_display_name.
         """
         # Missing agent_display_name should fail
         with pytest.raises(ValidationError) as exc_info:
@@ -108,7 +108,7 @@ class TestJobResponseSchema:
         Test that JobResponse schema has agent_display_name field.
 
         EXPECTED FAILURE: ValidationError - 'agent_display_name' is not a valid field
-        Reason: Schema currently uses 'agent_type' field.
+        Reason: Schema currently uses 'agent_display_name' field.
         """
         from datetime import datetime, timezone
 
@@ -130,12 +130,12 @@ class TestJobResponseSchema:
         assert response.agent_display_name == "Documentation Manager"
         assert response.agent_name == "documentation-manager"
 
-    def test_job_response_does_not_have_agent_type_field(self):
+    def test_job_response_does_not_have_agent_display_name_field(self):
         """
-        Test that JobResponse does NOT have agent_type field after migration.
+        Test that JobResponse does NOT have agent_display_name field after migration.
 
         EXPECTED FAILURE: Test will pass NOW but should FAIL after migration
-        Reason: agent_type currently exists in schema.
+        Reason: agent_display_name currently exists in schema.
         """
         from datetime import datetime, timezone
 
@@ -153,8 +153,8 @@ class TestJobResponseSchema:
             created_at=datetime.now(timezone.utc)
         )
 
-        # Should NOT have agent_type attribute
-        assert not hasattr(response, "agent_type"), "agent_type should not exist after migration"
+        # Should NOT have agent_display_name attribute
+        assert not hasattr(response, "agent_display_name"), "agent_display_name should not exist after migration"
 
 
 class TestChildJobSpecSchema:
@@ -165,7 +165,7 @@ class TestChildJobSpecSchema:
         Test that ChildJobSpec schema has agent_display_name field.
 
         EXPECTED FAILURE: ValidationError - 'agent_display_name' is not a valid field
-        Reason: Schema currently uses 'agent_type' field.
+        Reason: Schema currently uses 'agent_display_name' field.
         """
         # Create child job spec with NEW field name (will fail)
         spec = ChildJobSpec(
@@ -178,12 +178,12 @@ class TestChildJobSpecSchema:
         assert spec.agent_display_name == "UX Designer"
         assert spec.agent_name == "ux-designer"
 
-    def test_child_job_spec_does_not_have_agent_type_field(self):
+    def test_child_job_spec_does_not_have_agent_display_name_field(self):
         """
-        Test that ChildJobSpec does NOT have agent_type field after migration.
+        Test that ChildJobSpec does NOT have agent_display_name field after migration.
 
         EXPECTED FAILURE: Test will pass NOW but should FAIL after migration
-        Reason: agent_type currently exists in schema.
+        Reason: agent_display_name currently exists in schema.
         """
         spec = ChildJobSpec(
             agent_display_name="Network Security Engineer",
@@ -192,7 +192,7 @@ class TestChildJobSpecSchema:
             context_chunks=[]
         )
 
-        assert not hasattr(spec, "agent_type"), "agent_type should not exist after migration"
+        assert not hasattr(spec, "agent_display_name"), "agent_display_name should not exist after migration"
 
 
 class TestAgentStatusChangedEventSchema:
@@ -203,7 +203,7 @@ class TestAgentStatusChangedEventSchema:
         Test that AgentStatusChangedData schema has agent_display_name field.
 
         EXPECTED FAILURE: ValidationError - 'agent_display_name' is not a valid field
-        Reason: Schema currently uses 'agent_type' field.
+        Reason: Schema currently uses 'agent_display_name' field.
         """
         # Create event data with NEW field name (will fail)
         data = AgentStatusChangedData(
@@ -218,12 +218,12 @@ class TestAgentStatusChangedEventSchema:
 
         assert data.agent_display_name == "Orchestrator Coordinator"
 
-    def test_agent_status_changed_does_not_have_agent_type_field(self):
+    def test_agent_status_changed_does_not_have_agent_display_name_field(self):
         """
-        Test that AgentStatusChangedData does NOT have agent_type field.
+        Test that AgentStatusChangedData does NOT have agent_display_name field.
 
         EXPECTED FAILURE: Test will pass NOW but should FAIL after migration
-        Reason: agent_type currently exists in schema.
+        Reason: agent_display_name currently exists in schema.
         """
         data = AgentStatusChangedData(
             job_id=str(uuid4()),
@@ -235,14 +235,14 @@ class TestAgentStatusChangedEventSchema:
             duration_seconds=120.5
         )
 
-        assert not hasattr(data, "agent_type"), "agent_type should not exist after migration"
+        assert not hasattr(data, "agent_display_name"), "agent_display_name should not exist after migration"
 
     def test_event_factory_agent_status_changed_uses_agent_display_name(self):
         """
         Test that EventFactory.agent_status_changed() uses agent_display_name parameter.
 
         EXPECTED FAILURE: TypeError - unexpected keyword argument 'agent_display_name'
-        Reason: EventFactory currently expects 'agent_type' parameter.
+        Reason: EventFactory currently expects 'agent_display_name' parameter.
         """
         job_id = str(uuid4())
         tenant_key = "tenant-abc"
@@ -259,7 +259,7 @@ class TestAgentStatusChangedEventSchema:
         )
 
         assert event["data"]["agent_display_name"] == "Version Manager"
-        assert "agent_type" not in event["data"], "agent_type should not exist in event data"
+        assert "agent_display_name" not in event["data"], "agent_display_name should not exist in event data"
 
 
 class TestAgentCreatedEventSchema:
@@ -270,7 +270,7 @@ class TestAgentCreatedEventSchema:
         Test that agent data in AgentCreatedData contains agent_display_name.
 
         EXPECTED FAILURE: KeyError - 'agent_display_name' not found in agent dict
-        Reason: Agent data currently uses 'agent_type' key.
+        Reason: Agent data currently uses 'agent_display_name' key.
         """
         agent_data = {
             "id": str(uuid4()),
@@ -290,12 +290,12 @@ class TestAgentCreatedEventSchema:
         assert data.agent["agent_display_name"] == "Backend Integration Tester"
         assert data.agent["agent_name"] == "backend-integration-tester"
 
-    def test_agent_created_event_agent_data_does_not_have_agent_type(self):
+    def test_agent_created_event_agent_data_does_not_have_agent_display_name(self):
         """
-        Test that agent data does NOT contain agent_type key after migration.
+        Test that agent data does NOT contain agent_display_name key after migration.
 
-        EXPECTED FAILURE: ValidationError - missing required field 'agent_type'
-        Reason: Current validation requires agent_type in agent data.
+        EXPECTED FAILURE: ValidationError - missing required field 'agent_display_name'
+        Reason: Current validation requires agent_display_name in agent data.
         """
         agent_data = {
             "id": str(uuid4()),
@@ -310,7 +310,7 @@ class TestAgentCreatedEventSchema:
             agent=agent_data
         )
 
-        assert "agent_type" not in data.agent, "agent_type should not exist in agent data"
+        assert "agent_display_name" not in data.agent, "agent_display_name should not exist in agent data"
 
 
 class TestAPIEndpointResponseSchemas:
@@ -321,7 +321,7 @@ class TestAPIEndpointResponseSchemas:
         Test that api/endpoints/agent_jobs/models.py JobResponse has agent_display_name.
 
         EXPECTED FAILURE: ValidationError - 'agent_display_name' is not a valid field
-        Reason: Endpoint model currently uses 'agent_type' field.
+        Reason: Endpoint model currently uses 'agent_display_name' field.
         """
         from datetime import datetime, timezone
 
@@ -349,7 +349,7 @@ class TestAPIEndpointResponseSchemas:
         )
 
         assert response.agent_display_name == "Database Expert"
-        assert not hasattr(response, "agent_type"), "agent_type should not exist"
+        assert not hasattr(response, "agent_display_name"), "agent_display_name should not exist"
 
 
 class TestAPIIntegrationEndToEnd:
@@ -363,7 +363,7 @@ class TestAPIIntegrationEndToEnd:
         Test that spawning an agent via API uses agent_display_name field.
 
         EXPECTED FAILURE: 422 Unprocessable Entity - field 'agent_display_name' not recognized
-        Reason: API endpoint currently expects 'agent_type' field in request.
+        Reason: API endpoint currently expects 'agent_display_name' field in request.
 
         Note: This test requires api_client and tenant fixtures from conftest.py
         """
@@ -389,10 +389,10 @@ class TestAPIIntegrationEndToEnd:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """
-        Test that listing jobs returns agent_display_name field, not agent_type.
+        Test that listing jobs returns agent_display_name field, not agent_display_name.
 
         EXPECTED FAILURE: KeyError - 'agent_display_name' not in response
-        Reason: API currently returns 'agent_type' field in job responses.
+        Reason: API currently returns 'agent_display_name' field in job responses.
 
         Note: This test requires api_client and tenant fixtures from conftest.py
         """
@@ -409,7 +409,7 @@ class TestAPIIntegrationEndToEnd:
         # Check first job has agent_display_name
         job = data["jobs"][0]
         assert "agent_display_name" in job, "Response should include agent_display_name"
-        assert "agent_type" not in job, "Response should NOT include agent_type after migration"
+        assert "agent_display_name" not in job, "Response should NOT include agent_display_name after migration"
         assert "agent_name" in job, "Response should still include agent_name (template key)"
 
     @pytest.mark.asyncio
@@ -420,7 +420,7 @@ class TestAPIIntegrationEndToEnd:
         Test that getting a single job returns agent_display_name field.
 
         EXPECTED FAILURE: KeyError - 'agent_display_name' not in response
-        Reason: API currently returns 'agent_type' field.
+        Reason: API currently returns 'agent_display_name' field.
 
         Note: This test requires api_client and tenant fixtures from conftest.py
         """
@@ -434,7 +434,7 @@ class TestAPIIntegrationEndToEnd:
         assert response.status_code == 200
         data = response.json()
         assert "agent_display_name" in data
-        assert "agent_type" not in data, "agent_type should not exist after migration"
+        assert "agent_display_name" not in data, "agent_display_name should not exist after migration"
         assert "agent_name" in data, "agent_name should still exist"
 
 
@@ -446,7 +446,7 @@ class TestWebSocketEventSchemas:
         Test that WebSocket events contain agent_display_name field.
 
         EXPECTED FAILURE: TypeError or KeyError
-        Reason: EventFactory methods currently use agent_type parameter.
+        Reason: EventFactory methods currently use agent_display_name parameter.
         """
         job_id = str(uuid4())
         project_id = str(uuid4())
@@ -463,14 +463,14 @@ class TestWebSocketEventSchemas:
         )
 
         assert event["data"]["agent_display_name"] == "Orchestrator Coordinator"
-        assert "agent_type" not in event["data"]
+        assert "agent_display_name" not in event["data"]
 
     def test_websocket_event_agent_created_uses_agent_display_name(self):
         """
         Test that agent:created events use agent_display_name in agent data.
 
         EXPECTED FAILURE: KeyError - agent data should have 'agent_display_name' key
-        Reason: Agent data currently uses 'agent_type' key.
+        Reason: Agent data currently uses 'agent_display_name' key.
         """
         agent_data = {
             "id": str(uuid4()),
@@ -487,7 +487,7 @@ class TestWebSocketEventSchemas:
         )
 
         assert event["data"]["agent"]["agent_display_name"] == "TDD Implementor"
-        assert "agent_type" not in event["data"]["agent"]
+        assert "agent_display_name" not in event["data"]["agent"]
 
 
 class TestBackwardCompatibilityConsiderations:
@@ -497,11 +497,11 @@ class TestBackwardCompatibilityConsiderations:
     These tests document BREAKING CHANGES and should guide migration planning.
     """
 
-    def test_agent_type_field_removed_is_breaking_change(self):
+    def test_agent_display_name_field_removed_is_breaking_change(self):
         """
-        Document that removing agent_type is a BREAKING CHANGE.
+        Document that removing agent_display_name is a BREAKING CHANGE.
 
-        Any external systems or frontend code accessing 'agent_type' will break.
+        Any external systems or frontend code accessing 'agent_display_name' will break.
         Migration requires:
         1. Update all API consumers to use agent_display_name
         2. Update WebSocket event handlers
@@ -511,9 +511,9 @@ class TestBackwardCompatibilityConsiderations:
         """
         # This will FAIL after migration (intentionally)
         with pytest.raises((AttributeError, ValidationError, KeyError)):
-            # Attempting to access agent_type should fail after migration
+            # Attempting to access agent_display_name should fail after migration
             request = SpawnAgentRequest(
-                agent_type="orchestrator",  # OLD FIELD NAME (should fail after migration)
+                agent_display_name="orchestrator",  # OLD FIELD NAME (should fail after migration)
                 mission="Test mission",
                 project_id=str(uuid4()),
                 context_chunks=[]

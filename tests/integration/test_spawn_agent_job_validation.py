@@ -205,7 +205,7 @@ class TestValidAgentSpawning:
         assert agent_job.status == "waiting"
 
     @pytest.mark.asyncio
-    async def test_spawn_all_valid_agent_types(
+    async def test_spawn_all_valid_agent_display_names(
         self, db_session, validation_project, validation_tenant, validation_templates
     ):
         """
@@ -214,7 +214,7 @@ class TestValidAgentSpawning:
         # Spawn each valid type
         for agent_display_name in ["implementer", "tester", "reviewer"]:
             result = await spawn_agent_job(
-                agent_display_name=agent_type,
+                agent_display_name=agent_display_name,
                 agent_name=f"Test {agent_display_name.title()}",
                 mission=f"Test mission for {agent_display_name}",
                 project_id=str(validation_project.id),
@@ -224,7 +224,7 @@ class TestValidAgentSpawning:
 
             # ASSERTION: Each spawn succeeds
             assert result["success"] is True, (
-                f"Failed to spawn valid agent_display_name '{agent_type}': {result.get('error')}"
+                f"Failed to spawn valid agent_display_name '{agent_display_name}': {result.get('error')}"
             )
 
             # ASSERTION: Agent exists in database
@@ -233,7 +233,7 @@ class TestValidAgentSpawning:
             db_result = await db_session.execute(stmt)
             agent_job = db_result.scalar_one()
 
-            assert agent_job.agent_display_name == agent_type
+            assert agent_job.agent_display_name == agent_display_name
 
 
 # ============================================================================
@@ -434,11 +434,11 @@ class TestOrchestratorConstraintIntegration:
 
         # ASSERTION 2: Constraint structure correct
         assert constraint["mode"] == "strict_task_tool"
-        assert "allowed_agent_types" in constraint
+        assert "allowed_agent_display_names" in constraint
         assert "instruction" in constraint
 
-        # ASSERTION 3: allowed_agent_types matches database templates
-        allowed_types = set(constraint["allowed_agent_types"])
+        # ASSERTION 3: allowed_agent_display_names matches database templates
+        allowed_types = set(constraint["allowed_agent_display_names"])
         expected_types = {"implementer", "tester", "reviewer"}
 
         assert allowed_types == expected_types, (
@@ -460,7 +460,7 @@ class TestOrchestratorConstraintIntegration:
             db_manager=db_manager,
         )
 
-        constraint_types = set(orch_result["agent_spawning_constraint"]["allowed_agent_types"])
+        constraint_types = set(orch_result["agent_spawning_constraint"]["allowed_agent_display_names"])
 
         # Get available agents directly
         agents_result = await get_available_agents(
@@ -616,9 +616,9 @@ class TestInactiveTemplateHandling:
         )
 
         constraint = result["agent_spawning_constraint"]
-        allowed_types = constraint["allowed_agent_types"]
+        allowed_types = constraint["allowed_agent_display_names"]
 
         # ASSERTION: Inactive template NOT in allowed types
         assert "old_agent" not in allowed_types, (
-            "Inactive templates must NOT be in allowed_agent_types"
+            "Inactive templates must NOT be in allowed_agent_display_names"
         )

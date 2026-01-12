@@ -5,13 +5,13 @@ Tests that orchestrators receive agent type constraints in CLI mode and that
 spawn_agent_job validates agent types against available templates.
 
 Phase 5a: get_orchestrator_instructions includes agent_spawning_constraint in CLI mode
-Phase 5b: spawn_agent_job validates agent_type against available templates
+Phase 5b: spawn_agent_job validates agent_display_name against available templates
 
 Test Coverage:
 1. Multi-terminal mode: No agent_spawning_constraint in response
 2. Claude Code CLI mode: Response includes agent_spawning_constraint
-3. Constraint structure validation (mode, allowed_agent_types, instruction)
-4. allowed_agent_types matches available templates from get_available_agents()
+3. Constraint structure validation (mode, allowed_agent_display_names, instruction)
+4. allowed_agent_display_names matches available templates from get_available_agents()
 5. spawn_agent_job accepts valid agent types
 6. spawn_agent_job rejects invalid/invented agent types with helpful error
 """
@@ -201,7 +201,7 @@ class TestOrchestratorInstructionsConstraint:
 
             # ASSERTION 2: Constraint has correct structure
             assert "mode" in constraint, "Constraint must specify validation mode"
-            assert "allowed_agent_types" in constraint, "Constraint must list allowed agent types"
+            assert "allowed_agent_display_names" in constraint, "Constraint must list allowed agent types"
             assert "instruction" in constraint, "Constraint must include instruction text"
 
             # ASSERTION 3: Mode is 'strict_task_tool'
@@ -209,12 +209,12 @@ class TestOrchestratorInstructionsConstraint:
                 "CLI mode must use 'strict_task_tool' validation mode"
             )
 
-            # ASSERTION 4: allowed_agent_types is a list
-            assert isinstance(constraint["allowed_agent_types"], list), (
-                "allowed_agent_types must be a list of agent type strings"
+            # ASSERTION 4: allowed_agent_display_names is a list
+            assert isinstance(constraint["allowed_agent_display_names"], list), (
+                "allowed_agent_display_names must be a list of agent type strings"
             )
 
-            # ASSERTION 5: allowed_agent_types matches available templates
+            # ASSERTION 5: allowed_agent_display_names matches available templates
             # Query available templates
             from src.giljo_mcp.tools.agent_discovery import get_available_agents
 
@@ -223,9 +223,9 @@ class TestOrchestratorInstructionsConstraint:
             )
 
             expected_types = [t["name"] for t in agents_result["data"]["agents"]]
-            assert set(constraint["allowed_agent_types"]) == set(expected_types), (
-                f"allowed_agent_types must match available templates. "
-                f"Expected: {expected_types}, Got: {constraint['allowed_agent_types']}"
+            assert set(constraint["allowed_agent_display_names"]) == set(expected_types), (
+                f"allowed_agent_display_names must match available templates. "
+                f"Expected: {expected_types}, Got: {constraint['allowed_agent_display_names']}"
             )
 
             # ASSERTION 6: Instruction mentions Task tool requirement
@@ -237,7 +237,7 @@ class TestOrchestratorInstructionsConstraint:
     @pytest.mark.asyncio
     async def test_constraint_includes_all_active_templates(self):
         """
-        PHASE 5a: agent_spawning_constraint.allowed_agent_types must include
+        PHASE 5a: agent_spawning_constraint.allowed_agent_display_names must include
         ALL active templates for the tenant.
 
         Tests that constraint accurately reflects database state.
@@ -266,7 +266,7 @@ class TestOrchestratorInstructionsConstraint:
             )
 
             constraint = result["agent_spawning_constraint"]
-            allowed_types = constraint["allowed_agent_types"]
+            allowed_types = constraint["allowed_agent_display_names"]
 
             # ASSERTION: All template names present
             expected_names = ["implementer", "tester", "reviewer"]
@@ -278,7 +278,7 @@ class TestOrchestratorInstructionsConstraint:
     @pytest.mark.asyncio
     async def test_constraint_excludes_inactive_templates(self):
         """
-        PHASE 5a: agent_spawning_constraint.allowed_agent_types must EXCLUDE
+        PHASE 5a: agent_spawning_constraint.allowed_agent_display_names must EXCLUDE
         inactive templates.
 
         Only active templates should be spawnable.
@@ -322,11 +322,11 @@ class TestOrchestratorInstructionsConstraint:
             )
 
             constraint = result["agent_spawning_constraint"]
-            allowed_types = constraint["allowed_agent_types"]
+            allowed_types = constraint["allowed_agent_display_names"]
 
             # ASSERTION: Inactive template NOT in allowed types
             assert "deprecated_agent" not in allowed_types, (
-                "Inactive templates must NOT be in allowed_agent_types"
+                "Inactive templates must NOT be in allowed_agent_display_names"
             )
 
             # ASSERTION: Only active templates present
@@ -337,7 +337,7 @@ class TestOrchestratorInstructionsConstraint:
 
 class TestSpawnAgentJobValidation:
     """
-    Phase 5b: Test spawn_agent_job agent_type validation against available templates
+    Phase 5b: Test spawn_agent_job agent_display_name validation against available templates
     """
 
     @pytest_asyncio.fixture(autouse=True)
@@ -404,7 +404,7 @@ class TestSpawnAgentJobValidation:
             await session.commit()
 
     @pytest.mark.asyncio
-    async def test_valid_agent_type_accepted(self):
+    async def test_valid_agent_display_name_accepted(self):
         """
         PHASE 5b: spawn_agent_job should ACCEPT valid agent types that match
         active templates.
@@ -413,7 +413,7 @@ class TestSpawnAgentJobValidation:
         """
         from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
-        # Spawn agent with valid agent_type
+        # Spawn agent with valid agent_display_name
         result = await spawn_agent_job(
             agent_display_name="implementer",  # Valid type (matches template)
             agent_name="Test Implementer",
@@ -425,7 +425,7 @@ class TestSpawnAgentJobValidation:
 
         # ASSERTION: Spawn succeeds
         assert result["success"] is True, (
-            f"Valid agent_type 'implementer' should be accepted. Error: {result.get('error')}"
+            f"Valid agent_display_name 'implementer' should be accepted. Error: {result.get('error')}"
         )
 
         # ASSERTION: Agent job created
@@ -436,18 +436,18 @@ class TestSpawnAgentJobValidation:
         assert "error" not in result, "Successful spawn should not have error field"
 
     @pytest.mark.asyncio
-    async def test_all_valid_agent_types_accepted(self):
+    async def test_all_valid_agent_display_names_accepted(self):
         """
         PHASE 5b: spawn_agent_job should accept ALL valid agent types from templates.
         """
         from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
         # Test each valid agent type
-        for agent_type in ["implementer", "tester"]:
+        for agent_display_name in ["implementer", "tester"]:
             result = await spawn_agent_job(
-                agent_display_name=agent_type,
-                agent_name=f"Test {agent_type.title()}",
-                mission=f"Test mission for {agent_type}",
+                agent_display_name=agent_display_name,
+                agent_name=f"Test {agent_display_name.title()}",
+                mission=f"Test mission for {agent_display_name}",
                 project_id=str(self.project.id),
                 tenant_key=self.tenant_key,
                 db_manager=self.db_manager,
@@ -455,12 +455,12 @@ class TestSpawnAgentJobValidation:
 
             # ASSERTION: Each valid type accepted
             assert result["success"] is True, (
-                f"Valid agent_type '{agent_type}' should be accepted. "
+                f"Valid agent_display_name '{agent_display_name}' should be accepted. "
                 f"Error: {result.get('error')}"
             )
 
     @pytest.mark.asyncio
-    async def test_invalid_agent_type_rejected(self):
+    async def test_invalid_agent_display_name_rejected(self):
         """
         PHASE 5b: spawn_agent_job should REJECT invented agent types that don't
         match any active template.
@@ -469,7 +469,7 @@ class TestSpawnAgentJobValidation:
         """
         from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
-        # Spawn agent with invented agent_type
+        # Spawn agent with invented agent_display_name
         result = await spawn_agent_job(
             agent_display_name="backend-tester-for-api-validation",  # INVALID (invented)
             agent_name="API Validator",
@@ -481,16 +481,16 @@ class TestSpawnAgentJobValidation:
 
         # ASSERTION 1: Spawn fails
         assert result["success"] is False, (
-            "Invalid agent_type should be rejected"
+            "Invalid agent_display_name should be rejected"
         )
 
         # ASSERTION 2: Error message present
         assert "error" in result, "Rejected spawn must include error message"
 
-        # ASSERTION 3: Error mentions invalid agent_type
+        # ASSERTION 3: Error mentions invalid agent_display_name
         error_msg = result["error"]
-        assert "Invalid agent_type" in error_msg, (
-            f"Error message should mention 'Invalid agent_type'. Got: {error_msg}"
+        assert "Invalid agent_display_name" in error_msg, (
+            f"Error message should mention 'Invalid agent_display_name'. Got: {error_msg}"
         )
         assert "backend-tester-for-api-validation" in error_msg, (
             f"Error message should include the invalid type name. Got: {error_msg}"
@@ -513,14 +513,14 @@ class TestSpawnAgentJobValidation:
     async def test_extended_agent_name_as_type_rejected(self):
         """
         PHASE 5b: spawn_agent_job should reject extended descriptive names used
-        as agent_type.
+        as agent_display_name.
 
         Orchestrators sometimes use descriptive names (intended for agent_name)
-        as agent_type. This should be rejected with helpful guidance.
+        as agent_display_name. This should be rejected with helpful guidance.
         """
         from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
-        # Spawn with extended name as agent_type (common mistake)
+        # Spawn with extended name as agent_display_name (common mistake)
         result = await spawn_agent_job(
             agent_display_name="Backend Tester Agent",  # WRONG (descriptive, should be agent_name)
             agent_name="API Tester",
@@ -532,25 +532,25 @@ class TestSpawnAgentJobValidation:
 
         # ASSERTION 1: Spawn fails
         assert result["success"] is False, (
-            "Extended names should be rejected as agent_type"
+            "Extended names should be rejected as agent_display_name"
         )
 
         # ASSERTION 2: Error present
         assert "error" in result
 
-        # ASSERTION 3: Hint explains agent_name vs agent_type
+        # ASSERTION 3: Hint explains agent_name vs agent_display_name
         assert "hint" in result, "Hint field must be present for guidance"
 
         hint_lower = result["hint"].lower()
         assert "agent_name" in hint_lower and "agent_display_name" in hint_lower, (
-            f"Hint should explain agent_name vs agent_type distinction. Got: {result['hint']}"
+            f"Hint should explain agent_name vs agent_display_name distinction. Got: {result['hint']}"
         )
 
     @pytest.mark.asyncio
-    async def test_case_sensitive_agent_type_validation(self):
+    async def test_case_sensitive_agent_display_name_validation(self):
         """
         PHASE 5b: spawn_agent_job should enforce EXACT case-sensitive matching
-        of agent_type.
+        of agent_display_name.
 
         Agent types must match template names exactly (lowercase).
         """
@@ -657,10 +657,10 @@ class TestSpawnAgentJobValidation:
         )
 
     @pytest.mark.asyncio
-    async def test_hint_explains_agent_name_vs_agent_type(self):
+    async def test_hint_explains_agent_name_vs_agent_display_name(self):
         """
         PHASE 5b: spawn_agent_job hint field must explain the difference between
-        agent_name (descriptive) and agent_type (exact template match).
+        agent_name (descriptive) and agent_display_name (exact template match).
 
         Common orchestrator mistake is confusing these fields.
         """
@@ -684,8 +684,8 @@ class TestSpawnAgentJobValidation:
         # ASSERTION: Hint explains agent_name usage
         assert "agent_name" in hint, "Hint should mention agent_name field"
 
-        # ASSERTION: Hint explains agent_type requirement
-        assert "agent_display_name" in hint, "Hint should mention agent_type field"
+        # ASSERTION: Hint explains agent_display_name requirement
+        assert "agent_display_name" in hint, "Hint should mention agent_display_name field"
 
         # ASSERTION: Hint mentions exact match requirement
         hint_lower = hint.lower()
