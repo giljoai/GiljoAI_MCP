@@ -14,6 +14,7 @@
  */
 
 import { computed } from 'vue'
+import { getAgentColor } from '@/config/agentColors'
 
 export function useAgentData(agents) {
   /**
@@ -89,20 +90,13 @@ export function useAgentData(agents) {
 
   /**
    * Agent display name color mapping
-   * Extracted from AgentCard.vue avatar logic
+   * Delegates to centralized getAgentColor function for consistent color resolution
    *
-   * @param {String} displayName - Agent display name (orchestrator, analyzer, etc.)
-   * @returns {String} - Vuetify color name
+   * @param {String} agentName - Agent name/template key (e.g., 'tdd-implementor', 'analyzer')
+   * @returns {Object} Color configuration object with hex, name, badge, description
    */
-  const getAgentDisplayNameColor = (displayName) => {
-    const colors = {
-      orchestrator: 'orange',
-      analyzer: 'red',
-      implementer: 'blue',
-      tester: 'yellow',
-      reviewer: 'purple',
-    }
-    return colors[displayName] || 'grey'
+  const getAgentDisplayNameColor = (agentName) => {
+    return getAgentColor(agentName)
   }
 
   /**
