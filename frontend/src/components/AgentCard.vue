@@ -444,7 +444,7 @@ const emit = defineEmits([
 /**
  * Agent color configuration
  */
-const agentColor = computed(() => getAgentColor(props.agent.agent_display_name))
+const agentColor = computed(() => getAgentColor(props.agent.agent_name || props.agent.agent_display_name))
 
 const agentDisplayNameLabel = computed(() => agentColor.value.name)
 
