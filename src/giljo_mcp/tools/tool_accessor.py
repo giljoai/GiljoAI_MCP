@@ -761,6 +761,10 @@ class ToolAccessor:
                         "project_name": project.name,
                         "tenant_key": tenant_key,
                         "instance_number": execution.instance_number or 1,
+                        "id_glossary": {
+                            "job_id": "Use for: acknowledge_job, report_progress, complete_job, report_error",
+                            "agent_id": "Use for: send_message(from_agent), receive_messages",
+                        },
                     },
                     "project_description_inline": {
                         "description": project.description or "",
@@ -1018,8 +1022,8 @@ class ToolAccessor:
                     agent_id=successor_agent_id,
                     job_id=current_job_id,  # SAME job_id (work order persists)
                     tenant_key=tenant_key,
-                    agent_display_name="orchestrator",
-                    agent_name=current_execution.agent_name or "Orchestrator",
+                    agent_display_name=f"Orchestrator #{successor_instance}",
+                    agent_name="orchestrator",
                     instance_number=successor_instance,
                     status="waiting",
                     spawned_by=current_execution.agent_id,  # Track previous executor
