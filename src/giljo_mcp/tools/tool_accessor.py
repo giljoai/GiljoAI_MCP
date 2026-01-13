@@ -813,10 +813,18 @@ class ToolAccessor:
 
                     response["cli_mode_rules"] = {
                         "agent_name_usage": (
-                            "SINGLE SOURCE OF TRUTH - MUST match template filename exactly for Task tool. "
-                            f"This is the filename without .md extension (e.g., {example_str})."
+                            "SINGLE SOURCE OF TRUTH - binds DB record, Task tool, and template filename. "
+                            f"MUST match template filename exactly (e.g., {example_str})."
                         ),
-                        "agent_display_name_usage": "Display category label for UI only (e.g., 'implementer').",
+                        "agent_display_name_usage": (
+                            "Dashboard label - what humans see in UI. "
+                            "MUST be unique per agent instance when spawning multiple agents of same template."
+                        ),
+                        "multi_agent_example": {
+                            "scenario": "Spawning 2 implementers for different domains",
+                            "agent_1": {"agent_name": "implementer", "agent_display_name": "api-implementer"},
+                            "agent_2": {"agent_name": "implementer", "agent_display_name": "ui-implementer"},
+                        },
                         "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
                         "validation": "soft",
                         "template_locations": [
