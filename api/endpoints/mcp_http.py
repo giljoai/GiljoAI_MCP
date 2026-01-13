@@ -211,7 +211,7 @@ async def handle_tools_list(
                     },
                     "from_agent": {
                         "type": "string",
-                        "description": "Sender agent_id UUID (your agent_id from get_agent_mission)",
+                        "description": "Your identity (identity.agent_id)",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -224,7 +224,7 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "agent_id": {"type": "string", "description": "Receiving agent ID"},
+                    "agent_id": {"type": "string", "description": "Your identity (identity.agent_id)"},
                     "limit": {
                         "type": "integer",
                         "description": "Maximum messages to retrieve (default: 10)",
@@ -303,8 +303,8 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "description": "Job ID to acknowledge"},
-                    "agent_id": {"type": "string", "description": "Agent identifier"},
+                    "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
+                    "agent_id": {"type": "string", "description": "Your identity (identity.agent_id)"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["job_id", "agent_id", "tenant_key"],
@@ -316,7 +316,7 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "description": "Job ID being worked on"},
+                    "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
                     "progress": {"type": "object", "description": "Progress details"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -329,7 +329,7 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "description": "Job ID to complete"},
+                    "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
                     "result": {"type": "object", "description": "Completion result/notes"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -342,7 +342,7 @@ async def handle_tools_list(
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "description": "Job ID encountering error"},
+                    "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
                     "error": {"type": "string", "description": "Error message"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
