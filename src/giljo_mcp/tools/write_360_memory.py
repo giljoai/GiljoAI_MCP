@@ -19,7 +19,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
-from giljo_mcp.models.agent_identity import AgentJob
+from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from giljo_mcp.tenant import TenantManager
 
 
@@ -218,17 +218,23 @@ async def write_360_memory(
             # Get author information if job_id provided
             author_info = {}
             if author_job_id:
-                agent_job_stmt = select(AgentJob).where(
-                    AgentJob.job_id == author_job_id,
-                    AgentJob.tenant_key == tenant_key
+                # Query the current execution for this job to get agent_name
+                execution_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == author_job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
+                    .limit(1)
                 )
-                agent_job_result = await active_session.execute(agent_job_stmt)
-                agent_job = agent_job_result.scalar_one_or_none()
-                if agent_job:
+                execution_result = await active_session.execute(execution_stmt)
+                execution = execution_result.scalar_one_or_none()
+                if execution:
                     author_info = {
                         "author_job_id": author_job_id,
-                        "author_name": agent_job.agent_name,
-                        "author_type": agent_job.job_type,
+                        "author_name": execution.agent_name or execution.agent_display_name,
+                        "author_type": execution.job.job_type if execution.job else None,
                     }
 
             # Build history entry
