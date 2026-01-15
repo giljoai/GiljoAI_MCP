@@ -403,7 +403,7 @@ let fetchInterval = null
 
 const fetchCallCounts = async () => {
   try {
-    const response = await api.get('/api/v1/stats/call-counts')
+    const response = await api.stats.getCallCounts()
     if (response.data) {
       apiCallCount.value = response.data.total_api_calls
       mcpCallCount.value = response.data.total_mcp_calls
@@ -631,7 +631,7 @@ const refreshData = async () => {
     await Promise.all([
       projectStore.fetchProjects(),
       taskStore.fetchTasks(),
-      api.get('/api/v1/stats/system').then((response) => {
+      api.stats.getSystem().then((response) => {
         systemStats.value = response.data
       }),
     ])
