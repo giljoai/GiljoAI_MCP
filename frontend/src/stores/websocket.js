@@ -17,6 +17,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { API_CONFIG } from '@/config/api'
 import { useToast } from '@/composables/useToast'
+import { useNotificationStore } from '@/stores/notifications'
 
 export const useWebSocketStore = defineStore('websocket', () => {
   // ============================================
@@ -255,6 +256,24 @@ export const useWebSocketStore = defineStore('websocket', () => {
         icon: 'mdi-wifi-off',
         timeout: 5000,
       })
+
+      // Add to notification bell
+      try {
+        const notificationStore = useNotificationStore()
+        notificationStore.addNotification({
+          type: 'connection_lost',
+          title: 'Connection Lost',
+          message: 'Lost connection to server. Attempting to reconnect...',
+          timestamp: new Date().toISOString(),
+          read: false,
+          metadata: {
+            reconnectAttempts: reconnectAttempts.value,
+            disconnectedAt: stats.value.disconnectedAt,
+          },
+        })
+      } catch (error) {
+        console.warn('[WebSocket] Failed to add connection_lost notification:', error)
+      }
     }
 
     // Attempt reconnect if we haven't exceeded max attempts
@@ -309,6 +328,24 @@ export const useWebSocketStore = defineStore('websocket', () => {
           icon: 'mdi-wifi',
           timeout: 3000,
         })
+
+        // Add to notification bell
+        try {
+          const notificationStore = useNotificationStore()
+          notificationStore.addNotification({
+            type: 'connection_restored',
+            title: 'Connection Restored',
+            message: `Successfully reconnected after ${reconnectAttempts.value} attempt(s)`,
+            timestamp: new Date().toISOString(),
+            read: false,
+            metadata: {
+              reconnectAttempts: reconnectAttempts.value,
+              connectedAt: stats.value.connectedAt,
+            },
+          })
+        } catch (error) {
+          console.warn('[WebSocket] Failed to add connection_restored notification:', error)
+        }
       } catch (error) {
         console.error('WebSocket: Reconnection failed', error)
         // Will trigger handleDisconnect again if needed
