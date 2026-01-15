@@ -1981,8 +1981,8 @@ def _get_post_staging_behavior(cli_mode: bool) -> dict:
         Dict with mode-specific behavior guidance
     """
     return {
-        "cli_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. Implementation happens via Task tool in separate execution.",
-        "multi_terminal_mode": "Orchestrator completes after STAGING_COMPLETE broadcast. User manually launches agents via [Copy Prompt] buttons.",
+        "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). Implementation happens in separate execution.",
+        "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
     }
 
 
