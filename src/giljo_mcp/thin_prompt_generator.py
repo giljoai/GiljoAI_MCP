@@ -1038,7 +1038,7 @@ IDENTITY:
 │ STAGING PHASE (Steps 1-7): THIS SESSION                                     │
 │ Your job RIGHT NOW: Analyze, spawn jobs, write plan                         │
 │ DO NOT: Invoke Task tool, execute agent work                                │
-│ END WITH: "Staging complete. N agents spawned..."                           │
+│ END WITH: send_message('STAGING_COMPLETE: Mission created, N agents spawned')│
 └─────────────────────────────────────────────────────────────────────────────┘
 
                          ══════ SESSION BOUNDARY ══════
