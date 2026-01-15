@@ -213,6 +213,7 @@ async def get_system_statistics(request: Request):
             return SystemStatsResponse(
                 total_projects=total_projects,
                 active_projects=active_projects,
+                completed_projects=completed_projects,
                 projects_finished=completed_projects,
                 total_agents=total_agents,
                 active_agents=active_agents,
