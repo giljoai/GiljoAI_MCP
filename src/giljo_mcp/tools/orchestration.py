@@ -920,6 +920,12 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                     context_used=0,
                 )
                 session.add(agent_execution)
+
+                # Update project staging_status when orchestrator is spawned
+                if agent_display_name == "orchestrator":
+                    project.staging_status = "staged"
+                    project.updated_at = datetime.now(timezone.utc)
+
                 await session.commit()
 
                 # Generate THIN agent prompt (~10 lines)
@@ -2725,6 +2731,19 @@ async def _spawn_agent_job_impl(
             context_used=0,
         )
         session.add(agent_execution)
+
+        # Update project staging_status when orchestrator is spawned
+        if agent_display_name == "orchestrator":
+            from giljo_mcp.models import Project
+
+            result = await session.execute(
+                select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+            )
+            project = result.scalar_one_or_none()
+            if project:
+                project.staging_status = "staged"
+                project.updated_at = datetime.now(timezone.utc)
+
         await session.commit()
 
         # HIGH #4 FIX: Generate thin prompt using agent_id (not agent_job_id)
