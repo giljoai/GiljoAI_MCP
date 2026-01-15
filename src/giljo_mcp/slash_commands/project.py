@@ -72,8 +72,8 @@ async def handle_gil_activate(
             agent_id=agent_id,
             job_id=job_id,
             tenant_key=tenant_key,
-            agent_display_name="Orchestrator #1",
-            agent_name="orchestrator",
+            agent_display_name="orchestrator",  # Lowercase for frontend compatibility
+            agent_name="orchestrator",  # Type key for color lookup
             instance_number=1,
             status="waiting",
             progress=0,

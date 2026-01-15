@@ -1738,8 +1738,8 @@ class ProjectService:
                     agent_id=str(uuid4()),
                     job_id=orchestrator_job_id,
                     tenant_key=tenant_key,
-                    agent_display_name=f"Orchestrator #{instance_number}",
-                    agent_name="orchestrator",
+                    agent_display_name="orchestrator",  # Lowercase for frontend compatibility
+                    agent_name="orchestrator",  # Type key for color lookup
                     instance_number=instance_number,
                     status="waiting",
                     context_budget=project.context_budget or 150000,
