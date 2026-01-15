@@ -1749,6 +1749,10 @@ class ProjectService:
                 )
                 session.add(agent_execution)
 
+                # Set staging_status to 'staged' when orchestrator is launched
+                project.staging_status = "staged"
+                project.updated_at = datetime.utcnow()
+
                 await session.flush()  # Get the IDs without committing
 
                 # Generate thin-client launch prompt
@@ -1774,6 +1778,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             project_data={
                                 "name": project.name,
                                 "status": project.status,
+                                "staging_status": project.staging_status,
                                 "orchestrator_job_id": orchestrator_job_id,
                             },
                         )
@@ -1787,6 +1792,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "orchestrator_job_id": orchestrator_job_id,
                         "launch_prompt": launch_prompt,
                         "status": project.status,
+                        "staging_status": project.staging_status,
                     },
                 }
 
