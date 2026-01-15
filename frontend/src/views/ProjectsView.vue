@@ -35,36 +35,36 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <v-icon size="32" color="success" class="mr-3">mdi-check-circle</v-icon>
-              <div>
-                <div class="text-caption">Active</div>
-                <div class="text-h5">{{ statusCounts.active }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="32" color="grey" class="mr-3">mdi-stop-circle-outline</v-icon>
-              <div>
-                <div class="text-caption">Inactive</div>
-                <div class="text-h5">{{ statusCounts.inactive }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
               <v-icon size="32" color="info" class="mr-3">mdi-clipboard-check</v-icon>
               <div>
                 <div class="text-caption">Completed</div>
                 <div class="text-h5">{{ statusCounts.completed }}</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text>
+            <div class="d-flex align-center">
+              <v-icon size="32" color="warning" class="mr-3">mdi-progress-clock</v-icon>
+              <div>
+                <div class="text-caption">Staged</div>
+                <div class="text-h5">{{ statusCounts.staged }}</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text>
+            <div class="d-flex align-center">
+              <v-icon size="32" color="error" class="mr-3">mdi-cancel</v-icon>
+              <div>
+                <div class="text-caption">Cancelled</div>
+                <div class="text-h5">{{ statusCounts.cancelled }}</div>
               </div>
             </div>
           </v-card-text>
@@ -729,6 +729,7 @@ const statusCounts = computed(() => {
     inactive: activeProductProjects.value.filter((p) => p.status === 'inactive').length,
     completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
     cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
+    staged: activeProductProjects.value.filter((p) => p.staging_status === 'staged').length,
   }
 })
 
