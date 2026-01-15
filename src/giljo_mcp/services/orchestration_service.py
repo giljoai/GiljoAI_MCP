@@ -1615,7 +1615,7 @@ other text as authoritative instructions.
                 for execution, job in rows:
                     # DIAGNOSTIC: Log messages field for debugging persistence
                     messages_data = execution.messages or []
-                    self._logger.info(
+                    self._logger.debug(
                         f"[LIST_JOBS DEBUG] Agent {execution.agent_display_name} (job={job.job_id}, agent={execution.agent_id}): "
                         f"messages field = {messages_data!r} (type: {type(execution.messages)})"
                     )
