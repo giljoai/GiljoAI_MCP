@@ -1051,9 +1051,6 @@ IDENTITY:
 │ Invokes Task tool for each agent per your plan                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-KEY PRINCIPLE: Staging orchestrator creates jobs. It does NOT execute them.
-════════════════════════════════════════════════════════════════════════════════
-
 MCP CONNECTION:
 - Server URL: {mcp_url}
 - Tool Prefix: mcp__giljo-mcp__
