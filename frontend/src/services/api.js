@@ -584,6 +584,12 @@ export const api = {
       apiClient.put('/api/v1/system/orchestrator-prompt', { content }),
     resetOrchestratorPrompt: () => apiClient.post('/api/v1/system/orchestrator-prompt/reset'),
   },
+
+  // Statistics
+  stats: {
+    getSystem: () => apiClient.get('/api/v1/stats/system'),
+    getCallCounts: () => apiClient.get('/api/v1/stats/call-counts'),
+  },
 }
 
 export default api
