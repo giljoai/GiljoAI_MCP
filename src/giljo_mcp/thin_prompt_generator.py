@@ -1086,9 +1086,14 @@ STARTUP SEQUENCE:
 7. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
    This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
-COMPLETION PROTOCOL:
+════════════════════════════════════════════════════════════════════════════════
+⚠️  STAGING ENDS AT STEP 7 - DO NOT call complete_job() or write_360_memory()
+    Those are for IMPLEMENTATION phase only (after all agents finish their work)
+════════════════════════════════════════════════════════════════════════════════
 
-When your mission is complete:
+IMPLEMENTATION PHASE COMPLETION PROTOCOL (REFERENCE ONLY - NOT FOR STAGING):
+
+When PROJECT IMPLEMENTATION is fully complete (all spawned agents have finished their work):
 
 1. WRITE 360 MEMORY: Call write_360_memory() with:
    - project_id: '{project_id}'
