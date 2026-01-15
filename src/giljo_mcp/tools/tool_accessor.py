@@ -1022,8 +1022,8 @@ class ToolAccessor:
                     agent_id=successor_agent_id,
                     job_id=current_job_id,  # SAME job_id (work order persists)
                     tenant_key=tenant_key,
-                    agent_display_name=f"Orchestrator #{successor_instance}",
-                    agent_name="orchestrator",
+                    agent_display_name="orchestrator",  # Lowercase for frontend compatibility
+                    agent_name="orchestrator",  # Type key for color lookup
                     instance_number=successor_instance,
                     status="waiting",
                     spawned_by=current_execution.agent_id,  # Track previous executor
@@ -1227,7 +1227,7 @@ class ToolAccessor:
                         job_id=job_id,
                         tenant_key=tenant_key,
                         agent_display_name="orchestrator",
-                        agent_name="Orchestrator",
+                        agent_name="orchestrator",  # Type key for color lookup
                         instance_number=1,
                         status="waiting",
                         progress=0,
