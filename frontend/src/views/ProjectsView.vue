@@ -586,7 +586,6 @@ import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
-import { useProjectStateStore } from '@/stores/projectStateStore'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -600,7 +599,6 @@ const projectStore = useProjectStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
 const tabsStore = useProjectTabsStore()
-const projectStateStore = useProjectStateStore()
 
 // Reactive state
 const searchQuery = ref('')
@@ -746,12 +744,9 @@ const deletedProjects = computed(() => projectStore.deletedProjects)
 const deletedCount = computed(() => deletedProjects.value.length)
 
 // Helper function to determine if project is staged
-// A project is considered "staged" when stagingComplete is true in projectStateStore
-// This aligns with the "Launch jobs" button becoming active in ProjectTabs.vue
+// Uses staging_status from database for persistence across refresh/restart
 const isProjectStaged = (project) => {
-  const projectId = project.project_id || project.id
-  const state = projectStateStore.getProjectState(projectId)
-  return Boolean(state?.stagingComplete)
+  return project.staging_status === 'staged'
 }
 
 // Launch button visibility - only show when exactly 1 active project exists
