@@ -693,15 +693,21 @@ const filteredProjects = computed(() => {
   return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
 })
 
-// Sort projects
+// Sort projects - active projects always on top
 const sortedProjects = computed(() => {
   const sorted = [...filteredProjects.value]
 
-  if (sortConfig.value && sortConfig.value.length > 0) {
-    const { key, order } = sortConfig.value[0]
-    const isAsc = order === 'asc'
+  sorted.sort((a, b) => {
+    // Active projects always come first
+    const aActive = a.status === 'active' ? 0 : 1
+    const bActive = b.status === 'active' ? 0 : 1
+    if (aActive !== bActive) return aActive - bActive
 
-    sorted.sort((a, b) => {
+    // Then apply user-selected sort
+    if (sortConfig.value && sortConfig.value.length > 0) {
+      const { key, order } = sortConfig.value[0]
+      const isAsc = order === 'asc'
+
       let aVal = a[key]
       let bVal = b[key]
 
@@ -715,9 +721,10 @@ const sortedProjects = computed(() => {
 
       if (aVal < bVal) return isAsc ? -1 : 1
       if (aVal > bVal) return isAsc ? 1 : -1
-      return 0
-    })
-  }
+    }
+
+    return 0
+  })
 
   return sorted
 })
