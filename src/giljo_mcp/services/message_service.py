@@ -175,10 +175,11 @@ class MessageService:
                         executions = exec_result.scalars().all()
 
                         # Expand to individual recipients (excluding sender)
-                        sender_display_name = from_agent or "orchestrator"
+                        sender_ref = from_agent or "orchestrator"
                         for execution in executions:
-                            # Skip sender
-                            if execution.agent_display_name == sender_display_name:
+                            # Skip sender - compare both agent_display_name and agent_id
+                            if (execution.agent_display_name == sender_ref or
+                                    execution.agent_id == sender_ref):
                                 continue
                             resolved_to_agents.append(execution.agent_id)
                             self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
@@ -249,25 +250,49 @@ class MessageService:
 
                 # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
                 # Handover 0372/0401: Runs ALWAYS, regardless of websocket_manager
-                # FIX: Call once per recipient with their own message_id (not shared message_id)
+                # Handover 0550: Fixed "Messages Sent" counter bug - add sender's outbound entry ONCE
                 if messages:
                     try:
+                        # Step 1: Add ONE outbound entry to sender with all recipients (fixes counter bug)
+                        all_recipient_ids = [msg.to_agents[0] for msg in messages if msg.to_agents]
+                        first_message_id = str(messages[0].id) if messages else None
+
+                        if first_message_id and all_recipient_ids:
+                            await self._add_sender_outbound_message(
+                                session=session,
+                                message_id=first_message_id,
+                                from_agent=from_agent or "orchestrator",
+                                recipient_ids=all_recipient_ids,
+                                content=content,
+                                message_type=message_type,
+                                priority=priority,
+                                project_id=project.id,
+                                tenant_key=project.tenant_key,
+                            )
+                            self._logger.info(
+                                f"[PERSISTENCE] Added ONE outbound message to sender with {len(all_recipient_ids)} recipients"
+                            )
+
+                        # Step 2: Add inbound entry to each recipient (one per recipient)
                         for msg in messages:
-                            # Each message has a unique ID - use the correct one for this recipient
                             recipient_id = msg.to_agents[0] if msg.to_agents else None
                             if recipient_id:
-                                await self._persist_message_to_agent_jsonb(
+                                await self._add_recipient_inbound_message(
                                     session=session,
-                                    message_id=str(msg.id),  # THIS recipient's message_id
+                                    message_id=str(msg.id),
                                     from_agent=from_agent or "orchestrator",
-                                    recipient_job_ids=[recipient_id],  # Only THIS recipient
+                                    recipient_id=recipient_id,
                                     content=content,
-                                    message_type=message_type,
                                     priority=priority,
                                     project_id=project.id,
                                     tenant_key=project.tenant_key,
                                 )
-                        self._logger.info(f"[PERSISTENCE] Saved {len(messages)} messages to agent JSONB columns")
+
+                        # Commit changes to persist JSONB updates
+                        await session.commit()
+                        self._logger.info(
+                            f"[PERSISTENCE] Saved 1 outbound + {len(messages)} inbound messages to agent JSONB columns"
+                        )
                     except Exception as persist_error:
                         self._logger.warning(f"Failed to persist message to JSONB: {persist_error}")
 
@@ -295,14 +320,14 @@ class MessageService:
                             )
                             all_executions = result.scalars().all()
                             # Exclude sender from recipients to prevent self-notification
-                            sender_agent_display_name = from_agent or "orchestrator"
+                            sender_ref = from_agent or "orchestrator"
                             recipient_agent_ids = [
                                 exec.agent_id for exec in all_executions
-                                if exec.agent_display_name != sender_agent_display_name
+                                if exec.agent_display_name != sender_ref and exec.agent_id != sender_ref
                             ]
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
-                                f"(excluded sender: {sender_agent_display_name})"
+                                f"(excluded sender: {sender_ref})"
                             )
                         else:
                             # Direct message: resolved_to_agents already contains agent_ids
@@ -1270,6 +1295,163 @@ class MessageService:
         except Exception as e:
             self._logger.error(f"[PERSISTENCE] Failed to persist message to JSONB: {e}")
             # Don't re-raise - message was already saved to messages table
+
+    async def _add_sender_outbound_message(
+        self,
+        session: AsyncSession,
+        message_id: str,
+        from_agent: str,
+        recipient_ids: list[str],
+        content: str,
+        message_type: str,
+        priority: str,
+        project_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Add ONE outbound message entry to the sender's JSONB column.
+
+        Handover 0550: This fixes the "Messages Sent" counter bug by ensuring
+        the sender gets exactly ONE outbound entry per send_message() call,
+        regardless of how many recipients receive the message.
+
+        Args:
+            session: Active database session
+            message_id: Unique message ID (uses first message's ID)
+            from_agent: Sender agent name
+            recipient_ids: List of all recipient agent IDs
+            content: Message content
+            message_type: Type of message (direct, broadcast)
+            priority: Message priority (low, normal, high)
+            project_id: Project ID to scope sender lookup
+            tenant_key: Tenant key for multi-tenant isolation
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+        from sqlalchemy import and_, or_
+
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+            # Look up sender's AgentExecution
+            sender_result = await session.execute(
+                select(AgentExecution).join(AgentJob).where(
+                    and_(
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentJob.project_id == project_id,
+                        or_(
+                            AgentExecution.agent_id == from_agent,
+                            AgentExecution.agent_display_name == from_agent
+                        )
+                    )
+                ).limit(1)
+            )
+            sender_agent = sender_result.scalar_one_or_none()
+
+            if sender_agent:
+                if not sender_agent.messages:
+                    sender_agent.messages = []
+
+                # Add ONE outbound entry with all recipients
+                sender_agent.messages.append({
+                    "id": message_id,
+                    "from": from_agent,
+                    "direction": "outbound",
+                    "status": "sent",
+                    "text": content[:200],  # Truncate for storage
+                    "priority": priority,
+                    "timestamp": timestamp,
+                    "to_agents": recipient_ids,  # All recipients in one entry
+                })
+
+                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
+                flag_modified(sender_agent, "messages")
+
+                self._logger.info(
+                    f"[PERSISTENCE] Added ONE outbound message to {from_agent} with {len(recipient_ids)} recipients"
+                )
+            else:
+                self._logger.warning(
+                    f"[PERSISTENCE] Could not find sender agent '{from_agent}' in project {project_id}"
+                )
+
+        except Exception as e:
+            self._logger.error(f"[PERSISTENCE] Failed to add sender outbound message: {e}")
+            # Don't re-raise - continue with recipient messages
+
+    async def _add_recipient_inbound_message(
+        self,
+        session: AsyncSession,
+        message_id: str,
+        from_agent: str,
+        recipient_id: str,
+        content: str,
+        priority: str,
+        project_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Add ONE inbound message entry to a recipient's JSONB column.
+
+        Handover 0550: Extracted from _persist_message_to_agent_jsonb to separate
+        sender outbound logic (ONE entry) from recipient inbound logic (one per recipient).
+
+        Args:
+            session: Active database session
+            message_id: Unique message ID for this recipient
+            from_agent: Sender agent name
+            recipient_id: Recipient agent ID
+            content: Message content
+            priority: Message priority (low, normal, high)
+            project_id: Project ID to scope recipient lookup
+            tenant_key: Tenant key for multi-tenant isolation
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+        from sqlalchemy import and_
+
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+            # Look up recipient's AgentExecution by agent_id
+            recipient_result = await session.execute(
+                select(AgentExecution).join(AgentJob).where(
+                    and_(
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentJob.project_id == project_id,
+                        AgentExecution.agent_id == recipient_id
+                    )
+                )
+            )
+            recipient_agent = recipient_result.scalar_one_or_none()
+
+            if recipient_agent:
+                if not recipient_agent.messages:
+                    recipient_agent.messages = []
+
+                # Add inbound message entry
+                recipient_agent.messages.append({
+                    "id": message_id,
+                    "from": from_agent,
+                    "direction": "inbound",
+                    "status": "waiting",  # Waiting to be read
+                    "text": content[:200],  # Truncate for storage
+                    "priority": priority,
+                    "timestamp": timestamp,
+                })
+
+                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
+                flag_modified(recipient_agent, "messages")
+
+                self._logger.info(
+                    f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_display_name} ({recipient_id})"
+                )
+            else:
+                self._logger.warning(
+                    f"[PERSISTENCE] Could not find recipient agent '{recipient_id}' in project {project_id}"
+                )
+
+        except Exception as e:
+            self._logger.error(f"[PERSISTENCE] Failed to add recipient inbound message: {e}")
+            # Don't re-raise - continue with other recipients
 
     async def _update_jsonb_message_status(
         self,
