@@ -152,6 +152,7 @@ async def get_system_statistics(request: Request):
     from api.app import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
+    logger.info(f"[STATS DEBUG] tenant_key from request: {tenant_key}")
     if not tenant_key:
         raise HTTPException(status_code=400, detail="Tenant key not found in request state")
 
@@ -164,33 +165,42 @@ async def get_system_statistics(request: Request):
             # Get project stats
             # ORIGINAL: total_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key))
             total_projects = await stats_repo.count_total_projects(session, tenant_key)
+            logger.info(f"[STATS DEBUG] total_projects: {total_projects}")
 
             # ORIGINAL: active_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "active"))
             active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
+            logger.info(f"[STATS DEBUG] active_projects: {active_projects}")
 
             # ORIGINAL: completed_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "completed"))
             completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
+            logger.info(f"[STATS DEBUG] completed_projects: {completed_projects}")
 
             # Get agent stats (using AgentExecution)
             # ORIGINAL: total_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
             total_agents = await stats_repo.count_total_agents(session, tenant_key)
+            logger.info(f"[STATS DEBUG] total_agents: {total_agents}")
 
             # ORIGINAL: active_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(["waiting", "working"])))
             active_agents = await stats_repo.count_active_agents(session, tenant_key)
+            logger.info(f"[STATS DEBUG] active_agents: {active_agents}")
 
             # Get message stats
             # ORIGINAL: total_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
             total_messages = await stats_repo.count_total_messages(session, tenant_key)
+            logger.info(f"[STATS DEBUG] total_messages: {total_messages}")
 
             # ORIGINAL: pending_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key, Message.status == "pending"))
             pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
+            logger.info(f"[STATS DEBUG] pending_messages: {pending_messages}")
 
             # Get task stats
             # ORIGINAL: total_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key))
             total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
+            logger.info(f"[STATS DEBUG] total_tasks: {total_tasks}")
 
             # ORIGINAL: completed_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key, Task.status == "completed"))
             completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
+            logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
             # Get context usage stats
             # ORIGINAL: avg_context = await session.scalar(select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
