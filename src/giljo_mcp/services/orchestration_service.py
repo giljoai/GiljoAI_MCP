@@ -666,6 +666,9 @@ class OrchestrationService:
                     except Exception:
                         # Fallback estimation
                         agent_execution.context_used = len(mission) // 4
+                    # Update project staging_status when orchestrator is spawned
+                    project.staging_status = "staged"
+                    project.updated_at = datetime.now(timezone.utc)
 
                 session.add(agent_execution)
                 await session.commit()
