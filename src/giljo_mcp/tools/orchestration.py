@@ -1897,6 +1897,21 @@ The agent templates are now being updated...
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(f"[WEBSOCKET] Failed to broadcast event: {ws_error}")
 
+                # Handover 0415: Determine cli_mode for chapter protocol
+                metadata = agent_job.job_metadata or {}
+                execution_mode = getattr(project, "execution_mode", None) or metadata.get("execution_mode", "multi_terminal")
+                cli_mode = execution_mode == "claude_code_cli"
+
+                # Build chapter-based protocol
+                orchestrator_protocol = _build_orchestrator_protocol(
+                    cli_mode=cli_mode,
+                    context_budget=agent_execution.context_budget or 150000,
+                    project_id=str(project.id),
+                    orchestrator_id=job_id,
+                    tenant_key=tenant_key,
+                    include_implementation_reference=True
+                )
+
                 return {
                     "agent_id": agent_id,  # Phase C: WHO is executing
                     "job_id": job_id,  # Phase C: WHAT work order
@@ -1916,6 +1931,8 @@ The agent templates are now being updated...
                     "integrations": {
                         "serena_mcp_enabled": include_serena,
                     },
+                    # Handover 0415: Chapter-based protocol for navigable workflow
+                    "orchestrator_protocol": orchestrator_protocol,
                 }
 
         except Exception as e:
