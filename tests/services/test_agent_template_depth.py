@@ -14,12 +14,12 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.mission_planner import MissionPlanner
-from giljo_mcp.models import Product, Project, AgentTemplate
-from giljo_mcp.models.agent_identity import AgentExecution
-from giljo_mcp.models.auth import User
-from giljo_mcp.tools.orchestration import get_orchestrator_instructions
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.models import Product, Project, AgentTemplate
+from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
 
 @pytest.fixture
