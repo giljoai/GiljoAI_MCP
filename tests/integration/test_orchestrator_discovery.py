@@ -17,9 +17,9 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-from giljo_mcp.tools.orchestration import get_orchestrator_instructions
-from giljo_mcp.models import AgentExecution, Product, Project, User
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
+from src.giljo_mcp.models import AgentExecution, Product, Project, User
 
 
 # Test fixtures

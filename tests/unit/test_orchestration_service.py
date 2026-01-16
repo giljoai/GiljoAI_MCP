@@ -17,8 +17,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
-from giljo_mcp.services.orchestration_service import OrchestrationService
-from giljo_mcp.models import AgentExecution, AgentJob, Project
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.models import AgentExecution, AgentJob, Project
 
 
 @pytest.fixture

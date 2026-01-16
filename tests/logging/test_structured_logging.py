@@ -16,14 +16,14 @@ from io import StringIO
 import pytest
 import structlog
 
-from giljo_mcp.logging import (
+from src.giljo_mcp.logging import (
     ErrorCode,
     configure_logging,
     get_colored_logger,
     get_error_description,
     get_logger,
 )
-from giljo_mcp.logging.error_codes import ERROR_CODE_DESCRIPTIONS
+from src.giljo_mcp.logging.error_codes import ERROR_CODE_DESCRIPTIONS
 
 
 class TestErrorCodes:

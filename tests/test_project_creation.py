@@ -10,10 +10,10 @@ from pathlib import Path
 src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
-from giljo_mcp.config_manager import get_config
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.tools.tool_accessor import ToolAccessor
+from src.giljo_mcp.config_manager import get_config
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 async def main():

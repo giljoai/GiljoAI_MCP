@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from giljo_mcp.context_management.indexer import ContextIndexer
-from giljo_mcp.models import MCPContextIndex
+from src.giljo_mcp.context_management.indexer import ContextIndexer
+from src.giljo_mcp.models import MCPContextIndex
 
 
 class TestContextIndexer:
