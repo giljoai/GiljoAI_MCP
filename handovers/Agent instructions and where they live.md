@@ -52,13 +52,45 @@ We now have three clearly separated layers:
 - HTTP MCP spawn tool: `OrchestrationService.spawn_agent_job` in `src/giljo_mcp/services/orchestration_service.py`.
 - MCP tool variant: `_spawn_agent_job_impl` in `src/giljo_mcp/tools/orchestration.py`.
 - Both now:
-  - Keep the identity line (“I am {agent_name}…”).
-  - Include a short “MCP tools are native” block.
-  - Replace long “MANDATORY STARTUP SEQUENCE” with:
+  - Keep the identity line ("I am {agent_name}…").
+  - Include a short "MCP tools are native" block.
+  - Replace long "MANDATORY STARTUP SEQUENCE" with:
     - Step 1: call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`.
     - Step 2: follow `full_protocol` from that response.
 
-2.3 Claude Code Task instructions
+2.3 Template Injection for Multi-Terminal Mode (Handover 0417)
+
+When `spawn_agent_job()` is called, the backend checks `Project.execution_mode`:
+
+- **`multi_terminal` mode** (Claude Code Web, Gemini CLI, Codex CLI, etc.):
+  - Backend looks up `AgentTemplate` by `agent_name`
+  - Injects template content into `AgentJob.mission` with **tidy framing**:
+    ```
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                     AGENT EXPERTISE & PROTOCOL                           ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+    [template.system_instructions + template.user_instructions]
+
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                       YOUR ASSIGNED WORK                                 ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+    [orchestrator's mission assignment]
+    ```
+  - Agent calls `get_agent_mission()` → receives full injected content
+  - **Token savings**: Orchestrator passes only work (~50 tokens) instead of full role (~500 tokens)
+
+- **`claude_code_cli` mode**:
+  - **NO injection** - Task tool loads `.claude/agents/{agent_name}.md` automatically
+  - `AgentJob.mission` contains only the orchestrator's work assignment
+  - Template expertise comes from the file system, not the database
+
+**Key Files**:
+- Injection logic: `src/giljo_mcp/services/orchestration_service.py` (lines 636-684)
+- Framing pattern matches: `_build_orchestrator_protocol()` in `src/giljo_mcp/tools/orchestration.py`
+
+2.4 Claude Code Task instructions
 
 - File: `src/giljo_mcp/thin_prompt_generator.py`, `_build_claude_code_execution_prompt`.
 - Task instructions now:
@@ -66,7 +98,7 @@ We now have three clearly separated layers:
   - Explicitly mention that this returns `mission` + `full_protocol`.
   - Tell subagents to follow `full_protocol` for lifecycle behavior.
 
-2.4 Seeder / exported MCP section
+2.5 Seeder / exported MCP section
 
 - File: `src/giljo_mcp/template_seeder.py`, `_get_mcp_coordination_section()`.
 - Keeps CRITICAL “MCP tools are native” section.
