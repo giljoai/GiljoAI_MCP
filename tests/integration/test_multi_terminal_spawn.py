@@ -44,20 +44,14 @@ async def test_e2e_multi_terminal_spawn_with_template_injection(
             product_id=product.id,
             name="Integration Test Project",
             description="Test project for template injection",
+            mission="Test mission for multi-terminal spawn",  # Required NOT NULL column
             status="active",
             execution_mode="multi_terminal",
         )
         session.add(project)
 
         # Create agent template
-        template = AgentTemplate(
-            id=str(uuid4()),
-            tenant_key=test_user.tenant_key,
-            name="integration-tester",
-            category="tester",
-            role="Integration Tester",
-            description="Test agent for integration testing",
-            system_instructions="""# Integration Tester Agent
+        template_content = """# Integration Tester Agent
 
 You are a specialist in integration testing.
 
@@ -75,8 +69,17 @@ You are a specialist in integration testing.
 - All integration tests pass
 - System components integrate correctly
 - No data corruption or leaks
-""",
+"""
+        template = AgentTemplate(
+            id=str(uuid4()),
+            tenant_key=test_user.tenant_key,
+            name="integration-tester",
+            category="tester",
+            role="Integration Tester",
+            description="Test agent for integration testing",
+            system_instructions=template_content,
             user_instructions="",
+            template_content=template_content,  # Required NOT NULL column
             cli_tool="claude-code",
             is_active=True,
         )
@@ -115,21 +118,25 @@ You are a specialist in integration testing.
         )
         agent_job = result_query.scalar_one()
 
+        # Verify tidy framing headers (Handover 0417)
+        assert "AGENT EXPERTISE & PROTOCOL" in agent_job.mission
+        assert "YOUR ASSIGNED WORK" in agent_job.mission
+
         # Verify template content is present
         assert "Integration Tester Agent" in agent_job.mission
         assert "Core Responsibilities" in agent_job.mission
         assert "Testing Approach" in agent_job.mission
         assert "Success Criteria" in agent_job.mission
 
-        # Verify separator and work assignment
-        assert "---" in agent_job.mission
-        assert "YOUR ASSIGNED WORK:" in agent_job.mission
+        # Verify work assignment is present
         assert "Test the authentication flow end-to-end" in agent_job.mission
 
-        # Verify order
+        # Verify order: tidy framing header → template → work section → work
+        expertise_header_index = agent_job.mission.index("AGENT EXPERTISE & PROTOCOL")
         template_index = agent_job.mission.index("Integration Tester Agent")
+        work_section_index = agent_job.mission.index("YOUR ASSIGNED WORK")
         work_index = agent_job.mission.index("Test the authentication flow end-to-end")
-        assert template_index < work_index
+        assert expertise_header_index < template_index < work_section_index < work_index
 
 
 @pytest.mark.integration
@@ -161,6 +168,7 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
             product_id=product.id,
             name="CLI Integration Test Project",
             description="Test project for CLI mode",
+            mission="Test mission for CLI mode",  # Required NOT NULL column
             status="active",
             execution_mode="claude_code_cli",  # CLI mode
         )
@@ -176,6 +184,7 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
             description="Test agent for CLI mode",
             system_instructions="# CLI Tester\n\nThis should NOT be injected.",
             user_instructions="",
+            template_content="# CLI Tester\n\nThis should NOT be injected.",  # Required NOT NULL column
             cli_tool="claude-code",
             is_active=True,
         )
