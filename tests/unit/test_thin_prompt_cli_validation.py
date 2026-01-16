@@ -15,9 +15,9 @@ import uuid
 
 import pytest
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, Project
-from giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 @pytest.mark.asyncio

@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy import select
 
 from api.app import create_app
-from giljo_mcp.models import AgentExecution, Project, User
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.models import AgentExecution, Project, User
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture

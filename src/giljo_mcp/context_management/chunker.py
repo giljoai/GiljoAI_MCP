@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 import tiktoken
 
-from giljo_mcp.tools.chunking import EnhancedChunker
+from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 
 logger = logging.getLogger(__name__)

@@ -23,10 +23,10 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from sqlalchemy import select
 
-from giljo_mcp.agent_job_manager import AgentJobManager
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.agent_job_manager import AgentJobManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

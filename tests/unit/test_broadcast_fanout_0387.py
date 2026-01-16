@@ -16,9 +16,9 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, MagicMock
 from uuid import uuid4
 
-from giljo_mcp.services.message_service import MessageService
-from giljo_mcp.models import Message, Project
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 class TestBroadcastFanoutSendMessage:

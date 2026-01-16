@@ -15,16 +15,16 @@ if TYPE_CHECKING:
 import yaml
 from sqlalchemy import and_, select, update
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Message, Product, Project, Task
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.services.template_service import TemplateService
-from giljo_mcp.services.task_service import TaskService
-from giljo_mcp.services.message_service import MessageService
-from giljo_mcp.services.context_service import ContextService
-from giljo_mcp.services.orchestration_service import OrchestrationService
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Message, Product, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.services.task_service import TaskService
+from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.services.context_service import ContextService
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
