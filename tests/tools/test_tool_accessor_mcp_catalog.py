@@ -11,7 +11,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 
-from giljo_mcp.tools.tool_accessor import ToolAccessor
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 class TestToolAccessorMCPCatalog:

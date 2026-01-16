@@ -27,14 +27,14 @@ from uuid import uuid4
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.database import DatabaseManager
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.models.projects import Project
-from giljo_mcp.models.tasks import Message, Task
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message, Task
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

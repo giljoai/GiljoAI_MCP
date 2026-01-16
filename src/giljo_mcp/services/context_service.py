@@ -24,8 +24,8 @@ They are kept for backward compatibility and will be removed in v3.2.0.
 import logging
 from typing import Any, Optional
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
