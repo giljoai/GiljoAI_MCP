@@ -8,8 +8,8 @@ import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from giljo_mcp.services.message_service import MessageService
-from giljo_mcp.models import Message
+from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.models import Message
 
 
 class TestMessageAutoAcknowledge:

@@ -11,10 +11,10 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import select, update
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Project, Session
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from giljo_mcp.tenant import TenantManager, current_tenant
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Project, Session
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.tenant import TenantManager, current_tenant
 
 
 logger = logging.getLogger(__name__)
