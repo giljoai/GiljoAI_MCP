@@ -113,26 +113,36 @@ class TestOrchestrationServiceJobManagement:
         assert "error" in result
         assert "NOT_FOUND" in result["error"]
 
+    @pytest.mark.asyncio
     async def test_get_agent_mission_success(self, mock_db_manager):
         """Test successful mission retrieval"""
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        # Mock agent job
-        mock_job = Mock(spec=AgentExecution)
+        # Mock AgentJob (work order with mission)
+        mock_job = Mock(spec=AgentJob)
         mock_job.job_id = "job-123"
-        mock_job.agent_display_name = "implementer"
         mock_job.mission = "Implement feature X with unit tests"
         mock_job.project_id = "project-id"
-        mock_job.spawned_by = "parent-job-id"
-        mock_job.status = "waiting"
-        mock_job.mission_acknowledged_at = None  # First fetch
 
-        # Two queries: 1) fetch agent_job, 2) fetch all project jobs
+        # Mock AgentExecution (executor instance)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "implementer"
+        mock_execution.spawned_by = "parent-agent-id"
+        mock_execution.status = "waiting"
+        mock_execution.mission_acknowledged_at = None  # First fetch
+
+        # Three queries in get_agent_mission:
+        # 1) fetch AgentJob
+        # 2) fetch AgentExecution
+        # 3) fetch all project executions (joined with jobs)
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_job]))))
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(all=Mock(return_value=[(mock_execution, mock_job)]))
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -164,18 +174,26 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
-        # Mock job
-        mock_job = Mock(spec=AgentExecution)
-        mock_job.job_id = "job-123"
-        mock_job.agent_display_name = "implementer"
-        mock_job.mission = "Test mission"
-        mock_job.acknowledged = False
-        mock_job.status = "waiting"
-        mock_job.started_at = None
+        # Mock AgentExecution
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "implementer"
+        mock_execution.agent_name = "implementer"
+        mock_execution.status = "waiting"
+        mock_execution.started_at = None
+        mock_execution.mission_acknowledged_at = None
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_job)
-        )
+        # Mock AgentJob (contains mission)
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.mission = "Test mission"
+
+        # Two queries: 1) fetch AgentExecution, 2) fetch AgentJob
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job))
+        ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
@@ -188,9 +206,10 @@ class TestOrchestrationServiceJobManagement:
         # Assert
         assert result["status"] == "success"
         assert result["job"]["job_id"] == "job-123"
-        assert mock_job.acknowledged is True
-        assert mock_job.status == "working"
-        assert mock_job.started_at is not None
+        assert result["job"]["mission"] == "Test mission"
+        # acknowledge_job transitions waiting -> working
+        assert mock_execution.status == "working"
+        assert mock_execution.started_at is not None
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -235,15 +254,29 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
-        # Mock job
-        mock_job = Mock(spec=AgentExecution)
+        # Mock execution and job
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.status = "working"
+        mock_execution.completed_at = None
+        mock_execution.started_at = None
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "implementer"
+        mock_execution.agent_name = "implementer"
+
+        mock_job = Mock(spec=AgentJob)
         mock_job.job_id = "job-123"
-        mock_job.status = "working"
+        mock_job.project_id = "project-1"
+        mock_job.status = "active"
         mock_job.completed_at = None
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_job)
-        )
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+        ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
@@ -256,8 +289,8 @@ class TestOrchestrationServiceJobManagement:
         # Assert
         assert result["status"] == "success"
         assert result["job_id"] == "job-123"
-        assert mock_job.status == "complete"
-        assert mock_job.completed_at is not None
+        assert mock_execution.status == "complete"
+        assert mock_execution.completed_at is not None
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -289,8 +322,8 @@ class TestOrchestrationServiceJobManagement:
 
         # Assert
         assert result["status"] == "success"
-        assert mock_job.status == "failed"
-        assert mock_job.failure_reason == "error"
+        assert mock_job.status == "blocked"
+        assert mock_job.failure_reason is None
         assert mock_job.block_reason == "Failed to compile code"
         session.commit.assert_awaited_once()
 
@@ -309,20 +342,31 @@ class TestOrchestrationServiceWorkflow:
         mock_project = Mock(spec=Project)
         mock_project.id = "project-id"
 
-        # Mock jobs with various statuses
-        mock_job1 = Mock(spec=AgentExecution)
-        mock_job1.status = "working"
+        # Mock executions with various statuses
+        mock_execution1 = Mock(spec=AgentExecution)
+        mock_execution1.status = "working"
 
-        mock_job2 = Mock(spec=AgentExecution)
-        mock_job2.status = "complete"
+        mock_execution2 = Mock(spec=AgentExecution)
+        mock_execution2.status = "complete"
 
-        mock_job3 = Mock(spec=AgentExecution)
-        mock_job3.status = "waiting"
+        mock_execution3 = Mock(spec=AgentExecution)
+        mock_execution3.status = "waiting"
 
-        # Multiple queries: project lookup, then jobs lookup
+        # Mock jobs (needed for join)
+        mock_job = Mock(spec=AgentJob)
+
+        # Create mock result that returns rows (tuples of execution, job)
+        mock_result = Mock()
+        mock_result.all = Mock(return_value=[
+            (mock_execution1, mock_job),
+            (mock_execution2, mock_job),
+            (mock_execution3, mock_job)
+        ])
+
+        # Multiple queries: project lookup, then jobs lookup (joined)
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_job1, mock_job2, mock_job3]))))
+            mock_result
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -369,30 +413,41 @@ class TestOrchestrationServiceWorkflow:
         assert "not found" in result["error"]
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
     async def test_get_pending_jobs_success(self, mock_db_manager):
         """Test successful pending jobs retrieval"""
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        # Mock pending jobs
-        mock_job1 = Mock(spec=AgentExecution)
+        # Mock AgentExecutions (waiting status)
+        mock_execution1 = Mock(spec=AgentExecution)
+        mock_execution1.agent_id = "agent-1"
+        mock_execution1.agent_display_name = "implementer"
+
+        mock_execution2 = Mock(spec=AgentExecution)
+        mock_execution2.agent_id = "agent-2"
+        mock_execution2.agent_display_name = "implementer"
+
+        # Mock AgentJobs (contain missions)
+        mock_job1 = Mock(spec=AgentJob)
         mock_job1.job_id = "job-1"
-        mock_job1.agent_display_name = "implementer"
         mock_job1.mission = "Mission 1"
-        mock_job1.context_chunks = []
         mock_job1.created_at = datetime.now()
 
-        mock_job2 = Mock(spec=AgentExecution)
+        mock_job2 = Mock(spec=AgentJob)
         mock_job2.job_id = "job-2"
-        mock_job2.agent_display_name = "implementer"
         mock_job2.mission = "Mission 2"
-        mock_job2.context_chunks = []
         mock_job2.created_at = datetime.now()
 
-        session.execute.return_value = Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_job1, mock_job2])))
-        )
+        # Create mock result that returns rows (tuples of execution, job)
+        mock_result = Mock()
+        mock_result.all = Mock(return_value=[
+            (mock_execution1, mock_job1),
+            (mock_execution2, mock_job2)
+        ])
+
+        session.execute.return_value = mock_result
 
         service = OrchestrationService(db_manager, tenant_manager)
 
