@@ -496,7 +496,7 @@ watch(
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/design-tokens.scss';
+@use '@/styles/design-tokens.scss' as *;
 
 .launch-tab-wrapper {
   padding: 20px;
