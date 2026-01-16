@@ -56,7 +56,7 @@ class TestGilTaskDirectMode:
 
         # Act
         with patch("mcp__giljo-mcp__create_task", mock_create_task):
-            result = await execute_gil_task_command(arguments)
+            await execute_gil_task_command(arguments)  # Result checked via mock
 
         # Assert
         mock_create_task.assert_called_once()
@@ -77,10 +77,12 @@ class TestGilTaskDirectMode:
 
     @pytest.mark.asyncio
     async def test_direct_mode_validates_category_values(self):
-        """Direct mode validates category must be from allowed list."""
+        """Direct mode validates category must be from allowed list.
+
+        Valid categories: frontend, backend, database, infra, docs, general
+        """
         # Arrange
         arguments = '--name "Task X" --category invalid_category'
-        allowed_categories = ["frontend", "backend", "database", "infra", "docs", "general"]
 
         # Act & Assert
         with pytest.raises(ValueError, match="Invalid category"):
@@ -268,11 +270,25 @@ class TestGilTaskCommandFile:
 
 
 # Helper function placeholder (to be implemented)
-async def execute_gil_task_command(arguments: str, conversation_context=None, user_responses=None):
+async def execute_gil_task_command(
+    arguments: str,
+    conversation_context: list | None = None,
+    user_responses: dict | None = None,
+) -> dict:
     """
     Execute the gil_task command with given arguments.
 
     This is a placeholder that will be replaced by the actual implementation
     from the .claude/commands/gil_task.md skill file.
+
+    Args:
+        arguments: Command-line style arguments (e.g., '--name "X" --priority high')
+        conversation_context: Optional conversation history for summarization
+        user_responses: Optional pre-filled user responses for testing
+
+    Returns:
+        dict with success status and result/error details
     """
+    # Suppress unused variable warnings - parameters used in tests via mocking
+    _ = (arguments, conversation_context, user_responses)
     raise NotImplementedError("gil_task command not yet implemented")
