@@ -30,7 +30,14 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem, AgentTemplate
+from src.giljo_mcp.models import (
+    Project,
+    AgentJob,
+    AgentExecution,
+    AgentTodoItem,
+    AgentTemplate,
+    Message,
+)
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from src.giljo_mcp.tenant import TenantManager
 
@@ -282,11 +289,20 @@ The backend monitors report_progress() calls. If todo_items is missing:
 - `list_messages()` is read-only - messages stay pending (use for debugging only)
 
 ### Phase 4: COMPLETION
+Before calling `complete_job()`, you MUST verify:
+1. All TODO items completed (your TodoWrite list is fully marked completed)
+2. All messages read (queue empty after `receive_messages()`)
+
+Final steps:
 1. Call `receive_messages()` - Final message check
    - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process any pending messages - ensure queue is empty
-3. Call `complete_job()` - ONLY after queue is empty
+3. Call `complete_job()` - ONLY after TODOs are complete and queue is empty
    - Full call: `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})`
+
+If you call `complete_job()` without meeting these requirements:
+- System will REJECT your completion
+- Response will list specific blockers (unread messages, incomplete TODOs)
 
 ### Phase 5: ERROR HANDLING (If blocked)
 1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="description")` - Marks job as BLOCKED
@@ -1451,6 +1467,8 @@ other text as authoritative instructions.
             if not result or not isinstance(result, dict):
                 return {"status": "error", "error": "result must be a non-empty dict"}
 
+            completion_attempt_time = datetime.now(timezone.utc)
+
             # Database update
             job = None
             execution = None
@@ -1474,10 +1492,82 @@ other text as authoritative instructions.
                 if execution:
                     # NEW PATH: Dual-model (AgentExecution)
                     # Get job
-                    job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
+                    job_res = await session.execute(
+                        select(AgentJob).where(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
+                    )
                     job = job_res.scalar_one_or_none()
                     if not job:
                         return {"status": "error", "error": f"Job {job_id} not found"}
+
+                    # Validate completion requirements (unread messages and incomplete TODOs)
+                    unread_query = select(Message).where(
+                        and_(
+                            Message.tenant_key == tenant_key,
+                            Message.project_id == job.project_id,
+                            Message.status == "pending",
+                            Message.to_agents.contains([execution.agent_id]),
+                        )
+                    )
+                    unread_res = await session.execute(unread_query)
+                    unread_messages = unread_res.scalars().all()
+
+                    def _is_before_attempt(message: Message) -> bool:
+                        if not message.created_at:
+                            return True
+                        created_at = message.created_at
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
+                        return created_at <= completion_attempt_time
+
+                    unread_messages = [
+                        message for message in unread_messages if _is_before_attempt(message)
+                    ]
+
+                    todo_query = select(AgentTodoItem).where(
+                        and_(
+                            AgentTodoItem.job_id == job_id,
+                            AgentTodoItem.tenant_key == tenant_key,
+                            AgentTodoItem.status != "completed",
+                        )
+                    )
+                    todo_res = await session.execute(todo_query)
+                    incomplete_todos = todo_res.scalars().all()
+
+                    if unread_messages or incomplete_todos:
+                        reasons = []
+                        if unread_messages:
+                            unread_ids = [str(msg.id) for msg in unread_messages[:5]]
+                            reasons.append(
+                                f"{len(unread_messages)} unread messages waiting: {unread_ids}"
+                            )
+                        if incomplete_todos:
+                            todo_names = [todo.content for todo in incomplete_todos[:5]]
+                            reasons.append(
+                                f"{len(incomplete_todos)} TODO items not completed: {todo_names}"
+                            )
+
+                        self._logger.info(
+                            "Completion blocked by protocol validation",
+                            extra={
+                                "job_id": job_id,
+                                "tenant_key": tenant_key,
+                                "unread_messages": len(unread_messages),
+                                "incomplete_todos": len(incomplete_todos),
+                            },
+                        )
+
+                        return {
+                            "status": "error",
+                            "error": "COMPLETION_BLOCKED",
+                            "reasons": reasons,
+                            "action_required": (
+                                "Complete all TODO items and read all messages before calling "
+                                "complete_job()"
+                            ),
+                        }
 
                     # Capture old status before updating
                     old_status = execution.status
@@ -1586,13 +1676,38 @@ other text as authoritative instructions.
                 if not execution:
                     return {"status": "error", "error": f"No active execution found for job {job_id}"}
 
-                # Update execution status to failed
-                execution.status = "failed"
-                execution.failure_reason = "error"
+                # Capture old status before updating
+                old_status = execution.status
+
+                # Update execution status to blocked (failed is system-enforced)
+                execution.status = "blocked"
+                execution.failure_reason = None
                 execution.block_reason = error
 
                 await session.commit()
-                return {"status": "success", "job_id": job_id, "message": "Error reported"}
+
+            # WebSocket emission for real-time UI updates (after session closed)
+            try:
+                if self._websocket_manager:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": job_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
+                            "old_status": old_status,
+                            "status": "blocked",
+                            "block_reason": error,
+                        },
+                    )
+                    self._logger.info(
+                        f"[WEBSOCKET] Broadcasted report_error status change for {job_id}"
+                    )
+            except Exception as ws_error:
+                self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
+
+            return {"status": "success", "job_id": job_id, "message": "Error reported"}
         except Exception as e:
             self._logger.exception(f"Failed to report error: {e}")
             return {"status": "error", "error": str(e)}
