@@ -9,15 +9,15 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
-from giljo_mcp.context_manager import (
+from src.giljo_mcp.context_manager import (
     get_filtered_config,
     get_full_config,
     merge_config_updates,
     validate_config_data,
 )
-from giljo_mcp.database import DatabaseManager, get_db_manager
-from giljo_mcp.models import Product, Project
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager, get_db_manager
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

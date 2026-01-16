@@ -14,8 +14,8 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select
 
 from api.endpoints.claude_export import export_templates_to_claude_code
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, User
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, User
 
 
 logger = logging.getLogger(__name__)
