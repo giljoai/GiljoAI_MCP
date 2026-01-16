@@ -592,10 +592,13 @@ SUCCESS CRITERIA:
         project_type: Optional[str] = None,
         product_id: Optional[str] = None,
         use_cache: bool = True,
-        preferred_tool: Optional[str] = None,
     ) -> str:
         """
         Get a processed template for the specified role.
+
+        Handover 0417: Simplified to remove tool-specific parameters.
+        All templates are now tool-agnostic. Multi-terminal mode uses
+        backend injection (OrchestrationService), CLI mode uses Task tool.
 
         Args:
             role: Agent role (orchestrator, analyzer, etc.)
@@ -605,7 +608,6 @@ SUCCESS CRITERIA:
             project_type: Optional project type for specialized templates
             product_id: Optional product ID for product-specific templates
             use_cache: Whether to use cached templates
-            preferred_tool: Optional AI tool preference (claude, codex, gemini)
 
         Returns:
             Processed template content
