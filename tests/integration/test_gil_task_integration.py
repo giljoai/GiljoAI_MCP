@@ -13,8 +13,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.tasks import Task
-from src.giljo_mcp.services.task_service import TaskService
+from giljo_mcp.models.tasks import Task
+from giljo_mcp.services.task_service import TaskService
 
 
 @pytest.mark.asyncio
@@ -44,10 +44,10 @@ class TestCreateTaskMCPTool:
         db_result = await async_session.execute(stmt)
         task = db_result.scalar_one()
 
-        assert task.title == "Refactor authentication service"
-        assert task.category == "backend"
-        assert task.priority == "high"
-        assert task.status == "pending"
+        assert str(task.title) == "Refactor authentication service"
+        assert str(task.category) == "backend"
+        assert str(task.priority) == "high"
+        assert str(task.status) == "pending"
 
     async def test_create_task_without_category_uses_default(
         self, async_session: AsyncSession
@@ -71,8 +71,8 @@ class TestCreateTaskMCPTool:
         db_result = await async_session.execute(stmt)
         task = db_result.scalar_one()
 
-        assert task.title == "Fix bug in login flow"
-        assert task.priority == "medium"
+        assert str(task.title) == "Fix bug in login flow"
+        assert str(task.priority) == "medium"
 
     async def test_create_task_validates_priority(
         self, async_session: AsyncSession
@@ -97,7 +97,7 @@ class TestCreateTaskMCPTool:
             db_result = await async_session.execute(stmt)
             task = db_result.scalar_one()
 
-            assert task.priority == priority
+            assert str(task.priority) == priority
 
     async def test_create_task_with_all_categories(
         self, async_session: AsyncSession
@@ -122,7 +122,7 @@ class TestCreateTaskMCPTool:
             db_result = await async_session.execute(stmt)
             task = db_result.scalar_one()
 
-            assert task.category == category
+            assert str(task.category) == category
 
     async def test_task_appears_with_correct_tenant_isolation(
         self, async_session: AsyncSession
@@ -159,7 +159,7 @@ class TestCreateTaskMCPTool:
         )
         db_result_1 = await async_session.execute(stmt_1)
         task_1 = db_result_1.scalar_one()
-        assert task_1.tenant_key == tenant_key_1
+        assert str(task_1.tenant_key) == tenant_key_1
 
         stmt_2 = select(Task).where(
             Task.id == result_2["task_id"],
@@ -167,7 +167,7 @@ class TestCreateTaskMCPTool:
         )
         db_result_2 = await async_session.execute(stmt_2)
         task_2 = db_result_2.scalar_one()
-        assert task_2.tenant_key == tenant_key_2
+        assert str(task_2.tenant_key) == tenant_key_2
 
 
 @pytest.fixture
