@@ -2391,8 +2391,10 @@ Hybrid Pattern:
   Spawn parallel batch 1 → Monitor → Wait for batch 1 complete →
   Send handoff messages → Spawn batch 2 → Repeat
 
-MANDATORY: Before calling complete_job(), MUST call receive_messages()
-           to process any blocking issues or agent error reports.
+MANDATORY: Before calling complete_job():
+- Ensure all agent TODO items are completed
+- Call receive_messages() and process all pending messages
+System rejects completion attempts with unread messages or incomplete TODOs.
 
 ────────────────────────────────────────────────────────────────────────────
 

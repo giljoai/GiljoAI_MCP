@@ -19,6 +19,8 @@ from typing import Any, Dict, List
 from ..agent_message_queue import AgentMessageQueue as MessageQueue
 from ..agent_job_manager import AgentJobManager
 from ..database import DatabaseManager
+from ..models.agent_identity import AgentExecution
+from sqlalchemy import and_, select
 
 
 logger = logging.getLogger(__name__)
@@ -948,7 +950,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
         """
         Report error and pause job for orchestrator review.
 
-        Transitions job to failed state and stores error details in message queue.
+        Transitions job to blocked state and stores error details in message queue.
         Notifies orchestrator for intervention and recovery guidance.
 
         Args:
@@ -977,7 +979,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
             - No cross-tenant error visibility
 
         Error Handling:
-            - Job marked as failed (terminal state)
+            - Job marked as blocked (non-terminal state)
             - Orchestrator notified via high-priority message
             - Recovery guidance provided based on error type
         """
@@ -1030,8 +1032,74 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-            # Fail job with tenant isolation
-            job = job_manager.fail_job(tenant_key=tenant_key, job_id=job_id, error=error_data)
+            # Block job with tenant isolation (failed is system-enforced)
+            job = job_manager.update_job_status(
+                tenant_key=tenant_key,
+                job_id=job_id,
+                status="blocked",
+            )
+
+            # Update latest execution status and broadcast for UI
+            try:
+                async with db_manager.get_session_async() as session:
+                    exec_stmt = (
+                        select(AgentExecution)
+                        .where(
+                            and_(
+                                AgentExecution.job_id == job_id,
+                                AgentExecution.tenant_key == tenant_key,
+                                AgentExecution.status.not_in(
+                                    [
+                                        "complete",
+                                        "failed",
+                                        "cancelled",
+                                        "decommissioned",
+                                    ]
+                                ),
+                            )
+                        )
+                        .order_by(AgentExecution.instance_number.desc())
+                        .limit(1)
+                    )
+                    exec_res = await session.execute(exec_stmt)
+                    execution = exec_res.scalar_one_or_none()
+
+                    if execution:
+                        old_status = execution.status
+                        execution.status = "blocked"
+                        execution.failure_reason = None
+                        execution.block_reason = error_message
+                        await session.commit()
+
+                        try:
+                            from api.app import state
+
+                            websocket_manager = getattr(state, "websocket_manager", None)
+                            if websocket_manager:
+                                await websocket_manager.broadcast_to_tenant(
+                                    tenant_key=tenant_key,
+                                    event_type="agent:status_changed",
+                                    data={
+                                        "job_id": job_id,
+                                        "agent_display_name": execution.agent_display_name,
+                                        "agent_name": execution.agent_name,
+                                        "old_status": old_status,
+                                        "status": "blocked",
+                                        "block_reason": error_message,
+                                    },
+                                )
+                                logger.info(
+                                    f"[WEBSOCKET] Broadcasted report_error status change for {job_id}"
+                                )
+                        except Exception as ws_error:
+                            logger.warning(
+                                f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}"
+                            )
+            except Exception as exec_error:
+                logger.warning(
+                    f"[report_error] Failed to update execution status: {exec_error}",
+                    exc_info=True,
+                )
 
             # Agent status sync removed (Handover 0116) - Agent model eliminated
             # Previously synced job failure to legacy agents table
@@ -1052,7 +1120,7 @@ def register_agent_coordination_tools(tools: dict, db_manager: DatabaseManager) 
                 )
 
             logger.error(
-                f"[report_error] Job {job_id} failed with {error_type} for tenant {tenant_key}: {error_message[:100]}"
+                f"[report_error] Job {job_id} blocked with {error_type} for tenant {tenant_key}: {error_message[:100]}"
             )
 
             # Generate recovery instructions based on error type
