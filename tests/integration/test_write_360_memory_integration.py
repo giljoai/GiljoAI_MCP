@@ -12,10 +12,10 @@ import pytest
 from datetime import datetime
 from uuid import uuid4
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, Project
-from giljo_mcp.models.agent_identity import AgentJob
-from giljo_mcp.tools.write_360_memory import write_360_memory
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob
+from src.giljo_mcp.tools.write_360_memory import write_360_memory
 
 
 @pytest.fixture

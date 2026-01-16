@@ -18,8 +18,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
-from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.models import Project, AgentExecution, User
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.models import Project, AgentExecution, User
 
 
 @pytest.fixture

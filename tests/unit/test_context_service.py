@@ -16,7 +16,7 @@ Note: Most methods are stubs or deprecated, so tests verify correct stub/error r
 import pytest
 from unittest.mock import Mock
 
-from giljo_mcp.services.context_service import ContextService
+from src.giljo_mcp.services.context_service import ContextService
 
 
 class TestContextServiceStubs:

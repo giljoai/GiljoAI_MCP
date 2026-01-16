@@ -34,9 +34,9 @@ from typing import Optional
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.api_key_utils import verify_api_key
-from giljo_mcp.auth.jwt_manager import JWTManager
-from giljo_mcp.models import APIKey, User
+from src.giljo_mcp.api_key_utils import verify_api_key
+from src.giljo_mcp.auth.jwt_manager import JWTManager
+from src.giljo_mcp.models import APIKey, User
 
 
 logger = logging.getLogger(__name__)

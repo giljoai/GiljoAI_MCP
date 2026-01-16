@@ -13,10 +13,10 @@ Features:
 import logging
 from typing import Any, Dict, List, Optional
 
-from giljo_mcp.context_management.chunker import VisionDocumentChunker
-from giljo_mcp.context_management.indexer import ContextIndexer
-from giljo_mcp.context_management.loader import DynamicContextLoader
-from giljo_mcp.context_management.summarizer import ContextSummarizer
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.context_management.indexer import ContextIndexer
+from src.giljo_mcp.context_management.loader import DynamicContextLoader
+from src.giljo_mcp.context_management.summarizer import ContextSummarizer
 
 
 logger = logging.getLogger(__name__)

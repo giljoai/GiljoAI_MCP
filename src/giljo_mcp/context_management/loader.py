@@ -13,7 +13,7 @@ Features:
 import logging
 from typing import Dict, List, Optional
 
-from giljo_mcp.context_management.indexer import ContextIndexer
+from src.giljo_mcp.context_management.indexer import ContextIndexer
 
 
 logger = logging.getLogger(__name__)

@@ -13,8 +13,8 @@ import uuid
 
 import pytest
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, AgentExecution, Product, Project
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, AgentExecution, Product, Project
 
 
 @pytest.mark.asyncio

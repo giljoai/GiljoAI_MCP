@@ -9,12 +9,12 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from sqlalchemy import select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models.tasks import Message
-from giljo_mcp.models.projects import Project
-from giljo_mcp.models.agent_identity import AgentExecution
-from giljo_mcp.services.message_service import MessageService
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture

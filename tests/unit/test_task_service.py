@@ -16,8 +16,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
-from giljo_mcp.services.task_service import TaskService
-from giljo_mcp.models import Task, Project
+from src.giljo_mcp.services.task_service import TaskService
+from src.giljo_mcp.models import Task, Project
 
 
 @pytest.fixture
