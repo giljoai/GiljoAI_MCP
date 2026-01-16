@@ -30,7 +30,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem
+from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem, AgentTemplate
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from src.giljo_mcp.tenant import TenantManager
 
@@ -631,6 +631,57 @@ class OrchestrationService:
                         f"[SERENA] Injected notice into agent mission",
                         extra={"agent_name": agent_name, "agent_display_name": agent_display_name}
                     )
+
+                # Handover 0417: Template injection for multi-terminal mode
+                if project.execution_mode == "multi_terminal":
+                    # Look up template by agent_name
+                    template_result = await session.execute(
+                        select(AgentTemplate).where(
+                            and_(
+                                AgentTemplate.name == agent_name,
+                                AgentTemplate.tenant_key == tenant_key,
+                                AgentTemplate.is_active == True
+                            )
+                        )
+                    )
+                    template = template_result.scalar_one_or_none()
+
+                    if template:
+                        # Get template content (Handover 0106: system_instructions + user_instructions)
+                        template_expertise = ""
+                        if template.system_instructions:
+                            template_expertise = template.system_instructions
+                            if template.user_instructions:
+                                template_expertise += "\n\n" + template.user_instructions
+                        elif template.template_content:
+                            # Fallback for v3.0 compatibility
+                            template_expertise = template.template_content
+
+                        if template_expertise:
+                            # Inject template into mission
+                            mission = f"{template_expertise}\n\n---\n\nYOUR ASSIGNED WORK:\n{mission}"
+                            self._logger.info(
+                                f"[TEMPLATE_INJECTION] Injected template into mission for multi-terminal mode",
+                                extra={
+                                    "agent_name": agent_name,
+                                    "agent_display_name": agent_display_name,
+                                    "template_id": template.id,
+                                    "execution_mode": project.execution_mode
+                                }
+                            )
+                    else:
+                        # Template not found - log warning but proceed
+                        self._logger.warning(
+                            f"[TEMPLATE_INJECTION] No template found for agent_name={agent_name} in multi-terminal mode. "
+                            f"Proceeding with orchestrator's mission as-is.",
+                            extra={
+                                "agent_name": agent_name,
+                                "agent_display_name": agent_display_name,
+                                "execution_mode": project.execution_mode,
+                                "tenant_key": tenant_key
+                            }
+                        )
+                # For claude_code_cli mode, no injection (Task tool handles template loading)
 
                 # Create AgentJob (work order - WHAT)
                 agent_job = AgentJob(
