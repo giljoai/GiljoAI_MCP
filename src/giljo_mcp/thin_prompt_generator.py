@@ -999,19 +999,19 @@ No previous project history available. Starting fresh.
 
         execution_mode = "Claude Code CLI" if claude_code_mode else "Multi-Terminal"
 
-        # Handover 0415: Thin client prompt - details in orchestrator_protocol field
-        prompt = f"""Orchestrator for "{project.name}"
+        # Handover 0415: Thin client prompt with explicit "YOUR" labels
+        prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
 
-IDENTITY:
-Agent ID: {agent_id}
-Job ID: {orchestrator_id}
-Project: {project_id}
-Tenant: {self.tenant_key}
+YOUR IDENTITY (use these in all MCP calls):
+  YOUR Agent ID: {agent_id}
+  YOUR Job ID: {orchestrator_id}
+  THE Project ID: {project_id}
+  User's Tenant Key: {self.tenant_key}
 
-MCP: {mcp_url}
+MCP Server: {mcp_url}
 
-START: Call get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
-Returns orchestrator_protocol with your complete 5-chapter workflow guide.
+START NOW: Call get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
+Response includes orchestrator_protocol with your complete 5-chapter workflow guide.
 """
 
         return prompt
