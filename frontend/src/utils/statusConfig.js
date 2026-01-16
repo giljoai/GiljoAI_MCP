@@ -19,6 +19,12 @@ export const statusConfig = {
     italic: true,
     chipColor: 'warning',
   },
+  blocked: {
+    label: 'Needs Input',
+    color: '#ff9800', // Orange
+    italic: false,
+    chipColor: 'warning',
+  },
   complete: {
     label: 'Complete',
     color: '#67bd6d', // Green
@@ -26,7 +32,7 @@ export const statusConfig = {
     chipColor: 'success',
   },
   failed: {
-    label: 'Failed',
+    label: 'Protocol Violation',
     color: '#e53935', // Red
     italic: false,
     chipColor: 'error',
@@ -97,10 +103,10 @@ export const STATUS_CONFIG = {
     description: 'Agent is actively working',
   },
   blocked: {
-    icon: 'mdi-alert-octagon',
+    icon: 'mdi-account-question',
     color: 'orange',
-    label: 'Blocked',
-    description: 'Agent is blocked waiting for input',
+    label: 'Needs Input',
+    description: 'Agent needs user input to continue',
   },
   complete: {
     icon: 'mdi-check-circle',
@@ -111,8 +117,8 @@ export const STATUS_CONFIG = {
   failed: {
     icon: 'mdi-alert-circle',
     color: 'purple',
-    label: 'Failure',
-    description: 'Agent has failed',
+    label: 'Protocol Violation',
+    description: 'Agent violated completion protocol',
   },
   cancelled: {
     icon: 'mdi-cancel',

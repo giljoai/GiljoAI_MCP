@@ -174,7 +174,7 @@ export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
 
   // Check terminal states
   if (config.excludeTerminalStates) {
-    const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned']
+    const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned', 'handed_over']
     if (terminalStates.includes(job.status)) {
       return `Job is ${job.status}`
     }
