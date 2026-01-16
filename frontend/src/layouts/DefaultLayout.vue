@@ -31,6 +31,7 @@ import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
+import { useNotificationReminder } from '@/composables/useNotificationReminder'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
@@ -114,6 +115,10 @@ onMounted(async () => {
 
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])
+
+      // Initialize periodic notification reminders (Handover: notifications-implementation)
+      useNotificationReminder()
+      console.log('[DefaultLayout] Notification reminder initialized')
 
       console.log('[DefaultLayout] Application initialized successfully')
     } catch (error) {
