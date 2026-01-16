@@ -9,7 +9,7 @@ TDD Approach: Tests written first, then implementation.
 
 import pytest
 
-from giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
 
 class TestVisionDocumentChunker:

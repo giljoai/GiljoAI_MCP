@@ -29,8 +29,8 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product, Project, Task, VisionDocument
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
 
 logger = logging.getLogger(__name__)

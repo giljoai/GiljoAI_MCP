@@ -29,10 +29,10 @@ from contextlib import asynccontextmanager
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Message, Project
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

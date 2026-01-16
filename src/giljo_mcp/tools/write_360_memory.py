@@ -16,11 +16,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models.products import Product
-from giljo_mcp.models.projects import Project
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

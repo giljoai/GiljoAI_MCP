@@ -14,8 +14,8 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
-from giljo_mcp.services.template_service import TemplateService
-from giljo_mcp.models import AgentTemplate
+from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.models import AgentTemplate
 
 
 class TestTemplateServiceCRUD:

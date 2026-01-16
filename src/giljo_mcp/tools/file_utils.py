@@ -13,8 +13,8 @@ from typing import Any, Optional
 
 from sqlalchemy import select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product
 
 
 logger = logging.getLogger(__name__)
