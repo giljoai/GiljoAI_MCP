@@ -192,10 +192,16 @@ Create `tests/unit/test_template_injection.py`:
 4. Log template injection events
 
 ### Phase 3: Template Manager Cleanup (REFACTOR)
-1. Remove tool-specific icon handling
-2. Simplify agent_type/agent_name to single `name` field
-3. Update legacy template loading
-4. Ensure cache invalidation works correctly
+1. **Remove tool-specific code**:
+   - Delete `codex_icon`, `gemini_icon`, `cli_tool` field handling
+   - Remove any tool-detection logic (all non-Claude-CLI = multi-terminal)
+2. **Simplify naming**:
+   - `agent_name` = template lookup key (single source of truth)
+   - `agent_display_name` = UI display category only
+   - Remove `agent_type` confusion (was alias for display_name)
+3. **Update legacy template loading**:
+   - Ensure `_load_legacy_templates()` uses consistent naming
+4. **Cache invalidation**: Verify cache works with simplified structure
 
 ### Phase 4: Integration Tests
 1. E2E test: spawn with injection
@@ -248,19 +254,42 @@ Create `tests/unit/test_template_injection.py`:
 
 ---
 
-## Codex/Gemini Considerations
+## CLI Tool Strategy: Multi-Terminal as Universal Solution
+
+**Decision**: Treat ALL non-Claude-Code-CLI tools as multi-terminal mode.
+
+### Rationale
 
 Per research in `Reference_docs/gemini_vs_claude_agent_templates.md`:
 
-1. **Codex CLI**: NO subagent support today → Must use multi-terminal mode
-2. **Gemini CLI**: Experimental subagent support → Use multi-terminal mode
-3. **Consolidation**: Remove tool-specific template symbols/icons
-4. **Single format**: All templates use same structure (MD with YAML frontmatter)
+| CLI Tool | Subagent Support | Our Approach |
+|----------|------------------|--------------|
+| **Claude Code CLI** | Native Task tool (mature) | Task tool loads templates |
+| **Claude Code Web** | None | Multi-terminal mode |
+| **Gemini CLI** | Experimental/community | Multi-terminal mode |
+| **Codex CLI** | None | Multi-terminal mode |
 
-**Template Export**:
-- Claude Code: Export as `.claude/agents/*.md`
-- Gemini: Export as extension folder (separate endpoint if needed)
-- Codex: No subagent export needed (manual terminal mode)
+**Why NOT implement Gemini's native extension system:**
+1. **Experimental** - Gemini's subagent is community-driven, not production-ready
+2. **Different architecture** - Extensions are folders (JSON + MD + TOML), not single files
+3. **Our MCP is the coordination layer** - Agents coordinate via MCP tools, not CLI features
+4. **Maintenance burden** - Supporting native Gemini extensions adds complexity for minimal gain
+5. **Template injection solves it universally** - Works for ALL CLIs without special handling
+
+### Simplifications
+
+1. **Remove tool-specific icons/symbols** - No `codex_icon`, `gemini_icon` in TemplateManager
+2. **ONE template format** - MD with YAML frontmatter (Claude Code format is canonical)
+3. **Single export endpoint** - `/gil_get_claude_agents` exports to `.claude/agents/*.md`
+4. **Universal injection** - Multi-terminal mode + template injection works for ALL CLIs
+
+### Future Consideration
+
+If Gemini's subagent support matures to a native file format, we can add:
+```
+/gil_get_gemini_agents → extension folders
+```
+But this is a future enhancement, NOT a blocker for this handover.
 
 ---
 
