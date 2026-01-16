@@ -846,6 +846,20 @@ class ToolAccessor:
                         }
                     )
 
+                # Handover 0415: Add chapter-based orchestrator protocol
+                from giljo_mcp.tools.orchestration import _build_orchestrator_protocol
+
+                cli_mode = execution_mode == "claude_code_cli"
+                orchestrator_protocol = _build_orchestrator_protocol(
+                    cli_mode=cli_mode,
+                    context_budget=execution.context_budget or 150000,
+                    project_id=str(project.id),
+                    orchestrator_id=job_id,
+                    tenant_key=tenant_key,
+                    include_implementation_reference=True  # Always include CH5 for reference
+                )
+                response["orchestrator_protocol"] = orchestrator_protocol
+
                 logger.info(
                     f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
                     extra={
