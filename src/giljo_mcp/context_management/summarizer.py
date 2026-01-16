@@ -15,7 +15,7 @@ from typing import Dict, Optional
 
 import tiktoken
 
-from giljo_mcp.repositories.context_repository import ContextRepository
+from src.giljo_mcp.repositories.context_repository import ContextRepository
 
 
 logger = logging.getLogger(__name__)

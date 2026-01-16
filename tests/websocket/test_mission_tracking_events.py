@@ -18,8 +18,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.models import AgentExecution, Project, Product
-from giljo_mcp.agent_job_manager import AgentJobManager
+from src.giljo_mcp.models import AgentExecution, Project, Product
+from src.giljo_mcp.agent_job_manager import AgentJobManager
 from api.websocket import WebSocketManager
 
 

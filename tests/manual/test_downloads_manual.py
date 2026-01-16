@@ -22,8 +22,8 @@ load_dotenv()
 
 from sqlalchemy import select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, User
 
 
 class DownloadsTester:

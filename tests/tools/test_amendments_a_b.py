@@ -19,8 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from giljo_mcp.models import AgentExecution, Project
-from giljo_mcp.tools.orchestration import register_orchestration_tools
+from src.giljo_mcp.models import AgentExecution, Project
+from src.giljo_mcp.tools.orchestration import register_orchestration_tools
 
 
 @pytest.fixture

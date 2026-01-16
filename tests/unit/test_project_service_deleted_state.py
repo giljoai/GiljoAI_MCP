@@ -13,8 +13,8 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 from datetime import datetime, timezone
 
-from giljo_mcp.services.project_service import ProjectService
-from giljo_mcp.models import Project
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.models import Project
 
 
 @pytest.fixture
