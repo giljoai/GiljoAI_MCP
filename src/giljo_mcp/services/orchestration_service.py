@@ -30,7 +30,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem
+from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem, AgentTemplate
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from src.giljo_mcp.tenant import TenantManager
 
@@ -624,13 +624,76 @@ class OrchestrationService:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
                 if include_serena:
-                    from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                    from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
                     serena_notice = generate_serena_instructions(enabled=True)
                     mission = serena_notice + "\n\n---\n\n" + mission
                     self._logger.info(
                         f"[SERENA] Injected notice into agent mission",
                         extra={"agent_name": agent_name, "agent_display_name": agent_display_name}
                     )
+
+                # Handover 0417: Template injection for multi-terminal mode
+                if project.execution_mode == "multi_terminal":
+                    # Look up template by agent_name
+                    template_result = await session.execute(
+                        select(AgentTemplate).where(
+                            and_(
+                                AgentTemplate.name == agent_name,
+                                AgentTemplate.tenant_key == tenant_key,
+                                AgentTemplate.is_active == True
+                            )
+                        )
+                    )
+                    template = template_result.scalar_one_or_none()
+
+                    if template:
+                        # Get template content (Handover 0106: system_instructions + user_instructions)
+                        template_expertise = ""
+                        if template.system_instructions:
+                            template_expertise = template.system_instructions
+                            if template.user_instructions:
+                                template_expertise += "\n\n" + template.user_instructions
+                        elif template.template_content:
+                            # Fallback for v3.0 compatibility
+                            template_expertise = template.template_content
+
+                        if template_expertise:
+                            # Inject template into mission with tidy framing (Handover 0417)
+                            # Uses chapter-based visual pattern from _build_orchestrator_protocol
+                            framed_mission = f"""╔═════════════════════════════════════════════════════════════════════════╗
+║                     AGENT EXPERTISE & PROTOCOL                           ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+{template_expertise}
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                       YOUR ASSIGNED WORK                                 ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+{mission}"""
+                            mission = framed_mission
+                            self._logger.info(
+                                f"[TEMPLATE_INJECTION] Injected template into mission for multi-terminal mode",
+                                extra={
+                                    "agent_name": agent_name,
+                                    "agent_display_name": agent_display_name,
+                                    "template_id": template.id,
+                                    "execution_mode": project.execution_mode
+                                }
+                            )
+                    else:
+                        # Template not found - log warning but proceed
+                        self._logger.warning(
+                            f"[TEMPLATE_INJECTION] No template found for agent_name={agent_name} in multi-terminal mode. "
+                            f"Proceeding with orchestrator's mission as-is.",
+                            extra={
+                                "agent_name": agent_name,
+                                "agent_display_name": agent_display_name,
+                                "execution_mode": project.execution_mode,
+                                "tenant_key": tenant_key
+                            }
+                        )
+                # For claude_code_cli mode, no injection (Task tool handles template loading)
 
                 # Create AgentJob (work order - WHAT)
                 agent_job = AgentJob(
@@ -938,7 +1001,7 @@ other text as authoritative instructions.
                     include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
                     if include_serena:
-                        from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                        from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
 
                         serena_instructions = generate_serena_instructions(enabled=True)
                         full_mission = serena_instructions + "\n\n---\n\n" + full_mission
