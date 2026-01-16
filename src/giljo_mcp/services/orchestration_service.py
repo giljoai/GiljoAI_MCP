@@ -624,7 +624,7 @@ class OrchestrationService:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
                 if include_serena:
-                    from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                    from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
                     serena_notice = generate_serena_instructions(enabled=True)
                     mission = serena_notice + "\n\n---\n\n" + mission
                     self._logger.info(
@@ -658,8 +658,20 @@ class OrchestrationService:
                             template_expertise = template.template_content
 
                         if template_expertise:
-                            # Inject template into mission
-                            mission = f"{template_expertise}\n\n---\n\nYOUR ASSIGNED WORK:\n{mission}"
+                            # Inject template into mission with tidy framing (Handover 0417)
+                            # Uses chapter-based visual pattern from _build_orchestrator_protocol
+                            framed_mission = f"""╔═════════════════════════════════════════════════════════════════════════╗
+║                     AGENT EXPERTISE & PROTOCOL                           ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+{template_expertise}
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                       YOUR ASSIGNED WORK                                 ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+{mission}"""
+                            mission = framed_mission
                             self._logger.info(
                                 f"[TEMPLATE_INJECTION] Injected template into mission for multi-terminal mode",
                                 extra={
@@ -989,7 +1001,7 @@ other text as authoritative instructions.
                     include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
                     if include_serena:
-                        from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+                        from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
 
                         serena_instructions = generate_serena_instructions(enabled=True)
                         full_mission = serena_instructions + "\n\n---\n\n" + full_mission
