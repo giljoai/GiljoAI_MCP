@@ -82,6 +82,184 @@ Example: "Installed 6 agent templates to ~/.claude/agents/. **Please restart Cla
 """
 
 
+GIL_TASK_MD = """---
+description: "Punt technical debt and scope creep items to the GiljoAI Tasks dashboard. Supports direct mode with flags or interactive mode with summarization."
+---
+
+# /gil_task - Punt Tasks to Dashboard
+
+You are executing the `/gil_task` slash command to create a task in the GiljoAI MCP server's Tasks dashboard.
+
+## Two Modes of Operation
+
+### Direct Mode (With Flags)
+When `$ARGUMENTS` contains flags like `--name`, create the task immediately.
+
+### Interactive Mode (No Flags)
+When `$ARGUMENTS` is empty or contains only a description, engage in interactive mode:
+1. Summarize the last concept discussed in the conversation
+2. Ask the user clarifying questions
+3. Create the task with collected information
+
+---
+
+## Execution Instructions
+
+### Step 1: Parse Arguments
+
+Check if `$ARGUMENTS` contains any of these flags:
+- `--name "Task Name"` (required for direct mode)
+- `--priority [low|medium|high|critical]` (optional, default: medium)
+- `--category [frontend|backend|database|infra|docs|general]` (optional, default: general)
+- `--description "Detailed description"` (optional, uses name if not provided)
+
+**Valid Categories:** `frontend`, `backend`, `database`, `infra`, `docs`, `general`
+**Valid Priorities:** `low`, `medium`, `high`, `critical`
+
+### Step 2: Execute Mode
+
+#### If Flags Detected (Direct Mode):
+
+1. **Validate Flags:**
+   - Ensure `--name` is provided (REQUIRED)
+   - Validate `--priority` is one of: low, medium, high, critical
+   - Validate `--category` is one of: frontend, backend, database, infra, docs, general
+   - If validation fails, show error message and stop
+
+2. **Parse Flag Values:**
+   ```
+   Extract values from $ARGUMENTS:
+   - name: value of --name flag (required)
+   - priority: value of --priority flag (default: "medium")
+   - category: value of --category flag (default: "general")
+   - description: value of --description flag (default: same as name)
+   ```
+
+3. **Call MCP Tool:**
+   Use the `mcp__giljo-mcp__create_task` tool with these parameters:
+   ```
+   title: <name value>
+   description: <description value or name if not provided>
+   priority: <priority value>
+   ```
+
+4. **Confirm Success:**
+   ```
+   Task created successfully!
+
+   Title: <task title>
+   Priority: <priority>
+   Category: <category>
+   Task ID: <task_id from MCP response>
+
+   You can view this task in the GiljoAI Tasks dashboard.
+   ```
+
+#### If No Flags (Interactive Mode):
+
+1. **Summarize Conversation:**
+   - Review the last 3-5 messages in the conversation
+   - Identify the most recent concept, feature, or issue discussed
+   - Generate a concise title and detailed description
+
+2. **Show Summary to User:**
+   ```
+   Based on our conversation, I'll punt this task to your Tasks dashboard:
+
+   Title: <generated title>
+   Description: <generated description>
+   ```
+
+3. **Ask Clarifying Questions:**
+
+   **Question 1 - Category:**
+   ```
+   What category best describes this task?
+   1. frontend - UI/UX work
+   2. backend - Server/API work
+   3. database - Schema/query work
+   4. infra - DevOps/deployment work
+   5. docs - Documentation work
+   6. general - Other/miscellaneous
+
+   Select a number (1-6):
+   ```
+
+   **Question 2 - Priority:**
+   ```
+   What's the priority level?
+   1. low - Nice to have
+   2. medium - Should do eventually (default)
+   3. high - Important, do soon
+   4. critical - Blocking, do ASAP
+
+   Select a number (1-4, default is 2):
+   ```
+
+4. **Call MCP Tool:**
+   After collecting all responses, use `mcp__giljo-mcp__create_task`:
+   ```
+   title: <generated title>
+   description: <generated description>
+   priority: <user selected priority>
+   ```
+
+5. **Confirm Success:**
+   ```
+   Task punted successfully!
+
+   Title: <task title>
+   Category: <category>
+   Priority: <priority>
+   Task ID: <task_id from MCP response>
+
+   This task is now in your Tasks dashboard and can be converted to a project when ready.
+   ```
+
+---
+
+## Error Handling
+
+### Validation Errors (Direct Mode):
+- Missing `--name`: "Error: --name flag is required for direct mode. Use /gil_task without flags for interactive mode."
+- Invalid priority: "Error: Invalid priority '<value>'. Must be one of: low, medium, high, critical"
+- Invalid category: "Error: Invalid category '<value>'. Must be one of: frontend, backend, database, infra, docs, general"
+
+### MCP Tool Errors:
+If `mcp__giljo-mcp__create_task` returns an error:
+```
+Failed to create task: <error message>
+
+Please check your connection to the GiljoAI MCP server and try again.
+```
+
+---
+
+## Examples
+
+### Direct Mode
+```
+/gil_task --name "Refactor auth service" --priority high --category backend
+```
+
+### Interactive Mode
+```
+/gil_task
+```
+(Claude summarizes conversation, asks category/priority, creates task)
+
+---
+
+## Important Notes
+
+1. **$ARGUMENTS Variable:** Contains everything typed after `/gil_task`. Parse for flags or use interactive mode.
+
+2. **Conversation Context:** For interactive mode, analyze recent conversation to generate meaningful titles.
+
+3. **Task Dashboard:** Created tasks appear in the GiljoAI web UI under Tasks tab and can be converted to projects.
+"""
+
+
 def get_all_templates() -> dict[str, str]:
     """
     Return all slash command templates
@@ -91,4 +269,5 @@ def get_all_templates() -> dict[str, str]:
     """
     return {
         "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
+        "gil_task.md": GIL_TASK_MD,
     }
