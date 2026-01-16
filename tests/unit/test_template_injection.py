@@ -179,7 +179,8 @@ async def test_spawn_agent_job_injects_template_for_multi_terminal_mode(
 
     agent_job = job_add_calls[0][0][0]
     assert "TDD Implementor Agent" in agent_job.mission  # Template content
-    assert "YOUR ASSIGNED WORK:" in agent_job.mission  # Separator
+    assert "AGENT EXPERTISE & PROTOCOL" in agent_job.mission  # Tidy framing header (0417)
+    assert "YOUR ASSIGNED WORK" in agent_job.mission  # Tidy framing work section (0417)
     assert "Implement feature X with comprehensive tests" in agent_job.mission  # Work
 
 
@@ -332,18 +333,23 @@ async def test_template_not_found_logs_warning_proceeds(mock_config_no_serena,
 
 
 @pytest.mark.asyncio
-async def test_injected_mission_structure(mock_config_no_serena, 
+async def test_injected_mission_structure(mock_config_no_serena,
     mock_db_manager, mock_tenant_manager, sample_project, sample_template
 ):
     """
-    Test that injected mission has correct structure.
+    Test that injected mission has correct tidy framing structure.
 
-    Structure should be:
+    Structure should be (Handover 0417 - tidy framing):
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                     AGENT EXPERTISE & PROTOCOL                           ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
     [Template content]
 
-    ---
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                       YOUR ASSIGNED WORK                                 ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
 
-    YOUR ASSIGNED WORK:
     [Orchestrator's mission]
     """
     db_manager, session = mock_db_manager
@@ -378,18 +384,22 @@ async def test_injected_mission_structure(mock_config_no_serena,
 
     mission = agent_job.mission
 
-    # Should start with template content
-    assert mission.startswith("# TDD Implementor Agent")
+    # Should start with tidy framing box header
+    assert mission.startswith("╔")
+    assert "AGENT EXPERTISE & PROTOCOL" in mission
 
-    # Should contain separator
-    assert "\n\n---\n\nYOUR ASSIGNED WORK:\n" in mission
+    # Should contain template content after first header
+    assert "# TDD Implementor Agent" in mission
+
+    # Should contain work section header
+    assert "YOUR ASSIGNED WORK" in mission
 
     # Should end with work assignment
     assert mission.endswith("Specific work assignment")
 
 
 @pytest.mark.asyncio
-async def test_full_mission_contains_template_plus_work(mock_config_no_serena, 
+async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
     mock_db_manager, mock_tenant_manager, sample_project, sample_template
 ):
     """
@@ -399,7 +409,7 @@ async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
     1. Template content is present
     2. Work assignment is present
     3. Order is correct (template first, then work)
-    4. Separator is present between them
+    4. Tidy framing headers are present (Handover 0417)
     """
     db_manager, session = mock_db_manager
 
@@ -435,6 +445,10 @@ async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
 
     mission = agent_job.mission
 
+    # Verify tidy framing headers are present (Handover 0417)
+    assert "AGENT EXPERTISE & PROTOCOL" in mission
+    assert "YOUR ASSIGNED WORK" in mission
+
     # Verify template content is present
     assert "TDD Implementor Agent" in mission
     assert "MCP TOOLS ARE NATIVE TOOL CALLS" in mission
@@ -447,10 +461,7 @@ async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
 
     # Verify order: template content appears before work assignment
     template_index = mission.index("TDD Implementor Agent")
-    separator_index = mission.index("YOUR ASSIGNED WORK:")
+    work_section_index = mission.index("YOUR ASSIGNED WORK")
     work_index = mission.index(work_assignment)
 
-    assert template_index < separator_index < work_index
-
-    # Verify separator format
-    assert "\n\n---\n\nYOUR ASSIGNED WORK:\n" in mission
+    assert template_index < work_section_index < work_index
