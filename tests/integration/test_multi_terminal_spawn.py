@@ -225,5 +225,9 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
         assert "CLI Tester" not in agent_job.mission
         assert "should NOT be injected" not in agent_job.mission
 
-        # Verify only work assignment
-        assert agent_job.mission == "Test CLI mode behavior"
+        # Verify work assignment is present (may have Serena notice prepended)
+        assert "Test CLI mode behavior" in agent_job.mission
+
+        # Verify NO template framing headers (multi-terminal mode markers)
+        assert "AGENT EXPERTISE & PROTOCOL" not in agent_job.mission
+        assert "YOUR ASSIGNED WORK" not in agent_job.mission
