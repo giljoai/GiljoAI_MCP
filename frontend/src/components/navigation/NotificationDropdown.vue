@@ -20,7 +20,7 @@
           icon="mdi-bell"
           variant="text"
           aria-label="View notifications"
-          class="mr-2"
+          :class="['mr-2', { 'notification-bell--unread': unreadCount > 0 }]"
         ></v-btn>
       </v-badge>
     </template>
@@ -68,7 +68,10 @@
             <v-list-item-title class="text-body-2 font-weight-medium mb-1">
               {{ notification.title }}
             </v-list-item-title>
-            <v-list-item-subtitle class="text-caption text-wrap">
+            <v-list-item-subtitle
+              :class="['text-caption', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
+              @click.stop="toggleExpand(notification)"
+            >
               {{ notification.message }}
             </v-list-item-subtitle>
 
@@ -127,6 +130,8 @@ const getNotificationIcon = (type) => {
     project_update: 'mdi-folder-edit',
     system_alert: 'mdi-alert-circle',
     message_received: 'mdi-message-alert',
+    connection_lost: 'mdi-wifi-off',
+    connection_restored: 'mdi-wifi-check',
     success: 'mdi-check-circle',
     error: 'mdi-alert-circle',
     info: 'mdi-information',
@@ -143,6 +148,8 @@ const getNotificationColor = (type) => {
     project_update: 'primary',
     system_alert: 'error',
     message_received: 'success',
+    connection_lost: 'error',
+    connection_restored: 'success',
     success: 'success',
     error: 'error',
     info: 'info',
@@ -160,6 +167,11 @@ const formatTimestamp = (timestamp) => {
     console.error('[NotificationDropdown] Error formatting timestamp:', error)
     return ''
   }
+}
+
+// Toggle message expand/collapse
+const toggleExpand = (notification) => {
+  notification._expanded = !notification._expanded
 }
 
 // Handle notification click (mark as read)
@@ -197,13 +209,24 @@ const handleNewNotification = (payload) => {
 const handleAgentHealthAlert = (payload) => {
   console.log('[NotificationDropdown] Agent health alert received:', payload)
   // Transform agent health event into notification format
+  // Backend payload: job_id, agent_display_name, health_state, issue_description, minutes_since_update, recommended_action
+  const agentName = payload.agent_display_name || payload.agent_name || 'Unknown Agent'
+  const healthState = payload.health_state || payload.health_status || 'unknown'
+  const issueDesc = payload.issue_description || `Health status: ${healthState}`
+
   const notification = {
     type: 'agent_health',
-    title: 'Agent Health Alert',
-    message: payload.message || `Agent ${payload.agent_name || 'Unknown'} health status: ${payload.health_status}`,
+    title: `Agent: ${agentName}`,
+    message: issueDesc,
     timestamp: new Date().toISOString(),
     read: false,
-    metadata: payload,
+    metadata: {
+      job_id: payload.job_id,
+      agent_display_name: agentName,
+      health_state: healthState,
+      minutes_since_update: payload.minutes_since_update,
+      recommended_action: payload.recommended_action,
+    },
   }
   notificationStore.addNotification(notification)
 }
@@ -215,7 +238,7 @@ onMounted(async () => {
   // Subscribe to WebSocket events
   try {
     unsubscribeNotification = wsStore.on('notification:new', handleNewNotification)
-    unsubscribeAgentHealth = wsStore.on('agent:health:alert', handleAgentHealthAlert)
+    unsubscribeAgentHealth = wsStore.on('agent:health_alert', handleAgentHealthAlert)
     console.log('[NotificationDropdown] Subscribed to notification events')
   } catch (error) {
     console.warn('[NotificationDropdown] Failed to subscribe to events:', error)
@@ -245,11 +268,41 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Pulsing glow animation for unread notifications */
+@keyframes notification-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(var(--v-theme-error), 0);
+  }
+}
+
+.notification-bell--unread {
+  animation: notification-pulse 2s ease-in-out infinite;
+  border-radius: 50%;
+}
+
 .notification-dropdown {
-  width: 350px;
+  width: 420px;
   max-height: 500px;
   display: flex;
   flex-direction: column;
+}
+
+/* Message truncation - click to expand */
+.message-truncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.message-truncated:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
 }
 
 .notification-header {
