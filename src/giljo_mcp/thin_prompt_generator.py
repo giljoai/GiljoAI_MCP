@@ -950,10 +950,10 @@ No previous project history available. Starting fresh.
         self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False, agent_id: str = None
     ) -> str:
         """
-        Generate simple orchestrator staging prompt (Handover 0333).
+        Generate thin-client orchestrator staging prompt (Handover 0415).
 
-        Restores the working pattern from commit 051addde with mode awareness.
-        Replaces the broken 7-task workflow with a simple ~50 line prompt.
+        Minimal prompt that provides identity credentials and instructs orchestrator
+        to fetch complete workflow guide from orchestrator_protocol field via MCP.
 
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
@@ -962,7 +962,7 @@ No previous project history available. Starting fresh.
             agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls, Handover 0388)
 
         Returns:
-            Simple staging prompt (~50-60 lines)
+            Thin staging prompt (~113 tokens, <150 char/4 estimate)
 
         Raises:
             ValueError: If project or product not found
@@ -999,124 +999,19 @@ No previous project history available. Starting fresh.
 
         execution_mode = "Claude Code CLI" if claude_code_mode else "Multi-Terminal"
 
-        # Mode-specific instructions
-        if claude_code_mode:
-            # Handover 0342: Trimmed CLI mode block - verbose version in get_orchestrator_instructions()
-            mode_block = """CLI MODE CRITICAL:
-This project uses Claude Code CLI for implementation. When spawning agents:
-- agent_name: SINGLE SOURCE OF TRUTH - must EXACTLY match template name (see allowed_agent_names)
-- agent_display_name: Display category label (e.g., "implementer")
-- Template file: Each agent_name requires .claude/agents/{agent_name}.md
+        # Handover 0415: Thin client prompt with explicit "YOUR" labels
+        prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
 
-Example Task call (IMPLEMENTATION PHASE ONLY - not during staging):
-  Task(subagent_display_name="{agent_name}", instructions="...")
+YOUR IDENTITY (use these in all MCP calls):
+  YOUR Agent ID: {agent_id}
+  YOUR Job ID: {orchestrator_id}
+  THE Project ID: {project_id}
+  User's Tenant Key: {self.tenant_key}
 
-NOTE: Do NOT invoke Task tool during staging. This syntax is for PLANNING your execution strategy only.
-In implementation phase, Task(subagent_display_name=X) uses agent_name value, NOT agent_display_name.
-Full cli_mode_rules, allowed_agent_names, and examples are in get_orchestrator_instructions() response."""
-        else:
-            mode_block = """MULTI-TERMINAL MODE:
-- User will manually copy/paste prompts for each agent
-- Each agent has [Copy Prompt] button in the Implementation tab
-- Coordinate agents via MCP messaging tools"""
+MCP Server: {mcp_url}
 
-        # Handover 0388: Updated IDENTITY to show agent_id (WHO) and job_id (WHAT) separately
-        prompt = f"""You are Orchestrator for project "{project.name}" managed by GiljoAI MCP Agent Orchestration Server.
-
-IDENTITY:
-- Orchestrator Agent ID: {agent_id}
-- Job ID: {orchestrator_id}
-- Project ID: {project_id}
-- Tenant Key: {self.tenant_key}
-- Execution Mode: {execution_mode}
-
-════════════════════════════════════════════════════════════════════════════════
-                         PHASE BOUNDARY - READ CAREFULLY
-════════════════════════════════════════════════════════════════════════════════
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ STAGING PHASE (Steps 1-7): THIS SESSION                                     │
-│ Your job RIGHT NOW: Analyze, spawn jobs, write plan                         │
-│ DO NOT: Invoke Task tool, execute agent work                                │
-│ END WITH: send_message('STAGING_COMPLETE: Mission created, N agents spawned')│
-└─────────────────────────────────────────────────────────────────────────────┘
-
-                         ══════ SESSION BOUNDARY ══════
-    User clicks Launch in UI or copies and pastes the implementation start prompt
-                         ══════════════════════════════
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ IMPLEMENTATION PHASE (Step 8): FUTURE SESSION                               │
-│ You or a fresh orchestrator retrieves plan via get_agent_mission()          │
-│ Invokes Task tool for each agent per your plan                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-MCP CONNECTION:
-- Server URL: {mcp_url}
-- Tool Prefix: mcp__giljo-mcp__
-
-YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
-You are STAGING the project. Your job:
-1) Analyze requirements
-2) Create mission plan
-3) Assign work to specialist agents
-
-STARTUP SEQUENCE:
-1. Verify MCP: health_check()
-2. Fetch context: get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
-   Returns: Project description, Product context, AVAILABLE AGENT TEMPLATES
-3. CREATE MISSION: Analyze requirements and generate execution plan
-4. PERSIST MISSION: update_project_mission('{project_id}', your_mission)
-5. SPAWN AGENTS: spawn_agent_job() for each specialist
-   CRITICAL: agent_name MUST exactly match template name from Step 2
-   agent_display_name can be descriptive category (for UI display only)
-6. WRITE YOUR EXECUTION PLAN: Persist how you will coordinate agents during implementation.
-   Call update_agent_mission(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}', mission=YOUR_PLAN)
-
-   Document in your plan:
-   - Agent execution order (sequential/parallel/hybrid)
-   - Dependency graph between agents
-   - Coordination checkpoints
-   - Success criteria for each phase
-
-   This allows fresh-session orchestrators to retrieve your execution strategy.
-7. SIGNAL COMPLETE: send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned', project_id='{project_id}', message_type='broadcast')
-   This broadcast enables the Launch Jobs button in UI (REQUIRED)
-
-════════════════════════════════════════════════════════════════════════════════
-⚠️  STAGING ENDS AT STEP 7 - DO NOT call complete_job() or write_360_memory()
-    Those are for IMPLEMENTATION phase only (after all agents finish their work)
-════════════════════════════════════════════════════════════════════════════════
-
-IMPLEMENTATION PHASE COMPLETION PROTOCOL (REFERENCE ONLY - NOT FOR STAGING):
-
-When PROJECT IMPLEMENTATION is fully complete (all spawned agents have finished their work):
-
-1. WRITE 360 MEMORY: Call write_360_memory() with:
-   - project_id: '{project_id}'
-   - tenant_key: '{self.tenant_key}'
-   - summary: 2-3 paragraph overview of mission accomplishments
-   - key_outcomes: 3-5 specific, measurable achievements
-   - decisions_made: 3-5 architectural/design decisions with rationale
-   - entry_type: "project_completion"
-   - author_job_id: '{orchestrator_id}'
-
-2. MARK COMPLETE: After 360 memory succeeds, call complete_job()
-
-3. WAIT: User reviews 360 memory in UI and chooses "Continue Working" or "Close Out Project"
-
-CRITICAL: Auto-generate content from your knowledge. Never ask user to fill placeholders.
-8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING: After spawning agents, enter monitoring mode:
-
-   **Sequential Pattern**: Spawn agent → Poll via `receive_messages()` → Wait for completion → Send handoff message → Spawn next agent
-
-   **Parallel Pattern**: Spawn all agents → Poll ALL via `receive_messages()` every 2-3 minutes → Coordinate as agents finish
-
-   **MANDATORY**: Before calling `complete_job()`, you MUST call `receive_messages()` to process any blocking issues or agent error reports.
-
-{mode_block}
-
-Begin by calling health_check(), then get_orchestrator_instructions().
+START NOW: Call get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
+Response includes orchestrator_protocol with your complete 5-chapter workflow guide.
 """
 
         return prompt

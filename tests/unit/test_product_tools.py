@@ -6,8 +6,8 @@ Tests get_product_config(), update_product_config(), and get_product_settings()
 
 import pytest
 
-from giljo_mcp.models import Product, Project
-from giljo_mcp.tools.product import (
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.tools.product import (
     get_product_config,
     get_product_settings,
     update_product_config,

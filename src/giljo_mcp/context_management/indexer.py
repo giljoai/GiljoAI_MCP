@@ -14,8 +14,8 @@ Features:
 import logging
 from typing import Any, Dict, List, Optional
 
-from giljo_mcp.models import MCPContextIndex
-from giljo_mcp.repositories.context_repository import ContextRepository
+from src.giljo_mcp.models import MCPContextIndex
+from src.giljo_mcp.repositories.context_repository import ContextRepository
 
 
 logger = logging.getLogger(__name__)
