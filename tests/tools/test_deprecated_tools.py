@@ -28,9 +28,9 @@ from unittest.mock import MagicMock, AsyncMock
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.tools.tool_accessor import ToolAccessor
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 @pytest.fixture

@@ -29,10 +29,10 @@ import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem
-from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Project, AgentJob, AgentExecution, AgentTodoItem
+from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
+from src.giljo_mcp.tenant import TenantManager
 
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk

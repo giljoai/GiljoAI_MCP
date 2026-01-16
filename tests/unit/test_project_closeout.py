@@ -16,9 +16,9 @@ from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from giljo_mcp.models.products import Product
-from giljo_mcp.models.projects import Project
-from giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.services.product_service import ProductService
 
 
 def create_mock_db_session(project_mock, product_mock):

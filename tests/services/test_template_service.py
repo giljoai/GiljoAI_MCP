@@ -11,11 +11,11 @@ import pytest
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from giljo_mcp.models.agent_identity import AgentJob
-from giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
-from giljo_mcp.services.template_service import TemplateService
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.models.agent_identity import AgentJob
+from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
 
 
 # Test Fixtures

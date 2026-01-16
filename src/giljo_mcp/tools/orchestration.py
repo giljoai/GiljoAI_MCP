@@ -19,13 +19,13 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
-from giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
-from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.logging import get_logger, ErrorCode
-from giljo_mcp.models import AgentTemplate, Job, Product, Project
-from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from giljo_mcp.orchestrator import ProjectOrchestrator
+from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
+from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.logging import get_logger, ErrorCode
+from src.giljo_mcp.models import AgentTemplate, Job, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.orchestrator import ProjectOrchestrator
 
 
 logger = get_logger(__name__)

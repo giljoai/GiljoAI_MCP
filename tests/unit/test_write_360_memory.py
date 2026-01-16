@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Patch flag_modified at module level since all our tests use mocked models
 pytestmark = pytest.mark.usefixtures("mock_flag_modified")
 
-from giljo_mcp.tools.write_360_memory import write_360_memory
-from giljo_mcp.models.products import Product
-from giljo_mcp.models.projects import Project
+from src.giljo_mcp.tools.write_360_memory import write_360_memory
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 
 
 @pytest.fixture(autouse=True)
