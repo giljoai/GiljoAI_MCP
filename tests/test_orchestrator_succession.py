@@ -21,9 +21,9 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentExecution
-from giljo_mcp.orchestrator_succession import (
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentExecution
+from src.giljo_mcp.orchestrator_succession import (
     OrchestratorSuccessionManager,
     calculate_context_usage,
 )

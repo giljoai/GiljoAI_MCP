@@ -15,9 +15,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from giljo_mcp.services.product_service import ProductService
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Product
+from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product
 
 
 @pytest.fixture

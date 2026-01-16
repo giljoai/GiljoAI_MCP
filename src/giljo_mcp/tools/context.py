@@ -12,10 +12,10 @@ import yaml
 from fastmcp import FastMCP
 from sqlalchemy import delete, select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.discovery import DiscoveryManager, PathResolver
-from giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.discovery import DiscoveryManager, PathResolver
+from src.giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
+from src.giljo_mcp.tenant import TenantManager
 
 from .chunking import EnhancedChunker
 from .context_tools.framing_helpers import (

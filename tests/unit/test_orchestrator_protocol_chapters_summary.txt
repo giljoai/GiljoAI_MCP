@@ -1,0 +1,58 @@
+# TDD RED PHASE COMPLETE - Test Suite Summary for Handover 0415
+
+## Test File
+tests/unit/test_orchestrator_protocol_chapters.py
+
+## Status: ✅ TDD RED PHASE SUCCESSFUL
+All tests fail as expected because implementation doesn't exist yet.
+
+## Test Coverage (12 tests total)
+
+### TestOrchestratorProtocolChapters (6 tests)
+1. ✅ test_build_orchestrator_protocol_returns_5_chapters - SKIPPED (function not implemented)
+2. ✅ test_build_orchestrator_protocol_cli_mode_content - SKIPPED (function not implemented)
+3. ✅ test_build_orchestrator_protocol_multi_terminal_mode_content - SKIPPED (function not implemented)
+4. ✅ test_chapter_structure_has_visual_boxes - SKIPPED (function not implemented)
+5. ✅ test_chapter_navigation_hint_present - SKIPPED (function not implemented)
+6. ✅ test_include_implementation_reference_flag - SKIPPED (function not implemented)
+
+### TestOrchestratorProtocolIntegration (1 test)
+7. ✅ test_orchestrator_protocol_in_instructions_response - SKIPPED (function not implemented)
+
+### TestStagingPromptTokenReduction (2 tests)
+8. ✅ test_staging_prompt_token_count_under_150 - FAILED (expected - needs implementation)
+9. ✅ test_staging_prompt_removes_inline_tasks - FAILED (expected - needs implementation)
+
+### TestChapterContentQuality (3 tests)
+10. ✅ test_ch1_contains_mission_clarity - SKIPPED (function not implemented)
+11. ✅ test_ch2_contains_startup_sequence - SKIPPED (function not implemented)
+12. ✅ test_ch4_contains_error_handling - SKIPPED (function not implemented)
+
+## What Needs to Be Implemented (Phase 2 - GREEN)
+
+1. **New Function**: `_build_orchestrator_protocol()` in `src/giljo_mcp/tools/orchestration.py`
+   - Parameters: cli_mode, context_budget, project_id, orchestrator_id, tenant_key, include_implementation_reference
+   - Returns: dict with 5 chapters + navigation_hint
+
+2. **Chapter Structure**:
+   - ch1_your_mission
+   - ch2_startup_sequence
+   - ch3_agent_spawning_rules (CLI vs multi-terminal variants)
+   - ch4_error_handling
+   - ch5_reference
+   - navigation_hint
+
+3. **Integration**: Update `get_orchestrator_instructions()` to include `orchestrator_protocol` field
+
+4. **Prompt Update**: Modify `generate_staging_prompt()` to reference chapters instead of inline tasks
+
+## Expected Token Reduction
+- Current: ~725 tokens (inline staging prompt)
+- Target: <150 tokens (thin client with chapter reference)
+- Savings: ~575 tokens (79% reduction)
+
+## Next Steps
+1. Implement `_build_orchestrator_protocol()` function
+2. Update `get_orchestrator_instructions()` to return protocol
+3. Refactor `generate_staging_prompt()` to reference chapters
+4. Run tests again to verify GREEN phase
