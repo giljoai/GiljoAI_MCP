@@ -14,6 +14,7 @@
             <strong>Core slash commands:</strong>
             <ul class="mt-2 mb-2 pl-4">
               <li>/gil_get_claude_agents - Download + install agent templates</li>
+              <li>/gil_task - Punt technical debt to Tasks dashboard</li>
               <li>/gil_activate - Activate a project for staging</li>
               <li>/gil_launch - Launch a staged project</li>
               <li>/gil_handover - Trigger orchestrator succession</li>
