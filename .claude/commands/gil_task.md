@@ -1,88 +1,4 @@
-"""
-Slash command markdown templates for Claude Code/Codex/Gemini (Handover 0093)
-
-This module provides markdown templates with YAML frontmatter for slash commands
-that can be installed to ~/.claude/commands/ directory.
-
-Note: gil_activate, gil_launch, gil_handover slash commands removed - users
-use the web UI for these actions. Only gil_get_claude_agents is needed for CLI.
-"""
-
-GIL_GET_CLAUDE_AGENTS_MD = """---
-name: gil_get_claude_agents
-description: Download and install GiljoAI agent templates to Claude Code
-allowed-tools: []
 ---
-
-Install GiljoAI agent templates to your Claude Code environment.
-
-## STEP 1: Get Download URL
-
-Call the HTTP endpoint to stage templates and get download URL.
-
-First, get the server URL and API key from the MCP config:
-- Server URL is typically `http://localhost:7272` or the URL you used to connect to GiljoAI
-- API key is in your MCP connection config (X-API-Key header value)
-
-Then make a POST request:
-
-```bash
-curl -X POST "http://localhost:7272/api/download/generate-token?content_type=agent_templates" \
-  -H "X-API-Key: YOUR_API_KEY_HERE" \
-  -H "Content-Type: application/json"
-```
-
-Returns JSON with: `download_url` (valid 15 minutes, one-time use), `expires_at`, and `content_type`
-
-## STEP 2: Download Templates
-
-Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no headers needed:
-
-```bash
-curl -o /tmp/agents.zip "{download_url}"
-```
-
-## STEP 3: Ask User Install Location
-
-Ask: "Where should I install the {template_count} agent templates?"
-
-Options:
-- **Project agents** (`.claude/agents/`) - Available only in this project
-- **User agents** (`~/.claude/agents/`) - Available across all your projects
-
-## STEP 4: Extract to Chosen Location
-
-Use Bash to extract based on user choice:
-
-**For Project agents:**
-```bash
-mkdir -p .claude/agents && unzip -o /tmp/agents.zip -d .claude/agents/ && rm /tmp/agents.zip
-```
-
-**For User agents:**
-```bash
-mkdir -p ~/.claude/agents && unzip -o /tmp/agents.zip -d ~/.claude/agents/ && rm /tmp/agents.zip
-```
-
-## STEP 5: Confirm and Restart Notice
-
-Tell the user:
-1. How many templates were installed (from `template_count`)
-2. Where they were installed
-3. **They must restart Claude Code** (Ctrl+C and relaunch) for agents to become available
-4. After restart, use agents via `@agent-name` in Claude Code
-
-Example: "Installed 6 agent templates to ~/.claude/agents/. **Please restart Claude Code** for the agents to become available."
-
-## IMPORTANT
-
-- Use the Bash tool for curl/unzip commands (works on Windows via Git Bash, Linux, macOS)
-- Unix paths (/tmp, ~/.claude/) work on ALL platforms
-- Do NOT use PowerShell or Windows-style paths
-"""
-
-
-GIL_TASK_MD = """---
 description: "Punt technical debt and scope creep items to the GiljoAI Tasks dashboard. Supports direct mode with flags or interactive mode with summarization."
 ---
 
@@ -143,6 +59,8 @@ Check if `$ARGUMENTS` contains any of these flags:
    priority: <priority value>
    ```
 
+   Note: Store category in the description or title since the MCP tool may not have a direct category parameter.
+
 4. **Confirm Success:**
    ```
    Task created successfully!
@@ -172,7 +90,16 @@ Check if `$ARGUMENTS` contains any of these flags:
 
 3. **Ask Clarifying Questions:**
 
-   **Question 1 - Category:**
+   **Question 1 - Scope:**
+   ```
+   Where should this task live?
+   1. Active product: [Product Name if available]
+   2. All Tasks (unscoped - no product association)
+
+   Which would you prefer? (1 or 2)
+   ```
+
+   **Question 2 - Category:**
    ```
    What category best describes this task?
    1. frontend - UI/UX work
@@ -185,7 +112,7 @@ Check if `$ARGUMENTS` contains any of these flags:
    Select a number (1-6):
    ```
 
-   **Question 2 - Priority:**
+   **Question 3 - Priority:**
    ```
    What's the priority level?
    1. low - Nice to have
@@ -196,7 +123,10 @@ Check if `$ARGUMENTS` contains any of these flags:
    Select a number (1-4, default is 2):
    ```
 
-4. **Call MCP Tool:**
+4. **Collect User Responses:**
+   Wait for the user to answer each question before proceeding.
+
+5. **Call MCP Tool:**
    After collecting all responses, use `mcp__giljo-mcp__create_task`:
    ```
    title: <generated title>
@@ -204,13 +134,16 @@ Check if `$ARGUMENTS` contains any of these flags:
    priority: <user selected priority>
    ```
 
-5. **Confirm Success:**
+   Note: Include category information in the description or title.
+
+6. **Confirm Success:**
    ```
    Task punted successfully!
 
    Title: <task title>
    Category: <category>
    Priority: <priority>
+   Scope: <product name or "All Tasks (unscoped)">
    Task ID: <task_id from MCP response>
 
    This task is now in your Tasks dashboard and can be converted to a project when ready.
@@ -226,7 +159,7 @@ Check if `$ARGUMENTS` contains any of these flags:
 - Invalid category: "Error: Invalid category '<value>'. Must be one of: frontend, backend, database, infra, docs, general"
 
 ### MCP Tool Errors:
-If `mcp__giljo-mcp__create_task` returns an error:
+If `mcp__giljo-mcp__create_task` returns `{"success": false, "error": "..."}`:
 ```
 Failed to create task: <error message>
 
@@ -237,37 +170,98 @@ Please check your connection to the GiljoAI MCP server and try again.
 
 ## Examples
 
-### Direct Mode
+### Example 1: Direct Mode
 ```
-/gil_task --name "Refactor auth service" --priority high --category backend
+User: /gil_task --name "Refactor auth service" --priority high --category backend
+
+Claude:
+[Parses flags: name="Refactor auth service", priority="high", category="backend"]
+[Calls mcp__giljo-mcp__create_task with title="Refactor auth service", description="Refactor auth service", priority="high"]
+[Receives response: {"success": true, "task_id": "task-abc123"}]
+
+Task created successfully!
+
+Title: Refactor auth service
+Priority: high
+Category: backend
+Task ID: task-abc123
+
+You can view this task in the GiljoAI Tasks dashboard.
 ```
 
-### Interactive Mode
+### Example 2: Interactive Mode
 ```
-/gil_task
+User: /gil_task
+
+Claude:
+Based on our conversation, I'll punt this task to your Tasks dashboard:
+
+Title: Implement JWT authentication for API endpoints
+Description: Add JWT token-based authentication to replace the current session-based auth, improving security and enabling stateless API access
+
+Where should this task live?
+1. Active product: GiljoAI MCP Server
+2. All Tasks (unscoped - no product association)
+
+Which would you prefer? (1 or 2)
+
+User: 1
+
+Claude:
+What category best describes this task?
+1. frontend - UI/UX work
+2. backend - Server/API work
+3. database - Schema/query work
+4. infra - DevOps/deployment work
+5. docs - Documentation work
+6. general - Other/miscellaneous
+
+Select a number (1-6):
+
+User: 2
+
+Claude:
+What's the priority level?
+1. low - Nice to have
+2. medium - Should do eventually (default)
+3. high - Important, do soon
+4. critical - Blocking, do ASAP
+
+Select a number (1-4, default is 2):
+
+User: 3
+
+Claude:
+[Calls mcp__giljo-mcp__create_task with collected information]
+[Receives response: {"success": true, "task_id": "task-def456"}]
+
+Task punted successfully!
+
+Title: Implement JWT authentication for API endpoints
+Category: backend
+Priority: high
+Scope: GiljoAI MCP Server
+Task ID: task-def456
+
+This task is now in your Tasks dashboard and can be converted to a project when ready.
 ```
-(Claude summarizes conversation, asks category/priority, creates task)
 
 ---
 
 ## Important Notes
 
-1. **$ARGUMENTS Variable:** Contains everything typed after `/gil_task`. Parse for flags or use interactive mode.
+1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and optionally `assigned_to`. Store category in the description text since the Task model supports it via the `category` field.
 
-2. **Conversation Context:** For interactive mode, analyze recent conversation to generate meaningful titles.
+2. **Product Scope:** If the user selects a product scope in interactive mode, you may need to fetch the active product ID using another MCP tool if available, or note it in the task description.
 
-3. **Task Dashboard:** Created tasks appear in the GiljoAI web UI under Tasks tab and can be converted to projects.
-"""
+3. **Conversation Context:** For interactive mode, analyze recent conversation history to generate meaningful titles and descriptions. Don't just punt generic "Task X" - be specific based on what was discussed.
 
+4. **$ARGUMENTS Variable:** This contains everything the user typed after `/gil_task`. Parse it for flags or treat it as free text for interactive mode.
 
-def get_all_templates() -> dict[str, str]:
-    """
-    Return all slash command templates
+---
 
-    Returns:
-        dict[str, str]: Mapping of filename to markdown content
-    """
-    return {
-        "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
-        "gil_task.md": GIL_TASK_MD,
-    }
+## Task Arguments
+
+The `$ARGUMENTS` variable will contain the user's input after `/gil_task`.
+
+Execute the appropriate mode based on the presence of flags in `$ARGUMENTS`.
