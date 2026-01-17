@@ -6,7 +6,6 @@ Handles product configuration access and updates with role-based filtering
 import logging
 from typing import Any, Optional
 
-from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
 from src.giljo_mcp.context_manager import (
@@ -273,18 +272,3 @@ async def get_product_settings(project_id: str, session=None) -> dict[str, Any]:
     """
     # Simply delegate to get_product_config with filtered=False
     return await get_product_config(project_id=project_id, filtered=False, session=session)
-
-
-def register_product_tools(
-    mcp: FastMCP,
-    _db_manager: DatabaseManager,
-    _tenant_manager: TenantManager,
-):
-    """Register product configuration tools with the MCP server"""
-
-    # Register the standalone functions as MCP tools
-    mcp.tool()(get_product_config)
-    mcp.tool()(update_product_config)
-    mcp.tool()(get_product_settings)
-
-    logger.info("Product configuration tools registered")
