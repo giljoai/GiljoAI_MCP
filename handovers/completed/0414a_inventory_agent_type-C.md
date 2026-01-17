@@ -1,8 +1,24 @@
 # Phase 0414a: Complete Inventory of agent_type Occurrences
 
-**Status**: COMPLETED
+**Status**: ✅ ARCHIVED
 **Generated**: 2026-01-11
+**Archived**: 2026-01-17
 **Next Phase**: 0414b (Write TDD tests)
+
+---
+
+## Completion Summary
+
+**What Was Built**:
+- Complete inventory of ALL `agent_type` occurrences across codebase (~1,532 occurrences in ~150 files)
+- Categorized into 10 categories (DATABASE, API_SCHEMA, WEBSOCKET_EVENTS, etc.)
+- Migration dependency order documented
+- Zombie code candidates identified (~200 lines)
+- DO NOT RENAME items documented (job_type, subagent_type)
+
+**Scope**: Foundation document for 0414 migration series.
+
+**Final Status**: Research complete. Ready for 0414b TDD phase.
 
 ---
 
