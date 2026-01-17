@@ -166,6 +166,9 @@ class FileStaging:
         Queries the database for active agent templates belonging to the
         tenant and creates a ZIP file with .md files.
 
+        **Handover 0421**: Updates last_exported_at timestamp for all exported templates
+        to enable staleness detection in get_available_agents().
+
         Args:
             staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
             tenant_key: Tenant identifier
@@ -182,6 +185,8 @@ class FileStaging:
             return (None, "Database session not configured for template staging")
 
         try:
+            from datetime import datetime, timezone
+
             staging_path.mkdir(parents=True, exist_ok=True)
             zip_path = staging_path / "agent_templates.zip"
 
@@ -211,6 +216,21 @@ class FileStaging:
                     content = render_claude_agent(template)
                     zf.writestr(filename, content)
 
+            # ═══════════════════════════════════════════════════════════════════════
+            # Handover 0421: Update export timestamp for staleness detection
+            # ═══════════════════════════════════════════════════════════════════════
+            export_timestamp = datetime.now(timezone.utc)
+
+            for template in selected:
+                template.last_exported_at = export_timestamp
+
+            await session.commit()
+
+            logger.info(
+                f"Updated last_exported_at for {len(selected)} templates at {export_timestamp.isoformat()}"
+            )
+            # ═══════════════════════════════════════════════════════════════════════
+
             logger.info(
                 f"Staged agent templates ZIP: {zip_path} ({len(selected)} files from {len(all_active)} active templates)"
             )
@@ -222,6 +242,9 @@ class FileStaging:
         except Exception as e:
             msg = f"Unexpected error staging agent templates: {e}"
             logger.error(msg)
+            # Rollback on error
+            if session:
+                await session.rollback()
             return (None, msg)
 
     async def save_metadata(self, staging_dir: Path, metadata: dict) -> Path:
