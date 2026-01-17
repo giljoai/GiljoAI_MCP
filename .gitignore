@@ -82,6 +82,7 @@ dmypy.json
 
 # Claude and Serena (AI assistants)
 .claude/
+!.claude/commands/  # Track project-level slash commands
 .serena/
 serena/
 
