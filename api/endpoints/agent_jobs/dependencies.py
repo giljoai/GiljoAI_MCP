@@ -24,6 +24,17 @@ async def get_db_manager() -> DatabaseManager:
     return state.db_manager
 
 
+async def get_tenant_manager():
+    """
+    Get TenantManager instance from app state.
+
+    Returns the tenant manager from the FastAPI application state.
+    """
+    from api.app import state
+
+    return state.tenant_manager
+
+
 def get_orchestration_service(
     current_user: User = Depends(get_current_active_user),
 ) -> OrchestrationService:

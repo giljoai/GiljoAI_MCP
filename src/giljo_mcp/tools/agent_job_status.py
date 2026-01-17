@@ -40,7 +40,11 @@ _job_manager: Optional[AgentJobManager] = None
 _test_session: Optional[Any] = None  # AsyncSession for testing
 
 
-def init_for_testing(db_manager: DatabaseManager, test_session: Optional[Any] = None):
+def init_for_testing(
+    db_manager: DatabaseManager,
+    test_session: Optional[Any] = None,
+    tenant_manager: Optional[TenantManager] = None,
+):
     """
     Initialize module-level variables for testing.
 
@@ -50,10 +54,13 @@ def init_for_testing(db_manager: DatabaseManager, test_session: Optional[Any] = 
     Args:
         db_manager: Database manager instance for testing
         test_session: Optional AsyncSession for transaction-based test isolation
+        tenant_manager: TenantManager instance for testing (required for AgentJobManager)
     """
     global _db_manager, _job_manager, _test_session
     _db_manager = db_manager
-    _job_manager = AgentJobManager(db_manager)
+    if tenant_manager is None:
+        raise ValueError("tenant_manager is required for initializing AgentJobManager")
+    _job_manager = AgentJobManager(db_manager, tenant_manager)
     _test_session = test_session
 
 
@@ -589,7 +596,7 @@ def register_agent_job_status_tools(mcp: FastMCP, db_manager: DatabaseManager, t
 
     # Store module-level references
     _db_manager = db_manager
-    _job_manager = AgentJobManager(db_manager)
+    _job_manager = AgentJobManager(db_manager, tenant_manager)
 
     # Register tools with FastMCP
     mcp.tool()(update_job_status)

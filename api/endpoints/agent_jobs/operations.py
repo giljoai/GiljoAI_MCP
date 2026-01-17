@@ -28,7 +28,7 @@ from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .dependencies import get_db_manager
+from .dependencies import get_db_manager, get_tenant_manager
 from .models import (
     CancelJobRequest,
     CancelJobResponse,
@@ -50,6 +50,7 @@ async def cancel_job(
     request: CancelJobRequest,
     current_user: User = Depends(get_current_active_user),
     db_manager: DatabaseManager = Depends(get_db_manager),
+    tenant_manager = Depends(get_tenant_manager),
 ) -> CancelJobResponse:
     """
     Request graceful cancellation of an agent job (Handover 0107).
@@ -75,7 +76,7 @@ async def cancel_job(
 
     try:
         # HANDOVER 0420c: Use modern AgentJobManager.cancel_job method
-        job_manager = AgentJobManager(db_manager)
+        job_manager = AgentJobManager(db_manager, tenant_manager)
         result = await job_manager.cancel_job(
             job_id=job_id,
             tenant_key=current_user.tenant_key,
