@@ -190,21 +190,6 @@ class JobListResponse(BaseModel):
 # Job Operations Models (Handover 0107)
 # ============================================================================
 
-class CancelJobRequest(BaseModel):
-    """Request model for job cancellation."""
-
-    reason: str = Field(..., description="Reason for cancellation")
-
-
-class CancelJobResponse(BaseModel):
-    """Response model for job cancellation."""
-
-    success: bool
-    job_id: str
-    status: str
-    message: str
-
-
 class ForceFailJobRequest(BaseModel):
     """Request model for force-failing a job."""
 

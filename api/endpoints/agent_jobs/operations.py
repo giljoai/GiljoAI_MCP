@@ -2,8 +2,6 @@
 Agent Job Operations Endpoints - Handovers 0107, 0244b
 
 Handles agent job operational controls:
-- POST /api/jobs/{job_id}/cancel - Cancel agent job
-- POST /api/jobs/{job_id}/force-fail - Force-fail agent job
 - GET /api/jobs/{job_id}/health - Get job health metrics
 - PATCH /api/jobs/{job_id}/mission - Update agent mission (Handover 0244b)
 
@@ -30,8 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .dependencies import get_db_manager, get_tenant_manager
 from .models import (
-    CancelJobRequest,
-    CancelJobResponse,
     ForceFailJobRequest,
     ForceFailJobResponse,
     JobHealthResponse,
@@ -42,86 +38,6 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-@router.post("/{job_id}/cancel", response_model=CancelJobResponse)
-async def cancel_job(
-    job_id: str,
-    request: CancelJobRequest,
-    current_user: User = Depends(get_current_active_user),
-    db_manager: DatabaseManager = Depends(get_db_manager),
-    tenant_manager = Depends(get_tenant_manager),
-) -> CancelJobResponse:
-    """
-    Request graceful cancellation of an agent job (Handover 0107).
-
-    Sets job status to "cancelling" and sends a high-priority cancel message
-    to the agent, allowing it to clean up gracefully.
-
-    Args:
-        job_id: Job ID to cancel
-        request: Cancel request with reason
-        current_user: Authenticated user (from dependency)
-
-    Returns:
-        CancelJobResponse with success status and updated job details
-
-    Raises:
-        HTTPException 404: Job not found
-        HTTPException 403: User not authorized (tenant mismatch)
-        HTTPException 409: Job in invalid state for cancellation
-        HTTPException 400: Invalid request
-    """
-    logger.debug(f"User {current_user.username} requesting cancellation of job {job_id}")
-
-    try:
-        # HANDOVER 0420c: Use modern AgentJobManager.cancel_job method
-        job_manager = AgentJobManager(db_manager, tenant_manager)
-        result = await job_manager.cancel_job(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key,
-        )
-
-        if not result.get("success"):
-            raise ValueError(result.get("error", "Failed to cancel job"))
-
-        # Return success response
-        return CancelJobResponse(
-            success=True,
-            job_id=job_id,
-            status="cancelled",
-            message=f"Job cancelled. {result.get('executions_decommissioned', 0)} execution(s) decommissioned.",
-        )
-
-    except ValueError as e:
-        error_msg = str(e)
-
-        # Handle not found
-        if "not found" in error_msg.lower():
-            raise HTTPException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                detail=error_msg
-            )
-
-        # Handle terminal state (cannot cancel)
-        if "cannot cancel" in error_msg.lower() or "terminal state" in error_msg.lower():
-            raise HTTPException(
-                status_code=http_status.HTTP_409_CONFLICT,
-                detail=error_msg
-            )
-
-        # General validation error
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
-
-    except Exception as e:
-        logger.error(f"Unexpected error canceling job {job_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel job: {str(e)}"
-        )
 
 
 # HANDOVER 0420c: Commented out - force_fail_job function deleted in 0420b cleanup

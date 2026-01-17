@@ -192,20 +192,6 @@
                 </template>
               </v-tooltip>
 
-              <!-- Cancel button: only when working (Handover 0243d) -->
-              <v-tooltip v-if="agent.status === 'working'" text="Cancel job">
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-cancel"
-                    size="small"
-                    variant="text"
-                    color="warning"
-                    @click="confirmCancelJob(agent)"
-                  />
-                </template>
-              </v-tooltip>
-
               <!-- Hand Over button: only for working orchestrators (Handover 0243d) -->
               <v-tooltip
                 v-if="agent.agent_display_name === 'orchestrator' && ['working', 'complete', 'completed'].includes(agent.status)"
@@ -269,26 +255,6 @@
         @click="sendMessage"
       />
     </div>
-
-    <!-- Cancel Job Confirmation Dialog (Handover 0243d) -->
-    <v-dialog v-model="showCancelDialog" max-width="500">
-      <v-card>
-        <v-card-title>Cancel Agent Job?</v-card-title>
-        <v-card-text>
-          The agent will stop work on its next check-in. This action cannot be undone.
-
-          <div class="agent-info mt-4">
-            <div><strong>Agent Display Name:</strong> {{ selectedAgent?.agent_display_name }}</div>
-            <div><strong>Job ID:</strong> {{ selectedAgent?.job_id }}</div>
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="showCancelDialog = false">No, keep running</v-btn>
-          <v-btn color="error" @click="cancelJob">Yes, cancel</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Hand Over Dialog (Handover 0243d) -->
     <LaunchSuccessorDialog
@@ -463,7 +429,6 @@ const sending = ref(false)
 /**
  * Dialog modal state (Handover 0243d, 0331)
  */
-const showCancelDialog = ref(false)
 const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
@@ -845,52 +810,6 @@ function handleAgentJob(agent) {
   console.log('[JobsTab] Agent job action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   showAgentJobModal.value = true
-}
-
-/**
- * Confirm cancel job (Handover 0243d)
- * Opens confirmation dialog with agent details
- */
-function confirmCancelJob(agent) {
-  selectedJobId.value = agent.job_id || agent.agent_id
-  showCancelDialog.value = true
-}
-
-/**
- * Cancel job (Handover 0243d)
- * Calls API to cancel job and shows confirmation toast
- */
-async function cancelJob() {
-  try {
-    const job = selectedAgent.value
-    if (!job) {
-      showCancelDialog.value = false
-      return
-    }
-
-    const jobId = job.job_id || job.agent_id
-    const response = await api.post(`/jobs/${jobId}/cancel`, {
-      reason: 'User requested cancellation'
-    })
-
-    showToast({
-      message: 'Agent job cancelled successfully',
-      type: 'success',
-      duration: 3000
-    })
-
-    showCancelDialog.value = false
-
-    // Status will update via WebSocket event (agent:status_changed)
-  } catch (error) {
-    console.error('[JobsTab] Cancel job failed:', error)
-    const msg = error.response?.data?.detail || error.message || 'Failed to cancel agent job'
-    showToast({
-      message: msg,
-      type: 'error',
-      duration: 5000
-    })
-  }
 }
 
 /**
