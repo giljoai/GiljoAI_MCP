@@ -18,7 +18,7 @@ from fastmcp import FastMCP
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.agent_job_manager import AgentJobManager
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
