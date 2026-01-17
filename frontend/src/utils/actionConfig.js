@@ -8,10 +8,10 @@ export const ACTION_CONFIG = {
     icon: 'mdi-rocket-launch',
     color: 'primary',
     label: 'Launch Agent',
-    tooltip: 'Copy prompt to clipboard and launch agent',
+    tooltip: 'Copy prompt to clipboard',
     confirmation: false,
-    requiresStatus: ['waiting'],
-    excludeTerminalStates: true,
+    requiresStatus: [], // Always available for prompt re-copying
+    excludeTerminalStates: false,
   },
 
   copyPrompt: {
@@ -33,19 +33,6 @@ export const ACTION_CONFIG = {
     requiresStatus: [], // Available for all
     excludeTerminalStates: false,
     badge: true, // Show unread count badge
-  },
-
-  cancel: {
-    icon: 'mdi-cancel',
-    color: 'error',
-    label: 'Cancel Job',
-    tooltip: 'Cancel this agent job',
-    confirmation: true,
-    confirmationTitle: 'Cancel Agent Job?',
-    confirmationMessage:
-      'Are you sure you want to cancel this agent? This action cannot be undone.',
-    requiresStatus: ['working', 'waiting', 'blocked'],
-    excludeTerminalStates: true,
   },
 
   handOver: {
@@ -85,12 +72,7 @@ export function getAvailableActions(job, claudeCodeCliMode = false) {
   // View messages (always available)
   actions.push('viewMessages')
 
-  // Cancel action
-  if (shouldShowCancelAction(job)) {
-    actions.push('cancel')
-  }
-
-  // Hand over action (orchestrator only, at 90% context)
+  // Hand over action (orchestrator only)
   if (shouldShowHandOverAction(job)) {
     actions.push('handOver')
   }
@@ -99,11 +81,10 @@ export function getAvailableActions(job, claudeCodeCliMode = false) {
 }
 
 /**
- * Check if launch action should be shown (Handover 0260: Exported for consolidation)
+ * Check if launch action should be shown
  *
- * Consolidates duplicate logic from:
- * - JobsTab.vue:shouldShowCopyButton() (lines 577-590)
- * - AgentTableView.vue:canLaunchAgent() (lines 208-227)
+ * Always visible for prompt re-copying, except in Claude Code CLI mode
+ * where only orchestrator gets the launch button.
  *
  * @param {Object} job - Job object with status and agent_display_name
  * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
@@ -115,18 +96,8 @@ export function shouldShowLaunchAction(job, claudeCodeCliMode) {
     return false
   }
 
-  // In General CLI mode, all agents get launch buttons
-  return job.status === 'waiting'
-}
-
-/**
- * Check if cancel action should be shown
- * @param {Object} job - Job object
- * @returns {Boolean}
- */
-function shouldShowCancelAction(job) {
-  const cancelableStates = ['working', 'waiting', 'blocked']
-  return cancelableStates.includes(job.status)
+  // Always show launch button for prompt re-copying
+  return true
 }
 
 /**
@@ -182,19 +153,8 @@ export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
 
   // Launch action specific checks
   if (actionName === 'launch') {
-    if (job.status !== 'waiting') {
-      return 'Agent must be in waiting status to launch'
-    }
     if (claudeCodeCliMode && job.agent_display_name !== 'orchestrator') {
       return 'Only orchestrator can be launched in Claude Code CLI mode'
-    }
-    return ''
-  }
-
-  // Cancel action specific checks
-  if (actionName === 'cancel') {
-    if (!['working', 'waiting', 'blocked'].includes(job.status)) {
-      return 'Job is not in a cancelable state'
     }
     return ''
   }

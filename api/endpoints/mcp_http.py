@@ -337,18 +337,6 @@ async def handle_tools_list(
             },
         },
         {
-            "name": "cancel_job",
-            "description": "Cancel an agent job and decommission all its executions. Called by: ORCHESTRATOR or UI when cancelling agent work. Marks job status as 'cancelled' and decommissions all active executions. Emits WebSocket 'agent:status_changed' event.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Job UUID to cancel"},
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                },
-                "required": ["job_id", "tenant_key"],
-            },
-        },
-        {
             "name": "report_error",
             "description": "Report error and pause job for orchestrator review",
             "inputSchema": {
@@ -638,7 +626,6 @@ async def handle_tools_call(
         "acknowledge_job": state.tool_accessor.acknowledge_job,
         "report_progress": state.tool_accessor.report_progress,
         "complete_job": state.tool_accessor.complete_job,
-        "cancel_job": state.tool_accessor.cancel_job,
         "report_error": state.tool_accessor.report_error,
         # Orchestration Tools (Handover 0088)
         "orchestrate_project": state.tool_accessor.orchestrate_project,
