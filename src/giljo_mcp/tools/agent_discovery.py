@@ -47,6 +47,7 @@ def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str
         Handles missing fields gracefully with sensible defaults.
 
     Handover 0283: Added depth parameter for context depth configuration.
+    Handover 0421: Added staleness detection fields (may_be_stale, last_exported_at, updated_at).
     """
     # Handle missing version gracefully
     version = template.version or DEFAULT_VERSION
@@ -57,6 +58,13 @@ def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str
         "role": template.role or DEFAULT_ROLE,
         "version_tag": version,
     }
+
+    # Add staleness detection fields (Handover 0421 - always included)
+    agent_info.update({
+        "may_be_stale": template.may_be_stale,
+        "last_exported_at": template.last_exported_at.isoformat() if template.last_exported_at else None,
+        "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+    })
 
     # Add additional fields based on depth level
     if depth == "full":
@@ -94,7 +102,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
     Returns:
         dict with agents list and version metadata
 
-    Example Response (depth="full"):
+    Example Response (depth="full", with staleness):
         {
             "success": True,
             "data": {
@@ -104,13 +112,23 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
                         "role": "Code Implementation Specialist",
                         "description": "...",
                         "version_tag": "1.2.0",
+                        "may_be_stale": true,
+                        "last_exported_at": "2025-12-20T10:00:00Z",
+                        "updated_at": "2025-12-28T15:00:00Z",
                         "expected_filename": "implementer_1.2.0.md",
                         "created_at": "2025-11-24T12:00:00"
                     }
                 ],
                 "count": 5,
                 "fetched_at": "2025-11-24T12:30:00",
-                "note": "Templates fetched dynamically (not embedded in prompt)"
+                "note": "Templates fetched dynamically (full depth)",
+                "staleness_warning": {
+                    "has_stale_agents": true,
+                    "stale_count": 1,
+                    "stale_agents": ["implementer"],
+                    "action_required": "Some agent templates may be outdated. Run /gil_get_claude_agents to sync, or continue anyway?",
+                    "options": ["Run /gil_get_claude_agents", "Continue anyway", "Abort staging"]
+                }
             }
         }
 
@@ -132,6 +150,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
         }
 
     Handover 0283: Added depth parameter for context depth configuration.
+    Handover 0421: Added staleness detection with warning structure.
     """
     try:
         # Input validation
@@ -162,17 +181,51 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
         # Format response with version metadata (apply depth filtering)
         agents = [_format_agent_info(template, depth=depth) for template in templates]
 
+        # ═══════════════════════════════════════════════════════════════════════
+        # Handover 0421: Add staleness warning structure
+        # ═══════════════════════════════════════════════════════════════════════
+        stale_agents = [agent["name"] for agent in agents if agent.get("may_be_stale", False)]
+        staleness_warning = None
+
+        if stale_agents:
+            staleness_warning = {
+                "has_stale_agents": True,
+                "stale_count": len(stale_agents),
+                "stale_agents": stale_agents,
+                "action_required": (
+                    "Some agent templates have been modified since last export. "
+                    "Local .claude/agents/ files may be outdated. "
+                    "Run /gil_get_claude_agents to sync, or continue anyway?"
+                ),
+                "options": [
+                    "Run /gil_get_claude_agents",
+                    "Continue anyway (risk using stale templates)",
+                    "Abort staging"
+                ],
+            }
+            logger.warning(
+                f"Staleness detected: {len(stale_agents)} stale agent(s) found",
+                extra={"tenant_key": tenant_key, "stale_agents": stale_agents}
+            )
+        # ═══════════════════════════════════════════════════════════════════════
+
         logger.info(f"Found {len(agents)} available agents (depth={depth})",
                    extra={"tenant_key": tenant_key, "count": len(agents), "depth": depth})
 
+        response_data = {
+            "agents": agents,
+            "count": len(agents),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "note": f"Templates fetched dynamically ({depth} depth)",
+        }
+
+        # Add staleness warning only if stale agents detected (Handover 0421)
+        if staleness_warning:
+            response_data["staleness_warning"] = staleness_warning
+
         return {
             "success": True,
-            "data": {
-                "agents": agents,
-                "count": len(agents),
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "note": f"Templates fetched dynamically ({depth} depth)",
-            },
+            "data": response_data,
         }
 
     except Exception:
