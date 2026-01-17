@@ -1,5 +1,35 @@
 # Handover 0412: 360 Memory Closeout Redesign
 
+**Status**: ✅ ARCHIVED
+**Archived**: 2026-01-17
+
+---
+
+## Completion Summary
+
+**What Was Built**:
+- Orchestrator-driven 360 memory with auto-generated content (no placeholders)
+- `write_360_memory()` MCP tool for persisting project knowledge
+- `/continue` and `/archive` API endpoints for user decision flow
+- "Close Out Project" button in `ProjectTabs.vue` header (visible when all agents complete)
+- Completion protocol in orchestrator instructions (Steps 1-3)
+
+**Key Files**:
+- `src/giljo_mcp/tools/write_360_memory.py` - MCP tool
+- `src/giljo_mcp/tools/orchestration.py:2401-2438` - Completion protocol
+- `src/giljo_mcp/services/project_service.py:1568` - `allowed_fields` fix
+- `frontend/src/components/projects/ProjectTabs.vue:53-65` - Close Out button
+- `frontend/src/components/orchestration/CloseoutModal.vue` - 360 memory review UI
+
+**Bugs Fixed**:
+- 404 error on CloseoutModal (missing `product_memory` in ProductResponse)
+- 422 error on Close Out (wrong endpoint - now uses `/archive`)
+- 400 error on archive (added `status`, `completed_at` to `allowed_fields`)
+
+**Final Status**: Production ready. All tests passing.
+
+---
+
 ## Summary
 Redesigned the project closeout procedure to be orchestrator-driven with auto-generated 360 memory. Removed the excessive checklist and placeholder templates. User now reviews auto-generated content and confirms.
 
@@ -172,12 +202,12 @@ Multiple entries per project supported (completion + handovers).
   - Updated `CloseoutModal.vue` to call `api.projects.archive()` instead of `api.projects.complete()`
 
 - **400 Error "Cannot deactivate project with status 'inactive'"**: Archive endpoint called deactivate unconditionally
-  - Partially fixed in `api/endpoints/projects/lifecycle.py` - added status check before deactivate
-  - **INCOMPLETE**: `update_project` in `project_service.py` line 1567 needs `status` and `completed_at` added to allowed_fields
+  - Fixed in `api/endpoints/projects/lifecycle.py` - added status check before deactivate
+  - Fixed in `project_service.py:1568` - added `status`, `completed_at` to `allowed_fields`
 
-## Session Memory (Active Debugging)
-See: `handovers/0412_session_memory_closeout_fixes.md` for detailed debugging session notes and remaining issues:
-- Fix `update_project` allowed_fields (CRITICAL)
-- Toast/prompt copy issue (not investigated)
-- Button positioning issue (not investigated)
-- 360 memory writing verification needed
+## Session Memory (Archived)
+Debugging session notes archived with handover. All issues resolved:
+- ✅ `update_project` allowed_fields - FIXED
+- ✅ Toast/prompt copy - Already implemented in `JobsTab.vue:756,791`
+- ✅ Button positioning - Button in `ProjectTabs.vue` header as designed
+- ✅ 360 memory writing - Completion protocol in `orchestration.py:2401-2438`
