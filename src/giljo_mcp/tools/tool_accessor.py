@@ -1434,6 +1434,62 @@ class ToolAccessor:
             db_manager=self.db_manager
         )
 
+    # Agent Discovery Tools (Handover 0422)
+
+    async def get_available_agents(
+        self,
+        tenant_key: str,
+        active_only: bool = True,
+        depth: str = "full"
+    ) -> dict[str, Any]:
+        """
+        Get available agent templates with staleness info.
+
+        Wraps agent_discovery.get_available_agents() for HTTP MCP exposure.
+
+        Args:
+            tenant_key: Tenant isolation key
+            active_only: Include only active templates (default: True)
+            depth: Detail level - "type_only" (name/role/version) or "full" (includes description)
+
+        Returns:
+            Dict with agents list and staleness warning (if applicable):
+            {
+                "success": True,
+                "data": {
+                    "agents": [
+                        {
+                            "name": str,
+                            "role": str,
+                            "version_tag": str,
+                            "may_be_stale": bool,
+                            "last_exported_at": str,
+                            "updated_at": str,
+                            "description": str,  # Only if depth="full"
+                            "expected_filename": str,  # Only if depth="full"
+                            "created_at": str  # Only if depth="full"
+                        }
+                    ],
+                    "count": int,
+                    "fetched_at": str,
+                    "note": str,
+                    "staleness_warning": {  # Only if stale agents detected
+                        "has_stale_agents": bool,
+                        "stale_count": int,
+                        "stale_agents": list[str],
+                        "action_required": str,
+                        "options": list[str]
+                    }
+                }
+            }
+
+        Handover 0422: Added for HTTP MCP exposure of agent discovery tool.
+        """
+        from src.giljo_mcp.tools.agent_discovery import get_available_agents as _get_available_agents
+
+        async with self.get_session_async() as session:
+            return await _get_available_agents(session, tenant_key, depth=depth)
+
     # File Utilities (Handover 0360 Feature 3)
 
     async def file_exists(
