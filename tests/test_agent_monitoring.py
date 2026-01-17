@@ -20,7 +20,7 @@ import pytest_asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.tools.agent_status import report_progress
-from src.giljo_mcp.tools.agent_messaging import read_mcp_messages
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from sqlalchemy import select
@@ -65,6 +65,16 @@ async def db_session(db_manager):
     """Get async database session for testing."""
     async with db_manager.get_session_async() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def tool_accessor(db_manager):
+    """Create ToolAccessor instance for testing."""
+    from src.giljo_mcp.tenant_manager import TenantManager
+
+    tenant_manager = TenantManager()
+    accessor = ToolAccessor(db_manager, tenant_manager)
+    return accessor
 
 
 @pytest_asyncio.fixture
@@ -154,15 +164,15 @@ class TestMessageChecking:
     """Test message check timestamp updates."""
 
     @pytest.mark.asyncio
-    async def test_receive_messages_updates_timestamp(self, db_session, test_job):
+    async def test_receive_messages_updates_timestamp(self, db_session, test_job, tool_accessor):
         """Test that receive_messages updates last_message_check_at timestamp."""
         # Record initial state
         initial_check_at = test_job.last_message_check_at
         assert initial_check_at is None
 
         # Receive messages (empty array is fine for this test)
-        await read_mcp_messages(
-            job_id=test_job.job_id,
+        await tool_accessor.receive_messages(
+            agent_id=test_job.job_id,  # Use job_id as agent_id for this test
             tenant_key=test_job.tenant_key
         )
 
@@ -172,11 +182,11 @@ class TestMessageChecking:
         assert test_job.last_message_check_at > datetime.now(timezone.utc) - timedelta(seconds=5)
 
     @pytest.mark.asyncio
-    async def test_receive_messages_updates_on_subsequent_calls(self, db_session, test_job):
+    async def test_receive_messages_updates_on_subsequent_calls(self, db_session, test_job, tool_accessor):
         """Test that receive_messages updates timestamp on subsequent calls."""
         # First call
-        await read_mcp_messages(
-            job_id=test_job.job_id,
+        await tool_accessor.receive_messages(
+            agent_id=test_job.job_id,  # Use job_id as agent_id for this test
             tenant_key=test_job.tenant_key
         )
         await db_session.refresh(test_job)
@@ -187,8 +197,8 @@ class TestMessageChecking:
         await asyncio.sleep(0.1)
 
         # Second call
-        await read_mcp_messages(
-            job_id=test_job.job_id,
+        await tool_accessor.receive_messages(
+            agent_id=test_job.job_id,  # Use job_id as agent_id for this test
             tenant_key=test_job.tenant_key
         )
         await db_session.refresh(test_job)
