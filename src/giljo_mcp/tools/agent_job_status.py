@@ -20,7 +20,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastmcp import FastMCP
 from sqlalchemy import select
 
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
@@ -588,19 +587,3 @@ async def _update_job_status_impl(
     # await websocket_manager.broadcast_job_status_changed(...)
 
     return response
-
-
-def register_agent_job_status_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
-    """Register agent job status update tools with the MCP server"""
-    global _db_manager, _job_manager
-
-    # Store module-level references
-    _db_manager = db_manager
-    _job_manager = AgentJobManager(db_manager, tenant_manager)
-
-    # Register tools with FastMCP
-    mcp.tool()(update_job_status)
-    mcp.tool()(get_job_status)
-    mcp.tool()(get_agent_status)
-
-    logger.info("Agent job status tools registered (update_job_status, get_job_status, get_agent_status)")
