@@ -99,7 +99,6 @@
         @launch="handleLaunchJob"
         @copy-prompt="handleCopyPrompt"
         @view-messages="handleViewMessages"
-        @cancel="handleCancelJob"
         @hand-over="handleHandOver"
       />
     </template>
@@ -237,19 +236,6 @@ function handleLaunchJob(job) {
  */
 function handleViewMessages(job) {
   emit('row-click', job)
-}
-
-/**
- * Handover 0235: Handle cancel job action from ActionIcons
- */
-async function handleCancelJob(job) {
-  try {
-    await api.jobs.cancel(job.job_id)
-    showSnackbar('Job cancelled successfully', 'success')
-  } catch (error) {
-    console.error('[AgentTableView] Cancel job failed:', error)
-    showSnackbar('Failed to cancel job', 'error')
-  }
 }
 
 /**

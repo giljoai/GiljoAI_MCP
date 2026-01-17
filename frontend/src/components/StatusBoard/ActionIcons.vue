@@ -69,24 +69,6 @@
       <span>{{ getActionTooltip('viewMessages') }}</span>
     </v-tooltip>
 
-    <!-- Cancel Action -->
-    <v-tooltip v-if="availableActions.includes('cancel')" location="top">
-      <template #activator="{ props }">
-        <v-btn
-          v-bind="props"
-          icon="mdi-cancel"
-          :color="getActionColor('cancel')"
-          size="small"
-          variant="text"
-          :loading="loadingStates.cancel"
-          :disabled="loadingStates.cancel"
-          data-test="action-cancel"
-          @click="handleCancel"
-        />
-      </template>
-      <span>{{ getActionTooltip('cancel') }}</span>
-    </v-tooltip>
-
     <!-- Hand Over Action (Handover 0506) -->
     <v-tooltip v-if="availableActions.includes('handOver')" location="top">
       <template #activator="{ props }">
@@ -170,13 +152,12 @@ export default {
     },
   },
 
-  emits: ['launch', 'copy-prompt', 'view-messages', 'cancel', 'hand-over'],
+  emits: ['launch', 'copy-prompt', 'view-messages', 'hand-over'],
 
   setup(props, { emit }) {
     const loadingStates = ref({
       launch: false,
       copyPrompt: false,
-      cancel: false,
       handOver: false,
     })
 
@@ -223,15 +204,6 @@ export default {
       emit('view-messages', props.job)
     }
 
-    const handleCancel = () => {
-      const config = getActionConfig('cancel')
-      if (config.confirmation) {
-        showConfirmation('cancel', config)
-      } else {
-        executeCancel()
-      }
-    }
-
     const handleHandOver = () => {
       const config = getActionConfig('handOver')
       if (config.confirmation) {
@@ -261,24 +233,13 @@ export default {
     const executeConfirmedAction = async () => {
       confirmationLoading.value = true
       try {
-        if (pendingAction.value === 'cancel') {
-          await executeCancel()
-        } else if (pendingAction.value === 'handOver') {
+        if (pendingAction.value === 'handOver') {
           await executeHandOver()
         }
       } finally {
         confirmationLoading.value = false
         showConfirmDialog.value = false
         pendingAction.value = null
-      }
-    }
-
-    const executeCancel = async () => {
-      loadingStates.value.cancel = true
-      try {
-        emit('cancel', props.job)
-      } finally {
-        loadingStates.value.cancel = false
       }
     }
 
@@ -303,7 +264,6 @@ export default {
       handleLaunch,
       handleCopyPrompt,
       handleViewMessages,
-      handleCancel,
       handleHandOver,
       cancelConfirmation,
       executeConfirmedAction,

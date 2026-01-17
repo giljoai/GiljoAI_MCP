@@ -1628,55 +1628,6 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to complete job: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def cancel_job(self, job_id: str, tenant_key: str) -> dict[str, Any]:
-        """
-        Cancel an agent job and decommission all its executions.
-
-        Wraps AgentJobManager.cancel_job() and emits WebSocket events.
-
-        Args:
-            job_id: UUID of the job to cancel
-            tenant_key: Tenant isolation key
-
-        Returns:
-            dict: Cancellation summary with success status
-        """
-        try:
-            # Create AgentJobManager instance
-            manager = AgentJobManager(
-                db_manager=self.db_manager,
-                tenant_manager=self.tenant_manager
-            )
-
-            # Call cancel_job
-            result = await manager.cancel_job(
-                job_id=job_id,
-                tenant_key=tenant_key
-            )
-
-            # Emit WebSocket event if successful
-            if result.get("success") and self._websocket_manager:
-                try:
-                    await self._websocket_manager.broadcast_to_tenant(
-                        tenant_key=tenant_key,
-                        event_type="agent:status_changed",
-                        data={
-                            "job_id": job_id,
-                            "status": "cancelled",
-                            "executions_decommissioned": result.get("executions_decommissioned", 0),
-                        },
-                    )
-                    self._logger.info(f"[WEBSOCKET] Broadcasted cancel_job status change for {job_id}")
-                except Exception as ws_error:
-                    self._logger.warning(f"[WEBSOCKET] Failed to broadcast cancel_job: {ws_error}")
-                    # Don't fail the operation if WebSocket broadcast fails
-
-            return result
-
-        except Exception as e:
-            self._logger.exception(f"Failed to cancel job: {e}")
-            return {"success": False, "error": str(e)}
-
     async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Report job error (AgentExecution, async safe).
