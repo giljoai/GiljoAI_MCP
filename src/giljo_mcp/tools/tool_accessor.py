@@ -430,11 +430,32 @@ class ToolAccessor:
         return await self._task_service.log_task(content=content, category=category, priority=priority)
 
     async def create_task(
-        self, title: str, description: str, priority: str = "medium", assigned_to: Optional[str] = None
+        self,
+        title: str,
+        description: str,
+        priority: str = "medium",
+        category: Optional[str] = None,
+        assigned_to: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Create a new task (delegates to TaskService)"""
-        return await self._task_service.create_task(
-            title=title, description=description, priority=priority, assigned_to=assigned_to
+        """
+        Create a new task with optional category support.
+
+        Args:
+            title: Task title/summary
+            description: Detailed task description
+            priority: Task priority (default: "medium")
+            category: Optional category (frontend, backend, database, infra, docs, general)
+            assigned_to: Optional agent name to assign to (not implemented yet)
+
+        Returns:
+            Dict with success status and task_id or error
+        """
+        # TaskService.create_task calls log_task which accepts category
+        # We need to call log_task directly to pass category
+        return await self._task_service.log_task(
+            content=description,
+            category=category or title,  # Use category if provided, otherwise use title
+            priority=priority,
         )
 
     # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
