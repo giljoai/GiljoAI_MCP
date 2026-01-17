@@ -2089,9 +2089,9 @@ def _build_orchestrator_protocol(
         Dict with chapter keys and navigation_hint
     """
     # CH1: YOUR MISSION (~180 tokens)
-    ch1 = f"""╔═════════════════════════════════════════════════════════════════════════╗
-║                          CH1: YOUR MISSION                               ║
-╚═════════════════════════════════════════════════════════════════════════╝
+    ch1 = f"""════════════════════════════════════════════════════════════════════════════
+                           CH1: YOUR MISSION                                
+════════════════════════════════════════════════════════════════════════════
 
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
 
@@ -2110,173 +2110,165 @@ CRITICAL DISTINCTION:
 - Project.mission = YOUR OUTPUT (execution strategy you create)
 
 PHASE AWARENESS:
-┌─────────────────────────────────────────────────────────────────────────┐
-│ STAGING PHASE: THIS SESSION (Steps 1-7)                                 │
-│ Your job: Analyze → Plan → Spawn → Persist → Broadcast                  │
-│ End with: STAGING_COMPLETE broadcast (see CH2)                          │
-└─────────────────────────────────────────────────────────────────────────┘
+── STAGING PHASE: THIS SESSION (Steps 1-7) ────────────────────────────────
+Your job: Analyze → Plan → Spawn → Persist → Broadcast
+End with: STAGING_COMPLETE broadcast (see CH2)
 
                          ══════ SESSION BOUNDARY ══════
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│ IMPLEMENTATION PHASE: FUTURE SESSION (Step 8)                           │
-│ Fresh orchestrator retrieves your plan via get_agent_mission()          │
-│ Executes coordination logic you defined in update_agent_mission()       │
-│ Completion protocol applies (see CH5 - shown in implementation only)    │
-└─────────────────────────────────────────────────────────────────────────┘"""
+── IMPLEMENTATION PHASE: FUTURE SESSION (Step 8) ───────────────────────────
+Fresh orchestrator retrieves your plan via get_agent_mission()
+Executes coordination logic you defined in update_agent_mission()
+Completion protocol applies (see CH5 - shown in implementation only)
+"""
 
-    # CH2: STARTUP SEQUENCE (~480 tokens)
-    ch2 = f"""╔═════════════════════════════════════════════════════════════════════════╗
-║                       CH2: STARTUP SEQUENCE                              ║
-╚═════════════════════════════════════════════════════════════════════════╝
+    # CH2: STARTUP SEQUENCE (~350 tokens - reduced via deduplication)
+    ch2 = f"""════════════════════════════════════════════════════════════════════════════
+                       CH2: STARTUP SEQUENCE                              
+════════════════════════════════════════════════════════════════════════════
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
 
-┌─ STEP 1: Verify MCP ────────────────────────────────────────────────────┐
-│ Call: health_check()                                                     │
-│ Expected: {{"status": "healthy", "database": "connected"}}                 │
-│ If failed: Abort and notify user                                        │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 1: Verify MCP ──────────────────────────────────────────────────────
+Call: health_check()
+Expected: {{"status": "healthy", "database": "connected"}}
+If failed: Abort and notify user
 
-┌─ STEP 2: Fetch Context ─────────────────────────────────────────────────┐
-│ Call: get_orchestrator_instructions(job_id='{orchestrator_id}',         │
-│                                      tenant_key='{tenant_key}')          │
-│ Returns:                                                                 │
-│   - project_description: User requirements (INPUT for your analysis)    │
-│   - mission: Product context with priority fields applied               │
-│   - field_priorities: User's context configuration                      │
-│   - agent_discovery_tool: Reference to get_available_agents()           │
-│                                                                          │
-│ Read this protocol via orchestrator_protocol field.                     │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 2: Fetch Context ───────────────────────────────────────────────────
+Call: get_orchestrator_instructions(job_id='{orchestrator_id}',
+                                     tenant_key='{tenant_key}')
+Returns:
+  - project_description: User requirements (INPUT for your analysis)
+  - mission: Product context with priority fields applied
+  - field_priorities: User's context configuration
+  - agent_discovery_tool: Reference to get_available_agents()
 
-┌─ STEP 3: Discover Agents ───────────────────────────────────────────────┐
-│ Call: get_available_agents(tenant_key='{tenant_key}', active_only=true) │
-│ Returns: List of available agent templates                              │
-│ Use agent_name from response when spawning (MUST match exactly)         │
-└─────────────────────────────────────────────────────────────────────────┘
+Read this protocol via orchestrator_protocol field.
 
-┌─ STEP 4: Create Mission ────────────────────────────────────────────────┐
-│ Analyze project_description + product context                           │
-│ Generate condensed execution plan:                                      │
-│   - Break down requirements into work items                             │
-│   - Identify which agents handle which work                             │
-│   - Define success criteria                                             │
-│   - Keep mission concise (<5K tokens target)                            │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 3: Discover Agents ─────────────────────────────────────────────────
+Call: get_available_agents(tenant_key='{tenant_key}', active_only=true)
+Returns: List of available agent templates
+Use agent_name from response when spawning (see CH3 for rules)
 
-┌─ STEP 5: Persist Mission ───────────────────────────────────────────────┐
-│ Call: update_project_mission(project_id='{project_id}',                 │
-│                               mission=YOUR_CONDENSED_MISSION)            │
-│ This stores your plan in Project.mission for UI display                 │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 4: Create Mission ──────────────────────────────────────────────────
+Analyze project_description + product context
+Generate condensed execution plan:
+  - Break down requirements into work items
+  - Identify which agents handle which work
+  - Define success criteria
+  - Keep mission concise (<5K tokens target)
 
-┌─ STEP 6: Spawn Agents ──────────────────────────────────────────────────┐
-│ For each agent in your plan:                                            │
-│   spawn_agent_job(                                                      │
-│       agent_name='exact-template-name',  # From Step 3                  │
-│       agent_display_name='implementer',   # Display category            │
-│       mission='Agent-specific instructions',                            │
-│       project_id='{project_id}',                                         │
-│       tenant_key='{tenant_key}'                                          │
-│   )                                                                      │
-│                                                                          │
-│ See CH3 for spawning rules and limits                                   │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 5: Persist Mission ─────────────────────────────────────────────────
+Call: update_project_mission(project_id='{project_id}',
+                              mission=YOUR_CONDENSED_MISSION)
+This stores your plan in Project.mission for UI display
 
-┌─ STEP 7: Persist Execution Plan ────────────────────────────────────────┐
-│ Call: update_agent_mission(job_id='{orchestrator_id}',                  │
-│                             tenant_key='{tenant_key}',                   │
-│                             mission=YOUR_EXECUTION_STRATEGY)             │
-│                                                                          │
-│ Document in YOUR_EXECUTION_STRATEGY:                                    │
-│   - Agent execution order (sequential/parallel/hybrid)                  │
-│   - Dependencies between agents                                         │
-│   - Coordination checkpoints                                            │
-│   - How you will monitor progress in implementation phase               │
-│                                                                          │
-│ Why: Fresh orchestrator in implementation phase retrieves this plan     │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 6: Spawn Agents ────────────────────────────────────────────────────
+For each agent in your plan:
+  spawn_agent_job(
+      agent_name='exact-template-name',  # From Step 3
+      agent_display_name='implementer',   # Display category
+      mission='Agent-specific instructions',
+      project_id='{project_id}',
+      tenant_key='{tenant_key}'
+  )
 
-┌─ STEP 7 FINALE: Signal Complete ────────────────────────────────────────┐
-│ Call: send_message(                                                     │
-│           to_agents=['all'],                                            │
-│           content='STAGING_COMPLETE: Mission created, N agents spawned',│
-│           project_id='{project_id}',                                     │
-│           tenant_key='{tenant_key}',                                     │
-│           message_type='broadcast'                                      │
-│       )                                                                  │
-│                                                                          │
-│ This broadcast enables the "Launch Jobs" button in UI (REQUIRED)        │
-│                                                                          │
-│ ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()│
-│    Your session is done. Implementation happens in a new session.       │
-│                                                                          │
-│ ⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.           │
-│    Your job remains in 'waiting' status - this enables the Launch       │
-│    button in UI. acknowledge_job() is for implementation phase only.    │
-└─────────────────────────────────────────────────────────────────────────┘"""
+See CH3 for agent_name vs agent_display_name rules
 
-    # CH3: AGENT SPAWNING RULES (~250-300 tokens depending on mode)
+── STEP 7: Persist Execution Plan ──────────────────────────────────────────
+Call: update_agent_mission(job_id='{orchestrator_id}',
+                            tenant_key='{tenant_key}',
+                            mission=YOUR_EXECUTION_STRATEGY)
+
+Document in YOUR_EXECUTION_STRATEGY:
+  - Agent execution order (sequential/parallel/hybrid)
+  - Dependencies between agents
+  - Coordination checkpoints
+  - How you will monitor progress in implementation phase
+
+Why: Fresh orchestrator in implementation phase retrieves this plan
+
+── STEP 7 FINALE: Signal Complete ──────────────────────────────────────────
+Call: send_message(
+          to_agents=['all'],
+          content='STAGING_COMPLETE: Mission created, N agents spawned',
+          project_id='{project_id}',
+          tenant_key='{tenant_key}',
+          message_type='broadcast'
+      )
+
+This broadcast enables the "Launch Jobs" button in UI (REQUIRED)
+
+⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
+   Your session is done. Implementation happens in a new session.
+
+⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.
+   Your job remains in 'waiting' status - this enables the Launch
+   button in UI. acknowledge_job() is for implementation phase only.
+"""
+
+    # CH3: AGENT SPAWNING RULES (~200 tokens - reduced via deduplication)
     # Build mode-specific blocks
     if cli_mode:
-        cli_mode_block = """┌─ CLAUDE CODE CLI MODE ──────────────────────────────────────────────────┐
-│ Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):      │
-│   Task(subagent_display_name='{agent_name}', instructions='...')       │
-│                                                                          │
-│ CRITICAL: Task() uses agent_name value, NOT agent_display_name          │
-│                                                                          │
-│ Example:                                                                 │
-│   spawn_agent_job(agent_name='tdd-implementor',                         │
-│                   agent_display_name='implementer', ...)                │
-│                                                                          │
-│   Later in implementation:                                              │
-│   Task(subagent_display_name='tdd-implementor', ...)  # agent_name!    │
-│                                                                          │
-│ DO NOT invoke Task() during staging - this is planning reference only   │
-└─────────────────────────────────────────────────────────────────────────┘"""
+        cli_mode_block = """── CLAUDE CODE CLI MODE ────────────────────────────────────────────────────
+Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
+  Task(subagent_display_name='{agent_name}', instructions='...')
+
+CRITICAL: Task() uses agent_name value, NOT agent_display_name
+
+Example:
+  spawn_agent_job(agent_name='tdd-implementor',
+                  agent_display_name='implementer', ...)
+
+  Later in implementation:
+  Task(subagent_display_name='tdd-implementor', ...)  # agent_name!
+
+DO NOT invoke Task() during staging - this is planning reference only
+"""
         multi_terminal_mode_block = ""
     else:
         cli_mode_block = ""
-        multi_terminal_mode_block = """┌─ MULTI-TERMINAL MODE (CCW) ─────────────────────────────────────────────┐
-│ User manually launches agents via [Copy Prompt] button in Claude Code Web│
-│ Agents spawned via spawn_agent_job() during staging phase               │
-│ Each spawned agent gets a thin prompt (~10 lines)                       │
-│ Agent calls get_agent_mission() to fetch full instructions              │
-│ Coordination happens via MCP messaging tools (send_message, receive)    │
-│ Orchestrator has NO active role after STAGING_COMPLETE broadcast        │
-└─────────────────────────────────────────────────────────────────────────┘"""
+        multi_terminal_mode_block = """── MULTI-TERMINAL MODE (CCW) ───────────────────────────────────────────────
+User manually launches agents via [Copy Prompt] button in Claude Code Web
+Agents spawned via spawn_agent_job() during staging phase
+Each spawned agent gets a thin prompt (~10 lines)
+Agent calls get_agent_mission() to fetch full instructions
+Coordination happens via MCP messaging tools (send_message, receive)
+Orchestrator has NO active role after STAGING_COMPLETE broadcast
+"""
 
-    ch3 = f"""╔═════════════════════════════════════════════════════════════════════════╗
-║                    CH3: AGENT SPAWNING RULES                             ║
-╚═════════════════════════════════════════════════════════════════════════╝
+    ch3 = f"""════════════════════════════════════════════════════════════════════════════
+                    CH3: AGENT SPAWNING RULES                             
+════════════════════════════════════════════════════════════════════════════
 
 PARAMETER REQUIREMENTS:
 
-┌─ agent_name (CRITICAL) ─────────────────────────────────────────────────┐
-│ MUST exactly match template name from get_available_agents() response   │
-│ This is the SINGLE SOURCE OF TRUTH for agent identity                   │
-│ Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')     │
-│                                                                          │
-│ File mapping: agent_name → .claude/agents/{{agent_name}}.md               │
-│                                                                          │
-│ Common mistakes:                                                         │
-│   ✗ Using agent_display_name value for agent_name parameter            │
-│   ✗ Inventing names not in get_available_agents() response             │
-│   ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')             │
-└─────────────────────────────────────────────────────────────────────────┘
+── agent_name (CRITICAL) ───────────────────────────────────────────────────
+MUST exactly match template name from get_available_agents() response
+This is the SINGLE SOURCE OF TRUTH for agent identity
+Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')
 
-┌─ agent_display_name ────────────────────────────────────────────────────┐
-│ Display category for UI (user-facing label)                             │
-│ Options: implementer, tester, analyzer, documenter, reviewer            │
-│ This is for UI display only - does NOT affect template selection        │
-└─────────────────────────────────────────────────────────────────────────┘
+File mapping: agent_name → .claude/agents/{{agent_name}}.md
 
-┌─ mission ───────────────────────────────────────────────────────────────┐
-│ Agent-specific instructions (what THIS agent should do)                 │
-│ Should be focused and actionable                                        │
-│ Target: 200-500 tokens per agent mission                                │
-└─────────────────────────────────────────────────────────────────────────┘
+Common mistakes:
+  ✗ Using agent_display_name value for agent_name parameter
+  ✗ Inventing names not in get_available_agents() response
+  ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
+
+Claude Code CLI Mode Note:
+  - Task(subagent_display_name=X) where X = agent_name (NOT display_name)
+  - agent_name binds DB record, Task tool, and template filename
+  - Example: spawn with agent_name='tdd-implementor', Task uses 'tdd-implementor'
+
+── agent_display_name ──────────────────────────────────────────────────────
+Display category for UI (user-facing label)
+Options: implementer, tester, analyzer, documenter, reviewer
+This is for UI display only - does NOT affect template selection
+
+── mission ─────────────────────────────────────────────────────────────────
+Agent-specific instructions (what THIS agent should do)
+Should be focused and actionable
+Target: 200-500 tokens per agent mission
 
 SPAWNING LIMITS:
 
@@ -2294,56 +2286,60 @@ VALIDATION BEFORE SPAWNING:
 1. Verify agent_name exists in get_available_agents() response
 2. Check you haven't exceeded recommended limits
 3. Ensure mission is specific to this agent's role
-4. Confirm project_id and tenant_key are correct"""
+4. Confirm project_id and tenant_key are correct
+"""
 
-    # CH4: ERROR HANDLING (~350 tokens)
-    ch4 = """╔═════════════════════════════════════════════════════════════════════════╗
-║                       CH4: ERROR HANDLING                                ║
-╚═════════════════════════════════════════════════════════════════════════╝
+    # CH4: ERROR HANDLING (~400 tokens with status machine)
+    ch4 = """════════════════════════════════════════════════════════════════════════════
+                       CH4: ERROR HANDLING                                
+════════════════════════════════════════════════════════════════════════════
 
 COMMON ERRORS AND RESPONSES:
 
-┌─ MCP Connection Lost ───────────────────────────────────────────────────┐
-│ Symptom: Tools not responding, timeouts                                 │
-│ Action: Abort staging immediately                                       │
-│ Notify: Call report_error(job_id, "MCP connection lost", tenant_key)   │
-│ Do NOT: Attempt to continue spawning agents                             │
-└─────────────────────────────────────────────────────────────────────────┘
+── MCP Connection Lost ─────────────────────────────────────────────────────
+Symptom: Tools not responding, timeouts
+Action: Abort staging immediately
+Notify: Call report_error(job_id, "MCP connection lost", tenant_key)
+Do NOT: Attempt to continue spawning agents
 
-┌─ Invalid Agent Name ────────────────────────────────────────────────────┐
-│ Symptom: spawn_agent_job() returns error "agent not found"             │
-│ Action: Check agent_name against get_available_agents() response        │
-│ Common cause: Typo, case mismatch, using display_name instead of name   │
-│ Fix: Use exact agent_name from discovery response                       │
-└─────────────────────────────────────────────────────────────────────────┘
+── Invalid Agent Name ──────────────────────────────────────────────────────
+Symptom: spawn_agent_job() returns error "agent not found"
+Action: Check agent_name against get_available_agents() response
+Common cause: Typo, case mismatch, using display_name instead of name
+Fix: Use exact agent_name from discovery response
 
-┌─ Spawn Failure ─────────────────────────────────────────────────────────┐
-│ Symptom: spawn_agent_job() fails for any reason                        │
-│ Action: Log via report_error(), do NOT continue spawning                │
-│ Why: Partial spawns create incomplete agent teams                       │
-│ Recovery: User must fix issue and restart staging                       │
-└─────────────────────────────────────────────────────────────────────────┘
+── Spawn Failure ───────────────────────────────────────────────────────────
+Symptom: spawn_agent_job() fails for any reason
+Action: Log via report_error(), do NOT continue spawning
+Why: Partial spawns create incomplete agent teams
+Recovery: User must fix issue and restart staging
 
-┌─ Mission Too Large ─────────────────────────────────────────────────────┐
-│ Symptom: Generated mission exceeds 10K tokens                          │
-│ Action: Condense mission further, focus on essentials                   │
-│ Technique: Reference vision docs instead of embedding content           │
-│ Target: <5K tokens for mission plan                                     │
-└─────────────────────────────────────────────────────────────────────────┘
+── Mission Too Large ───────────────────────────────────────────────────────
+Symptom: Generated mission exceeds 10K tokens
+Action: Condense mission further, focus on essentials
+Technique: Reference vision docs instead of embedding content
+Target: <5K tokens for mission plan
 
-┌─ Context Budget Warning ────────────────────────────────────────────────┐
-│ Symptom: Approaching 80% of context_budget (120K/150K tokens)          │
-│ Action: Review field_priorities, reduce depth_config if needed          │
-│ Tools: fetch_context() for on-demand loading instead of upfront         │
-│ Note: Only applies during implementation phase (see CH5)                │
-└─────────────────────────────────────────────────────────────────────────┘
+── Context Budget Warning ──────────────────────────────────────────────────
+Symptom: Approaching 80% of context_budget (120K/150K tokens)
+Action: Review field_priorities, reduce depth_config if needed
+Tools: fetch_context() for on-demand loading instead of upfront
+Note: Only applies during implementation phase (see CH5)
 
-┌─ Agent Discovery Empty ─────────────────────────────────────────────────┐
-│ Symptom: get_available_agents() returns empty list                     │
-│ Cause: No active agent templates in database                            │
-│ Action: Report to user - template configuration required                │
-│ Fix: User must activate templates in My Settings → Agent Templates      │
-└─────────────────────────────────────────────────────────────────────────┘
+── Agent Discovery Empty ───────────────────────────────────────────────────
+Symptom: get_available_agents() returns empty list
+Cause: No active agent templates in database
+Action: Report to user - template configuration required
+Fix: User must activate templates in My Settings → Agent Templates
+
+── STATUS TRANSITIONS ──────────────────────────────────────────────────────
+pending ─[acknowledge_job()]─→ active
+active ─[report_progress()]─→ active (updates progress)
+active ─[complete_job()]─→ completed
+active ─[report_error()]─→ failed
+active ─[report_error("BLOCKED:...")]─→ blocked
+
+Note: Use "BLOCKED:" prefix in error message for blocked state.
 
 GENERAL ERROR PROTOCOL:
 
@@ -2358,13 +2354,14 @@ ERROR SEVERITY LEVELS:
 - CRITICAL: MCP connection lost, database errors → Abort immediately
 - HIGH: Spawn failures, invalid agent names → Stop spawning, report
 - MEDIUM: Mission size warnings → Continue but log warning
-- LOW: Context optimization suggestions → Continue normally"""
+- LOW: Context optimization suggestions → Continue normally
+"""
 
     # CH5: REFERENCE (~380 tokens or minimal if not included)
     if include_implementation_reference:
-        ch5 = f"""╔═════════════════════════════════════════════════════════════════════════╗
-║                CH5: REFERENCE (Implementation Phase Only)                ║
-╚═════════════════════════════════════════════════════════════════════════╝
+        ch5 = f"""════════════════════════════════════════════════════════════════════════════
+                CH5: REFERENCE (Implementation Phase Only)                
+════════════════════════════════════════════════════════════════════════════
 
 ⚠️  NOTE: This chapter is for IMPLEMENTATION PHASE reference only.
    If you are in STAGING PHASE, you do NOT need this information.
@@ -2404,42 +2401,39 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 
 COMPLETION PROTOCOL (After ALL agents finish their work):
 
-┌─ STEP 1: Write 360 Memory ──────────────────────────────────────────────┐
-│ Call: write_360_memory(                                                 │
-│           project_id='{project_id}',                                     │
-│           tenant_key='{tenant_key}',                                     │
-│           summary='2-3 paragraph mission accomplishment overview',      │
-│           key_outcomes=['Achievement 1', 'Achievement 2', ...],         │
-│           decisions_made=['Decision 1 + rationale', ...],               │
-│           entry_type='project_completion',                              │
-│           author_job_id='{orchestrator_id}'                              │
-│       )                                                                  │
-│                                                                          │
-│ CRITICAL: Auto-generate content from your knowledge.                    │
-│           Never ask user to fill placeholders.                          │
-│                                                                          │
-│ Purpose: Creates sequential history entry in Product.product_memory     │
-│ Visible: User sees in UI Product Memory timeline                        │
-└─────────────────────────────────────────────────────────────────────────┘
+── STEP 1: Write 360 Memory ────────────────────────────────────────────────
+Call: write_360_memory(
+          project_id='{project_id}',
+          tenant_key='{tenant_key}',
+          summary='2-3 paragraph mission accomplishment overview',
+          key_outcomes=['Achievement 1', 'Achievement 2', ...],
+          decisions_made=['Decision 1 + rationale', ...],
+          entry_type='project_completion',
+          author_job_id='{orchestrator_id}'
+      )
 
-┌─ STEP 2: Mark Complete ─────────────────────────────────────────────────┐
-│ Call: complete_job(                                                     │
-│           job_id='{orchestrator_id}',                                    │
-│           result={{"summary": "...", "status": "completed"}},            │
-│           tenant_key='{tenant_key}'                                      │
-│       )                                                                  │
-│                                                                          │
-│ This transitions orchestrator job from 'active' to 'completed'          │
-└─────────────────────────────────────────────────────────────────────────┘
+CRITICAL: Auto-generate content from your knowledge.
+          Never ask user to fill placeholders.
 
-┌─ STEP 3: User Review ───────────────────────────────────────────────────┐
-│ User reviews 360 memory entry in UI                                     │
-│ User chooses:                                                            │
-│   - "Continue Working" → Spawns new orchestrator for next iteration     │
-│   - "Close Out Project" → Marks project as completed                    │
-│                                                                          │
-│ Orchestrator waits for user decision (no further action)                │
-└─────────────────────────────────────────────────────────────────────────┘
+Purpose: Creates sequential history entry in Product.product_memory
+Visible: User sees in UI Product Memory timeline
+
+── STEP 2: Mark Complete ───────────────────────────────────────────────────
+Call: complete_job(
+          job_id='{orchestrator_id}',
+          result={{"summary": "...", "status": "completed"}},
+          tenant_key='{tenant_key}'
+      )
+
+This transitions orchestrator job from 'active' to 'completed'
+
+── STEP 3: User Review ─────────────────────────────────────────────────────
+User reviews 360 memory entry in UI
+User chooses:
+  - "Continue Working" → Spawns new orchestrator for next iteration
+  - "Close Out Project" → Marks project as completed
+
+Orchestrator waits for user decision (no further action)
 
 ────────────────────────────────────────────────────────────────────────────
 
@@ -2459,7 +2453,8 @@ Manual succession available via /gil_handover slash command or UI button.
 
 ────────────────────────────────────────────────────────────────────────────
 
-END OF IMPLEMENTATION PHASE REFERENCE"""
+END OF IMPLEMENTATION PHASE REFERENCE
+"""
     else:
         ch5 = ""
 
