@@ -2211,6 +2211,10 @@ Follow these steps IN ORDER (Steps 1-7 for staging):
 │                                                                          │
 │ ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()│
 │    Your session is done. Implementation happens in a new session.       │
+│                                                                          │
+│ ⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.           │
+│    Your job remains in 'waiting' status - this enables the Launch       │
+│    button in UI. acknowledge_job() is for implementation phase only.    │
 └─────────────────────────────────────────────────────────────────────────┘"""
 
     # CH3: AGENT SPAWNING RULES (~250-300 tokens depending on mode)
