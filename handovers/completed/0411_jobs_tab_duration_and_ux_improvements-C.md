@@ -1,9 +1,27 @@
 # Handover 0411: JobsTab Duration Column and UX Improvements
 
-**Status**: COMPLETE
+**Status**: ✅ ARCHIVED
 **Priority**: MEDIUM
 **Commit**: `910a20db`
 **Created**: 2026-01-09
+**Archived**: 2026-01-17
+
+---
+
+## Completion Summary
+
+**What Was Built**:
+- Duration column with live elapsed time tracking (updates every second)
+- Pulsing "Working" animation for active agents
+- Improved sort order prioritizing active work (working → failed → blocked → waiting → complete)
+
+**Key Files Modified**:
+- `frontend/src/components/projects/JobsTab.vue` (duration column, pulse animation, timer lifecycle)
+- `frontend/src/stores/agentJobsStore.js` (new sort order with timestamp-based secondary sorting)
+
+**No Backend Changes Required** - Uses existing `started_at` and `completed_at` fields.
+
+**Final Status**: Production ready. All changes committed.
 
 ---
 
