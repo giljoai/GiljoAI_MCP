@@ -22,7 +22,7 @@ import logging
 import time
 from typing import List
 
-from .agent_job_manager import AgentJobManager
+from .services.agent_job_manager import AgentJobManager
 from .job_coordinator import JobCoordinator
 from .orchestration_types import (
     StageResult,
