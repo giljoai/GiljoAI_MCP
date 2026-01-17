@@ -1443,7 +1443,592 @@ implementations get faster as architecture solidifies.
 □ Add scope management notes to prevent repeat issues
 
 ══════════════════════════════════════════════════════════════════════════════
-## 11. RELATED DOCUMENTATION
+## 11. REFACTOR INSTRUCTIONS (Large-Scale Code Removal/Migration)
+══════════════════════════════════════════════════════════════════════════════
+
+Use this approach for legacy removal, major migrations, and architectural changes
+where code deletion causes cascading impacts across multiple layers.
+
+### When to Use This Approach
+
+Apply this methodology when:
+✓ Removing deprecated/legacy functionality (agent coordination, old APIs)
+✓ Major architectural migrations (service layer extraction, protocol changes)
+✓ Deleting core modules that have widespread imports/usage
+✓ Refactoring that touches 5+ files across multiple layers
+✓ Replacing old patterns with new patterns project-wide
+
+### Pre-Refactor Checklist
+
+Before deleting ANYTHING:
+
+□ CASCADE IMPACT ANALYSIS COMPLETE
+  - Map ALL files that import/use the target module/function
+  - Identify which files will break when target is removed
+  - Document expected test failures (specific test names)
+  - Estimate scope (how many files per layer)
+
+□ REPLACEMENT STRATEGY DEFINED
+  - Is replacement functionality already implemented?
+  - Do we need to add replacement BEFORE removing legacy?
+  - Are new patterns tested and proven?
+
+□ PHASED EXECUTION PLAN READY
+  - Phase 1: Add replacement (if needed)
+  - Phase 2: Delete legacy files
+  - Phase 3: Fix cascading imports
+  - Phase 4: Verification and cleanup
+
+□ STAKEHOLDER ALIGNMENT
+  - User confirms legacy code is no longer needed
+  - Team agrees on replacement approach
+  - Timeline expectations set (this takes multiple handovers)
+
+### The 4-Phase Refactor Pattern
+
+**Real Example: Handover 0420 Series (Legacy Agent Coordination Removal)**
+
+Phase 1: Add Replacement Functionality BEFORE Removing Legacy
+──────────────────────────────────────────────────────────────
+Why: Never delete until replacement exists and is tested.
+
+Example (Handover 0420a):
+  # BEFORE deletion, implement cancel_job MCP tool
+  touch src/giljo_mcp/tools/agent_job_tools.py
+
+  # Write tests FIRST
+  pytest tests/tools/test_agent_job_tools.py -v
+  # MUST SEE: RED ❌
+
+  # Implement minimal cancel_job functionality
+  def cancel_job(job_id: str, tenant_key: str) -> dict:
+      """Cancel active agent job"""
+      # Implementation here
+      pass
+
+  # Tests pass
+  pytest tests/tools/test_agent_job_tools.py -v
+  # MUST SEE: GREEN ✅
+
+  # Document replacement in cascade analysis
+  echo "cancel_job() replaces legacy send_agent_message(command='cancel')" \
+       >> handovers/0420a_cascade_analysis.md
+
+Phase 2: Delete Legacy Files (Expect Everything to Break)
+──────────────────────────────────────────────────────────
+Why: Clean deletion first, then fix cascades.
+
+Example (Handover 0420b):
+  # Delete legacy files (THIS WILL BREAK THINGS - THAT'S OK)
+  rm src/giljo_mcp/agent_communication_queue.py
+  rm src/giljo_mcp/agent_job_manager.py
+
+  # Run tests to identify cascade failures
+  pytest tests/ -v > test_failures.txt
+  # EXPECT: 15-30 failures (documented in 0420a)
+
+  # Verify expected failures match predictions
+  grep "FAILED" test_failures.txt
+  # Compare to pre-documented list from Phase 1
+
+Deletion Checklist:
+□ Legacy files deleted (no commented-out imports left)
+□ Test failures captured (pytest output saved)
+□ Failure count matches predictions (±10% variance OK)
+□ Unexpected failures investigated (root cause identified)
+
+Phase 3: Fix Cascading Imports (Layer by Layer)
+────────────────────────────────────────────────
+Why: Fix dependencies in logical order (bottom-up).
+
+Example (Handover 0420c):
+  # Order: Models → Services → Tools → API → Frontend
+  # (Fix foundation layers before dependent layers)
+
+  # LAYER 1: Core Models (no dependencies)
+  # Remove imports from src/giljo_mcp/models.py
+  # Replace: from agent_communication_queue import ACQ
+  # With:    # (removed - functionality replaced by cancel_job MCP tool)
+
+  # LAYER 2: Services
+  # Fix: src/giljo_mcp/services/orchestration_service.py
+  # Remove: self.job_manager = AgentJobManager(...)
+  # Replace: Use cancel_job() MCP tool directly
+
+  # LAYER 3: MCP Tools
+  # Fix: src/giljo_mcp/tools/orchestration_tools.py
+  # Remove: from agent_job_manager import send_message
+  # Replace: from agent_job_tools import cancel_job
+
+  # LAYER 4: API Endpoints
+  # Fix: api/endpoints/orchestration.py
+  # Remove: job_manager.acknowledge_job(...)
+  # Replace: await orchestration_service.acknowledge_job(...)
+
+  # LAYER 5: Tests
+  # Delete tests for deleted modules
+  rm tests/test_agent_communication_queue.py
+  rm tests/test_agent_job_manager.py
+
+  # Fix tests that imported legacy modules
+  # Remove: from agent_job_manager import AgentJobManager
+  # Replace: Use mocked orchestration_service
+
+  # Run tests iteratively per layer
+  pytest tests/services/ -v  # Services tests
+  pytest tests/tools/ -v     # Tools tests
+  pytest tests/api/ -v       # API tests
+
+Layer-by-Layer Checklist:
+□ Models fixed (no legacy imports)
+□ Services fixed (use new patterns)
+□ Tools fixed (import replacements)
+□ API endpoints fixed (service delegation)
+□ Frontend fixed (API contract unchanged)
+□ Tests fixed (legacy test files deleted)
+□ All tests passing (GREEN ✅)
+
+Phase 4: Verification and Cleanup
+──────────────────────────────────
+Why: Confirm refactor is complete and clean.
+
+Example (Handover 0420d):
+  # Search for orphaned references
+  grep -r "AgentJobManager" src/ api/ frontend/
+  # EXPECT: No matches (all references removed)
+
+  grep -r "agent_communication_queue" src/ api/ frontend/
+  # EXPECT: No matches
+
+  # Check for zombie imports
+  grep -r "from.*agent_job_manager" src/ api/ frontend/
+  # EXPECT: No matches
+
+  # Run full test suite
+  pytest tests/ -v --cov=src/giljo_mcp --cov-report=html
+  # EXPECT: All tests pass, coverage maintained or improved
+
+  # Verify no commented code
+  grep -r "# from.*AgentJobManager" src/ api/
+  # EXPECT: No matches (delete, don't comment)
+
+  # Test critical user workflows manually
+  python startup.py --dev
+  # Test: Create project → Launch orchestrator → Cancel job
+  # Verify: cancel_job() works as expected
+
+Verification Checklist:
+□ No orphaned references (grep searches clean)
+□ No zombie imports (commented-out imports removed)
+□ All tests passing (100% green)
+□ Coverage maintained or improved (>80%)
+□ Manual testing complete (critical workflows work)
+□ Documentation updated (reflects new architecture)
+
+### File Impact Index Template
+
+Create this BEFORE Phase 2 (deletion):
+
+────────────────────────────────────────────────────────────
+FILE IMPACT INDEX - Handover 0420 Series
+────────────────────────────────────────────────────────────
+
+TARGET FOR DELETION:
+  src/giljo_mcp/agent_communication_queue.py (247 lines)
+  src/giljo_mcp/agent_job_manager.py (513 lines)
+
+REPLACEMENT FUNCTIONALITY:
+  src/giljo_mcp/tools/agent_job_tools.py (cancel_job)
+  src/giljo_mcp/services/orchestration_service.py (job lifecycle)
+
+IMPACTED FILES BY LAYER:
+────────────────────────
+
+BACKEND - Core (7 files):
+  □ src/giljo_mcp/models.py (lines 124-126: import ACQ)
+  □ src/giljo_mcp/orchestrator.py (lines 89-92: uses job_manager)
+  □ src/giljo_mcp/config.py (lines 45: ACQ config)
+  ... [list ALL files]
+
+BACKEND - Services (3 files):
+  □ src/giljo_mcp/services/orchestration_service.py (lines 201-215)
+  □ src/giljo_mcp/services/project_service.py (lines 78-80)
+  ... [list ALL files]
+
+BACKEND - Tools (5 files):
+  □ src/giljo_mcp/tools/orchestration_tools.py (lines 34-56)
+  ... [list ALL files]
+
+API - Endpoints (4 files):
+  □ api/endpoints/orchestration.py (lines 123-145)
+  ... [list ALL files]
+
+FRONTEND - None (agent coordination is backend-only)
+
+DATABASE - Schema Changes:
+  □ None (tables remain, functionality moves to new tools)
+
+TESTS - Deletion (2 files):
+  ✗ tests/test_agent_communication_queue.py (DELETE)
+  ✗ tests/test_agent_job_manager.py (DELETE)
+
+TESTS - Modification (8 files):
+  □ tests/services/test_orchestration_service.py (mock job_manager)
+  □ tests/tools/test_orchestration_tools.py (update imports)
+  ... [list ALL files]
+
+TOTAL IMPACT: 29 files across 5 layers
+
+ESTIMATED FAILURES AFTER PHASE 2:
+  - Services: 5 tests (orchestration_service, project_service)
+  - Tools: 8 tests (orchestration_tools, agent_tools)
+  - API: 4 tests (orchestration endpoints)
+  - Integration: 3 tests (E2E workflows)
+  TOTAL: ~20 test failures (acceptable cascade)
+
+────────────────────────────────────────────────────────────
+
+### Expected Failures Documentation Template
+
+Create this BEFORE Phase 2:
+
+────────────────────────────────────────────────────────────
+EXPECTED TEST FAILURES - Handover 0420b
+────────────────────────────────────────────────────────────
+
+After deleting agent_communication_queue.py and agent_job_manager.py,
+we EXPECT these specific test failures:
+
+SERVICES LAYER (5 failures):
+  ✗ test_orchestration_service.py::test_spawn_agent_job
+    Reason: Imports AgentJobManager (deleted)
+    Fix in Phase 3: Mock orchestration_service instead
+
+  ✗ test_orchestration_service.py::test_acknowledge_job
+    Reason: Uses job_manager.acknowledge_job (deleted)
+    Fix in Phase 3: Use service method directly
+
+  ... [list ALL expected failures]
+
+TOOLS LAYER (8 failures):
+  ✗ test_orchestration_tools.py::test_spawn_agent_job_tool
+    Reason: Imports send_agent_message (deleted)
+    Fix in Phase 3: Use cancel_job() instead
+
+  ... [list ALL expected failures]
+
+API LAYER (4 failures):
+  ... [list ALL expected failures]
+
+INTEGRATION LAYER (3 failures):
+  ... [list ALL expected failures]
+
+TOTAL EXPECTED FAILURES: 20 tests
+
+UNEXPECTED FAILURES:
+  - Investigate immediately if >25 failures (scope larger than predicted)
+  - Root cause any failures NOT on this list
+
+────────────────────────────────────────────────────────────
+
+### Cascade Diagram Example (ASCII)
+
+Create this BEFORE Phase 1:
+
+────────────────────────────────────────────────────────────
+REFACTOR CASCADE DIAGRAM - Agent Coordination Removal
+────────────────────────────────────────────────────────────
+
+LEGEND:
+  [X] = Module to DELETE
+  [R] = Replacement functionality
+  ──> = Import/usage dependency
+  ══> = Strong coupling (many references)
+
+CURRENT STATE (Legacy):
+┌─────────────────────────────────────────┐
+│  Frontend (Vue Components)              │
+│  └─> No direct dependencies             │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  API Endpoints                          │
+│  ├─> orchestration.py ══> [X] JobMgr   │
+│  ├─> agents.py ──> [X] ACQ              │
+│  └─> tasks.py ──> [X] JobMgr            │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  Services Layer                         │
+│  ├─> OrchestrationService ══> [X] JM   │
+│  ├─> ProjectService ──> [X] JobMgr     │
+│  └─> TaskService ──> [X] ACQ            │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  MCP Tools                              │
+│  ├─> orchestration_tools ══> [X] JM    │
+│  ├─> spawn_agent_job ──> [X] ACQ       │
+│  └─> [R] cancel_job (NEW)              │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  Core Modules (TO DELETE)               │
+│  ├─> [X] agent_job_manager.py           │
+│  └─> [X] agent_communication_queue.py   │
+└─────────────────────────────────────────┘
+
+FUTURE STATE (After Refactor):
+┌─────────────────────────────────────────┐
+│  Frontend (Vue Components)              │
+│  └─> No changes                         │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  API Endpoints                          │
+│  ├─> orchestration.py ──> Services     │
+│  ├─> agents.py ──> Services             │
+│  └─> tasks.py ──> Services              │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  Services Layer (STRENGTHENED)          │
+│  ├─> OrchestrationService (enhanced)   │
+│  ├─> ProjectService (simplified)       │
+│  └─> TaskService (direct DB access)    │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  MCP Tools (SIMPLIFIED)                 │
+│  ├─> orchestration_tools (cleaned)     │
+│  ├─> spawn_agent_job (direct service)  │
+│  └─> cancel_job (NEW - replaces ACQ)   │
+└─────────────────────────────────────────┘
+
+MIGRATION PATH:
+  Phase 1 (0420a): Add cancel_job MCP tool
+  Phase 2 (0420b): Delete [X] modules (EXPECT FAILURES)
+  Phase 3 (0420c): Fix cascades layer-by-layer
+  Phase 4 (0420d): Verify cleanup complete
+
+────────────────────────────────────────────────────────────
+
+### Anti-Patterns to Avoid During Refactors
+
+❌ **WRONG: Delete everything at once without cascade analysis**
+  # This causes chaos - unknown impact, random test failures
+  rm -rf src/giljo_mcp/legacy/
+  pytest tests/  # 157 failures - no idea which are expected
+
+✅ **CORRECT: Cascade analysis FIRST, then phased deletion**
+  # Document every impacted file before deletion
+  # Create Expected Failures list
+  # Delete in Phase 2, fix in Phase 3
+
+❌ **WRONG: Comment out legacy code "just in case"**
+  # from agent_job_manager import AgentJobManager  # OLD
+  # Use new pattern instead
+  from orchestration_service import cancel_job
+
+✅ **CORRECT: Delete completely, rely on git history**
+  from orchestration_service import cancel_job
+  # Git history: git log -p -- src/file.py (if needed)
+
+❌ **WRONG: Fix cascades randomly as you encounter them**
+  # This creates inconsistent state - some layers use new, some old
+  # Fix api/endpoints/tasks.py
+  # Oops, forgot services still use old pattern
+  # Now API and services are inconsistent
+
+✅ **CORRECT: Fix cascades layer-by-layer (bottom-up)**
+  # LAYER 1: Models (foundation)
+  # LAYER 2: Services (business logic)
+  # LAYER 3: Tools (MCP tools)
+  # LAYER 4: API (endpoints)
+  # LAYER 5: Frontend (if needed)
+  # Each layer builds on previous layer's fixes
+
+❌ **WRONG: Skip verification phase "tests pass, we're done"**
+  pytest tests/ -v  # All pass
+  git commit -m "refactor complete"
+  # 3 months later: "Why is this commented code here?"
+
+✅ **CORRECT: Thorough verification with orphan detection**
+  grep -r "LegacyModule" src/  # Should be ZERO matches
+  grep -r "# from.*LegacyModule" src/  # No zombie imports
+  pytest tests/ --cov=src/giljo_mcp --cov-report=html
+  # Manual testing of critical workflows
+
+❌ **WRONG: No documentation of what was removed**
+  # Future developers: "Why don't we have AgentJobManager anymore?"
+  # No historical context, might re-implement same pattern
+
+✅ **CORRECT: Document refactor decisions in handover**
+  # handovers/0420_series_summary.md
+  - What: Removed AgentJobManager, AgentCommunicationQueue
+  - Why: Functionality moved to OrchestrationService (service layer)
+  - Replacement: cancel_job() MCP tool + service methods
+  - Impact: 29 files across 5 layers
+  - Timeline: 4 handovers (0420a-d), 2 weeks
+
+### TDD for Replacement Code
+
+When adding replacement functionality (Phase 1), follow TDD:
+
+RED Phase (Write Failing Tests):
+  # tests/tools/test_agent_job_tools.py
+  @pytest.mark.asyncio
+  async def test_cancel_job_marks_job_as_cancelled(db_session, test_tenant):
+      """Test that cancel_job changes job status to cancelled"""
+      # Create active job
+      job = await create_test_job(status="active")
+
+      # Cancel job
+      result = await cancel_job(job.id, test_tenant)
+
+      # Verify status changed
+      assert result["success"] is True
+      updated_job = await db_session.get(AgentJob, job.id)
+      assert updated_job.status == "cancelled"
+
+  # Run test
+  pytest tests/tools/test_agent_job_tools.py::test_cancel_job -v
+  # MUST SEE: FAILED (RED ❌) - cancel_job doesn't exist yet
+
+GREEN Phase (Minimal Implementation):
+  # src/giljo_mcp/tools/agent_job_tools.py
+  async def cancel_job(job_id: str, tenant_key: str) -> dict:
+      """Cancel active agent job"""
+      async with get_db_session() as session:
+          stmt = select(AgentJob).where(
+              AgentJob.id == job_id,
+              AgentJob.tenant_key == tenant_key
+          )
+          result = await session.execute(stmt)
+          job = result.scalar_one_or_none()
+
+          if not job:
+              return {"success": False, "error": "Job not found"}
+
+          job.status = "cancelled"
+          await session.commit()
+
+          return {"success": True, "data": {"job_id": job_id}}
+
+  # Run test
+  pytest tests/tools/test_agent_job_tools.py::test_cancel_job -v
+  # MUST SEE: PASSED (GREEN ✅)
+
+REFACTOR Phase (Polish):
+  # Add logging, error handling, WebSocket events
+  async def cancel_job(job_id: str, tenant_key: str) -> dict:
+      """Cancel active agent job"""
+      logger.info(
+          "Cancelling agent job",
+          extra={"job_id": job_id, "tenant_key": tenant_key}
+      )
+
+      async with get_db_session() as session:
+          # ... implementation ...
+
+          # Emit real-time event
+          await websocket_manager.broadcast_to_tenant(
+              tenant_key=tenant_key,
+              event="job:cancelled",
+              data={"job_id": job_id}
+          )
+
+      return {"success": True, "data": {"job_id": job_id}}
+
+  # Tests MUST STAY GREEN
+  pytest tests/tools/test_agent_job_tools.py -v
+
+### Refactor Execution Checklist
+
+Before starting refactor:
+□ Cascade Impact Analysis complete (File Impact Index created)
+□ Expected Failures documented (specific test names listed)
+□ Replacement functionality designed (if needed)
+□ 4-Phase execution plan ready
+□ Cascade diagram created (visual dependency map)
+□ Stakeholder alignment confirmed
+
+Phase 1 - Add Replacement:
+□ Replacement tests written (RED ❌)
+□ Replacement implemented (GREEN ✅)
+□ Replacement polished (REFACTOR)
+□ Replacement documented in cascade analysis
+
+Phase 2 - Delete Legacy:
+□ Legacy files deleted completely (no commented code)
+□ Test failures captured (pytest output saved)
+□ Failure count matches predictions (±10% variance)
+□ Unexpected failures investigated
+
+Phase 3 - Fix Cascades:
+□ Models layer fixed (foundation)
+□ Services layer fixed (business logic)
+□ Tools layer fixed (MCP tools)
+□ API layer fixed (endpoints)
+□ Frontend layer fixed (if needed)
+□ Tests fixed (legacy tests deleted)
+□ All tests passing (GREEN ✅)
+
+Phase 4 - Verification:
+□ Orphaned references checked (grep searches clean)
+□ Zombie imports removed (no commented code)
+□ Full test suite passing (100% green)
+□ Coverage maintained (>80%)
+□ Manual testing complete (critical workflows)
+□ Documentation updated (architecture docs)
+□ Handover summary created (decisions documented)
+
+### Success Metrics
+
+A successful refactor achieves:
+✓ Zero orphaned references (grep searches clean)
+✓ All tests green (no regressions)
+✓ Coverage maintained or improved (>80%)
+✓ No zombie code (deleted, not commented)
+✓ Clear historical documentation (future devs understand why)
+✓ Simplified architecture (fewer dependencies)
+
+### Real-World Example: 0420 Series Results
+
+**Scope**:
+- Deleted: 2 core modules (760 lines)
+- Impacted: 29 files across 5 layers
+- Expected failures: 20 tests
+
+**Timeline**:
+- 0420a: Add replacement (4 hours)
+- 0420b: Delete legacy (2 hours)
+- 0420c: Fix cascades (6 hours)
+- 0420d: Verification (2 hours)
+- Total: 14 hours actual vs 12-16 hours estimated
+
+**Results**:
+✓ All tests green (no regressions)
+✓ Coverage increased: 78% → 82%
+✓ Architecture simplified (service layer strengthened)
+✓ Zero orphaned references
+✓ Clean git history (no zombie code)
+
+**Lessons Learned**:
+- Cascade analysis saved 8+ hours (prevented random debugging)
+- Layer-by-layer approach kept codebase buildable throughout
+- Expected Failures documentation caught 2 unexpected failures early
+- TDD for replacement (Phase 1) prevented runtime errors
+
+══════════════════════════════════════════════════════════════════════════════
+## 12. RELATED DOCUMENTATION
 ══════════════════════════════════════════════════════════════════════════════
 
 Essential Reading:
