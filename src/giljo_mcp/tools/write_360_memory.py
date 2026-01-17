@@ -11,7 +11,6 @@ from datetime import datetime
 from inspect import iscoroutine
 from typing import Any, Dict, List, Optional
 
-from fastmcp import FastMCP
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -30,48 +29,6 @@ logger = logging.getLogger(__name__)
 MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
 MAX_KEY_OUTCOMES = 100
 MAX_DECISIONS_MADE = 100
-
-
-def register_write_360_memory_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
-    """Register write_360_memory tool with the MCP server."""
-
-    @mcp.tool()
-    async def write_360_memory_wrapper(
-        project_id: str,
-        tenant_key: str,
-        summary: str,
-        key_outcomes: List[str],
-        decisions_made: List[str],
-        entry_type: str = "project_completion",
-        author_job_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Write an entry to product 360 Memory.
-
-        Args:
-            project_id: UUID of the project
-            tenant_key: Tenant isolation key
-            summary: Summary of work completed (max 10K chars)
-            key_outcomes: List of key outcomes achieved
-            decisions_made: List of decisions made
-            entry_type: Type of entry ("project_completion" or "handover_closeout")
-            author_job_id: Optional job ID of the author (orchestrator)
-
-        Returns:
-            Dict with success status, sequence_number, git_commits_count
-        """
-        return await write_360_memory(
-            project_id=project_id,
-            tenant_key=tenant_key,
-            summary=summary,
-            key_outcomes=key_outcomes,
-            decisions_made=decisions_made,
-            entry_type=entry_type,
-            author_job_id=author_job_id,
-            db_manager=db_manager,
-        )
 
 
 async def write_360_memory(
