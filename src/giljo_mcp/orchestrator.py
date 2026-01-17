@@ -23,7 +23,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
 
-from .agent_job_manager import AgentJobManager
+from .services.agent_job_manager import AgentJobManager
 from .agent_selector import AgentSelector
 from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
