@@ -534,6 +534,7 @@ After completing 0387i, update `handovers/0387_broadcast_fanout_at_write.md`:
 - Date Completed: 2026-01-18
 - Implemented By: Claude Opus 4.5 with documentation-manager and backend-tester subagents
 - Time Taken: ~1 hour
+- Execution Method: Task tool subagents for documentation and testing phases
 
 ### Changes Made
 
@@ -555,6 +556,10 @@ After completing 0387i, update `handovers/0387_broadcast_fanout_at_write.md`:
    - docs/SERVICES.md: Updated MessageService with counter updates and deprecation notice
    - docs/deprecations/0387i_messages_jsonb_column.md: Created formal deprecation notice
 
+5. **Parent Handover Updated** (`handovers/0387_broadcast_fanout_at_write.md`)
+   - Status changed to COMPLETE (All Phases)
+   - Added Phase 4 Completion Summary section
+
 ### Final Test Results
 - Tests: 3,743 collected (core tests passing)
 - Coverage: >80% maintained
@@ -567,19 +572,46 @@ After completing 0387i, update `handovers/0387_broadcast_fanout_at_write.md`:
 - Recommendation: Create follow-up handover to clean up legacy code
 
 ### Merge Details
-- Commit Hash: [To be filled after commit]
-- Branch Deleted: [To be filled after merge]
+- Commit Hash: `69112bc4`
+- Commit Message: `feat(0387-phase4): Complete JSONB messages normalization`
+- Merge Type: Fast-forward
+- Branch Deleted: Yes (`0387-jsonb-normalization` deleted after merge)
+- Files Changed: 75 files, 8,321 insertions(+), 919 deletions(-)
 
 ### Post-Merge Verification
-- Dashboard: [To be verified]
-- WebSocket: [To be verified]
-- Logs: [To be verified]
+- Dashboard: Pending (requires server startup)
+- WebSocket: Pending (requires server startup)
+- Logs: Pending (requires server startup)
+- Code Verification: PASS (no JSONB reads in production code)
+
+### 0387 Phase 4 Series Summary
+
+| Handover | Description | Status | Key Deliverable |
+|----------|-------------|--------|-----------------|
+| 0387e | Add counter columns | COMPLETE | 3 counter columns + migration |
+| 0387f | Backend: Stop JSONB writes | COMPLETE | MessageService uses counters only |
+| 0387g | Frontend: Use counters | COMPLETE | Vue components read counters |
+| 0387h | Test updates + cleanup | COMPLETE | 21 test files updated |
+| 0387i | Deprecate column + merge | COMPLETE | Column deprecated, merged to master |
+
+### Benefits Achieved
+- **Single Source of Truth**: Message table + counter columns (no dual-write)
+- **No Sync Bugs**: Eliminated JSONB/counter desync risk
+- **Better Performance**: O(1) counter read vs O(n) JSONB iteration
+- **Production-Grade Architecture**: Industry-standard pattern
+- **Rollback Safety**: JSONB column retained for emergency rollback
+
+### Timeline
+- **v3.2** (Current): Column deprecated, counter columns authoritative
+- **v4.0** (Future): Column will be removed from database
 
 ### Project Complete
-0387 Phase 4 (JSONB Normalization) is COMPLETE.
+0387 Phase 4 (JSONB Normalization) is **COMPLETE**.
 The `AgentExecution.messages` column is deprecated and will be removed in v4.0.
+
+**NO NEXT TERMINAL** - This was the final handover in the 0387 chain.
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated**: 2026-01-18
