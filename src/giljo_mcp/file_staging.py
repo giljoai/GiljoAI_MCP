@@ -124,12 +124,12 @@ class FileStaging:
             # Get all templates
             all_templates = get_all_templates()
             # Select a stable subset - core commands for CLI users
-            # Note: Legacy template installers removed (redundant with gil_get_claude_agents)
+            # NOTE (Handover 0388): gil_activate, gil_launch, gil_handover removed -
+            # users perform these actions via web UI, not CLI. Templates never existed
+            # in slash_command_templates.py; this list was incorrect.
             wanted = [
                 "gil_get_claude_agents.md",  # Unified agent installer (interactive)
-                "gil_activate.md",
-                "gil_launch.md",
-                "gil_handover.md",
+                "gil_task.md",  # Task punting to dashboard
             ]
             missing = [w for w in wanted if w not in all_templates]
             if missing:
