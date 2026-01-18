@@ -4,8 +4,29 @@
 **From Agent:** Documentation Manager
 **To Agent:** Backend Integration Tester / Database Expert
 **Priority:** High
-**Estimated Complexity:** 4-6 hours
-**Status:** Ready for Implementation
+**Estimated Complexity:** 4-6 hours (Phases 1-3), 28-36 hours (Phase 4)
+**Status:** COMPLETE (All Phases)
+
+---
+
+## Phase 4 Series (JSONB Normalization)
+
+**Planning Date:** 2026-01-17
+**Status:** Ready for Agent Teams
+
+Phase 4 removes the `AgentExecution.messages` JSONB duplication. See sub-handovers:
+
+| Handover | Scope | Hours | Prerequisite |
+|----------|-------|-------|--------------|
+| **[0387e](0387e_add_message_counter_columns.md)** | Add counter columns + migration | 6-8h | None |
+| **[0387f](0387f_backend_stop_jsonb_writes.md)** | Backend: Stop JSONB writes | 8-10h | 0387e |
+| **[0387g](0387g_frontend_use_counters.md)** | Frontend: Use counters | 6-8h | 0387f |
+| **[0387h](0387h_test_updates_cleanup.md)** | Test updates + cleanup | 6-8h | 0387g |
+| **[0387i](0387i_deprecate_jsonb_column.md)** | Deprecate column + merge | 2-4h | 0387h |
+
+**Branch:** `0387-jsonb-normalization`
+
+**See:** [Phase 4 Planning Document](../plans/goofy-tinkering-garden.md) for full cascade analysis
 
 ---
 
@@ -538,3 +559,66 @@ async def test_e2e_broadcast_workflow(api_client, test_project):
 
 This handover now supersedes **Handover 0403** (JSONB Normalization - Messages).
 0403 content has been merged into Phase 4 above.
+
+---
+
+## Phase 4 Completion Summary (2026-01-18)
+
+**Status:** COMPLETE
+
+### Sub-Handover Summary
+
+| Handover | Description | Status |
+|----------|-------------|--------|
+| 0387e | Add counter columns + migration | COMPLETE |
+| 0387f | Backend: Stop JSONB writes | COMPLETE |
+| 0387g | Frontend: Use counters | COMPLETE |
+| 0387h | Test updates + cleanup | COMPLETE |
+| 0387i | Deprecate column + merge | COMPLETE |
+
+### What Changed
+
+1. **Counter Columns Added** (0387e)
+   - `messages_sent_count` - Outbound messages sent
+   - `messages_waiting_count` - Inbound messages pending read
+   - `messages_read_count` - Inbound messages acknowledged
+
+2. **Backend Uses Counters** (0387f)
+   - MessageService updates counter columns on send/receive/acknowledge
+   - No JSONB writes to `AgentExecution.messages`
+
+3. **Frontend Uses Counters** (0387g)
+   - Vue components read from counter fields
+   - No JSONB iteration for message counts
+
+4. **Tests Updated** (0387h)
+   - Removed obsolete JSONB tests
+   - Updated fixtures to use counter fields
+   - Scripts deprecated and moved
+
+5. **Column Deprecated** (0387i)
+   - Model docstring updated with deprecation notice
+   - Column comment updated via migration
+   - Documentation updated (CLAUDE.md, SERVICES.md)
+   - Deprecation notice created
+   - Future removal migration stub created
+
+### Benefits Achieved
+
+- **Single Source of Truth**: Message table + counter columns
+- **No Sync Bugs**: No dual-write to JSONB and counters
+- **Better Performance**: O(1) counter read vs O(n) JSONB iteration
+- **Production-Grade Architecture**: Industry-standard pattern
+
+### Timeline
+
+- **v3.2**: Column deprecated, counter columns authoritative
+- **v4.0**: Column will be removed from database
+
+### Branch Merged
+
+- Feature branch: `0387-jsonb-normalization`
+- Merged to: `master`
+- Date: 2026-01-18
+
+**JSONB messages column is DEPRECATED. Use counter columns.**

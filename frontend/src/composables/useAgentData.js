@@ -54,17 +54,16 @@ export function useAgentData(agents) {
 
   /**
    * Message count calculation
-   * Extracted from AgentCard.vue message badge logic
+   * Uses server-provided counter fields (Handover 0387g)
    *
-   * @param {Object} job - Agent job object with messages array
-   * @returns {Object} - { unread, acknowledged, total }
+   * @param {Object} job - Agent job object with message counter fields
+   * @returns {Object} - { sent, waiting, read }
    */
   const getMessageCounts = (job) => {
-    const messages = job.messages || []
     return {
-      unread: messages.filter((m) => m.status === 'pending').length,
-      acknowledged: messages.filter((m) => m.status === 'acknowledged').length,
-      total: messages.length,
+      sent: job?.messages_sent_count ?? 0,
+      waiting: job?.messages_waiting_count ?? 0,
+      read: job?.messages_read_count ?? 0,
     }
   }
 

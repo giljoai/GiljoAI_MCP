@@ -38,50 +38,65 @@
 
       <!-- Tabs + Content -->
       <v-card-text class="pa-0">
-        <!-- Category Tabs (simple buttons to avoid extra dependencies in tests) -->
-        <div class="message-audit-tabs">
-          <button
-            type="button"
-            class="tab-button"
-            :class="{ active: activeTab === 'sent' }"
-            data-test="messages-tab-sent"
-            @click="activeTab = 'sent'"
-          >
-            Sent ({{ sentCount }})
-          </button>
-          <button
-            type="button"
-            class="tab-button"
-            :class="{ active: activeTab === 'waiting' }"
-            data-test="messages-tab-waiting"
-            @click="activeTab = 'waiting'"
-          >
-            Waiting ({{ waitingCount }})
-          </button>
-          <button
-            type="button"
-            class="tab-button"
-            :class="{ active: activeTab === 'read' }"
-            data-test="messages-tab-read"
-            @click="activeTab = 'read'"
-          >
-            Read ({{ readCount }})
-          </button>
-          <button
-            type="button"
-            class="tab-button"
-            :class="{ active: activeTab === 'plan' }"
-            data-test="messages-tab-plan"
-            @click="activeTab = 'plan'"
-          >
-            Plan / TODOs ({{ planCount }})
-          </button>
+        <!-- Loading State (Handover 0387g Phase 4) -->
+        <div v-if="loading" class="pa-8 text-center">
+          <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
+          <div class="text-body-2 text-medium-emphasis">Loading messages...</div>
         </div>
 
-        <v-divider />
+        <!-- Error State (Handover 0387g Phase 4) -->
+        <div v-else-if="error" class="pa-4">
+          <v-alert type="error" variant="tonal" closable>
+            {{ error }}
+          </v-alert>
+        </div>
 
-        <!-- Two-column layout: list + detail (or TODO list for Plan tab) -->
-        <div class="message-audit-body">
+        <!-- Loaded State: Tabs + Content (Handover 0387g Phase 4) -->
+        <div v-else>
+          <!-- Category Tabs (simple buttons to avoid extra dependencies in tests) -->
+          <div class="message-audit-tabs">
+            <button
+              type="button"
+              class="tab-button"
+              :class="{ active: activeTab === 'sent' }"
+              data-test="messages-tab-sent"
+              @click="activeTab = 'sent'"
+            >
+              Sent ({{ sentCount }})
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              :class="{ active: activeTab === 'waiting' }"
+              data-test="messages-tab-waiting"
+              @click="activeTab = 'waiting'"
+            >
+              Waiting ({{ waitingCount }})
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              :class="{ active: activeTab === 'read' }"
+              data-test="messages-tab-read"
+              @click="activeTab = 'read'"
+            >
+              Read ({{ readCount }})
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              :class="{ active: activeTab === 'plan' }"
+              data-test="messages-tab-plan"
+              @click="activeTab = 'plan'"
+            >
+              Plan / TODOs ({{ planCount }})
+            </button>
+          </div>
+
+          <v-divider />
+
+          <!-- Two-column layout: list + detail (or TODO list for Plan tab) -->
+          <div class="message-audit-body">
           <!-- Plan/TODOs Tab: Display todo items instead of messages (Handover 0402) -->
           <div v-if="activeTab === 'plan'" class="todo-items-column">
             <div
@@ -160,6 +175,8 @@
             </div>
           </template>
         </div>
+        </div>
+        <!-- End v-else wrapper for loaded state -->
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -168,6 +185,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import MessageDetailView from '@/components/projects/MessageDetailView.vue'
+import api from '@/services/api'
 
 const props = defineProps({
   show: {
@@ -196,9 +214,30 @@ const emit = defineEmits(['close'])
 const activeTab = ref(props.initialTab || 'waiting')
 const selectedMessage = ref(null)
 
-const messages = computed(() =>
-  props.agent && Array.isArray(props.agent.messages) ? props.agent.messages : [],
-)
+// API fetch logic (Handover 0387g Phase 4: fetch from MessageRepository, not JSONB)
+const messages = ref([])
+const loading = ref(false)
+const error = ref(null)
+
+async function fetchMessages() {
+  if (!props.agent?.job_id) {
+    messages.value = []
+    return
+  }
+
+  loading.value = true
+  error.value = null
+
+  try {
+    const response = await api.messages(props.agent.job_id)
+    messages.value = response.data?.messages || []
+  } catch (e) {
+    error.value = e.response?.data?.detail || e.message || 'Failed to load messages'
+    messages.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 // Match JobsTab helper semantics so counts stay aligned with the table
 const sentMessages = computed(() =>
@@ -245,6 +284,7 @@ const agentLabel = computed(() => {
   return props.agent.agent_name || props.agent.agent_display_name || 'Agent'
 })
 
+// Fetch messages when modal opens (Handover 0387g Phase 4)
 watch(
   () => props.show,
   (value) => {
@@ -255,6 +295,8 @@ watch(
     // When opening, pick the requested initial tab if provided
     activeTab.value = props.initialTab || 'waiting'
     selectedMessage.value = null
+    // Fetch messages from API instead of using props.agent.messages
+    fetchMessages()
   },
 )
 
@@ -262,6 +304,10 @@ watch(
   () => props.agent,
   () => {
     selectedMessage.value = null
+    // Refetch if agent changes while modal is open
+    if (props.show) {
+      fetchMessages()
+    }
   },
 )
 

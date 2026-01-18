@@ -248,7 +248,9 @@ async def test_agents(
             agent_name=agent_name,
             mission=mission,
             status="working",
-            messages=[],  # JSONB message queue
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(agent)
         agents.append(agent)

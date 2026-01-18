@@ -152,7 +152,9 @@ async def test_job(db_session: AsyncSession, admin_user: User) -> AgentExecution
         status="waiting",
         spawned_by=None,
         context_chunks=["chunk_1", "chunk_2"],
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
 
     db_session.add(job)
@@ -327,7 +329,9 @@ async def test_multi_tenant_isolation_list_jobs(
         agent_display_name="tester",
         mission="Other tenant job",
         status="waiting",
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(other_job)
     await db_session.commit()
@@ -561,7 +565,9 @@ async def test_get_job_hierarchy(
         mission="Child job 1",
         status="waiting",
         spawned_by=test_job.job_id,
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     child2 = AgentExecution(
         tenant_key=test_job.tenant_key,
@@ -569,7 +575,9 @@ async def test_get_job_hierarchy(
         mission="Child job 2",
         status="waiting",
         spawned_by=test_job.job_id,
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
 
     db_session.add_all([child1, child2])
@@ -644,7 +652,9 @@ async def test_invalid_status_transition_returns_400(
         agent_display_name="implementer",
         mission="Completed job",
         status="completed",
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(completed_job)
     await db_session.commit()

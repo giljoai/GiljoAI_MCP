@@ -72,6 +72,20 @@ GiljoAI MCP uses a service layer architecture to separate business logic from AP
 - Read/unread tracking
 - WebSocket notifications for new messages
 
+#### Counter Updates (Handover 0387f)
+
+When messages are sent/received/acknowledged, counter columns are updated:
+- `send_message()` → Increments sender's `messages_sent_count`, recipient's `messages_waiting_count`
+- `acknowledge_message()` → Decrements `messages_waiting_count`, increments `messages_read_count`
+
+#### DEPRECATED: JSONB Messages Array
+
+The `AgentExecution.messages` JSONB column is deprecated as of v3.2 (Handover 0387i).
+- Do NOT write to this column
+- Do NOT read from this column
+- Use counter columns instead
+- Column will be removed in v4.0
+
 ---
 
 ## Core Services

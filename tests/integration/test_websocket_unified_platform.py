@@ -142,7 +142,9 @@ async def test_agent_with_execution(
         agent_display_name="implementer",
         agent_name="test-implementer",
         status="working",
-        messages=[],  # JSONB column for message copies
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         context_used=0,
         context_budget=100000,
     )

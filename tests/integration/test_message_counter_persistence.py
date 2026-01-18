@@ -77,7 +77,9 @@ async def test_message_counters_persist_after_page_refresh(async_db_session: Asy
         mission="Orchestrate the project",
         status="working",
         tool_type="claude-code",
-        messages=[]  # Start empty
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     async_db_session.add(orchestrator)
 
