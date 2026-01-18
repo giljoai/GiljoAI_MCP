@@ -331,7 +331,9 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
         instance_number=1,
         status="waiting",  # AgentExecution: 7 statuses
         progress=0,
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         health_status="unknown",
         tool_type="universal",
         context_used=0,

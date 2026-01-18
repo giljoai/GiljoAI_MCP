@@ -382,14 +382,11 @@ async def get_agent_statistics(
                     session, tenant_key, agent_execution.agent_name
                 )
 
-                # Get task counts from messages array
-                task_count = 0
-                completed_count = 0
-                if agent_execution.messages and isinstance(agent_execution.messages, list):
-                    tasks = agent_execution.messages
-                    if isinstance(tasks, list):
-                        task_count = len(tasks)
-                        completed_count = sum(1 for t in tasks if isinstance(t, dict) and t.get("status") == "completed")
+                # Get task counts from counter fields (Handover 0387f)
+                # Note: These counters track messages, not tasks. For actual task counts,
+                # we should query the Task table. Using message counters as placeholder.
+                task_count = agent_execution.messages_sent_count
+                completed_count = agent_execution.messages_read_count
 
                 # Calculate average response time (simplified)
                 avg_response_time = 30.0  # Default 30 seconds

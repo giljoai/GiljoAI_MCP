@@ -96,7 +96,9 @@ async def test_agent_execution_0367b(
         instance_number=1,
         status="working",
         progress=50,
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -382,7 +384,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="complete",
             progress=100,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution2)
 
@@ -395,7 +399,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="waiting",
             progress=0,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution3)
         await db_session.commit()
@@ -447,7 +453,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="working",
             progress=50,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution1)
 
@@ -460,7 +468,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="complete",
             progress=100,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution2)
         await db_session.commit()
@@ -502,7 +512,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="working",
             progress=50,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution1)
 
@@ -515,7 +527,9 @@ class TestStatisticsEndpointBehavior:
             instance_number=1,
             status="waiting",
             progress=0,
-            messages=[],
+            messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
         )
         db_session.add(execution2)
         await db_session.commit()
@@ -569,7 +583,9 @@ class TestStatisticsEndpointBehavior:
                 instance_number=1,
                 status=status,
                 progress=0,
-                messages=[],
+                messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
             )
             db_session.add(execution)
         await db_session.commit()
