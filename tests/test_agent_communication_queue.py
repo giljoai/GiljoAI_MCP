@@ -41,7 +41,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -89,7 +91,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -124,7 +128,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
         mock_job.job_id = self.job_id
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -181,7 +187,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -239,7 +247,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -297,7 +307,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         # Job belongs to different tenant
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = "different-tenant-key"
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -682,7 +694,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = self.tenant_key
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job
@@ -755,121 +769,6 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
 
         mock_session.commit.assert_called_once()
 
-    # ==================== JSONB Operations Tests ====================
-
-    def test_jsonb_array_append(self):
-        """Test JSONB array append operation"""
-        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
-
-        mock_db = Mock(spec=DatabaseManager)
-        mock_session = Mock()
-
-        mock_job = Mock(spec=AgentExecution)
-        mock_job.tenant_key = self.tenant_key
-        mock_job.messages = [{"id": "existing-msg", "content": "Existing"}]
-
-        mock_query = Mock()
-        mock_query.filter_by.return_value.first.return_value = mock_job
-        mock_session.query.return_value = mock_query
-        mock_session.commit = Mock()
-
-        queue = AgentMessageQueue(mock_db)
-
-        # Send new message (should append to array)
-        queue.send_message(
-            session=mock_session,
-            job_id=self.job_id,
-            tenant_key=self.tenant_key,
-            from_agent="agent1",
-            to_agent="agent2",
-            message_type="info",
-            content="New message",
-        )
-
-        assert len(mock_job.messages) == 2
-        assert mock_job.messages[0]["id"] == "existing-msg"
-        assert mock_job.messages[1]["content"] == "New message"
-
-    def test_jsonb_message_update_acknowledgment(self):
-        """Test JSONB message update for acknowledgment"""
-        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
-
-        mock_db = Mock(spec=DatabaseManager)
-        mock_session = Mock()
-
-        message_id = str(uuid.uuid4())
-        mock_job = Mock(spec=AgentExecution)
-        mock_job.tenant_key = self.tenant_key
-        mock_job.messages = [
-            {
-                "id": message_id,
-                "content": "Test",
-                "acknowledged": False,
-            }
-        ]
-
-        mock_query = Mock()
-        mock_query.filter_by.return_value.first.return_value = mock_job
-        mock_session.query.return_value = mock_query
-        mock_session.commit = Mock()
-
-        type(mock_job).messages = PropertyMock(return_value=mock_job.messages)
-
-        queue = AgentMessageQueue(mock_db)
-
-        # Acknowledge message
-        queue.acknowledge_message(
-            session=mock_session,
-            job_id=self.job_id,
-            tenant_key=self.tenant_key,
-            message_id=message_id,
-            agent_id="test_agent",
-        )
-
-        # Verify JSONB object was updated
-        msg = mock_job.messages[0]
-        assert msg["acknowledged"] is True
-        assert msg["acknowledged_by"] == "test_agent"
-        assert "acknowledged_at" in msg
-
-    def test_jsonb_query_filtering(self):
-        """Test JSONB query filtering by message properties"""
-        from src.giljo_mcp.agent_message_queue import AgentMessageQueue
-
-        mock_db = Mock(spec=DatabaseManager)
-        mock_session = Mock()
-
-        mock_job = Mock(spec=AgentExecution)
-        mock_job.tenant_key = self.tenant_key
-        mock_job.messages = [
-            {"id": "1", "to_agent": "analyzer", "type": "task", "acknowledged": False},
-            {"id": "2", "to_agent": "implementer", "type": "task", "acknowledged": False},
-            {"id": "3", "to_agent": "analyzer", "type": "info", "acknowledged": True},
-            {"id": "4", "to_agent": "analyzer", "type": "task", "acknowledged": False},
-        ]
-
-        mock_query = Mock()
-        mock_query.filter_by.return_value.first.return_value = mock_job
-        mock_session.query.return_value = mock_query
-
-        queue = AgentMessageQueue(mock_db)
-
-        # Filter by to_agent, type, and unread
-        result = queue.get_messages(
-            session=mock_session,
-            job_id=self.job_id,
-            tenant_key=self.tenant_key,
-            to_agent="analyzer",
-            message_type="task",
-            unread_only=True,
-        )
-
-        assert result["status"] == "success"
-        assert len(result["messages"]) == 2
-        assert all(msg["to_agent"] == "analyzer" for msg in result["messages"])
-        assert all(msg["type"] == "task" for msg in result["messages"])
-        assert all(msg["acknowledged"] is False for msg in result["messages"])
-
     # ==================== Multi-Tenant Isolation Tests ====================
 
     def test_multi_tenant_message_isolation(self):
@@ -882,7 +781,9 @@ class TestAgentCommunicationQueue(BaseAsyncTest):
         # Job belongs to different tenant
         mock_job = Mock(spec=AgentExecution)
         mock_job.tenant_key = "different-tenant"
-        mock_job.messages = []
+        mock_job.messages_sent_count = 0
+        mock_job.messages_waiting_count = 0
+        mock_job.messages_read_count = 0
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_job

@@ -63,7 +63,9 @@ async def test_agent_job(db_session, test_project):
         agent_name="Test Agent",
         status="running",
         tenant_key=test_project.tenant_key,
-        messages=[]
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(job)
     await db_session.commit()

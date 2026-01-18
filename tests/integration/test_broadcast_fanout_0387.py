@@ -76,7 +76,9 @@ class TestBroadcastFanout:
                 instance_number=1,
                 status="working",
                 progress=0,
-                messages=[],
+                messages_sent_count=0,
+                messages_waiting_count=0,
+                messages_read_count=0,
                 health_status="healthy",
             )
             setup_session.add(orch_execution)
@@ -102,7 +104,9 @@ class TestBroadcastFanout:
                     instance_number=1,
                     status="waiting",
                     progress=0,
-                    messages=[],
+                    messages_sent_count=0,
+                messages_waiting_count=0,
+                messages_read_count=0,
                     health_status="healthy",
                 )
                 setup_session.add(execution)
