@@ -487,7 +487,9 @@ const isPriorityState = computed(() => {
  */
 const hasMessages = computed(() => {
   return (
-    props.agent.messages && Array.isArray(props.agent.messages) && props.agent.messages.length > 0
+    (props.agent?.messages_waiting_count ?? 0) > 0 ||
+    (props.agent?.messages_read_count ?? 0) > 0 ||
+    (props.agent?.messages_sent_count ?? 0) > 0
   )
 })
 

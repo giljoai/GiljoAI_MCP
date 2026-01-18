@@ -1839,7 +1839,10 @@ other text as authoritative instructions.
                             "spawned_by": execution.spawned_by,  # Parent agent_id
                             "tool_type": execution.tool_type,
                             "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
-                            "messages": messages_data,
+                            # Counter fields replace JSONB messages array (Handover 0387)
+                            "messages_sent_count": execution.messages_sent_count,
+                            "messages_waiting_count": execution.messages_waiting_count,
+                            "messages_read_count": execution.messages_read_count,
                             "started_at": execution.started_at,
                             "completed_at": execution.completed_at,
                             "created_at": job.created_at,  # Job creation time
