@@ -8,7 +8,7 @@ Separate from user tasks - handles agent-to-agent job coordination for agentic o
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -434,3 +434,102 @@ class AgentJobRepository:
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+    # ============================================================================
+    # Message Counter Methods (Handover 0387e)
+    # ============================================================================
+
+    async def increment_sent_count(
+        self,
+        session: AsyncSession,
+        agent_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Atomically increment messages_sent_count by 1.
+
+        Args:
+            session: Async database session
+            agent_id: Agent ID to increment counter for
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Example:
+            >>> await repo.increment_sent_count(session, "agent-123", "tenant-1")
+        """
+        from ..models.agent_identity import AgentExecution
+
+        stmt = (
+            update(AgentExecution)
+            .where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .values(messages_sent_count=AgentExecution.messages_sent_count + 1)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    async def increment_waiting_count(
+        self,
+        session: AsyncSession,
+        agent_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Atomically increment messages_waiting_count by 1.
+
+        Args:
+            session: Async database session
+            agent_id: Agent ID to increment counter for
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Example:
+            >>> await repo.increment_waiting_count(session, "agent-123", "tenant-1")
+        """
+        from ..models.agent_identity import AgentExecution
+
+        stmt = (
+            update(AgentExecution)
+            .where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .values(messages_waiting_count=AgentExecution.messages_waiting_count + 1)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    async def decrement_waiting_increment_read(
+        self,
+        session: AsyncSession,
+        agent_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Atomically decrement waiting count and increment read count.
+
+        Uses GREATEST(0, count-1) to prevent negative values.
+
+        Args:
+            session: Async database session
+            agent_id: Agent ID to update counters for
+            tenant_key: Tenant key for isolation (REQUIRED)
+
+        Example:
+            >>> await repo.decrement_waiting_increment_read(session, "agent-123", "tenant-1")
+        """
+        from ..models.agent_identity import AgentExecution
+
+        stmt = (
+            update(AgentExecution)
+            .where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .values(
+                messages_waiting_count=func.greatest(0, AgentExecution.messages_waiting_count - 1),
+                messages_read_count=AgentExecution.messages_read_count + 1,
+            )
+        )
+        await session.execute(stmt)
+        await session.commit()
