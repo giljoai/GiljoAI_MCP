@@ -1795,11 +1795,10 @@ other text as authoritative instructions.
                 # Convert to dicts
                 job_dicts = []
                 for execution, job in rows:
-                    # DIAGNOSTIC: Log messages field for debugging persistence
-                    messages_data = execution.messages or []
+                    # DIAGNOSTIC: Log message counters for debugging persistence
                     self._logger.debug(
                         f"[LIST_JOBS DEBUG] Agent {execution.agent_display_name} (job={job.job_id}, agent={execution.agent_id}): "
-                        f"messages field = {messages_data!r} (type: {type(execution.messages)})"
+                        f"{execution.messages_sent_count} sent, {execution.messages_waiting_count} waiting, {execution.messages_read_count} read"
                     )
 
                     # Derive simple numeric steps summary from job_metadata.todo_steps (Handover 0297)

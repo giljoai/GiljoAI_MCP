@@ -88,7 +88,9 @@ async def test_agent_execution_0367a(
         instance_number=1,
         status="working",
         progress=50,
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(execution)
     await db_session.commit()

@@ -5,46 +5,13 @@ function ensureArray(value) {
   return Array.isArray(value) ? value : []
 }
 
-function deriveMessageCounters(messages) {
-  let sent = 0
-  let waiting = 0
-  let read = 0
-
-  for (const message of ensureArray(messages)) {
-    if (message?.direction === 'outbound') {
-      sent += 1
-      continue
-    }
-
-    if (message?.direction === 'inbound') {
-      if (message.status === 'waiting' || message.status === 'pending') {
-        waiting += 1
-      } else if (message.status === 'acknowledged' || message.status === 'read') {
-        read += 1
-      }
-    }
-  }
-
-  return { sent, waiting, read }
-}
-
 function normalizeJob(rawJob) {
-  const messages = ensureArray(rawJob?.messages)
-  const { sent, waiting, read } = deriveMessageCounters(messages)
-
   return {
     ...rawJob,
     job_id: rawJob?.job_id || rawJob?.id || rawJob?.agent_id,
-    messages,
-    messages_sent_count: Number.isFinite(rawJob?.messages_sent_count)
-      ? rawJob.messages_sent_count
-      : sent,
-    messages_waiting_count: Number.isFinite(rawJob?.messages_waiting_count)
-      ? rawJob.messages_waiting_count
-      : waiting,
-    messages_read_count: Number.isFinite(rawJob?.messages_read_count)
-      ? rawJob.messages_read_count
-      : read,
+    messages_sent_count: rawJob?.messages_sent_count ?? 0,
+    messages_waiting_count: rawJob?.messages_waiting_count ?? 0,
+    messages_read_count: rawJob?.messages_read_count ?? 0,
   }
 }
 
@@ -259,83 +226,48 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     const previous = jobsById.value.get(senderId)
     if (!previous) return
 
-    const messageId = payload?.message_id
-    const previousMessages = ensureArray(previous.messages)
-    const alreadyTracked =
-      messageId &&
-      previousMessages.some((m) => m?.id === messageId && m?.direction === 'outbound')
-
-    if (alreadyTracked) return
-
-    const nextMessages = [
-      ...previousMessages,
-      {
-        id: messageId,
-        direction: 'outbound',
-        status: 'sent',
-        from_agent: payload?.from_agent,
-        to_agent_ids: ensureArray(payload?.to_agent_ids),
-        timestamp: payload?.timestamp,
-        message_type: payload?.message_type,
-      },
-    ]
-
-    const nextJob = normalizeJob({
-      ...previous,
-      messages: nextMessages,
-      messages_sent_count: (previous.messages_sent_count || 0) + 1,
+    // Use server-provided counter from WebSocket event
+    upsertJob({
+      job_id: senderId,
+      messages_sent_count: payload.sender_sent_count ?? (previous.messages_sent_count || 0) + 1,
     })
 
-    jobsById.value = createNextMapWith(jobsById.value, senderId, nextJob)
+    // Also update recipient's waiting count if provided
+    const recipientIdentifier = payload?.to_agent_ids?.[0]
+    if (recipientIdentifier) {
+      const recipientId = resolveJobId(recipientIdentifier)
+      if (recipientId) {
+        const recipientPrevious = jobsById.value.get(recipientId)
+        if (recipientPrevious) {
+          upsertJob({
+            job_id: recipientId,
+            messages_waiting_count: payload.recipient_waiting_count ?? (recipientPrevious.messages_waiting_count || 0) + 1,
+          })
+        }
+      }
+    }
   }
 
   function handleMessageReceived(payload) {
     const recipientIds = ensureArray(payload?.to_agent_ids)
     if (!recipientIds.length) return
 
-    let nextMap = jobsById.value
-
     for (const recipientIdentifier of recipientIds) {
       const recipientId = resolveJobId(recipientIdentifier)
       if (!recipientId) continue
 
-      const previous = nextMap.get(recipientId)
+      const previous = jobsById.value.get(recipientId)
       if (!previous) continue
 
-      const messageId = payload?.message_id
-      const previousMessages = ensureArray(previous.messages)
-      const alreadyTracked =
-        messageId &&
-        previousMessages.some((m) => m?.id === messageId && m?.direction === 'inbound')
-
-      if (alreadyTracked) continue
-
-      const nextMessages = [
-        ...previousMessages,
-        {
-          id: messageId,
-          direction: 'inbound',
-          status: 'waiting',
-          from_agent: payload?.from_agent,
-          timestamp: payload?.timestamp,
-          message_type: payload?.message_type,
-        },
-      ]
-
-      const nextJob = normalizeJob({
-        ...previous,
-        messages: nextMessages,
-        messages_waiting_count: (previous.messages_waiting_count || 0) + 1,
+      // Use server-provided counter from WebSocket event
+      upsertJob({
+        job_id: recipientId,
+        messages_waiting_count: payload.recipient_waiting_count ?? (previous.messages_waiting_count || 0) + 1,
       })
-
-      nextMap = createNextMapWith(nextMap, recipientId, nextJob)
     }
-
-    jobsById.value = nextMap
   }
 
-  // Handover 0405: Fixed fallback for message counter updates when messages
-  // aren't tracked locally. Also improved job ID resolution (Handover 0407).
+  // Handover 0387g: Simplified to use server-provided counters instead of array manipulation
   function handleMessageAcknowledged(payload) {
     // Try multiple resolution strategies: agent_id, job_id, from_job_id
     // Handover 0407: Backend sends agent_id (executor UUID), which may not
@@ -362,67 +294,12 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       return
     }
 
-    const messageIds = ensureArray(payload?.message_ids).length
-      ? ensureArray(payload?.message_ids)
-      : payload?.message_id
-        ? [payload.message_id]
-        : []
-
-    if (!messageIds.length) return
-
-    const idSet = new Set(messageIds)
-    const previousMessages = ensureArray(previous.messages)
-
-    let acknowledgedNow = 0
-    const nextMessages = previousMessages.map((message) => {
-      if (
-        message?.direction === 'inbound' &&
-        idSet.has(message.id) &&
-        message.status !== 'acknowledged' &&
-        message.status !== 'read'
-      ) {
-        acknowledgedNow += 1
-        return { ...message, status: 'acknowledged' }
-      }
-      return message
+    // Use server-provided counters from WebSocket event
+    upsertJob({
+      job_id: recipientId,
+      messages_waiting_count: payload.waiting_count ?? previous.messages_waiting_count ?? 0,
+      messages_read_count: payload.read_count ?? previous.messages_read_count ?? 0,
     })
-
-    // Handover 0405: Fallback when messages aren't tracked locally
-    // Backend acknowledged messages we don't have in the local messages array.
-    // This happens when the page wasn't open when message:received was sent,
-    // or messages were loaded from JSONB without full detail.
-    if (acknowledgedNow === 0 && messageIds.length > 0) {
-      // eslint-disable-next-line no-console
-      console.debug('[agentJobsStore] handleMessageAcknowledged: Using fallback counter update', {
-        recipientId,
-        messageCount: messageIds.length,
-        previousWaiting: previous.messages_waiting_count,
-        previousRead: previous.messages_read_count,
-      })
-
-      const nextJob = normalizeJob({
-        ...previous,
-        messages_waiting_count: Math.max(0, (previous.messages_waiting_count || 0) - messageIds.length),
-        messages_read_count: (previous.messages_read_count || 0) + messageIds.length,
-      })
-
-      jobsById.value = createNextMapWith(jobsById.value, recipientId, nextJob)
-      return
-    }
-
-    if (acknowledgedNow === 0) return
-
-    const nextJob = normalizeJob({
-      ...previous,
-      messages: nextMessages,
-      messages_waiting_count: Math.max(
-        0,
-        (previous.messages_waiting_count || 0) - acknowledgedNow,
-      ),
-      messages_read_count: (previous.messages_read_count || 0) + acknowledgedNow,
-    })
-
-    jobsById.value = createNextMapWith(jobsById.value, recipientId, nextJob)
   }
 
   function $reset() {

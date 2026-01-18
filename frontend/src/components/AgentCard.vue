@@ -491,20 +491,11 @@ const hasMessages = computed(() => {
   )
 })
 
-const unreadCount = computed(() => {
-  if (!hasMessages.value) return 0
-  return props.agent.messages.filter((m) => m.status === 'pending').length
-})
+const unreadCount = computed(() => props.agent?.messages_waiting_count ?? 0)
 
-const acknowledgedCount = computed(() => {
-  if (!hasMessages.value) return 0
-  return props.agent.messages.filter((m) => m.status === 'acknowledged').length
-})
+const acknowledgedCount = computed(() => props.agent?.messages_read_count ?? 0)
 
-const sentCount = computed(() => {
-  if (!hasMessages.value) return 0
-  return props.agent.messages.filter((m) => m.from === 'developer').length
-})
+const sentCount = computed(() => props.agent?.messages_sent_count ?? 0)
 
 /**
  * Text truncation helpers

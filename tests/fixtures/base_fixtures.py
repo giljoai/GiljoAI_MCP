@@ -81,7 +81,9 @@ class TestData:
             "instance_number": instance_number,
             "status": "waiting",  # AgentExecution has 7 statuses
             "progress": 0,
-            "messages": [],
+            "messages_sent_count": 0,
+            "messages_waiting_count": 0,
+            "messages_read_count": 0,
             "health_status": "unknown",
             "tool_type": "universal",
             "context_used": 0,

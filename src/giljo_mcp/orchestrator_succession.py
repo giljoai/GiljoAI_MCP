@@ -29,7 +29,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 
 # Handover 0366b: Import dual-model architecture
 from .models.agent_identity import AgentJob, AgentExecution
@@ -233,11 +233,12 @@ class OrchestratorSuccessionManager:
 
         return successor_execution
 
-    def generate_handover_summary(self, execution: AgentExecution) -> dict[str, Any]:
+    async def generate_handover_summary(self, execution: AgentExecution) -> dict[str, Any]:
         """
         Generate compressed handover summary for successor.
 
         Handover 0366b: Now generates summary from AgentExecution (execution-specific state).
+        Handover 0387f: Query Message table instead of JSONB column.
 
         Compression strategy:
         - Extract only actionable state
@@ -261,12 +262,45 @@ class OrchestratorSuccessionManager:
             Compressed handover summary dict
 
         Example:
-            >>> summary = manager.generate_handover_summary(execution)
+            >>> summary = await manager.generate_handover_summary(execution)
             >>> print(f"Project status: {summary['project_status']}")
             >>> print(f"Messages: {summary['message_count']}")
         """
-        # Extract messages for analysis
-        messages = execution.messages or []
+        # Import Message model for querying
+        from sqlalchemy.dialects.postgresql import JSONB
+        from .models.tasks import Message
+
+        # Query Message table for messages sent by or to this agent
+        stmt = (
+            select(Message)
+            .where(
+                or_(
+                    Message.from_agent == execution.agent_id,
+                    func.cast(Message.to_agents, JSONB).op('@>')(
+                        func.cast([execution.agent_id], JSONB)
+                    )
+                )
+            )
+            .order_by(Message.created_at.desc())
+            .limit(100)  # Limit to most recent 100 messages for summary
+        )
+
+        result = await self.db_session.execute(stmt)
+        message_objects = result.scalars().all()
+
+        # Convert to dict format for backward compatibility with helper methods
+        messages = [
+            {
+                "id": msg.id,
+                "type": msg.message_type,
+                "from_agent": msg.from_agent,
+                "to_agents": msg.to_agents,
+                "content": msg.content,
+                "status": msg.status,
+                "created_at": msg.created_at,
+            }
+            for msg in message_objects
+        ]
         message_count = len(messages)
 
         # Analyze message history for project status

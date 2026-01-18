@@ -152,13 +152,8 @@ async def get_agent_jobs_table_view(
 
     if has_unread is not None:
         if has_unread:
-            # Filter jobs with messages containing status="pending"
-            query = query.where(
-                func.jsonb_path_exists(
-                    AgentExecution.messages,
-                    '$[*] ? (@.status == "pending")'
-                )
-            )
+            # Filter jobs with unread messages (using counter field)
+            query = query.where(AgentExecution.messages_waiting_count > 0)
         filters_applied["has_unread"] = has_unread
 
     # Get total count before pagination
@@ -193,17 +188,10 @@ async def get_agent_jobs_table_view(
     now = datetime.now(timezone.utc)
 
     for execution in executions:
-        # Count messages by status
-        unread_count = 0
-        acknowledged_count = 0
-        total_messages = len(execution.messages) if execution.messages else 0
-
-        if execution.messages:
-            for msg in execution.messages:
-                if msg.get("status") == "pending":
-                    unread_count += 1
-                elif msg.get("status") == "acknowledged":
-                    acknowledged_count += 1
+        # Use counter fields instead of iterating messages
+        unread_count = execution.messages_waiting_count
+        acknowledged_count = execution.messages_read_count
+        total_messages = execution.messages_sent_count + execution.messages_waiting_count + execution.messages_read_count
 
         # Calculate staleness
         minutes_since_progress = None

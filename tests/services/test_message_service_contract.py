@@ -113,7 +113,9 @@ async def test_project_with_agents(
             agent_display_name=agent_display_name,
             status="waiting",
             instance_number=1,
-            messages=[],  # Initialize empty JSONB array
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(agent)
         agents.append(agent)
