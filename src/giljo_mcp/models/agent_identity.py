@@ -285,6 +285,26 @@ class AgentExecution(Base):
         comment="Array of message objects for agent communication",
     )
 
+    # Message counter columns (Handover 0387e - replaces JSONB array counting)
+    messages_sent_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Count of outbound messages sent by this agent",
+    )
+    messages_waiting_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Count of inbound messages waiting to be read",
+    )
+    messages_read_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Count of inbound messages that have been acknowledged/read",
+    )
+
     # Failure tracking
     failure_reason = Column(
         String(50),
