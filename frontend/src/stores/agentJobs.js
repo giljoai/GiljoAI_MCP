@@ -60,11 +60,7 @@ export const useAgentJobsStore = defineStore('agentJobs', () => {
 
     if (tableFilters.value.has_unread !== null) {
       filtered = filtered.filter((a) => {
-        const unread =
-          a.unread_count ??
-          (Array.isArray(a.messages)
-            ? a.messages.filter((m) => m.status === 'pending').length
-            : 0)
+        const unread = a.unread_count ?? a.messages_waiting_count ?? 0
         return tableFilters.value.has_unread ? unread > 0 : unread === 0
       })
     }
