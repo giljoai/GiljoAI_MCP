@@ -140,10 +140,9 @@ const truncatedMission = computed(() => {
   return mission.substring(0, 150) + '...'
 })
 
-const unreadMessageCount = computed(() => {
-  if (!props.orchestrator.messages) return 0
-  return props.orchestrator.messages.filter((msg) => !msg.read).length
-})
+const unreadMessageCount = computed(() =>
+  props.orchestrator?.messages_waiting_count ?? 0
+)
 
 // Methods
 // MIGRATION NOTE (Handover 0119): Updated to use /api/v1/prompts instead of /api/prompts

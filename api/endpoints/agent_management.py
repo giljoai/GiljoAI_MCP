@@ -112,6 +112,10 @@ async def get_active_agent_jobs(
         async with state.db_manager.get_session_async() as db:
             jobs = job_repo.get_active_jobs(db, tenant_key, agent_display_name)
 
+            # Note: AgentJobResponse expects messages field, but we're migrating to counters (0387f)
+            # This endpoint uses AgentJobRepository which returns AgentJob, not AgentExecution
+            # AgentJob doesn't have counter fields - need to query AgentExecution for counters
+            # For now, return empty list as messages field will be deprecated
             return [
                 AgentJobResponse(
                     job_id=job.job_id,
@@ -121,7 +125,7 @@ async def get_active_agent_jobs(
                     spawned_by=job.spawned_by,
                     template_id=job.template_id,  # Handover 0244a
                     context_chunks=job.context_chunks or [],
-                    messages=job.messages or [],
+                    messages=[],  # Handover 0387f: JSONB messages deprecated, use counter fields
                     created_at=job.created_at,
                     started_at=job.started_at,
                     completed_at=job.completed_at,
@@ -178,7 +182,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
                 spawned_by=job.spawned_by,
                 template_id=job.template_id,  # Handover 0244a
                 context_chunks=job.context_chunks or [],
-                messages=job.messages or [],
+                messages=[],  # Handover 0387f: JSONB messages deprecated, use counter fields
                 created_at=job.created_at,
                 started_at=job.started_at,
                 completed_at=job.completed_at,

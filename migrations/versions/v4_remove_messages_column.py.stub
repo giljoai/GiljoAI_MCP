@@ -1,0 +1,113 @@
+"""
+STUB: Remove deprecated messages column (Handover 0387 - FUTURE)
+
+DO NOT RUN THIS MIGRATION YET.
+This is a stub for the v4.0 release when the column will be dropped.
+
+Prerequisites before running:
+1. All systems upgraded to v3.2+
+2. Verified no code references AgentExecution.messages
+3. Historical data exported if needed (see docs/deprecations/0387i_messages_jsonb_column.md)
+4. Database backup created
+
+WARNING: This is a DESTRUCTIVE migration. Data in the messages column will be lost.
+
+Revision ID: remove_messages_column
+Revises: [TBD - last v4.0 migration]
+Create Date: [TBD - v4.0 release]
+
+Part of JSONB Messages Normalization series (Phase 4 of 0387).
+Column was deprecated in Handover 0387i.
+"""
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import inspect
+
+
+# revision identifiers, used by Alembic.
+revision = 'remove_messages_column'
+down_revision = '[TBD]'  # Set to last v4.0 migration before running
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    """
+    Remove the deprecated messages column.
+
+    WARNING: This is a destructive migration!
+    Ensure backup exists before running.
+    """
+    # Get database connection
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    # Check if agent_executions table exists
+    tables = inspector.get_table_names()
+    if 'agent_executions' not in tables:
+        print("agent_executions table not found, skipping migration")
+        return
+
+    # Check if messages column exists
+    columns = [col['name'] for col in inspector.get_columns('agent_executions')]
+    if 'messages' not in columns:
+        print("messages column already removed, skipping migration")
+        return
+
+    # Verify counter columns exist (safety check)
+    required_cols = ['messages_sent_count', 'messages_waiting_count', 'messages_read_count']
+    missing = [c for c in required_cols if c not in columns]
+    if missing:
+        raise RuntimeError(
+            f"Counter columns missing: {missing}. "
+            f"Cannot remove messages column without counter columns present."
+        )
+
+    print("WARNING: Removing messages column - this is irreversible!")
+    print("Ensure you have a backup of historical message data if needed.")
+
+    # Remove the deprecated column
+    op.drop_column('agent_executions', 'messages')
+
+    print("Migration complete - messages column removed!")
+
+
+def downgrade() -> None:
+    """
+    Restore the messages column.
+
+    NOTE: This cannot restore data - only recreates the empty column.
+    """
+    # Get database connection
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    # Check if agent_executions table exists
+    tables = inspector.get_table_names()
+    if 'agent_executions' not in tables:
+        print("agent_executions table not found, skipping downgrade")
+        return
+
+    # Check if messages column already exists
+    columns = [col['name'] for col in inspector.get_columns('agent_executions')]
+    if 'messages' in columns:
+        print("messages column already exists, skipping downgrade")
+        return
+
+    print("Restoring messages column (data will be empty)...")
+
+    # Recreate the column with empty data
+    op.add_column(
+        'agent_executions',
+        sa.Column(
+            'messages',
+            JSONB,
+            nullable=False,
+            server_default='[]',
+            comment='Restored after v4.0 downgrade - no historical data'
+        )
+    )
+
+    print("Downgrade complete - messages column restored (empty)!")

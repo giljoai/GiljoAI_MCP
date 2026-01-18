@@ -648,26 +648,14 @@ function formatDuration(agent) {
  * Get count of messages sent from developer to this agent
  */
 function getMessagesSent(agent) {
-  if (Number.isFinite(agent?.messages_sent_count)) {
-    return agent.messages_sent_count
-  }
-  if (!agent.messages || !Array.isArray(agent.messages)) return 0
-  return agent.messages.filter(
-    (m) => m.from === 'developer' || m.direction === 'outbound'
-  ).length
+  return agent?.messages_sent_count ?? 0
 }
 
 /**
  * Get count of messages waiting to be read by agent
  */
 function getMessagesWaiting(agent) {
-  if (Number.isFinite(agent?.messages_waiting_count)) {
-    return agent.messages_waiting_count
-  }
-  if (!agent.messages || !Array.isArray(agent.messages)) return 0
-  return agent.messages.filter(
-    (m) => m.status === 'pending' || m.status === 'waiting'
-  ).length
+  return agent?.messages_waiting_count ?? 0
 }
 
 /**
@@ -675,13 +663,7 @@ function getMessagesWaiting(agent) {
  * Only counts INBOUND messages that were read (not outbound messages sent by agent)
  */
 function getMessagesRead(agent) {
-  if (Number.isFinite(agent?.messages_read_count)) {
-    return agent.messages_read_count
-  }
-  if (!agent.messages || !Array.isArray(agent.messages)) return 0
-  return agent.messages.filter(
-    (m) => m.direction === 'inbound' && (m.status === 'acknowledged' || m.status === 'read')
-  ).length
+  return agent?.messages_read_count ?? 0
 }
 
 /**

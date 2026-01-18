@@ -25,8 +25,7 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
 
   const getUnreadCount = (agentId) => {
     const agent = agents.value.find((a) => a.id === agentId)
-    if (!agent || !agent.messages) return 0
-    return agent.messages.filter((msg) => !msg.read).length
+    return agent?.messages_waiting_count ?? 0
   }
 
   // Actions

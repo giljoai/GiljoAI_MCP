@@ -67,7 +67,9 @@ def orchestrator_job(session: Session, tenant_key: str):
         context_budget=150000,
         spawned_by=None,
         context_chunks=[],
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     session.add(job)
     session.commit()
@@ -365,7 +367,9 @@ def test_generate_handover_summary_empty_orchestrator(
 ):
     """Test handover summary handles empty orchestrator gracefully."""
     # Empty orchestrator (no messages, no context)
-    orchestrator_job.messages = []
+    orchestrator_job.messages_sent_count = 0
+    orchestrator_job.messages_waiting_count = 0
+    orchestrator_job.messages_read_count = 0
     orchestrator_job.context_chunks = []
     session.commit()
 

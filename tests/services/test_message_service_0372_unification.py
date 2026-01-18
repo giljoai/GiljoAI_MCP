@@ -113,7 +113,9 @@ async def test_project_with_agents(
             agent_display_name=agent_display_name,
             status="waiting",
             instance_number=1,  # Must be >= 1 per check constraint
-            messages=[],  # Initialize empty JSONB array
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(agent)
         agents.append(agent)
@@ -184,7 +186,7 @@ class TestMessageService0372AgentIDRouting:
 
         # Assert: Message sent successfully
         assert result["success"] is True
-        message_id = result["message_id"]
+        message_id = result["data"]["message_id"]
 
         # Assert: Message exists in database
         msg_result = await db_session.execute(
@@ -245,7 +247,7 @@ class TestMessageService0372AgentIDRouting:
 
         # Assert: Message sent successfully
         assert result["success"] is True
-        message_id = result["message_id"]
+        message_id = result["data"]["message_id"]
 
         # Assert: Message routes to NEW orchestrator (agent_id)
         msg_result = await db_session.execute(

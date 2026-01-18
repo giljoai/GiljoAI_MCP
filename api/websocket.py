@@ -926,6 +926,8 @@ class WebSocketManager:
         timestamp: Optional[datetime] = None,
         project_id: Optional[str] = None,
         to_job_ids: Optional[list[str]] = None,
+        sender_sent_count: Optional[int] = None,
+        recipient_waiting_count: Optional[int] = None,
     ):
         """Broadcast message sent event for agent-orchestrator communication."""
         event = EventFactory.message_sent(
@@ -940,6 +942,8 @@ class WebSocketManager:
             content_preview=(content_preview or "")[:200],
             priority=priority,
             message_timestamp=timestamp,
+            sender_sent_count=sender_sent_count,
+            recipient_waiting_count=recipient_waiting_count,
         )
 
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
@@ -958,6 +962,7 @@ class WebSocketManager:
         priority: int,
         timestamp: Optional[datetime] = None,
         project_id: Optional[str] = None,
+        waiting_count: Optional[int] = None,
     ):
         """Broadcast message received event to recipient agent(s)."""
         event = EventFactory.message_received(
@@ -972,6 +977,7 @@ class WebSocketManager:
             content_preview=(content_preview or "")[:200],
             priority=priority,
             message_timestamp=timestamp,
+            waiting_count=waiting_count,
         )
 
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
@@ -985,6 +991,8 @@ class WebSocketManager:
         tenant_key: str,
         project_id: str,
         message_ids: list[str],
+        waiting_count: Optional[int] = None,
+        read_count: Optional[int] = None,
     ):
         """Broadcast message acknowledged event when an agent reads messages."""
         event = EventFactory.message_acknowledged(
@@ -995,6 +1003,8 @@ class WebSocketManager:
             to_job_ids=[agent_id],
             agent_id=agent_id,
             message_ids=message_ids,
+            waiting_count=waiting_count,
+            read_count=read_count,
         )
 
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
