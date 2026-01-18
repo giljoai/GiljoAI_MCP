@@ -67,11 +67,10 @@ class TestDownloadSlashCommands:
             namelist = set(zipf.namelist())
 
         # Current supported command set (Jan 2026+)
+        # NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
         assert {
             "gil_get_claude_agents.md",
-            "gil_activate.md",
-            "gil_launch.md",
-            "gil_handover.md",
+            "gil_task.md",
         }.issubset(namelist)
 
     def test_slash_commands_zip_does_not_ship_legacy_commands(self, api_client):
