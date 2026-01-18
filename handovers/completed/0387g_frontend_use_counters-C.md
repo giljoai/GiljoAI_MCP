@@ -605,19 +605,19 @@ npm run build
 ## 8. SUCCESS CRITERIA
 
 ### Functional
-- [ ] Message counters display correctly
-- [ ] WebSocket updates work
-- [ ] MessageAuditModal shows messages from API
-- [ ] No `agent.messages` array references remain
+- [x] Message counters display correctly
+- [x] WebSocket updates work
+- [x] MessageAuditModal shows messages from API
+- [x] No `agent.messages` array references remain
 
 ### Quality
-- [ ] Frontend tests pass
-- [ ] Build succeeds
-- [ ] No console errors
+- [x] Frontend tests pass
+- [x] Build succeeds
+- [x] No console errors
 
 ### Documentation
-- [ ] Closeout notes completed
-- [ ] Ready for 0387h handover
+- [x] Closeout notes completed
+- [x] Ready for 0387h handover
 
 ---
 
