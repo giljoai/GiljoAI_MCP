@@ -114,18 +114,13 @@ async def get_filter_options(
     tool_result = await db.execute(tool_query)
     tool_types = sorted([t for t in tool_result.scalars().all() if t])
 
-    # Check if any jobs have unread messages
+    # Check if any jobs have unread messages (using counter field)
     unread_query = (
         select(AgentExecution.agent_id)
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(base_conditions)
         .where(AgentJob.project_id == project_id)
-        .where(
-            func.jsonb_path_exists(
-                AgentExecution.messages,
-                '$[*] ? (@.status == "pending")'
-            )
-        )
+        .where(AgentExecution.messages_waiting_count > 0)
         .limit(1)
     )
     unread_result = await db.execute(unread_query)

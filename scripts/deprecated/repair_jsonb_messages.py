@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-JSONB Message Repair Script
+DEPRECATED (Handover 0387h): This script is no longer needed.
+The JSONB messages array has been replaced with counter columns.
+Scheduled for removal in next major release.
+
+Original Purpose: JSONB Message Repair Script
 
 Background:
 -----------

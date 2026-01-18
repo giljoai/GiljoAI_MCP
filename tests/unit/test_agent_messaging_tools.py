@@ -47,7 +47,9 @@ class TestAgentMessagingTools:
             status=status,
             agent_name=agent_name,
             tool_type="claude-code",
-            messages=[],
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         session.add(job)
         await session.commit()
@@ -243,7 +245,9 @@ class TestAgentMessagingTools:
                 mission="Test",
                 status="working",
                 agent_name="agent-b",
-                messages=[],
+                messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
             )
             session.add(job_b)
             await session.commit()

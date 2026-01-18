@@ -294,6 +294,16 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
 - **Subagents**: Built-in agents BLOCKED by hook - see **CRITICAL: Agent Routing Rules** at top of file. Use ONLY custom agents from `.claude/agents/`
 
+## Message System (Updated 0387i)
+
+**Counter-Based Architecture**: Message counts are stored as counter columns on `AgentExecution`:
+- `messages_sent_count` - Outbound messages sent
+- `messages_waiting_count` - Inbound messages pending read
+- `messages_read_count` - Inbound messages acknowledged
+
+**DEPRECATED**: The `AgentExecution.messages` JSONB column is deprecated.
+Do not read from or write to this column. It will be removed in v4.0.
+
 ## Service Layer Architecture & Patterns
 
 **See [docs/SERVICES.md](docs/SERVICES.md)** for complete service layer documentation.

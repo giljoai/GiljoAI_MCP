@@ -33,6 +33,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.repositories.message_repository import MessageRepository
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ class MessageService:
         self._websocket_manager = websocket_manager
         self._test_session = test_session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = MessageRepository()  # Handover 0387f: Counter-based persistence
 
     def _get_session(self):
         """
@@ -248,53 +250,52 @@ class MessageService:
                     f"for message {message_id}"
                 )
 
-                # CRITICAL: Persist messages to agent_executions.messages JSONB column for counter persistence
-                # Handover 0372/0401: Runs ALWAYS, regardless of websocket_manager
-                # Handover 0550: Fixed "Messages Sent" counter bug - add sender's outbound entry ONCE
+                # Handover 0387f: Update message counters instead of JSONB persistence
                 if messages:
                     try:
-                        # Step 1: Add ONE outbound entry to sender with all recipients (fixes counter bug)
-                        all_recipient_ids = [msg.to_agents[0] for msg in messages if msg.to_agents]
-                        first_message_id = str(messages[0].id) if messages else None
+                        # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
+                        sender_ref = from_agent or "orchestrator"
 
-                        if first_message_id and all_recipient_ids:
-                            await self._add_sender_outbound_message(
+                        # Resolve sender to agent_id for counter update
+                        sender_result = await session.execute(
+                            select(AgentExecution).join(AgentJob).where(
+                                and_(
+                                    AgentJob.project_id == project.id,
+                                    AgentExecution.tenant_key == project.tenant_key,
+                                    (AgentExecution.agent_display_name == sender_ref) |
+                                    (AgentExecution.agent_id == sender_ref)
+                                )
+                            ).limit(1)
+                        )
+                        sender_execution = sender_result.scalar_one_or_none()
+
+                        if sender_execution:
+                            await self._repo.increment_sent_count(
                                 session=session,
-                                message_id=first_message_id,
-                                from_agent=from_agent or "orchestrator",
-                                recipient_ids=all_recipient_ids,
-                                content=content,
-                                message_type=message_type,
-                                priority=priority,
-                                project_id=project.id,
+                                agent_id=sender_execution.agent_id,
                                 tenant_key=project.tenant_key,
                             )
                             self._logger.info(
-                                f"[PERSISTENCE] Added ONE outbound message to sender with {len(all_recipient_ids)} recipients"
+                                f"[COUNTER] Incremented sent_count for {sender_ref}"
                             )
 
-                        # Step 2: Add inbound entry to each recipient (one per recipient)
+                        # Step 2: Increment each recipient's waiting_count by 1
                         for msg in messages:
                             recipient_id = msg.to_agents[0] if msg.to_agents else None
                             if recipient_id:
-                                await self._add_recipient_inbound_message(
+                                await self._repo.increment_waiting_count(
                                     session=session,
-                                    message_id=str(msg.id),
-                                    from_agent=from_agent or "orchestrator",
-                                    recipient_id=recipient_id,
-                                    content=content,
-                                    priority=priority,
-                                    project_id=project.id,
+                                    agent_id=recipient_id,
                                     tenant_key=project.tenant_key,
                                 )
 
-                        # Commit changes to persist JSONB updates
+                        # Commit counter updates
                         await session.commit()
                         self._logger.info(
-                            f"[PERSISTENCE] Saved 1 outbound + {len(messages)} inbound messages to agent JSONB columns"
+                            f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each"
                         )
-                    except Exception as persist_error:
-                        self._logger.warning(f"Failed to persist message to JSONB: {persist_error}")
+                    except Exception as counter_error:
+                        self._logger.warning(f"Failed to update message counters: {counter_error}")
 
                 # Emit WebSocket events if manager is available
                 if self._websocket_manager and messages:
@@ -334,6 +335,26 @@ class MessageService:
                             recipient_agent_ids = resolved_to_agents
                             self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_agent_ids}")
 
+                        # Handover 0387g: Fetch updated counter values after commit
+                        # Refresh sender execution to get updated counter
+                        sender_sent_count = None
+                        if sender_execution:
+                            await session.refresh(sender_execution)
+                            sender_sent_count = sender_execution.messages_sent_count
+
+                        # For recipient counter, get first recipient's waiting count
+                        recipient_waiting_count = None
+                        if recipient_agent_ids:
+                            recipient_result = await session.execute(
+                                select(AgentExecution).where(
+                                    AgentExecution.agent_id == recipient_agent_ids[0]
+                                )
+                            )
+                            first_recipient = recipient_result.scalar_one_or_none()
+                            if first_recipient:
+                                await session.refresh(first_recipient)
+                                recipient_waiting_count = first_recipient.messages_waiting_count
+
                         # Event 1: Broadcast to SENDER (increments "Messages Sent")
                         await self._websocket_manager.broadcast_message_sent(
                             message_id=message_id,
@@ -346,6 +367,8 @@ class MessageService:
                             message_type=message_type,
                             content_preview=content[:200] if content else "",
                             priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                            sender_sent_count=sender_sent_count,
+                            recipient_waiting_count=recipient_waiting_count,
                         )
                         self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
 
@@ -362,6 +385,7 @@ class MessageService:
                                 message_type=message_type,
                                 content_preview=content[:200] if content else "",
                                 priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                                waiting_count=recipient_waiting_count,
                             )
                             self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)")
 
@@ -743,13 +767,17 @@ class MessageService:
                     await session.commit()
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
-                    # Update JSONB messages array status for UI counter (Handover 0326)
-                    # The dashboard reads from AgentJob.messages JSONB, not Message table
-                    await self._update_jsonb_message_status(
-                        session=session,
-                        job_id=agent_id,
-                        message_ids=[str(msg.id) for msg in messages],
-                        new_status="acknowledged"
+                    # Handover 0387f: Update counters instead of JSONB
+                    # Decrement waiting by N and increment read by N (bulk acknowledge)
+                    for _ in messages:
+                        await self._repo.decrement_waiting_increment_read(
+                            session=session,
+                            agent_id=agent_id,
+                            tenant_key=tenant_key,
+                        )
+                    await session.commit()
+                    self._logger.info(
+                        f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}"
                     )
 
                     # Emit WebSocket event for UI update (Handover 0326)
@@ -1135,13 +1163,29 @@ class MessageService:
                     f"Message {message_id} acknowledged by agent {agent_id}"
                 )
 
-                # Update JSONB for UI counter sync
-                await self._update_jsonb_message_status(
+                # Handover 0387f: Update counters instead of JSONB
+                await self._repo.decrement_waiting_increment_read(
                     session=session,
-                    job_id=agent_id,
-                    message_ids=[message_id],
-                    new_status="acknowledged"
+                    agent_id=agent_id,
+                    tenant_key=tenant_key,
                 )
+                await session.commit()
+                self._logger.info(
+                    f"[COUNTER] Decremented waiting_count and incremented read_count for {agent_id}"
+                )
+
+                # Handover 0387g: Fetch updated counter values after commit
+                exec_result = await session.execute(
+                    select(AgentExecution).where(
+                        and_(
+                            AgentExecution.agent_id == agent_id,
+                            AgentExecution.tenant_key == tenant_key
+                        )
+                    )
+                )
+                execution = exec_result.scalar_one_or_none()
+                waiting_count = execution.messages_waiting_count if execution else None
+                read_count = execution.messages_read_count if execution else None
 
                 # Emit WebSocket event if manager available
                 if self._websocket_manager:
@@ -1152,6 +1196,8 @@ class MessageService:
                             tenant_key=tenant_key,
                             project_id=message.project_id,
                             message_ids=[message_id],
+                            waiting_count=waiting_count,
+                            read_count=read_count,
                         )
                     except Exception as ws_error:
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
@@ -1167,355 +1213,7 @@ class MessageService:
             return {"success": False, "error": str(e)}
 
     # ============================================================================
-    # Message Persistence to Agent JSONB Column
+    # DEPRECATED: JSONB Persistence Methods (Handover 0387f)
     # ============================================================================
-
-    async def _persist_message_to_agent_jsonb(
-        self,
-        session: AsyncSession,
-        message_id: str,
-        from_agent: str,
-        recipient_job_ids: list[str],  # Handover 0372: Now contains agent_ids, not job_ids
-        content: str,
-        message_type: str,
-        priority: str,
-        project_id: str,
-        tenant_key: str,
-    ) -> None:
-        """
-        Persist message to agent_executions.messages JSONB column for counter persistence.
-
-        Handover 0372: Updated to use AgentExecution instead of AgentJob.
-
-        This ensures message counters survive page refreshes by storing messages
-        in the PostgreSQL JSONB column that the frontend reads on load.
-
-        Args:
-            session: Active database session
-            message_id: Unique message ID
-            from_agent: Sender agent name
-            recipient_job_ids: List of recipient agent IDs (now agent_ids, not job_ids)
-            content: Message content
-            message_type: Type of message (direct, broadcast)
-            priority: Message priority (low, normal, high)
-            project_id: Project ID to scope sender lookup (prevents cross-project issues)
-            tenant_key: Tenant key for multi-tenant isolation (Handover 0325)
-        """
-        from sqlalchemy.orm.attributes import flag_modified
-
-        try:
-            timestamp = datetime.now(timezone.utc).isoformat()
-
-            # Add message to SENDER's outbound messages (for "Messages Sent" counter)
-            # Handover 0372: Look up AgentExecution, not AgentJob
-            from sqlalchemy import and_, or_
-            sender_result = await session.execute(
-                select(AgentExecution).join(AgentJob).where(
-                    and_(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentJob.project_id == project_id,
-                        or_(
-                            AgentExecution.agent_id == from_agent,
-                            AgentExecution.agent_display_name == from_agent
-                        )
-                    )
-                ).limit(1)
-            )
-            sender_agent = sender_result.scalar_one_or_none()
-
-            if sender_agent:
-                if not sender_agent.messages:
-                    sender_agent.messages = []
-
-                sender_agent.messages.append({
-                    "id": message_id,
-                    "from": from_agent,
-                    "direction": "outbound",
-                    "status": "sent",
-                    "text": content[:200],  # Truncate for storage
-                    "priority": priority,
-                    "timestamp": timestamp,
-                    "to_agents": recipient_job_ids,  # Now contains agent_ids
-                })
-
-                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                flag_modified(sender_agent, "messages")
-
-                self._logger.info(f"[PERSISTENCE] Added outbound message to {from_agent} JSONB column (flagged modified)")
-
-            # Add message to each RECIPIENT's inbound messages (for "Messages Waiting" counter)
-            # Skip sender - they already got the outbound copy above
-            sender_agent_id = sender_agent.agent_id if sender_agent else None
-            for recipient_agent_id in recipient_job_ids:  # Now contains agent_ids
-                # Skip sender - don't add inbound message to the sender
-                if recipient_agent_id == sender_agent_id:
-                    self._logger.debug(
-                        f"[PERSISTENCE] Skipping inbound message for sender {recipient_agent_id}"
-                    )
-                    continue
-
-                # Handover 0372: Look up AgentExecution by agent_id
-                recipient_result = await session.execute(
-                    select(AgentExecution).join(AgentJob).where(
-                        and_(
-                            AgentExecution.tenant_key == tenant_key,
-                            AgentJob.project_id == project_id,
-                            AgentExecution.agent_id == recipient_agent_id
-                        )
-                    )
-                )
-                recipient_agent = recipient_result.scalar_one_or_none()
-
-                if recipient_agent:
-                    if not recipient_agent.messages:
-                        recipient_agent.messages = []
-
-                    recipient_agent.messages.append({
-                        "id": message_id,
-                        "from": from_agent,
-                        "direction": "inbound",
-                        "status": "waiting",  # Waiting to be read
-                        "text": content[:200],  # Truncate for storage
-                        "priority": priority,
-                        "timestamp": timestamp,
-                    })
-
-                    # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                    flag_modified(recipient_agent, "messages")
-
-                    self._logger.info(
-                        f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_display_name} "
-                        f"({recipient_agent_id}) JSONB column (flagged modified)"
-                    )
-
-            # Commit changes to persist JSONB updates
-            await session.commit()
-            self._logger.info(f"[PERSISTENCE] Committed message {message_id} to database")
-
-        except Exception as e:
-            self._logger.error(f"[PERSISTENCE] Failed to persist message to JSONB: {e}")
-            # Don't re-raise - message was already saved to messages table
-
-    async def _add_sender_outbound_message(
-        self,
-        session: AsyncSession,
-        message_id: str,
-        from_agent: str,
-        recipient_ids: list[str],
-        content: str,
-        message_type: str,
-        priority: str,
-        project_id: str,
-        tenant_key: str,
-    ) -> None:
-        """
-        Add ONE outbound message entry to the sender's JSONB column.
-
-        Handover 0550: This fixes the "Messages Sent" counter bug by ensuring
-        the sender gets exactly ONE outbound entry per send_message() call,
-        regardless of how many recipients receive the message.
-
-        Args:
-            session: Active database session
-            message_id: Unique message ID (uses first message's ID)
-            from_agent: Sender agent name
-            recipient_ids: List of all recipient agent IDs
-            content: Message content
-            message_type: Type of message (direct, broadcast)
-            priority: Message priority (low, normal, high)
-            project_id: Project ID to scope sender lookup
-            tenant_key: Tenant key for multi-tenant isolation
-        """
-        from sqlalchemy.orm.attributes import flag_modified
-        from sqlalchemy import and_, or_
-
-        try:
-            timestamp = datetime.now(timezone.utc).isoformat()
-
-            # Look up sender's AgentExecution
-            sender_result = await session.execute(
-                select(AgentExecution).join(AgentJob).where(
-                    and_(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentJob.project_id == project_id,
-                        or_(
-                            AgentExecution.agent_id == from_agent,
-                            AgentExecution.agent_display_name == from_agent
-                        )
-                    )
-                ).limit(1)
-            )
-            sender_agent = sender_result.scalar_one_or_none()
-
-            if sender_agent:
-                if not sender_agent.messages:
-                    sender_agent.messages = []
-
-                # Add ONE outbound entry with all recipients
-                sender_agent.messages.append({
-                    "id": message_id,
-                    "from": from_agent,
-                    "direction": "outbound",
-                    "status": "sent",
-                    "text": content[:200],  # Truncate for storage
-                    "priority": priority,
-                    "timestamp": timestamp,
-                    "to_agents": recipient_ids,  # All recipients in one entry
-                })
-
-                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                flag_modified(sender_agent, "messages")
-
-                self._logger.info(
-                    f"[PERSISTENCE] Added ONE outbound message to {from_agent} with {len(recipient_ids)} recipients"
-                )
-            else:
-                self._logger.warning(
-                    f"[PERSISTENCE] Could not find sender agent '{from_agent}' in project {project_id}"
-                )
-
-        except Exception as e:
-            self._logger.error(f"[PERSISTENCE] Failed to add sender outbound message: {e}")
-            # Don't re-raise - continue with recipient messages
-
-    async def _add_recipient_inbound_message(
-        self,
-        session: AsyncSession,
-        message_id: str,
-        from_agent: str,
-        recipient_id: str,
-        content: str,
-        priority: str,
-        project_id: str,
-        tenant_key: str,
-    ) -> None:
-        """
-        Add ONE inbound message entry to a recipient's JSONB column.
-
-        Handover 0550: Extracted from _persist_message_to_agent_jsonb to separate
-        sender outbound logic (ONE entry) from recipient inbound logic (one per recipient).
-
-        Args:
-            session: Active database session
-            message_id: Unique message ID for this recipient
-            from_agent: Sender agent name
-            recipient_id: Recipient agent ID
-            content: Message content
-            priority: Message priority (low, normal, high)
-            project_id: Project ID to scope recipient lookup
-            tenant_key: Tenant key for multi-tenant isolation
-        """
-        from sqlalchemy.orm.attributes import flag_modified
-        from sqlalchemy import and_
-
-        try:
-            timestamp = datetime.now(timezone.utc).isoformat()
-
-            # Look up recipient's AgentExecution by agent_id
-            recipient_result = await session.execute(
-                select(AgentExecution).join(AgentJob).where(
-                    and_(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentJob.project_id == project_id,
-                        AgentExecution.agent_id == recipient_id
-                    )
-                )
-            )
-            recipient_agent = recipient_result.scalar_one_or_none()
-
-            if recipient_agent:
-                if not recipient_agent.messages:
-                    recipient_agent.messages = []
-
-                # Add inbound message entry
-                recipient_agent.messages.append({
-                    "id": message_id,
-                    "from": from_agent,
-                    "direction": "inbound",
-                    "status": "waiting",  # Waiting to be read
-                    "text": content[:200],  # Truncate for storage
-                    "priority": priority,
-                    "timestamp": timestamp,
-                })
-
-                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                flag_modified(recipient_agent, "messages")
-
-                self._logger.info(
-                    f"[PERSISTENCE] Added inbound message to {recipient_agent.agent_display_name} ({recipient_id})"
-                )
-            else:
-                self._logger.warning(
-                    f"[PERSISTENCE] Could not find recipient agent '{recipient_id}' in project {project_id}"
-                )
-
-        except Exception as e:
-            self._logger.error(f"[PERSISTENCE] Failed to add recipient inbound message: {e}")
-            # Don't re-raise - continue with other recipients
-
-    async def _update_jsonb_message_status(
-        self,
-        session: AsyncSession,
-        job_id: str,
-        message_ids: list[str],
-        new_status: str,
-    ) -> None:
-        """
-        Update status of messages in AgentExecution.messages JSONB column.
-
-        This syncs the JSONB message status with the Message table status,
-        ensuring the dashboard counters (Messages Waiting, Messages Read) are accurate.
-
-        Args:
-            session: Active database session
-            job_id: Agent ID (executor UUID) whose JSONB messages to update
-            message_ids: List of message IDs to update
-            new_status: New status value (e.g., 'acknowledged', 'read')
-        """
-        from sqlalchemy.orm.attributes import flag_modified
-        from src.giljo_mcp.models.agent_identity import AgentExecution
-
-        try:
-            # Get the agent execution (messages stored on executor, not work order)
-            self._logger.info(f"[JSONB UPDATE] Querying AgentExecution for agent_id={job_id}")
-            result = await session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == job_id).execution_options(populate_existing=True)
-            )
-            agent_execution = result.scalar_one_or_none()
-
-            if not agent_execution:
-                self._logger.warning(f"[JSONB UPDATE] AgentExecution not found for agent_id={job_id}")
-                return
-
-            # Refresh to get latest JSONB data (critical for test sessions with shared state)
-            await session.refresh(agent_execution)
-
-            if not agent_execution.messages:
-                self._logger.warning(f"[JSONB UPDATE] AgentExecution.messages is empty for agent {job_id}")
-                return
-
-            self._logger.info(f"[JSONB UPDATE] Found {len(agent_execution.messages)} messages in JSONB for agent {job_id}")
-
-            # Update status for matching messages
-            updated_count = 0
-            message_ids_set = set(message_ids)
-
-            for msg in agent_execution.messages:
-                if msg.get("id") in message_ids_set and msg.get("status") != new_status:
-                    msg["status"] = new_status
-                    updated_count += 1
-
-            if updated_count > 0:
-                # CRITICAL: flag_modified() tells SQLAlchemy the JSONB column changed
-                flag_modified(agent_execution, "messages")
-                await session.commit()
-                self._logger.info(
-                    f"[JSONB UPDATE] Updated {updated_count} messages to '{new_status}' "
-                    f"for agent {job_id}"
-                )
-            else:
-                self._logger.debug(f"[JSONB UPDATE] No messages needed status update for agent {job_id}")
-
-        except Exception as e:
-            self._logger.error(f"[JSONB UPDATE] Failed to update message status: {e}")
-            # Don't re-raise - this is a secondary update
+    # All JSONB persistence methods have been removed in favor of counter-based
+    # message tracking. See MessageRepository for the new implementation.

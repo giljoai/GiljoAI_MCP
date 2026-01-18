@@ -307,6 +307,10 @@ class MessageSentData(BaseModel):
     content_preview: str = Field(default="", description="Message preview")
 
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+
+    # Counter values (Handover 0387g)
+    sender_sent_count: Optional[int] = Field(default=None, description="Sender's total messages sent count")
+    recipient_waiting_count: Optional[int] = Field(default=None, description="Recipient's messages waiting count")
     priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
     timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
 
@@ -340,6 +344,9 @@ class MessageReceivedData(BaseModel):
     content_preview: str = Field(default="", description="Message preview")
 
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+
+    # Counter values (Handover 0387g)
+    waiting_count: Optional[int] = Field(default=None, description="Recipient's messages waiting count")
     priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
     timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
 
@@ -370,6 +377,10 @@ class MessageAcknowledgedData(BaseModel):
     # Explicit identifiers to remove ambiguity in clients
     from_job_id: str = Field(..., description="Acknowledging agent job ID")
     to_job_ids: list[str] = Field(default_factory=list, description="Target agent job IDs")
+
+    # Counter values (Handover 0387g)
+    waiting_count: Optional[int] = Field(default=None, description="Acknowledging agent's messages waiting count")
+    read_count: Optional[int] = Field(default=None, description="Acknowledging agent's messages read count")
 
 
 class MessageAcknowledgedEvent(BaseModel):
@@ -610,6 +621,8 @@ class EventFactory:
         content_preview: str,
         priority: int,
         message_timestamp: Optional[datetime] = None,
+        sender_sent_count: Optional[int] = None,
+        recipient_waiting_count: Optional[int] = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -633,6 +646,8 @@ class EventFactory:
                 timestamp=msg_ts,
                 from_job_id=from_job_id,
                 to_job_ids=to_job_ids,
+                sender_sent_count=sender_sent_count,
+                recipient_waiting_count=recipient_waiting_count,
             ),
         )
         return event.model_dump(mode="json")
@@ -650,6 +665,7 @@ class EventFactory:
         content_preview: str,
         priority: int,
         message_timestamp: Optional[datetime] = None,
+        waiting_count: Optional[int] = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -673,6 +689,7 @@ class EventFactory:
                 timestamp=msg_ts,
                 from_job_id=from_job_id,
                 to_job_ids=to_job_ids,
+                waiting_count=waiting_count,
             ),
         )
         return event.model_dump(mode="json")
@@ -686,6 +703,8 @@ class EventFactory:
         to_job_ids: list[str],
         agent_id: str,
         message_ids: list[str],
+        waiting_count: Optional[int] = None,
+        read_count: Optional[int] = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -700,6 +719,8 @@ class EventFactory:
                 timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 from_job_id=from_job_id,
                 to_job_ids=to_job_ids,
+                waiting_count=waiting_count,
+                read_count=read_count,
             ),
         )
         return event.model_dump(mode="json")

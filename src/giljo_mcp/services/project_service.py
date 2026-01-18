@@ -232,7 +232,9 @@ class ProjectService:
                         "agent_display_name": job.job_type,
                         "agent_name": execution.agent_name,
                         "status": execution.status,
-                        "messages": execution.messages or [],
+                        "messages_sent_count": execution.messages_sent_count,
+                        "messages_waiting_count": execution.messages_waiting_count,
+                        "messages_read_count": execution.messages_read_count,
                         "thin_client": True,
                     }
                     for job, execution in agent_pairs
