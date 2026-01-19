@@ -620,3 +620,11 @@ Integration gaps are **production-ready** and fully validated. Test infrastructu
 ---
 
 **HANDOVER 0247: CLOSED** ✅
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Handover 0247 Completion Report](../../reports/HANDOVER_0247_COMPLETION.md)
+- [Handover 0247 Completion Summary](../../reports/HANDOVER_0247_COMPLETION_SUMMARY.md)
