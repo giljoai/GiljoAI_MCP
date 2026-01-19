@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-05 (0388-0389 COMPLETE, 0400-0407 archived to completed/, 0403 to superseded/)
+**Last Updated:** 2026-01-19 (0424 series added - Organization Hierarchy Layer)
 
 ---
 
@@ -37,6 +37,19 @@
 
 > **Status**: 8/10 COMPLETE. Remaining: 0362 (WebSocket counters), 0365 (handover behavior)
 > See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
+
+### Organization Hierarchy Series (0424) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0424** | **Organization Hierarchy Layer (Overview)** | **Ready** | **HIGH** | 24-34h total |
+| 0424a | Database Schema (Organizations + OrgMemberships) | Ready | HIGH | 4-6h |
+| 0424b | Service Layer (OrgService) | Ready | HIGH | 6-8h |
+| 0424c | API Endpoints (CRUD + Membership) | Ready | HIGH | 4-6h |
+| 0424d | Frontend (Org Settings + UI Tweak) | Ready | HIGH | 6-8h |
+| 0424e | Migration & Testing | Ready | HIGH | 4-6h |
+
+> **Purpose**: Multi-user access foundation - Organizations own Products, Users access via roles (owner/admin/member/viewer)
+> **Follow-up**: 0425 (Export/Import), 0426 (Multi-org support)
 
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
