@@ -45,12 +45,17 @@ const routes = [
   },
   {
     path: '/',
-    name: 'Welcome',
+    redirect: '/home',
+  },
+  {
+    path: '/home',
+    name: 'Home',
     component: () => import('@/views/WelcomeView.vue'),
     meta: {
       layout: 'default',
-      title: 'Welcome',
-      showInNav: false,
+      title: 'Home',
+      icon: 'mdi-home',
+      showInNav: true,
       requiresAuth: true,
     },
   },
