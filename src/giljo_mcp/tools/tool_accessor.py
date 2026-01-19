@@ -941,9 +941,24 @@ class ToolAccessor:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
         return await self._orchestration_service.acknowledge_job(job_id=job_id, agent_id=agent_id)
 
-    async def report_progress(self, job_id: str, progress: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
-        """Report job progress (delegates to OrchestrationService)"""
-        return await self._orchestration_service.report_progress(job_id=job_id, progress=progress, tenant_key=tenant_key)
+    async def report_progress(
+        self,
+        job_id: str,
+        tenant_key: Optional[str] = None,
+        progress: dict[str, Any] | None = None,
+        todo_items: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """Report job progress (delegates to OrchestrationService).
+
+        Handover 0407: Accept todo_items parameter for simplified progress reporting.
+        Agents can now send todo_items directly instead of wrapping in progress dict.
+        """
+        return await self._orchestration_service.report_progress(
+            job_id=job_id,
+            progress=progress,
+            tenant_key=tenant_key,
+            todo_items=todo_items,
+        )
 
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
