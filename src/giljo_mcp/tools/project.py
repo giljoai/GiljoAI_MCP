@@ -11,7 +11,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, Session
+from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.tenant import TenantManager, current_tenant
 

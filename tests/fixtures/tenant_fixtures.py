@@ -15,7 +15,6 @@ from typing import Any, Optional
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Message, Project, Task
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models import Session as DBSession
 
 
 class TenantFixture:
@@ -228,7 +227,7 @@ class TenantFixture:
             session.query(Task).filter_by(tenant_key=tenant_key).delete()
             session.query(Message).filter_by(tenant_key=tenant_key).delete()
             session.query(AgentExecution).filter_by(tenant_key=tenant_key).delete()
-            session.query(DBSession).filter_by(tenant_key=tenant_key).delete()
+            # NOTE: Session model deleted (Handover 0423 - dead code cleanup)
             session.query(Project).filter_by(tenant_key=tenant_key).delete()
             session.commit()
 
