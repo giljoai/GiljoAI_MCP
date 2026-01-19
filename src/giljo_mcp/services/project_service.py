@@ -2072,9 +2072,9 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 }
 
                 # Import additional models needed for deletion
-                from giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
-                from giljo_mcp.models.products import Vision
-                from giljo_mcp.models.projects import Session as ProjectSession
+                from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
+                from src.giljo_mcp.models.products import Vision
+                from src.giljo_mcp.models.projects import Session as ProjectSession
 
                 # Delete agent jobs (migrated to AgentJob - Handover 0367a)
                 # Note: AgentExecution records will cascade delete via FK relationship
@@ -2161,6 +2161,26 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     await session.delete(vision)
                 deleted_counts["visions"] = len(visions)
 
+                # Mark 360 memory entries as deleted by user (preserve historical reference)
+                # Handover 0390b: Use repository instead of JSONB mutation
+                memory_entries_marked = 0
+                if project.product_id:
+                    from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+
+                    repo = ProductMemoryRepository()
+                    memory_entries_marked = await repo.mark_entries_deleted(
+                        session=session,
+                        project_id=project_id,
+                        tenant_key=tenant_key,
+                    )
+
+                    if memory_entries_marked > 0:
+                        self._logger.info(
+                            f"Marked {memory_entries_marked} 360 memory entries as deleted for project {project_id}"
+                        )
+
+                deleted_counts["memory_entries_marked"] = memory_entries_marked
+
                 # Finally, delete the project itself
                 await session.delete(project)
 
@@ -2175,7 +2195,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     f"{deleted_counts['context_indexes']} context indexes, "
                     f"{deleted_counts['document_indexes']} document indexes, "
                     f"{deleted_counts['sessions']} sessions, "
-                    f"{deleted_counts['visions']} visions"
+                    f"{deleted_counts['visions']} visions, "
+                    f"{deleted_counts['memory_entries_marked']} 360 memory entries marked"
                 )
 
                 # Broadcast WebSocket event for real-time UI cleanup
@@ -2211,6 +2232,22 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             "tenant_key": project.tenant_key,
             "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
         }
+
+        # Mark 360 memory entries as deleted by user (preserve historical reference)
+        # Uses ProductMemoryRepository for table-based operations (Handover 0390c)
+        if project.product_id:
+            from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+
+            repo = ProductMemoryRepository()
+            deleted_count = await repo.mark_entries_deleted(
+                session=session,
+                project_id=project.id,
+                tenant_key=project.tenant_key,
+            )
+            if deleted_count > 0:
+                self._logger.info(
+                    f"Marked {deleted_count} memory entries as deleted for project {project.id}"
+                )
 
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
         agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)

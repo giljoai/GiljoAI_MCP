@@ -1197,6 +1197,11 @@ class ToolAccessor:
             return {"success": False, "message": str(e)}
 
     async def gil_activate(self, project_id: str) -> dict[str, Any]:
+        """
+        DEPRECATED (Handover 0388): This method is no longer exposed via MCP.
+        Users activate projects via web UI (/api/v1/projects/{id}/activate).
+        Kept for backwards compatibility with any external integrations.
+        """
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
