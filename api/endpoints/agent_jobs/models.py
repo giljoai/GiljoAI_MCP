@@ -83,6 +83,13 @@ class JobErrorResponse(BaseModel):
 # Job Status Models
 # ============================================================================
 
+class TodoItemResponse(BaseModel):
+    """Response model for individual TODO item - Handover 0423."""
+
+    content: str
+    status: str  # pending, in_progress, completed
+
+
 class JobResponse(BaseModel):
     """Response model for job details."""
 
@@ -112,6 +119,8 @@ class JobResponse(BaseModel):
     # Numeric steps summary for TODO-style progress (Handover 0297)
     # When present, represents completed/total steps for dashboard Steps column.
     steps: Optional[dict[str, int]] = None
+    # Handover 0423: TODO items for Plan tab display
+    todo_items: list[TodoItemResponse] = Field(default_factory=list)
 
 
 class PendingJobsResponse(BaseModel):

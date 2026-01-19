@@ -173,10 +173,11 @@ watch(
 
 const toggleTheme = () => {
   document.documentElement.classList.remove('no-transition')
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-  document.documentElement.setAttribute('data-theme', theme.global.name.value)
-  localStorage.setItem('theme-preference', theme.global.name.value)
-  settingsStore.settings.theme = theme.global.name.value
+  const newTheme = theme.global.current.value.dark ? 'light' : 'dark'
+  theme.change(newTheme)
+  document.documentElement.setAttribute('data-theme', newTheme)
+  localStorage.setItem('theme-preference', newTheme)
+  settingsStore.settings.theme = newTheme
   localStorage.setItem('giljo_settings', JSON.stringify(settingsStore.settings))
 }
 </script>
