@@ -1162,9 +1162,14 @@ class ToolAccessor:
 
     async def gil_handover(self, job_id: str = None, reason: str = "manual") -> dict[str, Any]:
         """
-        Trigger orchestrator succession for context handover
+        DEPRECATED (Handover 0391): This method is no longer exposed via MCP.
+        Users trigger succession via UI "Hand Over" button which calls REST API:
+        POST /api/agent-jobs/{job_id}/trigger-succession
 
-        Wrapper for slash command handler that executes via MCP tool call.
+        Original purpose: Trigger orchestrator succession for context handover.
+        Removed because: MCP tool had tenant_key parameter mismatch, and since
+        agents cannot self-detect context exhaustion, user-triggered UI is the
+        correct approach.
 
         Args:
             job_id: Current orchestrator job UUID (work order identifier)

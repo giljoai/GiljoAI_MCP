@@ -431,25 +431,9 @@ async def handle_tools_list(
                 "required": ["job_id", "tenant_key"],
             },
         },
-        {
-            "name": "gil_handover",
-            "description": "Trigger orchestrator succession for context handover. Creates successor orchestrator instance.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Current orchestrator job UUID"},
-                    "reason": {
-                        "type": "string",
-                        "enum": ["context_limit", "manual", "phase_transition"],
-                        "description": "Succession reason",
-                    },
-                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
-                },
-                "required": ["tenant_key"],
-            },
-        },
         # Handover 0083: core /gil_* commands
-        # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI, not CLI
+        # NOTE: gil_activate, gil_launch, gil_handover removed (0388, 0391) - users perform these via web UI
+        # gil_handover removed in 0391: REST API endpoint handles succession, MCP tool had tenant_key bug
         # Unified Context Tool (Handover 0350a)
         {
             "name": "fetch_context",
@@ -634,9 +618,7 @@ async def handle_tools_call(
         # Succession Tools (Handover 0080)
         "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
         "check_succession_status": state.tool_accessor.check_succession_status,
-        "gil_handover": state.tool_accessor.gil_handover,
-        # Handover 0083 - core /gil_* commands
-        # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
+        # NOTE: gil_handover removed (0391) - users trigger via UI button, REST API handles it
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
         # File Utilities (Handover 0360 Feature 3)
