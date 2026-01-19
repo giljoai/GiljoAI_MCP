@@ -183,10 +183,10 @@ async def download_slash_commands(
     - install.ps1 (Windows PowerShell installer)
 
     Supported commands:
-    - gil_get_claude_agents.md
-    - gil_activate.md
-    - gil_launch.md
-    - gil_handover.md
+    - gil_get_claude_agents.md (unified agent installer)
+    - gil_task.md (task punting to dashboard)
+
+    NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
 
     Returns:
         Response with complete ZIP file download
