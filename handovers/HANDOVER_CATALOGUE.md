@@ -41,7 +41,8 @@
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| **0423** | **TODO Tab Relocation to Assigned Job Modal** | **Ready** | **MEDIUM** | Move TODOs from MessageAuditModal to AgentJobModal (5-8h) |
+| **0423** | **Session & TemplateAugmentation Dead Code Cleanup** | **Ready** | **MEDIUM** | Remove dead tables (Session, TemplateAugmentation) - 2-4h |
+| **0422** | **TODO Tab Relocation to Assigned Job Modal** | **Ready** | **MEDIUM** | Move TODOs from MessageAuditModal to AgentJobModal (5-8h) |
 | 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
 | 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
 | 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
@@ -449,7 +450,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0383, 0387 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded)
+**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
@@ -458,7 +459,7 @@ completed/reference/
 - **0317**: Gap in 0301-0400 range
 - **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
 - **0391-0399**: Gaps in 0301-0400 range (0388-0390 now used)
-- **0409+**: Next sequential after current development (0400-0408 now used)
+- **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
