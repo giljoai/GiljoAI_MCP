@@ -858,3 +858,11 @@ The `_build_staging_prompt()` method is the **CORE MISSING FUNCTIONALITY** of Gi
 - Monitor staging prompt token count as new tasks added
 - Consider configurable staging timeout for slow environments
 - Add staging progress tracking UI in dashboard
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Backend Test Report](../../../reports/BACKEND_TEST_REPORT_0246a.md)
+- [Implementation Summary](../../../reports/IMPLEMENTATION_SUMMARY_0246a.txt)
