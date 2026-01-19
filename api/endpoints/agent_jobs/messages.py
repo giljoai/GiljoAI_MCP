@@ -23,6 +23,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _resolve_sender_display_name(from_agent: str, agent_lookup: dict[str, str]) -> str:
+    """
+    Resolve from_agent to a human-readable display name.
+
+    Args:
+        from_agent: Raw from_agent value (could be 'user', 'orchestrator', agent_id UUID, or display name)
+        agent_lookup: Dict mapping agent_id -> display name (e.g., "Orchestrator #1", "Implementer #2")
+
+    Returns:
+        Resolved display name
+    """
+    if not from_agent:
+        return "Unknown"
+
+    # Special cases
+    if from_agent == "user":
+        return "User"
+    if from_agent == "system":
+        return "System"
+
+    # Check if it's an agent_id UUID - resolve to display name
+    if from_agent in agent_lookup:
+        return agent_lookup[from_agent]
+
+    # Check if it looks like a display name already (e.g., "orchestrator", "implementer")
+    # Capitalize first letter for display
+    if from_agent.lower() in ["orchestrator", "implementer", "analyzer", "tester", "reviewer", "documenter"]:
+        return from_agent.capitalize()
+
+    # Return as-is (might be an agent_name like "impl-alpha")
+    return from_agent
+
+
 @router.get("/{job_id}/messages")
 async def get_job_messages(
     job_id: str,
@@ -69,14 +102,33 @@ async def get_job_messages(
                 detail="Job not found"
             )
 
+        # Build agent_id -> display name lookup for sender resolution
+        # Fetch all agents in this tenant for name resolution
+        agents_stmt = select(AgentExecution).where(
+            AgentExecution.tenant_key == current_user.tenant_key
+        )
+        agents_result = await session.execute(agents_stmt)
+        agents = agents_result.scalars().all()
+
+        # Build lookup: agent_id -> "DisplayName #instance" (e.g., "Orchestrator #1")
+        agent_lookup = {}
+        for agent in agents:
+            display_name = agent.agent_display_name.capitalize() if agent.agent_display_name else "Agent"
+            instance_suffix = f" #{agent.instance_number}" if agent.instance_number > 1 else ""
+            agent_lookup[agent.agent_id] = f"{display_name}{instance_suffix}"
+            # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer #1")
+            if agent.agent_name:
+                agent_lookup[agent.agent_name] = f"{display_name}{instance_suffix}"
+
         # Query messages where agent is sender or recipient
-        # Note: to_agents is TEXT[] in database, use PostgreSQL array containment
+        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
+        # Note: to_agents is JSONB array, use PostgreSQL array containment
         msg_stmt = (
             select(Message)
             .where(
                 Message.tenant_key == current_user.tenant_key,
                 or_(
-                    Message.from_agent == execution.agent_id,
+                    Message.meta_data.op('->>')('_from_agent') == execution.agent_id,
                     Message.to_agents.contains([execution.agent_id])  # PostgreSQL array containment
                 )
             )
@@ -90,21 +142,30 @@ async def get_job_messages(
             f"(agent_id={execution.agent_id}, tenant={current_user.tenant_key})"
         )
 
+        # Build response with resolved sender names
+        message_list = []
+        for m in messages:
+            raw_from_agent = m.meta_data.get("_from_agent", "unknown") if m.meta_data else "unknown"
+            resolved_from = _resolve_sender_display_name(raw_from_agent, agent_lookup)
+            is_outbound = raw_from_agent == execution.agent_id
+
+            message_list.append({
+                "id": str(m.id),
+                "from": resolved_from,  # Human-readable display name
+                "from_agent": raw_from_agent,  # Raw value for backward compat
+                "from_agent_id": raw_from_agent if raw_from_agent in agent_lookup else None,  # UUID if it's an agent
+                "to_agents": m.to_agents,
+                "content": m.content[:500] if m.content else "",  # Truncate for preview
+                "status": m.status,
+                "created_at": m.created_at.isoformat(),
+                "direction": "outbound" if is_outbound else "inbound",
+                "message_type": m.message_type,
+            })
+
         return {
             "job_id": job_id,
             "agent_id": execution.agent_id,
-            "messages": [
-                {
-                    "id": str(m.id),
-                    "from_agent": m.from_agent,
-                    "to_agents": m.to_agents,
-                    "content": m.content[:500] if m.content else "",  # Truncate for preview
-                    "status": m.status,
-                    "created_at": m.created_at.isoformat(),
-                    "direction": "outbound" if m.from_agent == execution.agent_id else "inbound",
-                }
-                for m in messages
-            ],
+            "messages": message_list,
         }
 
     except HTTPException:
