@@ -62,7 +62,7 @@ def upgrade() -> None:
     op.create_index('idx_template_role', 'agent_templates', ['role'], unique=False)
     op.create_index('idx_template_tenant', 'agent_templates', ['tenant_key'], unique=False)
     op.create_index('idx_template_tool', 'agent_templates', ['tool'], unique=False)
-    op.create_index(op.f('ix_agent_templates_tool'), 'agent_templates', ['tool'], unique=False)
+    # Removed duplicate ix_agent_templates_tool (same as idx_template_tool)
     op.create_table('api_metrics',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -513,8 +513,8 @@ def upgrade() -> None:
     op.create_index('idx_agent_jobs_status', 'agent_jobs', ['status'], unique=False)
     op.create_index('idx_agent_jobs_tenant', 'agent_jobs', ['tenant_key'], unique=False)
     op.create_index('idx_agent_jobs_tenant_project', 'agent_jobs', ['tenant_key', 'project_id'], unique=False)
-    op.create_index(op.f('ix_agent_jobs_project_id'), 'agent_jobs', ['project_id'], unique=False)
-    op.create_index(op.f('ix_agent_jobs_tenant_key'), 'agent_jobs', ['tenant_key'], unique=False)
+    # Removed duplicate ix_agent_jobs_project_id (same as idx_agent_jobs_project)
+    # Removed duplicate ix_agent_jobs_tenant_key (same as idx_agent_jobs_tenant)
     op.create_table('configurations',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=True),
@@ -876,8 +876,8 @@ def upgrade() -> None:
     op.create_index('idx_agent_executions_status', 'agent_executions', ['status'], unique=False)
     op.create_index('idx_agent_executions_tenant', 'agent_executions', ['tenant_key'], unique=False)
     op.create_index('idx_agent_executions_tenant_job', 'agent_executions', ['tenant_key', 'job_id'], unique=False)
-    op.create_index(op.f('ix_agent_executions_job_id'), 'agent_executions', ['job_id'], unique=False)
-    op.create_index(op.f('ix_agent_executions_tenant_key'), 'agent_executions', ['tenant_key'], unique=False)
+    # Removed duplicate ix_agent_executions_job_id (same as idx_agent_executions_job)
+    # Removed duplicate ix_agent_executions_tenant_key (same as idx_agent_executions_tenant)
     op.create_table('tasks',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -934,8 +934,8 @@ def downgrade() -> None:
     op.drop_index('idx_task_converted_to_project', table_name='tasks')
     op.drop_index('idx_task_job', table_name='tasks')
     op.drop_table('tasks')
-    op.drop_index(op.f('ix_agent_executions_tenant_key'), table_name='agent_executions')
-    op.drop_index(op.f('ix_agent_executions_job_id'), table_name='agent_executions')
+    # Removed: op.drop_index(op.f('ix_agent_executions_tenant_key'), table_name='agent_executions')
+    # Removed: op.drop_index(op.f('ix_agent_executions_job_id'), table_name='agent_executions')
     op.drop_index('idx_agent_executions_tenant_job', table_name='agent_executions')
     op.drop_index('idx_agent_executions_tenant', table_name='agent_executions')
     op.drop_index('idx_agent_executions_status', table_name='agent_executions')
@@ -1011,8 +1011,8 @@ def downgrade() -> None:
     op.drop_index('idx_config_tenant', table_name='configurations')
     op.drop_index('idx_config_category', table_name='configurations')
     op.drop_table('configurations')
-    op.drop_index(op.f('ix_agent_jobs_tenant_key'), table_name='agent_jobs')
-    op.drop_index(op.f('ix_agent_jobs_project_id'), table_name='agent_jobs')
+    # Removed: op.drop_index(op.f('ix_agent_jobs_tenant_key'), table_name='agent_jobs')
+    # Removed: op.drop_index(op.f('ix_agent_jobs_project_id'), table_name='agent_jobs')
     op.drop_index('idx_agent_jobs_tenant_project', table_name='agent_jobs')
     op.drop_index('idx_agent_jobs_tenant', table_name='agent_jobs')
     op.drop_index('idx_agent_jobs_status', table_name='agent_jobs')
@@ -1124,7 +1124,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_api_metrics_tenant_key'), table_name='api_metrics')
     op.drop_index('idx_api_metrics_tenant_date', table_name='api_metrics')
     op.drop_table('api_metrics')
-    op.drop_index(op.f('ix_agent_templates_tool'), table_name='agent_templates')
+    # Removed: op.drop_index(op.f('ix_agent_templates_tool'), table_name='agent_templates')
     op.drop_index('idx_template_tool', table_name='agent_templates')
     op.drop_index('idx_template_tenant', table_name='agent_templates')
     op.drop_index('idx_template_role', table_name='agent_templates')
