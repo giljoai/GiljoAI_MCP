@@ -160,13 +160,16 @@ class ProductService:
 
                 self._logger.info(f"Created product {product.id} for tenant {self.tenant_key}")
 
+                # Handover 0390b: Build product_memory from table (will be empty for new product)
+                product_memory = await self._build_product_memory_response(session, product)
+
                 return {
                     "success": True,
                     "product_id": str(product.id),
                     "name": product.name,
                     "description": product.description,
                     "is_active": product.is_active,
-                    "product_memory": product.product_memory,  # Handover 0135
+                    "product_memory": product_memory,  # Handover 0390b: From table
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                 }
 
@@ -215,7 +218,10 @@ class ProductService:
 
                 # Handover 0412: Force refresh to ensure we have latest DB data
                 await session.refresh(product)
-                self._logger.info(f"Product {product_id}: product_memory after refresh: {product.product_memory}")
+
+                # Handover 0390b: Build product_memory from table
+                product_memory = await self._build_product_memory_response(session, product)
+                self._logger.info(f"Product {product_id}: product_memory with {len(product_memory.get('sequential_history', []))} entries")
 
                 # Normalize config_data so that an empty dict is treated as "no config"
                 # for API consumers, while preserving the raw structure for internal use.
@@ -230,7 +236,7 @@ class ProductService:
                     "is_active": product.is_active,
                     "config_data": config_data,
                     "has_config_data": bool(config_data),
-                    "product_memory": product.product_memory,  # Handover 0136
+                    "product_memory": product_memory,  # Handover 0390b: From table
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                     "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                 }
@@ -284,6 +290,9 @@ class ProductService:
                     # Handover 0136: Ensure product_memory is initialized (backward compatibility)
                     await self._ensure_product_memory_initialized(session, product)
 
+                    # Handover 0390b: Build product_memory from table
+                    product_memory = await self._build_product_memory_response(session, product)
+
                     config_data = product.config_data or None
 
                     product_data = {
@@ -295,7 +304,7 @@ class ProductService:
                         "is_active": product.is_active,
                         "config_data": config_data,
                         "has_config_data": bool(config_data),
-                        "product_memory": product.product_memory,  # Handover 0136
+                        "product_memory": product_memory,  # Handover 0390b: From table
                         "created_at": product.created_at.isoformat() if product.created_at else None,
                         "updated_at": product.updated_at.isoformat() if product.updated_at else None,
                     }
@@ -357,10 +366,12 @@ class ProductService:
                 self._logger.info(f"Updated product {product_id}")
 
                 # Handover 0139a: Emit WebSocket event if product_memory was updated
+                # Handover 0390b: Build product_memory from table for WebSocket event
                 if "product_memory" in updates:
+                    product_memory = await self._build_product_memory_response(session, product)
                     await self._emit_websocket_event(
                         event_type="product:memory:updated",
-                        data={"product_id": product_id, "product_memory": product.product_memory},
+                        data={"product_id": product_id, "product_memory": product_memory},
                     )
 
                 return {
@@ -1300,6 +1311,59 @@ class ProductService:
     # ============================================================================
     # Private Helper Methods
     # ============================================================================
+
+    async def _build_product_memory_response(
+        self, session: AsyncSession, product: Product, include_deleted: bool = False
+    ) -> dict:
+        """
+        Build product_memory response with sequential_history from table (Handover 0390b).
+
+        This method maintains backward compatibility by returning the same structure
+        as before, but populates sequential_history from product_memory_entries table
+        instead of the JSONB column.
+
+        Args:
+            session: Async database session
+            product: Product instance
+            include_deleted: Include soft-deleted memory entries (default: False)
+
+        Returns:
+            Dict with product_memory structure:
+            {
+                "git_integration": {...},
+                "sequential_history": [...],  # From table
+                "context": {...}
+            }
+
+        Example:
+            >>> memory = await self._build_product_memory_response(session, product)
+            >>> assert "sequential_history" in memory
+        """
+        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+
+        # Start with JSONB data (git_integration, context)
+        base_memory = product.product_memory or {}
+        git_integration = base_memory.get("git_integration", {})
+        context = base_memory.get("context", {})
+
+        # Fetch sequential_history from table
+        repo = ProductMemoryRepository()
+        entries = await repo.get_entries_by_product(
+            session=session,
+            product_id=product.id,
+            tenant_key=self.tenant_key,
+            include_deleted=include_deleted,
+        )
+
+        # Convert to dict format (maintains backward compatibility)
+        sequential_history = [entry.to_dict() for entry in entries]
+
+        # Build response
+        return {
+            "git_integration": git_integration,
+            "sequential_history": sequential_history,
+            "context": context,
+        }
 
     async def _ensure_product_memory_initialized(self, session: AsyncSession, product: Product) -> None:
         """
