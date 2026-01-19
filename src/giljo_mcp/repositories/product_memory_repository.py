@@ -125,7 +125,7 @@ class ProductMemoryRepository:
         stmt = (
             select(ProductMemoryEntry)
             .where(
-                ProductMemoryEntry.product_id == product_id,
+                ProductMemoryEntry.product_id == str(product_id),
                 ProductMemoryEntry.tenant_key == tenant_key,
             )
             .order_by(ProductMemoryEntry.sequence.desc())
@@ -183,7 +183,7 @@ class ProductMemoryRepository:
             Next sequence number (1-based)
         """
         stmt = select(func.max(ProductMemoryEntry.sequence)).where(
-            ProductMemoryEntry.product_id == product_id,
+            ProductMemoryEntry.product_id == str(product_id),
         )
         result = await session.execute(stmt)
         max_seq = result.scalar_one_or_none()
@@ -212,7 +212,7 @@ class ProductMemoryRepository:
         stmt = (
             update(ProductMemoryEntry)
             .where(
-                ProductMemoryEntry.project_id == project_id,
+                ProductMemoryEntry.project_id == str(project_id),
                 ProductMemoryEntry.tenant_key == tenant_key,
             )
             .values(
