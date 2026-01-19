@@ -257,3 +257,15 @@ When agent calls `report_progress(job_id, tenant_key, todo_items=[...])`:
 **No Frontend Changes Required**: The existing code already perfectly handles the simplified format introduced in Phase 1-4.
 
 **Conclusion**: Phase 5 verification complete. Frontend is ready for production use of simplified `todo_items` reporting.
+
+### Phase 6: Orchestrator Instructions ✅ COMPLETED (2026-01-19)
+
+**Issue Found**: `get_orchestrator_instructions()` still showed old format at line 1651-1653 in `tools/orchestration.py`.
+
+**Fix Applied**:
+- Updated `src/giljo_mcp/tools/orchestration.py` lines 1651-1656
+- Old: `{{"progress": {{"percent": X, "message": "..."}}}}`
+- New: `{{"todo_items": [{{"content": "...", "status": "..."}}]}}`
+- Added note: "Backend calculates percent/steps automatically from your todo_items array."
+
+**Consistency Achieved**: Both orchestrators (`get_orchestrator_instructions`) and agents (`get_agent_mission`) now see the same simplified format.
