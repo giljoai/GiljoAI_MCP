@@ -9,7 +9,10 @@ Key Operations:
 - spawn_agent() - Creates BOTH job and execution
 - update_agent_status() - Updates execution status (not job)
 - complete_job() - Marks job complete and decommissions all executions
-- cancel_job() - Cancels job and decommissions all executions
+
+Note: cancel_job() was intentionally removed (commit d14e8ff7) - passive HTTP
+architecture means agents only see cancellation on next poll (30s-5min delay).
+Use project-level cancel or Ctrl+C in terminal for immediate stop.
 
 Design Philosophy:
 - Job = Work to be done (persists across succession)
