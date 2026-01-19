@@ -18,7 +18,7 @@ import pytest_asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.template import register_template_tools
@@ -117,37 +117,7 @@ class TestTemplateModels:
             assert result.template_id == template.id
             assert result.archive_reason == "Test archive"
 
-    async def test_template_augmentation(self, db_manager):
-        """Test template augmentation model"""
-        async with db_manager.get_session() as session:
-            # Create template
-            template = AgentTemplate(
-                tenant_key="test-tenant",
-                name="implementer",
-                category="role",
-                template_content="Implement: {feature}",
-                version="1.0.0",
-            )
-            session.add(template)
-            await session.commit()
-
-            # Create augmentation
-            augmentation = TemplateAugmentation(
-                tenant_key="test-tenant",
-                template_id=template.id,
-                name="feature-x",
-                augmentation_type="runtime",
-                replacements={"feature": "Authentication System"},
-                additional_rules=["Use OAuth 2.0"],
-                additional_criteria=["Pass security audit"],
-            )
-            session.add(augmentation)
-            await session.commit()
-
-            # Verify
-            result = await session.get(TemplateAugmentation, augmentation.id)
-            assert result is not None
-            assert result.replacements["feature"] == "Authentication System"
+    # NOTE: test_template_augmentation removed (Handover 0423 - TemplateAugmentation model deleted)
 
 
 class TestTemplateTools:
