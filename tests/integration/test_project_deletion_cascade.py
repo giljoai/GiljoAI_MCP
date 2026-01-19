@@ -7,8 +7,9 @@ Tests verify that _purge_project_records() deletes ALL related data:
 - Message (currently works)
 - ContextIndex (MISSING - this test should FAIL initially)
 - LargeDocumentIndex (MISSING - this test should FAIL initially)
-- Session/ProjectSession (MISSING - this test should FAIL initially)
 - Vision (MISSING - this test should FAIL initially)
+
+NOTE: Session/ProjectSession removed (Handover 0423 - dead code cleanup)
 
 TDD Phase: RED - These tests should FAIL until _purge_project_records() is fixed.
 """
@@ -24,7 +25,6 @@ from src.giljo_mcp.models import Message, Product, Project, Task
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.models.products import Vision
-from src.giljo_mcp.models.projects import Session as ProjectSession
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -48,7 +48,7 @@ async def cascade_test_product(db_session, cascade_test_tenant_key):
 @pytest.fixture
 async def project_with_all_relations(db_session, cascade_test_tenant_key, cascade_test_product):
     """
-    Create a project with ALL 7 related record types that should be cascade deleted.
+    Create a project with ALL 6 related record types that should be cascade deleted.
 
     This fixture creates:
     1. MCPAgentJob - Agent job with embedded messages
@@ -56,8 +56,9 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     3. Message - A standalone message
     4. ContextIndex - Context index record
     5. LargeDocumentIndex - Document index record
-    6. ProjectSession - A session record
-    7. Vision - A vision document
+    6. Vision - A vision document
+
+    NOTE: ProjectSession removed (Handover 0423 - Session model deleted)
     """
     # Create expired soft-deleted project
     project = Project(
@@ -119,16 +120,9 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     )
     db_session.add(doc_index)
 
-    # 6. Create ProjectSession
-    proj_session = ProjectSession(
-        project_id=project.id,
-        tenant_key=cascade_test_tenant_key,
-        session_number=1,
-        title="Test Session",
-    )
-    db_session.add(proj_session)
+    # NOTE: ProjectSession removed (Handover 0423 - Session model deleted)
 
-    # 7. Create Vision
+    # 6. Create Vision
     vision = Vision(
         project_id=project.id,
         tenant_key=cascade_test_tenant_key,
@@ -146,7 +140,6 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     await db_session.refresh(message)
     await db_session.refresh(context_index)
     await db_session.refresh(doc_index)
-    await db_session.refresh(proj_session)
     await db_session.refresh(vision)
 
     return {
@@ -156,7 +149,6 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
         "message": message,
         "context_index": context_index,
         "doc_index": doc_index,
-        "session": proj_session,
         "vision": vision,
     }
 
@@ -241,41 +233,7 @@ class TestPurgeProjectRecordsCascade:
         result = await db_session.execute(stmt)
         assert result.scalar_one_or_none() is None, "LargeDocumentIndex should be deleted by purge"
 
-    async def test_purge_deletes_project_session(
-        self, db_session, cascade_test_tenant_key, project_with_all_relations
-    ):
-        """
-        Test that _purge_project_records() deletes ProjectSession records.
-
-        Expected: FAIL (RED) - ProjectSession is NOT currently deleted.
-        """
-        project = project_with_all_relations["project"]
-        proj_session = project_with_all_relations["session"]
-
-        # Verify session exists before purge
-        stmt = select(ProjectSession).where(ProjectSession.id == proj_session.id)
-        result = await db_session.execute(stmt)
-        assert result.scalar_one_or_none() is not None, "Session should exist before purge"
-
-        # Create ProjectService and run purge
-        @asynccontextmanager
-        async def mock_get_session():
-            yield db_session
-
-        db_manager = MagicMock()
-        db_manager.get_session_async = mock_get_session
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(cascade_test_tenant_key)
-        project_service = ProjectService(db_manager, tenant_manager)
-
-        result = await project_service.purge_deleted_project(project.id)
-        assert result["success"] is True
-
-        # BEHAVIOR: ProjectSession should be deleted
-        stmt = select(ProjectSession).where(ProjectSession.id == proj_session.id)
-        result = await db_session.execute(stmt)
-        assert result.scalar_one_or_none() is None, "ProjectSession should be deleted by purge"
+    # NOTE: test_purge_deletes_project_session removed (Handover 0423 - Session model deleted)
 
     async def test_purge_deletes_vision(
         self, db_session, cascade_test_tenant_key, project_with_all_relations
@@ -345,9 +303,7 @@ class TestPurgeProjectRecordsCascade:
             "doc_index": (await db_session.execute(
                 select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
             )).scalar_one_or_none(),
-            "session": (await db_session.execute(
-                select(ProjectSession).where(ProjectSession.id == data["session"].id)
-            )).scalar_one_or_none(),
+            # NOTE: "session" removed (Handover 0423 - Session model deleted)
             "vision": (await db_session.execute(
                 select(Vision).where(Vision.id == data["vision"].id)
             )).scalar_one_or_none(),
@@ -392,9 +348,7 @@ class TestPurgeProjectRecordsCascade:
             "doc_index": (await db_session.execute(
                 select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
             )).scalar_one_or_none(),
-            "session": (await db_session.execute(
-                select(ProjectSession).where(ProjectSession.id == data["session"].id)
-            )).scalar_one_or_none(),
+            # NOTE: "session" removed (Handover 0423 - Session model deleted)
             "vision": (await db_session.execute(
                 select(Vision).where(Vision.id == data["vision"].id)
             )).scalar_one_or_none(),
@@ -452,9 +406,7 @@ class TestPurgeExpiredProjectsCascade:
             "doc_index": (await db_session.execute(
                 select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
             )).scalar_one_or_none(),
-            "session": (await db_session.execute(
-                select(ProjectSession).where(ProjectSession.id == data["session"].id)
-            )).scalar_one_or_none(),
+            # NOTE: "session" removed (Handover 0423 - Session model deleted)
             "vision": (await db_session.execute(
                 select(Vision).where(Vision.id == data["vision"].id)
             )).scalar_one_or_none(),
@@ -523,12 +475,7 @@ class TestNuclearDeleteConsistency:
             document_path="/nuclear/test.md",
             document_type="markdown",
         )
-        proj_session = ProjectSession(
-            project_id=project.id,
-            tenant_key=cascade_test_tenant_key,
-            session_number=1,
-            title="Nuclear Test Session",
-        )
+        # NOTE: ProjectSession removed (Handover 0423 - Session model deleted)
         vision = Vision(
             project_id=project.id,
             tenant_key=cascade_test_tenant_key,
@@ -537,7 +484,7 @@ class TestNuclearDeleteConsistency:
             content="Nuclear test vision",
         )
 
-        db_session.add_all([agent_job, task, message, context_index, doc_index, proj_session, vision])
+        db_session.add_all([agent_job, task, message, context_index, doc_index, vision])
         await db_session.commit()
 
         # Get IDs
@@ -547,7 +494,7 @@ class TestNuclearDeleteConsistency:
         message_id = message.id
         context_index_id = context_index.id
         doc_index_id = doc_index.id
-        session_id = proj_session.id
+        # NOTE: session_id removed (Handover 0423 - Session model deleted)
         vision_id = vision.id
 
         # Create ProjectService and run nuclear delete
@@ -590,9 +537,7 @@ class TestNuclearDeleteConsistency:
             select(LargeDocumentIndex).where(LargeDocumentIndex.id == doc_index_id)
         )).scalar_one_or_none() is None, "LargeDocumentIndex should be deleted"
 
-        assert (await db_session.execute(
-            select(ProjectSession).where(ProjectSession.id == session_id)
-        )).scalar_one_or_none() is None, "ProjectSession should be deleted"
+        # NOTE: ProjectSession assertion removed (Handover 0423 - Session model deleted)
 
         assert (await db_session.execute(
             select(Vision).where(Vision.id == vision_id)
