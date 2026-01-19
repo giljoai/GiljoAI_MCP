@@ -356,9 +356,11 @@ class MessageService:
                                 recipient_waiting_count = first_recipient.messages_waiting_count
 
                         # Event 1: Broadcast to SENDER (increments "Messages Sent")
+                        # Handover 0407: Use sender's agent_id (executor UUID) instead of project ID
+                        # The frontend resolves by agent_id to find the correct job in the store
                         await self._websocket_manager.broadcast_message_sent(
                             message_id=message_id,
-                            job_id=first_message.meta_data.get("job_id", ""),
+                            job_id=sender_execution.agent_id if sender_execution else "",
                             project_id=project.id,
                             tenant_key=project.tenant_key,
                             from_agent=from_agent or "orchestrator",
@@ -374,10 +376,11 @@ class MessageService:
 
                         # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
                         # Emit message:received event to recipients
+                        # Handover 0407: Use sender's agent_id for from_job_id consistency
                         if recipient_agent_ids:
                             await self._websocket_manager.broadcast_message_received(
                                 message_id=message_id,
-                                job_id=first_message.meta_data.get("job_id", ""),
+                                job_id=sender_execution.agent_id if sender_execution else "",
                                 project_id=project.id,
                                 tenant_key=project.tenant_key,
                                 from_agent=from_agent or "orchestrator",
