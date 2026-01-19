@@ -18,7 +18,7 @@ Design Principles:
 import logging
 from typing import Optional
 
-from sqlalchemy import update
+from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution
@@ -153,7 +153,8 @@ class MessageRepository:
                 AgentExecution.tenant_key == tenant_key,
             )
             .values(
-                messages_waiting_count=AgentExecution.messages_waiting_count - 1,
+                # Handover 0422-fix: Use func.greatest to prevent negative counters
+                messages_waiting_count=func.greatest(0, AgentExecution.messages_waiting_count - 1),
                 messages_read_count=AgentExecution.messages_read_count + 1,
             )
         )
