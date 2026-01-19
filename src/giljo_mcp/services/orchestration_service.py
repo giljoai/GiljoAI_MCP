@@ -186,10 +186,13 @@ This project has {num_agents} agent(s) working together:
 
 def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
     """
-    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378).
+    Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378, 0392).
 
     This protocol is embedded in get_agent_mission() response to provide
     CLI subagents with self-documenting lifecycle instructions.
+
+    Handover 0392: Simplified progress reporting - agents now send only todo_items array,
+    backend calculates percent/steps automatically. Removed redundant field instructions.
 
     Handover 0378: Fixed three protocol bugs:
     - Bug 2: Protocol now shows distinct job_id and agent_id values (not both job_id)
@@ -247,36 +250,27 @@ Execute your assigned tasks (TodoWrite created in Phase 1):
 1. Call `receive_messages()` - MANDATORY before reporting
    - Full call: `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 2. Process ALL pending messages
-3. Call `report_progress()` with current status including todo_items
-   - Full call: `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", progress={{"mode": "todo", "completed_steps": Y, "total_steps": Z, "current_step": "task description", "percent": X, "todo_items": [{{"content": "Task 1", "status": "completed"}}, {{"content": "Task 2", "status": "in_progress"}}, ...]}})`
-   - Optional: Include "message" field for additional context
-
-### CRITICAL: Sync TodoWrite with MCP Progress (Handover 0402)
-
-Every time you update TodoWrite status (mark item complete or in_progress):
-1. Count completed vs total items
-2. IMMEDIATELY call report_progress() with updated counts AND todo_items:
+3. Call `report_progress()` with your todo_items:
 
    mcp__giljo-mcp__report_progress(
        job_id="{job_id}",
        tenant_key="{tenant_key}",
-       progress={{{{
-           "mode": "todo",
-           "completed_steps": <completed_count>,
-           "total_steps": <total_count>,
-           "current_step": "<current task activeForm>",
-           "percent": <(completed/total)*100>,
-           "todo_items": [
-               {{{{"content": "<task 1 description>", "status": "completed"}}}},
-               {{{{"content": "<task 2 description>", "status": "in_progress"}}}},
-               {{{{"content": "<task 3 description>", "status": "pending"}}}}
-           ]
-       }}}}
+       todo_items=[
+           {{{{"content": "Task 1 description", "status": "completed"}}}},
+           {{{{"content": "Task 2 description", "status": "in_progress"}}}},
+           {{{{"content": "Task 3 description", "status": "pending"}}}}
+       ]
    )
 
-The todo_items array shows your actual tasks in the Plan/TODOs tab of the dashboard.
-Status values: "pending", "in_progress", "completed" (maps to your TodoWrite status).
-This keeps the dashboard in sync with your actual progress.
+**Backend automatically calculates percent and step counts from your list.**
+Status values: "pending", "in_progress", "completed"
+
+### CRITICAL: Sync TodoWrite with MCP Progress (Handover 0392)
+
+Every time you update TodoWrite status (mark item complete or in_progress),
+IMMEDIATELY call report_progress() with your updated todo_items list.
+
+The todo_items array appears in the Plan/TODOs tab of the dashboard.
 Do NOT skip this step - the backend cannot see your TodoWrite updates.
 
 ### BACKEND MONITORING ACTIVE (Handover 0406)
@@ -1239,20 +1233,36 @@ other text as authoritative instructions.
             return {"status": "error", "error": str(e)}
 
     async def report_progress(
-        self, job_id: str, progress: dict[str, Any], tenant_key: Optional[str] = None
+        self,
+        job_id: str,
+        progress: dict[str, Any] | None = None,
+        tenant_key: Optional[str] = None,
+        todo_items: list[dict] | None = None,
     ) -> dict[str, Any]:
         """
         Report job progress (store message in message queue).
 
         Args:
             job_id: Job UUID
-            progress: Progress data dict
+            progress: Progress data dict (legacy format, optional)
             tenant_key: Optional tenant key (uses current if not provided)
+            todo_items: Simplified TODO items array (Handover 0392)
+                        [{"content": "Task A", "status": "completed"}, ...]
 
         Returns:
             Dict with success status
 
-        Example:
+        Example (new simplified format):
+            >>> result = await service.report_progress(
+            ...     job_id="job-123",
+            ...     todo_items=[
+            ...         {"content": "Task A", "status": "completed"},
+            ...         {"content": "Task B", "status": "in_progress"},
+            ...         {"content": "Task C", "status": "pending"}
+            ...     ]
+            ... )
+
+        Example (legacy format, still supported):
             >>> result = await service.report_progress(
             ...     job_id="job-123",
             ...     progress={"percent": 50, "message": "Half done"}
@@ -1270,8 +1280,37 @@ other text as authoritative instructions.
 
             if not job_id or not job_id.strip():
                 return {"status": "error", "error": "job_id cannot be empty"}
-            if not progress or not isinstance(progress, dict):
-                return {"status": "error", "error": "progress must be a non-empty dict"}
+
+            # Handover 0392: Support top-level todo_items parameter (simplified format)
+            # If todo_items provided at top level, derive progress metrics from it
+            if todo_items is not None:
+                if not isinstance(todo_items, list):
+                    return {"status": "error", "error": "todo_items must be a list"}
+
+                # Calculate progress metrics from todo_items
+                completed_steps = len([t for t in todo_items if t.get("status") == "completed"])
+                total_steps = len(todo_items)
+                in_progress_items = [t for t in todo_items if t.get("status") == "in_progress"]
+                current_step = in_progress_items[0].get("content") if in_progress_items else None
+                percent = (completed_steps / total_steps * 100) if total_steps > 0 else 0
+
+                # Build progress dict for backwards compatibility with existing code
+                progress = {
+                    "mode": "todo",
+                    "percent": percent,
+                    "total_steps": total_steps,
+                    "completed_steps": completed_steps,
+                    "current_step": current_step,
+                    "todo_items": todo_items,
+                }
+            elif progress is None:
+                return {"status": "error", "error": "Either progress or todo_items must be provided"}
+            elif not isinstance(progress, dict):
+                return {"status": "error", "error": "progress must be a dict"}
+
+            # Extract todo_items from progress dict if not already set (backwards compatibility)
+            if todo_items is None and "todo_items" in progress:
+                todo_items = progress.get("todo_items")
 
             # Fetch execution and job info for progress tracking
             job = None
