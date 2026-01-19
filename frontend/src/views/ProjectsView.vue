@@ -390,20 +390,6 @@
               </template>
             </v-textarea>
 
-            <!-- Handover 0316: Soft deprecated (kept for backward compatibility) -->
-            <v-text-field
-              v-model.number="projectData.context_budget"
-              label="Context Budget (Deprecated)"
-              type="number"
-              :rules="[(v) => v > 0 || 'Must be positive']"
-              class="mb-3"
-              aria-label="Context budget (deprecated)"
-              hint="⚠️ Deprecated: This field will be removed in v4.0. Context is now managed via depth configuration in My Settings."
-              persistent-hint
-              disabled
-              variant="outlined"
-            ></v-text-field>
-
             <!-- Status removed - always defaults to inactive (Handover 0062) -->
           </v-form>
         </v-card-text>
@@ -630,7 +616,6 @@ const projectData = ref({
   name: '',
   description: '',
   mission: '',
-  context_budget: 150000,
   status: 'inactive',
 })
 
@@ -860,7 +845,6 @@ function editProject(project) {
     name: project.name,
     description: project.description || '',
     mission: project.mission,
-    context_budget: project.context_budget || 150000,
     status: project.status,
   }
   showCreateDialog.value = true
@@ -1006,8 +990,8 @@ function cancelEdit() {
 function resetForm() {
   projectData.value = {
     name: '',
+    description: '',
     mission: '',
-    context_budget: 150000,
     status: 'inactive',
   }
 }
