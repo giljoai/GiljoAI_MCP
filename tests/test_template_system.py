@@ -821,40 +821,8 @@ class TestMCPTemplateToolsIntegration:
             assert archive.archive_type == "manual"
             assert archive.is_restorable is True
 
-    async def test_tool_6_create_template_augmentation(self, seed_templates):
-        """Test create_template_augmentation tool"""
-        tools, db_manager, _tenant_manager, template_ids = seed_templates
-
-        implementer_id = template_ids["implementer"]
-
-        # Create augmentation
-        result = await tools["create_template_augmentation"](
-            template_id=implementer_id,
-            name="security_focus",
-            augmentation_type="append",
-            content="Security Considerations:\n- Input validation\n- Authentication checks\n- Data encryption",
-            target_section=None,
-            conditions={"project_type": "secure_app"},
-            priority=1,
-        )
-
-        assert result["success"] is True
-        assert result["augmentation_name"] == "security_focus"
-        assert result["type"] == "append"
-
-        # Verify augmentation was created
-        async with db_manager.get_session() as session:
-            from sqlalchemy import select
-
-            stmt = select(TemplateAugmentation).where(TemplateAugmentation.id == result["augmentation_id"])
-            result_db = await session.execute(stmt)
-            aug = result_db.scalar_one()
-
-            assert aug.name == "security_focus"
-            assert aug.augmentation_type == "append"
-            assert "Input validation" in aug.content
-            assert aug.priority == 1
-            assert aug.conditions["project_type"] == "secure_app"
+    # NOTE: test_tool_6_create_template_augmentation removed (Handover 0423)
+    # TemplateAugmentation model was deleted - DB persistence abandoned for runtime-only dicts
 
     async def test_tool_7_restore_template_version(self, seed_templates):
         """Test restore_template_version tool"""
