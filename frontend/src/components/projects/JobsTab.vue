@@ -912,14 +912,14 @@ async function copyToClipboard(text) {
 <style scoped lang="scss">
 .implement-tab-wrapper {
   padding: 20px;
-  background: #0e1c2d;
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 
   .table-container {
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
     border-radius: 16px;
     padding: 24px;
-    background: rgba(14, 28, 45, 0.5);
+    background: rgb(var(--v-theme-surface));
     margin-bottom: 20px;
 
     .agents-table {
@@ -929,14 +929,14 @@ async function copyToClipboard(text) {
       thead th {
         text-align: left;
         padding: 12px 16px;
-        color: #999;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         font-size: 13px;
         font-weight: 400;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
       }
 
       tbody tr {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 
         &:last-child {
           border-bottom: none;
@@ -945,7 +945,7 @@ async function copyToClipboard(text) {
 
       tbody td {
         padding: 16px;
-        color: #e0e0e0;
+        color: rgb(var(--v-theme-on-surface));
         font-size: 14px;
 
         &.agent-display-name-cell {
@@ -974,7 +974,7 @@ async function copyToClipboard(text) {
 
             .agent-display-name-secondary {
               font-size: 0.75rem;
-              color: #999;
+              color: rgba(var(--v-theme-on-surface), 0.6);
               text-transform: capitalize;
             }
           }
@@ -985,7 +985,7 @@ async function copyToClipboard(text) {
         }
 
         &.agent-id-cell {
-          color: #999;
+          color: rgba(var(--v-theme-on-surface), 0.6);
           font-family: 'Courier New', monospace;
           font-size: 11px;
 
@@ -1002,13 +1002,13 @@ async function copyToClipboard(text) {
           }
 
           .id-label {
-            color: #666;
+            color: rgba(var(--v-theme-on-surface), 0.5);
             font-size: 10px;
             min-width: 35px;
           }
 
           .id-value {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(var(--v-theme-on-surface), 0.1);
             padding: 1px 4px;
             border-radius: 2px;
           }
@@ -1069,7 +1069,7 @@ async function copyToClipboard(text) {
     gap: 12px;
     align-items: center;
     padding: 16px;
-    background: rgba(20, 35, 50, 0.6);
+    background: rgba(var(--v-theme-on-surface), 0.05);
     border-radius: 12px;
     margin-bottom: 20px;
 
@@ -1108,22 +1108,22 @@ async function copyToClipboard(text) {
       flex: 1;
 
       ::v-deep(.v-field) {
-        background: rgba(20, 35, 50, 0.8);
-        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        background: rgba(var(--v-theme-on-surface), 0.05);
+        border: 2px solid rgba(var(--v-theme-on-surface), 0.2) !important;
         border-radius: 8px;
 
         input {
-          color: #fff;
+          color: rgb(var(--v-theme-on-surface));
           font-size: 14px;
           padding: 8px 12px;
 
           &::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(var(--v-theme-on-surface), 0.4);
           }
         }
 
         &:hover {
-          border-color: rgba(255, 255, 255, 0.3) !important;
+          border-color: rgba(var(--v-theme-on-surface), 0.3) !important;
         }
 
         &.v-field--focused {
@@ -1149,8 +1149,8 @@ async function copyToClipboard(text) {
     min-width: 24px;
     padding: 4px 8px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
+    background: rgba(var(--v-theme-on-surface), 0.1);
+    color: rgb(var(--v-theme-on-surface));
     font-size: 12px;
     font-weight: 600;
 
