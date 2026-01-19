@@ -53,6 +53,10 @@ def job_to_response(job: dict) -> JobResponse:
         tool_type=job.get("tool_type", "universal"),
         context_chunks=job.get("context_chunks", []),
         messages=job.get("messages", []),
+        # Handover 0407: Counter fields for message tracking (used by frontend store)
+        messages_sent_count=job.get("messages_sent_count", 0),
+        messages_waiting_count=job.get("messages_waiting_count", 0),
+        messages_read_count=job.get("messages_read_count", 0),
         started_at=job.get("started_at"),
         completed_at=job.get("completed_at"),
         created_at=job["created_at"],

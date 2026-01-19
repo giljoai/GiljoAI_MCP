@@ -100,6 +100,10 @@ class JobResponse(BaseModel):
     tool_type: str = "universal"
     context_chunks: list[str] = Field(default_factory=list)
     messages: list[dict[str, Any]] = Field(default_factory=list)
+    # Handover 0407: Counter fields for message tracking (used by frontend store)
+    messages_sent_count: int = 0
+    messages_waiting_count: int = 0
+    messages_read_count: int = 0
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     created_at: datetime
