@@ -40,7 +40,7 @@
       <v-card-text class="pa-0">
         <!-- Loading State (Handover 0387g Phase 4) -->
         <div v-if="loading" class="pa-8 text-center">
-          <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
+          <v-progress-circular indeterminate color="warning" size="48" class="mb-4" />
           <div class="text-body-2 text-medium-emphasis">Loading messages...</div>
         </div>
 
@@ -94,7 +94,7 @@
                 v-if="currentMessages.length === 0"
                 class="empty-state pa-4 text-center"
               >
-                <v-icon icon="mdi-message-outline" size="32" class="mb-2" />
+                <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="warning" />
                 <div class="text-body-2 text-medium-emphasis">
                   No messages in this category
                 </div>
@@ -178,7 +178,7 @@ const props = defineProps({
   // Initial tab when opening the modal: 'waiting' | 'sent' | 'read' | 'plan'
   initialTab: {
     type: String,
-    default: 'waiting',
+    default: 'sent',
   },
   // Optional steps summary for header context (completed/total)
   steps: {
@@ -190,7 +190,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 // Tabs: 'sent' | 'waiting' | 'read' | 'plan'
-const activeTab = ref(props.initialTab || 'waiting')
+const activeTab = ref(props.initialTab || 'sent')
 const selectedMessage = ref(null)
 
 // Track expanded messages by message ID (for inline expansion)
@@ -267,7 +267,7 @@ watch(
       return
     }
     // When opening, pick the requested initial tab if provided
-    activeTab.value = props.initialTab || 'waiting'
+    activeTab.value = props.initialTab || 'sent'
     selectedMessage.value = null
     expandedMessages.value = new Set() // Clear expanded state when opening
     // Fetch messages from API instead of using props.agent.messages
@@ -391,7 +391,7 @@ function formatMessageMeta(message) {
 }
 
 .tab-button.active {
-  border-bottom: 2px solid rgb(var(--v-theme-primary));
+  border-bottom: 2px solid rgb(var(--v-theme-warning));
   font-weight: 600;
 }
 
@@ -462,11 +462,11 @@ function formatMessageMeta(message) {
 }
 
 .message-content-line:hover {
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-warning));
 }
 
 .message-content-line:hover .message-eye-icon {
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-warning));
   transform: scale(1.1);
 }
 
@@ -488,7 +488,7 @@ function formatMessageMeta(message) {
   padding: 12px;
   background-color: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
-  border-left: 3px solid rgb(var(--v-theme-primary));
+  border-left: 3px solid rgb(var(--v-theme-warning));
 }
 
 .message-full-text {
