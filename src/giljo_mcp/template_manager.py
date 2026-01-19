@@ -9,7 +9,7 @@ import re
 from typing import Any, Optional, Union
 
 from .database import DatabaseManager
-from .models import TemplateAugmentation
+# NOTE: TemplateAugmentation import removed (Handover 0423 - using dict-based augmentations only)
 from .services.config_service import ConfigService
 from .template_cache import TemplateCache
 
@@ -17,14 +17,14 @@ from .template_cache import TemplateCache
 logger = logging.getLogger(__name__)
 
 
-def apply_augmentation(content: str, augmentation: Union[TemplateAugmentation, dict[str, Any]]) -> str:
+def apply_augmentation(content: str, augmentation: dict[str, Any]) -> str:
     """
     Apply augmentation to template content.
-    Handles both database objects and runtime dictionaries.
+    Handles runtime dictionaries (Handover 0423 - DB-backed augmentation removed).
 
     Args:
         content: Template content to augment
-        augmentation: Either a DB TemplateAugmentation or dict with:
+        augmentation: Dict with:
             - type/augmentation_type: append, prepend, replace, inject
             - content: Content to apply
             - target/target_section: Optional target for replace/inject
@@ -33,18 +33,13 @@ def apply_augmentation(content: str, augmentation: Union[TemplateAugmentation, d
         Augmented content
     """
     # Handle empty augmentation
-    if not augmentation or (isinstance(augmentation, dict) and not augmentation):
+    if not augmentation:
         return content
 
-    # Normalize input to dict format
-    if isinstance(augmentation, TemplateAugmentation):
-        aug_type = augmentation.augmentation_type
-        aug_content = augmentation.content
-        target = augmentation.target_section
-    else:
-        aug_type = augmentation.get("type") or augmentation.get("augmentation_type", "append")
-        aug_content = augmentation.get("content", "")
-        target = augmentation.get("target") or augmentation.get("target_section", "")
+    # Extract dict fields (Handover 0423 - DB-backed augmentation removed)
+    aug_type = augmentation.get("type") or augmentation.get("augmentation_type", "append")
+    aug_content = augmentation.get("content", "")
+    target = augmentation.get("target") or augmentation.get("target_section", "")
 
     # Apply augmentation based on type
     if aug_type == "append":
@@ -65,7 +60,7 @@ def apply_augmentation(content: str, augmentation: Union[TemplateAugmentation, d
 def process_template(
     content: str,
     variables: Optional[dict[str, Any]] = None,
-    augmentations: Optional[list[Union[TemplateAugmentation, dict]]] = None,
+    augmentations: Optional[list[dict[str, Any]]] = None,
     substitute_first: bool = False,
 ) -> str:
     """
@@ -588,7 +583,7 @@ SUCCESS CRITERIA:
         role: str,
         tenant_key: str,
         variables: Optional[dict[str, Any]] = None,
-        augmentations: Optional[list[Union[TemplateAugmentation, dict]]] = None,
+        augmentations: Optional[list[dict[str, Any]]] = None,
         project_type: Optional[str] = None,
         product_id: Optional[str] = None,
         use_cache: bool = True,

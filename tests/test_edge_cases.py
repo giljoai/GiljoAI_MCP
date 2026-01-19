@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Configuration, Job, Message, Project, Session, Task, Vision
+from src.giljo_mcp.models import Configuration, Job, Message, Project, Task, Vision
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -287,38 +287,7 @@ class TestEdgeCases:
         assert agent.jobs[0].status == "database_initialized"
         assert len(agent.jobs[0].tasks) == 3
 
-    def test_session_numbering_uniqueness(self, db_session):
-        """Test session numbering uniqueness per project."""
-        tenant_key = str(uuid4())
-
-        # Create project
-        project = Project(name="Test Project", mission="Test mission", tenant_key=tenant_key)
-        db_session.add(project)
-        db_session.commit()
-
-        # Create first session
-        session1 = Session(
-            tenant_key=tenant_key,
-            project_id=project.id,
-            session_number=1,
-            title="Session 1",
-            objectives="Test objectives",
-        )
-        db_session.add(session1)
-        db_session.commit()
-
-        # Try to create duplicate session number
-        session2 = Session(
-            tenant_key=tenant_key,
-            project_id=project.id,
-            session_number=1,  # Duplicate number
-            title="Session 2",
-            objectives="Different objectives",
-        )
-        db_session.add(session2)
-
-        with pytest.raises(IntegrityError):
-            db_session.commit()
+    # NOTE: test_session_numbering_uniqueness removed (Handover 0423 - Session model deleted)
 
     def test_empty_and_null_values(self, db_session):
         """Test handling of empty strings and null values."""
