@@ -82,57 +82,12 @@
             >
               Read ({{ readCount }})
             </button>
-            <button
-              type="button"
-              class="tab-button"
-              :class="{ active: activeTab === 'plan' }"
-              data-test="messages-tab-plan"
-              @click="activeTab = 'plan'"
-            >
-              Plan / TODOs ({{ planCount }})
-            </button>
           </div>
 
           <v-divider />
 
-          <!-- Two-column layout: list + detail (or TODO list for Plan tab) -->
+          <!-- Two-column layout: list + detail -->
           <div class="message-audit-body">
-          <!-- Plan/TODOs Tab: Display todo items instead of messages (Handover 0402) -->
-          <div v-if="activeTab === 'plan'" class="todo-items-column">
-            <div
-              v-if="todoItems.length === 0"
-              class="empty-state pa-4 text-center"
-            >
-              <v-icon icon="mdi-checkbox-blank-outline" size="32" class="mb-2" />
-              <div class="text-body-2 text-medium-emphasis">
-                No tasks reported yet
-              </div>
-            </div>
-
-            <div
-              v-else
-              class="todo-items-list pa-2"
-            >
-              <div
-                v-for="(item, index) in todoItems"
-                :key="`todo-${index}`"
-                class="todo-item-row"
-                data-test="todo-item-row"
-              >
-                <v-icon
-                  :icon="getStatusIcon(item.status)"
-                  :color="getStatusColor(item.status)"
-                  :class="{ 'pulse-animation': item.status === 'in_progress' }"
-                  class="mr-2"
-                  size="20"
-                />
-                <span class="todo-item-content">{{ item.content }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Message tabs: Show message list + detail pane -->
-          <template v-else>
             <!-- Message list -->
             <div class="message-list-column">
               <div
@@ -173,8 +128,7 @@
             >
               <MessageDetailView :message="selectedMessage" />
             </div>
-          </template>
-        </div>
+          </div>
         </div>
         <!-- End v-else wrapper for loaded state -->
       </v-card-text>
@@ -260,22 +214,13 @@ const readMessages = computed(() =>
   ),
 )
 
-// Plan / TODO items (Handover 0402: use todo_items from agent job, not messages)
-const todoItems = computed(() =>
-  props.agent?.todo_items && Array.isArray(props.agent.todo_items)
-    ? props.agent.todo_items
-    : [],
-)
-
 const sentCount = computed(() => sentMessages.value.length)
 const waitingCount = computed(() => waitingMessages.value.length)
 const readCount = computed(() => readMessages.value.length)
-const planCount = computed(() => todoItems.value.length)
 
 const currentMessages = computed(() => {
   if (activeTab.value === 'sent') return sentMessages.value
   if (activeTab.value === 'read') return readMessages.value
-  if (activeTab.value === 'plan') return [] // Plan tab uses todoItems, not messages
   return waitingMessages.value
 })
 
@@ -341,31 +286,6 @@ function formatMessageMeta(message) {
 
   return `${timePart} | ${fromId} → ${toId} (${status})`
 }
-
-// Handover 0402: Helper functions for todo item status display
-function getStatusIcon(status) {
-  switch (status) {
-    case 'completed':
-      return 'mdi-checkbox-marked'
-    case 'in_progress':
-      return 'mdi-progress-clock'
-    case 'pending':
-    default:
-      return 'mdi-checkbox-blank-outline'
-  }
-}
-
-function getStatusColor(status) {
-  switch (status) {
-    case 'completed':
-      return 'success'
-    case 'in_progress':
-      return 'warning'
-    case 'pending':
-    default:
-      return 'grey'
-  }
-}
 </script>
 
 <style scoped>
@@ -426,49 +346,5 @@ function getStatusColor(status) {
 
 .empty-state {
   color: rgba(0, 0, 0, 0.6);
-}
-
-/* Handover 0402: TODO items styling */
-.todo-items-column {
-  flex: 1 1 100%;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.todo-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.todo-item-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.todo-item-row:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.todo-item-content {
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-/* Pulse animation for in_progress items */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.pulse-animation {
-  animation: pulse 2s ease-in-out infinite;
 }
 </style>
