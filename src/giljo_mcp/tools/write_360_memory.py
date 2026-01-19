@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from src.giljo_mcp.database import DatabaseManager
@@ -178,6 +179,7 @@ async def write_360_memory(
                 # Query the current execution for this job to get agent_name
                 execution_stmt = (
                     select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
                     .where(
                         AgentExecution.job_id == author_job_id,
                         AgentExecution.tenant_key == tenant_key,
