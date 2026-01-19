@@ -111,14 +111,15 @@ Role: {agent_display_name}
         deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
         if len(mission_text or "") > 80:
             deliverable_preview += "..."
-        team_rows.append(f"| {role_name} | {getattr(job, 'agent_display_name', 'unknown')} | {deliverable_preview} |")
+        job_agent_id = getattr(job, 'agent_id', 'unknown')
+        team_rows.append(f"| {role_name} | `{job_agent_id}` | {getattr(job, 'agent_display_name', 'unknown')} | {deliverable_preview} |")
 
     team_table = "\n".join(team_rows)
     team_section = f"""## YOUR TEAM
 This project has {num_agents} agent(s) working together:
 
-| Agent | Role | Deliverables |
-|-------|------|--------------|
+| Agent | agent_id | Role | Deliverables |
+|-------|----------|------|--------------|
 {team_table}
 """
 
