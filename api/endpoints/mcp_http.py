@@ -312,15 +312,30 @@ async def handle_tools_list(
         },
         {
             "name": "report_progress",
-            "description": "Report incremental progress on active job",
+            "description": "Report incremental progress. Simplified: just send todo_items array. Backend calculates percent/steps automatically.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
-                    "progress": {"type": "object", "description": "Progress details"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
+                    "todo_items": {
+                        "type": "array",
+                        "description": "Your task list. Backend derives progress from this.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "content": {"type": "string", "description": "Task description"},
+                                "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]},
+                            },
+                            "required": ["content", "status"],
+                        },
+                    },
+                    "progress": {
+                        "type": "object",
+                        "description": "DEPRECATED: Use todo_items instead. Legacy progress object.",
+                    },
                 },
-                "required": ["job_id", "progress", "tenant_key"],
+                "required": ["job_id", "tenant_key"],
             },
         },
         {
