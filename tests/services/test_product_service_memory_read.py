@@ -71,9 +71,10 @@ async def test_product_memory_entries_available_via_repository(
     assert entries[1].sequence == 1
 
     # Verify to_dict() returns compatible structure
+    # Note: to_dict() returns "type" (not "entry_type") for backwards compatibility with JSONB format
     entry_dict = entries[0].to_dict()
     assert "sequence" in entry_dict
-    assert "entry_type" in entry_dict
+    assert "type" in entry_dict  # JSONB format compatibility
     assert "project_name" in entry_dict
     assert "summary" in entry_dict
     assert "key_outcomes" in entry_dict
@@ -130,14 +131,14 @@ async def test_repository_respects_include_deleted_flag(
     """
     # Arrange
     repo = ProductMemoryRepository()
-    project_id = str(uuid4())
 
-    # Create 2 entries, mark one as deleted
+    # Create 2 entries, one with project_id, one without
+    # We use an entry WITHOUT project_id first, then mark it as deleted by setting the flag directly
     entry1 = await repo.create_entry(
         session=db_session,
         tenant_key=test_tenant_key,
         product_id=test_product.id,
-        project_id=project_id,
+        project_id=None,  # No project_id to avoid FK constraint
         sequence=1,
         entry_type="project_closeout",
         source="test",
@@ -158,12 +159,9 @@ async def test_repository_respects_include_deleted_flag(
 
     await db_session.commit()
 
-    # Mark entry1 as deleted
-    await repo.mark_entries_deleted(
-        session=db_session,
-        project_id=project_id,
-        tenant_key=test_tenant_key,
-    )
+    # Mark entry1 as deleted directly (no project_id-based deletion since we don't have a project)
+    entry1.deleted_by_user = True
+    entry1.user_deleted_at = datetime.utcnow()
     await db_session.commit()
 
     # Act - Fetch without deleted
