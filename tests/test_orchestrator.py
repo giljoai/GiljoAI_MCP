@@ -15,7 +15,7 @@ import pytest_asyncio
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.enums import ProjectStatus
-from src.giljo_mcp.models import Project
+# Handover 0422: Project import removed (not used after test cleanup)
 from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -220,7 +220,8 @@ class TestMultiProjectSupport:
         """Test resource allocation for tenant."""
         tenant_key = "test-tenant"
 
-        # Create projects with context usage
+        # Create projects
+        # Handover 0422: Removed update_context_usage() call - MCP server is passive
         for i in range(3):
             project = await orchestrator.create_project(
                 name=f"Project {i + 1}", mission=f"Mission {i + 1}", tenant_key=tenant_key, context_budget=100000
@@ -228,9 +229,8 @@ class TestMultiProjectSupport:
             if i < 2:  # Activate first 2
                 await orchestrator.activate_project(project.id)
 
-            # Simulate context usage
-            agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
-            await orchestrator.update_context_usage(agent.id, 20000)
+            # Spawn agent (context tracking removed - server is passive)
+            await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Check resource allocation
         allocation = await orchestrator.allocate_resources(
@@ -240,8 +240,9 @@ class TestMultiProjectSupport:
         assert allocation["can_create_new"] is True
         assert allocation["active_projects"] == 2
         assert allocation["max_concurrent"] == 5
-        assert allocation["total_context_used"] == 60000  # 3 * 20000
-        assert allocation["remaining_budget"] == 440000
+        # Handover 0422: Context usage is always 0 (passive server cannot track CLI context)
+        assert allocation["total_context_used"] == 0
+        assert allocation["remaining_budget"] == 500000
 
     async def test_max_concurrent_projects_limit(self, orchestrator):
         """Test maximum concurrent projects limit."""
@@ -279,15 +280,8 @@ class TestErrorHandling:
         with pytest.raises(ValueError, match="not found"):
             await orchestrator.spawn_agent(fake_id, AgentRole.ANALYZER)
 
-    async def test_agent_not_found(self, orchestrator):
-        """Test handling of non-existent agent."""
-        fake_id = "non-existent-agent"
-
-        with pytest.raises(ValueError, match="not found"):
-            await orchestrator.update_context_usage(fake_id, 1000)
-
-        with pytest.raises(ValueError, match="not found"):
-            await orchestrator.get_agent_context_status(fake_id)
+    # Handover 0422: test_agent_not_found removed - tested update_context_usage() and
+    # get_agent_context_status() which were removed (passive server cannot track CLI context)
 
 
 if __name__ == "__main__":
