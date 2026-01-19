@@ -1,7 +1,11 @@
 """
 ProductMemoryEntry Model (Handover 0390a)
 
-Normalized table for 360 memory entries, replacing Product.product_memory.sequential_history JSONB.
+Normalized table for 360 memory entries.
+
+REPLACES: Product.product_memory.sequential_history JSONB array (DEPRECATED in 0390).
+
+This table is the SINGLE SOURCE OF TRUTH for 360 memory entries as of v3.3.
 """
 
 from datetime import datetime
