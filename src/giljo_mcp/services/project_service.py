@@ -2161,6 +2161,41 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     await session.delete(vision)
                 deleted_counts["visions"] = len(visions)
 
+                # Mark 360 memory entries as deleted by user (preserve historical reference)
+                memory_entries_marked = 0
+                if project.product_id:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    from src.giljo_mcp.models.products import Product
+
+                    product_stmt = select(Product).where(
+                        and_(
+                            Product.id == project.product_id,
+                            Product.tenant_key == tenant_key,
+                        )
+                    )
+                    product_result = await session.execute(product_stmt)
+                    parent_product = product_result.scalar_one_or_none()
+
+                    if parent_product and parent_product.product_memory:
+                        product_memory = parent_product.product_memory
+                        sequential_history = product_memory.get("sequential_history", [])
+
+                        # Mark matching entries as deleted by user
+                        for entry in sequential_history:
+                            if isinstance(entry, dict) and entry.get("project_id") == project_id:
+                                entry["deleted_by_user"] = True
+                                entry["user_deleted_at"] = datetime.utcnow().isoformat()
+                                memory_entries_marked += 1
+
+                        if memory_entries_marked > 0:
+                            parent_product.product_memory = product_memory
+                            flag_modified(parent_product, "product_memory")
+                            self._logger.info(
+                                f"Marked {memory_entries_marked} 360 memory entries as deleted for project {project_id}"
+                            )
+
+                deleted_counts["memory_entries_marked"] = memory_entries_marked
+
                 # Finally, delete the project itself
                 await session.delete(project)
 
@@ -2175,7 +2210,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     f"{deleted_counts['context_indexes']} context indexes, "
                     f"{deleted_counts['document_indexes']} document indexes, "
                     f"{deleted_counts['sessions']} sessions, "
-                    f"{deleted_counts['visions']} visions"
+                    f"{deleted_counts['visions']} visions, "
+                    f"{deleted_counts['memory_entries_marked']} 360 memory entries marked"
                 )
 
                 # Broadcast WebSocket event for real-time UI cleanup
@@ -2211,6 +2247,32 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             "tenant_key": project.tenant_key,
             "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
         }
+
+        # Mark 360 memory entries as deleted by user (preserve historical reference)
+        if project.product_id:
+            from sqlalchemy.orm.attributes import flag_modified
+            from src.giljo_mcp.models.products import Product
+
+            product_stmt = select(Product).where(
+                and_(
+                    Product.id == project.product_id,
+                    Product.tenant_key == project.tenant_key,
+                )
+            )
+            product_result = await session.execute(product_stmt)
+            parent_product = product_result.scalar_one_or_none()
+
+            if parent_product and parent_product.product_memory:
+                product_memory = parent_product.product_memory
+                sequential_history = product_memory.get("sequential_history", [])
+
+                for entry in sequential_history:
+                    if isinstance(entry, dict) and entry.get("project_id") == project.id:
+                        entry["deleted_by_user"] = True
+                        entry["user_deleted_at"] = datetime.utcnow().isoformat()
+
+                parent_product.product_memory = product_memory
+                flag_modified(parent_product, "product_memory")
 
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
         agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)
