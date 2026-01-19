@@ -126,6 +126,7 @@
                     <v-icon
                       icon="mdi-eye"
                       size="small"
+                      color="warning"
                       class="message-eye-icon"
                     />
                   </div>
@@ -437,16 +438,17 @@ function formatMessageMeta(message) {
 }
 
 .message-timestamp {
-  color: rgba(0, 0, 0, 0.6);
+  color: rgb(var(--v-theme-warning));
   font-family: 'Courier New', monospace;
 }
 
 .message-separator {
-  color: rgba(0, 0, 0, 0.4);
+  color: rgb(var(--v-theme-warning));
+  opacity: 0.7;
 }
 
 .message-recipient {
-  color: rgba(0, 0, 0, 0.6);
+  color: rgb(var(--v-theme-warning));
   font-weight: 500;
 }
 
