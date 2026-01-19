@@ -21,7 +21,7 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
-from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse
+from .models import JobListResponse, JobMissionResponse, JobResponse, PendingJobsResponse, TodoItemResponse
 
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,14 @@ def job_to_response(job: dict) -> JobResponse:
     Returns:
         JobResponse model
     """
+    # Handover 0423: Convert todo_items to TodoItemResponse list
+    todo_items_raw = job.get("todo_items", [])
+    todo_items = [
+        TodoItemResponse(content=item.get("content", ""), status=item.get("status", "pending"))
+        for item in todo_items_raw
+        if isinstance(item, dict)
+    ]
+
     return JobResponse(
         id=job.get("agent_id", job.get("id", "")),  # 0366: prefer agent_id (UUID)
         job_id=job["job_id"],
@@ -63,6 +71,7 @@ def job_to_response(job: dict) -> JobResponse:
         updated_at=job.get("updated_at"),
         mission_acknowledged_at=job.get("mission_acknowledged_at"),  # Handover 0297
         steps=job.get("steps"),
+        todo_items=todo_items,  # Handover 0423
     )
 
 

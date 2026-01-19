@@ -24,8 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.dependencies import get_db
 from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from sqlalchemy.orm import joinedload
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from sqlalchemy.orm import joinedload, selectinload
 
 router = APIRouter()
 
@@ -33,6 +33,12 @@ router = APIRouter()
 # ============================================================================
 # RESPONSE MODELS
 # ============================================================================
+
+class TodoItemData(BaseModel):
+    """Individual TODO item for Plan tab display - Handover 0423"""
+    content: str
+    status: str  # pending, in_progress, completed
+
 
 class TableRowData(BaseModel):
     """Optimized data for single table row"""
@@ -78,6 +84,9 @@ class TableRowData(BaseModel):
     # TODO-style steps summary for dashboard Steps column (Handover 0297)
     steps_total: Optional[int] = None
     steps_completed: Optional[int] = None
+
+    # TODO items for Plan tab display - Handover 0423
+    todo_items: list[TodoItemData] = []
 
 
 class TableViewResponse(BaseModel):
@@ -129,9 +138,12 @@ async def get_agent_jobs_table_view(
     """
 
     # Build base query with tenant isolation (query AgentExecution joined to AgentJob)
+    # Handover 0423: Load todo_items relationship for Plan tab display
     query = (
         select(AgentExecution)
-        .options(joinedload(AgentExecution.job))
+        .options(
+            joinedload(AgentExecution.job).selectinload(AgentJob.todo_items)
+        )
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(
             and_(
@@ -266,6 +278,14 @@ async def get_agent_jobs_table_view(
                 is_orchestrator=(execution.agent_display_name == "orchestrator"),
                 steps_total=steps_total,
                 steps_completed=steps_completed,
+                # Handover 0423: Include todo_items for Plan tab display
+                todo_items=[
+                    TodoItemData(content=item.content, status=item.status)
+                    for item in sorted(
+                        execution.job.todo_items if execution.job else [],
+                        key=lambda x: x.sequence
+                    )
+                ],
             )
         )
 
