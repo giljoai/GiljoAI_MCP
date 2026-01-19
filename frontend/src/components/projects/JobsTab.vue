@@ -403,7 +403,7 @@ const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
 const showCloseoutModal = ref(false)
 const jobModalInitialTab = ref('mission')
-const messageAuditInitialTab = ref('waiting')
+const messageAuditInitialTab = ref('sent')
 const selectedJobId = ref(null)
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
 
@@ -716,12 +716,12 @@ async function handlePlay(agent) {
 
 /**
  * Handle Messages button click (Handover 0358)
- * Opens Message Audit Modal for selected agent (Waiting tab)
+ * Opens Message Audit Modal for selected agent (Sent tab)
  */
 function handleMessages(agent) {
   console.log('[JobsTab] Messages action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
-  messageAuditInitialTab.value = 'waiting'
+  messageAuditInitialTab.value = 'sent'
   showMessageAuditModal.value = true
 }
 
