@@ -488,7 +488,7 @@ function formatMessageMeta(message) {
 .message-full-content {
   margin-top: 8px;
   padding: 12px;
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0.7);
   border-radius: 4px;
   border-left: 3px solid rgb(var(--v-theme-warning));
 }
@@ -498,7 +498,7 @@ function formatMessageMeta(message) {
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   line-height: 1.5;
-  color: rgba(0, 0, 0, 0.87);
+  color: white;
 }
 
 /* Divider between messages */
