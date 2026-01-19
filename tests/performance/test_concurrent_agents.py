@@ -29,8 +29,7 @@ class TestConcurrentAgents:
         """Create orchestrator for testing"""
         orchestrator = ProjectOrchestrator(test_db)
         yield orchestrator
-        # Cleanup
-        await orchestrator._stop_context_monitor()
+        # Cleanup: _stop_context_monitor() was removed in Handover 0422 (dead token budget cleanup)
 
     @pytest_asyncio.fixture
     async def test_project(self, orchestrator, db_session):
@@ -207,34 +206,8 @@ class TestConcurrentAgents:
         avg_handoff_time = handoff_time / len(handoff_tasks)
         assert avg_handoff_time < 500, f"Handoff too slow: {avg_handoff_time:.2f}ms > 500ms"
 
-    async def test_context_switching_performance(self, orchestrator, test_project):
-        """Test context switching efficiency with multiple agents"""
-        # Create 30 agents for context switching test
-        agents = []
-        for i in range(30):
-            agent_name = f"context_agent_{i}_{uuid.uuid4().hex[:8]}"
-            agent = await orchestrator.spawn_agent(project_id=test_project.id, agent_name=agent_name, role="worker")
-            agents.append(agent)
-
-        # Test context status retrieval under load
-        start_time = time.perf_counter()
-
-        context_tasks = []
-        for agent in agents:
-            task = orchestrator.get_agent_context_status(agent_name=agent.name, project_id=test_project.id)
-            context_tasks.append(task)
-
-        context_results = await asyncio.gather(*context_tasks, return_exceptions=True)
-        context_time = (time.perf_counter() - start_time) * 1000
-
-        successful_contexts = [r for r in context_results if not isinstance(r, Exception)]
-
-        # Validate context switching performance
-        avg_context_time = context_time / len(context_tasks)
-        assert avg_context_time < 50, f"Context switching too slow: {avg_context_time:.2f}ms > 50ms"
-
-        success_rate = len(successful_contexts) / len(context_tasks) * 100
-        assert success_rate > 95, f"Context switching success rate too low: {success_rate:.1f}%"
+    # HANDOVER 0422: Removed test_context_switching_performance
+    # This test called get_agent_context_status() which was removed (dead token budget cleanup)
 
 
 if __name__ == "__main__":
