@@ -611,3 +611,10 @@ If deployment causes issues:
 - RED: Wrote 5 failing tests first
 - GREEN: Implemented minimal code to pass tests
 - REFACTOR: Verified multi-tenant isolation, cleaned up progress messages
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Test Summary](reports/HANDOVER_0289_TEST_SUMMARY.md)
