@@ -297,12 +297,19 @@ class ThinClientPromptGenerator:
             )
             self.db.add(agent_execution)
 
+            # Handover 0425: Set project staging_status to 'staged' when orchestrator is created
+            # This enables the Staged column in ProjectsView to show "Yes"
+            project.staging_status = "staged"
+            project.updated_at = datetime.now()
+
             await self.db.commit()
             await self.db.refresh(agent_job)
             await self.db.refresh(agent_execution)
+            await self.db.refresh(project)  # Refresh project to get updated staging_status
 
             logger.info(
-                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} " f"(instance #{instance_number})"
+                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} "
+                f"(instance #{instance_number}), project staging_status='staged'"
             )
 
         # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
