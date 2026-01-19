@@ -45,11 +45,17 @@ class TableRowData(BaseModel):
     status: str  # waiting, working, blocked, complete, failed, cancelled, decommissioned
     progress: int  # 0-100
     current_task: Optional[str] = None
+    mission: Optional[str] = None  # Job mission assigned by orchestrator
 
-    # Message tracking
+    # Message tracking (legacy field names for backward compatibility)
     unread_count: int
     acknowledged_count: int
     total_messages: int
+
+    # Message counters (Handover 0407: Direct counter fields for frontend store)
+    messages_sent_count: int = 0
+    messages_waiting_count: int = 0
+    messages_read_count: int = 0
 
     # Health monitoring
     health_status: str  # unknown, healthy, warning, critical, timeout
@@ -240,9 +246,14 @@ async def get_agent_jobs_table_view(
                 status=execution.status,
                 progress=execution.progress,
                 current_task=execution.current_task,
+                mission=execution.job.mission if execution.job else None,  # Job mission from AgentJob
                 unread_count=unread_count,
                 acknowledged_count=acknowledged_count,
                 total_messages=total_messages,
+                # Handover 0407: Direct counter fields for frontend store
+                messages_sent_count=execution.messages_sent_count,
+                messages_waiting_count=execution.messages_waiting_count,
+                messages_read_count=execution.messages_read_count,
                 health_status=execution.health_status,
                 last_progress_at=execution.last_progress_at,
                 minutes_since_progress=minutes_since_progress,

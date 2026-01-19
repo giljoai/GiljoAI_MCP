@@ -271,11 +271,12 @@ class OrchestratorSuccessionManager:
         from .models.tasks import Message
 
         # Query Message table for messages sent by or to this agent
+        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         stmt = (
             select(Message)
             .where(
                 or_(
-                    Message.from_agent == execution.agent_id,
+                    Message.meta_data.op('->>')('_from_agent') == execution.agent_id,
                     func.cast(Message.to_agents, JSONB).op('@>')(
                         func.cast([execution.agent_id], JSONB)
                     )
@@ -293,7 +294,7 @@ class OrchestratorSuccessionManager:
             {
                 "id": msg.id,
                 "type": msg.message_type,
-                "from_agent": msg.from_agent,
+                "from_agent": msg.meta_data.get("_from_agent", "unknown") if msg.meta_data else "unknown",
                 "to_agents": msg.to_agents,
                 "content": msg.content,
                 "status": msg.status,

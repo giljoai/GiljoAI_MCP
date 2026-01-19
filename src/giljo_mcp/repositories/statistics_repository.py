@@ -421,9 +421,10 @@ class StatisticsRepository:
         Returns:
             Message count sent by agent
         """
+        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
             select(func.count(Message.id)).where(
-                Message.from_agent == agent_name,
+                Message.meta_data.op('->>')('_from_agent') == agent_name,
                 Message.tenant_key == tenant_key
             )
         )
@@ -471,9 +472,10 @@ class StatisticsRepository:
         Returns:
             Timestamp of last message or None if no messages
         """
+        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
             select(func.max(Message.created_at)).where(
-                Message.from_agent == agent_name,
+                Message.meta_data.op('->>')('_from_agent') == agent_name,
                 Message.tenant_key == tenant_key
             )
         )
