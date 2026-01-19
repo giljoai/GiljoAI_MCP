@@ -229,7 +229,7 @@ async function fetchMessages() {
   error.value = null
 
   try {
-    const response = await api.messages(props.agent.job_id)
+    const response = await api.agentJobs.messages(props.agent.job_id)
     messages.value = response.data?.messages || []
   } catch (e) {
     error.value = e.response?.data?.detail || e.message || 'Failed to load messages'
