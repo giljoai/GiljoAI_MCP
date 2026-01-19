@@ -895,10 +895,21 @@ def _get_check_in_protocol_section() -> str:
 
     Note:
         Slimmed in Handover 0353 - detailed behavior moved to full_protocol.
+        Updated in Handover 0392 - simplified report_progress format.
     """
     return """## CHECK-IN PROTOCOL
 
 Report progress at natural workflow breaks using `report_progress()` and check for commands using `receive_messages()`.
+
+**Simplified Progress Reporting** (Handover 0392):
+```python
+report_progress(job_id, tenant_key, todo_items=[
+    {"content": "Task 1", "status": "completed"},
+    {"content": "Task 2", "status": "in_progress"},
+    {"content": "Task 3", "status": "pending"}
+])
+```
+Backend automatically calculates percent, step counts, and current step from your list.
 
 **When to check in:**
 - After completing a todo item
