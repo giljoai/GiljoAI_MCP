@@ -123,12 +123,13 @@
                     @click="toggleMessageExpansion(message.id)"
                   >
                     <span class="message-preview">{{ getMessagePreview(message) }}</span>
-                    <v-icon
-                      icon="mdi-eye"
-                      size="small"
-                      color="primary"
-                      class="message-eye-icon"
-                    />
+                    <span class="eye-icon-container">
+                      <v-icon
+                        icon="mdi-eye"
+                        size="x-small"
+                        class="message-eye-icon"
+                      />
+                    </span>
                   </div>
 
                   <!-- Expanded Full Content -->
@@ -469,9 +470,9 @@ function formatMessageMeta(message) {
   color: rgb(var(--v-theme-primary));
 }
 
-.message-content-line:hover .message-eye-icon {
-  color: rgb(var(--v-theme-primary));
-  transform: scale(1.1);
+.message-content-line:hover .eye-icon-container {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4);
 }
 
 .message-preview {
@@ -480,10 +481,22 @@ function formatMessageMeta(message) {
   line-height: 1.4;
 }
 
-.message-eye-icon {
-  color: rgb(var(--v-theme-primary)) !important;
-  transition: all 0.2s ease;
+/* Eye Icon with Blue Circle Background and Yellow Icon */
+.eye-icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgb(var(--v-theme-primary));
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.message-eye-icon {
+  color: #ffc300 !important; /* Brand yellow */
+  transition: all 0.2s ease;
 }
 
 /* Expanded Full Content */
