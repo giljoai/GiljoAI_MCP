@@ -1941,7 +1941,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         """
         try:
             async with self._get_session() as db_session:
-                from giljo_mcp.models import Session as SessionModel
                 from giljo_mcp.tenant import current_tenant
 
                 # Find project with tenant isolation filter (Handover 0325)
@@ -1961,19 +1960,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 self.tenant_manager.set_current_tenant(project.tenant_key)
                 current_tenant.set(project.tenant_key)
 
-                # Create new session if needed (active = not ended)
-                session_query = select(SessionModel).where(
-                    SessionModel.project_id == project.id, SessionModel.ended_at.is_(None)
-                )
-                session_result = await db_session.execute(session_query)
-                active_session = session_result.scalar_one_or_none()
-
-                if not active_session:
-                    active_session = SessionModel(
-                        project_id=project.id, started_at=datetime.now(), tenant_key=project.tenant_key
-                    )
-                    db_session.add(active_session)
-                    await db_session.commit()
+                # NOTE: Session tracking removed (Handover 0423 - dead code cleanup)
 
                 self._logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
 
@@ -1983,7 +1970,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     "name": project.name,
                     "mission": project.mission,
                     "tenant_key": project.tenant_key,
-                    "session_id": str(active_session.id),
                     "context_usage": f"{project.context_used}/{project.context_budget}",
                 }
 
@@ -2074,7 +2060,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 # Import additional models needed for deletion
                 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
                 from src.giljo_mcp.models.products import Vision
-                from src.giljo_mcp.models.projects import Session as ProjectSession
+                # NOTE: Session import removed (Handover 0423 - dead code cleanup)
 
                 # Delete agent jobs (migrated to AgentJob - Handover 0367a)
                 # Note: AgentExecution records will cascade delete via FK relationship
@@ -2137,17 +2123,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     await session.delete(doc_index)
                 deleted_counts["document_indexes"] = len(doc_indexes)
 
-                # Delete sessions
-                session_stmt = select(ProjectSession).where(
-                    and_(
-                        ProjectSession.project_id == project_id,
-                        ProjectSession.tenant_key == tenant_key,
-                    )
-                )
-                sessions = (await session.execute(session_stmt)).scalars().all()
-                for proj_session in sessions:
-                    await session.delete(proj_session)
-                deleted_counts["sessions"] = len(sessions)
+                # NOTE: Session deletion removed (Handover 0423 - dead code cleanup)
 
                 # Delete vision documents
                 vision_stmt = select(Vision).where(

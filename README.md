@@ -546,7 +546,7 @@ The models package has been refactored into domain-specific modules for better o
 ```python
 # Use modular imports for clarity
 from src.giljo_mcp.models.auth import User, APIKey, MCPSession
-from src.giljo_mcp.models.projects import Project, Session
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.agents import MCPAgentJob, AgentInteraction
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.tasks import Task, Message

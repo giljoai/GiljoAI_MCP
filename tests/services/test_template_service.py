@@ -12,7 +12,7 @@ from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.giljo_mcp.models.agent_identity import AgentJob
-from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
@@ -321,14 +321,7 @@ async def test_hard_delete_template_cascades(template_service, tenant_key, sampl
         session.add(sample_template)
 
         # Add related records
-        augmentation = TemplateAugmentation(
-            tenant_key=tenant_key,
-            template_id=sample_template.id,
-            name="Test Augmentation",
-            augmentation_type="prepend",
-            content="Additional instructions",
-        )
-        session.add(augmentation)
+        # NOTE: TemplateAugmentation removed (Handover 0423 - model deleted)
 
         usage_stat = TemplateUsageStats(
             tenant_key=tenant_key,
@@ -363,10 +356,7 @@ async def test_hard_delete_template_cascades(template_service, tenant_key, sampl
         assert deleted is True
 
         # Verify all related records are deleted
-        aug_result = await session.execute(
-            select(TemplateAugmentation).where(TemplateAugmentation.template_id == sample_template.id)
-        )
-        assert aug_result.scalar_one_or_none() is None
+        # NOTE: TemplateAugmentation verification removed (Handover 0423 - model deleted)
 
         stat_result = await session.execute(
             select(TemplateUsageStats).where(TemplateUsageStats.template_id == sample_template.id)
