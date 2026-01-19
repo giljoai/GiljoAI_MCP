@@ -119,6 +119,9 @@ class Product(Base):
         order_by="VisionDocument.display_order",
     )
 
+    # Handover 0390a: 360 Memory Entries
+    memory_entries = relationship("ProductMemoryEntry", back_populates="product", cascade="all, delete-orphan")
+
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
