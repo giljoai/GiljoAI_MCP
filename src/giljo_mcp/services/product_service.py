@@ -1495,12 +1495,22 @@ class ProductService:
         """
         Validate sequential_history entry structure.
 
+        DEPRECATED (Handover 0390d): This method validates JSONB entries which are deprecated.
+        Use ProductMemoryRepository for table-based operations instead.
+        This method will be removed in v4.0.
+
         Args:
             entry: History entry dict to validate
 
         Raises:
             ValueError: If entry structure is invalid
         """
+        import warnings
+        warnings.warn(
+            "_validate_history_entry is deprecated. Use ProductMemoryRepository instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not isinstance(entry, dict):
             raise ValueError("History entry must be a dictionary")
 
@@ -1526,6 +1536,10 @@ class ProductService:
     ) -> Product:
         """
         Add history entry to product_memory.sequential_history (Handover 0138+).
+
+        DEPRECATED (Handover 0390d): This method writes to JSONB which is deprecated.
+        Use ProductMemoryRepository.create_entry() for table-based operations instead.
+        This method will be removed in v4.0.
 
         This helper method provides a clean interface for adding learning entries
         to product memory. It handles:
@@ -1556,6 +1570,12 @@ class ProductService:
             ... )
             >>> assert product.product_memory["sequential_history"][-1]["sequence"] == 1
         """
+        import warnings
+        warnings.warn(
+            "add_learning_to_product_memory is deprecated. Use ProductMemoryRepository.create_entry() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # Fetch product
         query = select(Product).where(
             Product.id == product_id,
