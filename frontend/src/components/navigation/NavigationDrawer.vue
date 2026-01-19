@@ -7,33 +7,23 @@
     permanent
     color="surface"
     width="180"
+    class="navigation-drawer-container"
   >
-    <!-- Logo/Mascot -->
-    <v-list-item class="px-2" style="min-height: 64px">
-      <div class="d-flex justify-center align-center w-100">
-        <!-- Full logo when expanded, small face when collapsed -->
-        <v-img
-          v-if="!rail"
-          :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
-          alt="GiljoAI"
-          height="40"
-          width="auto"
-          max-width="160"
-        ></v-img>
-        <v-avatar v-else size="40">
-          <v-img
-            :src="
-              theme.global.current.value.dark
-                ? '/icons/Giljo_YW_Face.svg'
-                : '/icons/Giljo_BY_Face.svg'
-            "
-            alt="GiljoAI"
-          ></v-img>
-        </v-avatar>
-      </div>
-    </v-list-item>
+    <!-- Edge-Aligned Collapse/Expand Tab -->
+    <div
+      class="edge-toggle-tab"
+      @click="$emit('toggle-rail')"
+      :aria-label="rail ? 'Expand sidebar' : 'Collapse sidebar'"
+      role="button"
+      tabindex="0"
+      @keydown.enter="$emit('toggle-rail')"
+      @keydown.space.prevent="$emit('toggle-rail')"
+    >
+      <v-icon size="20">{{ rail ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+    </div>
 
-    <v-divider></v-divider>
+    <!-- Spacer to align with AppBar height -->
+    <div style="height: 8px"></div>
 
     <!-- Navigation Items -->
     <v-list density="compact" nav v-model:selected="selected" select-strategy="single">
@@ -97,7 +87,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:model-value'])
+const emit = defineEmits(['update:model-value', 'toggle-rail'])
 
 const theme = useTheme()
 const route = useRoute()
@@ -130,6 +120,7 @@ const navigationItems = computed(() => {
     : '/launch?via=jobs'  // Fallback to LaunchRedirectView (shows "No Active Project")
 
   const baseItems = [
+    { name: 'Home', path: '/home', title: 'Home', icon: 'mdi-home' },
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
@@ -192,4 +183,41 @@ const toggleTheme = () => {
 
 <style scoped>
 /* NavigationDrawer styling */
+
+.navigation-drawer-container {
+  overflow: visible !important;
+}
+
+.edge-toggle-tab {
+  position: absolute;
+  right: -16px;
+  top: 10%;
+  transform: translateY(0);
+  width: 32px;
+  height: 32px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.edge-toggle-tab:hover {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.edge-toggle-tab:focus {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+}
+
+.edge-toggle-tab:active {
+  transform: scale(0.95);
+}
 </style>

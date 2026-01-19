@@ -3,9 +3,7 @@
     <AppBar
       v-if="!route.meta.hideAppBar"
       :current-user="currentUser"
-      :rail="rail"
       @toggle-drawer="drawer = !drawer"
-      @toggle-rail="rail = !rail"
     />
 
     <NavigationDrawer
@@ -13,6 +11,7 @@
       v-model="drawer"
       :rail="rail"
       :current-user="currentUser"
+      @toggle-rail="rail = !rail"
     />
 
     <v-main>
