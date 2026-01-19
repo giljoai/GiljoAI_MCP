@@ -1,42 +1,18 @@
 """
 Simple tests for ProjectOrchestrator that don't require database.
+
+Handover 0422: Cleaned up tests for removed dead token budget code.
+Removed tests for: get_context_status(), _get_handoff_reason()
 """
 
 import pytest
 
-from src.giljo_mcp.enums import ProjectStatus
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
+from src.giljo_mcp.enums import ProjectStatus, ContextStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
-class TestContextStatusIndicators:
-    """Test context status color indicators without database."""
-
-    def test_context_status_green(self):
-        """Test GREEN status (< 50%)."""
-        orch = ProjectOrchestrator()
-
-        # Test various percentages under 50%
-        assert orch.get_context_status(0, 10000) == ContextStatus.GREEN
-        assert orch.get_context_status(2500, 10000) == ContextStatus.GREEN  # 25%
-        assert orch.get_context_status(4999, 10000) == ContextStatus.GREEN  # 49.99%
-
-    def test_context_status_yellow(self):
-        """Test YELLOW status (50-80%)."""
-        orch = ProjectOrchestrator()
-
-        # Test various percentages between 50% and 80%
-        assert orch.get_context_status(5000, 10000) == ContextStatus.YELLOW  # 50%
-        assert orch.get_context_status(6500, 10000) == ContextStatus.YELLOW  # 65%
-        assert orch.get_context_status(7999, 10000) == ContextStatus.YELLOW  # 79.99%
-
-    def test_context_status_red(self):
-        """Test RED status (>= 80%)."""
-        orch = ProjectOrchestrator()
-
-        # Test various percentages at or above 80%
-        assert orch.get_context_status(8000, 10000) == ContextStatus.RED  # 80%
-        assert orch.get_context_status(9000, 10000) == ContextStatus.RED  # 90%
-        assert orch.get_context_status(10000, 10000) == ContextStatus.RED  # 100%
+# Handover 0422: Entire TestContextStatusIndicators class removed - tests removed method:
+# - get_context_status() - method removed
 
 
 class TestAgentMissionTemplates:
@@ -107,37 +83,8 @@ class TestProjectStatuss:
         assert not hasattr(ProjectStatus, "PLANNING")
 
 
-class TestHandoffLogic:
-    """Test handoff detection logic."""
-
-    def test_handoff_reason_generation(self):
-        """Test generation of handoff reasons."""
-        from unittest.mock import MagicMock
-
-        orch = ProjectOrchestrator()
-
-        # Mock agent with high context usage
-        agent = MagicMock()
-        agent.context_used = 8500
-        agent.context_budget = 10000
-        agent.status = "active"
-
-        reason = orch._get_handoff_reason(agent)
-        assert "Context usage at 85%" in reason
-
-        # Mock agent with error status
-        agent.context_used = 5000
-        agent.status = "error"
-
-        reason = orch._get_handoff_reason(agent)
-        assert "encountered error" in reason
-
-        # Mock agent with normal usage
-        agent.context_used = 5000
-        agent.status = "active"
-
-        reason = orch._get_handoff_reason(agent)
-        assert "Manual handoff" in reason
+# Handover 0422: Entire TestHandoffLogic class removed - tests removed method:
+# - _get_handoff_reason() - method removed
 
 
 if __name__ == "__main__":

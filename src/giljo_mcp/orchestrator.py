@@ -13,7 +13,7 @@ See: src/giljo_mcp/models/products.py for helper properties
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
-import asyncio
+# import asyncio  # Removed (Handover 0422) - used locally in monitor_messages()
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,9 +27,9 @@ from .services.agent_job_manager import AgentJobManager
 from .agent_selector import AgentSelector
 from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
-from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
+from .enums import AgentRole, ProjectStatus, ProjectType  # ContextStatus removed (Handover 0422)
 from .mission_planner import MissionPlanner
-from .models import AgentTemplate, Message, Product, Project
+from .models import AgentTemplate, Product, Project  # Message removed (Handover 0422)
 from .models.agent_identity import AgentJob, AgentExecution
 from .agent_message_queue import AgentMessageQueue
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
@@ -55,7 +55,7 @@ class ProjectOrchestrator:
     - Multi-project support with tenant isolation
     """
 
-    DEFAULT_AGENT_CONTEXT_BUDGET = 30000  # Default context budget per agent
+    # NOTE: DEFAULT_AGENT_CONTEXT_BUDGET removed in Handover 0422 - passive server cannot track CLI context
 
     # Agent mission templates
     AGENT_MISSIONS = {
@@ -100,7 +100,7 @@ class ProjectOrchestrator:
         """Initialize the orchestrator."""
         self.db_manager = get_db_manager()
         self._active_projects: dict[str, Project] = {}
-        self._context_monitors: dict[str, asyncio.Task] = {}
+        # NOTE: _context_monitors removed in Handover 0422 (passive server)
         # Initialize template generator
         self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
         # Initialize Serena optimization system
@@ -900,9 +900,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             # Cache active project
             self._active_projects[project_id] = project
 
-            # Start context monitoring
-            await self._start_context_monitor(project_id)
-
             logger.info(f"Activated project {project_id}")
             return project
 
@@ -937,9 +934,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             project.status = ProjectStatus.INACTIVE.value
             await session.commit()
             await session.refresh(project)
-
-            # Stop context monitoring
-            await self._stop_context_monitor(project_id)
 
             # Remove from active cache
             self._active_projects.pop(project_id, None)
@@ -977,7 +971,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             await session.refresh(project)
 
             # Clean up
-            await self._stop_context_monitor(project_id)
             self._active_projects.pop(project_id, None)
 
             logger.info(f"Completed project {project_id}")
@@ -1208,225 +1201,11 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             logger.info(f"Spawned {len(created_agents)} agents in parallel for project {project_id}")
             return created_agents
 
-    async def handle_context_limit(self, agent_id: str) -> Optional[Message]:
-        """
-        Handle agent approaching context limit with proper instructions.
-
-        Args:
-            agent_id: Agent UUID
-
-        Returns:
-            Context limit message if needed
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentExecution)
-                .options(joinedload(AgentExecution.job))
-                .where(AgentExecution.agent_id == agent_id)
-            )
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                raise ValueError(f"Agent {agent_id} not found")
-
-            # Check if approaching limit
-            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
-            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
-            if usage_ratio < 0.7:
-                return None
-
-            # Generate context limit instructions
-            instructions = self.template_generator.generate_context_limit_instructions(
-                current_agent=execution.agent_name,
-                next_agent="orchestrator",
-                reason=f"Context usage at {context_used}/{self.DEFAULT_AGENT_CONTEXT_BUDGET} tokens",
-            )
-
-            # Create message with instructions
-            message = Message(
-                tenant_key=execution.tenant_key,
-                project_id=execution.job.project_id,
-                to_agents=[execution.agent_name],
-                message_type="system",
-                content=instructions,
-                priority="high",
-                status="pending",
-            )
-
-            session.add(message)
-            await session.commit()
-            await session.refresh(message)
-
-            logger.warning(f"Agent {execution.agent_name} approaching context limit: {usage_ratio:.1%}")
-            return message
-
-    async def handoff(self, from_agent_id: str, to_agent_id: str, context: dict[str, Any]) -> Message:
-        """
-        Perform intelligent handoff between agents.
-
-        Args:
-            from_agent_id: Source agent UUID
-            to_agent_id: Target agent UUID
-            context: Context to transfer
-
-        Returns:
-            Handoff message
-        """
-        async with self.db_manager.get_session_async() as session:
-            # Get both agents
-            from_result = await session.execute(
-                select(AgentExecution)
-                .options(joinedload(AgentExecution.job))
-                .where(AgentExecution.agent_id == from_agent_id)
-            )
-            from_execution = from_result.scalar_one_or_none()
-
-            to_result = await session.execute(
-                select(AgentExecution)
-                .options(joinedload(AgentExecution.job))
-                .where(AgentExecution.agent_id == to_agent_id)
-            )
-            to_execution = to_result.scalar_one_or_none()
-
-            if not from_execution or not to_execution:
-                raise ValueError("Agent not found")
-
-            if from_execution.job.project_id != to_execution.job.project_id:
-                raise ValueError("Agents must be in same project")
-
-            # Generate handoff instructions
-            handoff_instructions = self.template_generator.generate_handoff_instructions(
-                from_agent=from_execution.agent_name,
-                to_agent=to_execution.agent_name,
-                handoff_context=context,
-            )
-
-            # Get context_used from metadata
-            from_context_used = from_execution.meta_data.get("context_used", 0) if from_execution.meta_data else 0
-
-            # Package handoff context
-            handoff_context = {
-                "from_agent": from_execution.agent_name,
-                "to_agent": to_execution.agent_name,
-                "context_used": from_context_used,
-                "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
-                "handoff_reason": self._get_handoff_reason(from_execution),
-                "transfer_data": context,
-                "handoff_instructions": handoff_instructions,
-            }
-            handoff_context["_from_agent_id"] = from_execution.agent_id  # Store sender in context
-
-            # Create handoff message
-            message = Message(
-                tenant_key=from_execution.tenant_key,
-                project_id=from_execution.job.project_id,
-                to_agents=[to_execution.agent_name],
-                message_type="handoff",
-                content=str(handoff_context),
-                priority="high",
-                status="pending",
-            )
-
-            # Update agent states
-            from_execution.status = "handed_off"
-            to_execution.status = "active"
-
-            session.add(message)
-            await session.commit()
-            await session.refresh(message)
-
-            logger.info(f"Handoff from {from_execution.agent_name} to {to_execution.agent_name}")
-            return message
-
-    async def check_handoff_needed(self, agent_id: str) -> tuple[bool, Optional[str]]:
-        """
-        Check if an agent needs handoff based on context usage.
-
-        Args:
-            agent_id: Agent UUID
-
-        Returns:
-            Tuple of (needs_handoff, reason)
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-            )
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                return False, None
-
-            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
-            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
-
-            if usage_ratio >= 0.8:
-                return True, "Context usage above 80% threshold"
-
-            return False, None
-
-    def get_context_status(self, context_used: int, context_budget: int) -> ContextStatus:
-        """
-        Get color-coded context status.
-
-        Args:
-            context_used: Tokens used
-            context_budget: Total budget
-
-        Returns:
-            ContextStatus enum value
-        """
-        usage_ratio = context_used / context_budget
-
-        if usage_ratio < 0.5:
-            return ContextStatus.GREEN
-        if usage_ratio < 0.8:
-            return ContextStatus.YELLOW
-        return ContextStatus.RED
-
-    async def update_context_usage(self, agent_id: str, tokens_used: int) -> AgentExecution:
-        """
-        Update agent's context usage.
-
-        Args:
-            agent_id: Agent UUID
-            tokens_used: Additional tokens used
-
-        Returns:
-            Updated AgentExecution instance
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentExecution)
-                .options(joinedload(AgentExecution.job))
-                .where(AgentExecution.agent_id == agent_id)
-            )
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                raise ValueError(f"Agent {agent_id} not found")
-
-            # Update execution context in metadata
-            if not execution.meta_data:
-                execution.meta_data = {}
-            current_context = execution.meta_data.get("context_used", 0)
-            execution.meta_data["context_used"] = current_context + tokens_used
-
-            # Also update project context
-            project_result = await session.execute(select(Project).where(Project.id == execution.job.project_id))
-            project = project_result.scalar_one_or_none()
-            if project:
-                project.context_used += tokens_used
-
-            await session.commit()
-            await session.refresh(execution)
-
-            # Check if handoff needed
-            needs_handoff, reason = await self.check_handoff_needed(agent_id)
-            if needs_handoff:
-                logger.warning(f"Agent {execution.agent_name} needs handoff: {reason}")
-
-            return execution
+    # NOTE: The following methods were removed in Handover 0422 (dead token budget code):
+    # - handle_context_limit(), handoff(), check_handoff_needed()
+    # - get_context_status(), update_context_usage()
+    # The MCP server is passive and cannot track external CLI tool context usage.
+    # Manual succession via /gil_handover remains available.
 
     async def get_active_projects(self, tenant_key: Optional[str] = None) -> list[Project]:
         """
@@ -1466,96 +1245,9 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             )
             return result.scalars().all()
 
-    async def get_agent_context_status(self, agent_id: str) -> dict[str, Any]:
-        """
-        Get detailed context status for an agent.
-
-        Args:
-            agent_id: Agent UUID
-
-        Returns:
-            Dict with context status details
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-            )
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                raise ValueError(f"Agent {agent_id} not found")
-
-            context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
-            usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
-            status = self.get_context_status(context_used, self.DEFAULT_AGENT_CONTEXT_BUDGET)
-
-            return {
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name,
-                "context_used": context_used,
-                "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
-                "usage_ratio": usage_ratio,
-                "usage_percentage": round(usage_ratio * 100, 2),
-                "status": status.value,
-                "needs_handoff": usage_ratio >= 0.8,
-            }
-
-    async def _start_context_monitor(self, project_id: str):
-        """Start monitoring context for a project."""
-        if project_id not in self._context_monitors:
-            monitor_task = asyncio.create_task(self._monitor_project_context(project_id))
-            self._context_monitors[project_id] = monitor_task
-
-    async def _stop_context_monitor(self, project_id: str):
-        """Stop monitoring context for a project."""
-        if project_id in self._context_monitors:
-            self._context_monitors[project_id].cancel()
-            del self._context_monitors[project_id]
-
-    async def _monitor_project_context(self, project_id: str):
-        """
-        Background task to monitor project context usage.
-
-        Args:
-            project_id: Project UUID
-        """
-        while True:
-            try:
-                await asyncio.sleep(30)  # Check every 30 seconds
-
-                async with self.db_manager.get_session_async() as session:
-                    # Get project and agents
-                    result = await session.execute(
-                        select(Project).where(Project.id == project_id).options(selectinload(Project.agent_jobs_v2))
-                    )
-                    project = result.scalar_one_or_none()
-
-                    if not project or project.status != ProjectStatus.ACTIVE.value:
-                        break
-
-                    # Check each agent execution
-                    for execution in project.agent_jobs_v2:
-                        if execution.status == "active":
-                            needs_handoff, reason = await self.check_handoff_needed(execution.agent_id)
-                            if needs_handoff:
-                                logger.warning(f"Agent {execution.agent_name} in project {project.name} needs handoff: {reason}")
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.exception(f"Error monitoring project {project_id}: {e}")
-                await asyncio.sleep(60)  # Back off on error
-
-    def _get_handoff_reason(self, execution: AgentExecution) -> str:
-        """Get the reason for handoff based on agent state."""
-        context_used = execution.meta_data.get("context_used", 0) if execution.meta_data else 0
-        usage_ratio = context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
-
-        if usage_ratio >= 0.8:
-            return f"Context usage at {round(usage_ratio * 100)}%"
-        if execution.status == "error":
-            return "Agent encountered error"
-        return "Manual handoff requested"
+    # NOTE: Additional methods removed in Handover 0422:
+    # - get_agent_context_status(), _start_context_monitor(), _stop_context_monitor()
+    # - _monitor_project_context(), _get_handoff_reason()
 
     async def get_tenant_projects(self, tenant_key: str) -> list[Project]:
         """

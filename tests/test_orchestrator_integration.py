@@ -1,6 +1,10 @@
 """
 Integration tests for ProjectOrchestrator with database operations.
 Tests end-to-end functionality with more realistic mocking.
+
+Handover 0422: Cleaned up tests for removed dead token budget code.
+Removed tests for: update_context_usage(), check_handoff_needed(), handoff(),
+_context_monitors, _start_context_monitor(), _stop_context_monitor(), _get_handoff_reason()
 """
 
 import asyncio
@@ -9,8 +13,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.enums import ProjectStatus
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
+from src.giljo_mcp.enums import ProjectStatus, ContextStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 class TestOrchestratorIntegration:
@@ -83,100 +87,9 @@ class TestOrchestratorIntegration:
         result = await orchestrator.cancel_project(mock_project.id)
         assert mock_project.status == ProjectStatus.CANCELLED.value
 
-    @pytest.mark.asyncio
-    async def test_agent_lifecycle_with_handoff(self):
-        """Test agent spawning, work, and handoff."""
-        orchestrator = ProjectOrchestrator()
-
-        # Setup mocks
-        mock_db = AsyncMock()
-        orchestrator.db_manager = mock_db
-
-        mock_session = AsyncMock()
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock()
-        mock_db.get_session_async = MagicMock(return_value=mock_context)
-
-        # Create mock project
-        mock_project = MagicMock()
-        mock_project.id = str(uuid4())
-        mock_project.status = ProjectStatus.ACTIVE.value
-
-        # Test spawning analyzer agent
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,  # Project lookup
-            None,  # No existing agent
-        ]
-
-        analyzer_agent = MagicMock()
-        analyzer_agent.name = "analyzer_1"
-        analyzer_agent.role = AgentRole.ANALYZER.value
-        analyzer_agent.status = "active"
-        analyzer_agent.context_used = 0
-        analyzer_agent.context_budget = 50000
-
-        with patch("src.giljo_mcp.models.Agent") as MockAgent:
-            MockAgent.return_value = analyzer_agent
-            result = await orchestrator.spawn_agent(
-                project_id=mock_project.id, agent_name="analyzer_1", role=AgentRole.ANALYZER
-            )
-
-        assert result == analyzer_agent
-        assert "analyzer responsible for" in analyzer_agent.mission
-
-        # Simulate work and context usage
-        analyzer_agent.context_used = 42000  # 84% usage
-
-        # Test handoff detection
-        mock_session.execute.return_value.scalar_one_or_none.return_value = analyzer_agent
-
-        handoff_check = await orchestrator.check_handoff_needed(analyzer_agent.id)
-        assert handoff_check["needs_handoff"] is True
-        assert handoff_check["context_percentage"] == 84.0
-
-        # Test spawning implementer agent
-        implementer_agent = MagicMock()
-        implementer_agent.name = "implementer_1"
-        implementer_agent.role = AgentRole.IMPLEMENTER.value
-        implementer_agent.status = "inactive"
-        implementer_agent.context_used = 0
-        implementer_agent.context_budget = 50000
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,  # Project lookup
-            None,  # No existing agent
-        ]
-
-        with patch("src.giljo_mcp.models.Agent") as MockAgent:
-            MockAgent.return_value = implementer_agent
-            await orchestrator.spawn_agent(
-                project_id=mock_project.id, agent_name="implementer_1", role=AgentRole.IMPLEMENTER
-            )
-
-        # Test handoff from analyzer to implementer
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_project,
-            analyzer_agent,
-            implementer_agent,
-        ]
-
-        mock_message = MagicMock()
-        with patch("src.giljo_mcp.models.Message") as MockMessage:
-            MockMessage.return_value = mock_message
-
-            handoff_result = await orchestrator.handoff(
-                project_id=mock_project.id,
-                from_agent_name="analyzer_1",
-                to_agent_name="implementer_1",
-                context={"analysis": "Complete system design", "recommendations": ["Use async", "SQLAlchemy ORM"]},
-            )
-
-        assert handoff_result["success"] is True
-        assert analyzer_agent.status == "database_initialized"
-        assert implementer_agent.status == "active"
-        assert mock_message.from_agent == "analyzer_1"
-        assert mock_message.to_agent == "implementer_1"
+    # Handover 0422: test_agent_lifecycle_with_handoff removed - tests removed methods:
+    # - check_handoff_needed() - method removed
+    # - handoff() - method removed
 
     @pytest.mark.asyncio
     async def test_multi_project_resource_allocation(self):
@@ -222,59 +135,10 @@ class TestOrchestratorIntegration:
         assert result["total_allocated"] == 120000
         assert len(result["projects"]) == 3
 
-    @pytest.mark.asyncio
-    async def test_context_monitoring_triggers_handoff(self):
-        """Test that context monitoring can trigger automatic handoffs."""
-        orchestrator = ProjectOrchestrator()
-
-        # Setup mocks
-        mock_db = AsyncMock()
-        orchestrator.db_manager = mock_db
-
-        mock_session = AsyncMock()
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock()
-        mock_db.get_session_async = MagicMock(return_value=mock_context)
-
-        # Create project and agent nearing context limit
-        mock_project = MagicMock()
-        mock_project.id = "test-project"
-        mock_project.status = ProjectStatus.ACTIVE.value
-
-        mock_agent = MagicMock()
-        mock_agent.id = "agent1"
-        mock_agent.name = "analyzer"
-        mock_agent.context_used = 44000
-        mock_agent.context_budget = 50000  # 88% usage
-        mock_agent.status = "active"
-
-        # Add project to active projects
-        orchestrator._active_projects[mock_project.id] = mock_project
-
-        # Setup mock returns
-        mock_session.execute.return_value.scalars.return_value.all.return_value = [mock_agent]
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_agent
-
-        # Mock check_handoff_needed to return True
-        with patch.object(orchestrator, "check_handoff_needed", new_callable=AsyncMock) as mock_check:
-            mock_check.return_value = {
-                "needs_handoff": True,
-                "reason": "Context usage at 88%",
-                "context_percentage": 88.0,
-            }
-
-            # Start monitoring
-            await orchestrator._start_context_monitor(mock_project.id)
-
-            # Wait briefly for monitor to run
-            await asyncio.sleep(0.1)
-
-            # Stop monitoring
-            await orchestrator._stop_context_monitor(mock_project.id)
-
-            # Verify handoff check was called
-            mock_check.assert_called_with(mock_agent.id)
+    # Handover 0422: test_context_monitoring_triggers_handoff removed - tests removed methods:
+    # - check_handoff_needed() - method removed
+    # - _start_context_monitor() - method removed
+    # - _stop_context_monitor() - method removed
 
     @pytest.mark.asyncio
     async def test_tenant_isolation(self):
@@ -317,53 +181,9 @@ class TestOrchestratorIntegration:
         # This is implicitly tested by the return values matching tenant keys
 
 
-class TestContextStatusCalculations:
-    """Test context status color coding calculations."""
-
-    def test_context_percentage_calculations(self):
-        """Test accurate percentage calculations."""
-        orchestrator = ProjectOrchestrator()
-
-        # Test exact boundaries
-        assert orchestrator.get_context_status(0, 100) == ContextStatus.GREEN
-        assert orchestrator.get_context_status(49, 100) == ContextStatus.GREEN
-        assert orchestrator.get_context_status(50, 100) == ContextStatus.YELLOW
-        assert orchestrator.get_context_status(79, 100) == ContextStatus.YELLOW
-        assert orchestrator.get_context_status(80, 100) == ContextStatus.RED
-        assert orchestrator.get_context_status(100, 100) == ContextStatus.RED
-
-        # Test with different scales
-        assert orchestrator.get_context_status(25000, 50000) == ContextStatus.YELLOW  # 50%
-        assert orchestrator.get_context_status(120000, 150000) == ContextStatus.RED  # 80%
-
-        # Test edge case - zero budget
-        assert orchestrator.get_context_status(0, 0) == ContextStatus.GREEN
-
-    def test_handoff_reason_generation(self):
-        """Test that handoff reasons are properly generated."""
-        orchestrator = ProjectOrchestrator()
-
-        # High context usage
-        agent = MagicMock()
-        agent.context_used = 85000
-        agent.context_budget = 100000
-        agent.status = "active"
-
-        reason = orchestrator._get_handoff_reason(agent)
-        assert "Context usage at 85%" in reason
-
-        # Error status
-        agent.context_used = 30000
-        agent.status = "error"
-
-        reason = orchestrator._get_handoff_reason(agent)
-        assert "encountered error" in reason
-
-        # Manual handoff
-        agent.status = "active"
-
-        reason = orchestrator._get_handoff_reason(agent)
-        assert "Manual handoff" in reason
+# Handover 0422: Entire TestContextStatusCalculations class removed - tests removed methods:
+# - get_context_status() - method removed
+# - _get_handoff_reason() - method removed
 
 
 class TestAgentRoleTemplates:
