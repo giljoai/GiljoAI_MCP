@@ -114,6 +114,11 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0390 | 360 Memory Normalization (Master Plan) | **COMPLETE** (2026-01-18) |
+| 0390a | Add Product Memory Entries Table | **COMPLETE** (2026-01-18) |
+| 0390b | Switch Reads to Table | **COMPLETE** (2026-01-18) |
+| 0390c | Stop JSONB Writes | **COMPLETE** (2026-01-18) |
+| 0390d | Deprecate JSONB Column | **COMPLETE** (2026-01-18) |
 | 0389 | Dynamic Agent Name Examples in cli_mode_rules | **COMPLETE** (2026-01-04) |
 | 0388 | Fix Orchestrator ID vs Agent ID Confusion | **COMPLETE** (2026-01-04) |
 | 0383 | Spawn Response Task Tool Clarity | **COMPLETE** (2026-01-02) |
@@ -222,6 +227,18 @@ Located in `handovers/cancelled/`:
 ---
 
 ## Completed Series
+
+### 360 Memory Normalization (0390 Series)
+**Status:** 100% Complete (January 2026)
+- 0390: Master plan for JSONB to table migration
+- 0390a: Add `product_memory_entries` table with foreign keys and indexes
+- 0390b: Switch all read operations to use table via `ProductMemoryRepository`
+- 0390c: Stop all writes to JSONB `sequential_history` array
+- 0390d: Mark JSONB column as deprecated (removal scheduled for v4.0)
+- **Result**: Normalized architecture with proper relational integrity
+- **Benefits**: Foreign key constraints, better query performance, cleaner data model
+- **Migration**: No data loss - existing JSONB data preserved but not read
+- Commits: ce261093 (Phase 3), 1e80677d (Phase 2), 81e58aa1 (frontend verification)
 
 ### Greptile Security Remediation (1000 Series)
 **Status:** 80% Complete (12/15 handovers, December 2025)
@@ -439,7 +456,7 @@ completed/reference/
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
 - **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
-- **0390-0399**: Gaps in 0301-0400 range (0388, 0389 now used)
+- **0391-0399**: Gaps in 0301-0400 range (0388-0390 now used)
 - **0409+**: Next sequential after current development (0400-0408 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
@@ -456,6 +473,15 @@ completed/reference/
 ---
 
 ## History
+
+### January 2026
+- **0390 Series: 360 Memory Normalization (2026-01-18)**: Complete migration from JSONB to normalized table
+  - 0390: Master plan for JSONB to table migration
+  - 0390a: Add `product_memory_entries` table with foreign keys
+  - 0390b: Switch all reads to table via `ProductMemoryRepository`
+  - 0390c: Stop all writes to JSONB `sequential_history` array
+  - 0390d: Mark JSONB column as deprecated (removal in v4.0)
+  - Result: Proper relational integrity with foreign keys and indexes
 
 ### December 2025
 - **Numbering Cleanup (2025-12-19)**: Resolved conflicts for Alpha Trial series

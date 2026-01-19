@@ -2234,30 +2234,20 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         }
 
         # Mark 360 memory entries as deleted by user (preserve historical reference)
+        # Uses ProductMemoryRepository for table-based operations (Handover 0390c)
         if project.product_id:
-            from sqlalchemy.orm.attributes import flag_modified
-            from src.giljo_mcp.models.products import Product
+            from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-            product_stmt = select(Product).where(
-                and_(
-                    Product.id == project.product_id,
-                    Product.tenant_key == project.tenant_key,
-                )
+            repo = ProductMemoryRepository()
+            deleted_count = await repo.mark_entries_deleted(
+                session=session,
+                project_id=project.id,
+                tenant_key=project.tenant_key,
             )
-            product_result = await session.execute(product_stmt)
-            parent_product = product_result.scalar_one_or_none()
-
-            if parent_product and parent_product.product_memory:
-                product_memory = parent_product.product_memory
-                sequential_history = product_memory.get("sequential_history", [])
-
-                for entry in sequential_history:
-                    if isinstance(entry, dict) and entry.get("project_id") == project.id:
-                        entry["deleted_by_user"] = True
-                        entry["user_deleted_at"] = datetime.utcnow().isoformat()
-
-                parent_product.product_memory = product_memory
-                flag_modified(parent_product, "product_memory")
+            if deleted_count > 0:
+                self._logger.info(
+                    f"Marked {deleted_count} memory entries as deleted for project {project.id}"
+                )
 
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
         agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)
