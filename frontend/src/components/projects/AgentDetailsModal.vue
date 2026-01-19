@@ -22,7 +22,7 @@
             <v-chip size="small" :color="getAgentDisplayNameColor(agent.agent_display_name)" label>
               {{ agent.agent_display_name }}
             </v-chip>
-            <span class="text-caption text-medium-emphasis">ID: {{ agent.id }}</span>
+            <span class="text-caption text-medium-emphasis">Agent ID: {{ agent.agent_id || agent.id || '—' }}</span>
           </div>
         </div>
 
