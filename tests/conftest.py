@@ -35,6 +35,9 @@ from tests.fixtures.base_fixtures import (
     test_messages,
     test_project,
 )
+
+# Import Product model for test_product fixture
+from src.giljo_mcp.models import Product
 from tests.helpers.async_helpers import AsyncMockManager, DatabaseTestHelper, TimeoutHelper
 from tests.helpers.mock_servers import ExternalServiceMocks
 
@@ -159,8 +162,10 @@ async def orchestration_service_with_session(db_session, db_manager, tenant_mana
 
 
 @pytest_asyncio.fixture(scope="function")
-async def project_service_with_session(db_session, db_manager, tenant_manager):
+async def project_service_with_session(db_session, db_manager, tenant_manager, test_tenant_key):
     """ProjectService using shared test session for E2E/integration tests."""
+    # Set the tenant context for the service
+    tenant_manager.set_current_tenant(test_tenant_key)
     return ProjectService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
@@ -268,8 +273,8 @@ def api_client():
 @pytest_asyncio.fixture(scope="function")
 async def test_tenant_key():
     """Generate a test tenant key"""
-    import uuid
-    return str(uuid.uuid4())
+    from src.giljo_mcp.tenant import TenantManager
+    return TenantManager.generate_tenant_key()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -344,6 +349,27 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
     await db_session.commit()
 
     return job, execution
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_product(db_session, test_tenant_key):
+    """Create a test product for testing."""
+    import uuid
+
+    product = Product(
+        id=str(uuid.uuid4()),
+        name="Test Product",
+        description="Test product for repository testing",
+        tenant_key=test_tenant_key,
+        is_active=True,
+        product_memory={},
+    )
+
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+
+    return product
 
 
 # Performance benchmarking fixtures

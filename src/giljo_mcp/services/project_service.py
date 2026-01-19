@@ -2072,9 +2072,9 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 }
 
                 # Import additional models needed for deletion
-                from giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
-                from giljo_mcp.models.products import Vision
-                from giljo_mcp.models.projects import Session as ProjectSession
+                from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
+                from src.giljo_mcp.models.products import Vision
+                from src.giljo_mcp.models.projects import Session as ProjectSession
 
                 # Delete agent jobs (migrated to AgentJob - Handover 0367a)
                 # Note: AgentExecution records will cascade delete via FK relationship
