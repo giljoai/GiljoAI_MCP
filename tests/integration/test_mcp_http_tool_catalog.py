@@ -16,9 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 MCP_ENDPOINT = "/mcp"
 
 # Source of truth: api/endpoints/mcp_http.py tool_map keys (Jan 2026)
+# NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
 EXPECTED_TOOL_NAMES = {
     "acknowledge_job",
     "check_succession_status",
+    "close_project_and_update_memory",
     "complete_job",
     "create_successor_orchestrator",
     "create_task",
@@ -28,9 +30,7 @@ EXPECTED_TOOL_NAMES = {
     "get_orchestrator_instructions",
     "get_pending_jobs",
     "get_workflow_status",
-    "gil_activate",
     "gil_handover",
-    "gil_launch",
     "health_check",
     "list_messages",
     "orchestrate_project",
@@ -41,6 +41,7 @@ EXPECTED_TOOL_NAMES = {
     "spawn_agent_job",
     "update_agent_mission",
     "update_project_mission",
+    "write_360_memory",
 }
 
 

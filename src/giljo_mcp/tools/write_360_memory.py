@@ -1,8 +1,10 @@
 """
-Write 360 Memory Tool (Handover 0412)
+Write 360 Memory Tool (Handover 0412, updated 0390c)
 
 Allows agents to write 360 memory entries during handovers or project completion.
 Similar to close_project_and_update_memory but more flexible for agent usage.
+
+Phase 2 (0390c): Updated to write to product_memory_entries table instead of JSONB array.
 """
 
 import logging
@@ -10,15 +12,17 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from inspect import iscoroutine
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -45,7 +49,7 @@ async def write_360_memory(
     """
     Write a 360 memory entry for project completion or handover.
 
-    This tool allows agents to append entries to Product.product_memory.sequential_history
+    This tool allows agents to create entries in the product_memory_entries table
     during handovers or at project completion.
 
     Args:
@@ -60,7 +64,7 @@ async def write_360_memory(
         session: Optional existing session
 
     Returns:
-        Success/error dictionary with sequence number
+        Success/error dictionary with sequence number and entry_id
     """
     if not project_id:
         return {"success": False, "error": "project_id is required"}
@@ -143,13 +147,10 @@ async def write_360_memory(
             if not product:
                 return {"success": False, "error": "Product not found for project"}
 
-            # Get or initialize product_memory
+            # Get or initialize product_memory for git config
             product_memory: Dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
-
-            sequential_history: List[Dict[str, Any]] = product_memory.get("sequential_history") or []
-            product_memory["sequential_history"] = sequential_history
 
             # Get git configuration and fetch commits if enabled
             git_config = _get_git_config(product_memory)
@@ -167,17 +168,23 @@ async def write_360_memory(
             if git_commits is None:
                 git_commits = []
 
-            # Calculate next sequence number
-            sequence_number = (
-                max([entry.get("sequence", 0) for entry in sequential_history if isinstance(entry, dict)] or [0]) + 1
+            # Initialize repository
+            repo = ProductMemoryRepository()
+
+            # Get next sequence number atomically
+            sequence_number = await repo.get_next_sequence(
+                session=active_session,
+                product_id=UUID(product.id),
             )
 
             # Get author information if job_id provided
-            author_info = {}
+            author_name = None
+            author_type = None
             if author_job_id:
                 # Query the current execution for this job to get agent_name
                 execution_stmt = (
                     select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
                     .where(
                         AgentExecution.job_id == author_job_id,
                         AgentExecution.tenant_key == tenant_key,
@@ -188,45 +195,49 @@ async def write_360_memory(
                 execution_result = await active_session.execute(execution_stmt)
                 execution = execution_result.scalar_one_or_none()
                 if execution:
-                    author_info = {
-                        "author_job_id": author_job_id,
-                        "author_name": execution.agent_name or execution.agent_display_name,
-                        "author_type": execution.job.job_type if execution.job else None,
-                    }
+                    author_name = execution.agent_name or execution.agent_display_name
+                    author_type = execution.job.job_type if execution.job else None
 
-            # Build history entry
-            history_entry = {
-                "sequence": sequence_number,
-                "project_id": project_id,
-                "project_name": project.name,
-                "type": entry_type,
-                "timestamp": datetime.utcnow().isoformat(),
-                "summary": summary,
-                "key_outcomes": key_outcomes,
-                "decisions_made": decisions_made,
-                "git_commits": git_commits,
-                "source": "write_360_memory_v1",
-                **author_info,  # Add author info if available
-            }
-
-            # Append to history and save
-            sequential_history.append(history_entry)
-            product.product_memory = dict(product_memory)
-            product.updated_at = datetime.utcnow()
-            flag_modified(product, "product_memory")
-            await active_session.flush()
+            # Create entry in product_memory_entries table
+            entry = await repo.create_entry(
+                session=active_session,
+                tenant_key=tenant_key,
+                product_id=UUID(product.id),
+                project_id=UUID(project_id),
+                sequence=sequence_number,
+                entry_type=entry_type,
+                source="write_360_memory_v1",
+                timestamp=datetime.utcnow(),
+                project_name=project.name,
+                summary=summary,
+                key_outcomes=key_outcomes,
+                decisions_made=decisions_made,
+                git_commits=git_commits,
+                author_job_id=UUID(author_job_id) if author_job_id else None,
+                author_name=author_name,
+                author_type=author_type,
+            )
 
             if owns_session:
                 await active_session.commit()
 
             logger.info(
-                f"Wrote 360 Memory entry for product {product.id} "
+                f"Wrote 360 Memory entry {entry.id} for product {product.id} "
                 f"(sequence: {sequence_number}, type: {entry_type}, commits: {len(git_commits)})"
+            )
+
+            # Emit WebSocket event (Handover 0390c Phase 4)
+            await _emit_websocket_event(
+                event_type="product:memory:updated",
+                tenant_key=tenant_key,
+                product_id=str(product.id),
+                data={"entry": entry.to_dict()},
             )
 
             return {
                 "success": True,
                 "sequence_number": sequence_number,
+                "entry_id": str(entry.id),
                 "git_commits_count": len(git_commits),
                 "entry_type": entry_type,
                 "message": "360 Memory entry written successfully",
@@ -235,6 +246,41 @@ async def write_360_memory(
     except Exception as exc:
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
+
+
+async def _emit_websocket_event(
+    event_type: str,
+    tenant_key: str,
+    product_id: str,
+    data: Dict[str, Any],
+) -> None:
+    """
+    Emit WebSocket event; graceful no-op if manager unavailable.
+
+    Args:
+        event_type: Event type (e.g., "product:memory:updated")
+        tenant_key: Tenant isolation key
+        product_id: Product UUID
+        data: Event payload data
+
+    Side Effects:
+        - Broadcasts event to tenant WebSocket clients
+        - Logs warning if WebSocket fails (doesn't crash operation)
+    """
+    try:
+        # Import app to access websocket manager from app state
+        from api.app import app
+
+        websocket_manager = getattr(app.state, "websocket_manager", None)
+
+        if websocket_manager:
+            await websocket_manager.broadcast_to_tenant(
+                tenant_key=tenant_key,
+                event_type=event_type,
+                data={"product_id": product_id, **data},
+            )
+    except Exception as exc:
+        logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
 
 def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:

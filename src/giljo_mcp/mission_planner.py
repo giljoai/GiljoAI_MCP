@@ -1253,26 +1253,40 @@ Success Criteria:
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def _get_memory_summary(self, product: Product, max_entries: int = 3) -> dict:
+    async def _get_memory_summary(
+        self,
+        session,
+        product_id: str,
+        tenant_key: str,
+        max_entries: int = 3
+    ) -> dict:
         """
         Get brief summary of 360 memory for reference tier (Handover 0347b).
 
+        Updated in Handover 0390b: Reads from product_memory_entries table.
+
         Args:
-            product: Product model with product_memory JSONB field
+            session: AsyncSession for database access
+            product_id: Product UUID
+            tenant_key: Tenant identifier
             max_entries: Maximum number of project entries to include
 
         Returns:
             dict: Summary with project count and fetch tool pointer
         """
-        if not product.product_memory:
-            return {
-                "total_projects": 0,
-                "summary": "No project history available",
-                "fetch_tool": None
-            }
+        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-        sequential_history = product.product_memory.get("sequential_history", [])
-        total_projects = len(sequential_history)
+        repo = ProductMemoryRepository()
+
+        # Get recent projects for brief summary
+        recent_projects = await repo.get_entries_for_context(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=max_entries,
+        )
+
+        total_projects = len(recent_projects)
 
         if total_projects == 0:
             return {
@@ -1280,9 +1294,6 @@ Success Criteria:
                 "summary": "No project history available",
                 "fetch_tool": None
             }
-
-        # Get most recent N projects for brief summary
-        recent_projects = sequential_history[-max_entries:] if total_projects > 0 else []
 
         return {
             "total_projects": total_projects,
@@ -2131,7 +2142,12 @@ Partial reading defeats the purpose of this configuration."""
         memory_priority = effective_priorities.get("memory_360", 4)
         if memory_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             memory_depth = depth_config.get("memory_360", 5)
-            memory_summary = await self._get_memory_summary(product, max_entries=memory_depth)
+            memory_summary = await self._get_memory_summary(
+                session=session,
+                product_id=str(product.id),
+                tenant_key=product.tenant_key,
+                max_entries=memory_depth
+            )
 
             # Add depth information to the summary
             memory_content = {
@@ -2198,9 +2214,19 @@ Partial reading defeats the purpose of this configuration."""
 
         return result
 
-    async def _extract_product_history(self, product: Product, priority: int, max_entries: int = 10) -> str:
+    async def _extract_product_history(
+        self,
+        session,
+        product_id: str,
+        tenant_key: str,
+        priority: int,
+        max_entries: int = 10,
+        product: Optional[Product] = None
+    ) -> str:
         """
-        Extract project history from product_memory.sequential_history with priority-based detail levels.
+        Extract project history from product_memory_entries table with priority-based detail levels.
+
+        Updated in Handover 0390b: Reads from product_memory_entries table instead of JSONB.
 
         Includes comprehensive instructions for orchestrators on:
         - How to read and interpret 360 Memory history
@@ -2216,59 +2242,58 @@ Partial reading defeats the purpose of this configuration."""
         - 0 (exclude): Return empty string
 
         Args:
-            product: Product model with product_memory JSONB field containing sequential_history array
+            session: AsyncSession for database access
+            product_id: Product UUID
+            tenant_key: Tenant identifier
             priority: Field priority (0-10 scale) controlling detail level of EACH entry
             max_entries: Number of history entries to include (controlled by depth config, Handover 0283)
+            product: Optional Product model (for git integration config access)
 
         Returns:
             Formatted markdown string with historical context + memory instructions, or empty string if excluded
 
         Multi-Tenant Isolation:
-            Product is already tenant-filtered by upstream code. No additional filtering needed.
+            Repository filters by tenant_key automatically.
         """
         from src.giljo_mcp.prompt_generation.memory_instructions import MemoryInstructionGenerator
+        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
         # Priority 0: Exclude entirely
         if priority == 0:
             return ""
 
-        # Check if product has history
-        if not product.product_memory:
-            return ""
+        # Fetch history from table
+        repo = ProductMemoryRepository()
+        history = await repo.get_entries_for_context(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=max_entries,
+        )
 
-        history = product.product_memory.get("sequential_history", [])
+        # Check git integration status (still in JSONB)
+        git_enabled = False
+        if product and product.product_memory:
+            git_integration = product.product_memory.get("git_integration", {})
+            git_enabled = git_integration.get("enabled", False)
 
-        # Filter out None/invalid entries (defensive against malformed data)
-        valid_history = [h for h in history if h is not None and isinstance(h, dict)]
-
-        # Check git integration status
-        git_integration = product.product_memory.get("git_integration", {})
-        git_enabled = git_integration.get("enabled", False)
-
-        # If no valid history, just return instructions for first project
-        if not valid_history:
+        # If no history, return instructions for first project
+        if not history:
             instructions_gen = MemoryInstructionGenerator()
             return instructions_gen.generate_context(sequential_history=[], priority=priority, git_enabled=git_enabled)
-
-        # Sort by sequence descending (most recent first)
-        sorted_history = sorted(valid_history, key=lambda x: x.get("sequence", 0), reverse=True)
 
         # Determine detail level based on priority (controls content detail, not count)
         detail_level = self._get_detail_level(priority)
 
-        # Handover 0283: Use max_entries to determine count (controlled by depth config)
-        # Priority controls the detail level of EACH entry, not the number of entries
-        entries_to_show = sorted_history[:max_entries]
-
         # Build formatted context - historical entries first
         sections = ["## Historical Context (360 Memory)\n"]
         sections.append(
-            f"Product has {len(valid_history)} previous project(s) in history. "
-            f"Showing {len(entries_to_show)} most recent:\n"
+            f"Product has {len(history)} previous project(s) in history. "
+            f"Showing {len(history)} most recent:\n"
         )
 
         # Format each history entry
-        for entry in entries_to_show:
+        for entry in history:
             seq = entry.get("sequence", "?")
             project_name = entry.get("project_name", "Unknown Project")
             timestamp = entry.get("timestamp", "")[:10]  # YYYY-MM-DD only
@@ -2299,7 +2324,7 @@ Partial reading defeats the purpose of this configuration."""
         # Add memory instructions from MemoryInstructionGenerator
         instructions_gen = MemoryInstructionGenerator()
         memory_instructions = instructions_gen.generate_context(
-            sequential_history=valid_history, priority=priority, git_enabled=git_enabled
+            sequential_history=history, priority=priority, git_enabled=git_enabled
         )
 
         # Combine history entries with instructions
@@ -2309,14 +2334,14 @@ Partial reading defeats the purpose of this configuration."""
         result = "\n".join(sections)
 
         logger.debug(
-            f"Extracted 360 Memory history: {len(entries_to_show)} entries + instructions, "
+            f"Extracted 360 Memory history: {len(history)} entries + instructions, "
             f"{self._count_tokens(result)} tokens (detail={detail_level})",
             extra={
-                "product_id": str(product.id),
+                "product_id": product_id,
                 "priority": priority,
                 "detail_level": detail_level,
-                "entries_shown": len(entries_to_show),
-                "total_entries": len(valid_history),
+                "entries_shown": len(history),
+                "total_entries": len(history),
                 "tokens": self._count_tokens(result),
             },
         )

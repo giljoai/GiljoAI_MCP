@@ -1,8 +1,8 @@
 # 360 Memory Management
 
-**Version**: v3.1+
-**Last Updated**: 2025-11-26
-**Status**: Implemented (Handovers 0135-0139, 0249)
+**Version**: v3.3+
+**Last Updated**: 2026-01-18
+**Status**: Implemented (Handovers 0135-0139, 0249, 0390 Series)
 
 ## Overview
 
@@ -14,57 +14,71 @@
 
 ### Database Schema
 
-**Critical**: Memory is stored in `Product.product_memory` JSONB column, **NOT** in `config_data`.
+**Architecture**: Normalized `product_memory_entries` table (v3.3+, Handover 0390)
+
+**DEPRECATED**: `Product.product_memory.sequential_history` JSONB array is deprecated.
+Do not read from or write to this field. Use the `product_memory_entries` table via `ProductMemoryRepository`.
 
 ```python
-class Product(Base):
-    __tablename__ = 'products'
+class ProductMemoryEntry(Base):
+    __tablename__ = 'product_memory_entries'
 
     id = Column(UUID, primary_key=True)
-    product_memory = Column(JSONB, nullable=True)  # ← Memory stored here
-    config_data = Column(JSONB, nullable=True)     # ← Configuration here (separate)
+    product_id = Column(UUID, ForeignKey('products.id', ondelete='CASCADE'))
+    project_id = Column(UUID, ForeignKey('projects.id', ondelete='SET NULL'), nullable=True)
+    sequence = Column(Integer, nullable=False)
+    entry_type = Column(String(50), nullable=False)
+    summary = Column(Text, nullable=False)
+    key_outcomes = Column(ARRAY(Text), nullable=True)
+    decisions_made = Column(ARRAY(Text), nullable=True)
+    git_commits = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 ```
 
-**Sequential Numbering**: Projects are numbered chronologically (1, 2, 3, ...) for history tracking.
+**Key Features**:
+- Foreign key relationships with cascade delete (product) and soft-delete (project)
+- Proper indexes for query performance
+- Sequential numbering maintained via database sequence
+- Projects numbered chronologically (1, 2, 3, ...) for history tracking
 
-### Data Structure
+### Data Structure (Normalized Table)
 
-```json
+**Current Architecture** (v3.3+):
+Memory entries are stored as normalized table rows in `product_memory_entries`:
+
+```python
+# Example entry from database
 {
-  "product_memory": {
-    "objectives": ["Initial objectives..."],
-    "decisions": ["Key architectural decisions..."],
-    "context": {
-      "technical_stack": "Python/FastAPI/PostgreSQL/Vue3",
-      "deployment_target": "Local/network"
-    },
-    "knowledge_base": {
-      "lessons_learned": ["Lessons from previous projects..."],
-      "best_practices": ["Established patterns..."]
-    },
-    "sequential_history": [
-      {
-        "sequence": 1,
-        "type": "project_closeout",
-        "project_id": "uuid-123",
-        "project_name": "Initial Setup",
-        "summary": "Set up authentication system...",
-        "key_outcomes": ["JWT implemented", "OAuth2 integrated"],
-        "decisions_made": ["Chose RS256 over HS256", "Redis for sessions"],
-        "git_commits": [  // Optional: Only with GitHub integration
-          {
+    "id": "uuid-789",
+    "product_id": "uuid-456",
+    "project_id": "uuid-123",
+    "sequence": 1,
+    "entry_type": "project_closeout",
+    "summary": "Set up authentication system...",
+    "key_outcomes": ["JWT implemented", "OAuth2 integrated"],
+    "decisions_made": ["Chose RS256 over HS256", "Redis for sessions"],
+    "git_commits": [  # Optional: Only with GitHub integration
+        {
             "hash": "abc123",
             "message": "feat: Add OAuth2 provider",
             "author": "developer@example.com",
             "timestamp": "2025-11-16T10:00:00Z"
-          }
-        ],
-        "timestamp": "2025-11-16T10:00:00Z"
-      }
-    ]
+        }
+    ],
+    "created_at": "2025-11-16T10:00:00Z"
+}
+```
+
+**DEPRECATED Structure** (JSONB, pre-v3.3):
+```json
+{
+  "product_memory": {
+    "sequential_history": [...]  # DEPRECATED - Do not use
   }
 }
 ```
+
+**Note**: Git integration settings remain in `Product.product_memory.git_integration` JSONB field.
 
 ---
 
@@ -182,10 +196,15 @@ When memory is updated, a WebSocket event is emitted:
 
 ### Service Layer
 
-**ProductService** (`src/giljo_mcp/services/product_service.py`):
-- `update_product_memory()` - Adds new entry to sequential_history
-- `get_product_memory()` - Retrieves memory for orchestrator context
-- `clear_product_memory()` - Resets memory (admin only)
+**ProductMemoryRepository** (`src/giljo_mcp/repositories/product_memory_repository.py`):
+- `create_entry()` - Adds new entry to `product_memory_entries` table
+- `get_entries()` - Retrieves memory entries for orchestrator context
+- `get_next_sequence()` - Gets next sequence number for product
+- `delete_entries_for_product()` - Removes all entries (cascade on product delete)
+
+**Deprecated** (JSONB approach, pre-v3.3):
+- ~~`update_product_memory()`~~ - Deprecated, use `ProductMemoryRepository.create_entry()`
+- ~~`get_product_memory()`~~ - Deprecated, use `ProductMemoryRepository.get_entries()`
 
 ### API Endpoints
 
@@ -197,9 +216,39 @@ When memory is updated, a WebSocket event is emitted:
 
 ---
 
+## Migration Notes (0390 Series)
+
+**Timeline**: January 2026 (v3.3)
+
+### What Changed
+
+The 0390 handover series migrated 360 memory from JSONB arrays to a normalized `product_memory_entries` table:
+
+1. **0390a**: Added `product_memory_entries` table with proper foreign keys
+2. **0390b**: Updated all read operations to use the table
+3. **0390c**: Stopped all writes to JSONB `sequential_history` array
+4. **0390d**: Marked JSONB column as deprecated (scheduled for removal in v4.0)
+
+### Why the Change
+
+The normalized architecture provides:
+- **Proper relational integrity**: Foreign keys with cascade delete
+- **Better query performance**: Indexes on product_id and sequence
+- **Cleaner data model**: No nested JSONB arrays to manage
+- **Easier maintenance**: Standard SQL operations instead of JSONB manipulation
+
+### For Developers
+
+- **Use**: `ProductMemoryRepository` for all memory operations
+- **Avoid**: Reading or writing `Product.product_memory.sequential_history`
+- **Migration**: Existing JSONB data remains but is not read; table is source of truth
+- **Removal**: JSONB column will be dropped in v4.0
+
+---
+
 ## See Also
 
 - [CLAUDE.md](../CLAUDE.md) - 360 Memory Management section
 - [SERVICES.md](../SERVICES.md) - ProductService memory methods
 - [ORCHESTRATOR.md](../ORCHESTRATOR.md) - How orchestrators use memory
-- Handovers: 0135-0139 (implementation), 0249 (closeout workflow)
+- Handovers: 0135-0139 (implementation), 0249 (closeout workflow), 0390 (normalization)

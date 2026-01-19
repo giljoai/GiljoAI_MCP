@@ -125,6 +125,7 @@ class Project(Base):
     visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
     context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
     document_indexes = relationship("LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan")
+    memory_entries = relationship("ProductMemoryEntry", back_populates="project")  # Handover 0390a
 
     __table_args__ = (
         Index("idx_project_tenant", "tenant_key"),

@@ -12,11 +12,11 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -116,9 +116,6 @@ async def close_project_and_update_memory(
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
-            sequential_history: List[Dict[str, Any]] = product_memory.get("sequential_history") or []
-            product_memory["sequential_history"] = sequential_history
-
             git_config = _get_git_config(product_memory)
             git_commits: Optional[List[Dict[str, Any]]] = None
 
@@ -134,8 +131,11 @@ async def close_project_and_update_memory(
             if git_commits is None:
                 git_commits = []
 
-            sequence_number = (
-                max([entry.get("sequence", 0) for entry in sequential_history if isinstance(entry, dict)] or [0]) + 1
+            # Use repository for atomic sequence generation and entry creation
+            repo = ProductMemoryRepository()
+            sequence_number = await repo.get_next_sequence(
+                session=active_session,
+                product_id=product.id
             )
 
             deliverables = _extract_deliverables(key_outcomes)
@@ -145,41 +145,48 @@ async def close_project_and_update_memory(
             token_estimate = _estimate_tokens(summary, key_outcomes, decisions_made)
             metrics = _build_metrics(git_commits, project.meta_data or {})
 
-            history_entry = {
-                "sequence": sequence_number,
-                "project_id": project_id,
-                "project_name": project.name,
-                "type": "project_closeout",
-                "timestamp": datetime.utcnow().isoformat(),
-                "summary": summary,
-                "key_outcomes": key_outcomes,
-                "decisions_made": decisions_made,
-                "deliverables": deliverables,
-                "metrics": metrics,
-                "git_commits": git_commits,
-                "priority": priority,
-                "significance_score": significance_score,
-                "token_estimate": token_estimate,
-                "tags": tags,
-                "source": "closeout_v1",
-            }
-
-            sequential_history.append(history_entry)
-            product.product_memory = dict(product_memory)
-            product.updated_at = datetime.utcnow()
-            flag_modified(product, "product_memory")
-            await active_session.flush()
+            # Create entry in product_memory_entries table
+            entry = await repo.create_entry(
+                session=active_session,
+                tenant_key=tenant_key,
+                product_id=product.id,
+                project_id=project.id,
+                sequence=sequence_number,
+                entry_type="project_closeout",
+                source="closeout_v1",
+                timestamp=datetime.utcnow(),
+                project_name=project.name,
+                summary=summary,
+                key_outcomes=key_outcomes,
+                decisions_made=decisions_made,
+                git_commits=git_commits,
+                deliverables=deliverables,
+                metrics=metrics,
+                priority=priority,
+                significance_score=significance_score,
+                token_estimate=token_estimate,
+                tags=tags,
+            )
 
             if owns_session:
                 await active_session.commit()
 
             logger.info(
                 f"Updated 360 Memory for product {product.id} "
-                f"(sequence: {sequence_number}, commits: {len(git_commits) if git_commits else 0})"
+                f"(entry: {entry.id}, sequence: {sequence_number}, commits: {len(git_commits) if git_commits else 0})"
+            )
+
+            # Emit WebSocket event (Handover 0390c Phase 4)
+            await emit_websocket_event(
+                event_type="product:memory:updated",
+                tenant_key=tenant_key,
+                product_id=str(product.id),
+                data={"entry": entry.to_dict()},
             )
 
             return {
                 "success": True,
+                "entry_id": str(entry.id),
                 "sequence_number": sequence_number,
                 "git_commits_count": len(git_commits),
                 "message": "Project closed and 360 Memory updated successfully",
@@ -313,14 +320,29 @@ async def emit_websocket_event(
     product_id: str,
     data: Dict[str, Any],
 ) -> None:
-    """Emit WebSocket event; graceful no-op if manager unavailable."""
+    """
+    Emit WebSocket event; graceful no-op if manager unavailable.
+
+    Args:
+        event_type: Event type (e.g., "product:memory:updated")
+        tenant_key: Tenant isolation key
+        product_id: Product UUID
+        data: Event payload data
+
+    Side Effects:
+        - Broadcasts event to tenant WebSocket clients
+        - Logs warning if WebSocket fails (doesn't crash operation)
+    """
     try:
-        from giljo_mcp.websocket_client import websocket_manager
+        # Import app to access websocket manager from app state
+        from api.app import app
+
+        websocket_manager = getattr(app.state, "websocket_manager", None)
 
         if websocket_manager:
             await websocket_manager.broadcast_to_tenant(
                 tenant_key=tenant_key,
-                event=event_type,
+                event_type=event_type,
                 data={"product_id": product_id, **data},
             )
     except Exception as exc:  # pragma: no cover - best-effort emit
