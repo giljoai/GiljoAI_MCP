@@ -421,11 +421,14 @@ function formatMessageMeta(message) {
 
 .message-item-wrapper {
   padding: 12px 16px;
+  margin: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
   transition: background-color 0.2s ease;
 }
 
 .message-item-wrapper:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: rgba(0, 0, 0, 0.7);
 }
 
 /* Message Header: Timestamp | Recipient */
@@ -476,10 +479,11 @@ function formatMessageMeta(message) {
   flex: 1;
   font-size: 0.875rem;
   line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .message-eye-icon {
-  color: rgba(0, 0, 0, 0.5);
+  color: rgb(var(--v-theme-warning)) !important;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
