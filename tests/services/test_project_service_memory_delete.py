@@ -59,6 +59,9 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     for entry in entries:
         await db_session.refresh(entry)
 
+    # Store entry IDs for verification after deletion
+    entry_ids = [entry.id for entry in entries]
+
     # Act - Nuclear delete the project
     result = await project_service_with_session.nuclear_delete_project(
         project_id=project.id, websocket_manager=None
@@ -70,11 +73,12 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     assert result["deleted_counts"]["memory_entries_marked"] == 3
 
     # Verify entries are marked as deleted in table (not hard deleted)
+    # Note: project_id will be NULL after project deletion (SET NULL constraint)
     await db_session.commit()  # Refresh session after service commit
     from sqlalchemy import select
 
     stmt = select(ProductMemoryEntry).where(
-        ProductMemoryEntry.project_id == project.id
+        ProductMemoryEntry.id.in_(entry_ids)
     )
     result = await db_session.execute(stmt)
     marked_entries = result.scalars().all()

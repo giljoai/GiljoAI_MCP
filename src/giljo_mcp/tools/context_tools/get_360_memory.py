@@ -1,8 +1,8 @@
 """MCP tool for fetching 360 memory (sequential project history) with depth control.
 
-Reuses logic from:
-- mission_planner._extract_product_history()
-- Product.product_memory JSONB field structure (Handovers 0135-0139)
+Updated in Handover 0390b to read from product_memory_entries table instead of JSONB.
+
+Uses ProductMemoryRepository to fetch normalized memory entries from database.
 
 Token Budget by Depth:
 - 1: Last 1 project (~500 tokens)
@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
+from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -35,18 +36,19 @@ async def get_360_memory(
     last_n_projects: int = 3,
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None
+    db_manager: Optional[DatabaseManager] = None,
+    session: Optional[AsyncSession] = None  # For testing only
 ) -> Dict[str, Any]:
     """
     Fetch 360 memory (sequential project history) for given product with depth control and pagination.
 
-    Reuses extraction logic from mission_planner._extract_product_history().
-    Returns the last N projects from product_memory.sequential_history array.
+    Updated in Handover 0390b to read from product_memory_entries table.
+    Uses ProductMemoryRepository to fetch normalized entries instead of JSONB field.
 
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        last_n_projects: Total projects to consider (from sequential_history)
+        last_n_projects: Total projects to consider (from table)
         offset: Number of projects to skip (for pagination)
         limit: Max projects to return (None = return all up to last_n_projects)
         db_manager: Database manager instance
@@ -110,17 +112,27 @@ async def get_360_memory(
         limit=limit
     )
 
-    if db_manager is None:
-        logger.error("db_manager is required", operation="get_360_memory")
-        raise ValueError("db_manager parameter is required")
+    if db_manager is None and session is None:
+        logger.error("db_manager or session is required", operation="get_360_memory")
+        raise ValueError("db_manager or session parameter is required")
 
-    async with db_manager.get_session_async() as session:
-        # Fetch product with product_memory JSONB field
+    # Use provided session (for testing) or create new one
+    if session is not None:
+        # Use provided session directly (for testing)
+        session_to_use = session
+        should_close = False
+    else:
+        # Create new session from db_manager
+        session_to_use = await db_manager.get_session_async().__aenter__()
+        should_close = True
+
+    try:
+        # Verify product exists for tenant isolation
         stmt = select(Product).where(
             Product.id == product_id,
             Product.tenant_key == tenant_key
         )
-        result = await session.execute(stmt)
+        result = await session_to_use.execute(stmt)
         product = result.scalar_one_or_none()
 
         if not product:
@@ -148,10 +160,21 @@ async def get_360_memory(
                 }
             }
 
-        # Check if product has product_memory
-        if not product.product_memory:
+        # Use repository to fetch memory entries from table
+        repo = ProductMemoryRepository()
+
+        # First, get total count (fetch all to determine total)
+        all_entries = await repo.get_entries_by_product(
+            session=session_to_use,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            include_deleted=False,
+        )
+        total_projects = len(all_entries)
+
+        if total_projects == 0:
             logger.debug(
-                "no_product_memory",
+                "no_memory_entries",
                 product_id=product_id,
                 operation="get_360_memory"
             )
@@ -172,45 +195,20 @@ async def get_360_memory(
                 }
             }
 
-        # Extract sequential_history array (reuse pattern from mission_planner)
-        sequential_history = product.product_memory.get("sequential_history", [])
-
-        if not sequential_history:
-            logger.debug(
-                "empty_sequential_history",
-                product_id=product_id,
-                operation="get_360_memory"
-            )
-            return {
-                "source": "360_memory",
-                "depth": last_n_projects,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_projects": 0,
-                    "last_n_projects": last_n_projects,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_projects": 0,
-                    "has_more": False,
-                    "next_offset": None
-                }
-            }
-
-        # Sort by sequence descending (most recent first) - reuse from mission_planner
-        sorted_history = sorted(
-            sequential_history,
-            key=lambda x: x.get("sequence", 0),
-            reverse=True
+        # Fetch entries with pagination (repository already sorts by sequence DESC)
+        entries = await repo.get_entries_by_product(
+            session=session_to_use,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=last_n_projects,
+            offset=0,
+            include_deleted=False,
         )
 
-        total_projects = len(sequential_history)
+        # Convert to dicts (matches existing format via to_dict())
+        filtered_history = [entry.to_dict() for entry in entries]
 
-        # Filter to last N projects
-        filtered_history = sorted_history[:last_n_projects] if sorted_history else []
-
-        # Apply pagination
+        # Apply pagination within the filtered results
         effective_limit = limit if limit is not None else last_n_projects
         paginated_history = filtered_history[offset:offset + effective_limit]
 
@@ -250,3 +248,6 @@ async def get_360_memory(
                 "next_offset": next_offset
             }
         }
+    finally:
+        if should_close and session_to_use:
+            await session_to_use.close()
