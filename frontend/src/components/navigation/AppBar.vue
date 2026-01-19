@@ -1,37 +1,27 @@
 <template>
   <v-app-bar color="surface" elevation="0" border>
     <div style="display: flex; align-items: center; width: 100%; justify-content: space-between">
-      <!-- Left: Sidebar Toggle -->
-      <div style="flex: 0 0 auto">
-        <v-btn
-          v-if="!mobile"
-          variant="text"
-          :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
-          @click="$emit('toggle-rail')"
-          :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
-          class="mr-2"
-        ></v-btn>
-
+      <!-- Left: Logo and Mobile Nav Toggle -->
+      <div style="flex: 0 0 auto; display: flex; align-items: center">
         <v-app-bar-nav-icon
           @click="$emit('toggle-drawer')"
           v-if="mobile"
           aria-label="Toggle navigation drawer"
         ></v-app-bar-nav-icon>
+
+        <!-- GiljoAI Logo -->
+        <v-img
+          :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
+          alt="GiljoAI"
+          height="36"
+          width="auto"
+          max-width="140"
+          class="ml-2"
+        ></v-img>
       </div>
 
-      <!-- Center: Title -->
-      <div style="flex: 1 1 auto; display: flex; justify-content: center; min-width: 0">
-        <v-toolbar-title
-          class="text-no-wrap"
-          :style="{
-            color: theme.global.current.value.dark ? '#ffc300' : '#1e3147',
-            fontWeight: 500,
-            fontSize: 'clamp(0.875rem, 2vw, 1.25rem)',
-          }"
-        >
-          Agent Orchestration MCP Server
-        </v-toolbar-title>
-      </div>
+      <!-- Spacer -->
+      <v-spacer></v-spacer>
 
       <!-- Right: Product Switcher, Connection Status, User Menu -->
       <div style="flex: 0 0 auto; display: flex; align-items: center">
@@ -130,13 +120,9 @@ const props = defineProps({
     type: Object,
     default: null,
   },
-  rail: {
-    type: Boolean,
-    default: false,
-  },
 })
 
-const emit = defineEmits(['toggle-drawer', 'toggle-rail'])
+const emit = defineEmits(['toggle-drawer'])
 
 const theme = useTheme()
 const { mobile } = useDisplay()
