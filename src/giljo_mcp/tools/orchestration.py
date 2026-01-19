@@ -1650,7 +1650,10 @@ BEFORE implementing ANY code, you MUST:
 
 5. **Report Progress** (after each milestone):
    Tool: mcp__giljo-mcp__report_progress
-   Parameters: {{"job_id": "{job_id}", "progress": {{"percent": X, "message": "..."}}}}
+   Parameters: {{"job_id": "{job_id}", "tenant_key": "{tenant_key}", "todo_items": [
+     {{"content": "Task description", "status": "completed|in_progress|pending"}}
+   ]}}
+   Backend calculates percent/steps automatically from your todo_items array.
 
 6. **Complete Job** (when done):
    Tool: mcp__giljo-mcp__complete_job
