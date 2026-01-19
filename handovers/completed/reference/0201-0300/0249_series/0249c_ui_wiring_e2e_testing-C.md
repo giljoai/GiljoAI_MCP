@@ -815,3 +815,10 @@ All requirements completed:
 ---
 
 **Final**: This completes the 0249 handover series. All three parts (0249a, 0249b, 0249c) are now **PRODUCTION READY** with comprehensive testing and validation.
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Handover 0249c E2E Testing Report](../../../reports/HANDOVER_0249c_E2E_TESTING_REPORT.md)

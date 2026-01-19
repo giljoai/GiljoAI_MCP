@@ -567,3 +567,10 @@ describe('ContextPriorityConfig - Vision Documents Depth', () => {
 
 ### Status
 ✅ **COMPLETE** - Toggle removed, depth selector retained in 0345e
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Implementation Summary 0345c](reports/IMPLEMENTATION_SUMMARY_0345c.md)
