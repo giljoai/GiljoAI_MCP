@@ -178,82 +178,10 @@ class TestOrchestrationServiceNoFallback:
         assert test_agent_execution_0367a.status in ["complete", "decommissioned"]
         assert test_agent_execution_0367a.progress == 100
 
-    async def test_trigger_succession_returns_error_when_execution_not_found(
-        self, db_session, db_manager, test_tenant_0367a
-    ):
-        """
-        trigger_succession() should return error when AgentExecution not found.
-
-        It should NOT fallback to MCPAgentJob table and create legacy successor.
-        """
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session
-        )
-
-        # Try to trigger succession on non-existent agent
-        fake_agent_id = str(uuid.uuid4())
-
-        # Should raise ValueError or return error, NOT create MCPAgentJob
-        with pytest.raises(ValueError) as exc_info:
-            await service.trigger_succession(
-                job_id=fake_agent_id,  # job_id is the first param (treated as agent_id if agent_id not provided)
-                reason="context_limit",
-                tenant_key=test_tenant_0367a,
-            )
-
-        assert "not found" in str(exc_info.value).lower()
-
-    async def test_trigger_succession_creates_agent_execution_not_mcp_agent_job(
-        self, db_session, db_manager, test_agent_execution_0367a, test_agent_job_0367a, test_tenant_0367a
-    ):
-        """
-        trigger_succession() should create new AgentExecution, not MCPAgentJob.
-
-        Expected:
-        - Creates new AgentExecution with same job_id
-        - Increments instance_number
-        - Links via spawned_by (predecessor's agent_id)
-        - Does NOT create MCPAgentJob record
-        """
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session
-        )
-
-        # Trigger succession
-        result = await service.trigger_succession(
-            job_id=test_agent_execution_0367a.agent_id,  # job_id used as agent_id for backwards compat
-            reason="context_limit",
-            tenant_key=test_tenant_0367a,
-        )
-
-        # Verify success
-        assert result["success"] is True
-        assert "successor_agent_id" in result
-
-        # Verify successor is an AgentExecution (same job_id, different agent_id)
-        successor_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == result["successor_agent_id"]
-        )
-        successor_result = await db_session.execute(successor_stmt)
-        successor = successor_result.scalar_one_or_none()
-
-        assert successor is not None
-        assert successor.job_id == test_agent_job_0367a.job_id  # Same job
-        assert successor.agent_id != test_agent_execution_0367a.agent_id  # Different executor
-        assert successor.instance_number == 2  # Incremented
-        assert successor.spawned_by == test_agent_execution_0367a.agent_id  # Linked to predecessor
+    # HANDOVER 0422: Removed trigger_succession tests
+    # - test_trigger_succession_returns_error_when_execution_not_found
+    # - test_trigger_succession_creates_agent_execution_not_mcp_agent_job
+    # trigger_succession() was removed (dead token budget cleanup)
 
 
 # ============================================================================
