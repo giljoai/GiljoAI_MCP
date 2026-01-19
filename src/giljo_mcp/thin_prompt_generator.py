@@ -10,7 +10,7 @@ Architecture (Handover 0315):
 - User configures priorities (Handover 0313) and depth (Handover 0314)
 - Generator creates thin prompt listing available MCP tools by priority
 - Orchestrator fetches context on-demand via MCP tool calls
-- Context usage stays within 90% budget (automatic succession trigger)
+- Manual succession available via /gil_handover when context handover needed
 
 Token Reduction:
 - Fat Prompt (v1.0): ~3500 tokens (inline context embedded in prompt)
@@ -627,7 +627,6 @@ WORKFLOW:
 6. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
-Trigger succession if context usage >90%.
 Claude Code: Use TodoWrite tool to track workflow progress.
 
 CRITICAL DISTINCTIONS:
