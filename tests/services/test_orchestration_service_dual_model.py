@@ -535,7 +535,9 @@ class TestUpdateMethodsDualModel:
     - acknowledge_job updates AgentExecution.mission_acknowledged_at
     - complete_job updates AgentExecution.status, not AgentJob.status
     - report_progress updates AgentExecution fields
-    - update_context_usage updates AgentExecution.context_used
+
+    HANDOVER 0422: Removed test_update_context_usage_updates_execution because update_context_usage()
+    was removed from OrchestrationService (dead token budget cleanup).
     """
 
     async def test_acknowledge_job_updates_execution(self, db_session, db_manager, test_project, test_tenant_key):
@@ -637,39 +639,3 @@ class TestUpdateMethodsDualModel:
         assert execution.progress == 50
         assert execution.current_task == "Implementing database schema"
         assert execution.last_progress_at is not None
-
-    async def test_update_context_usage_updates_execution(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify update_context_usage updates AgentExecution.context_used."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
-
-        result = await service.spawn_agent_job(
-            agent_display_name="orchestrator",
-            agent_name="orch-1",
-            mission="Orchestrate project",
-            project_id=test_project.id,
-            tenant_key=test_tenant_key,
-        )
-        agent_id = result["agent_id"]
-        job_id = result["job_id"]
-
-        # Update context usage (requires job_id and additional_tokens)
-        # First call with 25000 tokens
-        context_result1 = await service.update_context_usage(
-            job_id=job_id, additional_tokens=25000, tenant_key=test_tenant_key
-        )
-        assert context_result1.get("success") is True
-        first_used = context_result1.get("context_used")
-
-        # Second call with 25000 more tokens - verify increment works
-        context_result2 = await service.update_context_usage(
-            job_id=job_id, additional_tokens=25000, tenant_key=test_tenant_key
-        )
-        assert context_result2.get("success") is True
-        second_used = context_result2.get("context_used")
-
-        # Verify context_used incremented correctly (returns cumulative total)
-        assert second_used == first_used + 25000  # Incremented by second call
