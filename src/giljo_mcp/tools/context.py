@@ -327,63 +327,8 @@ async def fetch_context(
         return {"success": False, "error": str(e)}
 
 
-async def update_context_usage(
-    agent_id: str,
-    tenant_key: str,
-    tokens_used: int,
-) -> dict[str, Any]:
-    """
-    Update context usage for an agent execution incrementally.
-
-    Args:
-        agent_id: Executor UUID
-        tenant_key: Tenant key for multi-tenant isolation
-        tokens_used: Number of tokens consumed (added to current usage)
-
-    Returns:
-        Updated context usage metrics
-    """
-    try:
-        import giljo_mcp.database as db_module
-        from giljo_mcp.models.agent_identity import AgentExecution
-        from sqlalchemy import select
-
-        # Use existing database manager (NO hardcoded test URL!)
-        if db_module._db_manager is None:
-            raise RuntimeError("Database manager not initialized")
-        db_manager = db_module._db_manager
-
-        async with db_manager.get_session_async() as session:
-            # Query AgentExecution by agent_id + tenant_key
-            query = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
-            result = await session.execute(query)
-            execution = result.scalar_one_or_none()
-
-            if not execution:
-                return {
-                    "success": False,
-                    "error": "Agent execution not found or unauthorized",
-                }
-
-            # Update context usage incrementally
-            execution.context_used += tokens_used
-            execution.last_progress_at = datetime.now(timezone.utc)
-
-            await session.commit()
-
-            return {
-                "success": True,
-                "agent_id": execution.agent_id,
-                "context_used": execution.context_used,
-                "context_budget": execution.context_budget,
-            }
-
-    except Exception as e:
-        logger.exception(f"Failed to update context usage: {e}")
-        return {"success": False, "error": str(e)}
+# NOTE: update_context_usage() was removed in Handover 0422 - the MCP server is passive
+# and cannot track external CLI tool context usage. See orchestration_service.py for details.
 
 
 async def get_context_history(
