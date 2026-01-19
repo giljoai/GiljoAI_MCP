@@ -442,18 +442,29 @@ class ProjectService:
         try:
             async with self._get_session() as session:
                 # Update project with tenant isolation filter (Handover 0325)
+                # Handover 0425: Also set staging_status to 'staged' when mission is updated
+                # This ensures the Staged column shows "Yes" even if orchestrator was created
+                # through a different code path
                 if tenant_key:
                     result = await session.execute(
                         update(Project)
                         .where(Project.tenant_key == tenant_key, Project.id == project_id)
-                        .values(mission=mission, updated_at=datetime.utcnow())
+                        .values(
+                            mission=mission,
+                            staging_status="staged",
+                            updated_at=datetime.utcnow()
+                        )
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
                     result = await session.execute(
                         update(Project)
                         .where(Project.id == project_id)
-                        .values(mission=mission, updated_at=datetime.utcnow())
+                        .values(
+                            mission=mission,
+                            staging_status="staged",
+                            updated_at=datetime.utcnow()
+                        )
                     )
 
                 if result.rowcount == 0:
