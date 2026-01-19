@@ -1,8 +1,9 @@
 """MCP tool for fetching git commit history with depth control.
 
-Reuses logic from:
-- Product.product_memory.git_integration field (GitHub integration toggle)
-- Product.product_memory.sequential_history[].git_commits arrays
+Updated in Handover 0390b to read from product_memory_entries table instead of JSONB.
+
+Uses ProductMemoryRepository.get_git_history() to fetch aggregated commits.
+Git integration toggle still stored in Product.product_memory.git_integration (JSONB).
 
 Token Budget by Depth:
 - 10: Last 10 commits (~500 tokens)
@@ -18,6 +19,7 @@ from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
+from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -35,12 +37,14 @@ async def get_git_history(
     commits: int = 25,
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None
+    db_manager: Optional[DatabaseManager] = None,
+    session: Optional[AsyncSession] = None  # For testing only
 ) -> Dict[str, Any]:
     """
     Fetch git commit history for given product with depth control.
 
-    Extracts git commits from product_memory.sequential_history array.
+    Updated in Handover 0390b to read from product_memory_entries table.
+    Uses ProductMemoryRepository.get_git_history() to aggregate commits.
     Returns empty if GitHub integration is disabled.
 
     Args:
@@ -95,17 +99,27 @@ async def get_git_history(
         depth=commits
     )
 
-    if db_manager is None:
-        logger.error("db_manager is required", operation="get_git_history")
-        raise ValueError("db_manager parameter is required")
+    if db_manager is None and session is None:
+        logger.error("db_manager or session is required", operation="get_git_history")
+        raise ValueError("db_manager or session parameter is required")
 
-    async with db_manager.get_session_async() as session:
-        # Fetch product with product_memory JSONB field
+    # Use provided session (for testing) or create new one
+    if session is not None:
+        # Use provided session directly (for testing)
+        session_to_use = session
+        should_close = False
+    else:
+        # Create new session from db_manager
+        session_to_use = await db_manager.get_session_async().__aenter__()
+        should_close = True
+
+    try:
+        # Verify product exists for tenant isolation
         stmt = select(Product).where(
             Product.id == product_id,
             Product.tenant_key == tenant_key
         )
-        result = await session.execute(stmt)
+        result = await session_to_use.execute(stmt)
         product = result.scalar_one_or_none()
 
         if not product:
@@ -129,28 +143,8 @@ async def get_git_history(
                 }
             }
 
-        # Check if product has product_memory
-        if not product.product_memory:
-            logger.debug(
-                "no_product_memory",
-                product_id=product_id,
-                operation="get_git_history"
-            )
-            return {
-                "source": "git_history",
-                "depth": commits,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_commits": 0,
-                    "returned_commits": 0,
-                    "git_integration_enabled": False
-                }
-            }
-
-        # Check if GitHub integration is enabled
-        git_config = product.product_memory.get("git_integration", {})
+        # Check if GitHub integration is enabled (still in JSONB)
+        git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
         git_enabled = git_config.get("enabled", False)
 
         if not git_enabled:
@@ -173,14 +167,14 @@ async def get_git_history(
                 }
             }
 
-        # Extract git commits from sequential_history array
-        sequential_history = product.product_memory.get("sequential_history", [])
-        all_commits = []
-
-        # Aggregate commits from all history entries
-        for entry in sequential_history:
-            entry_commits = entry.get("git_commits", [])
-            all_commits.extend(entry_commits)
+        # Use repository to fetch git commits from table
+        repo = ProductMemoryRepository()
+        all_commits = await repo.get_git_history(
+            session=session_to_use,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=commits,
+        )
 
         if not all_commits:
             logger.debug(
@@ -201,11 +195,8 @@ async def get_git_history(
                 }
             }
 
-        # Return last N commits (most recent)
-        filtered_commits = all_commits[-commits:] if all_commits else []
-
-        # Reverse to show newest first
-        filtered_commits = list(reversed(filtered_commits))
+        # Repository already returns sorted commits (newest first) and limited
+        filtered_commits = all_commits
 
         # Calculate token estimate
         total_tokens = estimate_tokens(filtered_commits)
@@ -233,3 +224,6 @@ async def get_git_history(
                 "pagination_supported": False  # Reserved for future implementation
             }
         }
+    finally:
+        if should_close and session_to_use:
+            await session_to_use.close()

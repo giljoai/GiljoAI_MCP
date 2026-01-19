@@ -186,6 +186,7 @@ class AgentHealthMonitor:
         return [
             AgentHealthStatus(
                 job_id=execution.job_id,
+                agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
                 agent_display_name=execution.agent_display_name,
                 current_status="waiting",
                 health_state="critical",
@@ -257,6 +258,7 @@ class AgentHealthMonitor:
 
                 stalled.append(AgentHealthStatus(
                     job_id=execution.job_id,
+                    agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
                     agent_display_name=execution.agent_display_name,
                     current_status="active",
                     health_state=health_state,
@@ -316,6 +318,7 @@ class AgentHealthMonitor:
 
                 failures.append(AgentHealthStatus(
                     job_id=execution.job_id,
+                    agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
                     agent_display_name=execution.agent_display_name,
                     current_status=execution.status,
                     health_state="timeout",
@@ -342,8 +345,9 @@ class AgentHealthMonitor:
             tenant_key: Tenant key
         """
         logger.warning(
-            f"Unhealthy job detected: {health_status.job_id}",
+            f"Unhealthy execution detected: {health_status.agent_id} (job: {health_status.job_id})",
             extra={
+                "agent_id": health_status.agent_id,
                 "job_id": health_status.job_id,
                 "agent_display_name": health_status.agent_display_name,
                 "health_state": health_status.health_state,
@@ -351,15 +355,17 @@ class AgentHealthMonitor:
             }
         )
 
-        # Get execution from database (query by job_id UUID, not integer id)
+        # Get execution from database (query by agent_id UUID - unique identifier)
+        # NOTE (Handover 0389): Must use agent_id not job_id because succession creates
+        # multiple AgentExecution records for the same job_id
         result = await session.execute(
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
-            .where(AgentExecution.job_id == health_status.job_id)
+            .where(AgentExecution.agent_id == health_status.agent_id)
         )
         execution = result.scalar_one_or_none()
         if not execution:
-            logger.error(f"Execution {health_status.job_id} not found in database")
+            logger.error(f"Execution {health_status.agent_id} not found in database")
             return
 
         # Update execution health fields

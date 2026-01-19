@@ -1,7 +1,8 @@
 """
-Unit tests for write_360_memory MCP tool.
+Unit tests for write_360_memory MCP tool (updated for 0390c).
 
-Tests the write_360_memory tool for creating 360 Memory history entries.
+Tests the write_360_memory tool for creating 360 Memory entries in the
+product_memory_entries table instead of JSONB array.
 """
 
 import pytest
@@ -9,19 +10,10 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Patch flag_modified at module level since all our tests use mocked models
-pytestmark = pytest.mark.usefixtures("mock_flag_modified")
-
 from src.giljo_mcp.tools.write_360_memory import write_360_memory
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-
-
-@pytest.fixture(autouse=True)
-def mock_flag_modified():
-    """Auto-patch flag_modified for all tests in this module."""
-    with patch('giljo_mcp.tools.write_360_memory.flag_modified'):
-        yield
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
 
 class AsyncContextManager:
@@ -47,10 +39,10 @@ def mock_db_manager():
 def mock_project():
     """Mock Project instance."""
     project = MagicMock(spec=Project)
-    project.id = "project-123"
+    project.id = "550e8400-e29b-41d4-a716-446655440001"  # Valid UUID
     project.name = "Test Project"
     project.tenant_key = "tenant-abc"
-    project.product_id = "product-456"
+    project.product_id = "550e8400-e29b-41d4-a716-446655440002"  # Valid UUID
     project.created_at = datetime(2025, 1, 1, 10, 0, 0)
     project.completed_at = datetime(2025, 1, 5, 15, 30, 0)
     project.meta_data = {"test_coverage": 0.85}
@@ -61,11 +53,9 @@ def mock_project():
 def mock_product():
     """Mock Product instance."""
     product = MagicMock(spec=Product)
-    product.id = "product-456"
+    product.id = "550e8400-e29b-41d4-a716-446655440002"  # Valid UUID
     product.tenant_key = "tenant-abc"
-    product.product_memory = {
-        "sequential_history": []
-    }
+    product.product_memory = {}  # Empty for git config
     product.updated_at = datetime(2025, 1, 1, 10, 0, 0)
     return product
 
@@ -73,124 +63,127 @@ def mock_product():
 @pytest.mark.asyncio
 async def test_write_360_memory_project_completion(mock_db_manager, mock_project, mock_product):
     """Test writing a project_completion entry."""
-    # Setup mocks
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'), \
+         patch('src.giljo_mcp.tools.write_360_memory.ProductMemoryRepository') as mock_repo_class:
+
         mock_session = AsyncMock()
 
-        # Mock project query
+        # Mock queries
         project_result = MagicMock()
         project_result.scalar_one_or_none.return_value = mock_project
 
-        # Mock product query
         product_result = MagicMock()
         product_result.scalar_one_or_none.return_value = mock_product
 
-        # Mock agent job query (when author_job_id is provided)
-        agent_job_result = MagicMock()
-        mock_agent_job = MagicMock()
-        mock_agent_job.agent_name = "Test Agent"
-        mock_agent_job.job_type = "orchestrator"
-        agent_job_result.scalar_one_or_none.return_value = mock_agent_job
+        execution_result = MagicMock()
+        mock_execution = MagicMock()
+        mock_execution.agent_name = "Test Agent"
+        mock_execution.agent_display_name = "Test Agent Display"
+        mock_job = MagicMock()
+        mock_job.job_type = "orchestrator"
+        mock_execution.job = mock_job
+        execution_result.scalar_one_or_none.return_value = mock_execution
 
-        mock_session.execute.side_effect = [project_result, product_result, agent_job_result]
+        mock_session.execute.side_effect = [project_result, product_result, execution_result]
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        # Setup async context manager
+        # Mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_next_sequence.return_value = 1
+        mock_entry = MagicMock(spec=ProductMemoryEntry)
+        mock_entry.id = "entry-uuid-123"
+        mock_entry.sequence = 1
+        mock_repo.create_entry.return_value = mock_entry
+        mock_repo_class.return_value = mock_repo
+
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Completed feature X implementation",
             key_outcomes=["Implemented feature X", "Added tests"],
             decisions_made=["Used approach A over B"],
             entry_type="project_completion",
-            author_job_id="job-789",
+            author_job_id="550e8400-e29b-41d4-a716-446655440789",  # Valid UUID
             db_manager=mock_db_manager
         )
 
         # Assertions
         assert result["success"] is True
         assert result["sequence_number"] == 1
+        assert result["entry_id"] == "entry-uuid-123"
         assert "message" in result
 
-        # Verify product memory was updated
-        assert len(mock_product.product_memory["sequential_history"]) == 1
-        entry = mock_product.product_memory["sequential_history"][0]
-        assert entry["sequence"] == 1
-        assert entry["type"] == "project_completion"
-        assert entry["project_id"] == "project-123"
-        assert entry["project_name"] == "Test Project"
-        assert entry["summary"] == "Completed feature X implementation"
-        assert entry["key_outcomes"] == ["Implemented feature X", "Added tests"]
-        assert entry["decisions_made"] == ["Used approach A over B"]
-        assert entry["author_job_id"] == "job-789"
-        assert "timestamp" in entry
+        # Verify repository methods called
+        mock_repo.get_next_sequence.assert_called_once()
+        mock_repo.create_entry.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_write_360_memory_handover_closeout(mock_db_manager, mock_project, mock_product):
     """Test writing a handover_closeout entry."""
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'), \
+         patch('src.giljo_mcp.tools.write_360_memory.ProductMemoryRepository') as mock_repo_class:
+
         mock_session = AsyncMock()
 
-        # Mock project and product queries
         project_result = MagicMock()
         project_result.scalar_one_or_none.return_value = mock_project
 
         product_result = MagicMock()
         product_result.scalar_one_or_none.return_value = mock_product
 
-        # Mock agent job query
-        agent_job_result = MagicMock()
-        mock_agent_job = MagicMock()
-        mock_agent_job.agent_name = "Orchestrator"
-        mock_agent_job.job_type = "orchestrator"
-        agent_job_result.scalar_one_or_none.return_value = mock_agent_job
+        execution_result = MagicMock()
+        mock_execution = MagicMock()
+        mock_execution.agent_name = "Orchestrator"
+        mock_execution.agent_display_name = "Orchestrator Display"
+        mock_job = MagicMock()
+        mock_job.job_type = "orchestrator"
+        mock_execution.job = mock_job
+        execution_result.scalar_one_or_none.return_value = mock_execution
 
-        mock_session.execute.side_effect = [project_result, product_result, agent_job_result]
+        mock_session.execute.side_effect = [project_result, product_result, execution_result]
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        # Setup async context manager
+        # Mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_next_sequence.return_value = 1
+        mock_entry = MagicMock(spec=ProductMemoryEntry)
+        mock_entry.id = "entry-uuid-456"
+        mock_entry.sequence = 1
+        mock_repo.create_entry.return_value = mock_entry
+        mock_repo_class.return_value = mock_repo
+
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Handover to successor orchestrator",
             key_outcomes=["Context preserved", "State transferred"],
             decisions_made=["Triggered succession at 90% capacity"],
             entry_type="handover_closeout",
-            author_job_id="orch-001",
+            author_job_id="550e8400-e29b-41d4-a716-446655440999",  # Valid UUID
             db_manager=mock_db_manager
         )
 
         # Assertions
         assert result["success"] is True
         assert result["sequence_number"] == 1
-
-        # Verify entry type
-        entry = mock_product.product_memory["sequential_history"][0]
-        assert entry["type"] == "handover_closeout"
-        assert entry["author_job_id"] == "orch-001"
+        assert result["entry_id"] == "entry-uuid-456"
 
 
 @pytest.mark.asyncio
 async def test_write_360_memory_increments_sequence(mock_db_manager, mock_project, mock_product):
-    """Test that multiple entries increment sequence numbers."""
-    # Add existing entries to product memory
-    mock_product.product_memory = {
-        "sequential_history": [
-            {"sequence": 1, "type": "project_completion", "summary": "First entry"},
-            {"sequence": 2, "type": "handover_closeout", "summary": "Second entry"}
-        ]
-    }
+    """Test that repository returns correct sequence number."""
+    with patch('src.giljo_mcp.tools.write_360_memory.select'), \
+         patch('src.giljo_mcp.tools.write_360_memory.ProductMemoryRepository') as mock_repo_class:
 
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
         mock_session = AsyncMock()
 
         project_result = MagicMock()
@@ -203,12 +196,20 @@ async def test_write_360_memory_increments_sequence(mock_db_manager, mock_projec
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        # Setup async context manager
+        # Mock repository - return sequence 3 (simulating 2 existing entries)
+        mock_repo = AsyncMock()
+        mock_repo.get_next_sequence.return_value = 3
+        mock_entry = MagicMock(spec=ProductMemoryEntry)
+        mock_entry.id = "entry-uuid-789"
+        mock_entry.sequence = 3
+        mock_repo.create_entry.return_value = mock_entry
+        mock_repo_class.return_value = mock_repo
+
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Third entry",
             key_outcomes=["Outcome 3"],
@@ -220,17 +221,12 @@ async def test_write_360_memory_increments_sequence(mock_db_manager, mock_projec
         assert result["success"] is True
         assert result["sequence_number"] == 3
 
-        # Verify all entries preserved
-        assert len(mock_product.product_memory["sequential_history"]) == 3
-        assert mock_product.product_memory["sequential_history"][2]["sequence"] == 3
-
 
 @pytest.mark.asyncio
 async def test_write_360_memory_with_github_integration(mock_db_manager, mock_project, mock_product):
     """Test writing entry with GitHub integration enabled."""
     # Configure GitHub integration
     mock_product.product_memory = {
-        "sequential_history": [],
         "git_integration": {
             "enabled": True,
             "repo_owner": "test-owner",
@@ -248,8 +244,9 @@ async def test_write_360_memory_with_github_integration(mock_db_manager, mock_pr
         }
     ]
 
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select, \
-         patch('giljo_mcp.tools.write_360_memory._fetch_github_commits', return_value=mock_commits) as mock_fetch:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'), \
+         patch('src.giljo_mcp.tools.write_360_memory._fetch_github_commits', return_value=mock_commits), \
+         patch('src.giljo_mcp.tools.write_360_memory.ProductMemoryRepository') as mock_repo_class:
 
         mock_session = AsyncMock()
 
@@ -263,12 +260,20 @@ async def test_write_360_memory_with_github_integration(mock_db_manager, mock_pr
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        # Setup async context manager
+        # Mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_next_sequence.return_value = 1
+        mock_entry = MagicMock(spec=ProductMemoryEntry)
+        mock_entry.id = "entry-uuid-git"
+        mock_entry.sequence = 1
+        mock_repo.create_entry.return_value = mock_entry
+        mock_repo_class.return_value = mock_repo
+
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Completed with GitHub commits",
             key_outcomes=["Feature completed"],
@@ -280,23 +285,24 @@ async def test_write_360_memory_with_github_integration(mock_db_manager, mock_pr
         assert result["success"] is True
         assert result["git_commits_count"] == 1
 
-        entry = mock_product.product_memory["sequential_history"][0]
-        assert len(entry["git_commits"]) == 1
-        assert entry["git_commits"][0]["sha"] == "abc123"
+        # Verify create_entry was called with git_commits
+        call_kwargs = mock_repo.create_entry.call_args[1]
+        assert len(call_kwargs["git_commits"]) == 1
+        assert call_kwargs["git_commits"][0]["sha"] == "abc123"
 
 
 @pytest.mark.asyncio
 async def test_write_360_memory_without_github_integration(mock_db_manager, mock_project, mock_product):
     """Test writing entry with GitHub integration disabled."""
-    # GitHub integration disabled
     mock_product.product_memory = {
-        "sequential_history": [],
         "git_integration": {
             "enabled": False
         }
     }
 
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'), \
+         patch('src.giljo_mcp.tools.write_360_memory.ProductMemoryRepository') as mock_repo_class:
+
         mock_session = AsyncMock()
 
         project_result = MagicMock()
@@ -309,12 +315,20 @@ async def test_write_360_memory_without_github_integration(mock_db_manager, mock
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
 
-        # Setup async context manager
+        # Mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_next_sequence.return_value = 1
+        mock_entry = MagicMock(spec=ProductMemoryEntry)
+        mock_entry.id = "entry-uuid-nogit"
+        mock_entry.sequence = 1
+        mock_repo.create_entry.return_value = mock_entry
+        mock_repo_class.return_value = mock_repo
+
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Completed without GitHub",
             key_outcomes=["Manual summary"],
@@ -326,8 +340,9 @@ async def test_write_360_memory_without_github_integration(mock_db_manager, mock
         assert result["success"] is True
         assert result["git_commits_count"] == 0
 
-        entry = mock_product.product_memory["sequential_history"][0]
-        assert entry["git_commits"] == []
+        # Verify create_entry was called with empty git_commits
+        call_kwargs = mock_repo.create_entry.call_args[1]
+        assert call_kwargs["git_commits"] == []
 
 
 @pytest.mark.asyncio
@@ -350,7 +365,7 @@ async def test_write_360_memory_missing_project_id():
 async def test_write_360_memory_missing_summary():
     """Test error handling for missing summary."""
     result = await write_360_memory(
-        project_id="project-123",
+        project_id="550e8400-e29b-41d4-a716-446655440001",
         tenant_key="tenant-abc",
         summary="",
         key_outcomes=[],
@@ -365,7 +380,7 @@ async def test_write_360_memory_missing_summary():
 @pytest.mark.asyncio
 async def test_write_360_memory_project_not_found(mock_db_manager):
     """Test error handling when project not found."""
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'):
         mock_session = AsyncMock()
 
         # Mock project not found
@@ -374,7 +389,6 @@ async def test_write_360_memory_project_not_found(mock_db_manager):
 
         mock_session.execute.return_value = project_result
 
-        # Setup async context manager
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
@@ -394,7 +408,7 @@ async def test_write_360_memory_project_not_found(mock_db_manager):
 @pytest.mark.asyncio
 async def test_write_360_memory_product_not_found(mock_db_manager, mock_project):
     """Test error handling when product not found."""
-    with patch('giljo_mcp.tools.write_360_memory.select') as mock_select:
+    with patch('src.giljo_mcp.tools.write_360_memory.select'):
         mock_session = AsyncMock()
 
         # Mock project found but product not found
@@ -406,12 +420,11 @@ async def test_write_360_memory_product_not_found(mock_db_manager, mock_project)
 
         mock_session.execute.side_effect = [project_result, product_result]
 
-        # Setup async context manager
         mock_db_manager.get_session_async = MagicMock(return_value=AsyncContextManager(mock_session))
 
         # Call function
         result = await write_360_memory(
-            project_id="project-123",
+            project_id="550e8400-e29b-41d4-a716-446655440001",
             tenant_key="tenant-abc",
             summary="Test",
             key_outcomes=[],
