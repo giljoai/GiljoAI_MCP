@@ -81,6 +81,11 @@ from .products import (
     Vision,
 )
 
+# Product Memory models (Handover 0390a)
+from .product_memory_entry import (
+    ProductMemoryEntry,
+)
+
 # Project models
 from .projects import (
     Project,
@@ -152,6 +157,8 @@ __all__ = [
     "Product",
     "VisionDocument",
     "Vision",
+    # Product Memory (Handover 0390a)
+    "ProductMemoryEntry",
     # Projects
     "Project",
     "Session",

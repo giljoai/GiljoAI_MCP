@@ -341,44 +341,35 @@ Do not read from or write to this column. It will be removed in v4.0.
 
 **Purpose**: Provide orchestrators with cumulative product knowledge and project history.
 
+**Architecture**: Normalized `product_memory_entries` table (v3.3+, Handover 0390)
+
+**DEPRECATED**: `Product.product_memory.sequential_history` JSONB array is deprecated.
+Do not read from or write to this field. Use the table via `ProductMemoryRepository`.
+
 **Key Features**:
-- Product memory stored in `Product.product_memory` JSONB column
+- Memory entries stored in `product_memory_entries` table
+- Foreign key relationships to products and projects
+- Cascade delete when product deleted
+- Soft-delete (SET NULL) when project deleted
+- Proper indexes for query performance
 - Sequential project history with auto-incrementing sequence numbers
 - GitHub integration for commit tracking (optional)
 - Manual summaries for non-GitHub users (mini-git fallback)
 - Real-time WebSocket updates when memory changes
 
-**Data Structure**:
-```json
-{
-  "product_memory": {
-    "objectives": [...],
-    "decisions": [...],
-    "context": {...},
-    "knowledge_base": {...},
-    "sequential_history": [
-      {
-        "sequence": 1,
-        "type": "project_closeout",
-        "project_id": "uuid",
-        "summary": "...",
-        "git_commits": [...],
-        "timestamp": "2025-11-16T10:00:00Z"
-      }
-    ]
-  }
-}
-```
+**Data Structure** (Normalized Table):
+- `product_memory_entries` table with FK to products and projects
+- Each entry contains: sequence, type, project_id, summary, git_commits, timestamp
+- Repository pattern via `ProductMemoryRepository` for all operations
+- No JSONB arrays - fully normalized relational data
 
-**MCP Tool**:
-- `close_project_and_update_memory(project_id, summary, key_outcomes, decisions_made)`
-- Called by orchestrator at project completion
-- Automatically fetches GitHub commits if integration enabled
-- Emits WebSocket event for real-time UI updates
+**MCP Tools**:
+- `close_project_and_update_memory()` - Creates entry in table
+- `write_360_memory()` - Creates entry in table
 
 **GitHub Integration**:
 - Toggle: My Settings → Integrations → GitHub Integration
-- Stored in: `Product.product_memory.git_integration`
+- Stored in: `Product.product_memory.git_integration` (remains in JSONB)
 - Fallback: Manual summaries when GitHub disabled
 
 ## Testing Strategy

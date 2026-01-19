@@ -61,10 +61,11 @@ class HealthCheckConfig:
 @dataclass
 class AgentHealthStatus:
     """
-    Health status for a single agent job.
+    Health status for a single agent execution.
 
     Attributes:
-        job_id: Unique job identifier
+        job_id: Job identifier (work order - may have multiple executions via succession)
+        agent_id: Unique execution identifier (UUID - always unique per executor instance)
         agent_display_name: Type of agent (orchestrator, implementer, etc.)
         current_status: Current job status (waiting, active, etc.)
         health_state: Health state (healthy, warning, critical, timeout)
@@ -75,6 +76,7 @@ class AgentHealthStatus:
     """
 
     job_id: str
+    agent_id: str  # Unique execution UUID - required for succession support (Handover 0389)
     agent_display_name: str
     current_status: str  # Job status (waiting, active, etc.)
     health_state: str  # Health state (healthy, warning, critical, timeout)
