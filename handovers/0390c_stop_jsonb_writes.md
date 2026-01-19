@@ -459,9 +459,59 @@ git checkout HEAD~1 -- src/giljo_mcp/tools/project_closeout.py
 
 ## CLOSEOUT NOTES
 
-**Status**: [NOT STARTED]
+**Status**: ✅ COMPLETE
 
-*To be filled upon completion*
+### Completion Date: 2026-01-18
+
+### Summary
+Successfully switched all 360 memory WRITE operations from JSONB append to `product_memory_entries` table insert.
+
+### Changes Made
+
+#### Phase 2: write_360_memory.py
+- ✅ Replaced JSONB append with `ProductMemoryRepository.create_entry()`
+- ✅ Added atomic sequence generation via `repo.get_next_sequence()`
+- ✅ Added WebSocket event emission with table entry data
+- ✅ Return format includes `entry_id` from table
+
+#### Phase 3: project_closeout.py
+- ✅ Replaced JSONB append with `ProductMemoryRepository.create_entry()`
+- ✅ All field mappings preserved (deliverables, metrics, priority, significance_score, tags)
+- ✅ Git integration config still read from JSONB (correctly)
+- ✅ WebSocket event emission updated
+
+#### Phase 4: WebSocket Events
+- ✅ Both tools emit `product:memory:updated` event
+- ✅ Payload uses `entry.to_dict()` for table data
+- ✅ Backward-compatible format maintained
+
+#### Phase 5: TDD Tests
+- ✅ Created `tests/tools/test_write_360_memory_table.py` (12 tests)
+- ✅ Created `tests/tools/test_project_closeout_table.py` (16 tests)
+- ✅ All 38 tests passing
+
+#### Bug Fix Found by TDD
+- 🔧 Fixed UUID/string type mismatch in `ProductMemoryRepository`
+- Lines 128, 186, 215: Added `str()` wrapper for UUID comparisons
+
+### Test Results
+```
+38 passed, 111 warnings in 6.65s
+```
+
+### Files Modified
+- `src/giljo_mcp/tools/write_360_memory.py` - Repository insert + WebSocket
+- `src/giljo_mcp/tools/project_closeout.py` - Repository insert + WebSocket
+- `src/giljo_mcp/repositories/product_memory_repository.py` - UUID/string fix
+
+### Files Created
+- `tests/tools/test_write_360_memory_table.py` - 12 TDD tests
+- `tests/tools/test_project_closeout_table.py` - 16 TDD tests
+- `tests/unit/test_write_360_memory.py` - Updated unit tests
+- `tests/unit/test_project_closeout_repository.py` - Unit tests
+
+### Ready for 0390d
+All writes now go to the table. JSONB `sequential_history` is no longer mutated.
 
 ---
 
