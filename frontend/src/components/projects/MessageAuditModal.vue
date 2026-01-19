@@ -107,16 +107,41 @@
                 <div
                   v-for="message in currentMessages"
                   :key="message.id"
-                  class="audit-message-row"
+                  class="message-item-wrapper"
                   data-test="audit-message-row"
-                  @click="selectMessage(message)"
                 >
-                  <div class="audit-message-title">
-                    {{ getMessagePreview(message) }}
+                  <!-- Message Header: Timestamp | Recipient -->
+                  <div class="message-header">
+                    <span class="message-timestamp">{{ formatTimestamp(message) }}</span>
+                    <span class="message-separator">|</span>
+                    <span class="message-recipient">To: {{ formatRecipient(message) }}</span>
                   </div>
-                  <div class="audit-message-meta">
-                    {{ formatMessageMeta(message) }}
+
+                  <!-- Message Content Line with Eye Icon -->
+                  <div
+                    class="message-content-line"
+                    @click="toggleMessageExpansion(message.id)"
+                  >
+                    <span class="message-preview">{{ getMessagePreview(message) }}</span>
+                    <v-icon
+                      icon="mdi-eye"
+                      size="small"
+                      class="message-eye-icon"
+                    />
                   </div>
+
+                  <!-- Expanded Full Content -->
+                  <div
+                    v-if="isMessageExpanded(message.id)"
+                    class="message-full-content"
+                  >
+                    <div class="message-full-text">
+                      {{ getMessageContent(message) }}
+                    </div>
+                  </div>
+
+                  <!-- Divider -->
+                  <v-divider class="message-divider" />
                 </div>
               </div>
             </div>
@@ -167,6 +192,9 @@ const emit = defineEmits(['close'])
 // Tabs: 'sent' | 'waiting' | 'read' | 'plan'
 const activeTab = ref(props.initialTab || 'waiting')
 const selectedMessage = ref(null)
+
+// Track expanded messages by message ID (for inline expansion)
+const expandedMessages = ref(new Set())
 
 // API fetch logic (Handover 0387g Phase 4: fetch from MessageRepository, not JSONB)
 const messages = ref([])
@@ -235,11 +263,13 @@ watch(
   (value) => {
     if (!value) {
       selectedMessage.value = null
+      expandedMessages.value = new Set() // Clear expanded state when closing
       return
     }
     // When opening, pick the requested initial tab if provided
     activeTab.value = props.initialTab || 'waiting'
     selectedMessage.value = null
+    expandedMessages.value = new Set() // Clear expanded state when opening
     // Fetch messages from API instead of using props.agent.messages
     fetchMessages()
   },
@@ -264,8 +294,60 @@ function selectMessage(message) {
   selectedMessage.value = message
 }
 
+function toggleMessageExpansion(messageId) {
+  if (expandedMessages.value.has(messageId)) {
+    expandedMessages.value.delete(messageId)
+  } else {
+    expandedMessages.value.add(messageId)
+  }
+  // Trigger reactivity
+  expandedMessages.value = new Set(expandedMessages.value)
+}
+
+function isMessageExpanded(messageId) {
+  return expandedMessages.value.has(messageId)
+}
+
+function formatTimestamp(message) {
+  const timestamp = message.timestamp || message.created_at
+  if (!timestamp) return 'Unknown time'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return 'Unknown time'
+
+  // Format as "HH:MM:SS"
+  return date.toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+function formatRecipient(message) {
+  // Check if broadcast message
+  const toBroadcast = message.to_agents?.includes('all') ||
+                      message.message_type === 'broadcast' ||
+                      !message.to_agent_id
+
+  if (toBroadcast) return 'Broadcast'
+
+  // Try to get agent name if available
+  // Note: The message object may not have agent names, only IDs
+  // In a future enhancement, we could look up the agent name from the jobs list
+  const toAgentId = message.to_agent_id
+  if (toAgentId) {
+    return toAgentId.slice(0, 8) + '...'
+  }
+
+  return 'Unknown'
+}
+
+function getMessageContent(message) {
+  return message.text || message.content || message.message || ''
+}
+
 function getMessagePreview(message) {
-  const text = message.text || message.content || message.message || ''
+  const text = getMessageContent(message)
   if (!text) return '(empty message)'
   if (text.length <= 80) return text
   return `${text.slice(0, 77)}...`
@@ -332,19 +414,107 @@ function formatMessageMeta(message) {
   overflow-y: auto;
 }
 
+.audit-message-list {
+  padding: 8px 0;
+}
+
+.message-item-wrapper {
+  padding: 12px 16px;
+  transition: background-color 0.2s ease;
+}
+
+.message-item-wrapper:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Message Header: Timestamp | Recipient */
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+}
+
+.message-timestamp {
+  color: rgba(0, 0, 0, 0.6);
+  font-family: 'Courier New', monospace;
+}
+
+.message-separator {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.message-recipient {
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+}
+
+/* Message Content Line with Eye Icon */
+.message-content-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: all 0.2s ease;
+}
+
+.message-content-line:hover {
+  color: rgb(var(--v-theme-primary));
+}
+
+.message-content-line:hover .message-eye-icon {
+  color: rgb(var(--v-theme-primary));
+  transform: scale(1.1);
+}
+
+.message-preview {
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.message-eye-icon {
+  color: rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Expanded Full Content */
+.message-full-content {
+  margin-top: 8px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+.message-full-text {
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+/* Divider between messages */
+.message-divider {
+  margin-top: 12px;
+  opacity: 0.6;
+}
+
+.empty-state {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Legacy styles (kept for compatibility with any remaining references) */
 .audit-message-row {
   cursor: pointer;
 }
 
 .audit-message-row:hover {
   background-color: rgba(0, 0, 0, 0.04);
-}
-
-.audit-message-list {
-  padding: 8px 0;
-}
-
-.empty-state {
-  color: rgba(0, 0, 0, 0.6);
 }
 </style>
