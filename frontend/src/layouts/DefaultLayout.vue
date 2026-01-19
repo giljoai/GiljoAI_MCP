@@ -46,6 +46,10 @@ const drawer = ref(true)
 const rail = ref(false)
 const currentUser = ref(null)
 
+// Initialize notification reminder composable at top level (must be synchronous)
+// The composable's onMounted/onUnmounted hooks will fire at correct lifecycle points
+useNotificationReminder()
+
 const loadCurrentUser = async () => {
   try {
     const response = await api.auth.me()
@@ -115,9 +119,7 @@ onMounted(async () => {
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])
 
-      // Initialize periodic notification reminders (Handover: notifications-implementation)
-      useNotificationReminder()
-      console.log('[DefaultLayout] Notification reminder initialized')
+      // Notification reminder already initialized at top level (synchronous composable call)
 
       console.log('[DefaultLayout] Application initialized successfully')
     } catch (error) {
