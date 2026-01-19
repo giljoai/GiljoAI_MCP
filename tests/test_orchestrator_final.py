@@ -1,6 +1,10 @@
 """
 Final comprehensive test suite for ProjectOrchestrator.
 Tests all functionality with proper mocking and coverage tracking.
+
+Handover 0422: Cleaned up tests for removed dead token budget code.
+Removed tests for: update_context_usage(), get_context_status(), check_handoff_needed(),
+handoff(), _get_handoff_reason()
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -8,8 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.enums import ProjectStatus
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
+from src.giljo_mcp.enums import ProjectStatus, ContextStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest.fixture
@@ -193,125 +197,14 @@ class TestAgentManagement:
             await orchestrator.spawn_agent(project_id=str(uuid4()), role=AgentRole.IMPLEMENTER)
 
 
-class TestHandoffMechanism:
-    """Test agent handoff functionality."""
-
-    @pytest.mark.asyncio
-    async def test_handoff_workflow(self, orchestrator):
-        """Test complete handoff workflow."""
-        mock_session = orchestrator._mock_session
-
-        mock_project = MagicMock()
-        from_agent = MagicMock()
-        from_agent.name = "analyzer"
-        from_agent.status = "active"
-        from_agent.context_used = 45000
-        from_agent.context_budget = 50000
-
-        to_agent = MagicMock()
-        to_agent.name = "implementer"
-        to_agent.status = "inactive"
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_project, from_agent, to_agent]
-
-        created_message = None
-
-        def capture_add(obj):
-            nonlocal created_message
-            created_message = obj
-
-        mock_session.add = MagicMock(side_effect=capture_add)
-        mock_session.commit = AsyncMock()
-        mock_session.refresh = AsyncMock()
-
-        result = await orchestrator.handoff(
-            project_id=str(uuid4()),
-            from_agent_name="analyzer",
-            to_agent_name="implementer",
-            context={"analysis": "complete"},
-        )
-
-        assert result["success"] is True
-        assert from_agent.status == "database_initialized"
-        assert to_agent.status == "active"
-        assert created_message.from_agent == "analyzer"
-        assert created_message.to_agent == "implementer"
-
-    @pytest.mark.asyncio
-    async def test_check_handoff_needed(self, orchestrator):
-        """Test handoff detection logic."""
-        mock_session = orchestrator._mock_session
-        mock_agent = MagicMock()
-
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_agent
-
-        # Test at 80% threshold
-        mock_agent.context_used = 40000
-        mock_agent.context_budget = 50000
-        mock_agent.status = "active"
-
-        result = await orchestrator.check_handoff_needed("agent-id")
-        assert result["needs_handoff"] is True
-        assert result["context_percentage"] == 80.0
-
-        # Test below threshold
-        mock_agent.context_used = 20000
-
-        result = await orchestrator.check_handoff_needed("agent-id")
-        assert result["needs_handoff"] is False
-        assert result["context_percentage"] == 40.0
-
-        # Test error status triggers handoff
-        mock_agent.status = "error"
-
-        result = await orchestrator.check_handoff_needed("agent-id")
-        assert result["needs_handoff"] is True
+# Handover 0422: Entire TestHandoffMechanism class removed - tests removed methods:
+# - handoff() - method removed
+# - check_handoff_needed() - method removed
 
 
-class TestContextTracking:
-    """Test context usage tracking."""
-
-    def test_context_status_indicators(self):
-        """Test color-coded status indicators."""
-        orch = ProjectOrchestrator()
-
-        # Test boundaries
-        assert orch.get_context_status(0, 100) == ContextStatus.GREEN
-        assert orch.get_context_status(49, 100) == ContextStatus.GREEN
-        assert orch.get_context_status(50, 100) == ContextStatus.YELLOW
-        assert orch.get_context_status(79, 100) == ContextStatus.YELLOW
-        assert orch.get_context_status(80, 100) == ContextStatus.RED
-        assert orch.get_context_status(100, 100) == ContextStatus.RED
-
-        # Test with larger numbers
-        assert orch.get_context_status(25000, 50000) == ContextStatus.YELLOW
-        assert orch.get_context_status(120000, 150000) == ContextStatus.RED
-
-        # Test zero budget edge case
-        assert orch.get_context_status(50, 0) == ContextStatus.RED
-
-    @pytest.mark.asyncio
-    async def test_update_context_usage(self, orchestrator):
-        """Test updating agent and project context."""
-        mock_session = orchestrator._mock_session
-
-        mock_agent = MagicMock()
-        mock_agent.context_used = 10000
-        mock_agent.context_budget = 50000
-
-        mock_project = MagicMock()
-        mock_project.context_used = 20000
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_agent, mock_project]
-        mock_session.commit = AsyncMock()
-
-        result = await orchestrator.update_context_usage("agent-id", 5000)
-
-        assert mock_agent.context_used == 15000
-        assert mock_project.context_used == 25000
-        assert result["agent_total"] == 15000
-        assert result["project_total"] == 25000
-        assert result["status"] == ContextStatus.YELLOW  # 30% usage
+# Handover 0422: Entire TestContextTracking class removed - tests removed methods:
+# - get_context_status() - method removed
+# - update_context_usage() - method removed
 
 
 class TestMultiProjectSupport:
@@ -411,31 +304,8 @@ class TestErrorHandling:
         with pytest.raises(ValueError, match="not found"):
             await orchestrator.activate_project("non-existent")
 
-    @pytest.mark.asyncio
-    async def test_agent_not_found(self, orchestrator):
-        """Test handling of non-existent agent."""
-        mock_session = orchestrator._mock_session
-        mock_session.execute.return_value.scalar_one_or_none.return_value = None
-
-        result = await orchestrator.check_handoff_needed("non-existent")
-        assert result["needs_handoff"] is False
-        assert result["error"] == "Agent not found"
-
-    def test_handoff_reason_generation(self):
-        """Test handoff reason generation."""
-        orch = ProjectOrchestrator()
-
-        agent = MagicMock()
-        agent.context_used = 85000
-        agent.context_budget = 100000
-        agent.status = "active"
-
-        reason = orch._get_handoff_reason(agent)
-        assert "85%" in reason
-
-        agent.status = "error"
-        reason = orch._get_handoff_reason(agent)
-        assert "error" in reason
+    # Handover 0422: test_agent_not_found removed - tested check_handoff_needed() which is removed
+    # Handover 0422: test_handoff_reason_generation removed - tested _get_handoff_reason() which is removed
 
 
 if __name__ == "__main__":

@@ -121,8 +121,9 @@ async def setup_context_module(db_manager):
     """
     Auto-setup fixture to inject db_manager into context module.
 
-    This allows fetch_context(), update_context_usage(), and other context tools
-    to work in tests by setting the global _db_manager (Handover 0366c).
+    This allows fetch_context() and other context tools to work in tests
+    by setting the global _db_manager (Handover 0366c).
+    Note: update_context_usage() was removed in Handover 0422 (dead token budget cleanup).
     """
     import src.giljo_mcp.database as db_module
     db_module.set_db_manager(db_manager)
