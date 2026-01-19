@@ -137,7 +137,7 @@
                     icon="mdi-play"
                     size="small"
                     variant="text"
-                    color="yellow-darken-2"
+                    :color="actionIconColor"
                     @click="handlePlay(agent)"
                   />
                 </template>
@@ -151,7 +151,7 @@
                     icon="mdi-message-outline"
                     size="small"
                     variant="text"
-                    color="yellow-darken-2"
+                    :color="actionIconColor"
                     data-testid="jobs-messages-btn"
                     @click="handleMessages(agent)"
                   />
@@ -185,7 +185,7 @@
                     icon="mdi-briefcase-outline"
                     size="small"
                     variant="text"
-                    color="white"
+                    :color="actionIconColor"
                     data-testid="jobs-info-btn"
                     @click="handleAgentJob(agent)"
                   />
@@ -203,7 +203,7 @@
                     icon="mdi-hand-wave"
                     size="small"
                     variant="text"
-                    color="warning"
+                    :color="actionIconColor"
                     @click="openHandoverDialog(agent)"
                   />
                 </template>
@@ -383,6 +383,14 @@ const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJo
 const giljoFaceIcon = computed(() => {
   const isDark = theme.global.current.value.dark
   return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+})
+
+/**
+ * Action icon color - theme-aware (yellow in dark, blue in light)
+ */
+const actionIconColor = computed(() => {
+  const isDark = theme.global.current.value.dark
+  return isDark ? 'warning' : 'primary'
 })
 
 /**
@@ -1002,7 +1010,7 @@ async function copyToClipboard(text) {
           }
 
           .id-label {
-            color: rgba(var(--v-theme-on-surface), 0.5);
+            color: rgba(var(--v-theme-on-surface), 0.7);
             font-size: 10px;
             min-width: 35px;
           }
@@ -1039,7 +1047,7 @@ async function copyToClipboard(text) {
           text-align: center;
           font-family: 'Roboto Mono', 'Courier New', monospace;
           font-size: 13px;
-          color: #b0bec5;
+          color: rgba(var(--v-theme-on-surface), 0.7);
         }
 
         &.checkbox-cell {
