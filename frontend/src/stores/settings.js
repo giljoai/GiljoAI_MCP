@@ -140,7 +140,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function applyTheme() {
-    theme.global.name.value = settings.value.theme // TODO: Upgrade to theme.change() after Vuetify 3.7+
+    theme.change(settings.value.theme)
   }
 
   function saveToLocalStorage() {
