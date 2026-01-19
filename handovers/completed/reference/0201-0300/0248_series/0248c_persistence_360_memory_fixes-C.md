@@ -717,3 +717,10 @@ TOTAL                                         87     10  88.64%
 **Archived By**: Documentation Manager Agent
 **Archive Location**: `handovers/completed/0248c_persistence_360_memory_fixes-C.md`
 **Git Commit**: `f0375227` - "fix: Complete 0248c test coverage and validation fixes"
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Test Coverage Report 0248c](../../../reports/TEST_COVERAGE_REPORT_0248c.md)
