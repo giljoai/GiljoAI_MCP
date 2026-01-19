@@ -867,3 +867,10 @@ This handover implements dynamic agent discovery via MCP tool to eliminate waste
 - Add agent capability filtering (e.g., "agents with testing capability")
 - Consider agent recommendation system (orchestrator asks "which agent for X?")
 - Add caching layer for frequently-fetched agent lists
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Handover Summary](../../../reports/HANDOVER_0246c_SUMMARY.txt)

@@ -492,3 +492,10 @@ frontend/src/views/ProjectsView.vue
 
 *Handover 0327 created by Claude Code on November 27, 2025*
 *Updated December 5, 2025 - UI selectors implementation complete*
+
+---
+
+## Related Reports
+
+Reports generated during this handover are archived in the reports folder:
+- [Handover 0327 Test Report](reports/HANDOVER_0327_TEST_REPORT.md)
