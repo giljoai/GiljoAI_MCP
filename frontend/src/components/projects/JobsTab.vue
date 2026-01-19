@@ -270,46 +270,13 @@
       :agent="selectedAgent"
     />
 
-    <!-- Agent Job Modal (Info button - shows assigned job/mission) - Handover 0358 -->
-    <v-dialog v-model="showAgentJobModal" max-width="700" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-avatar :color="getAgentColor(selectedAgent?.agent_name || selectedAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
-            <span class="avatar-text">{{ getAgentAbbr(selectedAgent?.agent_name || selectedAgent?.agent_display_name) }}</span>
-          </v-avatar>
-          <span style="text-transform: capitalize">{{ selectedAgent?.agent_name || selectedAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
-          <v-spacer></v-spacer>
-          <v-btn icon variant="text" @click="showAgentJobModal = false" aria-label="Close">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-card-title>
-        <v-divider></v-divider>
-        <v-card-text>
-          <div v-if="selectedAgent" class="agent-job-content">
-            <!-- Agent Info - Handover 0401b: Show agent_id and job_id as labeled text -->
-            <div class="text-caption text-medium-emphasis mb-4">
-              <div><strong>Agent ID:</strong> {{ selectedAgent.agent_id }}</div>
-              <div><strong>Job ID:</strong> {{ selectedAgent.job_id }}</div>
-            </div>
-
-            <!-- Mission Content -->
-            <div class="mission-section">
-              <h4 class="text-subtitle-1 font-weight-bold mb-2">Mission</h4>
-              <v-card variant="outlined" class="pa-3">
-                <pre class="mission-text">{{ selectedAgent.mission || 'No mission assigned yet.' }}</pre>
-              </v-card>
-            </div>
-          </div>
-          <div v-else class="text-center py-4 text-medium-emphasis">
-            No agent selected
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" @click="showAgentJobModal = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Agent Job Modal (Info button - shows assigned job/mission) - Handover 0423 -->
+    <AgentJobModal
+      :show="showAgentJobModal"
+      :agent="selectedAgent"
+      :initial-tab="jobModalInitialTab"
+      @close="showAgentJobModal = false"
+    />
 
     <!-- Message Audit Modal (Chat bubble - Handover 0358) -->
     <MessageAuditModal
@@ -355,6 +322,7 @@ import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusCo
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
+import AgentJobModal from '@/components/projects/AgentJobModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
@@ -434,6 +402,7 @@ const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
 const showCloseoutModal = ref(false)
+const jobModalInitialTab = ref('mission')
 const messageAuditInitialTab = ref('waiting')
 const selectedJobId = ref(null)
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
@@ -758,7 +727,7 @@ function handleMessages(agent) {
 
 /**
  * Handle Steps click
- * Handover 0331: Opens Message Audit Modal focused on Plan / TODOs
+ * Handover 0423: Opens Agent Job Modal focused on Plan tab
  */
 function handleStepsClick(agent) {
   if (
@@ -770,8 +739,8 @@ function handleStepsClick(agent) {
   }
 
   selectedJobId.value = agent.job_id || agent.agent_id
-  messageAuditInitialTab.value = 'plan'
-  showMessageAuditModal.value = true
+  jobModalInitialTab.value = 'plan'
+  showAgentJobModal.value = true
 }
 
 /**
@@ -785,12 +754,13 @@ function handleAgentRole(agent) {
 }
 
 /**
- * Handle Agent Job button click (info icon) - Handover 0358
+ * Handle Agent Job button click (briefcase icon) - Handover 0423
  * Opens modal to show agent's assigned job/mission
  */
 function handleAgentJob(agent) {
   console.log('[JobsTab] Agent job action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
+  jobModalInitialTab.value = 'mission'
   showAgentJobModal.value = true
 }
 
