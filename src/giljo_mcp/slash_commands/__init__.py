@@ -6,18 +6,12 @@ Maps /gil_* commands to handler functions
 from typing import Callable
 
 from .handover import handle_gil_handover
-from .project import handle_gil_activate, handle_gil_launch
 
 
 # Slash command registry
+# NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
 SLASH_COMMANDS: dict[str, Callable] = {
     "gil_handover": handle_gil_handover,
-    "gil_activate": handle_gil_activate,
-    "gil_launch": handle_gil_launch,
-    # Future commands:
-    # "gil_activate": handle_gil_activate,
-    # "gil_launch": handle_gil_launch,
-    # "gil_status": handle_gil_status,
 }
 
 

@@ -104,7 +104,10 @@ class Product(Base):
         JSONB,
         nullable=False,
         server_default=text("'{\"github\": {}, \"sequential_history\": [], \"context\": {}}'::jsonb"),
-        comment="360 Memory: GitHub integration, sequential history, context summaries (Handover 0135)",
+        comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED "
+            "as of v3.3 (Handover 0390). Use product_memory_entries table instead. "
+            "Only 'git_integration' config remains in use. "
+            "WILL BE MODIFIED in v4.0 to remove sequential_history.",
     )
 
     # Relationships
@@ -118,6 +121,9 @@ class Product(Base):
         cascade="all, delete-orphan",
         order_by="VisionDocument.display_order",
     )
+
+    # Handover 0390a: 360 Memory Entries
+    memory_entries = relationship("ProductMemoryEntry", back_populates="product", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),

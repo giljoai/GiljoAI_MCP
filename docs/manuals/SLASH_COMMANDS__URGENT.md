@@ -410,7 +410,7 @@ Activate a project and start multi-agent orchestration directly in CLI.
 ## Instructions
 
 1. **Find project**: Use `mcp__giljo-mcp__list_projects`, fuzzy match name/ID
-2. **Activate project**: Use `mcp__giljo-mcp__gil_activate` to prepare orchestrator staging
+2. **Activate project**: ⚠️ Project activation is done via web UI (Handover 0388 removed CLI activation)
 3. **Get agents**: Use `mcp__giljo-mcp__list_agents`
 4. **Start orchestration**: Present summary and enter orchestrator mode
 
@@ -435,8 +435,8 @@ const project = projects.find(p =>
   p.name.toLowerCase().includes("authentication")
 )
 
-// Activate project:
-mcp__giljo-mcp__gil_activate({ project_id: project.id })
+// NOTE: Project activation is done via web UI (Handover 0388)
+// Projects must be activated in the dashboard before CLI orchestration
 
 // Get agents:
 const agents = mcp__giljo-mcp__list_agents({ status: "active" })

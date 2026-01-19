@@ -1,0 +1,330 @@
+"""
+ProductMemoryEntry Repository (Handover 0390a)
+
+CRUD operations for 360 memory entries with tenant isolation.
+"""
+
+import logging
+from datetime import datetime
+from typing import List, Optional, Dict, Any
+from uuid import UUID
+
+from sqlalchemy import select, update, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+
+
+logger = logging.getLogger(__name__)
+
+
+class ProductMemoryRepository:
+    """Repository for ProductMemoryEntry CRUD operations."""
+
+    async def create_entry(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: UUID,
+        sequence: int,
+        entry_type: str,
+        source: str,
+        timestamp: datetime,
+        project_id: Optional[UUID] = None,
+        project_name: Optional[str] = None,
+        summary: Optional[str] = None,
+        key_outcomes: Optional[List[str]] = None,
+        decisions_made: Optional[List[str]] = None,
+        git_commits: Optional[List[Dict[str, Any]]] = None,
+        deliverables: Optional[List[str]] = None,
+        metrics: Optional[Dict[str, Any]] = None,
+        priority: int = 3,
+        significance_score: float = 0.5,
+        token_estimate: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        author_job_id: Optional[UUID] = None,
+        author_name: Optional[str] = None,
+        author_type: Optional[str] = None,
+    ) -> ProductMemoryEntry:
+        """
+        Create a new 360 memory entry.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant isolation key
+            product_id: Parent product ID
+            sequence: Sequence number (must be unique per product)
+            entry_type: Entry type (project_closeout, project_completion, handover_closeout)
+            source: Source tool identifier
+            timestamp: When the entry was created
+            project_id: Source project ID (optional)
+            ... (other fields)
+
+        Returns:
+            Created ProductMemoryEntry instance
+
+        Raises:
+            IntegrityError: If sequence is duplicate for product
+        """
+        entry = ProductMemoryEntry(
+            tenant_key=tenant_key,
+            product_id=str(product_id),  # Convert UUID to string (column is String(36))
+            project_id=str(project_id) if project_id else None,  # Convert UUID to string
+            sequence=sequence,
+            entry_type=entry_type,
+            source=source,
+            timestamp=timestamp,
+            project_name=project_name,
+            summary=summary,
+            key_outcomes=key_outcomes or [],
+            decisions_made=decisions_made or [],
+            git_commits=git_commits or [],
+            deliverables=deliverables or [],
+            metrics=metrics or {},
+            priority=priority,
+            significance_score=significance_score,
+            token_estimate=token_estimate,
+            tags=tags or [],
+            author_job_id=str(author_job_id) if author_job_id else None,  # Convert UUID to string
+            author_name=author_name,
+            author_type=author_type,
+        )
+        session.add(entry)
+        await session.flush()
+        await session.refresh(entry)
+
+        logger.info(
+            f"Created memory entry {entry.id} for product {product_id} (seq={sequence})",
+            extra={"tenant_key": tenant_key, "entry_type": entry_type},
+        )
+        return entry
+
+    async def get_entries_by_product(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        limit: Optional[int] = None,
+        offset: int = 0,
+        include_deleted: bool = False,
+    ) -> List[ProductMemoryEntry]:
+        """
+        Get 360 memory entries for a product with pagination.
+
+        Args:
+            session: Database session
+            product_id: Product ID to query
+            tenant_key: Tenant isolation key
+            limit: Maximum entries to return (None = all)
+            offset: Number of entries to skip
+            include_deleted: Include soft-deleted entries
+
+        Returns:
+            List of ProductMemoryEntry in descending sequence order
+        """
+        stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == str(product_id),
+                ProductMemoryEntry.tenant_key == tenant_key,
+            )
+            .order_by(ProductMemoryEntry.sequence.desc())
+            .offset(offset)
+        )
+
+        if not include_deleted:
+            stmt = stmt.where(ProductMemoryEntry.deleted_by_user == False)
+
+        if limit:
+            stmt = stmt.limit(limit)
+
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_entry_by_id(
+        self,
+        session: AsyncSession,
+        entry_id: UUID,
+        tenant_key: str,
+    ) -> Optional[ProductMemoryEntry]:
+        """
+        Get a single entry by ID with tenant isolation.
+
+        Args:
+            session: Database session
+            entry_id: Entry UUID
+            tenant_key: Tenant isolation key
+
+        Returns:
+            ProductMemoryEntry or None if not found
+        """
+        stmt = select(ProductMemoryEntry).where(
+            ProductMemoryEntry.id == entry_id,
+            ProductMemoryEntry.tenant_key == tenant_key,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_next_sequence(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+    ) -> int:
+        """
+        Get the next available sequence number for a product.
+
+        Uses SELECT MAX(sequence) + 1, returns 1 if no entries exist.
+
+        Args:
+            session: Database session
+            product_id: Product ID
+
+        Returns:
+            Next sequence number (1-based)
+        """
+        stmt = select(func.max(ProductMemoryEntry.sequence)).where(
+            ProductMemoryEntry.product_id == str(product_id),
+        )
+        result = await session.execute(stmt)
+        max_seq = result.scalar_one_or_none()
+        return (max_seq or 0) + 1
+
+    async def mark_entries_deleted(
+        self,
+        session: AsyncSession,
+        project_id: UUID,
+        tenant_key: str,
+    ) -> int:
+        """
+        Soft-delete all entries associated with a project.
+
+        Called when a project is deleted - marks entries as deleted
+        but preserves them for historical reference.
+
+        Args:
+            session: Database session
+            project_id: Project ID to mark entries for
+            tenant_key: Tenant isolation key
+
+        Returns:
+            Number of entries marked as deleted
+        """
+        stmt = (
+            update(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.project_id == str(project_id),
+                ProductMemoryEntry.tenant_key == tenant_key,
+            )
+            .values(
+                deleted_by_user=True,
+                user_deleted_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+        )
+        result = await session.execute(stmt)
+        await session.flush()
+
+        count = result.rowcount
+        if count > 0:
+            logger.info(
+                f"Marked {count} memory entries as deleted for project {project_id}",
+                extra={"tenant_key": tenant_key},
+            )
+        return count
+
+    async def update_entry(
+        self,
+        session: AsyncSession,
+        entry_id: UUID,
+        tenant_key: str,
+        **kwargs,
+    ) -> Optional[ProductMemoryEntry]:
+        """
+        Update an existing entry.
+
+        Args:
+            session: Database session
+            entry_id: Entry UUID
+            tenant_key: Tenant isolation key
+            **kwargs: Fields to update
+
+        Returns:
+            Updated entry or None if not found
+        """
+        entry = await self.get_entry_by_id(session, entry_id, tenant_key)
+        if not entry:
+            return None
+
+        for key, value in kwargs.items():
+            if hasattr(entry, key):
+                setattr(entry, key, value)
+
+        entry.updated_at = datetime.utcnow()
+        await session.flush()
+        await session.refresh(entry)
+        return entry
+
+    async def get_entries_for_context(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get entries formatted for context (mission planning).
+
+        Returns lightweight dicts suitable for agent context injection.
+
+        Args:
+            session: Database session
+            product_id: Product ID
+            tenant_key: Tenant isolation key
+            limit: Max entries to return
+
+        Returns:
+            List of entry dicts
+        """
+        entries = await self.get_entries_by_product(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=limit,
+            include_deleted=False,
+        )
+        return [entry.to_dict() for entry in entries]
+
+    async def get_git_history(
+        self,
+        session: AsyncSession,
+        product_id: UUID,
+        tenant_key: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get aggregated git commits from all entries.
+
+        Args:
+            session: Database session
+            product_id: Product ID
+            tenant_key: Tenant isolation key
+            limit: Max commits to return
+
+        Returns:
+            List of git commit dicts
+        """
+        entries = await self.get_entries_by_product(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            include_deleted=False,
+        )
+
+        all_commits = []
+        for entry in entries:
+            if entry.git_commits:
+                all_commits.extend(entry.git_commits)
+
+        # Sort by date descending, limit
+        all_commits.sort(key=lambda c: c.get("date", ""), reverse=True)
+        return all_commits[:limit]

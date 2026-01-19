@@ -652,14 +652,25 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return prompt
 
-    def _inject_360_memory(self, product) -> str:
+    async def _inject_360_memory(
+        self,
+        session,
+        product_id: str,
+        tenant_key: str,
+        product: Optional[Any] = None
+    ) -> str:
         """
         Inject 360 Memory System context into prompt.
+
+        Updated in Handover 0390b: Reads count from product_memory_entries table.
 
         ALWAYS included in orchestrator prompts to provide cumulative product knowledge.
 
         Args:
-            product: Product model with product_memory JSONB field
+            session: AsyncSession for database access
+            product_id: Product UUID
+            tenant_key: Tenant identifier
+            product: Optional Product model (for objectives from JSONB)
 
         Returns:
             Formatted 360 memory section (always present, even if no history)
@@ -674,17 +685,23 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
                 ## 360 Memory System
                 No previous project history yet. You're starting fresh.
         """
-        if not product or not product.product_memory:
-            return """
-## 360 Memory System
-No previous project history available. Starting fresh.
-"""
+        from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-        history_entries = product.product_memory.get("sequential_history", [])
-        context_data = product.product_memory.get("context", {})
-        objectives = context_data.get("objectives", []) if isinstance(context_data, dict) else []
+        # Get count from table (fetch limited set for count)
+        repo = ProductMemoryRepository()
+        entries = await repo.get_entries_for_context(
+            session=session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            limit=100,  # Reasonable limit for counting
+        )
+        history_count = len(entries)
 
-        history_count = len(history_entries)
+        # Get objectives from JSONB (still in product_memory)
+        objectives = []
+        if product and product.product_memory:
+            context_data = product.product_memory.get("context", {})
+            objectives = context_data.get("objectives", []) if isinstance(context_data, dict) else []
 
         # Build memory section
         memory_lines = ["\n## 360 Memory System"]
@@ -809,8 +826,9 @@ No previous project history available. Starting fresh.
 
         return project
 
-    def _build_thin_prompt_with_memory(
+    async def _build_thin_prompt_with_memory(
         self,
+        session,
         orchestrator_id: str,
         project_id: str,
         project_name: str,
@@ -822,11 +840,14 @@ No previous project history available. Starting fresh.
         """
         Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
 
+        Updated in Handover 0390b: Now async, reads memory count from table.
+
         This extends _build_thin_prompt with context injection.
 
         Handover 0306: Now includes agent templates based on field priority configuration.
 
         Args:
+            session: AsyncSession for database access
             orchestrator_id: Orchestrator job UUID
             project_id: Project UUID
             project_name: Project display name
@@ -847,8 +868,13 @@ No previous project history available. Starting fresh.
             tool=tool,
         )
 
-        # Inject 360 Memory (ALWAYS)
-        memory_section = self._inject_360_memory(product)
+        # Inject 360 Memory (ALWAYS) - now async
+        memory_section = await self._inject_360_memory(
+            session=session,
+            product_id=str(product.id),
+            tenant_key=product.tenant_key,
+            product=product,
+        )
 
         # Inject Git integration (CONDITIONAL)
         git_section = self._inject_git_instructions(product)

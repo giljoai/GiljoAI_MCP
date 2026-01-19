@@ -449,8 +449,7 @@ async def handle_tools_list(
             },
         },
         # Handover 0083: core /gil_* commands
-        {"name": "gil_activate", "description": "Activate a project and ensure orchestrator exists", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
-        {"name": "gil_launch", "description": "Launch project execution after staging", "inputSchema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+        # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI, not CLI
         # Unified Context Tool (Handover 0350a)
         {
             "name": "fetch_context",
@@ -637,8 +636,7 @@ async def handle_tools_call(
         "check_succession_status": state.tool_accessor.check_succession_status,
         "gil_handover": state.tool_accessor.gil_handover,
         # Handover 0083 - core /gil_* commands
-        "gil_activate": state.tool_accessor.gil_activate,
-        "gil_launch": state.tool_accessor.gil_launch,
+        # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
         # File Utilities (Handover 0360 Feature 3)
