@@ -22,14 +22,14 @@ Tools for managing projects and their lifecycle.
 | Tool                     | File       | Description                                                 | Status         |
 | ------------------------ | ---------- | ----------------------------------------------------------- | -------------- |
 | `list_projects`          | project.py | List all projects with optional status filter               | ✅ Implemented |
-| `gil_activate`           | project.py | Activate a project to prepare orchestrator staging          | ✅ Implemented |
+| ~~`gil_activate`~~       | project.py | ~~Activate a project to prepare orchestrator staging~~      | ⛔ DEPRECATED (0388) |
 | `close_project`          | project.py | Close a completed project with summary                      | ✅ Implemented |
 | `update_project_mission` | project.py | Update the mission field after orchestrator analysis        | ✅ Implemented |
 | `project_status`         | project.py | Get comprehensive project status                            | ✅ Implemented |
 | `get_product_config`     | product.py | Get product configuration with role-based filtering         | ✅ Implemented |
 | `update_product_config`  | product.py | Update product configuration with validation                | ✅ Implemented |
 
-**Note**: Projects are created via REST API (`POST /api/v1/projects/`), not MCP tools. Use `gil_activate` to activate projects for orchestrator staging.
+**Note**: Projects are created and activated via web UI, not MCP tools. The `gil_activate` MCP tool was removed in Handover 0388 - use the web dashboard to activate projects.
 
 #### 2. Agent Management Tools (6/6) ✅
 
