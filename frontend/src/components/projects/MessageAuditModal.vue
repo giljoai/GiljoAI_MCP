@@ -40,7 +40,7 @@
       <v-card-text class="pa-0">
         <!-- Loading State (Handover 0387g Phase 4) -->
         <div v-if="loading" class="pa-8 text-center">
-          <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
+          <v-progress-circular indeterminate color="warning" size="48" class="mb-4" />
           <div class="text-body-2 text-medium-emphasis">Loading messages...</div>
         </div>
 
@@ -82,64 +82,19 @@
             >
               Read ({{ readCount }})
             </button>
-            <button
-              type="button"
-              class="tab-button"
-              :class="{ active: activeTab === 'plan' }"
-              data-test="messages-tab-plan"
-              @click="activeTab = 'plan'"
-            >
-              Plan / TODOs ({{ planCount }})
-            </button>
           </div>
 
           <v-divider />
 
-          <!-- Two-column layout: list + detail (or TODO list for Plan tab) -->
+          <!-- Two-column layout: list + detail -->
           <div class="message-audit-body">
-          <!-- Plan/TODOs Tab: Display todo items instead of messages (Handover 0402) -->
-          <div v-if="activeTab === 'plan'" class="todo-items-column">
-            <div
-              v-if="todoItems.length === 0"
-              class="empty-state pa-4 text-center"
-            >
-              <v-icon icon="mdi-checkbox-blank-outline" size="32" class="mb-2" />
-              <div class="text-body-2 text-medium-emphasis">
-                No tasks reported yet
-              </div>
-            </div>
-
-            <div
-              v-else
-              class="todo-items-list pa-2"
-            >
-              <div
-                v-for="(item, index) in todoItems"
-                :key="`todo-${index}`"
-                class="todo-item-row"
-                data-test="todo-item-row"
-              >
-                <v-icon
-                  :icon="getStatusIcon(item.status)"
-                  :color="getStatusColor(item.status)"
-                  :class="{ 'pulse-animation': item.status === 'in_progress' }"
-                  class="mr-2"
-                  size="20"
-                />
-                <span class="todo-item-content">{{ item.content }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Message tabs: Show message list + detail pane -->
-          <template v-else>
             <!-- Message list -->
             <div class="message-list-column">
               <div
                 v-if="currentMessages.length === 0"
                 class="empty-state pa-4 text-center"
               >
-                <v-icon icon="mdi-message-outline" size="32" class="mb-2" />
+                <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="warning" />
                 <div class="text-body-2 text-medium-emphasis">
                   No messages in this category
                 </div>
@@ -152,16 +107,42 @@
                 <div
                   v-for="message in currentMessages"
                   :key="message.id"
-                  class="audit-message-row"
+                  class="message-item-wrapper"
                   data-test="audit-message-row"
-                  @click="selectMessage(message)"
                 >
-                  <div class="audit-message-title">
-                    {{ getMessagePreview(message) }}
+                  <!-- Message Header: Timestamp | Recipient -->
+                  <div class="message-header">
+                    <span class="message-timestamp">{{ formatTimestamp(message) }}</span>
+                    <span class="message-separator">|</span>
+                    <span class="message-recipient">To: {{ formatRecipient(message) }}</span>
                   </div>
-                  <div class="audit-message-meta">
-                    {{ formatMessageMeta(message) }}
+
+                  <!-- Message Content Line with Eye Icon -->
+                  <div
+                    class="message-content-line"
+                    @click="toggleMessageExpansion(message.id)"
+                  >
+                    <span class="message-preview">{{ getMessagePreview(message) }}</span>
+                    <v-icon
+                      icon="mdi-eye"
+                      size="small"
+                      color="warning"
+                      class="message-eye-icon"
+                    />
                   </div>
+
+                  <!-- Expanded Full Content -->
+                  <div
+                    v-if="isMessageExpanded(message.id)"
+                    class="message-full-content"
+                  >
+                    <div class="message-full-text">
+                      {{ getMessageContent(message) }}
+                    </div>
+                  </div>
+
+                  <!-- Divider -->
+                  <v-divider class="message-divider" />
                 </div>
               </div>
             </div>
@@ -173,8 +154,7 @@
             >
               <MessageDetailView :message="selectedMessage" />
             </div>
-          </template>
-        </div>
+          </div>
         </div>
         <!-- End v-else wrapper for loaded state -->
       </v-card-text>
@@ -199,7 +179,7 @@ const props = defineProps({
   // Initial tab when opening the modal: 'waiting' | 'sent' | 'read' | 'plan'
   initialTab: {
     type: String,
-    default: 'waiting',
+    default: 'sent',
   },
   // Optional steps summary for header context (completed/total)
   steps: {
@@ -211,8 +191,11 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 // Tabs: 'sent' | 'waiting' | 'read' | 'plan'
-const activeTab = ref(props.initialTab || 'waiting')
+const activeTab = ref(props.initialTab || 'sent')
 const selectedMessage = ref(null)
+
+// Track expanded messages by message ID (for inline expansion)
+const expandedMessages = ref(new Set())
 
 // API fetch logic (Handover 0387g Phase 4: fetch from MessageRepository, not JSONB)
 const messages = ref([])
@@ -260,22 +243,13 @@ const readMessages = computed(() =>
   ),
 )
 
-// Plan / TODO items (Handover 0402: use todo_items from agent job, not messages)
-const todoItems = computed(() =>
-  props.agent?.todo_items && Array.isArray(props.agent.todo_items)
-    ? props.agent.todo_items
-    : [],
-)
-
 const sentCount = computed(() => sentMessages.value.length)
 const waitingCount = computed(() => waitingMessages.value.length)
 const readCount = computed(() => readMessages.value.length)
-const planCount = computed(() => todoItems.value.length)
 
 const currentMessages = computed(() => {
   if (activeTab.value === 'sent') return sentMessages.value
   if (activeTab.value === 'read') return readMessages.value
-  if (activeTab.value === 'plan') return [] // Plan tab uses todoItems, not messages
   return waitingMessages.value
 })
 
@@ -290,11 +264,13 @@ watch(
   (value) => {
     if (!value) {
       selectedMessage.value = null
+      expandedMessages.value = new Set() // Clear expanded state when closing
       return
     }
     // When opening, pick the requested initial tab if provided
-    activeTab.value = props.initialTab || 'waiting'
+    activeTab.value = props.initialTab || 'sent'
     selectedMessage.value = null
+    expandedMessages.value = new Set() // Clear expanded state when opening
     // Fetch messages from API instead of using props.agent.messages
     fetchMessages()
   },
@@ -319,8 +295,60 @@ function selectMessage(message) {
   selectedMessage.value = message
 }
 
+function toggleMessageExpansion(messageId) {
+  if (expandedMessages.value.has(messageId)) {
+    expandedMessages.value.delete(messageId)
+  } else {
+    expandedMessages.value.add(messageId)
+  }
+  // Trigger reactivity
+  expandedMessages.value = new Set(expandedMessages.value)
+}
+
+function isMessageExpanded(messageId) {
+  return expandedMessages.value.has(messageId)
+}
+
+function formatTimestamp(message) {
+  const timestamp = message.timestamp || message.created_at
+  if (!timestamp) return 'Unknown time'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return 'Unknown time'
+
+  // Format as "HH:MM:SS"
+  return date.toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+function formatRecipient(message) {
+  // Check if broadcast message
+  const toBroadcast = message.to_agents?.includes('all') ||
+                      message.message_type === 'broadcast' ||
+                      !message.to_agent_id
+
+  if (toBroadcast) return 'Broadcast'
+
+  // Try to get agent name if available
+  // Note: The message object may not have agent names, only IDs
+  // In a future enhancement, we could look up the agent name from the jobs list
+  const toAgentId = message.to_agent_id
+  if (toAgentId) {
+    return toAgentId.slice(0, 8) + '...'
+  }
+
+  return 'Unknown'
+}
+
+function getMessageContent(message) {
+  return message.text || message.content || message.message || ''
+}
+
 function getMessagePreview(message) {
-  const text = message.text || message.content || message.message || ''
+  const text = getMessageContent(message)
   if (!text) return '(empty message)'
   if (text.length <= 80) return text
   return `${text.slice(0, 77)}...`
@@ -340,31 +368,6 @@ function formatMessageMeta(message) {
     date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString() : 'Unknown time'
 
   return `${timePart} | ${fromId} → ${toId} (${status})`
-}
-
-// Handover 0402: Helper functions for todo item status display
-function getStatusIcon(status) {
-  switch (status) {
-    case 'completed':
-      return 'mdi-checkbox-marked'
-    case 'in_progress':
-      return 'mdi-progress-clock'
-    case 'pending':
-    default:
-      return 'mdi-checkbox-blank-outline'
-  }
-}
-
-function getStatusColor(status) {
-  switch (status) {
-    case 'completed':
-      return 'success'
-    case 'in_progress':
-      return 'warning'
-    case 'pending':
-    default:
-      return 'grey'
-  }
 }
 </script>
 
@@ -389,7 +392,7 @@ function getStatusColor(status) {
 }
 
 .tab-button.active {
-  border-bottom: 2px solid rgb(var(--v-theme-primary));
+  border-bottom: 2px solid rgb(var(--v-theme-warning));
   font-weight: 600;
 }
 
@@ -412,63 +415,112 @@ function getStatusColor(status) {
   overflow-y: auto;
 }
 
-.audit-message-row {
-  cursor: pointer;
-}
-
-.audit-message-row:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
 .audit-message-list {
   padding: 8px 0;
+}
+
+.message-item-wrapper {
+  padding: 12px 16px;
+  margin: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.message-item-wrapper:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Message Header: Timestamp | Recipient */
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+}
+
+.message-timestamp {
+  color: rgb(var(--v-theme-warning));
+  font-family: 'Courier New', monospace;
+}
+
+.message-separator {
+  color: rgb(var(--v-theme-warning));
+  opacity: 0.7;
+}
+
+.message-recipient {
+  color: rgb(var(--v-theme-warning));
+  font-weight: 500;
+}
+
+/* Message Content Line with Eye Icon */
+.message-content-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: all 0.2s ease;
+}
+
+.message-content-line:hover {
+  color: rgb(var(--v-theme-warning));
+}
+
+.message-content-line:hover .message-eye-icon {
+  color: rgb(var(--v-theme-warning));
+  transform: scale(1.1);
+}
+
+.message-preview {
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.message-eye-icon {
+  color: rgb(var(--v-theme-warning)) !important;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Expanded Full Content */
+.message-full-content {
+  margin-top: 8px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  border-left: 3px solid rgb(var(--v-theme-warning));
+}
+
+.message-full-text {
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: white;
+}
+
+/* Divider between messages */
+.message-divider {
+  margin-top: 12px;
+  opacity: 0.6;
 }
 
 .empty-state {
   color: rgba(0, 0, 0, 0.6);
 }
 
-/* Handover 0402: TODO items styling */
-.todo-items-column {
-  flex: 1 1 100%;
-  max-height: 400px;
-  overflow-y: auto;
+/* Legacy styles (kept for compatibility with any remaining references) */
+.audit-message-row {
+  cursor: pointer;
 }
 
-.todo-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.todo-item-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.todo-item-row:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.todo-item-content {
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-/* Pulse animation for in_progress items */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.pulse-animation {
-  animation: pulse 2s ease-in-out infinite;
+.audit-message-row:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 </style>
