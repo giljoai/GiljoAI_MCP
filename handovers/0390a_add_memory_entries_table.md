@@ -1285,30 +1285,60 @@ git checkout master -- src/giljo_mcp/repositories/product_memory_repository.py
 ## 8. SUCCESS CRITERIA
 
 ### Functional
-- [ ] Table exists with correct schema
-- [ ] All columns match specification
-- [ ] Indexes created properly
-- [ ] Backfill migrates all JSONB entries
-- [ ] Repository CRUD works correctly
+- [x] Table exists with correct schema
+- [x] All columns match specification
+- [x] Indexes created properly
+- [x] Backfill migrates all JSONB entries
+- [x] Repository CRUD works correctly
 
 ### Quality
-- [ ] All 10+ TDD tests pass
-- [ ] No existing test regressions
-- [ ] No linting errors
+- [x] All 10+ TDD tests pass
+- [x] No existing test regressions
+- [x] No linting errors
 
 ### Documentation
-- [ ] Closeout notes completed
-- [ ] Ready for 0390b handover
+- [x] Closeout notes completed
+- [x] Ready for 0390b handover
 
 ---
 
 ## CLOSEOUT NOTES
 
-**Status**: [NOT STARTED]
+**Status**: ✅ COMPLETED
 
-*To be filled upon completion*
+**Completed**: 2026-01-18
+**Duration**: ~2 hours (faster than estimated 6-8 hours)
+**Branch**: `0390-360-memory-normalization`
+
+### Files Created
+1. `src/giljo_mcp/models/product_memory_entry.py` - SQLAlchemy model (27 columns)
+2. `src/giljo_mcp/repositories/product_memory_repository.py` - CRUD repository (8 methods)
+3. `migrations/versions/0390a_add_product_memory_entries.py` - Alembic migration with backfill
+4. `tests/repositories/test_product_memory_repository.py` - 10 TDD tests
+
+### Files Modified
+1. `src/giljo_mcp/models/__init__.py` - Export ProductMemoryEntry
+2. `src/giljo_mcp/models/products.py` - Add memory_entries relationship
+3. `src/giljo_mcp/models/projects.py` - Add memory_entries relationship
+4. `src/giljo_mcp/repositories/__init__.py` - Export ProductMemoryRepository
+5. `tests/conftest.py` - Add test_product fixture
+
+### Backfill Results
+- **Source**: Product.product_memory.sequential_history JSONB
+- **Target**: product_memory_entries table
+- **Count**: 3 entries from 1 product (TinyContacts)
+- **Verification**: COUNT(table) == COUNT(JSONB) ✅
+
+### Test Results
+- TDD tests: 10/10 passing
+- Pre-existing failures: Unchanged (no new regressions)
+
+### Notes
+- Used String(36) for UUID foreign keys to match existing schema pattern
+- Added test_product fixture to conftest.py for repository tests
+- Migration includes comprehensive backfill SQL with NULL handling
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Last Updated**: 2026-01-18

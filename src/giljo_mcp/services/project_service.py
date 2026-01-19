@@ -2162,37 +2162,22 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 deleted_counts["visions"] = len(visions)
 
                 # Mark 360 memory entries as deleted by user (preserve historical reference)
+                # Handover 0390b: Use repository instead of JSONB mutation
                 memory_entries_marked = 0
                 if project.product_id:
-                    from sqlalchemy.orm.attributes import flag_modified
-                    from src.giljo_mcp.models.products import Product
+                    from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-                    product_stmt = select(Product).where(
-                        and_(
-                            Product.id == project.product_id,
-                            Product.tenant_key == tenant_key,
-                        )
+                    repo = ProductMemoryRepository()
+                    memory_entries_marked = await repo.mark_entries_deleted(
+                        session=session,
+                        project_id=project_id,
+                        tenant_key=tenant_key,
                     )
-                    product_result = await session.execute(product_stmt)
-                    parent_product = product_result.scalar_one_or_none()
 
-                    if parent_product and parent_product.product_memory:
-                        product_memory = parent_product.product_memory
-                        sequential_history = product_memory.get("sequential_history", [])
-
-                        # Mark matching entries as deleted by user
-                        for entry in sequential_history:
-                            if isinstance(entry, dict) and entry.get("project_id") == project_id:
-                                entry["deleted_by_user"] = True
-                                entry["user_deleted_at"] = datetime.utcnow().isoformat()
-                                memory_entries_marked += 1
-
-                        if memory_entries_marked > 0:
-                            parent_product.product_memory = product_memory
-                            flag_modified(parent_product, "product_memory")
-                            self._logger.info(
-                                f"Marked {memory_entries_marked} 360 memory entries as deleted for project {project_id}"
-                            )
+                    if memory_entries_marked > 0:
+                        self._logger.info(
+                            f"Marked {memory_entries_marked} 360 memory entries as deleted for project {project_id}"
+                        )
 
                 deleted_counts["memory_entries_marked"] = memory_entries_marked
 
