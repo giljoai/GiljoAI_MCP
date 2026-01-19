@@ -219,8 +219,12 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     return null
   }
 
+  // Handover 0407: Use from_job_id (sender's agent_id) for reliable resolution
+  // The backend now sends the sender's agent_id in the job_id/from_job_id field
   function handleMessageSent(payload) {
-    const senderId = resolveJobId(payload?.from_agent)
+    const senderId = resolveJobId(payload?.from_job_id)
+      || resolveJobId(payload?.job_id)
+      || resolveJobId(payload?.from_agent)
     if (!senderId) return
 
     const previous = jobsById.value.get(senderId)
