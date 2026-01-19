@@ -504,7 +504,7 @@ async function saveAppearanceSettings() {
   try {
     // Apply theme immediately
     if (settings.value.appearance.theme !== 'system') {
-      theme.global.name.value = settings.value.appearance.theme // TODO: Upgrade to theme.change() after Vuetify 3.7+
+      theme.change(settings.value.appearance.theme)
       document.documentElement.setAttribute('data-theme', settings.value.appearance.theme)
       localStorage.setItem('theme-preference', settings.value.appearance.theme)
     }
