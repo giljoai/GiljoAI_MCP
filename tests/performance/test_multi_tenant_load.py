@@ -128,7 +128,7 @@ class TestMultiTenantLoad:
         """Create orchestrator for testing"""
         orchestrator = ProjectOrchestrator(test_db)
         yield orchestrator
-        await orchestrator._stop_context_monitor()
+        # Cleanup: _stop_context_monitor() was removed in Handover 0422 (dead token budget cleanup)
 
     @pytest_asyncio.fixture
     async def message_tools(self, test_db):
