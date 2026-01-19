@@ -23,17 +23,38 @@
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Avatar + Name -->
             <td class="agent-display-name-cell">
-              <v-avatar :color="getAgentColor(agent.agent_name || agent.agent_display_name)" size="32" class="agent-avatar">
-                <span class="avatar-text">{{ getAgentAbbr(agent.agent_name || agent.agent_display_name) }}</span>
-              </v-avatar>
+              <button
+                type="button"
+                class="agent-avatar-button"
+                @click="handleAgentRole(agent)"
+                aria-label="View agent details"
+              >
+                <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
+                  <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
+                </v-avatar>
+              </button>
               <div class="agent-info">
-                <span class="agent-name-primary">{{ agent.agent_name || agent.agent_display_name }}</span>
+                <button
+                  type="button"
+                  class="agent-name-primary agent-name-button"
+                  @click="handleAgentJob(agent)"
+                >
+                  {{ getPrimaryAgentLabel(agent) }}
+                </button>
                 <span
-                  v-if="agent.agent_name && agent.agent_name !== agent.agent_display_name"
+                  v-if="agent.agent_name && !isOrchestrator(agent)"
                   class="agent-display-name-secondary"
                 >
-                  {{ agent.agent_display_name }}
+                  Skills: {{ agent.agent_name }}
                 </span>
+                <button
+                  v-else-if="isOrchestrator(agent)"
+                  type="button"
+                  class="agent-display-name-secondary agent-name-button"
+                  @click="handleAgentJob(agent)"
+                >
+                  Skills: Fixed system agent
+                </button>
               </div>
             </td>
 
@@ -49,11 +70,45 @@
               <div class="id-container">
                 <div class="id-row">
                   <span class="id-label">Agent:</span>
-                  <code class="id-value">{{ (agent.agent_id || agent.job_id || '—').slice(0, 8) }}</code>
+                  <v-tooltip
+                    :text="agent.agent_id || agent.job_id || '—'"
+                    location="top"
+                    open-on-hover
+                    open-on-click
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        type="button"
+                        class="id-value id-value-button"
+                        v-bind="tooltipProps"
+                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
+                        aria-label="Show full agent ID"
+                      >
+                        {{ getShortId(agent.agent_id || agent.job_id) }}
+                      </button>
+                    </template>
+                  </v-tooltip>
                 </div>
                 <div class="id-row">
                   <span class="id-label">Job:</span>
-                  <code class="id-value">{{ (agent.job_id || '—').slice(0, 8) }}</code>
+                  <v-tooltip
+                    :text="agent.job_id || '—'"
+                    location="top"
+                    open-on-hover
+                    open-on-click
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        type="button"
+                        class="id-value id-value-button"
+                        v-bind="tooltipProps"
+                        @click="copyId(agent.job_id, 'Job ID')"
+                        aria-label="Show full job ID"
+                      >
+                        {{ getShortId(agent.job_id) }}
+                      </button>
+                    </template>
+                  </v-tooltip>
                 </div>
               </div>
             </td>
@@ -114,17 +169,38 @@
 
             <!-- Messages Sent -->
             <td class="messages-sent-cell text-center">
-              <span class="message-count">{{ getMessagesSent(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages sent"
+              >
+                <span class="message-count">{{ getMessagesSent(agent) }}</span>
+              </button>
             </td>
 
             <!-- Messages Waiting -->
             <td class="messages-waiting-cell text-center">
-              <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages waiting"
+              >
+                <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+              </button>
             </td>
 
             <!-- Messages Read -->
             <td class="messages-read-cell text-center">
-              <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages read"
+              >
+                <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
+              </button>
             </td>
 
             <!-- Actions -->
@@ -392,6 +468,45 @@ const actionIconColor = computed(() => {
   const isDark = theme.global.current.value.dark
   return isDark ? 'warning' : 'primary'
 })
+
+function isOrchestrator(agent) {
+  return agent?.agent_name === 'orchestrator' || agent?.agent_display_name === 'orchestrator'
+}
+
+function getPrimaryAgentLabel(agent) {
+  if (!agent) {
+    return ''
+  }
+
+  if (isOrchestrator(agent)) {
+    return agent.agent_name || agent.agent_display_name || ''
+  }
+
+  return agent.agent_display_name || agent.agent_name || ''
+}
+
+function getShortId(value) {
+  if (!value || value === '—') {
+    return '—'
+  }
+
+  return value.slice(0, 8)
+}
+
+async function copyId(value, label) {
+  if (!value || value === '—') {
+    showLocalToast({ message: `${label} unavailable`, type: 'warning', duration: 2500 })
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(value)
+    showLocalToast({ message: `${label} copied`, type: 'success', duration: 2000 })
+  } catch (error) {
+    console.warn('[JobsTab] Failed to copy ID:', error)
+    showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
+  }
+}
 
 /**
  * State
@@ -980,6 +1095,16 @@ async function copyToClipboard(text) {
               text-transform: capitalize;
             }
 
+            .agent-avatar-button,
+            .agent-name-button {
+              background: none;
+              border: none;
+              padding: 0;
+              cursor: pointer;
+              text-align: left;
+              color: inherit;
+            }
+
             .agent-display-name-secondary {
               font-size: 0.75rem;
               color: rgba(var(--v-theme-on-surface), 0.6);
@@ -1019,6 +1144,13 @@ async function copyToClipboard(text) {
             background: rgba(var(--v-theme-on-surface), 0.1);
             padding: 1px 4px;
             border-radius: 2px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+          }
+
+          .id-value-button {
+            line-height: 1.2;
           }
         }
 
@@ -1057,6 +1189,14 @@ async function copyToClipboard(text) {
         &.count-cell {
           text-align: center;
           color: #ccc;
+        }
+
+        .message-count-button {
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          color: inherit;
         }
 
         &.actions-cell {

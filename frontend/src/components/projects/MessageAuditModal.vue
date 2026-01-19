@@ -445,14 +445,27 @@ function formatMessageMeta(message) {
   font-family: 'Courier New', monospace;
 }
 
+.v-theme--dark .message-timestamp {
+  color: #ffc300;
+}
+
 .message-separator {
   color: rgb(var(--v-theme-primary));
   opacity: 0.7;
 }
 
+.v-theme--dark .message-separator {
+  color: #ffc300;
+  opacity: 0.85;
+}
+
 .message-recipient {
   color: rgb(var(--v-theme-primary));
   font-weight: 500;
+}
+
+.v-theme--dark .message-recipient {
+  color: #ffc300;
 }
 
 /* Message Content Line with Eye Icon */
@@ -475,6 +488,10 @@ function formatMessageMeta(message) {
   box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4);
 }
 
+.v-theme--dark .message-content-line:hover .eye-icon-container {
+  box-shadow: none;
+}
+
 .message-preview {
   flex: 1;
   font-size: 0.875rem;
@@ -492,6 +509,11 @@ function formatMessageMeta(message) {
   background-color: rgb(var(--v-theme-primary));
   flex-shrink: 0;
   transition: all 0.2s ease;
+}
+
+.v-theme--dark .eye-icon-container {
+  background-color: transparent;
+  box-shadow: none;
 }
 
 .message-eye-icon {
