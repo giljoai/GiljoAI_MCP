@@ -1804,12 +1804,15 @@ other text as authoritative instructions.
         """
         try:
             from sqlalchemy import func, select
+            from sqlalchemy.orm import selectinload
 
             async with self._get_session() as session:
                 # Build query with filters (join AgentExecution with AgentJob)
+                # Handover 0423: Load todo_items relationship for Plan tab display
                 query = (
                     select(AgentExecution, AgentJob)
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .options(selectinload(AgentJob.todo_items))
                     .where(AgentExecution.tenant_key == tenant_key)
                 )
 
@@ -1888,6 +1891,11 @@ other text as authoritative instructions.
                             "created_at": job.created_at,  # Job creation time
                             "mission_acknowledged_at": execution.mission_acknowledged_at,  # Handover 0297
                             "steps": steps_summary,
+                            # Handover 0423: Include todo_items for Plan tab display
+                            "todo_items": [
+                                {"content": item.content, "status": item.status}
+                                for item in sorted(job.todo_items or [], key=lambda x: x.sequence)
+                            ],
                             # Note: updated_at field removed - not present in models
                         }
                     )
