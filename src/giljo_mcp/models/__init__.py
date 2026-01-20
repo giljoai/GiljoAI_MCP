@@ -9,7 +9,7 @@ Database models package for GiljoAI MCP.
 Use specific module imports for clarity and maintainability:
 
     from src.giljo_mcp.models.auth import User, APIKey, MCPSession
-    from src.giljo_mcp.models.projects import Project, Session
+    from src.giljo_mcp.models.projects import Project
     from src.giljo_mcp.models.agents import AgentInteraction, Job
     from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from src.giljo_mcp.models.products import Product, VisionDocument
@@ -34,10 +34,10 @@ src/giljo_mcp/models/
 ├── base.py            → Base, generate_uuid, generate_project_alias
 ├── auth.py            → User, APIKey, MCPSession
 ├── products.py        → Product, VisionDocument, Vision
-├── projects.py        → Project, Session
+├── projects.py        → Project
 ├── agents.py          → AgentInteraction, Job
 ├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
-├── templates.py       → AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
 ├── tasks.py           → Task, Message
 ├── context.py         → ContextIndex, LargeDocumentIndex, MCPContextIndex, MCPContextSummary
 └── config.py          → Configuration, DiscoveryConfig, GitConfig, GitCommit, SetupState,
@@ -89,7 +89,6 @@ from .product_memory_entry import (
 # Project models
 from .projects import (
     Project,
-    Session,
 )
 
 # Agent models
@@ -109,7 +108,6 @@ from .agent_identity import (
 from .templates import (
     AgentTemplate,
     TemplateArchive,
-    TemplateAugmentation,
     TemplateUsageStats,
 )
 
@@ -161,7 +159,6 @@ __all__ = [
     "ProductMemoryEntry",
     # Projects
     "Project",
-    "Session",
     # Agents
     "AgentInteraction",
     "Job",
@@ -172,7 +169,6 @@ __all__ = [
     # Templates
     "AgentTemplate",
     "TemplateArchive",
-    "TemplateAugmentation",
     "TemplateUsageStats",
     # Tasks
     "Task",

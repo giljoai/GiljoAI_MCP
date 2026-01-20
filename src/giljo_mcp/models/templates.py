@@ -104,7 +104,6 @@ class AgentTemplate(Base):
 
     # Relationships
     archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
-    augmentations = relationship("TemplateAugmentation", back_populates="template", cascade="all, delete-orphan")
     usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -193,44 +192,6 @@ class TemplateArchive(Base):
         Index("idx_archive_product", "product_id"),
         Index("idx_archive_version", "version"),
         Index("idx_archive_date", "archived_at"),
-    )
-
-
-class TemplateAugmentation(Base):
-    """
-    Template Augmentation model - stores runtime modifications to templates.
-    Allows task-specific customization without modifying base templates.
-    """
-
-    __tablename__ = "template_augmentations"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
-
-    # Augmentation details
-    name = Column(String(100), nullable=False)
-    augmentation_type = Column(String(50), nullable=False)  # 'append', 'prepend', 'replace', 'inject'
-    target_section = Column(String(100), nullable=True)  # Which section to augment
-    content = Column(Text, nullable=False)
-    conditions = Column(JSON, default=dict)  # When to apply this augmentation
-    priority = Column(Integer, default=0)  # Order of application
-
-    # Usage
-    is_active = Column(Boolean, default=True)
-    usage_count = Column(Integer, default=0)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    template = relationship("AgentTemplate", back_populates="augmentations")
-
-    __table_args__ = (
-        Index("idx_augment_tenant", "tenant_key"),
-        Index("idx_augment_template", "template_id"),
-        Index("idx_augment_active", "is_active"),
     )
 
 

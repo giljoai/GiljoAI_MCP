@@ -18,7 +18,7 @@ import pytest_asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.template import register_template_tools
@@ -117,37 +117,7 @@ class TestTemplateModels:
             assert result.template_id == template.id
             assert result.archive_reason == "Test archive"
 
-    async def test_template_augmentation(self, db_manager):
-        """Test template augmentation model"""
-        async with db_manager.get_session() as session:
-            # Create template
-            template = AgentTemplate(
-                tenant_key="test-tenant",
-                name="implementer",
-                category="role",
-                template_content="Implement: {feature}",
-                version="1.0.0",
-            )
-            session.add(template)
-            await session.commit()
-
-            # Create augmentation
-            augmentation = TemplateAugmentation(
-                tenant_key="test-tenant",
-                template_id=template.id,
-                name="feature-x",
-                augmentation_type="runtime",
-                replacements={"feature": "Authentication System"},
-                additional_rules=["Use OAuth 2.0"],
-                additional_criteria=["Pass security audit"],
-            )
-            session.add(augmentation)
-            await session.commit()
-
-            # Verify
-            result = await session.get(TemplateAugmentation, augmentation.id)
-            assert result is not None
-            assert result.replacements["feature"] == "Authentication System"
+    # NOTE: test_template_augmentation removed (Handover 0423 - TemplateAugmentation model deleted)
 
 
 class TestTemplateTools:
@@ -851,40 +821,8 @@ class TestMCPTemplateToolsIntegration:
             assert archive.archive_type == "manual"
             assert archive.is_restorable is True
 
-    async def test_tool_6_create_template_augmentation(self, seed_templates):
-        """Test create_template_augmentation tool"""
-        tools, db_manager, _tenant_manager, template_ids = seed_templates
-
-        implementer_id = template_ids["implementer"]
-
-        # Create augmentation
-        result = await tools["create_template_augmentation"](
-            template_id=implementer_id,
-            name="security_focus",
-            augmentation_type="append",
-            content="Security Considerations:\n- Input validation\n- Authentication checks\n- Data encryption",
-            target_section=None,
-            conditions={"project_type": "secure_app"},
-            priority=1,
-        )
-
-        assert result["success"] is True
-        assert result["augmentation_name"] == "security_focus"
-        assert result["type"] == "append"
-
-        # Verify augmentation was created
-        async with db_manager.get_session() as session:
-            from sqlalchemy import select
-
-            stmt = select(TemplateAugmentation).where(TemplateAugmentation.id == result["augmentation_id"])
-            result_db = await session.execute(stmt)
-            aug = result_db.scalar_one()
-
-            assert aug.name == "security_focus"
-            assert aug.augmentation_type == "append"
-            assert "Input validation" in aug.content
-            assert aug.priority == 1
-            assert aug.conditions["project_type"] == "secure_app"
+    # NOTE: test_tool_6_create_template_augmentation removed (Handover 0423)
+    # TemplateAugmentation model was deleted - DB persistence abandoned for runtime-only dicts
 
     async def test_tool_7_restore_template_version(self, seed_templates):
         """Test restore_template_version tool"""
