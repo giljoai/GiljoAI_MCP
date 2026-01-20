@@ -116,7 +116,6 @@ const wsStore = useWebSocketStore()
 
 const menuOpen = ref(false)
 let unsubscribeNotification = null
-let unsubscribeAgentHealth = null
 
 // Computed properties
 const notifications = computed(() => notificationStore.sortedNotifications || [])
@@ -206,39 +205,15 @@ const handleNewNotification = (payload) => {
   notificationStore.addNotification(payload)
 }
 
-const handleAgentHealthAlert = (payload) => {
-  console.log('[NotificationDropdown] Agent health alert received:', payload)
-  // Transform agent health event into notification format
-  // Backend payload: job_id, agent_display_name, health_state, issue_description, minutes_since_update, recommended_action
-  const agentName = payload.agent_display_name || payload.agent_name || 'Unknown Agent'
-  const healthState = payload.health_state || payload.health_status || 'unknown'
-  const issueDesc = payload.issue_description || `Health status: ${healthState}`
-
-  const notification = {
-    type: 'agent_health',
-    title: `Agent: ${agentName}`,
-    message: issueDesc,
-    timestamp: new Date().toISOString(),
-    read: false,
-    metadata: {
-      job_id: payload.job_id,
-      agent_display_name: agentName,
-      health_state: healthState,
-      minutes_since_update: payload.minutes_since_update,
-      recommended_action: payload.recommended_action,
-    },
-  }
-  notificationStore.addNotification(notification)
-}
-
 // Lifecycle hooks
+// Note: agent:health_alert events are now handled by websocketEventRouter.js (Handover 0424)
 onMounted(async () => {
   console.log('[NotificationDropdown] Component mounted')
 
   // Subscribe to WebSocket events
+  // Note: agent:health_alert is handled by websocketEventRouter.js (Handover 0424)
   try {
     unsubscribeNotification = wsStore.on('notification:new', handleNewNotification)
-    unsubscribeAgentHealth = wsStore.on('agent:health_alert', handleAgentHealthAlert)
     console.log('[NotificationDropdown] Subscribed to notification events')
   } catch (error) {
     console.warn('[NotificationDropdown] Failed to subscribe to events:', error)
@@ -256,9 +231,6 @@ onUnmounted(() => {
   try {
     if (typeof unsubscribeNotification === 'function') {
       unsubscribeNotification()
-    }
-    if (typeof unsubscribeAgentHealth === 'function') {
-      unsubscribeAgentHealth()
     }
     console.log('[NotificationDropdown] Unsubscribed from notification events')
   } catch (error) {
