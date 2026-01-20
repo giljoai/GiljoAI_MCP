@@ -420,14 +420,15 @@ async def delete_template(
     Hard delete a template and all related records.
 
     Deletes:
-    - TemplateAugmentation records
     - TemplateUsageStats records
     - TemplateArchive records (version history)
     - Sets AgentJob.template_id to NULL for historical jobs
     - The template itself
+
+    NOTE: TemplateAugmentation removed (Handover 0423 - dead code cleanup)
     """
     from src.giljo_mcp.models.agent_identity import AgentJob
-    from src.giljo_mcp.models.templates import TemplateArchive, TemplateAugmentation, TemplateUsageStats
+    from src.giljo_mcp.models.templates import TemplateArchive, TemplateUsageStats
     from sqlalchemy import update, delete as sql_delete
 
     try:
@@ -458,13 +459,12 @@ async def delete_template(
         # ORIGINAL QUERIES: crud.py lines 445-471 (replaced with service call)
         # 1. Set AgentJob.template_id to NULL for historical jobs
         # await session.execute(update(AgentJob)...)
-        # 2. Delete related TemplateAugmentation records
-        # await session.execute(sql_delete(TemplateAugmentation)...)
-        # 3. Delete related TemplateUsageStats records
+        # NOTE: TemplateAugmentation deletion removed (Handover 0423 - model deleted)
+        # 2. Delete related TemplateUsageStats records
         # await session.execute(sql_delete(TemplateUsageStats)...)
-        # 4. Delete related TemplateArchive records (version history)
+        # 3. Delete related TemplateArchive records (version history)
         # await session.execute(sql_delete(TemplateArchive)...)
-        # 5. Delete the template itself
+        # 4. Delete the template itself
         # await session.delete(template)
 
         deleted = await template_service.hard_delete_template(
