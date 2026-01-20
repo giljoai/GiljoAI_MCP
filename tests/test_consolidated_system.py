@@ -14,7 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.enums import AgentRole, AugmentationType, ProjectType
-from src.giljo_mcp.models import TemplateAugmentation
+# NOTE: TemplateAugmentation removed (Handover 0423 - model deleted, using dicts only)
 from src.giljo_mcp.template_manager import apply_augmentation, extract_variables, process_template
 
 
@@ -46,27 +46,27 @@ class TestPolymorphicAugmentation:
         result = apply_augmentation(content, aug_dict)
         assert "template\nINJECTED" in result
 
-    def test_augmentation_with_db_object(self):
-        """Test augmentation with TemplateAugmentation object"""
+    def test_augmentation_with_object_like_dict(self):
+        """Test augmentation with object-like dictionary (simulates DB model)"""
         content = "Base template content"
 
-        # Create a mock that inherits from TemplateAugmentation
+        # NOTE: TemplateAugmentation model removed (Handover 0423)
+        # Test with object-like dict that mimics the old model structure
+        class MockAugmentation:
+            def __init__(self, aug_type, content, target=None):
+                self.augmentation_type = aug_type
+                self.content = content
+                self.target_section = target
 
-        # Create a simple mock object with the required attributes
-        aug_obj = TemplateAugmentation()
-        aug_obj.augmentation_type = "append"
-        aug_obj.content = "Additional content"
-        aug_obj.target_section = None
+        # Create mock objects with same attributes as old TemplateAugmentation
+        aug_obj = MockAugmentation("append", "Additional content")
 
         # Test with object
         result = apply_augmentation(content, aug_obj)
         assert "Additional content" in result
 
         # Test inject with object
-        aug_obj2 = TemplateAugmentation()
-        aug_obj2.augmentation_type = "inject"
-        aug_obj2.content = "INJECTED"
-        aug_obj2.target_section = "template"
+        aug_obj2 = MockAugmentation("inject", "INJECTED", "template")
         result = apply_augmentation(content, aug_obj2)
         assert "template\nINJECTED" in result
 
