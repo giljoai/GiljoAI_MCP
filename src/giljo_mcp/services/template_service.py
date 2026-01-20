@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 # Model imports: Use domain-specific imports (Post-0128a)
 from src.giljo_mcp.models.agent_identity import AgentJob
-from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
 
@@ -668,10 +668,9 @@ class TemplateService:
 
         Deletes in order:
         1. Sets AgentJob.template_id to NULL for historical jobs
-        2. Deletes TemplateAugmentation records
-        3. Deletes TemplateUsageStats records
-        4. Deletes TemplateArchive records (version history)
-        5. Deletes the template itself
+        2. Deletes TemplateUsageStats records
+        3. Deletes TemplateArchive records (version history)
+        4. Deletes the template itself
 
         Args:
             session: Database session
@@ -698,13 +697,9 @@ class TemplateService:
             .values(template_id=None)
         )
 
-        # 2. Delete related TemplateAugmentation records
-        await session.execute(
-            sql_delete(TemplateAugmentation)
-            .where(TemplateAugmentation.template_id == template_id)
-        )
+        # NOTE: TemplateAugmentation deletion removed (Handover 0423 - table removed)
 
-        # 3. Delete related TemplateUsageStats records
+        # 2. Delete related TemplateUsageStats records
         await session.execute(
             sql_delete(TemplateUsageStats)
             .where(TemplateUsageStats.template_id == template_id)

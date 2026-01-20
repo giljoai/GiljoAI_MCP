@@ -121,7 +121,6 @@ class Project(Base):
     tasks = relationship(
         "Task", foreign_keys="Task.project_id", back_populates="project", cascade="all, delete-orphan"
     )  # Specify FK to avoid ambiguity
-    sessions = relationship("Session", back_populates="project", cascade="all, delete-orphan")
     visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
     context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
     document_indexes = relationship("LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan")
@@ -146,37 +145,4 @@ class Project(Base):
             unique=True,
             postgresql_where=text("status = 'active'"),
         ),
-    )
-
-
-class Session(Base):
-    """
-    Session model - tracks development sessions and their outcomes.
-    Captures session context, decisions, and results.
-    """
-
-    __tablename__ = "sessions"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    session_number = Column(Integer, nullable=False)
-    title = Column(String(255), nullable=False)
-    objectives = Column(Text, nullable=True)
-    outcomes = Column(Text, nullable=True)
-    decisions = Column(JSON, default=list)
-    blockers = Column(JSON, default=list)
-    next_steps = Column(JSON, default=list)
-    started_at = Column(DateTime(timezone=True), server_default=func.now())
-    ended_at = Column(DateTime(timezone=True), nullable=True)
-    duration_minutes = Column(Integer, nullable=True)
-    meta_data = Column(JSON, default=dict)
-
-    # Relationships
-    project = relationship("Project", back_populates="sessions")
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "session_number", name="uq_session_project_number"),
-        Index("idx_session_tenant", "tenant_key"),
-        Index("idx_session_project", "project_id"),
     )
