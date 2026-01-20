@@ -23,17 +23,38 @@
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Avatar + Name -->
             <td class="agent-display-name-cell">
-              <v-avatar :color="getAgentColor(agent.agent_name || agent.agent_display_name)" size="32" class="agent-avatar">
-                <span class="avatar-text">{{ getAgentAbbr(agent.agent_name || agent.agent_display_name) }}</span>
-              </v-avatar>
+              <button
+                type="button"
+                class="agent-avatar-button"
+                @click="handleAgentRole(agent)"
+                aria-label="View agent details"
+              >
+                <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
+                  <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
+                </v-avatar>
+              </button>
               <div class="agent-info">
-                <span class="agent-name-primary">{{ agent.agent_name || agent.agent_display_name }}</span>
+                <button
+                  type="button"
+                  class="agent-name-primary agent-name-button"
+                  @click="handleAgentJob(agent)"
+                >
+                  {{ getPrimaryAgentLabel(agent) }}
+                </button>
                 <span
-                  v-if="agent.agent_name && agent.agent_name !== agent.agent_display_name"
+                  v-if="agent.agent_name && !isOrchestrator(agent)"
                   class="agent-display-name-secondary"
                 >
-                  {{ agent.agent_display_name }}
+                  Skills: {{ agent.agent_name }}
                 </span>
+                <button
+                  v-else-if="isOrchestrator(agent)"
+                  type="button"
+                  class="agent-display-name-secondary agent-name-button"
+                  @click="handleAgentJob(agent)"
+                >
+                  Skills: Fixed system agent
+                </button>
               </div>
             </td>
 
@@ -49,11 +70,45 @@
               <div class="id-container">
                 <div class="id-row">
                   <span class="id-label">Agent:</span>
-                  <code class="id-value">{{ (agent.agent_id || agent.job_id || '—').slice(0, 8) }}</code>
+                  <v-tooltip
+                    :text="agent.agent_id || agent.job_id || '—'"
+                    location="top"
+                    open-on-hover
+                    open-on-click
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        type="button"
+                        class="id-value id-value-button"
+                        v-bind="tooltipProps"
+                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
+                        aria-label="Show full agent ID"
+                      >
+                        {{ getShortId(agent.agent_id || agent.job_id) }}
+                      </button>
+                    </template>
+                  </v-tooltip>
                 </div>
                 <div class="id-row">
                   <span class="id-label">Job:</span>
-                  <code class="id-value">{{ (agent.job_id || '—').slice(0, 8) }}</code>
+                  <v-tooltip
+                    :text="agent.job_id || '—'"
+                    location="top"
+                    open-on-hover
+                    open-on-click
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <button
+                        type="button"
+                        class="id-value id-value-button"
+                        v-bind="tooltipProps"
+                        @click="copyId(agent.job_id, 'Job ID')"
+                        aria-label="Show full job ID"
+                      >
+                        {{ getShortId(agent.job_id) }}
+                      </button>
+                    </template>
+                  </v-tooltip>
                 </div>
               </div>
             </td>
@@ -114,17 +169,38 @@
 
             <!-- Messages Sent -->
             <td class="messages-sent-cell text-center">
-              <span class="message-count">{{ getMessagesSent(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages sent"
+              >
+                <span class="message-count">{{ getMessagesSent(agent) }}</span>
+              </button>
             </td>
 
             <!-- Messages Waiting -->
             <td class="messages-waiting-cell text-center">
-              <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages waiting"
+              >
+                <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
+              </button>
             </td>
 
             <!-- Messages Read -->
             <td class="messages-read-cell text-center">
-              <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
+              <button
+                type="button"
+                class="message-count-button"
+                @click="handleMessages(agent)"
+                aria-label="View messages read"
+              >
+                <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
+              </button>
             </td>
 
             <!-- Actions -->
@@ -137,7 +213,7 @@
                     icon="mdi-play"
                     size="small"
                     variant="text"
-                    color="yellow-darken-2"
+                    :color="actionIconColor"
                     @click="handlePlay(agent)"
                   />
                 </template>
@@ -151,7 +227,7 @@
                     icon="mdi-message-outline"
                     size="small"
                     variant="text"
-                    color="yellow-darken-2"
+                    :color="actionIconColor"
                     data-testid="jobs-messages-btn"
                     @click="handleMessages(agent)"
                   />
@@ -185,7 +261,7 @@
                     icon="mdi-briefcase-outline"
                     size="small"
                     variant="text"
-                    color="white"
+                    :color="actionIconColor"
                     data-testid="jobs-info-btn"
                     @click="handleAgentJob(agent)"
                   />
@@ -203,7 +279,7 @@
                     icon="mdi-hand-wave"
                     size="small"
                     variant="text"
-                    color="warning"
+                    :color="actionIconColor"
                     @click="openHandoverDialog(agent)"
                   />
                 </template>
@@ -384,6 +460,53 @@ const giljoFaceIcon = computed(() => {
   const isDark = theme.global.current.value.dark
   return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
 })
+
+/**
+ * Action icon color - theme-aware (yellow in dark, blue in light)
+ */
+const actionIconColor = computed(() => {
+  const isDark = theme.global.current.value.dark
+  return isDark ? 'warning' : 'primary'
+})
+
+function isOrchestrator(agent) {
+  return agent?.agent_name === 'orchestrator' || agent?.agent_display_name === 'orchestrator'
+}
+
+function getPrimaryAgentLabel(agent) {
+  if (!agent) {
+    return ''
+  }
+
+  if (isOrchestrator(agent)) {
+    return agent.agent_name || agent.agent_display_name || ''
+  }
+
+  return agent.agent_display_name || agent.agent_name || ''
+}
+
+function getShortId(value) {
+  if (!value || value === '—') {
+    return '—'
+  }
+
+  return value.slice(0, 8)
+}
+
+async function copyId(value, label) {
+  if (!value || value === '—') {
+    showLocalToast({ message: `${label} unavailable`, type: 'warning', duration: 2500 })
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(value)
+    showLocalToast({ message: `${label} copied`, type: 'success', duration: 2000 })
+  } catch (error) {
+    console.warn('[JobsTab] Failed to copy ID:', error)
+    showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
+  }
+}
 
 /**
  * State
@@ -912,14 +1035,14 @@ async function copyToClipboard(text) {
 <style scoped lang="scss">
 .implement-tab-wrapper {
   padding: 20px;
-  background: #0e1c2d;
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 
   .table-container {
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
     border-radius: 16px;
     padding: 24px;
-    background: rgba(14, 28, 45, 0.5);
+    background: rgb(var(--v-theme-surface));
     margin-bottom: 20px;
 
     .agents-table {
@@ -929,14 +1052,14 @@ async function copyToClipboard(text) {
       thead th {
         text-align: left;
         padding: 12px 16px;
-        color: #999;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         font-size: 13px;
         font-weight: 400;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
       }
 
       tbody tr {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 
         &:last-child {
           border-bottom: none;
@@ -945,7 +1068,7 @@ async function copyToClipboard(text) {
 
       tbody td {
         padding: 16px;
-        color: #e0e0e0;
+        color: rgb(var(--v-theme-on-surface));
         font-size: 14px;
 
         &.agent-display-name-cell {
@@ -972,9 +1095,19 @@ async function copyToClipboard(text) {
               text-transform: capitalize;
             }
 
+            .agent-avatar-button,
+            .agent-name-button {
+              background: none;
+              border: none;
+              padding: 0;
+              cursor: pointer;
+              text-align: left;
+              color: inherit;
+            }
+
             .agent-display-name-secondary {
               font-size: 0.75rem;
-              color: #999;
+              color: rgba(var(--v-theme-on-surface), 0.6);
               text-transform: capitalize;
             }
           }
@@ -985,7 +1118,7 @@ async function copyToClipboard(text) {
         }
 
         &.agent-id-cell {
-          color: #999;
+          color: rgba(var(--v-theme-on-surface), 0.6);
           font-family: 'Courier New', monospace;
           font-size: 11px;
 
@@ -1002,15 +1135,22 @@ async function copyToClipboard(text) {
           }
 
           .id-label {
-            color: #666;
+            color: rgba(var(--v-theme-on-surface), 0.7);
             font-size: 10px;
             min-width: 35px;
           }
 
           .id-value {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(var(--v-theme-on-surface), 0.1);
             padding: 1px 4px;
             border-radius: 2px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+          }
+
+          .id-value-button {
+            line-height: 1.2;
           }
         }
 
@@ -1039,7 +1179,7 @@ async function copyToClipboard(text) {
           text-align: center;
           font-family: 'Roboto Mono', 'Courier New', monospace;
           font-size: 13px;
-          color: #b0bec5;
+          color: rgba(var(--v-theme-on-surface), 0.7);
         }
 
         &.checkbox-cell {
@@ -1049,6 +1189,14 @@ async function copyToClipboard(text) {
         &.count-cell {
           text-align: center;
           color: #ccc;
+        }
+
+        .message-count-button {
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          color: inherit;
         }
 
         &.actions-cell {
@@ -1069,7 +1217,7 @@ async function copyToClipboard(text) {
     gap: 12px;
     align-items: center;
     padding: 16px;
-    background: rgba(20, 35, 50, 0.6);
+    background: rgba(var(--v-theme-on-surface), 0.05);
     border-radius: 12px;
     margin-bottom: 20px;
 
@@ -1108,22 +1256,22 @@ async function copyToClipboard(text) {
       flex: 1;
 
       ::v-deep(.v-field) {
-        background: rgba(20, 35, 50, 0.8);
-        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        background: rgba(var(--v-theme-on-surface), 0.05);
+        border: 2px solid rgba(var(--v-theme-on-surface), 0.2) !important;
         border-radius: 8px;
 
         input {
-          color: #fff;
+          color: rgb(var(--v-theme-on-surface));
           font-size: 14px;
           padding: 8px 12px;
 
           &::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(var(--v-theme-on-surface), 0.4);
           }
         }
 
         &:hover {
-          border-color: rgba(255, 255, 255, 0.3) !important;
+          border-color: rgba(var(--v-theme-on-surface), 0.3) !important;
         }
 
         &.v-field--focused {
@@ -1149,8 +1297,8 @@ async function copyToClipboard(text) {
     min-width: 24px;
     padding: 4px 8px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
+    background: rgba(var(--v-theme-on-surface), 0.1);
+    color: rgb(var(--v-theme-on-surface));
     font-size: 12px;
     font-weight: 600;
 

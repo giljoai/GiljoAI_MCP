@@ -500,7 +500,7 @@ watch(
 
 .launch-tab-wrapper {
   padding: 20px;
-  background: $color-background-primary;
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 
   .execution-mode-toggle-bar {
@@ -509,15 +509,15 @@ watch(
     gap: 12px;
     padding: 12px 20px;
     margin-bottom: 20px;
-    border: 1px solid $color-text-secondary;
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
     border-radius: 8px;
-    background: rgba(212, 165, 116, 0.05);
+    background: rgba(var(--v-theme-on-surface), 0.05);
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover {
       border-color: $color-text-highlight;
-      background: rgba(212, 165, 116, 0.1);
+      background: rgba(var(--v-theme-on-surface), 0.1);
     }
 
     // Handover 0343: Locked state styles
@@ -526,14 +526,14 @@ watch(
       opacity: 0.6;
 
       &:hover {
-        border-color: $color-text-secondary;
-        background: rgba(212, 165, 116, 0.05);
+        border-color: rgba(var(--v-theme-on-surface), 0.3);
+        background: rgba(var(--v-theme-on-surface), 0.05);
       }
     }
 
     .toggle-label {
       font-weight: 600;
-      color: $color-text-primary;
+      color: rgb(var(--v-theme-on-surface));
       font-size: 14px;
       min-width: 120px;
     }
@@ -542,7 +542,7 @@ watch(
       display: flex;
       align-items: center;
       gap: 8px;
-      color: $color-text-secondary;
+      color: rgba(var(--v-theme-on-surface), 0.6);
       font-size: 13px;
       flex: 1;
 
@@ -556,19 +556,19 @@ watch(
       }
 
       .toggle-separator {
-        color: $color-text-secondary;
+        color: rgba(var(--v-theme-on-surface), 0.6);
       }
     }
 
     .help-icon {
-      color: $color-text-secondary;
+      color: rgba(var(--v-theme-on-surface), 0.6);
       margin-left: auto;
       flex-shrink: 0;
     }
 
     // Handover 0343: Lock icon styling
     .lock-icon {
-      color: $color-text-secondary;
+      color: rgba(var(--v-theme-on-surface), 0.6);
       flex-shrink: 0;
     }
 
@@ -576,7 +576,7 @@ watch(
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: $color-text-secondary;
+      background: rgba(var(--v-theme-on-surface), 0.6);
       flex-shrink: 0;
       transition: background-color 0.2s ease;
 
@@ -587,10 +587,10 @@ watch(
   }
 
   .main-container {
-    border: $border-width-standard solid $color-container-border;
+    border: $border-width-standard solid rgba(var(--v-theme-on-surface), 0.12);
     border-radius: $border-radius-large;
     padding: $spacing-container-padding;
-    background: $color-container-background;
+    background: rgb(var(--v-theme-surface));
 
     .three-panels {
       display: grid;
@@ -600,19 +600,19 @@ watch(
       .panel {
         .panel-header {
           font-size: $typography-panel-header-size;
-          color: $color-text-secondary;
+          color: rgba(var(--v-theme-on-surface), 0.6);
           margin-bottom: 16px;
           font-weight: $typography-font-weight-bold;
           text-transform: capitalize;
         }
 
         .panel-content {
-          background: $color-panel-background;
+          background: rgba(var(--v-theme-on-surface), 0.05);
           border-radius: $radius-medium;
           padding: $spacing-panel-content-padding;
           height: $spacing-panel-min-height; // Fixed height to lock all panels same size
           position: relative;
-          color: $color-text-primary;
+          color: rgb(var(--v-theme-on-surface));
           font-size: $typography-panel-content-size;
           line-height: 1.6;
           overflow-y: auto; // Enable scrolling when content exceeds height
@@ -625,7 +625,7 @@ watch(
             transform: translate(-50%, -50%);
 
             .empty-icon {
-              color: rgba(255, 255, 255, 0.15);
+              color: rgba(var(--v-theme-on-surface), 0.15);
             }
           }
 
@@ -675,7 +675,7 @@ watch(
     display: flex;
     align-items: center;
     gap: 12px;
-    border: $border-width-standard solid $color-text-highlight;
+    border: $border-width-standard solid #67bd6d; // Green for orchestrator
     border-radius: $border-radius-pill;
     padding: 12px 20px;
     margin-bottom: 20px;
@@ -705,25 +705,25 @@ watch(
       code {
         font-family: 'Roboto Mono', monospace;
         font-size: 0.7rem;
-        background: rgba(0, 0, 0, 0.05);
+        background: rgba(var(--v-theme-on-surface), 0.1);
         padding: 1px 4px;
         border-radius: 2px;
       }
     }
 
     .agent-name {
-      color: $color-text-primary;
+      color: rgb(var(--v-theme-on-surface));
       font-size: $typography-font-size-body;
     }
 
     .eye-icon {
-      color: $color-text-secondary;  // Changed from tertiary to match edit-icon
+      color: rgba(var(--v-theme-on-surface), 0.6);
       flex-shrink: 0;
       margin-right: 4px;  // Reduced to 4px for tighter spacing
     }
 
     .info-icon {
-      color: $color-text-secondary;  // Changed from tertiary to match other icons
+      color: rgba(var(--v-theme-on-surface), 0.6);
       flex-shrink: 0;
       cursor: pointer;
       transition: color 0.2s ease;
@@ -763,7 +763,7 @@ watch(
   .agent-team-section {
     .agent-team-header {
       font-size: $typography-panel-header-size;
-      color: $color-text-secondary;
+      color: rgba(var(--v-theme-on-surface), 0.6);
       margin-bottom: 16px;
       font-weight: $typography-font-weight-bold;
       text-transform: capitalize;
@@ -800,7 +800,7 @@ watch(
       display: flex;
       align-items: center;
       gap: 12px;
-      border: 2px solid $color-text-highlight; // yellow border
+      border: 2px solid rgb(var(--v-theme-primary)); // Blue border (theme-aware)
       border-radius: $border-radius-pill; // 24px pill shape
       padding: 12px 20px;
       margin-bottom: 12px;
@@ -820,13 +820,13 @@ watch(
 
       .agent-name {
         flex: 1;
-        color: $color-text-primary;
+        color: rgb(var(--v-theme-on-surface));
         font-size: $typography-font-size-body;
         text-transform: capitalize;
       }
 
       .edit-icon {
-        color: $color-text-secondary;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
@@ -838,7 +838,7 @@ watch(
       }
 
       .info-icon {
-        color: $color-text-secondary;
+        color: rgba(var(--v-theme-on-surface), 0.6);
         flex-shrink: 0;
         cursor: pointer;
         transition: color 0.2s ease;
