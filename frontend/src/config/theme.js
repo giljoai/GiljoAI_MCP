@@ -15,7 +15,7 @@ export const darkTheme = {
     success: '#67bd6d', // Green
     accent: '#c6298c', // Pink red
     info: '#8f97b7', // Lightest blue
-    warning: '#d4a000', // Darker yellow for better contrast
+    warning: '#ffc300', // Yellow (brand color)
     error: '#c6298c', // Pink red
 
     // Text colors
