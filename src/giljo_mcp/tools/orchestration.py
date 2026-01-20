@@ -589,6 +589,17 @@ Completion protocol applies (see CH5 - shown in implementation only)
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
 
+
+── STEP 0: Detect Environment ──────────────────────────────────────────────
+Before planning, detect your development environment:
+Call: python -c "import platform; print(platform.system())"
+Store result (Windows/Linux/Darwin) - use platform-appropriate commands in agent missions
+
+Platform command reference:
+- Sleep: Windows 'timeout /t N /nobreak' | Unix 'sleep N'
+- Clear: Windows 'cls' | Unix 'clear'
+- Path separator: Windows '\' | Unix '/'
+
 ── STEP 1: Verify MCP ──────────────────────────────────────────────────────
 Call: health_check()
 Expected: {{"status": "healthy", "database": "connected"}}

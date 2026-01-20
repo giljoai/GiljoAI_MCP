@@ -58,7 +58,8 @@ async def get_tech_stack(
                 "backend_frameworks": ["FastAPI"],
                 "databases": ["PostgreSQL"],
                 "infrastructure": ["Docker"],
-                "dev_tools": ["Git"]
+                "dev_tools": ["Git"],
+                "target_platforms": ["windows", "linux"]  # Handover 0425
             },
             "metadata": {
                 "product_id": "uuid",
@@ -117,13 +118,15 @@ async def get_tech_stack(
         config_data = product.config_data or {}
         tech_stack = config_data.get("tech_stack", {})
 
+        # Handover 0425: Include target_platforms from Product model
         data = {
             "programming_languages": tech_stack.get("languages", []),
             "frontend_frameworks": tech_stack.get("frontend", []),
             "backend_frameworks": tech_stack.get("backend", []),
             "databases": tech_stack.get("database", []),
             "infrastructure": tech_stack.get("infrastructure", []),
-            "dev_tools": tech_stack.get("dev_tools", [])
+            "dev_tools": tech_stack.get("dev_tools", []),
+            "target_platforms": product.target_platforms or ["all"]
         }
 
         # Calculate token estimate
