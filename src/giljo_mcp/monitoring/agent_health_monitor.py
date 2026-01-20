@@ -161,7 +161,8 @@ class AgentHealthMonitor:
             minutes=self.config.waiting_timeout_minutes
         )
 
-        # Filter out jobs from deleted projects using LEFT JOIN
+        # Filter out jobs from deleted projects and inactive projects using LEFT JOIN
+        # Handover 0424: Only monitor jobs from active projects
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
@@ -173,8 +174,11 @@ class AgentHealthMonitor:
                     AgentExecution.status == "waiting",
                     AgentJob.created_at < timeout_threshold,
                     or_(
-                        AgentJob.project_id.is_(None),
-                        Project.deleted_at.is_(None)
+                        AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
+                        and_(
+                            Project.deleted_at.is_(None),
+                            Project.status == "active"  # Only active projects
+                        )
                     )
                 )
             )
@@ -221,7 +225,8 @@ class AgentHealthMonitor:
             minutes=self.config.active_no_progress_minutes
         )
 
-        # Query active jobs, filtering out jobs from deleted projects
+        # Query active jobs, filtering out jobs from deleted projects and inactive projects
+        # Handover 0424: Only monitor jobs from active projects
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
@@ -230,10 +235,13 @@ class AgentHealthMonitor:
             .where(
                 and_(
                     AgentExecution.tenant_key == tenant_key,
-                    AgentExecution.status == "active",
+                    AgentExecution.status == "working",
                     or_(
-                        AgentJob.project_id.is_(None),
-                        Project.deleted_at.is_(None)
+                        AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
+                        and_(
+                            Project.deleted_at.is_(None),
+                            Project.status == "active"  # Only active projects
+                        )
                     )
                 )
             )
@@ -285,7 +293,8 @@ class AgentHealthMonitor:
         Returns:
             List of jobs with heartbeat failures
         """
-        # Query waiting and active jobs, filtering out jobs from deleted projects
+        # Query waiting and active jobs, filtering out jobs from deleted projects and inactive projects
+        # Handover 0424: Only monitor jobs from active projects
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
@@ -294,10 +303,13 @@ class AgentHealthMonitor:
             .where(
                 and_(
                     AgentExecution.tenant_key == tenant_key,
-                    AgentExecution.status.in_(["waiting", "active"]),
+                    AgentExecution.status.in_(["waiting", "working"]),
                     or_(
-                        AgentJob.project_id.is_(None),
-                        Project.deleted_at.is_(None)
+                        AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
+                        and_(
+                            Project.deleted_at.is_(None),
+                            Project.status == "active"  # Only active projects
+                        )
                     )
                 )
             )
@@ -444,9 +456,10 @@ class AgentHealthMonitor:
             session: Database session
 
         Returns:
-            List of unique tenant keys from non-deleted projects
+            List of unique tenant keys from active projects
         """
-        # Only get tenant keys from executions that don't belong to deleted projects
+        # Only get tenant keys from executions that don't belong to deleted projects or inactive projects
+        # Handover 0424: Only monitor jobs from active projects
         query = (
             select(AgentExecution.tenant_key)
             .distinct()
@@ -454,8 +467,11 @@ class AgentHealthMonitor:
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 or_(
-                    AgentJob.project_id.is_(None),
-                    Project.deleted_at.is_(None)
+                    AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
+                    and_(
+                        Project.deleted_at.is_(None),
+                        Project.status == "active"  # Only active projects
+                    )
                 )
             )
         )
