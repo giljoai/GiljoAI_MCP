@@ -106,6 +106,7 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
    └─ Test connection stability
 
 3. ENVIRONMENT UNDERSTANDING
+   ├─ Detect OS (Windows/Linux/Darwin) for platform-appropriate commands
    ├─ Read CLAUDE.md configuration
    ├─ Understand tech stack (Python, FastAPI, Vue3)
    ├─ Parse project structure
@@ -427,6 +428,7 @@ mission_data = get_agent_mission(
 All agents follow this standard protocol:
 
 **Phase 1: Initialization**
+- Detect OS environment (Windows/Linux/Darwin) before execution
 - Verify identity (agent_id, job_id)
 - Check MCP health via `health_check()`
 - Read CLAUDE.md for project context and standards

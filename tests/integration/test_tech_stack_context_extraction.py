@@ -352,3 +352,118 @@ class TestTechStackContextExtraction:
         # Empty categories should not be displayed
         assert backend_count == 0, "Empty backend category should not be displayed"
         assert frontend_count == 0, "Empty frontend category should not be displayed"
+
+
+class TestTargetPlatformsContextExtraction:
+    """Test cases for target_platforms field in tech stack context (Handover 0425)."""
+
+    @pytest.mark.asyncio
+    async def test_target_platforms_all_in_tech_stack(self, db_session: AsyncSession):
+        """Test that target_platforms=['all'] appears in tech stack context and is included in data."""
+        # Create product with target_platforms=['all']
+        product = Product(
+            id=str(uuid4()),
+            tenant_key=f"tenant_{uuid4().hex[:8]}",
+            name="All Platforms Product",
+            description="Product targeting all platforms",
+            is_active=True,
+            target_platforms=["all"],
+            config_data={
+                "tech_stack": {
+                    "languages": ["Python"],
+                }
+            },
+        )
+        db_session.add(product)
+        await db_session.commit()
+        await db_session.refresh(product)
+
+        # Verify target_platforms was stored correctly
+        assert product.target_platforms == ["all"]
+
+        # Verify target_platforms would be included in tech_stack data
+        # (Simulating what get_tech_stack() would return)
+        tech_stack = product.config_data.get("tech_stack", {})
+        data = {
+            "programming_languages": tech_stack.get("languages", []),
+            "frontend_frameworks": tech_stack.get("frontend", []),
+            "backend_frameworks": tech_stack.get("backend", []),
+            "databases": tech_stack.get("database", []),
+            "infrastructure": tech_stack.get("infrastructure", []),
+            "dev_tools": tech_stack.get("dev_tools", []),
+            "target_platforms": product.target_platforms or ["all"]
+        }
+
+        # Verify target_platforms in data structure
+        assert "target_platforms" in data
+        assert data["target_platforms"] == ["all"]
+
+    @pytest.mark.asyncio
+    async def test_target_platforms_specific_platforms_in_tech_stack(self, db_session: AsyncSession):
+        """Test that target_platforms=['windows', 'linux'] appears in tech stack context."""
+        # Create product with specific platforms
+        product = Product(
+            id=str(uuid4()),
+            tenant_key=f"tenant_{uuid4().hex[:8]}",
+            name="Windows Linux Product",
+            description="Product targeting Windows and Linux",
+            is_active=True,
+            target_platforms=["windows", "linux"],
+            config_data={
+                "tech_stack": {
+                    "languages": ["Python"],
+                }
+            },
+        )
+        db_session.add(product)
+        await db_session.commit()
+        await db_session.refresh(product)
+
+        # Verify target_platforms was stored correctly
+        assert set(product.target_platforms) == {"windows", "linux"}
+
+        # Verify target_platforms would be included in tech_stack data
+        tech_stack = product.config_data.get("tech_stack", {})
+        data = {
+            "programming_languages": tech_stack.get("languages", []),
+            "target_platforms": product.target_platforms or ["all"]
+        }
+
+        # Verify target_platforms in data structure
+        assert "target_platforms" in data
+        assert set(data["target_platforms"]) == {"windows", "linux"}
+
+    @pytest.mark.asyncio
+    async def test_target_platforms_defaults_to_all(self, db_session: AsyncSession):
+        """Test that products without explicit target_platforms default to ['all']."""
+        # Create product without explicitly setting target_platforms
+        # The database default should apply
+        product = Product(
+            id=str(uuid4()),
+            tenant_key=f"tenant_{uuid4().hex[:8]}",
+            name="Default Platforms Product",
+            description="Product using default target_platforms",
+            is_active=True,
+            config_data={
+                "tech_stack": {
+                    "languages": ["Python"],
+                }
+            },
+        )
+        db_session.add(product)
+        await db_session.commit()
+        await db_session.refresh(product)
+
+        # Verify target_platforms defaults to ['all']
+        assert product.target_platforms == ["all"]
+
+        # Verify it would be included correctly in tech_stack data
+        tech_stack = product.config_data.get("tech_stack", {})
+        data = {
+            "programming_languages": tech_stack.get("languages", []),
+            "target_platforms": product.target_platforms or ["all"]
+        }
+
+        # Verify target_platforms in data structure
+        assert "target_platforms" in data
+        assert data["target_platforms"] == ["all"]

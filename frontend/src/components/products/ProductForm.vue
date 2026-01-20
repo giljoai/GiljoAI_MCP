@@ -397,6 +397,57 @@
                   </v-chip>
                 </template>
               </v-textarea>
+
+              <!-- Target Platform(s) - Handover 0425 Phase 2 -->
+              <div class="mb-4">
+                <label class="text-subtitle-2 mb-2 d-block">Target Platform(s)</label>
+                <div class="text-caption text-medium-emphasis mb-3">
+                  Select the operating systems this product is designed for
+                </div>
+
+                <div class="d-flex flex-wrap ga-3">
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="windows"
+                    label="Windows"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="linux"
+                    label="Linux"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="macos"
+                    label="macOS"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="all"
+                    label="All (Cross-platform)"
+                    hide-details
+                    density="comfortable"
+                    color="primary"
+                    @update:model-value="handleAllPlatformChange"
+                  />
+                </div>
+
+                <div v-if="platformValidationError" class="text-error text-caption mt-2">
+                  {{ platformValidationError }}
+                </div>
+              </div>
             </v-tabs-window-item>
 
             <!-- Architecture Tab -->
@@ -696,6 +747,7 @@ const productForm = ref({
   name: '',
   description: '',
   projectPath: '',
+  targetPlatforms: ['all'], // Handover 0425: Default to cross-platform
   configData: {
     tech_stack: {
       languages: '',
@@ -818,6 +870,10 @@ const isOpen = computed({
   set: (val) => emit('update:modelValue', val),
 })
 
+// Handover 0425: Platform selection state
+const platformValidationError = ref('')
+const isAllPlatformSelected = computed(() => productForm.value.targetPlatforms.includes('all'))
+
 // Methods
 function closeDialog() {
   emit('cancel')
@@ -827,12 +883,18 @@ function closeDialog() {
 function saveProduct() {
   if (!formValid.value) return
 
+  // Handover 0425: Validate platforms before saving
+  if (!validatePlatforms()) {
+    return
+  }
+
   saving.value = true
 
   const productData = {
     name: productForm.value.name,
     description: productForm.value.description,
     project_path: productForm.value.projectPath,
+    target_platforms: productForm.value.targetPlatforms, // Handover 0425
     config_data: productForm.value.configData,
   }
 
@@ -867,12 +929,47 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
+// Handover 0425: Platform selection handlers
+function handleAllPlatformChange(value) {
+  platformValidationError.value = ''
+  if (value && productForm.value.targetPlatforms.includes('all')) {
+    // When "All" is selected, clear other selections
+    productForm.value.targetPlatforms = ['all']
+  } else if (!value) {
+    // When "All" is deselected, remove it from array
+    productForm.value.targetPlatforms = productForm.value.targetPlatforms.filter(p => p !== 'all')
+  }
+  validatePlatforms()
+}
+
+function handlePlatformChange() {
+  platformValidationError.value = ''
+  // If "All" is selected and user selects another platform, deselect "All"
+  if (productForm.value.targetPlatforms.includes('all') && productForm.value.targetPlatforms.length > 1) {
+    productForm.value.targetPlatforms = productForm.value.targetPlatforms.filter(p => p !== 'all')
+  }
+  validatePlatforms()
+}
+
+function validatePlatforms() {
+  if (productForm.value.targetPlatforms.length === 0) {
+    platformValidationError.value = 'At least one platform must be selected'
+    formValid.value = false
+    return false
+  }
+  platformValidationError.value = ''
+  return true
+}
+
 // Load product data when editing
 function loadProductData() {
   if (props.isEdit && props.product) {
     productForm.value.name = props.product.name || ''
     productForm.value.description = props.product.description || ''
     productForm.value.projectPath = props.product.project_path || ''
+
+    // Handover 0425: Load target platforms (defaults to ['all'] if not set)
+    productForm.value.targetPlatforms = props.product.target_platforms || ['all']
 
     // Load config data with defaults
     const configData = props.product.config_data || {}
@@ -907,6 +1004,7 @@ function loadProductData() {
       name: '',
       description: '',
       projectPath: '',
+      targetPlatforms: ['all'], // Handover 0425: Default to cross-platform
       configData: {
         tech_stack: {
           languages: '',

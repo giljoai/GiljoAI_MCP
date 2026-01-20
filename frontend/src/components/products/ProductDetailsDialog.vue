@@ -163,9 +163,13 @@
                   <div class="text-caption font-weight-bold">Backend:</div>
                   <div class="text-body-2">{{ product.config_data.tech_stack.backend }}</div>
                 </div>
-                <div v-if="product.config_data.tech_stack.database">
+                <div v-if="product.config_data.tech_stack.database" class="mb-2">
                   <div class="text-caption font-weight-bold">Databases:</div>
                   <div class="text-body-2">{{ product.config_data.tech_stack.database }}</div>
+                </div>
+                <div v-if="product.target_platforms && product.target_platforms.length">
+                  <div class="text-caption font-weight-bold">Target Platforms:</div>
+                  <div class="text-body-2">{{ product.target_platforms.map(p => formatPlatform(p)).join(', ') }}</div>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -425,5 +429,15 @@ function formatDate(dateString) {
     month: 'short',
     day: 'numeric',
   })
+}
+
+function formatPlatform(platform) {
+  const labels = {
+    windows: 'Windows',
+    linux: 'Linux',
+    macos: 'macOS',
+    all: 'All (Cross-platform)'
+  }
+  return labels[platform] || platform
 }
 </script>

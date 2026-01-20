@@ -91,6 +91,34 @@ class ProductService:
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
 
+    def _validate_target_platforms(self, target_platforms: list[str]) -> tuple[bool, Optional[str]]:
+        """
+        Validate target_platforms field (Handover 0425).
+
+        Args:
+            target_platforms: List of platform values
+
+        Returns:
+            Tuple of (is_valid, error_message)
+
+        Validation Rules:
+            - All values must be in ['windows', 'linux', 'macos', 'all']
+            - If 'all' is present, it must be the only value
+        """
+        if not target_platforms:
+            return False, "target_platforms cannot be empty"
+
+        valid_platforms = {'windows', 'linux', 'macos', 'all'}
+        invalid_platforms = set(target_platforms) - valid_platforms
+
+        if invalid_platforms:
+            return False, f"Invalid platform values: {', '.join(invalid_platforms)}"
+
+        if 'all' in target_platforms and len(target_platforms) > 1:
+            return False, "'all' platform cannot be combined with specific platforms"
+
+        return True, None
+
     # ============================================================================
     # CRUD Operations
     # ============================================================================
@@ -102,6 +130,7 @@ class ProductService:
         project_path: Optional[str] = None,
         config_data: Optional[Dict[str, Any]] = None,
         product_memory: Optional[Dict[str, Any]] = None,  # Handover 0135
+        target_platforms: Optional[list[str]] = None,  # Handover 0425
     ) -> Dict[str, Any]:
         """
         Create a new product.
@@ -112,6 +141,7 @@ class ProductService:
             project_path: File system path to product folder
             config_data: Rich configuration data (architecture, tech_stack, etc.)
             product_memory: 360 Memory data (GitHub, sequential_history, context) - Handover 0135
+            target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
 
         Returns:
             Dict with success status and product details or error
@@ -120,11 +150,18 @@ class ProductService:
             >>> result = await service.create_product(
             ...     name="MyApp",
             ...     description="Mobile application",
-            ...     project_path="/projects/myapp"
+            ...     project_path="/projects/myapp",
+            ...     target_platforms=["windows", "linux"]
             ... )
             >>> print(result["product_id"])
         """
         try:
+            # Handover 0425: Validate target_platforms if provided
+            if target_platforms is not None:
+                is_valid, error_msg = self._validate_target_platforms(target_platforms)
+                if not is_valid:
+                    return {"success": False, "error": error_msg}
+
             async with self._get_session() as session:
                 # Check for duplicate name (excluding soft-deleted)
                 stmt = select(Product).where(
@@ -150,6 +187,7 @@ class ProductService:
                     project_path=project_path,
                     config_data=config_data or {},
                     product_memory=product_memory or default_memory,  # Handover 0135
+                    target_platforms=target_platforms or ["all"],  # Handover 0425
                     is_active=False,  # Products start inactive
                     created_at=datetime.now(timezone.utc),
                 )
@@ -329,7 +367,7 @@ class ProductService:
 
         Args:
             product_id: Product UUID
-            **updates: Fields to update (name, description, project_path, config_data, product_memory, etc.)
+            **updates: Fields to update (name, description, project_path, config_data, product_memory, target_platforms, etc.)
 
         Returns:
             Dict with success status and updated product or error
@@ -339,10 +377,17 @@ class ProductService:
             ...     "abc-123",
             ...     description="Updated description",
             ...     config_data={"tech_stack": {"python": "3.11"}},
-            ...     product_memory={"github": {"enabled": True}}  # Handover 0135
+            ...     product_memory={"github": {"enabled": True}},  # Handover 0135
+            ...     target_platforms=["windows", "linux"]  # Handover 0425
             ... )
         """
         try:
+            # Handover 0425: Validate target_platforms if provided
+            if "target_platforms" in updates:
+                is_valid, error_msg = self._validate_target_platforms(updates["target_platforms"])
+                if not is_valid:
+                    return {"success": False, "error": error_msg}
+
             async with self._get_session() as session:
                 stmt = select(Product).where(
                     and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
