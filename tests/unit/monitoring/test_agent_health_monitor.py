@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy import select
 
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Project, Product
 from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
 from src.giljo_mcp.monitoring.health_config import (
     HealthCheckConfig,
@@ -77,8 +78,9 @@ class TestAgentHealthStatus:
 
         status = AgentHealthStatus(
             job_id="test-job-1",
+            agent_id="agent-uuid-1",
             agent_display_name="implementer",
-            current_status="active",
+            current_status="working",
             health_state="warning",
             last_update=now,
             minutes_since_update=6.5,
@@ -88,7 +90,7 @@ class TestAgentHealthStatus:
 
         assert status.job_id == "test-job-1"
         assert status.agent_display_name == "implementer"
-        assert status.current_status == "active"
+        assert status.current_status == "working"
         assert status.health_state == "warning"
         assert status.last_update == now
         assert status.minutes_since_update == 6.5
@@ -130,6 +132,76 @@ class TestAgentHealthMonitor:
     async def monitor(self, mock_db_manager, mock_ws_manager, test_config):
         """Create health monitor instance."""
         return AgentHealthMonitor(mock_db_manager, mock_ws_manager, test_config)
+
+
+
+    async def create_test_data(
+        self,
+        session,
+        job_id: str,
+        tenant_key: str,
+        status: str,
+        agent_display_name: str = "implementer",
+        created_at=None,
+        started_at=None,
+        updated_at=None,
+        last_progress_at=None,
+        last_message_check_at=None,
+        job_metadata=None,
+        project_status: str = "active"
+    ):
+        """Create test data with proper hierarchy. Handover 0424."""
+        # Create Product (use job_id to ensure uniqueness across multiple calls)
+        product = Product(
+            id=f"prod-{job_id}",
+            tenant_key=tenant_key,
+            name="Test Product",
+            description="Test"
+        )
+        session.add(product)
+        await session.flush()
+
+        # Create Project
+        project = Project(
+            id=f"proj-{job_id}",
+            tenant_key=tenant_key,
+            product_id=product.id,
+            name="Test Project",
+            description="Test",
+            mission="Test mission",
+            status=project_status,
+            deleted_at=None
+        )
+        session.add(project)
+        await session.flush()
+
+        # Create AgentJob
+        job = AgentJob(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            mission="Test mission",
+            job_type=agent_display_name,
+            created_at=created_at or datetime.now(timezone.utc)
+        )
+        session.add(job)
+        await session.flush()
+
+        # Create AgentExecution
+        execution = AgentExecution(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            agent_display_name=agent_display_name,
+            status=status,
+            started_at=started_at,
+            last_progress_at=last_progress_at,
+            last_message_check_at=last_message_check_at
+        )
+        execution.job = job  # Set relationship
+        session.add(execution)
+        await session.commit()
+
+        return execution
 
     async def test_monitor_initialization(self, monitor, test_config):
         """Test monitor initializes correctly."""
@@ -175,505 +247,421 @@ class TestAgentHealthMonitor:
         await monitor.stop()
         assert monitor.running is False
 
-    async def test_detect_waiting_timeout(self, monitor):
+    async def test_detect_waiting_timeout(self, monitor, db_session):
         """Test detection of jobs stuck in waiting state."""
-        from tests.conftest import get_test_session
+        session = db_session
+        await self.create_test_data(
+            session,
+            job_id="test-job-waiting-1",
+            tenant_key="test-tenant",
+            status="waiting",
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=3)
+        )
 
-        async with get_test_session() as session:
-            # Create job 3 minutes ago in 'waiting' state
-            job = AgentExecution(
-                job_id="test-job-waiting-1",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="waiting",
-                mission="Test mission",
-                created_at=datetime.now(timezone.utc) - timedelta(minutes=3),
-                updated_at=datetime.now(timezone.utc) - timedelta(minutes=3)
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
+        assert len(unhealthy) == 1
+        assert unhealthy[0].job_id == "test-job-waiting-1"
+        assert unhealthy[0].health_state == "critical"
+        assert "never acknowledged" in unhealthy[0].issue_description.lower()
+        assert unhealthy[0].minutes_since_update >= 2
 
-            assert len(unhealthy) == 1
-            assert unhealthy[0].job_id == "test-job-waiting-1"
-            assert unhealthy[0].health_state == "critical"
-            assert "never acknowledged" in unhealthy[0].issue_description.lower()
-            assert unhealthy[0].minutes_since_update >= 2
 
-    async def test_no_waiting_timeout_for_recent_jobs(self, monitor):
+    async def test_no_waiting_timeout_for_recent_jobs(self, monitor, db_session):
         """Test recent waiting jobs are not flagged."""
-        from tests.conftest import get_test_session
+        session = db_session
+        await self.create_test_data(
+            session,
+            job_id="test-job-waiting-2",
+            tenant_key="test-tenant",
+            status="waiting",
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=1)
+        )
 
-        async with get_test_session() as session:
-            # Create job 1 minute ago (below threshold)
-            job = AgentExecution(
-                job_id="test-job-waiting-2",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="waiting",
-                mission="Test mission",
-                created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
-                updated_at=datetime.now(timezone.utc) - timedelta(minutes=1)
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
+        assert len(unhealthy) == 0
 
-            assert len(unhealthy) == 0
 
-    async def test_detect_stalled_job_warning(self, monitor):
+    async def test_detect_stalled_job_warning(self, monitor, db_session):
         """Test detection of active jobs without progress (warning state)."""
-        from tests.conftest import get_test_session
+        session = db_session
+        stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
+        await self.create_test_data(
+            session,
+            job_id="test-job-stalled-1",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=stale_time - timedelta(minutes=1),
+            started_at=stale_time,
+            updated_at=stale_time,
+            last_progress_at=stale_time
+        )
 
-        async with get_test_session() as session:
-            # Create active job with stale progress (6 minutes)
-            stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
-            job = AgentExecution(
-                job_id="test-job-stalled-1",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=stale_time,
-                created_at=stale_time - timedelta(minutes=1),
-                updated_at=stale_time,
-                job_metadata={"last_progress_update": stale_time.isoformat()}
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
+        assert len(unhealthy) == 1
+        assert unhealthy[0].job_id == "test-job-stalled-1"
+        assert unhealthy[0].health_state in ["warning", "critical"]
+        assert unhealthy[0].minutes_since_update >= 5
+        assert "no progress" in unhealthy[0].issue_description.lower()
 
-            assert len(unhealthy) == 1
-            assert unhealthy[0].job_id == "test-job-stalled-1"
-            assert unhealthy[0].health_state in ["warning", "critical"]
-            assert unhealthy[0].minutes_since_update >= 5
-            assert "no progress" in unhealthy[0].issue_description.lower()
 
-    async def test_detect_stalled_job_critical(self, monitor):
+    async def test_detect_stalled_job_critical(self, monitor, db_session):
         """Test detection of active jobs without progress (critical state)."""
-        from tests.conftest import get_test_session
+        session = db_session
+        stale_time = datetime.now(timezone.utc) - timedelta(minutes=8)
+        await self.create_test_data(
+            session,
+            job_id="test-job-stalled-2",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=stale_time - timedelta(minutes=1),
+            started_at=stale_time,
+            updated_at=stale_time,
+            last_progress_at=stale_time
+        )
 
-        async with get_test_session() as session:
-            # Create active job with very stale progress (8 minutes)
-            stale_time = datetime.now(timezone.utc) - timedelta(minutes=8)
-            job = AgentExecution(
-                job_id="test-job-stalled-2",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=stale_time,
-                created_at=stale_time - timedelta(minutes=1),
-                updated_at=stale_time,
-                job_metadata={"last_progress_update": stale_time.isoformat()}
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
+        assert len(unhealthy) == 1
+        assert unhealthy[0].health_state == "critical"
 
-            assert len(unhealthy) == 1
-            assert unhealthy[0].health_state == "critical"
 
-    async def test_detect_stalled_job_timeout(self, monitor):
+    async def test_detect_stalled_job_timeout(self, monitor, db_session):
         """Test detection of active jobs without progress (timeout state)."""
-        from tests.conftest import get_test_session
+        session = db_session
+        stale_time = datetime.now(timezone.utc) - timedelta(minutes=12)
+        await self.create_test_data(
+            session,
+            job_id="test-job-stalled-3",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=stale_time - timedelta(minutes=1),
+            started_at=stale_time,
+            updated_at=stale_time,
+            last_progress_at=stale_time
+        )
 
-        async with get_test_session() as session:
-            # Create active job with extremely stale progress (12 minutes)
-            stale_time = datetime.now(timezone.utc) - timedelta(minutes=12)
-            job = AgentExecution(
-                job_id="test-job-stalled-3",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=stale_time,
-                created_at=stale_time - timedelta(minutes=1),
-                updated_at=stale_time,
-                job_metadata={"last_progress_update": stale_time.isoformat()}
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
+        assert len(unhealthy) == 1
+        assert unhealthy[0].health_state == "timeout"
 
-            assert len(unhealthy) == 1
-            assert unhealthy[0].health_state == "timeout"
 
-    async def test_no_stalled_detection_for_active_jobs(self, monitor):
+    async def test_no_stalled_detection_for_active_jobs(self, monitor, db_session):
         """Test active jobs with recent progress are not flagged."""
-        from tests.conftest import get_test_session
+        session = db_session
+        recent_time = datetime.now(timezone.utc) - timedelta(minutes=2)
+        await self.create_test_data(
+            session,
+            job_id="test-job-active-healthy",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=recent_time - timedelta(minutes=1),
+            started_at=recent_time,
+            updated_at=recent_time,
+            last_progress_at=recent_time
+        )
 
-        async with get_test_session() as session:
-            # Create active job with recent progress
-            recent_time = datetime.now(timezone.utc) - timedelta(minutes=2)
-            job = AgentExecution(
-                job_id="test-job-active-healthy",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=recent_time,
-                created_at=recent_time - timedelta(minutes=1),
-                updated_at=recent_time,
-                job_metadata={"last_progress_update": recent_time.isoformat()}
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
+        assert len(unhealthy) == 0
 
-            assert len(unhealthy) == 0
 
-    async def test_agent_display_name_specific_timeouts(self, monitor):
+    async def test_agent_display_name_specific_timeouts(self, monitor, db_session):
         """Test orchestrators get longer timeout than other agents."""
-        from tests.conftest import get_test_session
+        session = db_session
+        silent_time = datetime.now(timezone.utc) - timedelta(minutes=12)
 
-        async with get_test_session() as session:
-            silent_time = datetime.now(timezone.utc) - timedelta(minutes=12)
+        await self.create_test_data(
+            session,
+            job_id="orch-1",
+            tenant_key="test-tenant",
+            status="working",
+            agent_display_name="orchestrator",
+            created_at=silent_time - timedelta(minutes=1),
+            started_at=silent_time,
+            updated_at=silent_time,
+            last_progress_at=silent_time
+        )
 
-            # Create orchestrator job silent for 12 minutes
-            orch_job = AgentExecution(
-                job_id="orch-1",
-                tenant_key="test-tenant",
-                agent_display_name="orchestrator",
-                status="active",
-                mission="Test mission",
-                started_at=silent_time,
-                created_at=silent_time - timedelta(minutes=1),
-                updated_at=silent_time,
-                job_metadata={"last_progress_update": silent_time.isoformat()}
-            )
+        await self.create_test_data(
+            session,
+            job_id="impl-1",
+            tenant_key="test-tenant",
+            status="working",
+            agent_display_name="implementer",
+            created_at=silent_time - timedelta(minutes=1),
+            started_at=silent_time,
+            updated_at=silent_time,
+            last_progress_at=silent_time
+        )
 
-            # Create implementer job silent for 12 minutes
-            impl_job = AgentExecution(
-                job_id="impl-1",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=silent_time,
-                created_at=silent_time - timedelta(minutes=1),
-                updated_at=silent_time,
-                job_metadata={"last_progress_update": silent_time.isoformat()}
-            )
+        unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
 
-            session.add_all([orch_job, impl_job])
-            await session.commit()
+        unhealthy_ids = [h.job_id for h in unhealthy]
+        assert "impl-1" in unhealthy_ids
+        assert "orch-1" not in unhealthy_ids
 
-            # Run detection
-            unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
 
-            # Orchestrator gets 15min timeout - should NOT be unhealthy
-            # Implementer gets 10min timeout - SHOULD be unhealthy
-            unhealthy_ids = [h.job_id for h in unhealthy]
-            assert "impl-1" in unhealthy_ids
-            assert "orch-1" not in unhealthy_ids  # Still within 15min timeout
-
-    async def test_detect_heartbeat_failure(self, monitor):
+    async def test_detect_heartbeat_failure(self, monitor, db_session):
         """Test detection of jobs with extended silence."""
-        from tests.conftest import get_test_session
+        session = db_session
+        silent_time = datetime.now(timezone.utc) - timedelta(minutes=15)
+        await self.create_test_data(
+            session,
+            job_id="test-job-silent-1",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=silent_time - timedelta(minutes=1),
+            started_at=silent_time,
+            updated_at=silent_time
+        )
 
-        async with get_test_session() as session:
-            # Create job silent for 15 minutes (exceeds 10min timeout)
-            silent_time = datetime.now(timezone.utc) - timedelta(minutes=15)
-            job = AgentExecution(
-                job_id="test-job-silent-1",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=silent_time,
-                created_at=silent_time - timedelta(minutes=1),
-                updated_at=silent_time,
-                job_metadata={}
-            )
-            session.add(job)
-            await session.commit()
+        unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
 
-            # Run detection
-            unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
+        assert len(unhealthy) == 1
+        assert unhealthy[0].job_id == "test-job-silent-1"
+        assert unhealthy[0].health_state == "timeout"
+        assert "silence" in unhealthy[0].issue_description.lower()
+        assert unhealthy[0].minutes_since_update >= 10
 
-            assert len(unhealthy) == 1
-            assert unhealthy[0].job_id == "test-job-silent-1"
-            assert unhealthy[0].health_state == "timeout"
-            assert "silence" in unhealthy[0].issue_description.lower()
-            assert unhealthy[0].minutes_since_update >= 10
 
     async def test_get_last_progress_time_from_metadata(self, monitor):
         """Test extracting last progress time from job metadata."""
         progress_time = datetime.now(timezone.utc) - timedelta(minutes=5)
 
-        job = AgentExecution(
+        mock_job = AgentJob(
+            job_id="test-job-1",
+            tenant_key="test-tenant",
+            mission="Test mission",
+            job_type="implementer",
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=10)
+        )
+
+        execution = AgentExecution(
             job_id="test-job-1",
             tenant_key="test-tenant",
             agent_display_name="implementer",
-            status="active",
-            mission="Test mission",
+            status="working",
             started_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            updated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            job_metadata={"last_progress_update": progress_time.isoformat()}
+            last_progress_at=progress_time
         )
+        execution.job = mock_job
 
-        result = monitor._get_last_progress_time(job)
+        result = monitor._get_last_progress_time(execution)
 
-        # Allow small difference due to ISO parsing
-        assert abs((result - progress_time).total_seconds()) < 1
+        assert result == progress_time
+
 
     async def test_get_last_progress_time_fallback(self, monitor):
         """Test fallback to started_at when no progress metadata."""
         started_time = datetime.now(timezone.utc) - timedelta(minutes=5)
 
-        job = AgentExecution(
+        mock_job = AgentJob(
+            job_id="test-job-2",
+            tenant_key="test-tenant",
+            mission="Test mission",
+            job_type="implementer",
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=10)
+        )
+
+        execution = AgentExecution(
             job_id="test-job-2",
             tenant_key="test-tenant",
             agent_display_name="implementer",
-            status="active",
-            mission="Test mission",
+            status="working",
             started_at=started_time,
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            updated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            job_metadata={}
+            last_progress_at=None
         )
+        execution.job = mock_job
 
-        result = monitor._get_last_progress_time(job)
+        result = monitor._get_last_progress_time(execution)
 
         assert result == started_time
+
 
     async def test_get_last_activity_time(self, monitor):
         """Test getting most recent activity timestamp."""
         now = datetime.now(timezone.utc)
 
-        job = AgentExecution(
+        mock_job = AgentJob(
+            job_id="test-job-3",
+            tenant_key="test-tenant",
+            mission="Test mission",
+            job_type="implementer",
+            created_at=now - timedelta(minutes=10)
+        )
+
+        execution = AgentExecution(
             job_id="test-job-3",
             tenant_key="test-tenant",
             agent_display_name="implementer",
-            status="active",
-            mission="Test mission",
-            created_at=now - timedelta(minutes=10),
+            status="working",
             started_at=now - timedelta(minutes=8),
-            updated_at=now - timedelta(minutes=2),  # Most recent
-            job_metadata={"last_progress_update": (now - timedelta(minutes=5)).isoformat()}
+            last_progress_at=now - timedelta(minutes=5),
+            last_message_check_at=now - timedelta(minutes=6)
+        )
+        execution.job = mock_job
+
+        result = monitor._get_last_activity_time(execution)
+
+        # Should return the most recent timestamp (last_progress_at is 5 minutes ago, most recent)
+        assert result == execution.last_progress_at
+
+
+    async def test_handle_unhealthy_job_warning(self, monitor, mock_ws_manager, db_session):
+        """Test handling unhealthy job in warning state."""
+        session = db_session
+        execution = await self.create_test_data(
+            session,
+            job_id="test-job-warning",
+            tenant_key="test-tenant",
+            status="working"
         )
 
-        result = monitor._get_last_activity_time(job)
+        health_status = AgentHealthStatus(
+            job_id="test-job-warning",
+            agent_id=execution.agent_id,
+            agent_display_name="implementer",
+            current_status="working",
+            health_state="warning",
+            last_update=datetime.now(timezone.utc) - timedelta(minutes=6),
+            minutes_since_update=6.0,
+            issue_description="No progress for 6 minutes",
+            recommended_action="Check agent logs"
+        )
 
-        # Should return updated_at as most recent
-        assert result == job.updated_at
+        monitor.ws = mock_ws_manager
 
-    async def test_handle_unhealthy_job_warning(self, monitor, mock_ws_manager):
-        """Test handling unhealthy job in warning state."""
-        from tests.conftest import get_test_session
+        await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
 
-        async with get_test_session() as session:
-            # Create job
-            job = AgentExecution(
-                job_id="test-job-warning",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-                health_status="unknown",
-                health_failure_count=0
-            )
-            session.add(job)
-            await session.commit()
+        await session.refresh(execution)
+        assert execution.health_status == "warning"
+        assert execution.health_failure_count == 1
+        assert execution.last_health_check is not None
+        assert execution.status == "working"
 
-            # Create health status
-            health_status = AgentHealthStatus(
-                job_id="test-job-warning",
-                agent_display_name="implementer",
-                current_status="active",
-                health_state="warning",
-                last_update=datetime.now(timezone.utc) - timedelta(minutes=6),
-                minutes_since_update=6.0,
-                issue_description="No progress for 6 minutes",
-                recommended_action="Check agent logs"
-            )
+        mock_ws_manager.broadcast_health_alert.assert_called_once()
 
-            # Override monitor's ws_manager with mock
-            monitor.ws = mock_ws_manager
 
-            # Handle unhealthy job
-            await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
-
-            # Verify job updated
-            await session.refresh(job)
-            assert job.health_status == "warning"
-            assert job.health_failure_count == 1
-            assert job.last_health_check is not None
-            assert job.status == "active"  # Not auto-failed
-
-            # Verify WebSocket broadcast
-            mock_ws_manager.broadcast_health_alert.assert_called_once()
-
-    async def test_handle_unhealthy_job_timeout_no_auto_fail(self, monitor, mock_ws_manager):
+    async def test_handle_unhealthy_job_timeout_no_auto_fail(self, monitor, mock_ws_manager, db_session):
         """Test handling timeout without auto-fail enabled."""
-        from tests.conftest import get_test_session
+        session = db_session
+        monitor.config.auto_fail_on_timeout = False
 
-        async with get_test_session() as session:
-            # Ensure auto-fail is disabled
-            monitor.config.auto_fail_on_timeout = False
+        execution = await self.create_test_data(
+            session,
+            job_id="test-job-timeout-1",
+            tenant_key="test-tenant",
+            status="working"
+        )
 
-            # Create job
-            job = AgentExecution(
-                job_id="test-job-timeout-1",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-                health_status="unknown",
-                health_failure_count=0
-            )
-            session.add(job)
-            await session.commit()
+        health_status = AgentHealthStatus(
+            job_id="test-job-timeout-1",
+            agent_id=execution.agent_id,
+            agent_display_name="implementer",
+            current_status="working",
+            health_state="timeout",
+            last_update=datetime.now(timezone.utc) - timedelta(minutes=15),
+            minutes_since_update=15.0,
+            issue_description="Timeout",
+            recommended_action="Manual intervention"
+        )
 
-            # Create health status
-            health_status = AgentHealthStatus(
-                job_id="test-job-timeout-1",
-                agent_display_name="implementer",
-                current_status="active",
-                health_state="timeout",
-                last_update=datetime.now(timezone.utc) - timedelta(minutes=15),
-                minutes_since_update=15.0,
-                issue_description="Timeout",
-                recommended_action="Manual intervention"
-            )
+        monitor.ws = mock_ws_manager
 
-            # Override monitor's ws_manager with mock
-            monitor.ws = mock_ws_manager
+        await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
 
-            # Handle unhealthy job
-            await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
+        await session.refresh(execution)
+        assert execution.health_status == "timeout"
+        assert execution.status == "working"
+        assert execution.completed_at is None
 
-            # Verify job NOT auto-failed
-            await session.refresh(job)
-            assert job.health_status == "timeout"
-            assert job.status == "active"  # Still active
-            assert job.completed_at is None
+        mock_ws_manager.broadcast_health_alert.assert_called_once()
+        mock_ws_manager.broadcast_agent_auto_failed.assert_not_called()
 
-            # Verify health alert sent (not auto-fail)
-            mock_ws_manager.broadcast_health_alert.assert_called_once()
-            mock_ws_manager.broadcast_agent_auto_failed.assert_not_called()
 
-    async def test_auto_fail_on_timeout(self, monitor, mock_ws_manager):
+    async def test_auto_fail_on_timeout(self, monitor, mock_ws_manager, db_session):
         """Test auto-fail when configured."""
-        from tests.conftest import get_test_session
+        session = db_session
+        monitor.config.auto_fail_on_timeout = True
 
-        async with get_test_session() as session:
-            # Enable auto-fail
-            monitor.config.auto_fail_on_timeout = True
+        execution = await self.create_test_data(
+            session,
+            job_id="timeout-job",
+            tenant_key="test-tenant",
+            status="working",
+            started_at=datetime.now(timezone.utc) - timedelta(minutes=15),
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=15)
+        )
 
-            # Create timed-out job
-            job = AgentExecution(
-                job_id="timeout-job",
-                tenant_key="test-tenant",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=datetime.now(timezone.utc) - timedelta(minutes=15),
-                created_at=datetime.now(timezone.utc) - timedelta(minutes=16),
-                updated_at=datetime.now(timezone.utc) - timedelta(minutes=15),
-                health_status="unknown",
-                health_failure_count=0
-            )
-            session.add(job)
-            await session.commit()
+        health_status = AgentHealthStatus(
+            job_id="timeout-job",
+            agent_id=execution.agent_id,
+            agent_display_name="implementer",
+            current_status="working",
+            health_state="timeout",
+            last_update=execution.started_at,
+            minutes_since_update=15.0,
+            issue_description="Complete silence for 15 minutes",
+            recommended_action="Auto-fail"
+        )
 
-            # Create health status
-            health_status = AgentHealthStatus(
-                job_id="timeout-job",
-                agent_display_name="implementer",
-                current_status="active",
-                health_state="timeout",
-                last_update=job.started_at,
-                minutes_since_update=15.0,
-                issue_description="Complete silence for 15 minutes",
-                recommended_action="Auto-fail"
-            )
+        monitor.ws = mock_ws_manager
 
-            # Override monitor's ws_manager with mock
-            monitor.ws = mock_ws_manager
+        await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
 
-            # Handle unhealthy job
-            await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
+        await session.refresh(execution)
+        assert execution.status == "failed"
+        assert execution.completed_at is not None
+        assert "Auto-failed" in execution.result_summary
+        assert "Complete silence" in execution.result_summary
 
-            # Verify job failed
-            await session.refresh(job)
-            assert job.status == "failed"
-            assert job.completed_at is not None
-            assert "Auto-failed" in job.result_summary
-            assert "Complete silence" in job.result_summary
+        mock_ws_manager.broadcast_agent_auto_failed.assert_called_once()
+        call_args = mock_ws_manager.broadcast_agent_auto_failed.call_args
+        assert call_args[1]["tenant_key"] == "test-tenant"
+        assert call_args[1]["job_id"] == "timeout-job"
 
-            # Verify auto-fail broadcast
-            mock_ws_manager.broadcast_agent_auto_failed.assert_called_once()
-            call_args = mock_ws_manager.broadcast_agent_auto_failed.call_args
-            assert call_args[1]["tenant_key"] == "test-tenant"
-            assert call_args[1]["job_id"] == "timeout-job"
 
-    async def test_multi_tenant_isolation(self, monitor):
+    async def test_multi_tenant_isolation(self, monitor, db_session):
         """Test health checks respect tenant boundaries."""
-        from tests.conftest import get_test_session
+        session = db_session
+        stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
 
-        async with get_test_session() as session:
-            stale_time = datetime.now(timezone.utc) - timedelta(minutes=6)
+        await self.create_test_data(
+            session,
+            job_id="job-tenant-a",
+            tenant_key="tenant-a",
+            status="working",
+            created_at=stale_time,
+            started_at=stale_time,
+            updated_at=stale_time,
+            last_progress_at=stale_time
+        )
 
-            # Create jobs for different tenants
-            job_tenant_a = AgentExecution(
-                job_id="job-tenant-a",
-                tenant_key="tenant-a",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=stale_time,
-                created_at=stale_time,
-                updated_at=stale_time,
-                job_metadata={"last_progress_update": stale_time.isoformat()}
-            )
+        await self.create_test_data(
+            session,
+            job_id="job-tenant-b",
+            tenant_key="tenant-b",
+            status="working",
+            created_at=stale_time,
+            started_at=stale_time,
+            updated_at=stale_time,
+            last_progress_at=stale_time
+        )
 
-            job_tenant_b = AgentExecution(
-                job_id="job-tenant-b",
-                tenant_key="tenant-b",
-                agent_display_name="implementer",
-                status="active",
-                mission="Test mission",
-                started_at=stale_time,
-                created_at=stale_time,
-                updated_at=stale_time,
-                job_metadata={"last_progress_update": stale_time.isoformat()}
-            )
+        unhealthy_a = await monitor._detect_stalled_jobs(session, "tenant-a")
 
-            session.add_all([job_tenant_a, job_tenant_b])
-            await session.commit()
+        assert len(unhealthy_a) == 1
+        assert unhealthy_a[0].job_id == "job-tenant-a"
 
-            # Scan only tenant-a
-            unhealthy_a = await monitor._detect_stalled_jobs(session, "tenant-a")
+        unhealthy_b = await monitor._detect_stalled_jobs(session, "tenant-b")
 
-            # Should only find tenant-a job
-            assert len(unhealthy_a) == 1
-            assert unhealthy_a[0].job_id == "job-tenant-a"
+        assert len(unhealthy_b) == 1
+        assert unhealthy_b[0].job_id == "job-tenant-b"
 
-            # Scan only tenant-b
-            unhealthy_b = await monitor._detect_stalled_jobs(session, "tenant-b")
-
-            # Should only find tenant-b job
-            assert len(unhealthy_b) == 1
-            assert unhealthy_b[0].job_id == "job-tenant-b"
 
     async def test_monitoring_loop_error_recovery(self, monitor):
         """Test monitoring loop continues after errors."""
@@ -701,87 +689,69 @@ class TestAgentHealthMonitor:
 
         await monitor.stop()
 
-    async def test_get_all_tenants(self, monitor):
+    async def test_get_all_tenants(self, monitor, db_session):
         """Test retrieving all unique tenant keys."""
-        from tests.conftest import get_test_session
+        session = db_session
 
-        async with get_test_session() as session:
-            # Create jobs for multiple tenants
-            jobs = [
-                AgentExecution(
-                    job_id=f"job-{i}",
-                    tenant_key=f"tenant-{i % 3}",  # 3 unique tenants
-                    agent_display_name="implementer",
-                    status="active",
-                    mission="Test mission",
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc)
-                )
-                for i in range(6)
-            ]
-            session.add_all(jobs)
-            await session.commit()
+        for i in range(6):
+            await self.create_test_data(
+                session,
+                job_id=f"job-{i}",
+                tenant_key=f"tenant-{i % 3}",
+                status="working"
+            )
 
-            # Get all tenants
-            tenants = await monitor._get_all_tenants(session)
+        tenants = await monitor._get_all_tenants(session)
 
-            # Should return 3 unique tenant keys
-            assert len(tenants) == 3
-            assert set(tenants) == {"tenant-0", "tenant-1", "tenant-2"}
+        # Check that our test tenants are included (may have others from previous tests)
+        tenant_set = set(tenants)
+        assert "tenant-0" in tenant_set
+        assert "tenant-1" in tenant_set
+        assert "tenant-2" in tenant_set
 
-    async def test_scan_tenant_jobs_combines_all_detections(self, monitor):
+
+    async def test_scan_tenant_jobs_combines_all_detections(self, monitor, db_session):
         """Test scan combines waiting, stalled, and heartbeat detections."""
-        from tests.conftest import get_test_session
+        session = db_session
+        now = datetime.now(timezone.utc)
 
-        async with get_test_session() as session:
-            now = datetime.now(timezone.utc)
+        await self.create_test_data(
+            session,
+            job_id="waiting-timeout",
+            tenant_key="test-tenant",
+            status="waiting",
+            created_at=now - timedelta(minutes=3),
+            updated_at=now - timedelta(minutes=3)
+        )
 
-            # Create jobs triggering different detections
-            jobs = [
-                # Waiting timeout
-                AgentExecution(
-                    job_id="waiting-timeout",
-                    tenant_key="test-tenant",
-                    agent_display_name="implementer",
-                    status="waiting",
-                    mission="Test mission",
-                    created_at=now - timedelta(minutes=3),
-                    updated_at=now - timedelta(minutes=3)
-                ),
-                # Stalled job
-                AgentExecution(
-                    job_id="stalled-job",
-                    tenant_key="test-tenant",
-                    agent_display_name="implementer",
-                    status="active",
-                    mission="Test mission",
-                    started_at=now - timedelta(minutes=6),
-                    created_at=now - timedelta(minutes=7),
-                    updated_at=now - timedelta(minutes=6),
-                    job_metadata={"last_progress_update": (now - timedelta(minutes=6)).isoformat()}
-                ),
-                # Heartbeat failure
-                AgentExecution(
-                    job_id="heartbeat-fail",
-                    tenant_key="test-tenant",
-                    agent_display_name="tester",  # 8min timeout
-                    status="active",
-                    mission="Test mission",
-                    started_at=now - timedelta(minutes=12),
-                    created_at=now - timedelta(minutes=13),
-                    updated_at=now - timedelta(minutes=12),
-                    job_metadata={}
-                )
-            ]
-            session.add_all(jobs)
-            await session.commit()
+        await self.create_test_data(
+            session,
+            job_id="stalled-job",
+            tenant_key="test-tenant",
+            status="working",
+            created_at=now - timedelta(minutes=7),
+            started_at=now - timedelta(minutes=6),
+            updated_at=now - timedelta(minutes=6),
+            last_progress_at=now - timedelta(minutes=6)
+        )
 
-            # Scan tenant
-            unhealthy = await monitor._scan_tenant_jobs(session, "test-tenant")
+        await self.create_test_data(
+            session,
+            job_id="heartbeat-fail",
+            tenant_key="test-tenant",
+            status="working",
+            agent_display_name="tester",
+            created_at=now - timedelta(minutes=13),
+            started_at=now - timedelta(minutes=12),
+            updated_at=now - timedelta(minutes=12),
+            last_progress_at=now - timedelta(minutes=12)
+        )
 
-            # Should detect all 3 issues
-            assert len(unhealthy) >= 3
-            job_ids = {h.job_id for h in unhealthy}
-            assert "waiting-timeout" in job_ids
-            assert "stalled-job" in job_ids
-            assert "heartbeat-fail" in job_ids
+        unhealthy = await monitor._scan_tenant_jobs(session, "test-tenant")
+
+        assert len(unhealthy) >= 3
+        job_ids = {h.job_id for h in unhealthy}
+        assert "waiting-timeout" in job_ids
+        assert "stalled-job" in job_ids
+        assert "heartbeat-fail" in job_ids
+
