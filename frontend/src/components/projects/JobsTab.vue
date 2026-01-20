@@ -1207,6 +1207,10 @@ async function copyToClipboard(text) {
             padding: 4px;
             margin-left: 4px;
           }
+
+          .v-icon {
+            opacity: 1 !important;
+          }
         }
       }
     }
