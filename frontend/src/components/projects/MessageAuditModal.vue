@@ -40,7 +40,7 @@
       <v-card-text class="pa-0">
         <!-- Loading State (Handover 0387g Phase 4) -->
         <div v-if="loading" class="pa-8 text-center">
-          <v-progress-circular indeterminate color="warning" size="48" class="mb-4" />
+          <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
           <div class="text-body-2 text-medium-emphasis">Loading messages...</div>
         </div>
 
@@ -94,7 +94,7 @@
                 v-if="currentMessages.length === 0"
                 class="empty-state pa-4 text-center"
               >
-                <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="warning" />
+                <v-icon icon="mdi-message-outline" size="32" class="mb-2" color="primary" />
                 <div class="text-body-2 text-medium-emphasis">
                   No messages in this category
                 </div>
@@ -123,12 +123,13 @@
                     @click="toggleMessageExpansion(message.id)"
                   >
                     <span class="message-preview">{{ getMessagePreview(message) }}</span>
-                    <v-icon
-                      icon="mdi-eye"
-                      size="small"
-                      color="warning"
-                      class="message-eye-icon"
-                    />
+                    <span class="eye-icon-container">
+                      <v-icon
+                        icon="mdi-eye"
+                        size="x-small"
+                        class="message-eye-icon"
+                      />
+                    </span>
                   </div>
 
                   <!-- Expanded Full Content -->
@@ -392,7 +393,7 @@ function formatMessageMeta(message) {
 }
 
 .tab-button.active {
-  border-bottom: 2px solid rgb(var(--v-theme-warning));
+  border-bottom: 2px solid rgb(var(--v-theme-primary));
   font-weight: 600;
 }
 
@@ -422,13 +423,12 @@ function formatMessageMeta(message) {
 .message-item-wrapper {
   padding: 12px 16px;
   margin: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
   transition: background-color 0.2s ease;
 }
 
 .message-item-wrapper:hover {
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(var(--v-theme-primary), 0.08);
 }
 
 /* Message Header: Timestamp | Recipient */
@@ -441,18 +441,31 @@ function formatMessageMeta(message) {
 }
 
 .message-timestamp {
-  color: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-primary));
   font-family: 'Courier New', monospace;
 }
 
+.v-theme--dark .message-timestamp {
+  color: #ffc300;
+}
+
 .message-separator {
-  color: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-primary));
   opacity: 0.7;
 }
 
+.v-theme--dark .message-separator {
+  color: #ffc300;
+  opacity: 0.85;
+}
+
 .message-recipient {
-  color: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-primary));
   font-weight: 500;
+}
+
+.v-theme--dark .message-recipient {
+  color: #ffc300;
 }
 
 /* Message Content Line with Eye Icon */
@@ -467,34 +480,54 @@ function formatMessageMeta(message) {
 }
 
 .message-content-line:hover {
-  color: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-primary));
 }
 
-.message-content-line:hover .message-eye-icon {
-  color: rgb(var(--v-theme-warning));
-  transform: scale(1.1);
+.message-content-line:hover .eye-icon-container {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4);
+}
+
+.v-theme--dark .message-content-line:hover .eye-icon-container {
+  box-shadow: none;
 }
 
 .message-preview {
   flex: 1;
   font-size: 0.875rem;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Eye Icon with Blue Circle Background and Yellow Icon */
+.eye-icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgb(var(--v-theme-primary));
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.v-theme--dark .eye-icon-container {
+  background-color: transparent;
+  box-shadow: none;
 }
 
 .message-eye-icon {
-  color: rgb(var(--v-theme-warning)) !important;
+  color: #ffc300 !important; /* Brand yellow */
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
 /* Expanded Full Content */
 .message-full-content {
   margin-top: 8px;
   padding: 12px;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(var(--v-theme-primary), 0.08);
   border-radius: 4px;
-  border-left: 3px solid rgb(var(--v-theme-warning));
+  border-left: 3px solid rgb(var(--v-theme-primary));
 }
 
 .message-full-text {
@@ -502,7 +535,6 @@ function formatMessageMeta(message) {
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   line-height: 1.5;
-  color: white;
 }
 
 /* Divider between messages */
