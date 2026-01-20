@@ -10,7 +10,7 @@ import { useTaskStore } from './tasks'
 import { useProductStore } from './products'
 import { useProjectTabsStore } from './projectTabs'
 import { useUserStore } from '@/stores/user'
-import { useToast } from '@/composables/useToast'
+import { useNotificationStore } from '@/stores/notifications'
 
 export const STORE_REGISTRY = {
   agentJobs: () => useAgentJobsStore(),
@@ -118,31 +118,39 @@ export const EVENT_MAP = {
       const agentsStore = useAgentStore()
       agentsStore.handleHealthAlert?.(payload)
 
-      const { showToast } = useToast()
-      const { health_state, agent_display_name, issue_description } = payload
+      const { health_state, agent_display_name, issue_description, job_id } = payload
 
       if (health_state === 'critical' || health_state === 'timeout') {
-        showToast({
+        // Route to notification bell instead of toast (Handover 0424)
+        const notificationStore = useNotificationStore()
+        notificationStore.addNotification({
+          type: 'agent_health',
           title: 'Agent Health Alert',
           message: `${agent_display_name} - ${issue_description}`,
-          color: health_state === 'timeout' ? 'error' : 'warning',
-          icon: health_state === 'timeout' ? 'mdi-clock-remove' : 'mdi-alert-circle',
-          timeout: 8000,
+          metadata: {
+            job_id,
+            agent_display_name,
+            health_state,
+          },
         })
       }
     },
   },
   'agent:auto_failed': {
     handler: async (payload) => {
-      const { showToast } = useToast()
-      const { agent_display_name, reason } = payload
+      const { agent_display_name, reason, job_id } = payload
 
-      showToast({
+      // Route to notification bell instead of toast (Handover 0424)
+      const notificationStore = useNotificationStore()
+      notificationStore.addNotification({
+        type: 'agent_health',
         title: 'Agent Auto-Failed',
         message: `${agent_display_name} - ${reason}`,
-        color: 'error',
-        icon: 'mdi-robot-dead',
-        timeout: 10000,
+        metadata: {
+          job_id,
+          agent_display_name,
+          reason,
+        },
       })
     },
   },
