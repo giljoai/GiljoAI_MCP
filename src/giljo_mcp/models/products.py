@@ -8,6 +8,7 @@ Products are the top-level organizational unit in the system.
 from typing import Any
 
 from sqlalchemy import (
+    ARRAY,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -62,6 +63,14 @@ class Product(Base):
         Text,
         nullable=True,
         comment="Quality standards and testing expectations"
+    )
+
+    # Handover 0425: Target platforms for product deployment
+    target_platforms = Column(
+        ARRAY(String),
+        nullable=False,
+        server_default=text("'{all}'::text[]"),
+        comment="Target platforms: windows, linux, macos, or all"
     )
 
     # ✅ Handover 0128e Complete: Deprecated vision fields removed
@@ -134,6 +143,15 @@ class Product(Base):
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
         # Handover 0128e: Removed CheckConstraint for deprecated vision_type field
+        # Handover 0425: Validate target_platforms field
+        CheckConstraint(
+            "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'all']::VARCHAR[]",
+            name="ck_product_target_platforms_valid"
+        ),
+        CheckConstraint(
+            "NOT ('all' = ANY(target_platforms) AND array_length(target_platforms, 1) > 1)",
+            name="ck_product_target_platforms_all_exclusive"
+        ),
         # Handover 0050: Enforce single active product per tenant (defense in depth)
         Index(
             "idx_product_single_active_per_tenant", "tenant_key", unique=True, postgresql_where=text("is_active = true")

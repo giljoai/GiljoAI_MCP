@@ -24,6 +24,9 @@ class ProductCreate(BaseModel):
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
+    target_platforms: Optional[List[str]] = Field(
+        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+    )
 
 
 class ProductUpdate(BaseModel):
@@ -37,6 +40,9 @@ class ProductUpdate(BaseModel):
     )
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
+    )
+    target_platforms: Optional[List[str]] = Field(
+        None, description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 
@@ -64,6 +70,9 @@ class ProductResponse(BaseModel):
     product_memory: Optional[Dict[str, Any]] = Field(
         default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
         description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412"
+    )
+    target_platforms: Optional[List[str]] = Field(
+        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 

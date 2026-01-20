@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-19 (0424 series added - Organization Hierarchy Layer)
+**Last Updated:** 2026-01-19 (0425 added - Platform Detection Injection)
 
 ---
 
@@ -49,7 +49,16 @@
 | 0424e | Migration & Testing | Ready | HIGH | 4-6h |
 
 > **Purpose**: Multi-user access foundation - Organizations own Products, Users access via roles (owner/admin/member/viewer)
-> **Follow-up**: 0425 (Export/Import), 0426 (Multi-org support)
+> **Follow-up**: 0426 (Export/Import), 0427 (Multi-org support)
+
+### Platform Detection Series (0425) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0425** | **Platform Detection Injection** | **Ready** | **MEDIUM** | 4-6h total |
+
+> **Purpose**: Ensure orchestrators/agents write platform-appropriate shell commands
+> **Solution**: Target platform (Product card) + Dev environment (agent self-detection)
+> **MCP Enhancement**: #14 (Platform-Specific Command Guidance)
 
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |

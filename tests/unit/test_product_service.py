@@ -913,3 +913,204 @@ class TestProductServiceProductMemory:
         assert existing_product.product_memory == updated_memory
         assert existing_product.product_memory["github"]["enabled"] is True
         assert len(existing_product.product_memory["learnings"]) == 1
+
+
+class TestProductServiceTargetPlatforms:
+    """
+    Test suite for target_platforms field in ProductService.
+
+    Handover 0425: Phase 1 - Backend Implementation
+    Tests written FIRST following TDD principles.
+    """
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_target_platforms_all(self, mock_db_manager):
+        """
+        BEHAVIOR: Product created with target_platforms=['all'] as default
+
+        GIVEN: No target_platforms data provided
+        WHEN: Product is created via ProductService
+        THEN: Default value ['all'] is applied
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        # Mock execute calls: 1) check duplicate product, 2) get product memory entries
+        execute_mock = AsyncMock()
+        execute_mock.side_effect = [
+            # First call: check for duplicate product
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+            # Second call: get product memory entries (empty list)
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+        ]
+        session.execute = execute_mock
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Test Product",
+            description="Testing default target_platforms"
+        )
+
+        # ASSERT
+        assert result["success"] is True
+        assert "product_id" in result
+        # Verify default value was set
+        session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_target_platforms_windows(self, mock_db_manager):
+        """
+        BEHAVIOR: Product created with target_platforms=['windows'] persists correctly
+
+        GIVEN: target_platforms=['windows'] provided
+        WHEN: Product is created via ProductService
+        THEN: Value persists correctly
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        execute_mock = AsyncMock()
+        execute_mock.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+        ]
+        session.execute = execute_mock
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Windows Product",
+            description="Windows-only product",
+            target_platforms=["windows"]
+        )
+
+        # ASSERT
+        assert result["success"] is True
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_target_platforms_multiple(self, mock_db_manager):
+        """
+        BEHAVIOR: Product can target multiple platforms
+
+        GIVEN: target_platforms=['windows', 'linux', 'macos'] provided
+        WHEN: Product is created via ProductService
+        THEN: All platforms persist correctly
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        execute_mock = AsyncMock()
+        execute_mock.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+        ]
+        session.execute = execute_mock
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Multi-Platform Product",
+            description="Cross-platform product",
+            target_platforms=["windows", "linux", "macos"]
+        )
+
+        # ASSERT
+        assert result["success"] is True
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_target_platforms_all_exclusive(self, mock_db_manager):
+        """
+        BEHAVIOR: 'all' platform cannot be combined with specific platforms
+
+        GIVEN: target_platforms=['all', 'windows'] provided
+        WHEN: Product is created via ProductService
+        THEN: Validation error is raised
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Invalid Platform Product",
+            description="Testing validation",
+            target_platforms=["all", "windows"]
+        )
+
+        # ASSERT
+        assert result["success"] is False
+        assert "error" in result
+        assert "all" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_invalid_platform(self, mock_db_manager):
+        """
+        BEHAVIOR: Invalid platform values are rejected
+
+        GIVEN: target_platforms=['invalid'] provided
+        WHEN: Product is created via ProductService
+        THEN: Validation error is raised
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.create_product(
+            name="Invalid Platform Product",
+            description="Testing validation",
+            target_platforms=["invalid"]
+        )
+
+        # ASSERT
+        assert result["success"] is False
+        assert "error" in result
+        assert "invalid" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_update_product_target_platforms(self, mock_db_manager):
+        """
+        BEHAVIOR: Product target_platforms updates correctly
+
+        GIVEN: Existing product with target_platforms=['windows']
+        WHEN: target_platforms is updated to ['linux', 'macos']
+        THEN: Updated platforms persist
+        """
+        # ARRANGE
+        db_manager, session = mock_db_manager
+        product_id = str(uuid4())
+
+        # Mock existing product
+        existing_product = Mock(spec=Product)
+        existing_product.id = product_id
+        existing_product.name = "Test Product"
+        existing_product.description = "Test"
+        existing_product.tenant_key = "test-tenant"
+        existing_product.target_platforms = ["windows"]
+        existing_product.config_data = {}
+        existing_product.updated_at = datetime.now(timezone.utc)
+
+        session.execute = AsyncMock(return_value=Mock(
+            scalar_one_or_none=Mock(return_value=existing_product)
+        ))
+
+        service = ProductService(db_manager, "test-tenant")
+
+        # ACT
+        result = await service.update_product(
+            product_id=product_id,
+            target_platforms=["linux", "macos"]
+        )
+
+        # ASSERT
+        assert result["success"] is True
+        assert existing_product.target_platforms == ["linux", "macos"]
+        session.commit.assert_awaited_once()
