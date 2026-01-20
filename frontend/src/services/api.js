@@ -112,23 +112,25 @@ export const api = {
     getActive: () => apiClient.get('/api/v1/products/refresh-active'),
     create: (data) => {
       // Handover 0507: Send JSON to match backend ProductCreate schema
-      // Backend expects: { name, description, project_path, config_data }
+      // Backend expects: { name, description, project_path, config_data, target_platforms }
       const payload = {
         name: data.name,
         description: data.description || null,
         project_path: data.projectPath || null,
         config_data: data.configData || null, // FIX: Add config_data (Handover 0507)
+        target_platforms: data.target_platforms || ['all'], // Handover 0425 Phase 2
       }
       return apiClient.post('/api/v1/products/', payload)
     },
     update: (id, data) => {
       // Handover 0507: Send JSON to match backend ProductUpdate schema
-      // Backend expects: { name?, description?, project_path?, config_data?, is_active? }
+      // Backend expects: { name?, description?, project_path?, config_data?, target_platforms?, is_active? }
       const payload = {}
       if (data.name !== undefined) payload.name = data.name
       if (data.description !== undefined) payload.description = data.description
       if (data.projectPath !== undefined) payload.project_path = data.projectPath
       if (data.configData !== undefined) payload.config_data = data.configData // FIX: Add config_data (Handover 0507)
+      if (data.target_platforms !== undefined) payload.target_platforms = data.target_platforms // Handover 0425 Phase 2
       if (data.isActive !== undefined) payload.is_active = data.isActive
       return apiClient.put(`/api/v1/products/${id}`, payload)
     },
