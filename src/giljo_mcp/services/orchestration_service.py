@@ -227,6 +227,14 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
+0. **ENVIRONMENT DETECTION**:
+   Detect your OS before executing tasks:
+   Call: python -c "import platform; print(platform.system())"
+   Store result (Windows/Linux/Darwin) and adapt shell commands to your platform
+   - Sleep: Windows 'timeout /t N /nobreak' | Unix 'sleep N'
+   - Clear: Windows 'cls' | Unix 'clear'
+   - Path separator: Windows '\' | Unix '/'
+
 1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
 3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions

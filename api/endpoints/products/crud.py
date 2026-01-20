@@ -42,6 +42,7 @@ async def create_product(
             description=request.description,
             project_path=request.project_path,
             config_data=request.config_data,
+            target_platforms=request.target_platforms,  # Handover 0425 Phase 2
         )
 
         if not result["success"]:
@@ -85,6 +86,7 @@ async def create_product(
             has_config_data=has_config_data,
             is_active=product_data.get("is_active", False),
             product_memory=pm,  # Handover 0412: 360 Memory
+            target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
     except HTTPException:
@@ -141,6 +143,7 @@ async def list_products(
                 has_config_data=p.get("has_config_data", False),
                 is_active=p.get("is_active", False),
                 product_memory=ensure_product_memory(p.get("product_memory")),  # Handover 0412
+                target_platforms=p.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
             )
             for p in result["products"]
         ]
@@ -237,6 +240,7 @@ async def get_product(
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
             product_memory=pm,  # Handover 0412: Always pass explicit value
+            target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
     except HTTPException:
@@ -305,6 +309,7 @@ async def update_product(
             has_config_data=product_data.get("has_config_data", False),
             is_active=product_data.get("is_active", False),
             product_memory=pm,  # Handover 0412: 360 Memory
+            target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
     except HTTPException:
