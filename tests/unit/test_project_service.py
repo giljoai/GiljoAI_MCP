@@ -713,18 +713,10 @@ class TestProjectServiceStatus:
         mock_project.context_used = 1000
         mock_project.context_budget = 150000
 
-        # Mock session
-        from giljo_mcp.models import Session as SessionModel
-
-        mock_session = Mock(spec=SessionModel)
-        mock_session.id = "session-id"
-
-        # Mock multiple queries: project, session
+        # NOTE: Session tracking removed (Handover 0423 - Session model deleted)
+        # Mock only the project query
         session.execute = AsyncMock(
-            side_effect=[
-                Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-                Mock(scalar_one_or_none=Mock(return_value=mock_session)),
-            ]
+            return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project))
         )
 
         service = ProjectService(db_manager, tenant_manager)

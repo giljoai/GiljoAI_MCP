@@ -406,26 +406,7 @@ def upgrade() -> None:
     op.create_index('idx_archive_template', 'template_archives', ['template_id'], unique=False)
     op.create_index('idx_archive_tenant', 'template_archives', ['tenant_key'], unique=False)
     op.create_index('idx_archive_version', 'template_archives', ['version'], unique=False)
-    op.create_table('template_augmentations',
-    sa.Column('id', sa.String(length=36), nullable=False),
-    sa.Column('tenant_key', sa.String(length=36), nullable=False),
-    sa.Column('template_id', sa.String(length=36), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False),
-    sa.Column('augmentation_type', sa.String(length=50), nullable=False),
-    sa.Column('target_section', sa.String(length=100), nullable=True),
-    sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('conditions', sa.JSON(), nullable=True),
-    sa.Column('priority', sa.Integer(), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('usage_count', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['template_id'], ['agent_templates.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('idx_augment_active', 'template_augmentations', ['is_active'], unique=False)
-    op.create_index('idx_augment_template', 'template_augmentations', ['template_id'], unique=False)
-    op.create_index('idx_augment_tenant', 'template_augmentations', ['tenant_key'], unique=False)
+    # NOTE: template_augmentations table REMOVED (Handover 0423 - dead code cleanup)
     op.create_table('vision_documents',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -762,27 +743,7 @@ def upgrade() -> None:
     op.create_index('idx_message_project', 'messages', ['project_id'], unique=False)
     op.create_index('idx_message_status', 'messages', ['status'], unique=False)
     op.create_index('idx_message_tenant', 'messages', ['tenant_key'], unique=False)
-    op.create_table('sessions',
-    sa.Column('id', sa.String(length=36), nullable=False),
-    sa.Column('tenant_key', sa.String(length=36), nullable=False),
-    sa.Column('project_id', sa.String(length=36), nullable=False),
-    sa.Column('session_number', sa.Integer(), nullable=False),
-    sa.Column('title', sa.String(length=255), nullable=False),
-    sa.Column('objectives', sa.Text(), nullable=True),
-    sa.Column('outcomes', sa.Text(), nullable=True),
-    sa.Column('decisions', sa.JSON(), nullable=True),
-    sa.Column('blockers', sa.JSON(), nullable=True),
-    sa.Column('next_steps', sa.JSON(), nullable=True),
-    sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('ended_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('duration_minutes', sa.Integer(), nullable=True),
-    sa.Column('meta_data', sa.JSON(), nullable=True),
-    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('project_id', 'session_number', name='uq_session_project_number')
-    )
-    op.create_index('idx_session_project', 'sessions', ['project_id'], unique=False)
-    op.create_index('idx_session_tenant', 'sessions', ['tenant_key'], unique=False)
+    # NOTE: sessions table REMOVED (Handover 0423 - dead code cleanup)
     op.create_table('template_usage_stats',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -953,9 +914,7 @@ def downgrade() -> None:
     op.drop_index('idx_usage_project', table_name='template_usage_stats')
     op.drop_index('idx_usage_date', table_name='template_usage_stats')
     op.drop_table('template_usage_stats')
-    op.drop_index('idx_session_tenant', table_name='sessions')
-    op.drop_index('idx_session_project', table_name='sessions')
-    op.drop_table('sessions')
+    # NOTE: sessions table drops REMOVED (Handover 0423 - dead code cleanup)
     op.drop_index('idx_message_tenant', table_name='messages')
     op.drop_index('idx_message_status', table_name='messages')
     op.drop_index('idx_message_project', table_name='messages')
@@ -1033,10 +992,7 @@ def downgrade() -> None:
     op.drop_index('idx_vision_doc_chunked', table_name='vision_documents')
     op.drop_index('idx_vision_doc_active', table_name='vision_documents')
     op.drop_table('vision_documents')
-    op.drop_index('idx_augment_tenant', table_name='template_augmentations')
-    op.drop_index('idx_augment_template', table_name='template_augmentations')
-    op.drop_index('idx_augment_active', table_name='template_augmentations')
-    op.drop_table('template_augmentations')
+    # NOTE: template_augmentations table drops REMOVED (Handover 0423 - dead code cleanup)
     op.drop_index('idx_archive_version', table_name='template_archives')
     op.drop_index('idx_archive_tenant', table_name='template_archives')
     op.drop_index('idx_archive_template', table_name='template_archives')
