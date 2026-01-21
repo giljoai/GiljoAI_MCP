@@ -56,7 +56,8 @@ def validate_and_override_tenant_key(
     arguments: dict,
     session_tenant_key: str,
     session_user_id: str | None,
-    tool_name: str
+    tool_name: str,
+    tool_func: callable = None
 ) -> dict:
     """
     SECURITY: Override client-supplied tenant_key with session tenant_key.
@@ -64,25 +65,33 @@ def validate_and_override_tenant_key(
     Prevents tenant spoofing by ensuring tools always use the authenticated
     user's tenant_key, not client-supplied values.
 
+    Uses function signature inspection to determine if tool accepts tenant_key.
+    Only injects tenant_key for tools that explicitly accept it.
+
     Args:
         arguments: Tool arguments from client
         session_tenant_key: Authenticated tenant_key from session
         session_user_id: Authenticated user_id for audit logging
         tool_name: Name of the tool being called
+        tool_func: The tool function (for signature inspection)
 
     Returns:
         Modified arguments with session tenant_key (for tools that need it)
     """
-    # Tools that DON'T accept tenant_key parameter
-    # These tools either don't need tenant isolation or get it from TenantManager context
-    TOOLS_WITHOUT_TENANT_KEY = {
-        "health_check",  # System health check - no tenant data
-        "create_task",   # Uses TenantManager context internally
-        "update_project_mission",  # Uses project_id for isolation
-    }
+    import inspect
+
+    # Check if tool accepts tenant_key by inspecting its signature
+    accepts_tenant_key = False
+    if tool_func is not None:
+        try:
+            sig = inspect.signature(tool_func)
+            accepts_tenant_key = "tenant_key" in sig.parameters
+        except (ValueError, TypeError):
+            # If we can't inspect, don't inject tenant_key (safe default)
+            accepts_tenant_key = False
 
     # Skip tenant_key injection for tools that don't accept it
-    if tool_name in TOOLS_WITHOUT_TENANT_KEY:
+    if not accepts_tenant_key:
         # Remove tenant_key if client accidentally sent it
         arguments.pop("tenant_key", None)
         return arguments
@@ -658,15 +667,6 @@ async def handle_tools_call(
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    # SECURITY FIX: Validate and override tenant_key (Handover 0424 Phase 0)
-    # This prevents clients from spoofing tenant_key to access other tenants' data
-    arguments = validate_and_override_tenant_key(
-        arguments=arguments,
-        session_tenant_key=session.tenant_key,
-        session_user_id=getattr(session, 'user_id', None),
-        tool_name=tool_name
-    )
-
     # Get tool_accessor from app state
     from api.app import state
 
@@ -718,9 +718,21 @@ async def handle_tools_call(
     if tool_name not in tool_map:
         raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
 
+    # Get tool function for signature inspection
+    tool_func = tool_map[tool_name]
+
+    # SECURITY FIX: Validate and override tenant_key (Handover 0424 Phase 0)
+    # Uses signature inspection to only inject tenant_key for tools that accept it
+    arguments = validate_and_override_tenant_key(
+        arguments=arguments,
+        session_tenant_key=session.tenant_key,
+        session_user_id=getattr(session, 'user_id', None),
+        tool_name=tool_name,
+        tool_func=tool_func
+    )
+
     try:
         # Execute tool
-        tool_func = tool_map[tool_name]
         result = await tool_func(**arguments)
 
         # Record tool call in session history
