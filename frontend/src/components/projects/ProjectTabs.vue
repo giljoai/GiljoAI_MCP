@@ -1,36 +1,49 @@
 <template>
-  <v-card class="project-tabs-container" elevation="0">
-    <!-- Tab Navigation with Action Buttons (Handover 0243e: Fixed activation state) -->
-    <div class="tabs-header-container">
-      <v-tabs
-        v-model="activeTab"
-        bg-color="transparent"
-        class="tabs-header global-tabs"
-        align-tabs="start"
-      >
-        <v-tab value="launch" class="tab-link" data-testid="launch-tab">
-          <v-icon start size="20">mdi-rocket-launch</v-icon>
-          Launch
-        </v-tab>
+  <div class="project-tabs-container">
+    <!-- Project Header (static, no scroll) -->
+    <div class="project-header">
+      <div class="d-flex align-center gap-4">
+        <h1 class="text-h4">Project:</h1>
+        <h2 class="project-name">{{ project?.name || 'Loading...' }}</h2>
+      </div>
+      <p class="text-subtitle-1 text-medium-emphasis mb-0">
+        Project ID: {{ project?.project_id || project?.id || 'N/A' }}
+      </p>
+    </div>
 
-        <v-tab value="jobs" class="tab-link" data-testid="jobs-tab">
-          <v-icon start size="20">mdi-code-braces</v-icon>
-          Implement
-          <!-- Badge removed (Handover 0289): Messages now tracked per-agent in JobsTab table -->
-        </v-tab>
-      </v-tabs>
+    <!-- Tabs (connected to bordered content box below) -->
+    <v-btn-toggle
+      v-model="activeTab"
+      mandatory
+      variant="outlined"
+      divided
+      rounded="t-lg"
+      color="primary"
+      class="tabs-toggle"
+    >
+      <v-btn value="launch" data-testid="launch-tab">
+        <v-icon start size="20">mdi-rocket-launch</v-icon>
+        Launch
+      </v-btn>
+      <v-btn value="jobs" data-testid="jobs-tab">
+        <v-icon start size="20">mdi-code-braces</v-icon>
+        Implement
+      </v-btn>
+    </v-btn-toggle>
 
-      <!-- Action Buttons (relocated from LaunchTab) -->
-      <div class="action-buttons ml-auto d-flex align-center gap-2">
-        <!-- Integration Status Icons (Handover 0427) -->
-        <div class="integration-icons d-flex align-center gap-2 mr-2" data-testid="integration-status-icons">
+    <!-- Bordered Content Box (tabs connect to this) -->
+    <div class="bordered-tabs-content">
+      <!-- Action Buttons Row (inside the box) -->
+      <div class="action-buttons-row">
+        <!-- Integration Status Icons -->
+        <div class="integration-icons d-flex align-center gap-2" data-testid="integration-status-icons">
           <!-- GitHub Integration -->
           <v-tooltip location="bottom" max-width="300">
             <template #activator="{ props: tooltipProps }">
               <v-icon
                 v-bind="tooltipProps"
                 :class="{ 'icon-disabled': !gitEnabled }"
-                size="40"
+                size="32"
                 data-testid="github-status-icon"
                 @click="goToIntegrations"
                 style="cursor: pointer;"
@@ -54,8 +67,8 @@
               <v-img
                 v-bind="tooltipProps"
                 src="/Serena.png"
-                width="40"
-                height="40"
+                width="32"
+                height="32"
                 :class="{ 'icon-disabled': !serenaEnabled }"
                 data-testid="serena-status-icon"
                 @click="goToIntegrations"
@@ -73,11 +86,12 @@
           </v-tooltip>
         </div>
 
+        <v-spacer />
+
         <v-btn
           class="stage-button"
           variant="outlined"
           color="yellow-darken-2"
-          rounded
           prepend-icon="mdi-content-copy"
           :loading="loadingStageProject"
           :disabled="hasActiveOrchestrator"
@@ -88,17 +102,15 @@
           Stage Project
         </v-btn>
 
-        <span class="status-text">Waiting:</span>
-
         <v-btn
           class="launch-button"
           :disabled="!readyToLaunch"
-          :color="readyToLaunch ? 'yellow-darken-2' : 'grey'"
-          rounded
+          :color="readyToLaunch ? 'yellow-darken-2' : undefined"
+          :variant="readyToLaunch ? 'flat' : 'outlined'"
           data-testid="launch-jobs-btn"
           @click="handleLaunchJobs"
         >
-          Launch jobs
+          Launch Jobs
         </v-btn>
 
         <!-- Close Out Project Button (Handover 0361) -->
@@ -108,49 +120,70 @@
           color="yellow-darken-2"
           variant="flat"
           prepend-icon="mdi-check-circle"
-          rounded
           data-testid="close-project-btn"
           @click="openCloseoutModal"
         >
           Close Out Project
         </v-btn>
       </div>
+
+      <!-- Execution Mode Toggle (inside the box) -->
+      <div
+        class="execution-mode-toggle-bar"
+        :class="{ 'toggle-locked': isExecutionModeLocked }"
+        data-testid="execution-mode-toggle"
+        @click="toggleExecutionMode"
+      >
+        <span class="toggle-label">Execution Mode</span>
+        <span class="toggle-options">
+          <span :class="{ active: !usingClaudeCodeSubagents }">Multi-Terminal</span>
+          <span class="toggle-separator">/</span>
+          <span :class="{ active: usingClaudeCodeSubagents }">Claude Code CLI</span>
+        </span>
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props: tooltipProps }">
+            <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
+          </template>
+          <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
+        </v-tooltip>
+        <v-icon v-if="isExecutionModeLocked" size="small" class="ml-1 lock-icon">mdi-lock</v-icon>
+        <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
+      </div>
+
+      <!-- Tab Content -->
+      <v-window v-model="activeTab" class="tabs-content">
+        <!-- Launch Tab -->
+        <v-window-item value="launch">
+          <LaunchTab
+            :project="project"
+            :orchestrator="orchestrator"
+            :is-staging="loadingStageProject"
+            :readonly="readonly"
+            :git-enabled="gitEnabled"
+            :serena-enabled="serenaEnabled"
+            @stage-project="handleStageProject"
+            @launch-jobs="handleLaunchJobs"
+            @cancel-staging="handleCancelStaging"
+            @edit-description="emit('edit-description')"
+            @edit-mission="emit('edit-mission', $event)"
+            @edit-agent-mission="emit('edit-agent-mission', $event)"
+          />
+        </v-window-item>
+
+        <!-- Jobs Tab -->
+        <v-window-item value="jobs">
+          <JobsTab
+            :project="projectWithUpdatedMode"
+            :readonly="readonly"
+            @launch-agent="handleLaunchAgent"
+            @view-details="emit('view-details', $event)"
+            @view-error="emit('view-error', $event)"
+            @hand-over="handleHandOver"
+            @closeout-project="handleCloseoutProject"
+          />
+        </v-window-item>
+      </v-window>
     </div>
-
-    <!-- Tab Content -->
-    <v-window v-model="activeTab" class="tabs-content">
-      <!-- Launch Tab -->
-      <v-window-item value="launch">
-        <LaunchTab
-          :project="project"
-          :orchestrator="orchestrator"
-          :is-staging="loadingStageProject"
-          :readonly="readonly"
-          :git-enabled="gitEnabled"
-          :serena-enabled="serenaEnabled"
-          @stage-project="handleStageProject"
-          @launch-jobs="handleLaunchJobs"
-          @cancel-staging="handleCancelStaging"
-          @edit-description="emit('edit-description')"
-          @edit-mission="emit('edit-mission', $event)"
-          @edit-agent-mission="emit('edit-agent-mission', $event)"
-          @execution-mode-changed="handleExecutionModeChanged"
-        />
-      </v-window-item>
-
-      <!-- Jobs Tab -->
-      <v-window-item value="jobs">
-        <JobsTab
-          :project="projectWithUpdatedMode"
-          :readonly="readonly"
-          @launch-agent="handleLaunchAgent"
-          @view-details="emit('view-details', $event)"
-          @view-error="emit('view-error', $event)"
-          @hand-over="handleHandOver"
-          @closeout-project="handleCloseoutProject"
-        />
-      </v-window-item>
-    </v-window>
 
     <!-- Error Snackbar -->
     <v-snackbar v-model="errorVisible" color="error" :timeout="5000" location="top">
@@ -179,7 +212,7 @@
       @close="showCloseoutModal = false"
       @complete="handleCloseoutComplete"
     />
-  </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -191,6 +224,7 @@ import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useProjectMessages } from '@/composables/useProjectMessages'
 import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -246,7 +280,30 @@ const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
 // Integration status for LaunchTab (Handover 0427)
 const { gitEnabled, serenaEnabled } = useIntegrationStatus()
 
+// Toast notifications (Handover 0428)
+const { showToast: showToastNotification } = useToast()
+
 const projectId = computed(() => props.project?.project_id || props.project?.id || null)
+
+/**
+ * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
+ */
+const usingClaudeCodeSubagents = ref(false)
+
+/**
+ * Mission text from project state store (needed for lock check)
+ */
+const missionText = computed(
+  () => projectStateStore.getProjectState(projectId.value)?.mission || '',
+)
+
+/**
+ * Check if execution mode is locked (Handover 0428: Moved from LaunchTab)
+ * Execution mode is locked when orchestrator has generated a mission
+ */
+const isExecutionModeLocked = computed(() => {
+  return Boolean(missionText.value)
+})
 
 /**
  * Local state - Tab activation (Handover 0243e)
@@ -368,6 +425,8 @@ watch(
   () => props.project?.execution_mode,
   (newMode) => {
     executionMode.value = newMode || 'multi_terminal'
+    // Handover 0428: Sync UI toggle state
+    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
   },
   { immediate: true },
 )
@@ -451,12 +510,50 @@ async function copyPromptToClipboard(text) {
 }
 
 /**
- * Handle execution mode changed from LaunchTab (Handover 0335)
- * Updates local project prop to ensure handleStageProject uses fresh value
+ * Toggle Execution Mode (Handover 0428: Moved from LaunchTab)
+ * Switches between Multi-Terminal and Claude Code CLI modes
  */
-function handleExecutionModeChanged(newMode) {
-  console.log('[ProjectTabs] Execution mode changed to:', newMode)
-  executionMode.value = newMode || 'multi_terminal'
+async function toggleExecutionMode() {
+  // Check if execution mode is locked
+  if (isExecutionModeLocked.value) {
+    showToastNotification({
+      message: 'Execution mode locked after staging begins. Complete or cancel the orchestrator job to unlock.',
+      type: 'warning',
+      timeout: 3000
+    })
+    return
+  }
+
+  const newValue = !usingClaudeCodeSubagents.value
+  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
+
+  // Optimistically update UI
+  usingClaudeCodeSubagents.value = newValue
+
+  try {
+    // Persist to backend
+    await api.projects.update(projectId.value, { execution_mode: newMode })
+
+    // Update local executionMode ref for handleStageProject
+    executionMode.value = newMode
+
+    showToastNotification({
+      message: newValue
+        ? 'Claude Code CLI mode enabled'
+        : 'Manual mode enabled',
+      type: 'info',
+      timeout: 3000
+    })
+  } catch (error) {
+    // Revert on failure
+    usingClaudeCodeSubagents.value = !newValue
+    console.error('Failed to update execution mode:', error)
+    showToastNotification({
+      message: 'Failed to save execution mode',
+      type: 'error',
+      timeout: 3000
+    })
+  }
 }
 
 /**
@@ -678,82 +775,200 @@ function handleCloseoutComplete(closeoutData) {
 <style scoped lang="scss">
 @use '@/styles/variables.scss' as *;
 @use '@/styles/agent-colors.scss' as *;
+@use '@/styles/design-tokens.scss' as *;
 
 .project-tabs-container {
-  background: var(--color-bg-secondary);
-  border-radius: $radius-lg;
-  overflow: hidden;
+  background: rgb(var(--v-theme-background));
   height: 100%;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* Page doesn't scroll - only individual panels do */
 }
 
-.tabs-header-container {
+/* Project Header - Title and ID */
+.project-header {
+  margin-bottom: 16px;
+  flex-shrink: 0;
+
+  h1.text-h4 {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin: 0;
+  }
+
+  .project-name {
+    color: #ffc300;
+    font-size: 2rem;
+    font-weight: 400;
+    margin: 0;
+  }
+}
+
+/* Tabs - connect to bordered content box */
+.tabs-toggle {
+  align-self: flex-start;
+  margin-bottom: -1px; /* Overlap border to connect visually */
+  position: relative;
+  z-index: 1;
+}
+
+/* Bordered content box - tabs connect to top */
+.bordered-tabs-content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-  padding-right: 16px;
+  flex-direction: column;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 0 8px 8px 8px; /* No top-left radius where tabs connect */
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
 }
 
-.tabs-header {
-  background: transparent;
-  flex: 0 0 auto;
-  /* Custom tab styling is handled by global-tabs class */
-}
-
-.action-buttons {
+/* Action buttons row inside the box */
+.action-buttons-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
+  padding: 16px;
+  flex-shrink: 0;
+}
 
-  .stage-button {
-    text-transform: none;
-    font-weight: 500;
+/* Action buttons styling */
+.stage-button {
+  text-transform: none;
+  font-weight: 500;
+}
+
+.status-text {
+  color: #ffd700;
+  font-style: italic;
+  font-size: 16px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.launch-button {
+  text-transform: none;
+  font-weight: 500;
+}
+
+
+.closeout-btn {
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    background: #ffed4e !important;
+  }
+}
+
+/* Integration Status Icons */
+.integration-icons {
+  .icon-disabled {
+    opacity: 0.3;
+    filter: grayscale(100%);
   }
 
-  .status-text {
-    color: #ffd700;
-    font-style: italic;
-    font-size: 16px;
-    font-weight: 400;
-    white-space: nowrap;
+  .v-icon:hover,
+  .v-img:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+  }
+}
+
+/* Execution mode toggle inside the bordered box */
+.execution-mode-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 0 16px 16px 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: $color-text-highlight;
+    background: rgba(var(--v-theme-on-surface), 0.1);
   }
 
-  .launch-button {
-    text-transform: none;
-    font-weight: 500;
-  }
-
-  .closeout-btn {
-    text-transform: none;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+  &.toggle-locked {
+    cursor: not-allowed;
+    opacity: 0.6;
 
     &:hover {
-      background: #ffed4e !important;
+      border-color: rgba(var(--v-theme-on-surface), 0.3);
+      background: rgba(var(--v-theme-on-surface), 0.05);
     }
   }
 
-  /* Integration Status Icons (Handover 0427) */
-  .integration-icons {
-    .icon-disabled {
-      opacity: 0.3;
-      filter: grayscale(100%);
+  .toggle-label {
+    font-weight: 600;
+    color: rgb(var(--v-theme-on-surface));
+    font-size: 14px;
+    min-width: 120px;
+  }
+
+  .toggle-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    font-size: 13px;
+    flex: 1;
+
+    span {
+      transition: color 0.2s ease;
+
+      &.active {
+        color: $color-text-highlight;
+        font-weight: 600;
+      }
     }
 
-    .v-icon:hover,
-    .v-img:hover {
-      transform: scale(1.1);
-      transition: transform 0.2s ease;
+    .toggle-separator {
+      color: rgba(var(--v-theme-on-surface), 0.6);
+    }
+  }
+
+  .help-icon {
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .lock-icon {
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    flex-shrink: 0;
+  }
+
+  .toggle-indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(var(--v-theme-on-surface), 0.6);
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+
+    &.active {
+      background: $color-text-highlight;
     }
   }
 }
 
+/* Tab content fills remaining space */
 .tabs-content {
   flex: 1;
+  min-height: 0; /* Critical for flex overflow */
   overflow: hidden;
-  padding-top: 10px;
+
+  :deep(.v-window__container) {
+    height: 100%;
+  }
 
   :deep(.v-window-item) {
     height: 100%;
@@ -762,28 +977,19 @@ function handleCloseoutComplete(closeoutData) {
 
 /* Mobile Responsive */
 @media (max-width: 600px) {
-  .tabs-header-container {
-    flex-wrap: wrap;
-    padding-right: 8px;
+  .project-tabs-container {
+    padding: 16px;
   }
 
-  .tabs-header {
-    :deep(.v-tab) {
-      font-size: 12px;
-      padding: 0 12px;
-
-      .v-icon {
-        font-size: 18px;
-      }
+  .project-header {
+    .project-name {
+      font-size: 1.5rem;
     }
   }
 
-  .action-buttons {
+  .action-buttons-row {
     flex-wrap: wrap;
     gap: 8px;
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
 
     .status-text {
       font-size: 14px;
