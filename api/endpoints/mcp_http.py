@@ -71,11 +71,24 @@ def validate_and_override_tenant_key(
         tool_name: Name of the tool being called
 
     Returns:
-        Modified arguments with session tenant_key
+        Modified arguments with session tenant_key (for tools that need it)
     """
+    # Tools that DON'T accept tenant_key parameter
+    # These tools either don't need tenant isolation or get it from TenantManager context
+    TOOLS_WITHOUT_TENANT_KEY = {
+        "health_check",  # System health check - no tenant data
+        "create_task",   # Uses TenantManager context internally
+    }
+
+    # Skip tenant_key injection for tools that don't accept it
+    if tool_name in TOOLS_WITHOUT_TENANT_KEY:
+        # Remove tenant_key if client accidentally sent it
+        arguments.pop("tenant_key", None)
+        return arguments
+
     client_tenant_key = arguments.get("tenant_key")
 
-    # Always override with session tenant_key
+    # Always override with session tenant_key for tenant-aware tools
     arguments["tenant_key"] = session_tenant_key
 
     # Log mismatch as security warning
