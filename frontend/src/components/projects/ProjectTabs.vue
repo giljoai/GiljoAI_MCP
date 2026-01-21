@@ -75,6 +75,8 @@
           :orchestrator="orchestrator"
           :is-staging="loadingStageProject"
           :readonly="readonly"
+          :git-enabled="gitEnabled"
+          :serena-enabled="serenaEnabled"
           @stage-project="handleStageProject"
           @launch-jobs="handleLaunchJobs"
           @cancel-staging="handleCancelStaging"
@@ -137,6 +139,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useProjectMessages } from '@/composables/useProjectMessages'
 import { useProjectStateStore } from '@/stores/projectStateStore'
+import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
@@ -188,6 +191,9 @@ const router = useRouter()
 const projectStateStore = useProjectStateStore()
 const { store: projectMessagesStore, loadMessages } = useProjectMessages()
 const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
+
+// Integration status for LaunchTab (Handover 0427)
+const { gitEnabled, serenaEnabled } = useIntegrationStatus()
 
 const projectId = computed(() => props.project?.project_id || props.project?.id || null)
 

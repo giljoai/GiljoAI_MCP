@@ -38,6 +38,7 @@
       <p class="text-body-2 text-medium-emphasis mb-3">
         Enable to automatically include git commit history in project summaries. Commits are stored
         in product memory for future orchestrator reference.
+        <strong>Git configuration is your responsibility on your local system.</strong>
       </p>
 
       <div class="d-flex align-center mb-3">
