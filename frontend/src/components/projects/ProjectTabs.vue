@@ -33,61 +33,8 @@
 
     <!-- Bordered Content Box (tabs connect to this) -->
     <div class="bordered-tabs-content">
-      <!-- Action Buttons Row (inside the box) -->
+      <!-- Action Buttons Row (centered) -->
       <div class="action-buttons-row">
-        <!-- Integration Status Icons -->
-        <div class="integration-icons d-flex align-center gap-2" data-testid="integration-status-icons">
-          <!-- GitHub Integration -->
-          <v-tooltip location="bottom" max-width="300">
-            <template #activator="{ props: tooltipProps }">
-              <v-icon
-                v-bind="tooltipProps"
-                :class="{ 'icon-disabled': !gitEnabled }"
-                size="32"
-                data-testid="github-status-icon"
-                @click="goToIntegrations"
-                style="cursor: pointer;"
-              >
-                mdi-github
-              </v-icon>
-            </template>
-            <span v-if="gitEnabled">
-              GitHub integration enabled. Commit history will be included in project summaries.
-              <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
-            </span>
-            <span v-else>
-              GitHub integration disabled.
-              <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
-            </span>
-          </v-tooltip>
-
-          <!-- Serena MCP Integration -->
-          <v-tooltip location="bottom" max-width="300">
-            <template #activator="{ props: tooltipProps }">
-              <v-img
-                v-bind="tooltipProps"
-                src="/Serena.png"
-                width="32"
-                height="32"
-                :class="{ 'icon-disabled': !serenaEnabled }"
-                data-testid="serena-status-icon"
-                @click="goToIntegrations"
-                style="cursor: pointer;"
-              />
-            </template>
-            <span v-if="serenaEnabled">
-              Serena MCP enabled. Agents will use semantic code navigation.
-              <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
-            </span>
-            <span v-else>
-              Serena MCP disabled.
-              <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
-            </span>
-          </v-tooltip>
-        </div>
-
-        <v-spacer />
-
         <v-btn
           class="stage-button"
           variant="outlined"
@@ -127,27 +74,30 @@
         </v-btn>
       </div>
 
-      <!-- Execution Mode Toggle (inside the box) -->
-      <div
-        class="execution-mode-toggle-bar"
-        :class="{ 'toggle-locked': isExecutionModeLocked }"
-        data-testid="execution-mode-toggle"
-        @click="toggleExecutionMode"
-      >
-        <span class="toggle-label">Execution Mode</span>
-        <span class="toggle-options">
-          <span :class="{ active: !usingClaudeCodeSubagents }">Multi-Terminal</span>
-          <span class="toggle-separator">/</span>
-          <span :class="{ active: usingClaudeCodeSubagents }">Claude Code CLI</span>
-        </span>
-        <v-tooltip location="bottom">
-          <template v-slot:activator="{ props: tooltipProps }">
-            <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
-          </template>
-          <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
-        </v-tooltip>
-        <v-icon v-if="isExecutionModeLocked" size="small" class="ml-1 lock-icon">mdi-lock</v-icon>
-        <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
+      <!-- Execution Mode Radio (below buttons, aligned right) -->
+      <div class="execution-mode-row">
+        <div class="execution-mode-radio" :class="{ 'mode-locked': isExecutionModeLocked }">
+          <span class="mode-label">Execution Mode:</span>
+          <v-radio-group
+            v-model="usingClaudeCodeSubagents"
+            inline
+            hide-details
+            density="compact"
+            :disabled="isExecutionModeLocked"
+            class="mode-radios"
+            @update:model-value="handleExecutionModeChange"
+          >
+            <v-radio :value="false" label="Multi-Terminal" data-testid="radio-multi-terminal" />
+            <v-radio :value="true" label="Claude Code CLI" data-testid="radio-claude-cli" />
+          </v-radio-group>
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props: tooltipProps }">
+              <v-icon v-bind="tooltipProps" size="small" class="help-icon">mdi-help-circle-outline</v-icon>
+            </template>
+            <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
+          </v-tooltip>
+          <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon">mdi-lock</v-icon>
+        </div>
       </div>
 
       <!-- Tab Content -->
@@ -510,25 +460,10 @@ async function copyPromptToClipboard(text) {
 }
 
 /**
- * Toggle Execution Mode (Handover 0428: Moved from LaunchTab)
- * Switches between Multi-Terminal and Claude Code CLI modes
+ * Handle execution mode change from radio buttons (Handover 0428)
  */
-async function toggleExecutionMode() {
-  // Check if execution mode is locked
-  if (isExecutionModeLocked.value) {
-    showToastNotification({
-      message: 'Execution mode locked after staging begins. Complete or cancel the orchestrator job to unlock.',
-      type: 'warning',
-      timeout: 3000
-    })
-    return
-  }
-
-  const newValue = !usingClaudeCodeSubagents.value
+async function handleExecutionModeChange(newValue) {
   const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
-
-  // Optimistically update UI
-  usingClaudeCodeSubagents.value = newValue
 
   try {
     // Persist to backend
@@ -540,7 +475,7 @@ async function toggleExecutionMode() {
     showToastNotification({
       message: newValue
         ? 'Claude Code CLI mode enabled'
-        : 'Manual mode enabled',
+        : 'Multi-Terminal mode enabled',
       type: 'info',
       timeout: 3000
     })
@@ -824,12 +759,13 @@ function handleCloseoutComplete(closeoutData) {
   overflow: hidden;
 }
 
-/* Action buttons row inside the box */
+/* Action buttons row inside the box (centered) */
 .action-buttons-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  padding: 16px;
+  padding: 8px 16px 8px 16px;
   flex-shrink: 0;
 }
 
@@ -863,100 +799,53 @@ function handleCloseoutComplete(closeoutData) {
   }
 }
 
-/* Integration Status Icons */
-.integration-icons {
-  .icon-disabled {
-    opacity: 0.3;
-    filter: grayscale(100%);
-  }
-
-  .v-icon:hover,
-  .v-img:hover {
-    transform: scale(1.1);
-    transition: transform 0.2s ease;
-  }
+/* Execution mode row (below buttons, centered) */
+.execution-mode-row {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 12px 16px;
 }
 
-/* Execution mode toggle inside the bordered box */
-.execution-mode-toggle-bar {
+/* Execution mode radio buttons */
+.execution-mode-radio {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  margin: 0 16px 16px 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
-  border-radius: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
+  gap: 8px;
 
-  &:hover {
-    border-color: $color-text-highlight;
-    background: rgba(var(--v-theme-on-surface), 0.1);
-  }
-
-  &.toggle-locked {
-    cursor: not-allowed;
+  &.mode-locked {
     opacity: 0.6;
-
-    &:hover {
-      border-color: rgba(var(--v-theme-on-surface), 0.3);
-      background: rgba(var(--v-theme-on-surface), 0.05);
-    }
   }
 
-  .toggle-label {
-    font-weight: 600;
-    color: rgb(var(--v-theme-on-surface));
+  .mode-label {
+    font-weight: 500;
+    color: white;
     font-size: 14px;
-    min-width: 120px;
   }
 
-  .toggle-options {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    font-size: 13px;
-    flex: 1;
-
-    span {
-      transition: color 0.2s ease;
-
-      &.active {
-        color: $color-text-highlight;
-        font-weight: 600;
-      }
+  .mode-radios {
+    :deep(.v-selection-control-group) {
+      gap: 16px;
     }
 
-    .toggle-separator {
-      color: rgba(var(--v-theme-on-surface), 0.6);
+    :deep(.v-label) {
+      font-size: 14px;
+      color: rgba(var(--v-theme-on-surface), 0.7);
+    }
+
+    :deep(.v-selection-control--dirty .v-label) {
+      color: #ffc300;
+      font-weight: 500;
     }
   }
 
   .help-icon {
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    margin-left: auto;
-    flex-shrink: 0;
+    color: rgba(var(--v-theme-on-surface), 0.5);
+    cursor: help;
   }
 
   .lock-icon {
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    flex-shrink: 0;
-  }
-
-  .toggle-indicator {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: rgba(var(--v-theme-on-surface), 0.6);
-    flex-shrink: 0;
-    transition: background-color 0.2s ease;
-
-    &.active {
-      background: $color-text-highlight;
-    }
+    color: rgba(var(--v-theme-on-surface), 0.5);
+    margin-left: 4px;
   }
 }
 
