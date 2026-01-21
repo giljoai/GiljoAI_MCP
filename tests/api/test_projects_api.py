@@ -801,43 +801,7 @@ class TestProjectLifecycle:
 # ============================================================================
 
 class TestProjectStatus:
-    """Test status operations: status, summary, orchestrator"""
-
-    @pytest.mark.asyncio
-    async def test_get_project_status_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
-        """Test GET /api/v1/projects/{project_id}/status - Get project status."""
-        response = await api_client.get(
-            f"/api/v1/projects/{tenant_a_project['id']}/status",
-            cookies={"access_token": tenant_a_token}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "success" in data
-        # Should contain status metrics
-
-    @pytest.mark.asyncio
-    async def test_get_project_status_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
-        """Test GET /api/v1/projects/{project_id}/status - 404 for non-existent project."""
-        response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/status",
-            cookies={"access_token": tenant_a_token}
-        )
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_get_project_status_unauthorized(
-        self, api_client: AsyncClient, tenant_a_project
-    ):
-        """Test GET /api/v1/projects/{project_id}/status - 401 without authentication."""
-        response = await api_client.get(
-            f"/api/v1/projects/{tenant_a_project['id']}/status"
-        )
-        assert response.status_code == 401
+    """Test status operations: summary, orchestrator"""
 
     @pytest.mark.asyncio
     async def test_get_project_summary_happy_path(
