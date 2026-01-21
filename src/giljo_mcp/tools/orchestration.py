@@ -606,8 +606,8 @@ Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
 
 ── STEP 2: Fetch Context ───────────────────────────────────────────────────
-Call: get_orchestrator_instructions(job_id='{orchestrator_id}',
-                                     tenant_key='{tenant_key}')
+Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
+Note: tenant_key auto-injected by server from API key session
 Returns:
   - project_description: User requirements (INPUT for your analysis)
   - mission: Product context with priority fields applied
@@ -617,7 +617,8 @@ Returns:
 Read this protocol via orchestrator_protocol field.
 
 ── STEP 3: Discover Agents ─────────────────────────────────────────────────
-Call: get_available_agents(tenant_key='{tenant_key}', active_only=true)
+Call: get_available_agents(active_only=true)
+Note: tenant_key auto-injected by server from API key session
 Returns: List of available agent templates
 Use agent_name from response when spawning (see CH3 for rules)
 
@@ -640,16 +641,16 @@ For each agent in your plan:
       agent_name='exact-template-name',  # From Step 3
       agent_display_name='implementer',   # Display category
       mission='Agent-specific instructions',
-      project_id='{project_id}',
-      tenant_key='{tenant_key}'
+      project_id='{project_id}'
   )
+Note: tenant_key auto-injected by server from API key session
 
 See CH3 for agent_name vs agent_display_name rules
 
 ── STEP 7: Persist Execution Plan ──────────────────────────────────────────
 Call: update_agent_mission(job_id='{orchestrator_id}',
-                            tenant_key='{tenant_key}',
                             mission=YOUR_EXECUTION_STRATEGY)
+Note: tenant_key auto-injected by server from API key session
 
 Document in YOUR_EXECUTION_STRATEGY:
   - Agent execution order (sequential/parallel/hybrid)
@@ -664,9 +665,9 @@ Call: send_message(
           to_agents=['all'],
           content='STAGING_COMPLETE: Mission created, N agents spawned',
           project_id='{project_id}',
-          tenant_key='{tenant_key}',
           message_type='broadcast'
       )
+Note: tenant_key auto-injected by server from API key session
 
 This broadcast enables the "Launch Jobs" button in UI (REQUIRED)
 
@@ -875,13 +876,13 @@ COMPLETION PROTOCOL (After ALL agents finish their work):
 ── STEP 1: Write 360 Memory ────────────────────────────────────────────────
 Call: write_360_memory(
           project_id='{project_id}',
-          tenant_key='{tenant_key}',
           summary='2-3 paragraph mission accomplishment overview',
           key_outcomes=['Achievement 1', 'Achievement 2', ...],
           decisions_made=['Decision 1 + rationale', ...],
           entry_type='project_completion',
           author_job_id='{orchestrator_id}'
       )
+Note: tenant_key auto-injected by server from API key session
 
 CRITICAL: Auto-generate content from your knowledge.
           Never ask user to fill placeholders.
@@ -892,9 +893,9 @@ Visible: User sees in UI Product Memory timeline
 ── STEP 2: Mark Complete ───────────────────────────────────────────────────
 Call: complete_job(
           job_id='{orchestrator_id}',
-          result={{"summary": "...", "status": "completed"}},
-          tenant_key='{tenant_key}'
+          result={{"summary": "...", "status": "completed"}}
       )
+Note: tenant_key auto-injected by server from API key session
 
 This transitions orchestrator job from 'active' to 'completed'
 
