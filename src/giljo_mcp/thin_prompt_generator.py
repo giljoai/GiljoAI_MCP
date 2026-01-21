@@ -622,16 +622,19 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Mission: {project.mission or '(Mission will be created by you)'}
 
 WORKFLOW:
-1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
+1. Verify MCP connection: mcp__giljo-mcp__health_check()
+   → Expected: {{"status": "healthy", "database": "connected"}}
+   → If failed: STOP and report error - do NOT proceed
+2. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
    → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
    → User priority configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
    → Note: tenant_key auto-injected by server from your API key session
-2. Create condensed mission plan from fetched context
-3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission)
-4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
-5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
-6. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
+3. Create condensed mission plan from fetched context
+4. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission)
+5. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
+6. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
+7. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
 Claude Code: Use TodoWrite tool to track workflow progress.
@@ -1032,6 +1035,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         execution_mode = "Claude Code CLI" if claude_code_mode else "Multi-Terminal"
 
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
+        # Handover 0424: Added health_check as mandatory first step
         prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
 
 YOUR IDENTITY (use these in all MCP calls):
@@ -1042,8 +1046,11 @@ YOUR IDENTITY (use these in all MCP calls):
 MCP Server: {mcp_url}
 Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
 
-START NOW: Call get_orchestrator_instructions(job_id='{orchestrator_id}')
-Response includes orchestrator_protocol with your complete 5-chapter workflow guide.
+START NOW:
+1. Verify MCP: mcp__giljo-mcp__health_check()
+   → Expected: {{"status": "healthy"}} - If failed, STOP and report error
+2. Fetch protocol: mcp__giljo-mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
+   → Response includes orchestrator_protocol with your complete 5-chapter workflow guide
 """
 
         return prompt
@@ -1073,6 +1080,10 @@ Orchestrator ID: {orchestrator_id}
 Project ID: {project.id}
 Product ID: {project.product_id}
 Project: {project.name}
+
+FIRST ACTION (MANDATORY):
+1. Verify MCP: mcp__giljo-mcp__health_check()
+   → Expected: {{"status": "healthy"}} - If failed, STOP and report error
 
 CONTEXT:
 - Project mission created and persisted
@@ -1109,6 +1120,13 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}')
         # SECTION 1: Context Recap
         context_recap = [
             "# GiljoAI Implementation Phase - Claude Code CLI Mode",
+            "",
+            "## FIRST ACTION (MANDATORY)",
+            "Before anything else, verify MCP connection:",
+            "```python",
+            "mcp__giljo-mcp__health_check()",
+            "```",
+            "Expected: `{\"status\": \"healthy\"}` - If failed, STOP and report error",
             "",
             "## Who You Are",
             f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
