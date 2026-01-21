@@ -1,11 +1,59 @@
 # Handover 0424 Phase 0: Tenant Key Security Fix (EXPANDED)
 
-**Status**: Ready for Implementation
+**Status**: ✅ COMPLETED
 **Priority**: HIGH (Security Fix)
 **Estimated Time**: 4-6 hours
+**Actual Time**: ~3 hours
 **Complexity**: Medium
 **Risk**: Low (Backwards compatible)
 **Security Audit**: Completed 2026-01-20 (see `0424_phase0_security_audit.md`)
+**Completed**: 2026-01-20
+
+---
+
+## Implementation Summary
+
+### What Was Done
+
+1. **Fix 1 (MCP Validation)**: Added `validate_and_override_tenant_key()` function in `mcp_http.py`
+   - Server-side tenant_key auto-injection from authenticated session
+   - Added `TOOLS_WITHOUT_TENANT_KEY` set for tools that don't accept tenant_key (`health_check`, `create_task`)
+   - Security logging for tenant_key mismatch attempts
+
+2. **Phase 1 (Prompt Security)**: Removed tenant_key exposure from all prompt injections
+   - Removed from `thin_prompt_generator.py` (4 methods)
+   - Removed from `generic_agent_template.py`
+   - Server now auto-injects tenant_key - no need to expose in prompts
+
+3. **Health Check Enforcement**: Added mandatory `health_check()` as first step in ALL agent prompts
+   - `thin_prompt_generator.py`: 4 methods updated
+   - `generic_agent_template.py`: render() method updated
+   - `handover.py`: `_generate_launch_prompt()` updated
+   - `prompts.py`: `generate_agent_prompt()` API endpoint updated
+
+### Key Commits
+
+| Commit | Description |
+|--------|-------------|
+| `d59ef159` | security(prompts): Remove tenant_key exposure from all prompt injections |
+| `32df8f70` | fix(mcp): Skip tenant_key injection for tools that don't accept it |
+| `81635478` | feat(prompts): Add mandatory health_check as first step in all agent prompts |
+
+### Files Modified
+
+- `api/endpoints/mcp_http.py` - tenant_key validation/override
+- `src/giljo_mcp/thin_prompt_generator.py` - removed tenant_key, added health_check
+- `src/giljo_mcp/templates/generic_agent_template.py` - removed tenant_key, added health_check
+- `src/giljo_mcp/slash_commands/handover.py` - added health_check
+- `api/endpoints/prompts.py` - added health_check
+
+### Status
+
+✅ Fix 1 (MCP Validation) - Implemented and tested
+✅ Phase 1 (Prompt Security) - Tenant_key removed from all prompts
+✅ Health Check - Added to all agent prompts as mandatory first step
+⏳ Fix 2 (Project Service) - Deferred to future handover
+⏳ Fix 3 (Discovery Service) - Deferred to future handover
 
 ---
 
