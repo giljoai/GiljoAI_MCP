@@ -302,6 +302,11 @@ async def generate_agent_prompt(
 # Tool: {tool_type}
 # Mission: {mission_preview}
 
+## FIRST ACTION (MANDATORY)
+# Before executing any work, verify MCP connection:
+# Call: mcp__giljo-mcp__health_check()
+# Expected: {{"status": "healthy"}} - If failed, STOP and report error
+
 cd {project_path}
 export AGENT_ID={agent.agent_id}
 export AGENT_DISPLAY_NAME={agent.agent_display_name}

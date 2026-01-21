@@ -166,6 +166,13 @@ export GILJO_PROJECT_ID={project_id}
 # Active Agents: {active_agents_count} agent{"s" if active_agents_count != 1 else ""}
 # Next Steps: {handover_summary.get("next_steps", "Continue project work")}
 
+## FIRST ACTION (MANDATORY)
+Verify MCP connection before proceeding:
+```python
+mcp__giljo-mcp__health_check()
+```
+Expected: {{"status": "healthy"}} - If failed, STOP and report error
+
 ## Before Decommissioning
 
 IMPORTANT: Before marking yourself complete, call write_360_memory() with:
