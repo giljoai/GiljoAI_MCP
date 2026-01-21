@@ -1032,16 +1032,11 @@ async function copyToClipboard(text) {
 
 <style scoped lang="scss">
 .implement-tab-wrapper {
-  padding: 20px;
-  background: rgb(var(--v-theme-background));
-  min-height: 100vh;
+  padding: 16px;
 
   .table-container {
-    border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
-    border-radius: 16px;
-    padding: 24px;
-    background: rgb(var(--v-theme-surface));
-    margin-bottom: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
 
     .agents-table {
       width: 100%;
