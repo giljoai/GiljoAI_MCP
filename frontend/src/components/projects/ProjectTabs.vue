@@ -22,6 +22,57 @@
 
       <!-- Action Buttons (relocated from LaunchTab) -->
       <div class="action-buttons ml-auto d-flex align-center gap-2">
+        <!-- Integration Status Icons (Handover 0427) -->
+        <div class="integration-icons d-flex align-center gap-2 mr-2" data-testid="integration-status-icons">
+          <!-- GitHub Integration -->
+          <v-tooltip location="bottom" max-width="300">
+            <template #activator="{ props: tooltipProps }">
+              <v-icon
+                v-bind="tooltipProps"
+                :class="{ 'icon-disabled': !gitEnabled }"
+                size="40"
+                data-testid="github-status-icon"
+                @click="goToIntegrations"
+                style="cursor: pointer;"
+              >
+                mdi-github
+              </v-icon>
+            </template>
+            <span v-if="gitEnabled">
+              GitHub integration enabled. Commit history will be included in project summaries.
+              <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
+            </span>
+            <span v-else>
+              GitHub integration disabled.
+              <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
+            </span>
+          </v-tooltip>
+
+          <!-- Serena MCP Integration -->
+          <v-tooltip location="bottom" max-width="300">
+            <template #activator="{ props: tooltipProps }">
+              <v-img
+                v-bind="tooltipProps"
+                src="/Serena.png"
+                width="40"
+                height="40"
+                :class="{ 'icon-disabled': !serenaEnabled }"
+                data-testid="serena-status-icon"
+                @click="goToIntegrations"
+                style="cursor: pointer;"
+              />
+            </template>
+            <span v-if="serenaEnabled">
+              Serena MCP enabled. Agents will use semantic code navigation.
+              <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
+            </span>
+            <span v-else>
+              Serena MCP disabled.
+              <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
+            </span>
+          </v-tooltip>
+        </div>
+
         <v-btn
           class="stage-button"
           variant="outlined"
@@ -409,6 +460,13 @@ function handleExecutionModeChanged(newMode) {
 }
 
 /**
+ * Navigate to integrations settings (Handover 0427)
+ */
+function goToIntegrations() {
+  router.push({ path: '/settings', query: { tab: 'integrations' } })
+}
+
+/**
  * Handle stage project
  */
 async function handleStageProject() {
@@ -674,6 +732,20 @@ function handleCloseoutComplete(closeoutData) {
 
     &:hover {
       background: #ffed4e !important;
+    }
+  }
+
+  /* Integration Status Icons (Handover 0427) */
+  .integration-icons {
+    .icon-disabled {
+      opacity: 0.3;
+      filter: grayscale(100%);
+    }
+
+    .v-icon:hover,
+    .v-img:hover {
+      transform: scale(1.1);
+      transition: transform 0.2s ease;
     }
   }
 }
