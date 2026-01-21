@@ -6,6 +6,7 @@ Projects are work initiatives that belong to products.
 """
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,

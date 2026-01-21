@@ -24,6 +24,56 @@
       <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
     </div>
 
+    <!-- Integration Status Icons (Handover 0427) -->
+    <div class="integration-icons" data-testid="integration-status-icons">
+      <!-- GitHub Integration -->
+      <v-tooltip location="bottom" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-icon
+            v-bind="tooltipProps"
+            :class="{ 'icon-disabled': !gitEnabled }"
+            size="20"
+            data-testid="github-status-icon"
+            @click="goToIntegrations"
+          >
+            mdi-github
+          </v-icon>
+        </template>
+        <span v-if="gitEnabled">
+          GitHub integration enabled. Commit history will be included in project summaries.
+          <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
+        </span>
+        <span v-else>
+          GitHub integration disabled.
+          <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
+        </span>
+      </v-tooltip>
+
+      <!-- Serena MCP Integration -->
+      <v-tooltip location="bottom" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-img
+            v-bind="tooltipProps"
+            src="/Serena.png"
+            width="20"
+            height="20"
+            :class="{ 'icon-disabled': !serenaEnabled }"
+            data-testid="serena-status-icon"
+            @click="goToIntegrations"
+            style="cursor: pointer;"
+          />
+        </template>
+        <span v-if="serenaEnabled">
+          Serena MCP enabled. Agents will use semantic code navigation.
+          <a href="#" @click.prevent="goToIntegrations">Settings → Integrations</a>
+        </span>
+        <span v-else>
+          Serena MCP disabled.
+          <a href="#" @click.prevent="goToIntegrations">Enable in Settings → Integrations</a>
+        </span>
+      </v-tooltip>
+    </div>
+
     <!-- Main Container (unified border) - buttons moved to ProjectTabs -->
     <div class="main-container">
       <div class="three-panels">
@@ -177,6 +227,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
@@ -208,6 +259,14 @@ const props = defineProps({
     default: null,
   },
   isStaging: {
+    type: Boolean,
+    default: false,
+  },
+  gitEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  serenaEnabled: {
     type: Boolean,
     default: false,
   },
@@ -314,6 +373,7 @@ const getAgentInitials = (displayName) => {
 }
 
 const { showToast: showToastNotification } = useToast()
+const router = useRouter()
 
 const projectStateStore = useProjectStateStore()
 const missionText = computed(
@@ -407,6 +467,13 @@ async function toggleExecutionMode() {
  */
 function editDescription() {
   emit('edit-description')
+}
+
+/**
+ * Navigate to integrations settings (Handover 0427)
+ */
+function goToIntegrations() {
+  router.push({ path: '/settings', query: { tab: 'integrations' } })
 }
 
 /**
@@ -846,6 +913,33 @@ watch(
         &:hover {
           color: $color-text-highlight;
         }
+      }
+    }
+  }
+
+  // Integration Status Icons (Handover 0427)
+  .integration-icons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 12px 20px;
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
+    border-radius: 8px;
+    background: rgba(var(--v-theme-on-surface), 0.05);
+
+    .icon-disabled {
+      opacity: 0.3;
+      filter: grayscale(100%);
+    }
+
+    .v-icon,
+    .v-img {
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+
+      &:hover:not(.icon-disabled) {
+        opacity: 0.8;
       }
     }
   }
