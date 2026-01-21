@@ -85,6 +85,8 @@
                 :class="{ 'orchestrator-card': agent.agent_display_name === 'orchestrator' }"
                 data-testid="agent-card"
                 :data-agent-display-name="agent.agent_display_name"
+                @click="handleAgentInfo(agent)"
+                style="cursor: pointer;"
               >
                 <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
                   {{ getAgentInitials(agent.agent_display_name) }}
@@ -95,9 +97,18 @@
                     <span class="status-text" :class="'status-' + agent.status">
                       {{ agent.status }}
                     </span>
-                    <span v-if="agent.agent_id || agent.job_id">
-                      • ID: {{ (agent.agent_id || agent.job_id || '').slice(0, 8) }}...
-                    </span>
+                    <v-tooltip v-if="agent.agent_id || agent.job_id" location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <span
+                          v-bind="tooltipProps"
+                          class="agent-id-link"
+                          @click.stop
+                        >
+                          • ID: {{ (agent.agent_id || agent.job_id || '').slice(0, 8) }}...
+                        </span>
+                      </template>
+                      <span>{{ agent.agent_id || agent.job_id }}</span>
+                    </v-tooltip>
                   </div>
                 </div>
                 <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
@@ -108,7 +119,7 @@
                   role="button"
                   tabindex="0"
                   title="Edit agent configuration"
-                  @click="handleAgentEdit(agent)"
+                  @click.stop="handleAgentEdit(agent)"
                   @keydown.enter="handleAgentEdit(agent)"
                 >mdi-pencil</v-icon>
                 <v-icon
@@ -116,10 +127,10 @@
                   class="info-icon"
                   role="button"
                   tabindex="0"
-                  title="View agent template"
-                  @click="handleAgentInfo(agent)"
+                  title="View agent details"
+                  @click.stop="handleAgentInfo(agent)"
                   @keydown.enter="handleAgentInfo(agent)"
-                >mdi-information</v-icon>
+                >mdi-eye</v-icon>
               </div>
               <!-- Empty state when no agents -->
               <div v-if="!sortedJobs || sortedJobs.length === 0" class="empty-agents">
@@ -620,6 +631,20 @@ watch(missionText, (next, previous) => {
       &.status-failed { color: #e53935; }
       &.status-cancelled { color: #ff9800; }
       &.status-pending { color: #90a4ae; }
+    }
+
+    .agent-id-link {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+
+      &:hover {
+        color: #ffc300;
+      }
+    }
+
+    &:hover {
+      background: rgba(var(--v-theme-on-surface), 0.05);
     }
 
     .edit-icon,
