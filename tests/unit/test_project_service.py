@@ -136,8 +136,8 @@ class TestProjectServiceCRUD:
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_project("test-id")
+        # Act (Handover 0424: tenant_key now required)
+        result = await service.get_project("test-id", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -157,8 +157,8 @@ class TestProjectServiceCRUD:
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_project("nonexistent-id")
+        # Act (Handover 0424: tenant_key now required)
+        result = await service.get_project("nonexistent-id", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is False

@@ -118,6 +118,7 @@ class MCPSessionManager:
 
         new_session = MCPSession(
             api_key_id=api_key.id,
+            user_id=user.id,  # Handover 0424: Audit trail
             tenant_key=user.tenant_key,
             project_id=project_id,
             session_data={"initialized": False, "capabilities": {}, "client_info": {}, "tool_call_history": []},

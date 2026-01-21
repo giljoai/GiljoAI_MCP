@@ -188,7 +188,9 @@ class ToolAccessor:
 
     async def get_project(self, project_id: str) -> dict[str, Any]:
         """Get a specific project by ID (delegates to ProjectService)"""
-        return await self._project_service.get_project(project_id)
+        # SECURITY FIX: Pass tenant_key from context (Handover 0424 Phase 0)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.get_project(project_id, tenant_key=tenant_key)
 
     async def switch_project(self, project_id: str) -> dict[str, Any]:
         """Switch to a different project (delegates to ProjectService)"""
