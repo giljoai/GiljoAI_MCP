@@ -4,9 +4,17 @@
     <h1 class="text-h4 mb-2">My Settings</h1>
     <p class="text-subtitle-1 mb-4">Manage your personal preferences</p>
 
-    <!-- Settings Tabs -->
-    <v-tabs v-model="activeTab" class="mb-6 global-tabs">
-      <v-tab value="startup" data-testid="startup-settings-tab">
+    <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
+    <v-btn-toggle
+      v-model="activeTab"
+      mandatory
+      variant="outlined"
+      divided
+      rounded="t-lg"
+      color="primary"
+      class="mb-0"
+    >
+      <v-btn value="startup" data-testid="startup-settings-tab">
         <v-icon start>mdi-rocket-launch</v-icon>
         Startup
         <v-btn
@@ -21,46 +29,45 @@
           <v-icon size="18">mdi-help-circle-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
         </v-btn>
-      </v-tab>
-      <v-tab value="appearance">
+      </v-btn>
+      <v-btn value="appearance">
         <v-icon start>mdi-palette</v-icon>
         Appearance
-      </v-tab>
-      <v-tab value="notifications">
+      </v-btn>
+      <v-btn value="notifications">
         <v-icon start>mdi-bell</v-icon>
         Notifications
-      </v-tab>
-      <v-tab value="agents" data-testid="agent-templates-settings-tab">
-        <template #prepend>
-          <v-img
-            :src="
-              theme.global.current.value.dark
-                ? '/icons/Giljo_White_Face.svg'
-                : '/icons/Giljo_Dark_Face.svg'
-            "
-            width="20"
-            height="20"
-            style="margin-right: 3px"
-          />
-        </template>
+      </v-btn>
+      <v-btn value="agents" data-testid="agent-templates-settings-tab">
+        <v-img
+          :src="
+            theme.global.current.value.dark
+              ? '/icons/Giljo_White_Face.svg'
+              : '/icons/Giljo_Dark_Face.svg'
+          "
+          width="20"
+          height="20"
+          class="mr-1"
+        />
         Agents
-      </v-tab>
-      <v-tab value="context" data-testid="context-settings-tab">
+      </v-btn>
+      <v-btn value="context" data-testid="context-settings-tab">
         <v-icon start>mdi-layers-triple</v-icon>
         Context
-      </v-tab>
-      <v-tab value="api-keys">
+      </v-btn>
+      <v-btn value="api-keys">
         <v-icon start>mdi-key-variant</v-icon>
         API Keys
-      </v-tab>
-      <v-tab value="integrations" data-testid="integrations-settings-tab">
+      </v-btn>
+      <v-btn value="integrations" data-testid="integrations-settings-tab">
         <v-icon start>mdi-puzzle</v-icon>
         Integrations
-      </v-tab>
-    </v-tabs>
+      </v-btn>
+    </v-btn-toggle>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
+    <div class="bordered-tabs-content">
+      <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
       <!-- Context Settings -->
       <v-window-item value="context">
         <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
@@ -406,6 +413,7 @@
         </v-card>
       </v-window-item>
     </v-window>
+    </div>
 
     <!-- Git Advanced Settings Dialog -->
     <GitAdvancedSettingsDialog

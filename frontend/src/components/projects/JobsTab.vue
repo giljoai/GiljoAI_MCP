@@ -295,7 +295,6 @@
       <v-btn
         class="recipient-btn"
         :variant="selectedRecipient === 'orchestrator' ? 'flat' : 'outlined'"
-        rounded
         color="yellow-darken-2"
         @click="selectedRecipient = 'orchestrator'"
       >
@@ -305,7 +304,6 @@
       <v-btn
         class="broadcast-btn"
         :variant="selectedRecipient === 'broadcast' ? 'flat' : 'outlined'"
-        rounded
         color="yellow-darken-2"
         @click="selectedRecipient = 'broadcast'"
       >
