@@ -70,3 +70,95 @@
     opacity: 1;
   }
 }
+
+/**
+ * Card-Style Bordered Tabs
+ *
+ * A tab design where the active tab visually connects to the content panel.
+ * The tab border flows seamlessly into the content border creating a "card" effect.
+ *
+ * Design Features:
+ * - Tabs have top, left, right borders
+ * - Active tab's bottom border is removed to merge with content
+ * - Content panel has a full border that continues from the tabs
+ * - Clean visual connection between tab and content
+ *
+ * Usage:
+ * <v-tabs class="bordered-tabs">...</v-tabs>
+ * <div class="bordered-tabs-content">
+ *   <v-window class="global-tabs-window">...</v-window>
+ * </div>
+ *
+ * Reference: https://skirtles-code.github.io/vue-examples/components/tabs
+ */
+
+/* Tab container - clean design without underline */
+.bordered-tabs {
+  /* Remove default Vuetify tab underline/slider completely */
+  .v-tab__slider {
+    display: none !important;
+  }
+
+  .v-tabs-slider-wrapper {
+    display: none !important;
+  }
+
+  /* Individual tab styling - force rounded corners */
+  .v-tab {
+    border: 1px solid transparent !important;
+    border-bottom: none !important;
+    border-radius: 8px 8px 0 0 !important; /* Rounded top corners */
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+  }
+
+  /* Inactive tabs - subtle styling */
+  .v-tab:not(.v-tab--selected) {
+    opacity: 0.7;
+    border-color: transparent !important;
+
+    &:hover {
+      opacity: 0.9;
+      background: rgba(var(--v-theme-on-surface), 0.04) !important;
+    }
+  }
+
+  /* Active tab - connected to content with rounded corners */
+  .v-tab.v-tab--selected {
+    opacity: 1;
+    border-color: rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+    border-radius: 8px 8px 0 0 !important;
+    background: rgb(var(--v-theme-surface)) !important;
+  }
+
+  /* Disabled tabs */
+  .v-tab--disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed;
+  }
+}
+
+/* Content panel with matching border */
+.bordered-tabs-content {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: none; /* Top border comes from the tab row */
+  border-radius: 0 0 4px 4px;
+  padding: 16px;
+  background: rgb(var(--v-theme-surface));
+}
+
+/* Active tab styling */
+.v-btn-toggle > .v-btn.v-btn--active {
+  background: #182739 !important;
+  color: white !important;
+}
+
+/* Override Vuetify overlay on active button */
+.v-btn-toggle > .v-btn.v-btn--active > .v-btn__overlay {
+  opacity: 0 !important;
+}
+
+/* Remove bottom border from buttons */
+.v-btn-toggle > .v-btn {
+  border-bottom-color: transparent !important;
+}
