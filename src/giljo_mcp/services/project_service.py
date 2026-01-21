@@ -181,16 +181,19 @@ class ProjectService:
             self._logger.exception(f"Failed to create project: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_project(self, project_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def get_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """
         Get a specific project by ID with associated agent jobs.
 
         Args:
             project_id: Project UUID
-            tenant_key: Tenant key for multi-tenant isolation (required for security)
+            tenant_key: REQUIRED - Tenant key for multi-tenant isolation (Handover 0424 Phase 0)
 
         Returns:
             Dict with success status and project details (including agents) or error
+
+        Raises:
+            ValueError: If tenant_key is None or empty (security requirement)
 
         Example:
             >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
@@ -198,16 +201,16 @@ class ProjectService:
             ...     print(result["project"]["name"])
             ...     print(f"Agents: {len(result['project']['agents'])}")
         """
+        # SECURITY FIX: Require tenant_key (Handover 0424 Phase 0)
+        if not tenant_key:
+            raise ValueError("tenant_key is required for security (Handover 0424 Phase 0)")
+
         try:
             async with self._get_session() as session:
-                # Get project with tenant isolation filter (Handover 0325)
-                if tenant_key:
-                    result = await session.execute(
-                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
-                    )
-                else:
-                    # Fallback for backward compatibility - will be deprecated
-                    result = await session.execute(select(Project).where(Project.id == project_id))
+                # Get project with mandatory tenant isolation filter (Handover 0424 Phase 0)
+                result = await session.execute(
+                    select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
+                )
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -246,6 +249,7 @@ class ProjectService:
                     "success": True,
                     "project": {
                         "id": str(project.id),
+                        "alias": project.alias,  # Include alias for consistency
                         "name": project.name,
                         "mission": project.mission,
                         "description": project.description,
@@ -256,11 +260,13 @@ class ProjectService:
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
                         "execution_mode": project.execution_mode,  # Handover 0260
+                        "git_confirmed": project.git_confirmed,  # Handover 0426
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                         "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                         "agents": agent_dicts,  # Production-grade: Include agents in response
                         "agent_count": len(agent_dicts),
+                        "message_count": 0,  # Placeholder for consistency with ProjectResponse
                     },
                 }
 
@@ -1578,7 +1584,8 @@ class ProjectService:
 
                 # Update allowed fields (Handover 0260: Added execution_mode)
                 # Handover 0412: Added status, completed_at for archive endpoint
-                allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at"}
+                # Handover 0426: Added git_confirmed for git confirmation checkbox
+                allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at", "git_confirmed"}
                 for field, value in updates.items():
                     if field in allowed_fields:
                         setattr(project, field, value)
@@ -1614,6 +1621,7 @@ class ProjectService:
                         "mission": project.mission,
                         "description": project.description,
                         "execution_mode": project.execution_mode,  # Handover 0260
+                        "git_confirmed": project.git_confirmed,  # Handover 0426
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,

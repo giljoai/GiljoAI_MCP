@@ -46,6 +46,54 @@ from .mcp_session import MCPSessionManager
 
 logger = logging.getLogger(__name__)
 
+
+# ============================================================================
+# SECURITY: Tenant Key Validation (Handover 0424 Phase 0)
+# ============================================================================
+
+
+def validate_and_override_tenant_key(
+    arguments: dict,
+    session_tenant_key: str,
+    session_user_id: str | None,
+    tool_name: str
+) -> dict:
+    """
+    SECURITY: Override client-supplied tenant_key with session tenant_key.
+
+    Prevents tenant spoofing by ensuring tools always use the authenticated
+    user's tenant_key, not client-supplied values.
+
+    Args:
+        arguments: Tool arguments from client
+        session_tenant_key: Authenticated tenant_key from session
+        session_user_id: Authenticated user_id for audit logging
+        tool_name: Name of the tool being called
+
+    Returns:
+        Modified arguments with session tenant_key
+    """
+    client_tenant_key = arguments.get("tenant_key")
+
+    # Always override with session tenant_key
+    arguments["tenant_key"] = session_tenant_key
+
+    # Log mismatch as security warning
+    if client_tenant_key and client_tenant_key != session_tenant_key:
+        logger.warning(
+            "SECURITY: Tenant key mismatch - client attempted to use different tenant",
+            extra={
+                "tool_name": tool_name,
+                "session_tenant_key": session_tenant_key,
+                "client_tenant_key": client_tenant_key,
+                "user_id": session_user_id,
+                "security_event": "tenant_key_override"
+            }
+        )
+
+    return arguments
+
+
 router = APIRouter()
 
 
@@ -595,6 +643,15 @@ async def handle_tools_call(
     session = await session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
+
+    # SECURITY FIX: Validate and override tenant_key (Handover 0424 Phase 0)
+    # This prevents clients from spoofing tenant_key to access other tenants' data
+    arguments = validate_and_override_tenant_key(
+        arguments=arguments,
+        session_tenant_key=session.tenant_key,
+        session_user_id=getattr(session, 'user_id', None),
+        tool_name=tool_name
+    )
 
     # Get tool_accessor from app state
     from api.app import state

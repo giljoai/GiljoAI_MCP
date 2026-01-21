@@ -91,6 +91,7 @@ async def create_project(
         message_count=0,
         agents=[],
         execution_mode=result.get("execution_mode", "multi_terminal"),  # Handover 0260
+        git_confirmed=project.git_confirmed,  # Handover 0426
     )
 
 
@@ -273,6 +274,7 @@ async def get_active_project(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
     )
 
 
@@ -298,8 +300,8 @@ async def get_project(
     """
     logger.debug(f"User {current_user.username} getting project {project_id}")
 
-    # Get project via ProjectService
-    result = await project_service.get_project(project_id=project_id)
+    # Get project via ProjectService (Handover 0424 Phase 0: tenant_key now required)
+    result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     # Check for errors
     if not result.get("success"):
@@ -332,6 +334,7 @@ async def get_project(
         agent_count=proj.get("agent_count", len(agents_from_service)),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
         agents=agents_from_service  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
@@ -368,8 +371,8 @@ async def update_project(
     update_dict = updates.dict(exclude_unset=True)
 
     if not update_dict:
-        # No fields to update, just return current project
-        result = await project_service.get_project(project_id=project_id)
+        # No fields to update, just return current project (Handover 0424 Phase 0)
+        result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
         if not result.get("success"):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
         proj = result.get("project", {})
@@ -408,5 +411,6 @@ async def update_project(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
         agents=[]
     )
