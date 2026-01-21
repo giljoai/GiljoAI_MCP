@@ -91,7 +91,6 @@ async def create_project(
         message_count=0,
         agents=[],
         execution_mode=result.get("execution_mode", "multi_terminal"),  # Handover 0260
-        git_confirmed=project.git_confirmed,  # Handover 0426
     )
 
 
@@ -274,7 +273,6 @@ async def get_active_project(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
     )
 
 
@@ -334,7 +332,6 @@ async def get_project(
         agent_count=proj.get("agent_count", len(agents_from_service)),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
         agents=agents_from_service  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
@@ -411,6 +408,5 @@ async def update_project(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-        git_confirmed=proj.get("git_confirmed", False),  # Handover 0426
         agents=[]
     )

@@ -260,7 +260,6 @@ class ProjectService:
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
                         "execution_mode": project.execution_mode,  # Handover 0260
-                        "git_confirmed": project.git_confirmed,  # Handover 0426
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                         "completed_at": project.completed_at.isoformat() if project.completed_at else None,
@@ -1584,8 +1583,7 @@ class ProjectService:
 
                 # Update allowed fields (Handover 0260: Added execution_mode)
                 # Handover 0412: Added status, completed_at for archive endpoint
-                # Handover 0426: Added git_confirmed for git confirmation checkbox
-                allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at", "git_confirmed"}
+                allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at"}
                 for field, value in updates.items():
                     if field in allowed_fields:
                         setattr(project, field, value)
@@ -1621,7 +1619,6 @@ class ProjectService:
                         "mission": project.mission,
                         "description": project.description,
                         "execution_mode": project.execution_mode,  # Handover 0260
-                        "git_confirmed": project.git_confirmed,  # Handover 0426
                         "meta_data": project.meta_data or {},
                         "created_at": project.created_at,
                         "updated_at": project.updated_at,
