@@ -172,7 +172,6 @@ export const api = {
     update: (id, data) => apiClient.patch(`/api/v1/projects/${id}`, data),
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
     close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}`, { params: { summary } }),
-    status: (id) => apiClient.get(`/api/v1/projects/${id}/status`),
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
     // Status change endpoints - use PATCH for generic status updates
     changeStatus: (id, newStatus) =>
