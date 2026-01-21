@@ -38,7 +38,7 @@
         <v-btn
           class="stage-button"
           variant="outlined"
-          color="yellow-darken-2"
+          :color="hasActiveOrchestrator ? undefined : 'yellow-darken-2'"
           prepend-icon="mdi-content-copy"
           :loading="loadingStageProject"
           :disabled="hasActiveOrchestrator"
