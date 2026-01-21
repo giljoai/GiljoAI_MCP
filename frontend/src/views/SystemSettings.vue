@@ -4,33 +4,41 @@
     <h1 class="text-h4 mb-2">Admin Settings</h1>
     <p class="text-subtitle-1 mb-4">Configure server and system-wide settings (Admin only)</p>
 
-    <!-- Settings Tabs -->
-    <v-tabs v-model="activeTab" class="mb-6 global-tabs">
-      <v-tab value="network">
+    <!-- Settings Tabs (v-btn-toggle - native Vuetify) -->
+    <v-btn-toggle
+      v-model="activeTab"
+      mandatory
+      variant="outlined"
+      divided
+      rounded="t-lg"
+      color="primary"
+      class="mb-0"
+    >
+      <v-btn value="network" min-width="120">
         <v-icon start>mdi-network-outline</v-icon>
         Network
-      </v-tab>
-      <v-tab value="database">
+      </v-btn>
+      <v-btn value="database" min-width="120">
         <v-icon start>mdi-database</v-icon>
         Database
-      </v-tab>
-      <v-tab value="integrations">
+      </v-btn>
+      <v-btn value="integrations" min-width="140">
         <v-icon start>mdi-api</v-icon>
         Integrations
-      </v-tab>
-
-      <v-tab value="security">
+      </v-btn>
+      <v-btn value="security" min-width="120">
         <v-icon start>mdi-shield-lock</v-icon>
         Security
-      </v-tab>
-      <v-tab value="system">
+      </v-btn>
+      <v-btn value="system" min-width="110">
         <v-icon start>mdi-cog</v-icon>
         System
-      </v-tab>
-    </v-tabs>
+      </v-btn>
+    </v-btn-toggle>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab" class="global-tabs-window">
+    <div class="bordered-tabs-content">
+      <v-window v-model="activeTab" class="global-tabs-window">
       <!-- Network Settings -->
       <v-window-item value="network">
         <NetworkSettingsTab
@@ -87,6 +95,7 @@
         <SystemPromptTab />
       </v-window-item>
     </v-window>
+    </div>
 
     <!-- Configuration Modals -->
     <ClaudeConfigModal v-model="showClaudeConfigModal" />
