@@ -1,7 +1,7 @@
 """Add user_id to mcp_sessions for audit trail (Handover 0424 Phase 0)
 
 Revision ID: 0424a_user_audit
-Revises: 317d63e2e8cd
+Revises: aeef30e94762
 Create Date: 2026-01-20
 
 Security enhancement: Store user_id in MCP sessions for audit logging.
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = '0424a_user_audit'
-down_revision = '317d63e2e8cd'
+down_revision = 'aeef30e94762'
 branch_labels = None
 depends_on = None
 
