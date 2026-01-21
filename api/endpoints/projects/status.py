@@ -2,7 +2,6 @@
 Project Status Endpoints - Handover 0125
 
 Handles project status and query operations:
-- GET /{project_id}/status - Get project status
 - GET /{project_id}/summary - Get project summary (Handover 0504)
 - GET /{project_id}/orchestrator - Get orchestrator job
 
@@ -25,43 +24,6 @@ from .models import OrchestratorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-@router.get("/{project_id}/status")
-async def get_project_status(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    project_service: ProjectService = Depends(get_project_service),
-) -> dict:
-    """
-    Get project status with metrics.
-
-    Args:
-        project_id: Project UUID
-        current_user: Authenticated user (from dependency)
-        project_service: Project service (from dependency)
-
-    Returns:
-        Dict with project status and metrics
-
-    Raises:
-        HTTPException 404: Project not found
-    """
-    logger.debug(f"User {current_user.username} getting status for project {project_id}")
-
-    # Get status via ProjectService
-    result = await project_service.get_project_status(project_id=project_id)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Project not found")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-
-    logger.info(f"Retrieved status for project {project_id}")
-    return result
 
 
 @router.get("/{project_id}/summary", response_model=ProjectSummaryResponse)

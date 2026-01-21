@@ -198,11 +198,6 @@ class ToolAccessor:
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.switch_project(project_id, tenant_key=tenant_key)
 
-    async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
-        """Get comprehensive project status (delegates to ProjectService)"""
-        # NOTE: get_project_status needs service-level fix to accept tenant_key
-        return await self._project_service.get_project_status(project_id)
-
     async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
         """
         Close a completed project with summary.
