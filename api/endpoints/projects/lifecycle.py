@@ -85,7 +85,7 @@ async def activate_project(
     logger.info(f"Activated project {project_id}")
 
     # Get updated project
-    get_result = await project_service.get_project(project_id=project_id)
+    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     proj = get_result.get("project", {})
 
     return ProjectResponse(
@@ -151,7 +151,7 @@ async def deactivate_project(
     logger.info(f"Deactivated project {project_id}")
 
     # Get updated project
-    get_result = await project_service.get_project(project_id=project_id)
+    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     proj = get_result.get("project", {})
 
     return ProjectResponse(
@@ -215,7 +215,7 @@ async def cancel_project(
     logger.info(f"Cancelled project {project_id}")
 
     # Get updated project
-    get_result = await project_service.get_project(project_id=project_id)
+    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     proj = get_result.get("project", {})
 
     return ProjectResponse(
@@ -274,7 +274,7 @@ async def restore_project(
     logger.info(f"Restored project {project_id}")
 
     # Get updated project
-    get_result = await project_service.get_project(project_id=project_id)
+    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     proj = get_result.get("project", {})
 
     return ProjectResponse(
@@ -338,7 +338,7 @@ async def cancel_project_staging(
     logger.info(f"Cancelled staging for project {project_id}")
 
     # Get updated project
-    get_result = await project_service.get_project(project_id=project_id)
+    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     proj = get_result.get("project", {})
 
     return ProjectResponse(
@@ -452,7 +452,7 @@ async def archive_project(
 
     try:
         # Get project first to validate
-        get_result = await project_service.get_project(project_id=project_id)
+        get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
         if not get_result.get("success"):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
@@ -480,7 +480,7 @@ async def archive_project(
         logger.info(f"Archived project {project_id}")
 
         # Get updated project
-        get_result = await project_service.get_project(project_id=project_id)
+        get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
         proj = get_result.get("project", {})
 
         return ProjectResponse(
