@@ -142,7 +142,7 @@
 .bordered-tabs-content {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-top: none; /* Top border comes from the tab row */
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 8px 8px 8px; /* top-left: 0 (connects to tabs), others: match tab buttons */
   padding: 16px;
   background: rgb(var(--v-theme-surface));
 }
