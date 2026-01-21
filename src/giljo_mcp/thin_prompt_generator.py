@@ -18,7 +18,7 @@ Token Reduction:
 - Reduction: ~82% token savings on initial prompt
 
 MCP Tools (Handover 0280-0281 Monolithic Context):
-- get_orchestrator_instructions(job_id, tenant_key): Complete mission with prioritized context
+- get_orchestrator_instructions(job_id): Complete mission with prioritized context (tenant auto-injected)
 
 Priority System (Handover 0313):
 - Priority 1 (CRITICAL): Fetch first, essential for mission planning
@@ -490,7 +490,6 @@ class ThinClientPromptGenerator:
 IDENTITY:
 - Orchestrator ID: {orchestrator_id}
 - Project ID: {project_id}
-- Tenant Key: {self.tenant_key}
 
 MCP CONNECTION:
 - Server URL: {mcp_url}
@@ -503,16 +502,17 @@ Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work 
 
 MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ health_check() - Verify MCP connection
-✓ get_orchestrator_instructions(job_id, tenant_key) - Fetch context
+✓ get_orchestrator_instructions(job_id) - Fetch context (tenant auto-injected by server)
 ✓ update_project_mission(project_id, mission) - Save mission plan
-✓ spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key) - Create agents
-✓ get_workflow_status(project_id, tenant_key) - Check spawned agents
+✓ spawn_agent_job(agent_display_name, agent_name, mission, project_id) - Create agents
+✓ get_workflow_status(project_id) - Check spawned agents
 ✓ send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
-2. Fetch context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+2. Fetch context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
    └─► Returns: Project.description (user requirements), Product context, Agent templates
+   └─► Note: tenant_key auto-injected by server from your API key session
 3. CREATE MISSION: Analyze requirements → Generate execution plan (context prioritization and orchestration)
 4. PERSIST MISSION: mcp__giljo-mcp__update_project_mission('{project_id}', your_created_mission)
    └─► Saves to Project.mission field for UI display
@@ -606,7 +606,6 @@ IDENTITY:
 - Orchestrator Agent ID: {agent_id}
 - Job ID: {orchestrator_id}
 - Project ID: {project_id}
-- Tenant Key: {self.tenant_key}
 
 MCP CONNECTION:
 - Server URL: {mcp_url}
@@ -623,14 +622,15 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Mission: {project.mission or '(Mission will be created by you)'}
 
 WORKFLOW:
-1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}')
+1. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
    → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
    → User priority configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
+   → Note: tenant_key auto-injected by server from your API key session
 2. Create condensed mission plan from fetched context
-3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}')
-4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}', '{self.tenant_key}')
-5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}')
+3. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission)
+4. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
+5. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
 6. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Launch Jobs button in UI (REQUIRED)
 
@@ -641,12 +641,12 @@ CRITICAL DISTINCTIONS:
 - Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 2)
 - Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
-MCP CORE TOOLS (Always Available):
+MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
-✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}', '{self.tenant_key}') - Fetch complete prioritized context
-✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission, '{self.tenant_key}') - Save mission plan
-✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}', '{self.tenant_key}') - Create agents
-✓ mcp__giljo-mcp__get_workflow_status('{project_id}', '{self.tenant_key}') - Check spawned agents
+✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
+✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission) - Save mission plan
+✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents
+✓ mcp__giljo-mcp__get_workflow_status('{project_id}') - Check spawned agents
 ✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
 
 CONNECTION TROUBLESHOOTING:
@@ -1038,11 +1038,11 @@ YOUR IDENTITY (use these in all MCP calls):
   YOUR Agent ID: {agent_id}
   YOUR Job ID: {orchestrator_id}
   THE Project ID: {project_id}
-  User's Tenant Key: {self.tenant_key}
 
 MCP Server: {mcp_url}
+Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
 
-START NOW: Call get_orchestrator_instructions(job_id='{orchestrator_id}', tenant_key='{self.tenant_key}')
+START NOW: Call get_orchestrator_instructions(job_id='{orchestrator_id}')
 Response includes orchestrator_protocol with your complete 5-chapter workflow guide.
 """
 
@@ -1073,7 +1073,6 @@ Orchestrator ID: {orchestrator_id}
 Project ID: {project.id}
 Product ID: {project.product_id}
 Project: {project.name}
-Tenant Key: {self.tenant_key}
 
 CONTEXT:
 - Project mission created and persisted
@@ -1094,7 +1093,7 @@ IMPORTANT:
 AGENT TEAM:
 {agent_list}
 
-Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self.tenant_key}')
+Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}')
 """
 
     def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
@@ -1113,7 +1112,6 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "## Who You Are",
             f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
-            f"Tenant: {self.tenant_key}",
             f"Project ID: {project.id}",
             f"Product ID: {project.product_id}",
             "",
@@ -1121,8 +1119,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "Fetch your stored execution plan from staging:",
             "```python",
-            f'get_agent_mission(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            f'get_agent_mission(job_id="{orchestrator_id}")',
             "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
             "",
             "This returns your plan with:",
             "- Agent execution order (sequential/parallel/hybrid)",
@@ -1189,10 +1188,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             '    subagent_display_name="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
             '    instructions="""',
             "    You are {agent_name} (job_id: {job_id})",
-            "    Tenant: {tenant_key}",
             "    ",
-            '    First action: Call mcp__giljo-mcp__get_agent_mission as a tool',
-            '    with job_id="{job_id}" and tenant_key="{tenant_key}".',
+            '    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")',
+            "    Note: tenant_key is auto-injected by server from your API key session",
             "    This returns your `mission` and `full_protocol`.",
             "    Follow `full_protocol` for all lifecycle behavior",
             "    (startup, planning, progress, messaging, completion, error handling).",
@@ -1213,10 +1211,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
                     f'    subagent_display_name="{first.agent_name}",',
                     '    instructions="""',
                     f"    You are {first.agent_name} (job_id: {first.job_id})",
-                    f"    Tenant: {self.tenant_key}",
                     "    ",
-                    f'    First action: Call mcp__giljo-mcp__get_agent_mission as a tool',
-                    f'    with job_id="{first.job_id}" and tenant_key="{self.tenant_key}".',
+                    f'    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{first.job_id}")',
+                    "    Note: tenant_key is auto-injected by server from your API key session",
                     "    This returns your `mission` and `full_protocol`.",
                     "    Follow `full_protocol` for all lifecycle behavior",
                     "    (startup, planning, progress, messaging, completion, error handling).",
@@ -1243,8 +1240,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "### get_workflow_status()",
             "Check all agent statuses:",
             "```python",
-            f'get_workflow_status(project_id="{project.id}", tenant_key="{self.tenant_key}")',
+            f'get_workflow_status(project_id="{project.id}")',
             "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
             "",
             "Returns:",
             "```json",
@@ -1274,8 +1272,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "",
             "If you need to re-read your orchestrator mission:",
             "```python",
-            f'get_orchestrator_instructions(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            f'get_orchestrator_instructions(job_id="{orchestrator_id}")',
             "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
             "",
             "This MCP tool fetches your original staging mission and context.",
             "Use this if you lose track of project objectives or need to verify requirements.",
@@ -1300,7 +1299,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "**WARNING: MCP Communication Only**",
             "- All agents run in THIS terminal (Claude Code CLI mode)",
             "- Coordination happens via MCP server (not direct communication)",
-            "- All MCP tools require tenant_key for multi-tenant isolation",
+            "- All MCP tools have tenant_key auto-injected by server from API key session",
             "",
         ]
 
@@ -1316,7 +1315,7 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}', '{self
             "### Complete Your Orchestrator Job",
             "When all sub-agents are done and project is complete:",
             "```python",
-            f'complete_job(job_id="{orchestrator_id}", tenant_key="{self.tenant_key}")',
+            f'complete_job(job_id="{orchestrator_id}")',
             "```",
             "",
             "### Handover (if needed)",
