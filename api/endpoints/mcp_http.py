@@ -78,6 +78,7 @@ def validate_and_override_tenant_key(
     TOOLS_WITHOUT_TENANT_KEY = {
         "health_check",  # System health check - no tenant data
         "create_task",   # Uses TenantManager context internally
+        "update_project_mission",  # Uses project_id for isolation
     }
 
     # Skip tenant_key injection for tools that don't accept it
