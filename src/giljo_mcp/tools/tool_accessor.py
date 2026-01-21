@@ -194,10 +194,13 @@ class ToolAccessor:
 
     async def switch_project(self, project_id: str) -> dict[str, Any]:
         """Switch to a different project (delegates to ProjectService)"""
-        return await self._project_service.switch_project(project_id)
+        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.switch_project(project_id, tenant_key=tenant_key)
 
     async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
         """Get comprehensive project status (delegates to ProjectService)"""
+        # NOTE: get_project_status needs service-level fix to accept tenant_key
         return await self._project_service.get_project_status(project_id)
 
     async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
@@ -205,23 +208,31 @@ class ToolAccessor:
         Close a completed project with summary.
         DEPRECATED: Use complete_project instead (delegates to ProjectService)
         """
-        return await self._project_service.complete_project(project_id, summary)
+        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
 
     async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
         """Mark a project as completed (delegates to ProjectService)"""
-        return await self._project_service.complete_project(project_id, summary)
+        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
 
     async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
         """Cancel a project (delegates to ProjectService)"""
+        # NOTE: cancel_project needs service-level fix to accept tenant_key
         return await self._project_service.cancel_project(project_id, reason)
 
     async def restore_project(self, project_id: str) -> dict[str, Any]:
         """Restore a completed or cancelled project (delegates to ProjectService)"""
+        # NOTE: restore_project needs service-level fix to accept tenant_key
         return await self._project_service.restore_project(project_id)
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field (delegates to ProjectService)"""
-        return await self._project_service.update_project_mission(project_id, mission)
+        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.update_project_mission(project_id, mission, tenant_key=tenant_key)
 
     async def update_agent_mission(
         self, job_id: str, tenant_key: str, mission: str
