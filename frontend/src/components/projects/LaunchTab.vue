@@ -1,44 +1,23 @@
 <template>
   <div class="launch-tab-wrapper">
-    <!-- Execution Mode Toggle (Handover 0333 Phase 1) -->
-    <!-- Lock added in Handover 0343 -->
-    <div
-      class="execution-mode-toggle-bar"
-      :class="{ 'toggle-locked': isExecutionModeLocked }"
-      data-testid="execution-mode-toggle"
-      @click="toggleExecutionMode"
-    >
-      <span class="toggle-label">Execution Mode</span>
-      <span class="toggle-options">
-        <span :class="{ active: !usingClaudeCodeSubagents }">Multi-Terminal</span>
-        <span class="toggle-separator">/</span>
-        <span :class="{ active: usingClaudeCodeSubagents }">Claude Code CLI</span>
-      </span>
-      <v-tooltip location="bottom">
-        <template v-slot:activator="{ props: tooltipProps }">
-          <v-icon v-bind="tooltipProps" size="small" class="ml-1 help-icon">mdi-help-circle-outline</v-icon>
-        </template>
-        <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
-      </v-tooltip>
-      <v-icon v-if="isExecutionModeLocked" size="small" class="ml-1 lock-icon">mdi-lock</v-icon>
-      <div class="toggle-indicator" data-testid="execution-mode-indicator" :class="{ active: usingClaudeCodeSubagents }"></div>
-    </div>
-
     <!-- Main Container (unified border) - buttons moved to ProjectTabs -->
     <div class="main-container">
       <div class="three-panels">
         <!-- Panel 1: Project Description -->
         <div class="panel project-description-panel" data-testid="description-panel">
-          <div class="panel-header">Project Description</div>
-          <div class="panel-content">
-            <p class="description-text">{{ project.description || 'No description available' }}</p>
+          <div class="panel-header">
+            <span>Project Description</span>
             <v-btn
               icon="mdi-pencil"
-              size="small"
+              size="x-small"
               variant="text"
-              class="edit-icon"
+              class="header-edit-btn"
+              title="Edit description"
               @click="editDescription"
             />
+          </div>
+          <div class="panel-content">
+            <p class="description-text">{{ project.description || 'No description available' }}</p>
           </div>
         </div>
 
@@ -55,95 +34,59 @@
           </div>
         </div>
 
-        <!-- Panel 3: Default Agent -->
-        <div class="panel default-agent-panel" data-testid="agents-panel">
-          <div class="panel-header">Default agent</div>
+        <!-- Panel 3: Agents -->
+        <div class="panel agents-panel" data-testid="agents-panel">
+          <div class="panel-header">Agents</div>
           <div class="panel-content">
-            <!-- Orchestrator Card (Handover 0506: Status-aware display) -->
-            <div class="orchestrator-card" :class="{ 'orchestrator-complete': needsOrchestratorRelaunch }">
-              <v-avatar :color="orchestratorAvatarColor" size="40" class="agent-avatar">
-                <span class="orchestrator-text">OR</span>
-              </v-avatar>
-              <div class="orchestrator-info">
-                <span class="agent-name">ORCHESTRATOR</span>
-                <div v-if="currentOrchestrator" class="text-caption text-medium-emphasis">
-                  Instance #{{ currentOrchestrator.instance_number || 1 }} •
-                  <span class="status-text" :class="'status-' + currentOrchestrator.status">
-                    {{ currentOrchestrator.status }}
-                  </span>
-                  •
-                  Agent ID:
-                  <code data-testid="orchestrator-agent-id">
-                    {{ (currentOrchestrator?.agent_id || currentOrchestrator?.job_id || '').slice(0, 8) }}...
-                  </code>
-                </div>
-                <div v-else class="text-caption text-medium-emphasis">
-                  No orchestrator - click Launch to create one
-                </div>
-              </div>
-              <!-- Re-launch button when orchestrator is complete/null (Handover 0506) -->
-              <v-btn
-                v-if="needsOrchestratorRelaunch"
-                icon="mdi-rocket-launch"
-                size="small"
-                variant="text"
-                color="primary"
-                title="Launch new orchestrator"
-                class="relaunch-btn"
-                data-testid="relaunch-orchestrator"
-                @click="emit('launch-orchestrator')"
-              />
-              <v-icon v-else size="small" class="eye-icon" title="View orchestrator details (read-only)">mdi-eye</v-icon>
-              <v-icon
-                size="small"
-                class="info-icon"
-                role="button"
-                tabindex="0"
-                title="View orchestrator template"
-                @click="handleOrchestratorInfo"
-                @keydown.enter="handleOrchestratorInfo"
+            <div class="agents-list">
+              <!-- All agents shown together -->
+              <div
+                v-for="agent in sortedJobs"
+                :key="agent.job_id || agent.agent_id || agent.id"
+                class="agent-slim-card"
+                :class="{ 'orchestrator-card': agent.agent_display_name === 'orchestrator' }"
+                data-testid="agent-card"
+                :data-agent-display-name="agent.agent_display_name"
               >
-                mdi-information
-              </v-icon>
-            </div>
-
-            <!-- Agent Team Section -->
-            <div class="agent-team-section">
-              <div class="agent-team-header">Agent Team</div>
-              <div class="agent-team-list">
-                <!-- Slim agent cards (exclude orchestrator as it's shown above) -->
-                <div
-                  v-for="agent in nonOrchestratorAgents"
-                  :key="agent.job_id || agent.agent_id || agent.id"
-                  class="agent-slim-card"
-                  data-testid="agent-card"
-                  :data-agent-display-name="agent.agent_display_name"
-                >
-                  <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
-                    {{ getAgentInitials(agent.agent_display_name) }}
-                  </div>
-                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
-                  <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
-                  <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
-                  <v-icon
-                    size="small"
-                    class="edit-icon"
-                    role="button"
-                    tabindex="0"
-                    title="Edit agent configuration"
-                    @click="handleAgentEdit(agent)"
-                    @keydown.enter="handleAgentEdit(agent)"
-                  >mdi-pencil</v-icon>
-                  <v-icon
-                    size="small"
-                    class="info-icon"
-                    role="button"
-                    tabindex="0"
-                    title="View agent template"
-                    @click="handleAgentInfo(agent)"
-                    @keydown.enter="handleAgentInfo(agent)"
-                  >mdi-information</v-icon>
+                <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
+                  {{ getAgentInitials(agent.agent_display_name) }}
                 </div>
+                <div class="agent-info">
+                  <span class="agent-name" data-testid="agent-name">{{ agent.agent_display_name?.toUpperCase() || '' }}</span>
+                  <div class="text-caption text-medium-emphasis">
+                    <span class="status-text" :class="'status-' + agent.status">
+                      {{ agent.status }}
+                    </span>
+                    <span v-if="agent.agent_id || agent.job_id">
+                      • ID: {{ (agent.agent_id || agent.job_id || '').slice(0, 8) }}...
+                    </span>
+                  </div>
+                </div>
+                <span class="agent-type" data-testid="agent-display-name" style="display: none;">{{ agent.agent_display_name || '' }}</span>
+                <span class="status-chip" data-testid="status-chip" style="display: none;">{{ agent.status || 'pending' }}</span>
+                <v-icon
+                  size="small"
+                  class="edit-icon"
+                  role="button"
+                  tabindex="0"
+                  title="Edit agent configuration"
+                  @click="handleAgentEdit(agent)"
+                  @keydown.enter="handleAgentEdit(agent)"
+                >mdi-pencil</v-icon>
+                <v-icon
+                  size="small"
+                  class="info-icon"
+                  role="button"
+                  tabindex="0"
+                  title="View agent template"
+                  @click="handleAgentInfo(agent)"
+                  @keydown.enter="handleAgentInfo(agent)"
+                >mdi-information</v-icon>
+              </div>
+              <!-- Empty state when no agents -->
+              <div v-if="!sortedJobs || sortedJobs.length === 0" class="empty-agents">
+                <v-icon size="48" class="empty-icon">mdi-account-group-outline</v-icon>
+                <p class="text-caption text-medium-emphasis">No agents yet - click Stage Project to begin</p>
               </div>
             </div>
           </div>
@@ -182,15 +125,14 @@ import api from '@/services/api'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import { useProjectStateStore } from '@/stores/projectStateStore'
-import { useToast } from '@/composables/useToast'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
+ * Execution Mode Toggle moved to ProjectTabs (Handover 0428)
  *
  * Exact match to screenshot design:
- * - Top action bar with stage button (left), status text (center), launch button (right)
  * - Main container with unified border and rounded corners
  * - Three equal panels: Project Description, Orchestrator Mission, Default Agent
  * - Dark navy background, tan orchestrator avatar, yellow buttons
@@ -225,7 +167,6 @@ const props = defineProps({
 const emit = defineEmits([
   'edit-description',
   'edit-mission',
-  'execution-mode-changed', // Handover 0335: Notify parent when execution mode changes
   'edit-agent-mission',
   'launch-orchestrator', // Handover 0506: Re-launch orchestrator when complete/null
 ])
@@ -280,15 +221,6 @@ const needsOrchestratorRelaunch = computed(() => {
 const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from branding guide
 
 /**
- * Check if execution mode is locked (Handover 0343)
- * Execution mode is locked when orchestrator has generated a mission
- * (missionText exists = staging has occurred)
- */
-const isExecutionModeLocked = computed(() => {
-  return Boolean(missionText.value)
-})
-
-/**
  * Get agent color based on type
  */
 const getAgentColor = (displayName) => {
@@ -322,7 +254,6 @@ const getAgentInitials = (displayName) => {
   return displayName.substring(0, 2).toUpperCase()
 }
 
-const { showToast: showToastNotification } = useToast()
 const router = useRouter()
 
 const projectStateStore = useProjectStateStore()
@@ -344,11 +275,6 @@ const showMissionEditModal = ref(false)
 const selectedAgentForEdit = ref(null)
 
 /**
- * Execution Mode Toggle (Handover 0333 Phase 1)
- */
-const usingClaudeCodeSubagents = ref(false)
-
-/**
  * Get instance number for multi-instance agents
  */
 function getInstanceNumber(agent) {
@@ -361,55 +287,6 @@ function getInstanceNumber(agent) {
   )
 
   return index + 1
-}
-
-/**
- * Toggle Execution Mode (Handover 0333 Phase 1)
- * Switches between Multi-Terminal and Claude Code CLI modes
- * Handover 0343: Prevent toggle when orchestrator exists
- */
-async function toggleExecutionMode() {
-  // Handover 0343: Check if execution mode is locked
-  if (isExecutionModeLocked.value) {
-    showToastNotification({
-      message: 'Execution mode locked after staging begins. Complete or cancel the orchestrator job to unlock.',
-      type: 'warning',
-      timeout: 3000
-    })
-    return
-  }
-
-  const newValue = !usingClaudeCodeSubagents.value
-  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
-
-  // Optimistically update UI
-  usingClaudeCodeSubagents.value = newValue
-
-  try {
-    // Persist to backend
-    await api.projects.update(projectId.value, { execution_mode: newMode })
-
-    // Handover 0335: Emit event so parent can update project prop
-    // This ensures ProjectTabs.handleStageProject() uses fresh execution_mode
-    emit('execution-mode-changed', newMode)
-
-    showToastNotification({
-      message: newValue
-        ? 'Claude Code CLI mode enabled'
-        : 'Manual mode enabled',
-      type: 'info',
-      timeout: 3000
-    })
-  } catch (error) {
-    // Revert on failure
-    usingClaudeCodeSubagents.value = !newValue
-    console.error('Failed to update execution mode:', error)
-    showToastNotification({
-      message: 'Failed to save execution mode',
-      type: 'error',
-      timeout: 3000
-    })
-  }
 }
 
 /**
@@ -457,11 +334,8 @@ function handleAgentInfo(agent) {
 function handleAgentEdit(agent) {
   if (agent.agent_display_name === 'orchestrator') {
     // Orchestrators don't have editable missions
-    showToastNotification({
-      message: 'Orchestrator configuration cannot be edited here',
-      type: 'info',
-      timeout: 3000,
-    })
+    toastMessage.value = 'Orchestrator configuration cannot be edited here'
+    showToast.value = true
     return
   }
 
@@ -476,11 +350,8 @@ function handleMissionUpdated({ jobId, mission }) {
   agentJobsStore.upsertJob?.({ job_id: jobId, mission })
 
   // Show success message
-  showToastNotification({
-    message: 'Agent mission updated successfully',
-    type: 'success',
-    timeout: 3000,
-  })
+  toastMessage.value = 'Agent mission updated successfully'
+  showToast.value = true
 }
 
 /**
@@ -492,141 +363,94 @@ watch(missionText, (next, previous) => {
     showToast.value = true
   }
 })
-
-/**
- * Watch for execution_mode changes (Handover 0333 Phase 1)
- */
-watch(
-  () => props.project?.execution_mode,
-  (newMode) => {
-    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
-  },
-  { immediate: true }
-)
 </script>
 
 <style scoped lang="scss">
 @use '@/styles/design-tokens.scss' as *;
 
 .launch-tab-wrapper {
-  padding: 20px;
-  background: rgb(var(--v-theme-background));
-  min-height: 100vh;
-
-  .execution-mode-toggle-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
-    border-radius: 8px;
-    background: rgba(var(--v-theme-on-surface), 0.05);
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: $color-text-highlight;
-      background: rgba(var(--v-theme-on-surface), 0.1);
-    }
-
-    // Handover 0343: Locked state styles
-    &.toggle-locked {
-      cursor: not-allowed;
-      opacity: 0.6;
-
-      &:hover {
-        border-color: rgba(var(--v-theme-on-surface), 0.3);
-        background: rgba(var(--v-theme-on-surface), 0.05);
-      }
-    }
-
-    .toggle-label {
-      font-weight: 600;
-      color: rgb(var(--v-theme-on-surface));
-      font-size: 14px;
-      min-width: 120px;
-    }
-
-    .toggle-options {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      font-size: 13px;
-      flex: 1;
-
-      span {
-        transition: color 0.2s ease;
-
-        &.active {
-          color: $color-text-highlight;
-          font-weight: 600;
-        }
-      }
-
-      .toggle-separator {
-        color: rgba(var(--v-theme-on-surface), 0.6);
-      }
-    }
-
-    .help-icon {
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      margin-left: auto;
-      flex-shrink: 0;
-    }
-
-    // Handover 0343: Lock icon styling
-    .lock-icon {
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      flex-shrink: 0;
-    }
-
-    .toggle-indicator {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: rgba(var(--v-theme-on-surface), 0.6);
-      flex-shrink: 0;
-      transition: background-color 0.2s ease;
-
-      &.active {
-        background: $color-text-highlight;
-      }
-    }
-  }
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: transparent; /* Already inside bordered box */
 
   .main-container {
-    border: $border-width-standard solid rgba(var(--v-theme-on-surface), 0.12);
-    border-radius: $border-radius-large;
-    padding: $spacing-container-padding;
-    background: rgb(var(--v-theme-surface));
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Critical for flex overflow */
+    /* No border - already inside bordered content box */
 
     .three-panels {
+      flex: 1;
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: $spacing-panel-gap;
+      min-height: 0; /* Critical for grid overflow */
 
       .panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* Critical for flex overflow */
+
         .panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
           font-size: $typography-panel-header-size;
           color: rgba(var(--v-theme-on-surface), 0.6);
+          height: 28px; /* Fixed height so all headers align */
           margin-bottom: 16px;
           font-weight: $typography-font-weight-bold;
           text-transform: capitalize;
+          flex-shrink: 0;
+
+          .header-edit-btn {
+            color: white;
+            margin-left: 8px;
+            height: 24px;
+            width: 24px;
+
+            &:hover {
+              color: #ffc300;
+            }
+          }
         }
 
         .panel-content {
           background: rgba(var(--v-theme-on-surface), 0.05);
           border-radius: $radius-medium;
           padding: $spacing-panel-content-padding;
-          height: $spacing-panel-min-height; // Fixed height to lock all panels same size
+          height: 550px; /* Fixed height for uniform panels */
           position: relative;
           color: rgb(var(--v-theme-on-surface));
           font-size: $typography-panel-content-size;
           line-height: 1.6;
-          overflow-y: auto; // Enable scrolling when content exceeds height
+          overflow-y: auto; /* Each panel scrolls independently */
 
+          /* Custom Scrollbar for all panels */
+          &::-webkit-scrollbar {
+            width: 8px;
+          }
+
+          &::-webkit-scrollbar-track {
+            background: $color-scrollbar-track-background;
+            border-radius: $radius-scrollbar;
+          }
+
+          &::-webkit-scrollbar-thumb {
+            background: $color-scrollbar-thumb-background;
+            border-radius: $radius-scrollbar;
+
+            &:hover {
+              background: $color-scrollbar-thumb-hover-background;
+            }
+          }
+
+          /* Firefox scrollbar */
+          scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
+          scrollbar-width: thin;
 
           .empty-state {
             position: absolute;
@@ -644,31 +468,6 @@ watch(
             word-break: break-word;
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.875rem;
-            padding: 10px; // 10px buffer all around the text
-            padding-right: 18px; // 10px + 8px for scrollbar
-
-            /* Custom Scrollbar - match agent team list styling */
-            &::-webkit-scrollbar {
-              width: 8px;
-            }
-
-            &::-webkit-scrollbar-track {
-              background: $color-scrollbar-track-background;
-              border-radius: $radius-scrollbar;
-            }
-
-            &::-webkit-scrollbar-thumb {
-              background: $color-scrollbar-thumb-background;
-              border-radius: $radius-scrollbar;
-
-              &:hover {
-                background: $color-scrollbar-thumb-hover-background;
-              }
-            }
-
-            /* Firefox scrollbar */
-            scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
-            scrollbar-width: thin;
           }
 
           .description-text {
@@ -681,75 +480,66 @@ watch(
     }
   }
 
-  .orchestrator-card {
+  /* Unified Agents List */
+  .agents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .empty-agents {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+
+      .empty-icon {
+        color: rgba(var(--v-theme-on-surface), 0.15);
+        margin-bottom: 8px;
+      }
+    }
+  }
+
+  /* Agent card - unified style for all agents */
+  .agent-slim-card {
     display: flex;
     align-items: center;
     gap: 12px;
-    border: $border-width-standard solid #67bd6d; // Green for orchestrator
+    border: 2px solid rgb(var(--v-theme-primary));
     border-radius: $border-radius-pill;
-    padding: 12px 20px;
-    margin-bottom: 20px;
+    padding: 10px 16px;
+    background: transparent;
+
+    /* Orchestrator gets green border */
+    &.orchestrator-card {
+      border-color: #67bd6d;
+    }
 
     .agent-avatar {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .orchestrator-text {
-      color: $color-avatar-text-light;
+      color: white;
       font-weight: $typography-font-weight-bold;
-      font-size: 14px;
+      font-size: 13px;
+      flex-shrink: 0;
     }
 
-    .orchestrator-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    .agent-info {
       flex: 1;
+      min-width: 0;
 
-      code {
-        font-family: 'Roboto Mono', monospace;
-        font-size: 0.7rem;
-        background: rgba(var(--v-theme-on-surface), 0.1);
-        padding: 1px 4px;
-        border-radius: 2px;
+      .agent-name {
+        color: rgb(var(--v-theme-on-surface));
+        font-size: $typography-font-size-body;
+        font-weight: 500;
       }
     }
 
-    .agent-name {
-      color: rgb(var(--v-theme-on-surface));
-      font-size: $typography-font-size-body;
-    }
-
-    .eye-icon {
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      flex-shrink: 0;
-      margin-right: 4px;  // Reduced to 4px for tighter spacing
-    }
-
-    .info-icon {
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      flex-shrink: 0;
-      cursor: pointer;
-      transition: color 0.2s ease;
-
-      &:hover {
-        color: $color-text-highlight;
-      }
-    }
-
-    // Handover 0506: Re-launch button styling
-    .relaunch-btn {
-      flex-shrink: 0;
-      margin-right: 4px;
-    }
-
-    // Handover 0506: Status text styling
     .status-text {
       text-transform: capitalize;
       font-weight: 500;
@@ -761,102 +551,23 @@ watch(
       &.status-blocked { color: #ff9800; }
       &.status-failed { color: #e53935; }
       &.status-cancelled { color: #ff9800; }
+      &.status-pending { color: #90a4ae; }
     }
 
-    // Handover 0506: Completed orchestrator styling
-    &.orchestrator-complete {
-      opacity: 0.8;
-      border-color: #67bd6d;
-    }
-  }
-
-  .agent-team-section {
-    .agent-team-header {
-      font-size: $typography-panel-header-size;
+    .edit-icon,
+    .info-icon {
       color: rgba(var(--v-theme-on-surface), 0.6);
-      margin-bottom: 16px;
-      font-weight: $typography-font-weight-bold;
-      text-transform: capitalize;
-    }
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: color 0.2s ease;
 
-    .agent-team-list {
-      min-height: 200px;
-      padding-right: 8px;
-      overflow-y: auto;
-      max-height: 350px;
-
-      /* Custom Scrollbar */
-      &::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      &::-webkit-scrollbar-track {
-        background: $color-scrollbar-track-background;
-        border-radius: $radius-scrollbar;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: $color-scrollbar-thumb-background;
-        border-radius: $radius-scrollbar;
-
-        &:hover {
-          background: $color-scrollbar-thumb-hover-background;
-        }
+      &:hover {
+        color: $color-text-highlight;
       }
     }
 
-    // Slim agent card (matches orchestrator card style)
-    .agent-slim-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border: 2px solid rgb(var(--v-theme-primary)); // Blue border (theme-aware)
-      border-radius: $border-radius-pill; // 24px pill shape
-      padding: 12px 20px;
-      margin-bottom: 12px;
-      background: transparent;
-
-      .agent-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: $typography-font-weight-bold;
-        font-size: 14px;
-      }
-
-      .agent-name {
-        flex: 1;
-        color: rgb(var(--v-theme-on-surface));
-        font-size: $typography-font-size-body;
-        text-transform: capitalize;
-      }
-
-      .edit-icon {
-        color: rgba(var(--v-theme-on-surface), 0.6);
-        flex-shrink: 0;
-        cursor: pointer;
-        transition: color 0.2s ease;
-        margin-right: 4px;  // Reduced from 8px to match orchestrator
-
-        &:hover {
-          color: $color-text-highlight;
-        }
-      }
-
-      .info-icon {
-        color: rgba(var(--v-theme-on-surface), 0.6);
-        flex-shrink: 0;
-        cursor: pointer;
-        transition: color 0.2s ease;
-
-        &:hover {
-          color: $color-text-highlight;
-        }
-      }
+    .edit-icon {
+      margin-right: 4px;
     }
   }
 
