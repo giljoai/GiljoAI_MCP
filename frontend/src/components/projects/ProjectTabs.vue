@@ -33,8 +33,8 @@
 
     <!-- Bordered Content Box (tabs connect to this) -->
     <div class="bordered-tabs-content">
-      <!-- Action Buttons Row (centered) -->
-      <div class="action-buttons-row">
+      <!-- Action Buttons Row (centered) - only show on Launch tab -->
+      <div v-if="activeTab === 'launch'" class="action-buttons-row">
         <v-btn
           class="stage-button"
           variant="outlined"
@@ -74,8 +74,8 @@
         </v-btn>
       </div>
 
-      <!-- Execution Mode Radio (below buttons, aligned right) -->
-      <div class="execution-mode-row">
+      <!-- Execution Mode Radio (below buttons) - only show on Launch tab -->
+      <div v-if="activeTab === 'launch'" class="execution-mode-row">
         <div class="execution-mode-radio" :class="{ 'mode-locked': isExecutionModeLocked }">
           <span class="mode-label">Execution Mode:</span>
           <v-radio-group
