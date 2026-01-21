@@ -36,7 +36,45 @@
 
         <!-- Panel 3: Agents -->
         <div class="panel agents-panel" data-testid="agents-panel">
-          <div class="panel-header">Agents</div>
+          <div class="panel-header">
+            <span>Agents</span>
+            <div class="integration-icons">
+              <!-- GitHub Integration -->
+              <v-tooltip location="bottom" max-width="300">
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon
+                    v-bind="tooltipProps"
+                    :class="{ 'icon-disabled': !gitEnabled }"
+                    size="48"
+                    data-testid="github-status-icon"
+                    @click="goToIntegrations"
+                    style="cursor: pointer;"
+                  >
+                    mdi-github
+                  </v-icon>
+                </template>
+                <span v-if="gitEnabled">GitHub integration enabled. Commit history will be included in project summaries.</span>
+                <span v-else>GitHub integration disabled. Click to enable in Settings.</span>
+              </v-tooltip>
+              <!-- Serena MCP Integration -->
+              <v-tooltip location="bottom" max-width="300">
+                <template #activator="{ props: tooltipProps }">
+                  <v-img
+                    v-bind="tooltipProps"
+                    src="/Serena.png"
+                    width="48"
+                    height="48"
+                    :class="{ 'icon-disabled': !serenaEnabled }"
+                    data-testid="serena-status-icon"
+                    @click="goToIntegrations"
+                    style="cursor: pointer;"
+                  />
+                </template>
+                <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
+                <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
+              </v-tooltip>
+            </div>
+          </div>
           <div class="panel-content">
             <div class="agents-list">
               <!-- All agents shown together -->
@@ -256,6 +294,13 @@ const getAgentInitials = (displayName) => {
 
 const router = useRouter()
 
+/**
+ * Navigate to integrations settings
+ */
+function goToIntegrations() {
+  router.push({ path: '/settings', query: { tab: 'integrations' } })
+}
+
 const projectStateStore = useProjectStateStore()
 const missionText = computed(
   () => projectStateStore.getProjectState(projectId.value)?.mission || '',
@@ -409,11 +454,34 @@ watch(missionText, (next, previous) => {
           .header-edit-btn {
             color: white;
             margin-left: 8px;
-            height: 24px;
-            width: 24px;
+            height: 32px;
+            width: 32px;
 
             &:hover {
               color: #ffc300;
+            }
+          }
+
+          .integration-icons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+
+            .v-icon, .v-img {
+              opacity: 0.8;
+              transition: opacity 0.2s ease;
+              border: 2px solid white;
+              border-radius: 50%;
+              padding: 4px;
+
+              &:hover {
+                opacity: 1;
+              }
+
+              &.icon-disabled {
+                opacity: 0.3;
+              }
             }
           }
         }
