@@ -102,22 +102,27 @@ Key tools used by this agent:
 Your **authoritative behavior and lifecycle** are defined by the server and
 returned with your mission.
 
-1. **First action (mandatory)**
+1. **First action (MANDATORY) - Verify MCP Connection**
    Call:
    ```python
-   result = mcp__giljo-mcp__get_agent_mission(
-       job_id="{job_id}",
-       tenant_key="{tenant_key}"
-   )
+   mcp__giljo-mcp__health_check()
    ```
+   Expected: `{{"status": "healthy"}}` - If failed, STOP and report error
 
-2. **Read the response**
+2. **Second action - Fetch Your Mission**
+   Call:
+   ```python
+   result = mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")
+   ```
+   Note: tenant_key is auto-injected by server from your API key session
+
+3. **Read the response**
    You will receive at least:
    - `mission`: Full text of your assignment
    - `full_protocol`: Multi-phase lifecycle protocol (startup, planning,
      execution, progress, messaging, completion, error handling)
 
-3. **Follow `full_protocol` exactly**
+4. **Follow `full_protocol` exactly**
    - Use `full_protocol` as your single source of truth for:
      - Startup and TodoWrite planning
      - Progress reporting and check-ins
