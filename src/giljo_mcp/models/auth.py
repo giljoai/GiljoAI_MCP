@@ -222,6 +222,9 @@ class MCPSession(Base):
     api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
     tenant_key = Column(String(36), nullable=False, index=True)
 
+    # SECURITY: User ID for audit trail (Handover 0424 Phase 0)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+
     # Context preservation
     project_id = Column(String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
 
@@ -238,10 +241,12 @@ class MCPSession(Base):
     # Relationships
     api_key = relationship("APIKey", backref="mcp_sessions")
     project = relationship("Project", backref="mcp_sessions")
+    user = relationship("User", backref="mcp_sessions")  # Handover 0424: Audit trail
 
     __table_args__ = (
         Index("idx_mcp_session_api_key", "api_key_id"),
         Index("idx_mcp_session_tenant", "tenant_key"),
+        Index("idx_mcp_session_user", "user_id"),  # Handover 0424: Audit queries
         Index("idx_mcp_session_last_accessed", "last_accessed"),
         Index("idx_mcp_session_expires", "expires_at"),
         # Composite index for session cleanup queries
