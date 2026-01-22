@@ -703,20 +703,15 @@ def _get_mcp_coordination_section() -> str:
     """
     Generate the MCP coordination section to append to all templates.
 
-    This section focuses on MCP tool wiring and bootstrap. Detailed lifecycle
-    behavior (phases, TodoWrite rules, progress cadence, etc.) lives in the
-    server-side protocol returned by get_agent_mission() as `full_protocol`.
+    This section contains ONLY the critical "MCP tools are native calls" warning.
+    All lifecycle behavior (tools, bootstrap, phases) is in server-side `full_protocol`
+    returned by get_agent_mission().
 
     Added in Phase 7 (Handover 0045).
-    Enhanced in Handover 0066/0090/0356.
-    Updated in Handover 0349 to delegate behavior to `full_protocol`.
+    Trimmed in Handover 0431 to remove redundant content covered by full_protocol.
 
     Returns:
         str - MCP coordination section in markdown format
-
-    Note:
-        Uses placeholders (<AGENT_TYPE>, <TENANT_KEY>) that the orchestrator
-        will fill in during mission generation.
     """
     return """## CRITICAL: MCP TOOLS ARE NATIVE TOOL CALLS
 
@@ -727,7 +722,7 @@ MCP tools (prefixed `mcp__giljo-mcp__`) are **NATIVE** tools identical to Read, 
 **CORRECT**: Invoke directly as a tool call
 **WRONG**: curl, HTTP requests, Python SDK, CLI commands, fetch(), requests.post()
 
-Example - to get your mission, call the tool directly:
+Example:
 ```
 Tool: mcp__giljo-mcp__get_agent_mission
 Parameters: {"job_id": "...", "tenant_key": "..."}
@@ -736,135 +731,45 @@ Parameters: {"job_id": "...", "tenant_key": "..."}
 DO NOT wrap in Python, curl, fetch, requests, or any HTTP mechanism.
 The tools are already connected. Just call them.
 
----
-
-## MCP TOOL SUMMARY
-
-You have access to MCP tools for agent coordination. The most important ones:
-
-- `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Get your mission + full_protocol
-- `mcp__giljo-mcp__report_progress(job_id, progress)` – Report incremental progress
-- `mcp__giljo-mcp__get_next_instruction(job_id, agent_display_name, tenant_key)` – Check for instructions
-- `mcp__giljo-mcp__send_message(to_agents, content, project_id)` – Message orchestrator
-- `mcp__giljo-mcp__complete_job(job_id, result)` – Mark work complete
-- `mcp__giljo-mcp__report_error(job_id, error)` – Report blocking errors
-
-### Bootstrap Sequence (BEFORE ANY WORK)
-
-1. Call `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Get your mission and `full_protocol`.
-2. Read `full_protocol` carefully – it defines your lifecycle behavior.
-3. Follow `full_protocol` for planning, progress reporting, messaging, completion, and error handling.
-
-### Tool Call Format
-
-All MCP tool calls use this format (NOT Python, NOT curl, NOT HTTP):
-
-```
-Tool: mcp__giljo-mcp__<tool_name>
-Parameters:
-  param1: value1
-  param2: value2
-```
-
-### IMPORTANT: Agent Self-Navigation
-- You control your own Kanban column position via tool calls
-- Developer CANNOT drag your card - you must update status yourself
-- Always update status at proper checkpoints (start, blocked, completed)
-- Status updates provide real-time visibility to developer and orchestrator
+**Note**: `tenant_key` is auto-injected by the server from your authenticated session.
+Complete tool signatures and lifecycle behavior are in `full_protocol` from `get_agent_mission()`.
 """
 
 
 def _get_orchestrator_mcp_section() -> str:
     """
-    Generate orchestrator-specific MCP tools section (Handover 0090).
+    Generate orchestrator-specific MCP tools section (Handover 0430).
 
-    Orchestrators have access to additional tools for project orchestration,
-    agent spawning, and succession management.
+    Trimmed to only list tools that actually exist in mcp_http.py.
+    Verbose examples removed (available in full_protocol).
 
     Returns:
         str - Orchestrator MCP tools section in markdown format
     """
-    return """## ORCHESTRATOR MCP TOOLS (Handover 0090)
+    return """## ORCHESTRATOR MCP TOOLS
 
-As an orchestrator, you have access to comprehensive MCP tools for project orchestration.
+**Startup & Context**:
+- `health_check()` - Verify MCP connection
+- `get_orchestrator_instructions(job_id, tenant_key)` - Get your mission
+- `fetch_context(product_id, tenant_key, categories, ...)` - Load product/project context
 
-### Phase 1: DISCOVERY & CONTEXT GATHERING
+**Agent Management**:
+- `spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key)` - Create agent
+- `get_workflow_status(project_id, tenant_key)` - Get all agent statuses
 
-**Essential startup tools** (use these first):
+**Communication**:
+- `send_message(to_agents, content, project_id, tenant_key, from_agent)` - Message agent(s)
+- `receive_messages(tenant_key, agent_id, ...)` - Read pending messages
 
-1. `mcp__giljo-mcp__health_check()` - Verify MCP connection
-2. `mcp__giljo-mcp__get_orchestrator_instructions(job_id, tenant_key)` - Get your mission
-3. `mcp__giljo-mcp__discover_context(project_id)` - Analyze product documentation
-4. `mcp__giljo-mcp__get_context_summary(project_id)` - Get high-level overview
+**Succession**:
+- `check_succession_status(job_id, tenant_key)` - Check if succession needed
+- `create_successor_orchestrator(current_job_id, tenant_key, reason)` - Spawn successor
 
-### Phase 2: MISSION PLANNING
+**Project Closeout**:
+- `complete_job(job_id, result, tenant_key)` - Mark job complete
+- `close_project_and_update_memory(project_id, summary, key_outcomes, decisions_made, tenant_key)` - Finalize project
 
-5. `mcp__giljo-mcp__list_templates()` - See available agent types
-6. `mcp__giljo-mcp__get_template(template_name)` - Get template details
-
-### Phase 3: AGENT SPAWNING
-
-7. `mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key)` - Spawn agent
-
-### Phase 4: COORDINATION & MONITORING
-
-**Track progress** (poll every 30-60 seconds):
-
-8. `mcp__giljo-mcp__check_orchestrator_messages()` - Check for agent updates
-9. `mcp__giljo-mcp__get_workflow_status(project_id, tenant_key)` - Get all agent statuses
-10. `mcp__giljo-mcp__list_agents(project_id)` - List project agents
-
-**Direct communication**:
-
-11. `mcp__giljo-mcp__send_message(to_agent, message, priority)` - Message specific agent
-12. `mcp__giljo-mcp__broadcast_message(message, priority)` - Message all agents
-
-### Phase 5: CONTEXT MANAGEMENT
-
-**Check succession status** (when considering handover):
-
-13. `mcp__giljo-mcp__check_succession_status(job_id, tenant_key)` - Check succession readiness
-
-**Manual succession** (via /gil_handover or UI button):
-
-14. `mcp__giljo-mcp__create_successor_orchestrator(current_job_id, tenant_key, reason)` - Spawn successor
-
-### Phase 6: PROJECT CLOSEOUT
-
-15. `mcp__giljo-mcp__complete_orchestrator_job(job_id, closeout_report)` - Mark complete
-16. `mcp__giljo-mcp__retire_agent(agent_id)` - Decommission agents
-
-### Orchestrator Workflow
-
-```
-1. health_check() → Verify connection
-2. get_orchestrator_instructions() → Get mission
-3. discover_context() → Gather context
-4. list_templates() → See agent types
-5. spawn_agent_job() × N → Create agents
-6. Loop:
-   - check_orchestrator_messages()
-   - get_workflow_status()
-   - send_message() (as needed)
-7. When complete:
-   - complete_orchestrator_job()
-   - retire_agent() × N
-```
-
-### Critical Rules for Orchestrators
-
-1. **Always check health** first to verify MCP connection
-2. **Get full context** before planning missions
-3. **Poll for updates** regularly (30-60 second intervals)
-4. **Communicate clearly** with agents using send_message
-5. **Complete cleanly** by retiring all agents when done
-6. **Use manual succession** via /gil_handover when needed
-
-### Succession (Context Handover)
-
-Manual succession is available when you need to hand over to a fresh orchestrator:
-- Use `/gil_handover` slash command or UI "Hand Over" button
-- Successor receives compressed handover summary (<10K tokens)
+All tool signatures and detailed usage in `full_protocol` from `get_orchestrator_instructions()`.
 """
 
 
@@ -884,26 +789,8 @@ def _get_check_in_protocol_section() -> str:
     """
     return """## CHECK-IN PROTOCOL
 
-Report progress at natural workflow breaks using `report_progress()` and check for commands using `receive_messages()`.
-
-**Simplified Progress Reporting** (Handover 0392):
-```python
-report_progress(job_id, tenant_key, todo_items=[
-    {"content": "Task 1", "status": "completed"},
-    {"content": "Task 2", "status": "in_progress"},
-    {"content": "Task 3", "status": "pending"}
-])
-```
-Backend automatically calculates percent, step counts, and current step from your list.
-
-**When to check in:**
-- After completing a todo item
-- After finishing a major phase
-- Before starting a long-running task
-
-**NOT timer-based** - use natural break points in your workflow.
-
-Detailed protocol behavior is in the `full_protocol` field from `get_agent_mission()`.
+Report progress at natural workflow breaks (after todos, after phases, before long tasks).
+NOT timer-based. Full protocol in `full_protocol` from `get_agent_mission()`.
 """
 
 
@@ -937,10 +824,10 @@ If your mission objectives are unclear or require broader project context:
 1. **Use MCP messaging tool**:
    ```
    mcp__giljo-mcp__send_message(
-     to_agent="orchestrator",
-     message="REQUEST_CONTEXT: [specific need]",
-     priority="medium",
-     tenant_key="{tenant_key}"
+     to_agents=["orchestrator"],
+     content="REQUEST_CONTEXT: [specific need]",
+     project_id="{project_id}",
+     from_agent="{agent_id}"
    )
    ```
 
@@ -950,7 +837,7 @@ If your mission objectives are unclear or require broader project context:
    - ❌ Bad: "REQUEST_CONTEXT: Tell me everything about the project"
 
 3. **Wait for orchestrator response**:
-   - Check: `mcp__giljo-mcp__get_next_instruction(job_id="{job_id}", agent_display_name="{agent_display_name}", tenant_key="{tenant_key}")`
+   - Check: `mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")`
    - Orchestrator will provide filtered context excerpt
    - Continue work after receiving clarification
 
@@ -992,10 +879,10 @@ When agents request broader context via send_message():
 **Response Pattern**:
 ```
 mcp__giljo-mcp__send_message(
-  to_agent="{requesting_agent_id}",
-  message="CONTEXT_RESPONSE: [filtered excerpt]",
-  priority="high",
-  tenant_key="{tenant_key}"
+  to_agents=["{requesting_agent_id}"],
+  content="CONTEXT_RESPONSE: [filtered excerpt]",
+  project_id="{project_id}",
+  from_agent="{agent_id}"
 )
 ```
 
@@ -1016,429 +903,51 @@ def _get_agent_messaging_protocol_section() -> str:
     Note:
         Slimmed in Handover 0353 - detailed checkpoint pseudo-code moved to full_protocol.
     """
-    return """## INTER-AGENT MESSAGING PROTOCOL
+    return """## MESSAGING
 
-Communication with orchestrator and team is REQUIRED for complex workflows.
-
-**Core MCP Tools:**
-- `send_message()` - Send messages to agents
-- `receive_messages()` - Check for incoming messages (auto-acknowledges)
-- `list_messages()` - View message history
-
-**Message Conventions:**
-- **BLOCKER:** - Stuck, need help (priority="high")
-- **PROGRESS:** - Milestone completion
-- **COMPLETE:** - Work finished
-- **READY:** - Ready to work
-
-Check messages at workflow checkpoints. Detailed messaging protocol is in the `full_protocol` field from `get_agent_mission()`.
+**Prefixes:** BLOCKER: (urgent), PROGRESS: (update), COMPLETE: (done), READY: (available)
+Use `send_message()` and `receive_messages()`. Full protocol in `full_protocol`.
 """
 
 
 def _get_orchestrator_messaging_protocol_section() -> str:
     """
-    Generate orchestrator-specific messaging protocol section (Handover 0296).
+    Generate orchestrator-specific messaging protocol section.
 
-    Orchestrators have additional responsibilities for team coordination,
-    blocker handling, and dependency management using canonical MCP tools.
+    Trimmed in Handover 0431 - detailed examples moved to full_protocol.
+    Keeps only orchestrator-specific coordination patterns.
 
     Returns:
         str - Orchestrator messaging protocol section in markdown format
     """
-    return """## ORCHESTRATOR MESSAGING PROTOCOL
+    return """## ORCHESTRATOR COORDINATION
 
-As orchestrator, you are the team coordinator. Messaging is your primary coordination mechanism.
+As orchestrator, you coordinate the team using messaging tools.
 
-### CRITICAL REQUIREMENT
+### Coordination Loop (Every 3-5 Actions)
+1. Call `receive_messages()` - sort by priority (high first)
+2. Handle BLOCKER: messages immediately (provide guidance or reassign)
+3. Forward COMPLETE: to dependent agents via DEPENDENCY_MET:
+4. Acknowledge PROGRESS: updates
 
-You MUST implement this communication protocol. Without it:
-- Complex workflows will fail
-- Multi-terminal mode breaks
-- User interaction impossible
-- Agents work in isolation (no coordination)
+### Status Broadcasts (Every 10-15 Actions)
+Use `get_workflow_status()` then broadcast team status summary.
 
-### Messaging Tools Reference
+### Escalation (Agent blocked >5 minutes)
+Send ESCALATION: message to developer/user for intervention.
 
-**Core Tools:**
-- `mcp__giljo-mcp__send_message` - Send messages to agents
-- `mcp__giljo-mcp__receive_messages` - Check for incoming messages (auto-acknowledges)
-- `mcp__giljo-mcp__list_messages` - View message history
-
-**Tool Parameters:**
-```python
-# Send message to specific agents
-mcp__giljo-mcp__send_message(
-    to_agents=["agent_id_1", "agent_id_2"],
-    content="Message content",
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="direct",
-    priority="normal",
-    from_agent="orchestrator"
-)
-
-# Broadcast to all agents
-mcp__giljo-mcp__send_message(
-    to_agents=["all"],
-    content="Team message",
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="broadcast",
-    priority="normal",
-    from_agent="orchestrator"
-)
-
-# Receive messages
-mcp__giljo-mcp__receive_messages(
-    agent_id="<ORCHESTRATOR_ID>",
-    limit=20
-)
-
-```
-
-### Message Priority Handling Matrix
-
-| Content Prefix | From | Priority Level | Required Action | Response Time |
-|----------------|------|----------------|-----------------|---------------|
-| BLOCKER: | Agent | high | Provide guidance or reassign | < 1 minute |
-| QUESTION: | Agent | normal | Answer from mission context | < 2 minutes |
-| PROGRESS: | Agent | normal | Acknowledge, update tracking | < 5 minutes |
-| COMPLETE: | Agent | normal | Verify, notify dependents | < 1 minute |
-| (from developer) | Developer | high | Acknowledge, forward to agents | < 30 seconds |
-
-### PHASE 1: TEAM ASSEMBLY (After Spawning Agents)
-
-**Required Action:**
-
-Send welcome message to establish communication:
-
-```python
-mcp__giljo-mcp__send_message(
-    to_agents=["all"],
-    content="Team assembled. All agents: Check messages before starting work. Report progress after major milestones. Flag blockers immediately using BLOCKER: prefix with high priority. I will monitor and coordinate.",
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="broadcast",
-    priority="normal",
-    from_agent="orchestrator"
-)
-```
-
-**Why**: This establishes that messaging is active and expected.
-
-### PHASE 2: COORDINATION LOOP (Every 3-5 Actions)
-
-**Required Actions:**
-
-1. Check for messages:
-```python
-messages = mcp__giljo-mcp__receive_messages(
-    agent_id="<ORCHESTRATOR_ID>",
-    limit=20
-)
-
-# Sort by priority (high priority first)
-high_priority = [m for m in messages.get("messages", []) if m.get("priority") == "high"]
-normal_priority = [m for m in messages.get("messages", []) if m.get("priority") == "normal"]
-all_messages = high_priority + normal_priority
-```
-
-2. Process by message type:
-
-**BLOCKER Messages (URGENT - Handle First):**
-```python
-for msg in all_messages:
-    content = msg.get("content", "")
-
-    if content.startswith("BLOCKER:"):
-        # Agent is stuck and needs help
-        # RESPOND IMMEDIATELY with guidance
-
-        issue = content.replace("BLOCKER:", "").strip()
-
-        mcp__giljo-mcp__send_message(
-            to_agents=[msg["from_agent"]],
-            content=f"I see your blocker: {issue}. Try [solution]. If that fails, I'll reassign this task.",
-            project_id="<PROJECT_ID>",
-            tenant_key="<TENANT_KEY>",
-            message_type="direct",
-            priority="high",
-            from_agent="orchestrator"
-        )
-
-        # Acknowledge message
-        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
-            message_id=msg["id"]
-        )
-```
-
-**QUESTION Messages:**
-```python
-    elif content.startswith("QUESTION:"):
-        # Agent needs clarification
-        # Provide context from product vision or mission
-
-        question = content.replace("QUESTION:", "").strip()
-
-        mcp__giljo-mcp__send_message(
-            to_agents=[msg["from_agent"]],
-            content=f"Your question about {question}: [answer from mission context]",
-            project_id="<PROJECT_ID>",
-            tenant_key="<TENANT_KEY>",
-            message_type="direct",
-            priority="normal",
-            from_agent="orchestrator"
-        )
-
-        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
-            message_id=msg["id"]
-        )
-```
-
-**PROGRESS Messages:**
-```python
-    elif content.startswith("PROGRESS:"):
-        # Agent reporting milestone
-        # Acknowledge receipt
-
-        milestone = content.replace("PROGRESS:", "").strip()
-
-        mcp__giljo-mcp__send_message(
-            to_agents=[msg["from_agent"]],
-            content=f"Progress noted. Good work on {milestone}.",
-            project_id="<PROJECT_ID>",
-            tenant_key="<TENANT_KEY>",
-            message_type="direct",
-            priority="normal",
-            from_agent="orchestrator"
-        )
-
-        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
-            message_id=msg["id"]
-        )
-```
-
-**COMPLETE Messages:**
-```python
-    elif content.startswith("COMPLETE:"):
-        # Agent finished work
-        # Verify completion, notify dependent agents
-
-        summary = content.replace("COMPLETE:", "").strip()
-
-        # Acknowledge completion
-        mcp__giljo-mcp__send_message(
-            to_agents=[msg["from_agent"]],
-            content="Completion confirmed. Well done.",
-            project_id="<PROJECT_ID>",
-            tenant_key="<TENANT_KEY>",
-            message_type="direct",
-            priority="normal",
-            from_agent="orchestrator"
-        )
-
-        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
-            message_id=msg["id"]
-        )
-
-        # Notify dependent agents
-        # Check workflow for agents waiting on this one
-        dependent_agents = get_dependent_agents(msg["from_agent"])
-
-        for dependent in dependent_agents:
-            mcp__giljo-mcp__send_message(
-                to_agents=[dependent],
-                content=f"DEPENDENCY_MET: {msg['from_agent']} has completed. You may now begin your work.",
-                project_id="<PROJECT_ID>",
-                tenant_key="<TENANT_KEY>",
-                message_type="direct",
-                priority="normal",
-                from_agent="orchestrator"
-            )
-```
-
-**USER/Developer Messages (URGENT - Handle Immediately):**
-```python
-    elif msg.get("from_agent") == "developer":
-        # User/developer sending instructions or corrections
-        # Acknowledge immediately
-
-        mcp__giljo-mcp__send_message(
-            to_agents=["all"],
-            content=f"Received developer message: {content[:100]}... Forwarding to affected agents.",
-            project_id="<PROJECT_ID>",
-            tenant_key="<TENANT_KEY>",
-            message_type="broadcast",
-            priority="high",
-            from_agent="orchestrator"
-        )
-
-        # Messages auto-acknowledged - mcp__giljo-mcp__acknowledge_message removed (
-            message_id=msg["id"]
-        )
-
-        # Forward to agents (determine which agents need this)
-        if "all agents" in content.lower():
-            mcp__giljo-mcp__send_message(
-                to_agents=["all"],
-                content=f"USER REQUEST FOR ALL: {content}. All agents acknowledge and adjust.",
-                project_id="<PROJECT_ID>",
-                tenant_key="<TENANT_KEY>",
-                message_type="broadcast",
-                priority="high",
-                from_agent="orchestrator"
-            )
-        else:
-            # Forward to specific agent based on message content
-            # Extract agent type from message or use context
-            target_agent = extract_target_agent(content)  # Your logic here
-
-            mcp__giljo-mcp__send_message(
-                to_agents=[target_agent],
-                content=f"USER REQUEST: {content}. Please acknowledge and adjust your work.",
-                project_id="<PROJECT_ID>",
-                tenant_key="<TENANT_KEY>",
-                message_type="direct",
-                priority="high",
-                from_agent="orchestrator"
-            )
-```
-
-### PHASE 3: STATUS BROADCASTS (Every 10-15 Actions)
-
-**Optional but Recommended:**
-
-Broadcast team status periodically:
-
-```python
-# Gather workflow status
-workflow_status = mcp__giljo-mcp__get_workflow_status(
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>"
-)
-
-# Create status summary
-status_msg = f"Team status: Active: {workflow_status['active_agents']}, Completed: {workflow_status['completed_agents']}, Progress: {workflow_status['progress_percent']}%"
-
-mcp__giljo-mcp__send_message(
-    to_agents=["all"],
-    content=status_msg,
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="broadcast",
-    priority="low",
-    from_agent="orchestrator"
-)
-```
-
-### PHASE 4: ESCALATION HANDLING
-
-If agent blocked for >5 minutes without resolution:
-
-```python
-# Track blocker timestamps (implement your tracking logic)
-blocker_start_time = track_blocker_time(agent_id)
-
-if time.time() - blocker_start_time > 300:  # 5 minutes
-    mcp__giljo-mcp__send_message(
-        to_agents=["developer"],  # Or send to user via UI
-        content=f"ESCALATION: {agent_id} has been blocked on {issue} for 5+ minutes. Please advise.",
-        project_id="<PROJECT_ID>",
-        tenant_key="<TENANT_KEY>",
-        message_type="system",
-        priority="high",
-        from_agent="orchestrator"
-    )
-```
-
-### Orchestrator Best Practices
-
-**DO:**
-- Check messages every 3-5 actions (not every action)
-- Respond to BLOCKER messages within 1 minute
-- Send welcome message after spawning agents
-- Notify dependent agents when dependencies complete
-- Escalate to user if agent blocked >5 minutes
-- Use to_agents=["all"] for team broadcasts
-- Sort messages by priority (high first)
-
-**DON'T:**
-- Ignore agent messages
-- Let blockers go unresolved
-- Forget to notify dependent agents
-- Overwhelm agents with status broadcasts (max every 15 actions)
-- Use string concatenation for to_agents (always use list)
-
-### Example Coordination Flow
-
-```python
-# 1. Spawn all agents (using spawn_agent_job)
-
-# 2. Send welcome message
-mcp__giljo-mcp__send_message(
-    to_agents=["all"],
-    content="Team assembled. Check messages before starting. Report blockers immediately.",
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="broadcast",
-    priority="normal",
-    from_agent="orchestrator"
-)
-
-# 3. Enter coordination loop
-action_count = 0
-while not all_agents_complete():
-    # Do orchestrator work (monitoring, planning, etc.)
-    action_count += 1
-
-    # Check messages every 3-5 actions
-    if action_count % 5 == 0:
-        messages = mcp__giljo-mcp__receive_messages(
-            agent_id="<ORCHESTRATOR_ID>",
-            limit=20
-        )
-
-        # Sort by priority
-        high_priority = [m for m in messages.get("messages", [])
-                        if m.get("priority") == "high"]
-        normal_priority = [m for m in messages.get("messages", [])
-                          if m.get("priority") == "normal"]
-
-        # Process high priority first
-        for msg in high_priority + normal_priority:
-            process_message(msg)  # Your message handling logic
-
-    # Send status update every 15 actions
-    if action_count % 15 == 0:
-        send_status_update()
-
-# 4. When all agents complete
-mcp__giljo-mcp__send_message(
-    to_agents=["all"],
-    content="COMPLETE: All agents finished. Project complete. Great work team!",
-    project_id="<PROJECT_ID>",
-    tenant_key="<TENANT_KEY>",
-    message_type="broadcast",
-    priority="normal",
-    from_agent="orchestrator"
-)
-```
-
-### Message Content Conventions
-
-Use semantic prefixes for clarity:
-
-- **BLOCKER:** - Agent stuck, needs immediate help
-- **QUESTION:** - Agent needs clarification
-- **PROGRESS:** - Milestone completion update
+### Message Prefixes
+- **BLOCKER:** - Urgent, needs immediate help
+- **QUESTION:** - Needs clarification
+- **PROGRESS:** - Milestone update
 - **COMPLETE:** - Work finished
-- **READY:** - Agent ready to work
-- **DEPENDENCY_MET:** - Dependencies satisfied
-- **ESCALATION:** - Serious issue requiring user attention
+- **DEPENDENCY_MET:** - Unblock dependent agents
+- **ESCALATION:** - Requires user attention
 
-### Priority Usage Guidelines
-
+### Priority Levels
 - **high** - Blockers, developer messages, urgent coordination
-- **normal** - Progress updates, questions, completion notices
-- **low** - Status broadcasts, informational updates
+- **normal** - Progress, questions, completions
+- **low** - Status broadcasts, informational
+
+Tool signatures and full protocol in `full_protocol` from `get_agent_mission()`.
 """
