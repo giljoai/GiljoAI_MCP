@@ -520,23 +520,24 @@ async def handle_tools_list(
         # Handover 0083: core /gil_* commands
         # NOTE: gil_activate, gil_launch, gil_handover removed (0388, 0391) - users perform these via web UI
         # gil_handover removed in 0391: REST API endpoint handles succession, MCP tool had tenant_key bug
-        # Unified Context Tool (Handover 0350a)
+        # Unified Context Tool (Handover 0350a, updated 0430)
         {
             "name": "fetch_context",
-            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300). Use apply_user_config=true to respect user's saved settings. Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
+            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), self_identity (agent template content). Use apply_user_config=true to respect user's saved settings. Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "product_id": {"type": "string", "description": "Product UUID"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                     "project_id": {"type": "string", "description": "Project UUID (required for 'project' category)"},
+                    "agent_name": {"type": "string", "description": "Agent template name (e.g., 'orchestrator-coordinator'). Required when category is 'self_identity'."},
                     "categories": {
                         "type": "array",
                         "items": {
                             "type": "string",
                             "enum": ["all", "product_core", "vision_documents", "tech_stack",
                                      "architecture", "testing", "memory_360", "git_history",
-                                     "agent_templates", "project"]
+                                     "agent_templates", "project", "self_identity"]
                         },
                         "description": "Categories to fetch. ['all'] for everything.",
                         "default": ["all"]

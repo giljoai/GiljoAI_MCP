@@ -1434,13 +1434,15 @@ class ToolAccessor:
         categories: list[str] | None = None,
         depth_config: dict[str, Any] | None = None,
         apply_user_config: bool = True,
-        format: str = "structured"
+        format: str = "structured",
+        agent_name: str | None = None  # Handover 0430: Required for self_identity category
     ) -> dict[str, Any]:
         """
         Unified context fetcher - single entry point for all context.
 
         Handover 0350a: Replaces 9 individual tools with 1 unified tool.
         Saves ~720 tokens in MCP schema overhead.
+        Handover 0430: Added agent_name parameter for self_identity category.
 
         Args:
             product_id: Product UUID
@@ -1450,6 +1452,7 @@ class ToolAccessor:
             depth_config: Override depth settings per category
             apply_user_config: Apply user's saved priority/depth (default: True)
             format: "structured" (nested) or "flat" (merged)
+            agent_name: Agent template name (required for 'self_identity' category)
 
         Returns:
             Dict with context data organized by category
@@ -1464,6 +1467,7 @@ class ToolAccessor:
             depth_config=depth_config,
             apply_user_config=apply_user_config,
             format=format,
+            agent_name=agent_name,  # Handover 0430
             db_manager=self.db_manager
         )
 

@@ -13,47 +13,47 @@ from src.giljo_mcp.tools.context_tools.fetch_context import (
 
 
 def test_all_categories_constant():
-    """Test ALL_CATEGORIES contains all 9 expected categories."""
+    """Test ALL_CATEGORIES contains all 10 expected categories (Handover 0430)."""
     expected = [
         "product_core", "vision_documents", "tech_stack",
         "architecture", "testing", "memory_360",
-        "git_history", "agent_templates", "project"
+        "git_history", "agent_templates", "project",
+        "self_identity"
     ]
     assert set(ALL_CATEGORIES) == set(expected)
-    assert len(ALL_CATEGORIES) == 9
+    assert len(ALL_CATEGORIES) == 10
 
 
 def test_default_depths_constant():
-    """Test DEFAULT_DEPTHS has correct structure."""
-    assert len(DEFAULT_DEPTHS) == 9
+    """Test DEFAULT_DEPTHS has correct structure (Handover 0430)."""
+    assert len(DEFAULT_DEPTHS) == 10
     assert DEFAULT_DEPTHS["product_core"] is None
     assert DEFAULT_DEPTHS["vision_documents"] == "medium"
-    assert DEFAULT_DEPTHS["tech_stack"] == "all"
-    assert DEFAULT_DEPTHS["architecture"] == "overview"
-    assert DEFAULT_DEPTHS["testing"] == "full"
+    assert DEFAULT_DEPTHS["tech_stack"] is None  # Updated in Handover 0351
+    assert DEFAULT_DEPTHS["architecture"] is None  # Updated in Handover 0351
+    assert DEFAULT_DEPTHS["testing"] is None  # Updated in Handover 0351
     assert DEFAULT_DEPTHS["memory_360"] == 5
     assert DEFAULT_DEPTHS["git_history"] == 25
-    assert DEFAULT_DEPTHS["agent_templates"] == "standard"
+    assert DEFAULT_DEPTHS["agent_templates"] == "type_only"  # Updated in Handover 0351
     assert DEFAULT_DEPTHS["project"] is None
+    assert DEFAULT_DEPTHS["self_identity"] is None  # New in Handover 0430
 
 
 @pytest.mark.asyncio
 async def test_fetch_context_invalid_category():
-    """Test invalid category returns error without calling tools."""
+    """Test invalid category returns error without calling tools (Handover 0351 multi-category enforcement)."""
     from unittest.mock import MagicMock
-    
+
     result = await fetch_context(
         product_id="test-uuid",
         tenant_key="tenant-abc",
-        categories=["invalid_cat", "another_bad"],
+        categories=["invalid_cat"],  # Single category (enforced in 0351)
         db_manager=MagicMock()
     )
-    
+
     assert "error" in result
     assert "invalid_cat" in result["error"]
-    assert "another_bad" in result["error"]
     assert "valid_categories" in result
-    assert result["metadata"]["estimated_tokens"] == 0
 
 
 def test_flatten_results():

@@ -1059,8 +1059,12 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
                 mcp_url=mcp_url,
             )
 
+        # Extract agent_name from execution for self_identity fetch (Handover 0430 Phase 4)
+        agent_name = execution.agent_name if execution else "orchestrator"
+
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
         # Handover 0424: Added health_check as mandatory first step
+        # Handover 0430 Phase 4: Added self_identity fetch step
         prompt = f"""You are the ORCHESTRATOR for project "{project.name}"
 
 YOUR IDENTITY (use these in all MCP calls):
@@ -1076,6 +1080,8 @@ START NOW:
    → Expected: {{"status": "healthy"}} - If failed, STOP and report error
 2. Fetch protocol: mcp__giljo-mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
    → Response includes orchestrator_protocol with your complete 5-chapter workflow guide
+3. Fetch your identity: mcp__giljo-mcp__fetch_context(categories=["self_identity"], agent_name="{agent_name}")
+   → Retrieves your behavioral guidance, success criteria, and protocol instructions from the template system
 """
 
         return prompt
