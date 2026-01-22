@@ -787,14 +787,25 @@ class MessageService:
                     # Use broadcast_message_acknowledged for real-time counter updates
                     if self._websocket_manager:
                         try:
+                            # Fetch updated counter values after commit (Handover 0425 fix)
+                            counter_stats = await self._repo.get_counter_stats(
+                                session=session,
+                                agent_id=agent_id,
+                                tenant_key=tenant_key,
+                            )
+                            waiting_count = counter_stats["waiting"] if counter_stats else 0
+                            read_count = counter_stats["read"] if counter_stats else 0
+
                             await self._websocket_manager.broadcast_message_acknowledged(
                                 message_id=str(messages[0].id) if messages else "",
                                 agent_id=agent_id,
                                 tenant_key=tenant_key,
                                 project_id=str(job.project_id),
                                 message_ids=[str(msg.id) for msg in messages],
+                                waiting_count=waiting_count,
+                                read_count=read_count,
                             )
-                            self._logger.info(f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages")
+                            self._logger.info(f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})")
                         except Exception as e:
                             self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 

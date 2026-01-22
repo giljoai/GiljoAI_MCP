@@ -33,7 +33,7 @@
 
     <!-- Bordered Content Box (tabs connect to this) -->
     <div class="bordered-tabs-content">
-      <!-- Action Buttons Row (centered) - only show on Launch tab -->
+      <!-- Action Buttons Row (centered) - Launch tab buttons -->
       <div v-if="activeTab === 'launch'" class="action-buttons-row">
         <v-btn
           class="stage-button"
@@ -59,10 +59,11 @@
         >
           Launch Jobs
         </v-btn>
+      </div>
 
-        <!-- Close Out Project Button (Handover 0361) -->
+      <!-- Close Out Project Button Row (Handover 0361, 0425 - Jobs tab only when all complete) -->
+      <div v-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
         <v-btn
-          v-if="showCloseoutButton"
           class="closeout-btn"
           color="yellow-darken-2"
           variant="flat"
@@ -328,16 +329,18 @@ const hasActiveOrchestrator = computed(() => {
 /**
  * Computed: Show closeout button when all agents complete and orchestrator is done
  * Handover 0361: Moved from JobsTab.vue to header for persistent visibility
+ * Handover 0425: Accept both 'complete' and 'completed' status values
  */
 const showCloseoutButton = computed(() => {
   const jobs = sortedJobs.value || []
   if (!jobs.length) return false
 
-  const allComplete = jobs.every((job) => job.status === 'complete')
+  const isComplete = (status) => status === 'complete' || status === 'completed'
+  const allComplete = jobs.every((job) => isComplete(job.status))
   if (!allComplete) return false
 
   const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
-  return Boolean(orchestrator && orchestrator.status === 'complete')
+  return Boolean(orchestrator && isComplete(orchestrator.status))
 })
 
 function showError(message) {
