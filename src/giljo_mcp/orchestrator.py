@@ -320,7 +320,7 @@ class ProjectOrchestrator:
         """Send a welcome/directive message to all active agent jobs in a project.
 
         Uses the per-job JSONB message queue so agents can retrieve via
-        get_next_instruction/receive_messages.
+        receive_messages().
 
         Returns the number of messages sent.
         """
@@ -667,17 +667,15 @@ report_error(
 )
 ```
 
-5. **Get Next Instruction** (Check for orchestrator messages):
+5. **Receive Messages** (Check for orchestrator messages):
 ```
-get_next_instruction(
-    job_id="<your-job-id>",
-    agent_display_name="{agent_role}",
-    tenant_key="{tenant_key}"
+receive_messages(
+    agent_id="<your-agent-id>"
 )
 ```
 
 ### Tenant Isolation
-All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant isolation.
+The `tenant_key` is auto-injected by the server from your authenticated session.
 """
 
         # Handover 0277: Optionally append simplified Serena MCP notice when enabled
