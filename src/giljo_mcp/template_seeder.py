@@ -736,43 +736,6 @@ Complete tool signatures and lifecycle behavior are in `full_protocol` from `get
 """
 
 
-def _get_orchestrator_mcp_section() -> str:
-    """
-    Generate orchestrator-specific MCP tools section (Handover 0430).
-
-    Trimmed to only list tools that actually exist in mcp_http.py.
-    Verbose examples removed (available in full_protocol).
-
-    Returns:
-        str - Orchestrator MCP tools section in markdown format
-    """
-    return """## ORCHESTRATOR MCP TOOLS
-
-**Startup & Context**:
-- `health_check()` - Verify MCP connection
-- `get_orchestrator_instructions(job_id, tenant_key)` - Get your mission
-- `fetch_context(product_id, tenant_key, categories, ...)` - Load product/project context
-
-**Agent Management**:
-- `spawn_agent_job(agent_display_name, agent_name, mission, project_id, tenant_key)` - Create agent
-- `get_workflow_status(project_id, tenant_key)` - Get all agent statuses
-
-**Communication**:
-- `send_message(to_agents, content, project_id, tenant_key, from_agent)` - Message agent(s)
-- `receive_messages(tenant_key, agent_id, ...)` - Read pending messages
-
-**Succession**:
-- `check_succession_status(job_id, tenant_key)` - Check if succession needed
-- `create_successor_orchestrator(current_job_id, tenant_key, reason)` - Spawn successor
-
-**Project Closeout**:
-- `complete_job(job_id, result, tenant_key)` - Mark job complete
-- `close_project_and_update_memory(project_id, summary, key_outcomes, decisions_made, tenant_key)` - Finalize project
-
-All tool signatures and detailed usage in `full_protocol` from `get_orchestrator_instructions()`.
-"""
-
-
 def _get_check_in_protocol_section() -> str:
     """
     Generate the Check-In Protocol section for agent monitoring (Handover 0107).

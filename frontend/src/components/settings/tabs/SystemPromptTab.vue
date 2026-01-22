@@ -43,6 +43,7 @@
         label="Orchestrator Prompt"
         class="mono-textarea"
         rows="18"
+        max-rows="30"
         auto-grow
         variant="outlined"
         spellcheck="false"
