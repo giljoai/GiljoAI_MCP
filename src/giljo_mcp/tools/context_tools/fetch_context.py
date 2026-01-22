@@ -33,6 +33,7 @@ from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
 from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
 from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
 from src.giljo_mcp.tools.context_tools.get_project import get_project
+from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 
 logger = structlog.get_logger(__name__)
 
@@ -47,6 +48,7 @@ CATEGORY_TOOLS = {
     "git_history": get_git_history,
     "agent_templates": get_agent_templates,
     "project": get_project,
+    "self_identity": get_self_identity,
 }
 
 # Default depth settings per category
@@ -60,6 +62,7 @@ DEFAULT_DEPTHS = {
     "git_history": 25,           # commits
     "agent_templates": "type_only",  # Renamed from "standard" (Handover 0351)
     "project": None,             # No depth param
+    "self_identity": None,       # No depth param (Handover 0430)
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -73,6 +76,7 @@ async def fetch_context(
     depth_config: Optional[Dict[str, Any]] = None,
     apply_user_config: bool = True,
     format: str = "structured",
+    agent_name: Optional[str] = None,
     db_manager: Optional[DatabaseManager] = None,
 ) -> Dict[str, Any]:
     """
@@ -81,17 +85,21 @@ async def fetch_context(
     Handover 0350a: Single MCP tool that replaces 9 individual tools,
     saving ~720 tokens in MCP schema overhead.
 
+    Handover 0430: Added self_identity category for agent self-awareness.
+
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
         project_id: Optional project UUID (required for 'project' category)
         categories: List of categories to fetch, or ["all"] for all categories
                    Valid: product_core, vision_documents, tech_stack, architecture,
-                          testing, memory_360, git_history, agent_templates, project
+                          testing, memory_360, git_history, agent_templates, project,
+                          self_identity
         depth_config: Override depth settings per category
                      Example: {"vision_documents": "light", "agent_templates": "minimal"}
         apply_user_config: Apply user's saved priority/depth settings (default: True)
         format: Response format - "structured" (nested by category) or "flat" (merged)
+        agent_name: Agent template name (required for 'self_identity' category)
         db_manager: Database manager instance
 
     Returns:
@@ -125,6 +133,7 @@ async def fetch_context(
         - git_history: 500-5K tokens (commits: 10/25/50/100)
         - agent_templates: 400-2.4K tokens (detail: minimal/standard/full)
         - project: ~300 tokens
+        - self_identity: ~1-3K tokens (Handover 0430)
 
     Example:
         # Fetch all context with defaults
@@ -148,7 +157,8 @@ async def fetch_context(
         project_id=project_id,
         categories=categories,
         apply_user_config=apply_user_config,
-        format=format
+        format=format,
+        agent_name=agent_name
     )
 
     # Handover 0351: ENFORCE single-category calls (SaaS security)
@@ -218,6 +228,7 @@ async def fetch_context(
             tenant_key=tenant_key,
             project_id=project_id,
             depth=effective_depths.get(category),
+            agent_name=agent_name,
             db_manager=db_manager
         )
         data = result.get("data", {})
@@ -263,6 +274,7 @@ async def _fetch_category(
     tenant_key: str,
     project_id: Optional[str],
     depth: Any,
+    agent_name: Optional[str],
     db_manager: DatabaseManager,
 ) -> Dict[str, Any]:
     """
@@ -288,6 +300,20 @@ async def _fetch_category(
         kwargs["project_id"] = project_id
         kwargs["tenant_key"] = tenant_key
         # No depth param for project
+
+    elif category == "self_identity":
+        if not agent_name:
+            logger.warning("self_identity_category_missing_agent_name")
+            return {
+                "source": "self_identity",
+                "data": {},
+                "metadata": {
+                    "error": "agent_name required for 'self_identity' category"
+                }
+            }
+        kwargs["agent_name"] = agent_name
+        kwargs["tenant_key"] = tenant_key
+        # No depth param for self_identity
 
     elif category == "agent_templates":
         kwargs["product_id"] = product_id
