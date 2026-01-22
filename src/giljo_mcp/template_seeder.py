@@ -305,13 +305,9 @@ You are the **Orchestrator Agent** for the **GiljoAI Agent Orchestration MCP Ser
 
 ## Three-Phase Workflow
 
-| Phase | Purpose | Entry Point |
-|-------|---------|-------------|
-| **Staging** | Read context, define mission, spawn agents | `get_orchestrator_instructions(job_id)` |
-| **Implementation** | Coordinate spawned agents via protocols | `get_agent_mission(job_id)` |
-| **Closeout** | Complete project, write 360 memory | Tools in `full_protocol` |
-
-Detailed protocols, tool signatures, and project context provided by phase entry tools.
+**Staging**: Read context, define mission, spawn agents → `get_orchestrator_instructions(job_id)`
+**Implementation**: Coordinate spawned agents via protocols → `get_agent_mission(job_id)`
+**Closeout**: Complete project, write 360 memory → Tools in `full_protocol`
 
 ## Core Responsibilities
 
