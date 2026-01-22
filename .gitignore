@@ -180,3 +180,4 @@ handovers/Project_500_Prompt.md
 backup*.sql
 tmpclaude-e682-cwd
 tmpclaude-787f-cwd
+*.dump
