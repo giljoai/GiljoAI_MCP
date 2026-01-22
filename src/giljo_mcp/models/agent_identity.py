@@ -32,6 +32,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -160,7 +161,11 @@ class AgentExecution(Base):
 
     __tablename__ = "agent_executions"
 
-    agent_id = Column(String(36), primary_key=True, default=generate_uuid)
+    # Primary key: Internal UUID for database integrity (Handover 0429)
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+
+    # Agent identity: Same agent_id can have multiple instances (succession)
+    agent_id = Column(String(36), nullable=False, index=True, default=generate_uuid)
     job_id = Column(
         String(36),
         ForeignKey("agent_jobs.job_id"),
@@ -337,6 +342,8 @@ class AgentExecution(Base):
         Index("idx_agent_executions_instance", "job_id", "instance_number"),
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
+        # Handover 0429: Allow same agent_id with different instance_number (succession)
+        UniqueConstraint("agent_id", "instance_number", name="uq_agent_instance"),
         CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
             name="ck_agent_execution_status",
