@@ -86,7 +86,7 @@ def generate_yaml_frontmatter(
     ---
     name: orchestrator
     description: Orchestrator - role agent
-    tools: ["mcp__giljo_mcp__*"]
+    tools: ["mcp__giljo-mcp__*"]
     model: sonnet
     ---
 
@@ -105,7 +105,7 @@ def generate_yaml_frontmatter(
         ---
         name: orchestrator
         description: Orchestrator - role agent
-        tools: ["mcp__giljo_mcp__*"]
+        tools: ["mcp__giljo-mcp__*"]
         model: sonnet
         ---
     """
@@ -132,7 +132,7 @@ def generate_yaml_frontmatter(
         "---",
         f"name: {name}",
         f"description: {description}",
-        'tools: ["mcp__giljo_mcp__*"]',
+        'tools: ["mcp__giljo-mcp__*"]',
         f"model: {model}",
         "---",
     ]
