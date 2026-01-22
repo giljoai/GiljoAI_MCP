@@ -90,6 +90,14 @@ describe('LaunchSuccessorDialog.vue', () => {
       expect(wrapper.text()).toContain('This will create a new orchestrator instance (2)')
     })
 
+    it('displays warning alert about agent completion', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.text()).toContain('Ensure all agents have completed their work before proceeding')
+      expect(wrapper.text()).toContain(
+        'Messages sent to this orchestrator will be received by the successor',
+      )
+    })
+
     it('displays succession reason dropdown', () => {
       const wrapper = createWrapper()
       const select = wrapper.findComponent({ name: 'VSelect' })

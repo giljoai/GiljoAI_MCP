@@ -32,56 +32,8 @@ from src.giljo_mcp.orchestrator_succession import (
 # ============================================================================
 # Fixtures
 # ============================================================================
-
-
-@pytest.fixture
-def db_manager():
-    """Provide DatabaseManager instance."""
-    return DatabaseManager()
-
-
-@pytest.fixture
-def tenant_key():
-    """Provide consistent tenant key for testing."""
-    return "test-tenant-" + str(uuid4())
-
-
-@pytest.fixture
-def session(db_manager):
-    """Provide database session for testing."""
-    with db_manager.get_session() as session:
-        yield session
-
-
-@pytest.fixture
-def orchestrator_job(session: Session, tenant_key: str):
-    """Create a test orchestrator job."""
-    job = AgentExecution(
-        tenant_key=tenant_key,
-        job_id=str(uuid4()),
-        agent_display_name="orchestrator",
-        mission="Test orchestrator mission",
-        status="working",
-        instance_number=1,
-        context_used=0,
-        context_budget=150000,
-        spawned_by=None,
-        context_chunks=[],
-        messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
-    )
-    session.add(job)
-    session.commit()
-    session.refresh(job)
-    return job
-
-
-@pytest.fixture
-def succession_manager(db_manager, tenant_key):
-    """Provide OrchestratorSuccessionManager instance."""
-    with db_manager.get_session() as session:
-        yield OrchestratorSuccessionManager(session, tenant_key)
+# NOTE: Most fixtures now imported from conftest.py (db_session, test_tenant_key, etc.)
+# Keeping only succession-specific fixtures here
 
 
 # ============================================================================
@@ -929,3 +881,331 @@ def test_unresolved_blockers_in_handover(
     # Verify unresolved blockers included
     assert "unresolved_blockers" in summary
     # Implementation may extract blockers from messages
+
+
+# ============================================================================
+# Unit Tests: Handover 0429 - Same Agent ID Across Instances
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_composite_uniqueness_allows_same_agent_id(
+    db_session,
+    test_tenant_key,
+    test_project_id,
+):
+    """Two executions with same agent_id but different instance_number should be allowed."""
+    from src.giljo_mcp.models.agent_identity import AgentJob
+
+    agent_id = str(uuid4())
+
+    # Create AgentJob first (required FK)
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        project_id=test_project_id,
+        job_type="orchestrator",
+        mission="Test mission",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    # Create first execution (instance 1)
+    exec1 = AgentExecution(
+        agent_id=agent_id,
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        instance_number=1,
+        status="complete",
+    )
+    db_session.add(exec1)
+    await db_session.commit()
+
+    # Create second execution (SAME agent_id, different instance)
+    exec2 = AgentExecution(
+        agent_id=agent_id,  # SAME agent_id
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        instance_number=2,  # Different instance
+        status="waiting",
+    )
+    db_session.add(exec2)
+    await db_session.commit()  # Should NOT raise
+
+    # Verify both exist
+    result = await db_session.execute(
+        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+    )
+    executions = result.scalars().all()
+    assert len(executions) == 2
+    assert {e.instance_number for e in executions} == {1, 2}
+
+
+@pytest.mark.asyncio
+async def test_create_successor_preserves_agent_id(
+    db_session,
+    test_tenant_key,
+    test_project_id,
+):
+    """Successor should have SAME agent_id as predecessor."""
+    from src.giljo_mcp.models.agent_identity import AgentJob
+
+    # Create AgentJob first
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        project_id=test_project_id,
+        job_type="orchestrator",
+        mission="Test mission",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    manager = OrchestratorSuccessionManager(db_session, test_tenant_key)
+
+    # Create initial execution
+    agent_id = str(uuid4())
+    current = AgentExecution(
+        agent_id=agent_id,
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        instance_number=1,
+        status="working",
+        context_used=135000,
+        context_budget=150000,
+    )
+    db_session.add(current)
+    await db_session.commit()
+    await db_session.refresh(current)
+
+    # Create successor
+    successor = await manager.create_successor(current, reason="manual")
+
+    # CRITICAL: Same agent_id
+    assert successor.agent_id == current.agent_id == agent_id
+    # Different instance
+    assert successor.instance_number == 2
+    assert current.instance_number == 1
+
+
+@pytest.mark.asyncio
+async def test_query_returns_latest_instance(
+    db_session,
+    test_tenant_key,
+    test_project_id,
+):
+    """Query by agent_id should return highest instance_number."""
+    from src.giljo_mcp.models.agent_identity import AgentJob
+
+    agent_id = str(uuid4())
+
+    # Create AgentJob first
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        project_id=test_project_id,
+        job_type="orchestrator",
+        mission="Test mission",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    # Create multiple instances with same agent_id
+    exec1 = AgentExecution(
+        agent_id=agent_id,
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        instance_number=1,
+        status="complete",
+    )
+    exec2 = AgentExecution(
+        agent_id=agent_id,
+        job_id=job.job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        instance_number=2,
+        status="working",
+    )
+    db_session.add_all([exec1, exec2])
+    await db_session.commit()
+
+    # Query should return instance 2 (latest)
+    stmt = (
+        select(AgentExecution)
+        .where(AgentExecution.agent_id == agent_id)
+        .order_by(AgentExecution.instance_number.desc())
+        .limit(1)
+    )
+    result = await db_session.execute(stmt)
+    execution = result.scalar_one()
+
+    assert execution.instance_number == 2
+    assert execution.status == "working"
+
+
+@pytest.mark.asyncio
+async def test_handover_summary_includes_agent_states(db_session):
+    """
+    Handover summary should include statuses of spawned agents.
+
+    Handover 0429 Phase 5: When generating handover summary for orchestrator
+    succession, include states of all spawned agents (implementer, tester, etc.)
+    to help successor understand current project status.
+
+    GIVEN: Orchestrator with spawned agents in various states
+    WHEN: generate_handover_summary() is called
+    THEN: Summary includes agent states with progress and status
+
+    TDD Status: RED ❌ - Test created, implementation pending
+    """
+    from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+    from src.giljo_mcp.models import Product, Project
+    from src.giljo_mcp.tenant import TenantManager
+
+    tenant_key = TenantManager.generate_tenant_key()
+    product_id = str(uuid4())
+    project_id = str(uuid4())
+
+    # Create product and project (required for foreign key constraints)
+    product = Product(
+        id=product_id,
+        tenant_key=tenant_key,
+        name="Test Product",
+        description="Product for handover summary tests",
+    )
+    project = Project(
+        id=project_id,
+        tenant_key=tenant_key,
+        product_id=product_id,
+        name="Test Project",
+        description="Project for handover summary tests",
+        mission="Test project mission for handover summary tests",
+        status="active",
+    )
+    db_session.add_all([product, project])
+
+    # Create orchestrator
+    orch_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="orchestrator",
+        mission="Orchestrate test project",
+        status="active",
+    )
+    orch = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=orch_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="orchestrator",
+        agent_name="orchestrator",
+        instance_number=1,
+        status="working",
+        context_budget=150000,
+        context_used=135000,
+    )
+
+    # Create spawned agent 1 (active)
+    agent1_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="implementer",
+        mission="Implement feature X",
+        status="active",
+    )
+    agent1 = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=agent1_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        agent_name="implementer",
+        spawned_by=orch.agent_id,
+        status="working",
+        progress=50,
+    )
+
+    # Create spawned agent 2 (completed)
+    agent2_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="tester",
+        mission="Test feature X",
+        status="completed",
+    )
+    agent2 = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=agent2_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="tester",
+        agent_name="tester",
+        spawned_by=orch.agent_id,
+        status="complete",
+        progress=100,
+    )
+
+    # Create spawned agent 3 (blocked)
+    agent3_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="analyzer",
+        mission="Analyze architecture",
+        status="active",
+    )
+    agent3 = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=agent3_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="analyzer",
+        agent_name="analyzer",
+        spawned_by=orch.agent_id,
+        status="blocked",
+        progress=25,
+    )
+
+    db_session.add_all([orch_job, orch, agent1_job, agent1, agent2_job, agent2, agent3_job, agent3])
+    await db_session.commit()
+
+    manager = OrchestratorSuccessionManager(db_session, tenant_key)
+    summary = await manager.generate_handover_summary(orch)
+
+    # Summary should contain agent states section
+    assert "agent_states" in summary or "spawned_agents" in summary, \
+        "Summary should include agent states field"
+
+    # Get agent states (check both possible field names)
+    agent_states = summary.get("agent_states") or summary.get("spawned_agents")
+    assert agent_states is not None, "Agent states should not be None"
+    assert isinstance(agent_states, list), "Agent states should be a list"
+    assert len(agent_states) == 3, "Should include all 3 spawned agents"
+
+    # Verify agent details are included
+    agent_states_by_type = {a["agent_display_name"]: a for a in agent_states}
+
+    assert "implementer" in agent_states_by_type, "Should include implementer"
+    assert agent_states_by_type["implementer"]["status"] == "working", \
+        "Implementer status should be 'working'"
+    assert agent_states_by_type["implementer"]["progress"] == 50, \
+        "Implementer progress should be 50"
+
+    assert "tester" in agent_states_by_type, "Should include tester"
+    assert agent_states_by_type["tester"]["status"] == "complete", \
+        "Tester status should be 'complete'"
+    assert agent_states_by_type["tester"]["progress"] == 100, \
+        "Tester progress should be 100"
+
+    assert "analyzer" in agent_states_by_type, "Should include analyzer"
+    assert agent_states_by_type["analyzer"]["status"] == "blocked", \
+        "Analyzer status should be 'blocked'"
+    assert agent_states_by_type["analyzer"]["progress"] == 25, \
+        "Analyzer progress should be 25"

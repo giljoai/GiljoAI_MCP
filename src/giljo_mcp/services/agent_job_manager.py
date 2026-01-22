@@ -224,14 +224,14 @@ class AgentJobManager:
         """
         try:
             async with self._get_session() as session:
-                # Get execution
+                # Get execution (Handover 0429: get latest instance)
                 result = await session.execute(
                     select(AgentExecution).where(
                         and_(
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    )
+                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -297,13 +297,14 @@ class AgentJobManager:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             async with self._get_session() as session:
+                # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
                     select(AgentExecution).where(
                         and_(
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    )
+                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -427,13 +428,14 @@ class AgentJobManager:
         """
         try:
             async with self._get_session() as session:
+                # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
                     select(AgentExecution).where(
                         and_(
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    )
+                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
                 )
                 return result.scalar_one_or_none()
 
