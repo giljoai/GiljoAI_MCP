@@ -949,9 +949,10 @@ class ProjectService:
                 self._logger.info(f"Activated project {project_id}")
 
                 # Broadcast WebSocket event if manager provided
-                if websocket_manager:
+                ws_mgr = websocket_manager or self._websocket_manager
+                if ws_mgr:
                     try:
-                        await websocket_manager.broadcast_project_update(
+                        await ws_mgr.broadcast_project_update(
                             project_id=project.id,
                             update_type="status_changed",
                             project_data={
@@ -962,6 +963,14 @@ class ProjectService:
                         )
                     except Exception as ws_error:
                         self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
+
+                # Handover 0431: Create orchestrator fixture on project activation
+                # This ensures orchestrator appears in UI before "Stage Project" is clicked
+                orchestrator_data = await self._ensure_orchestrator_fixture(
+                    session=session,
+                    project=project,
+                    websocket_manager=ws_mgr,
+                )
 
                 # Build response using ProjectResponse schema structure
                 return {
@@ -984,6 +993,139 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to activate project: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _ensure_orchestrator_fixture(
+        self,
+        session: AsyncSession,
+        project: Project,
+        websocket_manager: Optional[Any] = None,
+    ) -> Optional[dict[str, Any]]:
+        """
+        Ensure an orchestrator fixture exists for the activated project (Handover 0431).
+
+        Creates orchestrator AgentJob + AgentExecution as a "fixture" that appears
+        in the UI before the user clicks "Stage Project". This indicates to the user
+        that an agent is ready to stage.
+
+        The orchestrator is created with status='waiting' and no mission yet.
+        When user clicks "Stage Project", the staging endpoint will reuse this
+        existing orchestrator and generate the staging prompt.
+
+        Args:
+            session: Active database session
+            project: The project being activated
+            websocket_manager: Optional WebSocket manager for real-time UI updates
+
+        Returns:
+            Dict with orchestrator job_id and agent_id if created, None if already exists
+        """
+        tenant_key = self.tenant_manager.get_current_tenant()
+
+        # Check if orchestrator already exists for this project
+        existing_stmt = (
+            select(AgentExecution)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentJob.project_id == project.id,
+                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.status.in_(["waiting", "working"]),
+            )
+        )
+        existing_result = await session.execute(existing_stmt)
+        existing = existing_result.scalar_one_or_none()
+
+        if existing:
+            self._logger.info(
+                f"[ORCHESTRATOR FIXTURE] Orchestrator already exists for project {project.id}, "
+                f"job_id={existing.job_id}, status={existing.status}"
+            )
+            return None
+
+        # Calculate instance number
+        instance_stmt = (
+            select(func.coalesce(func.max(AgentExecution.instance_number), 0))
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentExecution.tenant_key == tenant_key,
+                AgentJob.project_id == project.id,
+                AgentExecution.agent_display_name == "orchestrator",
+            )
+        )
+        instance_result = await session.execute(instance_stmt)
+        instance_number = (instance_result.scalar() or 0) + 1
+
+        # Generate IDs
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            mission=f"Orchestrator for project: {project.name}",  # Placeholder
+            job_type="orchestrator",
+            status="active",
+            job_metadata={
+                "created_via": "project_activation_fixture",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        session.add(agent_job)
+
+        # Create AgentExecution (executor)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=tenant_key,
+            agent_display_name="orchestrator",
+            agent_name="orchestrator",
+            instance_number=instance_number,
+            status="waiting",
+            progress=0,
+            context_budget=project.context_budget or 150000,
+            context_used=0,
+            health_status="unknown",
+        )
+        session.add(agent_execution)
+
+        await session.commit()
+        await session.refresh(agent_job)
+        await session.refresh(agent_execution)
+
+        self._logger.info(
+            f"[ORCHESTRATOR FIXTURE] Created orchestrator fixture for project {project.id}: "
+            f"job_id={job_id}, agent_id={agent_id}, instance={instance_number}"
+        )
+
+        # Broadcast agent:created event for UI update
+        if websocket_manager:
+            try:
+                await websocket_manager.broadcast_to_tenant(
+                    tenant_key=tenant_key,
+                    event_type="agent:created",
+                    data={
+                        "project_id": project.id,
+                        "agent_id": agent_id,
+                        "job_id": job_id,
+                        "agent_display_name": "orchestrator",
+                        "agent_name": "orchestrator",
+                        "status": "waiting",
+                        "instance_number": instance_number,
+                        "fixture": True,  # Indicates this is a fixture, not from staging
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                self._logger.info(f"[ORCHESTRATOR FIXTURE] Broadcast agent:created for {job_id}")
+            except Exception as ws_error:
+                self._logger.warning(f"[ORCHESTRATOR FIXTURE] WebSocket broadcast failed: {ws_error}")
+
+        return {
+            "job_id": job_id,
+            "agent_id": agent_id,
+            "instance_number": instance_number,
+        }
 
     async def deactivate_project(
         self, project_id: str, reason: Optional[str] = None, websocket_manager: Optional[Any] = None
