@@ -498,16 +498,11 @@ async def generate_staging_prompt(
             field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
 
-        # Handover 0260: Generate mode-specific staging prompt
-        # Convert execution_mode string to claude_code_mode boolean
-        claude_code_mode = (execution_mode == "claude_code_cli")
-
         # Use generate_staging_prompt for mode-specific content
         # Handover 0388: Pass agent_id for correct MCP tool call in prompt
         staging_prompt = await generator.generate_staging_prompt(
             orchestrator_id=result["orchestrator_id"],
             project_id=project_id,
-            claude_code_mode=claude_code_mode,
             agent_id=result.get("agent_id"),  # WHO - executor ID for MCP tool calls
         )
 
@@ -698,8 +693,7 @@ async def get_execution_prompt(
         # Use universal prompt generator (Handover 0253)
         prompt_text = await generator.generate_staging_prompt(
             orchestrator_id=orchestrator_job_id,
-            project_id=execution.job.project_id,
-            claude_code_mode=claude_code_mode
+            project_id=execution.job.project_id
         )
 
         # Build frontend-compatible response with deprecation markers
