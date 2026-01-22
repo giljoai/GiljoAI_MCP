@@ -7,7 +7,7 @@ fetch only the context they need, reducing token usage from ~3500 to ~600 tokens
 PUBLIC Tool (Handover 0350a - exposed via MCP):
 - fetch_context: Unified context dispatcher (saves ~720 tokens vs 9 individual tools)
 
-INTERNAL Tools (9 total - called by fetch_context, NOT exposed via MCP):
+INTERNAL Tools (10 total - called by fetch_context, NOT exposed via MCP):
 - get_vision_document: Fetch vision document chunks with configurable chunking depth
 - get_360_memory: Fetch sequential project history from product memory
 - get_git_history: Fetch git commit history (when GitHub integration enabled)
@@ -17,6 +17,7 @@ INTERNAL Tools (9 total - called by fetch_context, NOT exposed via MCP):
 - get_product_context: Fetch product metadata and core features (Handover 0316: NEW)
 - get_project: Fetch project metadata and mission (Handover 0316: NEW)
 - get_testing: Fetch testing configuration and quality standards (Handover 0316: NEW)
+- get_self_identity: Fetch agent's own template for self-identity context (Handover 0430: NEW)
 """
 
 from .fetch_context import fetch_context  # Handover 0350a: PUBLIC - unified dispatcher
@@ -29,6 +30,7 @@ from .get_architecture import get_architecture
 from .get_product_context import get_product_context  # Handover 0316: NEW
 from .get_project import get_project  # Handover 0316: NEW
 from .get_testing import get_testing  # Handover 0316: NEW
+from .get_self_identity import get_self_identity  # Handover 0430: NEW
 from .framing_helpers import (
     apply_rich_entry_framing,
     build_framed_context_response,
@@ -50,6 +52,7 @@ __all__ = [
     "get_product_context",  # Handover 0316: NEW
     "get_project",          # Handover 0316: NEW
     "get_testing",          # Handover 0316: NEW
+    "get_self_identity",    # Handover 0430: NEW
     # Framing helpers
     "apply_rich_entry_framing",
     "build_framed_context_response",
