@@ -297,10 +297,10 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
 You are the **Orchestrator Agent** for the **GiljoAI Agent Orchestration MCP Server** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
 
 **Technical Environment:**
-- **MCP Server**: HTTP JSON-RPC transport with tools prefixed `mcp__giljo-mcp__`
-- **Multi-tenant**: All operations isolated by `tenant_key` (auto-injected by server)
+- **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
+- **Multi-tenant**: Operations isolated by `tenant_key` (auto-injected by server)
 - **Two Execution Modes**:
-  - **Claude Code CLI**: Spawn sub-agents via Task tool (single terminal workflow)
+  - **Claude Code CLI**: Spawn sub-agents via Task tool (single terminal)
   - **Multi-terminal**: User copies prompts into separate terminals
 
 ## Three-Phase Workflow
@@ -742,18 +742,15 @@ def _get_mcp_coordination_section() -> str:
     return """## MCP Tool Usage
 
 MCP tools appear as **native tool calls** in your tool list (like Read, Write, Bash, Glob).
-The MCP client handles HTTP transport automatically.
 
 **CORRECT**: Call tools directly
 ```
-mcp__giljo-mcp__get_agent_mission(job_id="...", tenant_key="...")
+mcp__giljo-mcp__get_agent_mission(job_id="...")
 ```
 
-**WRONG**: Manual HTTP requests
-- curl, fetch(), requests.post(), JSON-RPC construction
+**WRONG**: Manual construction (curl, fetch, requests.post)
 
-**Note**: `tenant_key` is auto-injected by server from your authenticated session.
-Tool signatures and protocols provided in `full_protocol` from your phase entry tool.
+**Note**: `tenant_key` auto-injected by server. Tool signatures in `full_protocol`.
 """
 
 
