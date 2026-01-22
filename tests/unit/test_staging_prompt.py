@@ -379,42 +379,33 @@ class TestVersionChecking:
 
 
 class TestExecutionModeHandling:
-    """Test that execution mode is properly handled."""
+    """Test that execution mode is properly handled.
+
+    NOTE: The claude_code_mode parameter was removed as the execution mode
+    is now read from Project.execution_mode in the database when
+    get_orchestrator_instructions() is called. The thin prompt is intentionally
+    mode-agnostic.
+    """
 
     @pytest.mark.asyncio
-    async def test_claude_code_mode_flag(self, prompt_generator, mock_project, mock_product):
-        """Verify claude_code_mode parameter affects prompt."""
+    async def test_staging_prompt_is_mode_agnostic(self, prompt_generator, mock_project, mock_product):
+        """Verify staging prompt is mode-agnostic (doesn't require claude_code_mode parameter)."""
         with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
              patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
 
-            # Test with claude_code_mode=True
-            prompt_claude_code = await prompt_generator.generate_staging_prompt(
+            # Generate prompt without claude_code_mode parameter
+            prompt = await prompt_generator.generate_staging_prompt(
                 orchestrator_id=str(uuid4()),
-                project_id=mock_project.id,
-                claude_code_mode=True
+                project_id=mock_project.id
             )
 
-            # Test with claude_code_mode=False (default)
-            prompt_manual = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id,
-                claude_code_mode=False
-            )
+            # Verify the prompt is generated successfully
+            assert prompt, "Staging prompt should be generated"
+            assert len(prompt) > 0, "Staging prompt should not be empty"
 
-            # Both should reference mode (using "Mode:" label for conciseness)
-            assert "Mode:" in prompt_claude_code or "MODE:" in prompt_claude_code.upper(), \
-                "Claude Code mode prompt must reference mode"
-            assert "Mode:" in prompt_manual or "MODE:" in prompt_manual.upper(), \
-                "Manual mode prompt must reference mode"
-
-            # Claude Code mode should mention "Claude Code"
-            assert "Claude Code" in prompt_claude_code, \
-                "Claude Code mode prompt must mention 'Claude Code'"
-
-            # Manual mode should NOT heavily emphasize Claude Code
-            # (may mention it as an option, but shouldn't be primary mode)
-            assert prompt_claude_code != prompt_manual, \
-                "Execution mode should affect prompt content"
+            # The prompt should be universal and work for any execution mode
+            # (mode is determined later from Project.execution_mode in database)
+            assert "PROJECT STAGING" in prompt.upper(), "Prompt should indicate staging phase"
 
 
 class TestWebSocketStatus:

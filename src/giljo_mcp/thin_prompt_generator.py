@@ -952,7 +952,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         # Redirect to universal prompt generator
         return await self.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id, project_id=project_id, claude_code_mode=claude_code_mode
+            orchestrator_id=orchestrator_job_id, project_id=project_id
         )
 
     def _get_external_host(self) -> str:
@@ -982,7 +982,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         return config.server.api_host
 
     async def generate_staging_prompt(
-        self, orchestrator_id: str, project_id: str, claude_code_mode: bool = False, agent_id: str = None
+        self, orchestrator_id: str, project_id: str, agent_id: str = None
     ) -> str:
         """
         Generate thin-client orchestrator staging prompt (Handover 0415).
@@ -993,7 +993,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
             project_id: Project UUID
-            claude_code_mode: Use Claude Code CLI mode (default: False)
             agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls, Handover 0388)
 
         Returns:
@@ -1031,8 +1030,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         mcp_host = self._get_external_host()
         mcp_port = config.server.api_port
         mcp_url = f"http://{mcp_host}:{mcp_port}"
-
-        execution_mode = "Claude Code CLI" if claude_code_mode else "Multi-Terminal"
 
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
         # Handover 0424: Added health_check as mandatory first step
