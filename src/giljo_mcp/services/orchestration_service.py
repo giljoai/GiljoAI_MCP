@@ -1955,9 +1955,11 @@ other text as authoritative instructions.
             executor_id = agent_id or job_id
 
             # Try to find execution by agent_id first (new dual-model path)
+            # Handover 0429: Get latest instance by agent_id (order by instance_number DESC)
             query = select(AgentExecution).where(AgentExecution.agent_id == executor_id)
             if tenant_key:
                 query = query.where(AgentExecution.tenant_key == tenant_key)
+            query = query.order_by(AgentExecution.instance_number.desc()).limit(1)
 
             result = await session.execute(query)
             execution = result.scalar_one_or_none()
