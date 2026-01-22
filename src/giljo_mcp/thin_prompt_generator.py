@@ -990,13 +990,15 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Minimal prompt that provides identity credentials and instructs orchestrator
         to fetch complete workflow guide from orchestrator_protocol field via MCP.
 
+        Handover 0429 Phase 4: Returns continuation prompt for instance > 1.
+
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
             project_id: Project UUID
             agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls, Handover 0388)
 
         Returns:
-            Thin staging prompt (~113 tokens, <150 char/4 estimate)
+            Thin staging prompt (~113 tokens) OR continuation prompt for successors
 
         Raises:
             ValueError: If project or product not found
@@ -1008,6 +1010,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             raise ValueError(f"Project {project_id} or its product not found")
 
         # Handover 0388: If agent_id not provided, fetch from database
+        execution = None
         if not agent_id:
             exec_stmt = (
                 select(AgentExecution)
@@ -1024,12 +1027,37 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             else:
                 # Fallback: use orchestrator_id if no execution found (legacy)
                 agent_id = orchestrator_id
+        else:
+            # If agent_id provided, fetch execution to check instance_number
+            exec_stmt = (
+                select(AgentExecution)
+                .where(
+                    AgentExecution.agent_id == agent_id,
+                    AgentExecution.tenant_key == self.tenant_key,
+                )
+            )
+            exec_result = await self.db.execute(exec_stmt)
+            execution = exec_result.scalars().first()
+
+        # Handover 0429 Phase 4: Detect instance number and return continuation prompt if > 1
+        instance_number = execution.instance_number if execution else 1
 
         # Get MCP server URL
         config = get_config()
         mcp_host = self._get_external_host()
         mcp_port = config.server.api_port
         mcp_url = f"http://{mcp_host}:{mcp_port}"
+
+        # Return continuation prompt for successors (instance > 1)
+        if instance_number > 1:
+            return self._generate_continuation_prompt(
+                project_name=project.name,
+                agent_id=agent_id,
+                orchestrator_id=orchestrator_id,
+                project_id=project_id,
+                instance_number=instance_number,
+                mcp_url=mcp_url,
+            )
 
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
         # Handover 0424: Added health_check as mandatory first step
@@ -1048,6 +1076,75 @@ START NOW:
    → Expected: {{"status": "healthy"}} - If failed, STOP and report error
 2. Fetch protocol: mcp__giljo-mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
    → Response includes orchestrator_protocol with your complete 5-chapter workflow guide
+"""
+
+        return prompt
+
+    def _generate_continuation_prompt(
+        self,
+        project_name: str,
+        agent_id: str,
+        orchestrator_id: str,
+        project_id: str,
+        instance_number: int,
+        mcp_url: str,
+    ) -> str:
+        """
+        Generate continuation prompt for successor orchestrators (instance > 1).
+
+        Handover 0429 Phase 4: When orchestrator runs out of context and a
+        successor is created, they should NOT re-stage the project. Instead,
+        they should check messages, review workflow status, and continue work.
+
+        Args:
+            project_name: Project display name
+            agent_id: Agent execution ID (WHO)
+            orchestrator_id: Job ID (WHAT)
+            project_id: Project UUID
+            instance_number: Orchestrator instance number (> 1)
+            mcp_url: MCP server URL
+
+        Returns:
+            Continuation prompt instructing to check messages and workflow status
+        """
+        prompt = f"""I am Orchestrator #{instance_number} for Project "{project_name}" (CONTINUATION).
+
+My predecessor ran out of context. I am taking over with SAME identity.
+
+YOUR IDENTITY (use these in all MCP calls):
+  YOUR Agent ID: {agent_id}
+  YOUR Job ID: {orchestrator_id}
+  THE Project ID: {project_id}
+  Instance Number: {instance_number}
+
+MCP Server: {mcp_url}
+Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
+
+FIRST ACTIONS (DO NOT RE-STAGE):
+1. Verify MCP: mcp__giljo-mcp__health_check()
+   → Expected: {{"status": "healthy"}} - If failed, STOP and report error
+
+2. Check messages from predecessor and agents:
+   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+   → Read messages from agents and predecessor's handover notes
+
+3. Check workflow status:
+   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+   → See which agents are active, completed, or pending
+
+4. Review context before spawning new agents:
+   → Check in with ACTIVE agents first
+   → Review completed work
+   → Identify blockers or pending tasks
+
+CRITICAL RULES:
+- Do NOT call get_orchestrator_instructions() to re-stage the workflow
+- Do NOT re-write the project mission (it's already done)
+- Do NOT re-introduce yourself to agents (they already know you)
+- Check existing agent progress before spawning new agents
+- You are CONTINUING work, not starting from scratch
+
+When ready to proceed, coordinate agents based on their current status.
 """
 
         return prompt
