@@ -201,8 +201,9 @@ class OrchestratorSuccessionManager:
             )
 
         # Create NEW execution on SAME job (no need to load job relationship)
+        # Handover 0429: Preserve SAME agent_id across instances (for message routing)
         successor_execution = AgentExecution(
-            agent_id=str(uuid4()),  # New executor ID
+            agent_id=current_execution.agent_id,  # SAME agent_id (Handover 0429)
             job_id=current_execution.job_id,  # SAME work order
             tenant_key=self.tenant_key,
             agent_display_name=current_execution.agent_display_name,
@@ -239,6 +240,7 @@ class OrchestratorSuccessionManager:
 
         Handover 0366b: Now generates summary from AgentExecution (execution-specific state).
         Handover 0387f: Query Message table instead of JSONB column.
+        Handover 0429 Phase 5: Include states of all spawned agents.
 
         Compression strategy:
         - Extract only actionable state
@@ -254,6 +256,7 @@ class OrchestratorSuccessionManager:
         - message_count: Number of messages in history
         - unresolved_blockers: Current blocking issues
         - next_steps: Recommended next actions
+        - agent_states: List of spawned agents with their status and progress
 
         Args:
             execution: AgentExecution to summarize
@@ -265,6 +268,7 @@ class OrchestratorSuccessionManager:
             >>> summary = await manager.generate_handover_summary(execution)
             >>> print(f"Project status: {summary['project_status']}")
             >>> print(f"Messages: {summary['message_count']}")
+            >>> print(f"Spawned agents: {len(summary['agent_states'])}")
         """
         # Import Message model for querying
         from sqlalchemy.dialects.postgresql import JSONB
@@ -304,6 +308,33 @@ class OrchestratorSuccessionManager:
         ]
         message_count = len(messages)
 
+        # Handover 0429 Phase 5: Query spawned agents for status
+        # Get all agents spawned by this orchestrator
+        spawned_agents_stmt = (
+            select(AgentExecution)
+            .where(
+                AgentExecution.spawned_by == execution.agent_id,
+                AgentExecution.tenant_key == self.tenant_key,
+            )
+            .order_by(AgentExecution.started_at.nullslast(), AgentExecution.agent_id)
+        )
+        spawned_result = await self.db_session.execute(spawned_agents_stmt)
+        spawned_executions = spawned_result.scalars().all()
+
+        # Build agent states list
+        agent_states = [
+            {
+                "agent_id": agent.agent_id,
+                "job_id": agent.job_id,
+                "agent_display_name": agent.agent_display_name,
+                "agent_name": agent.agent_name,
+                "status": agent.status,
+                "progress": agent.progress or 0,
+                "instance_number": agent.instance_number,
+            }
+            for agent in spawned_executions
+        ]
+
         # Analyze message history for project status
         # (Simple implementation - can be enhanced with NLP)
         project_status = self._estimate_project_status(messages)
@@ -323,6 +354,8 @@ class OrchestratorSuccessionManager:
             "unresolved_blockers": unresolved_blockers,
             "next_steps": next_steps,
             "instance_number": execution.instance_number,
+            # Handover 0429 Phase 5: Include agent states
+            "agent_states": agent_states,
             # Top-level context fields (for backward compatibility)
             "context_used": execution.context_used,
             "context_budget": execution.context_budget,
