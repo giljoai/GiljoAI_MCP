@@ -15,6 +15,14 @@
       </v-card-title>
 
       <v-card-text>
+        <v-alert type="warning" variant="tonal" class="mb-4" density="compact">
+          <template #prepend>
+            <v-icon>mdi-alert</v-icon>
+          </template>
+          Ensure all agents have completed their work before proceeding. Messages sent to
+          this orchestrator will be received by the successor.
+        </v-alert>
+
         <v-alert type="info" class="mb-4" variant="tonal">
           <div class="text-subtitle-2 mb-2">Creating New Agent Execution</div>
           <ul class="text-body-2 pl-4">

@@ -257,6 +257,7 @@ class MessageService:
                         sender_ref = from_agent or "orchestrator"
 
                         # Resolve sender to agent_id for counter update
+                        # Handover 0429: Get latest instance when matching by agent_id
                         sender_result = await session.execute(
                             select(AgentExecution).join(AgentJob).where(
                                 and_(
@@ -265,7 +266,7 @@ class MessageService:
                                     (AgentExecution.agent_display_name == sender_ref) |
                                     (AgentExecution.agent_id == sender_ref)
                                 )
-                            ).limit(1)
+                            ).order_by(AgentExecution.instance_number.desc()).limit(1)
                         )
                         sender_execution = sender_result.scalar_one_or_none()
 
@@ -343,12 +344,13 @@ class MessageService:
                             sender_sent_count = sender_execution.messages_sent_count
 
                         # For recipient counter, get first recipient's waiting count
+                        # Handover 0429: Get latest instance by agent_id
                         recipient_waiting_count = None
                         if recipient_agent_ids:
                             recipient_result = await session.execute(
                                 select(AgentExecution).where(
                                     AgentExecution.agent_id == recipient_agent_ids[0]
-                                )
+                                ).order_by(AgentExecution.instance_number.desc()).limit(1)
                             )
                             first_recipient = recipient_result.scalar_one_or_none()
                             if first_recipient:
@@ -676,13 +678,14 @@ class MessageService:
 
             async with self._get_session() as session:
                 # Handover 0372: Look up AgentExecution by agent_id, then get job
+                # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
                     select(AgentExecution).where(
                         and_(
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    )
+                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -1189,13 +1192,14 @@ class MessageService:
                 )
 
                 # Handover 0387g: Fetch updated counter values after commit
+                # Handover 0429: Get latest instance by agent_id
                 exec_result = await session.execute(
                     select(AgentExecution).where(
                         and_(
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    )
+                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
                 )
                 execution = exec_result.scalar_one_or_none()
                 waiting_count = execution.messages_waiting_count if execution else None
