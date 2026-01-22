@@ -904,7 +904,7 @@ class TemplateService:
             "Use acknowledge_job() to claim tasks.\n"
             "Use report_progress() to send updates.\n"
             "Use complete_job() when the task is finished.\n"
-            "Use get_next_instruction() to request additional guidance.\n"
+            "Use receive_messages() to check for orchestrator messages.\n"
         )
 
     # ============================================================================
