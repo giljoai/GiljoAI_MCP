@@ -156,6 +156,29 @@ export const EVENT_MAP = {
   },
 
   // =========================
+  // Orchestrator (Handover 0431)
+  // =========================
+  'orchestrator:prompt_generated': {
+    handler: async (payload, { storeRegistry } = {}) => {
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+
+      // Update the existing orchestrator with staging info
+      // The orchestrator fixture was created on activation; staging generates the prompt
+      agentJobsStore.handleUpdated?.({
+        job_id: payload.orchestrator_id,
+        agent_id: payload.agent_id,
+        project_id: payload.project_id,
+        agent_display_name: 'orchestrator',
+        status: 'waiting', // Still waiting for user to paste prompt
+        instance_number: payload.instance_number,
+        staged: true, // Mark as staged
+      })
+
+      console.log('[WS] orchestrator:prompt_generated - Updated orchestrator', payload.orchestrator_id)
+    },
+  },
+
+  // =========================
   // Messages
   // =========================
   message: { store: 'messages', action: 'handleRealtimeUpdate' }, // legacy
