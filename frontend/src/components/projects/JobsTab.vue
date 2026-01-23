@@ -638,20 +638,23 @@ function getAgentColor(displayName) {
 }
 
 /**
- * Get agent avatar abbreviation - updated to match branding
+ * Get agent avatar abbreviation - uses word initials
+ * Split by dash, space, or underscore and use first letter of each part
+ * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
  */
 function getAgentAbbr(displayName) {
-  const abbrs = {
-    orchestrator: 'OR',
-    analyzer: 'AN',
-    implementer: 'IM',
-    implementor: 'IM', // alias
-    tester: 'TE',
-    reviewer: 'RV',
-    documenter: 'DO',
-    researcher: 'RE',
+  if (!displayName) return '??'
+
+  // Split by dash, space, or underscore
+  const parts = displayName.split(/[-_\s]+/).filter(Boolean)
+
+  if (parts.length >= 2) {
+    // Use first letter of first two parts: "Backend-Implementer" → "BI"
+    return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return abbrs[displayName?.toLowerCase()] || displayName?.slice(0, 2).toUpperCase()
+
+  // Single word fallback: use first two letters
+  return displayName.substring(0, 2).toUpperCase()
 }
 
 /**
