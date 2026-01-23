@@ -308,9 +308,24 @@ If you call `complete_job()` without meeting these requirements:
 - System will REJECT your completion
 - Response will list specific blockers (unread messages, incomplete TODOs)
 
-### Phase 5: ERROR HANDLING (If blocked)
-1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="description")` - Marks job as BLOCKED
-2. STOP work and await orchestrator guidance
+### Phase 5: ERROR HANDLING & BLOCKED STATUS
+
+**To mark yourself BLOCKED** (unclear requirements, waiting for clarification):
+1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="BLOCKED: <reason>")`
+   - Sets status to "blocked" and stores block_reason
+2. Send message to orchestrator explaining what you need:
+   - `mcp__giljo-mcp__send_message(to_agents=["orchestrator"], content="BLOCKER: <details>", ...)`
+3. STOP work and poll for response:
+   - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+
+**To resume from BLOCKED**:
+1. After receiving guidance, call `acknowledge_job()` again:
+   - `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")`
+   - Sets status back to "working"
+2. Continue execution with Phase 2
+
+**Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions
+**Use actual errors for**: System failures, unrecoverable issues (these also set "blocked" status)
 
 ## Handover on Context Exhaustion
 
