@@ -237,7 +237,7 @@ async def handle_tools_list(
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                     "mission": {"type": "string", "description": "Execution plan to persist (agent order, dependencies, checkpoints)"},
                 },
-                "required": ["job_id", "tenant_key", "mission"],
+                "required": ["job_id", "mission"],
             },
         },
         # Orchestrator Tools
@@ -250,7 +250,7 @@ async def handle_tools_list(
                     "job_id": {"type": "string", "description": "Orchestrator job UUID (work order identifier)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["job_id", "tenant_key"],
+                "required": ["job_id"],
             },
         },
         # Message Communication Tools
@@ -286,7 +286,7 @@ async def handle_tools_list(
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["to_agents", "content", "project_id", "tenant_key", "from_agent"],
+                "required": ["to_agents", "content", "project_id", "from_agent"],
             },
         },
         {
@@ -318,7 +318,7 @@ async def handle_tools_list(
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["tenant_key"],
+                "required": [],
             },
         },
         {
@@ -332,7 +332,7 @@ async def handle_tools_list(
                     "limit": {"type": "integer", "description": "Maximum messages to retrieve"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["tenant_key"],
+                "required": [],
             },
         },
         # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
@@ -365,7 +365,7 @@ async def handle_tools_list(
                     "agent_display_name": {"type": "string", "description": "Agent type (implementer, tester, etc.)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["agent_display_name", "tenant_key"],
+                "required": ["agent_display_name"],
             },
         },
         {
@@ -378,7 +378,7 @@ async def handle_tools_list(
                     "agent_id": {"type": "string", "description": "Your identity (identity.agent_id)"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "agent_id", "tenant_key"],
+                "required": ["job_id", "agent_id"],
             },
         },
         {
@@ -406,7 +406,7 @@ async def handle_tools_list(
                         "description": "DEPRECATED: Use todo_items instead. Legacy progress object.",
                     },
                 },
-                "required": ["job_id", "tenant_key"],
+                "required": ["job_id"],
             },
         },
         {
@@ -419,7 +419,7 @@ async def handle_tools_list(
                     "result": {"type": "object", "description": "Completion result/notes"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "result", "tenant_key"],
+                "required": ["job_id", "result"],
             },
         },
         {
@@ -432,7 +432,7 @@ async def handle_tools_list(
                     "error": {"type": "string", "description": "Error message"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
-                "required": ["job_id", "error", "tenant_key"],
+                "required": ["job_id", "error"],
             },
         },
         # Orchestration Tools (Handover 0088)
@@ -445,7 +445,7 @@ async def handle_tools_list(
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["project_id", "tenant_key"],
+                "required": ["project_id"],
             },
         },
         {
@@ -457,7 +457,7 @@ async def handle_tools_list(
                     "job_id": {"type": "string", "description": "Work order UUID (job_id)"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["job_id", "tenant_key"],
+                "required": ["job_id"],
             },
         },
         {
@@ -472,7 +472,7 @@ async def handle_tools_list(
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["agent_display_name", "agent_name", "mission", "project_id", "tenant_key"],
+                "required": ["agent_display_name", "agent_name", "mission", "project_id"],
             },
         },
         {
@@ -484,7 +484,7 @@ async def handle_tools_list(
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["project_id", "tenant_key"],
+                "required": ["project_id"],
             },
         },
         # Orchestrator Succession Tools (Handover 0080)
@@ -502,7 +502,7 @@ async def handle_tools_list(
                         "description": "Succession reason",
                     },
                 },
-                "required": ["current_job_id", "tenant_key"],
+                "required": ["current_job_id"],
             },
         },
         {
@@ -514,7 +514,7 @@ async def handle_tools_list(
                     "job_id": {"type": "string", "description": "Orchestrator job UUID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
                 },
-                "required": ["job_id", "tenant_key"],
+                "required": ["job_id"],
             },
         },
         # Handover 0083: core /gil_* commands
@@ -558,7 +558,7 @@ async def handle_tools_list(
                         "default": "structured"
                     }
                 },
-                "required": ["product_id", "tenant_key"]
+                "required": ["product_id"]
             }
         },
         # File Utilities (Handover 0360 Feature 3)
@@ -581,7 +581,7 @@ async def handle_tools_list(
                         "description": "Optional workspace root (defaults to product workspace)"
                     }
                 },
-                "required": ["path", "tenant_key"]
+                "required": ["path"]
             }
         },
         # Project Closeout Tool (Handover 0411)
@@ -605,7 +605,7 @@ async def handle_tools_list(
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"}
                 },
-                "required": ["project_id", "summary", "key_outcomes", "decisions_made", "tenant_key"]
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
             }
         },
         # 360 Memory Writing Tool (Handover 0412)
@@ -636,7 +636,7 @@ async def handle_tools_list(
                     },
                     "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"}
                 },
-                "required": ["project_id", "tenant_key", "summary", "key_outcomes", "decisions_made"]
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
             }
         },
     ]
