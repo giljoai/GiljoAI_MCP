@@ -33,48 +33,7 @@
 
     <!-- Bordered Content Box (tabs connect to this) -->
     <div class="bordered-tabs-content">
-      <!-- Action Buttons Row (centered) - Launch tab buttons -->
-      <div v-if="activeTab === 'launch'" class="action-buttons-row">
-        <v-btn
-          class="stage-button"
-          variant="outlined"
-          :color="hasActiveOrchestrator ? undefined : 'yellow-darken-2'"
-          :loading="loadingStageProject"
-          :disabled="hasActiveOrchestrator"
-          :title="hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt'"
-          data-testid="stage-project-btn"
-          @click="handleStageProject"
-        >
-          Stage Project
-        </v-btn>
-
-        <v-btn
-          class="launch-button"
-          :disabled="!readyToLaunch"
-          :color="readyToLaunch ? 'yellow-darken-2' : undefined"
-          :variant="readyToLaunch ? 'flat' : 'outlined'"
-          data-testid="launch-jobs-btn"
-          @click="handleLaunchJobs"
-        >
-          Implement
-        </v-btn>
-      </div>
-
-      <!-- Close Out Project Button Row (Handover 0361, 0425 - Jobs tab only when all complete) -->
-      <div v-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
-        <v-btn
-          class="closeout-btn"
-          color="yellow-darken-2"
-          variant="flat"
-          prepend-icon="mdi-check-circle"
-          data-testid="close-project-btn"
-          @click="openCloseoutModal"
-        >
-          Close Out Project
-        </v-btn>
-      </div>
-
-      <!-- Execution Mode Radio (below buttons) - only show on Launch tab -->
+      <!-- Execution Mode Radio (above buttons) - only show on Launch tab -->
       <div v-if="activeTab === 'launch'" class="execution-mode-row">
         <div class="execution-mode-radio" :class="{ 'mode-locked': isExecutionModeLocked }">
           <span class="mode-label">Execution Mode:</span>
@@ -98,6 +57,47 @@
           </v-tooltip>
           <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon">mdi-lock</v-icon>
         </div>
+      </div>
+
+      <!-- Action Buttons Row (centered) - Launch tab buttons -->
+      <div v-if="activeTab === 'launch'" class="action-buttons-row">
+        <v-btn
+          class="stage-button"
+          variant="outlined"
+          :color="executionModeSelected && !hasActiveOrchestrator ? 'yellow-darken-2' : undefined"
+          :loading="loadingStageProject"
+          :disabled="!executionModeSelected || hasActiveOrchestrator"
+          :title="!executionModeSelected ? 'Select an execution mode first' : (hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt')"
+          data-testid="stage-project-btn"
+          @click="handleStageProject"
+        >
+          Stage Project
+        </v-btn>
+
+        <v-btn
+          class="launch-button"
+          :disabled="!executionModeSelected || !readyToLaunch"
+          :color="executionModeSelected && readyToLaunch ? 'yellow-darken-2' : undefined"
+          :variant="executionModeSelected && readyToLaunch ? 'flat' : 'outlined'"
+          data-testid="launch-jobs-btn"
+          @click="handleLaunchJobs"
+        >
+          Implement
+        </v-btn>
+      </div>
+
+      <!-- Close Out Project Button Row (Handover 0361, 0425 - Jobs tab only when all complete) -->
+      <div v-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
+        <v-btn
+          class="closeout-btn"
+          color="yellow-darken-2"
+          variant="flat"
+          prepend-icon="mdi-check-circle"
+          data-testid="close-project-btn"
+          @click="openCloseoutModal"
+        >
+          Close Out Project
+        </v-btn>
       </div>
 
       <!-- Tab Content -->
@@ -237,8 +237,14 @@ const projectId = computed(() => props.project?.project_id || props.project?.id 
 
 /**
  * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
+ * Default to null (unchecked) - user must select before staging
  */
-const usingClaudeCodeSubagents = ref(false)
+const usingClaudeCodeSubagents = ref(null)
+
+/**
+ * Check if user has selected an execution mode
+ */
+const executionModeSelected = computed(() => usingClaudeCodeSubagents.value !== null)
 
 /**
  * Mission text from project state store (needed for lock check)
@@ -378,9 +384,27 @@ watch(
   (newMode) => {
     executionMode.value = newMode || 'multi_terminal'
     // Handover 0428: Sync UI toggle state
-    usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
+    // Only sync if project has been staged (has mission) - fresh projects should have no selection
+    // Backend defaults execution_mode to 'multi_terminal', so we can't rely on newMode alone
+    if (newMode && missionText.value) {
+      usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
+    }
   },
   { immediate: true },
+)
+
+// Sync radio selection once mission is loaded (for previously staged projects)
+watch(
+  missionText,
+  (newMission) => {
+    if (newMission && usingClaudeCodeSubagents.value === null) {
+      // Project was previously staged, restore execution mode selection
+      const mode = props.project?.execution_mode
+      if (mode) {
+        usingClaudeCodeSubagents.value = mode === 'claude_code_cli'
+      }
+    }
+  },
 )
 
 watch(
@@ -801,7 +825,7 @@ function handleCloseoutComplete(closeoutData) {
   }
 }
 
-/* Execution mode row (below buttons, centered) */
+/* Execution mode row (above buttons, centered) */
 .execution-mode-row {
   display: flex;
   justify-content: center;
