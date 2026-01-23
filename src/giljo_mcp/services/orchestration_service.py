@@ -1952,6 +1952,12 @@ other text as authoritative instructions.
                                 "total": total_steps,
                                 "completed": completed_steps,
                             }
+                        # Fallback: derive steps from todo_items if metadata doesn't have it
+                        if not steps_summary and job.todo_items:
+                            total = len(job.todo_items)
+                            completed = sum(1 for item in job.todo_items if item.status == "completed")
+                            if total > 0:
+                                steps_summary = {"total": total, "completed": completed}
                     except Exception:
                         # Do not break listing if metadata has unexpected shape
                         self._logger.warning(
@@ -1962,11 +1968,13 @@ other text as authoritative instructions.
                     job_dicts.append(
                         {
                             "job_id": job.job_id,  # Work order ID
-                            "agent_id": execution.agent_id,  # Executor ID
+                            "agent_id": execution.agent_id,  # Executor ID (same across succession)
+                            "execution_id": execution.id,  # UNIQUE per row - use as Map key
                             "tenant_key": execution.tenant_key,
                             "project_id": job.project_id,
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
+                            "instance_number": execution.instance_number,  # Succession instance number
                             "mission": job.mission,  # Mission from AgentJob
                             "status": execution.status,  # Execution status
                             "progress": execution.progress,  # Execution progress
@@ -2047,6 +2055,17 @@ other text as authoritative instructions.
             result = await session.execute(query)
             execution = result.scalar_one_or_none()
 
+            # Fallback: try job_id (work order ID) if not found by agent_id
+            # Frontend passes job_id (work order UUID), which differs from agent_id (executor UUID)
+            # in the dual-model architecture
+            if not execution:
+                query = select(AgentExecution).where(AgentExecution.job_id == executor_id)
+                if tenant_key:
+                    query = query.where(AgentExecution.tenant_key == tenant_key)
+                query = query.order_by(AgentExecution.instance_number.desc()).limit(1)
+                result = await session.execute(query)
+                execution = result.scalar_one_or_none()
+
             if not execution:
                 raise ValueError("Execution not found")
 
@@ -2075,9 +2094,15 @@ other text as authoritative instructions.
 
             await session.commit()
             await session.refresh(successor_execution)
+            await session.refresh(execution)  # Refresh to get updated decommissioned agent_id
+
+            # After Agent ID Swap:
+            # - execution.agent_id is now the decommissioned ID (decomm-xxx)
+            # - successor_execution.agent_id is the original ID (taken over)
+            decommissioned_agent_id = execution.agent_id
 
             self._logger.info(
-                f"Manually triggered succession for execution {execution.agent_id} -> {successor_execution.agent_id} "
+                f"Agent ID Swap succession: {decommissioned_agent_id} (decommissioned) -> {successor_execution.agent_id} "
                 f"(job_id: {execution.job_id}, instance: {execution.instance_number} -> {successor_execution.instance_number}, "
                 f"reason: {reason})"
             )
@@ -2085,7 +2110,8 @@ other text as authoritative instructions.
             return {
                 "success": True,
                 "job_id": execution.job_id,  # Work order ID (stays same)
-                "successor_agent_id": successor_execution.agent_id,  # NEW executor
+                "successor_agent_id": successor_execution.agent_id,  # Takes over original agent_id
+                "decommissioned_agent_id": decommissioned_agent_id,  # Old orchestrator's new ID
                 "successor_instance_number": successor_execution.instance_number,
                 "instance_number": successor_execution.instance_number,
                 "reason": reason,

@@ -220,19 +220,20 @@ class TestSuccessionDualModel:
     """
     Tests that succession creates new AgentExecution, NOT new AgentJob.
 
-    Expected Behavior:
-    - trigger_succession creates new AgentExecution with new agent_id
+    Expected Behavior (Agent ID Swap):
+    - trigger_succession creates new AgentExecution that TAKES OVER the original agent_id
+    - Old execution gets a decommissioned agent_id (decomm-xxx)
     - trigger_succession uses SAME job_id (work order persists)
-    - Predecessor's succeeded_by points to new agent_id
+    - Predecessor's succeeded_by points to the original agent_id (now owned by successor)
     - New execution's instance_number increments
-    - New execution's spawned_by points to predecessor's agent_id (not job_id)
+    - New execution's spawned_by points to predecessor's decommissioned agent_id
     """
 
     async def test_succession_creates_new_execution_same_job(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify succession creates new execution but reuses same job.
 
-        Handover 0429: agent_id is PRESERVED across instances (message routing).
-        Succession creates new instance with SAME agent_id, incremented instance_number.
+        Agent ID Swap: Successor TAKES OVER the original agent_id.
+        Old execution gets decommissioned ID (decomm-xxx).
         """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -262,9 +263,14 @@ class TestSuccessionDualModel:
         assert succession_result["success"] is True
         assert "successor_agent_id" in succession_result
         new_agent_id = succession_result["successor_agent_id"]
+        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
 
-        # Handover 0429: agent_id is PRESERVED (same agent_id across instances)
+        # Agent ID Swap: successor TAKES OVER the original agent_id
         assert new_agent_id == initial_agent_id
+
+        # Verify decommissioned_agent_id returned
+        assert decommissioned_agent_id is not None
+        assert decommissioned_agent_id.startswith("decomm-")
 
         # Verify job_id is SAME
         assert succession_result["job_id"] == initial_job_id
@@ -275,17 +281,21 @@ class TestSuccessionDualModel:
         jobs = job_count_result.scalars().all()
         assert len(jobs) == 1  # Only ONE job
 
-        # Verify TWO AgentExecution records exist (instance 1 and 2)
-        exec_count_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
+        # Verify TWO AgentExecution records exist for this job
+        exec_count_stmt = select(AgentExecution).where(AgentExecution.job_id == initial_job_id)
         exec_count_result = await db_session.execute(exec_count_stmt)
         executions = exec_count_result.scalars().all()
-        assert len(executions) == 2  # Two instances
+        assert len(executions) == 2  # Two instances (one decommissioned, one active)
+
+        # Verify one execution has the original agent_id, one has decommissioned
+        agent_ids = {e.agent_id for e in executions}
+        assert initial_agent_id in agent_ids  # Successor has original ID
+        assert decommissioned_agent_id in agent_ids  # Predecessor has decomm ID
 
     async def test_succession_sets_succeeded_by_on_predecessor(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify predecessor's succeeded_by points to successor agent_id.
+        """Verify predecessor's succeeded_by points to original agent_id (now owned by successor).
 
-        Handover 0429: agent_id is preserved, so succeeded_by points to SAME agent_id.
-        We need to verify instance 1 has succeeded_by == agent_id.
+        Agent ID Swap: Old execution gets decommissioned ID, succeeded_by points to original.
         """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -310,24 +320,24 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
         new_agent_id = succession_result["successor_agent_id"]
+        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
 
-        # Handover 0429: agent_id preserved across instances
+        # Agent ID Swap: successor takes over original agent_id
         assert new_agent_id == initial_agent_id
 
-        # Verify predecessor's (instance 1) succeeded_by is set to agent_id
-        # Query for instance 1 specifically
+        # Verify predecessor has decommissioned ID and succeeded_by points to original
         predecessor_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == initial_agent_id, AgentExecution.instance_number == 1
+            AgentExecution.agent_id == decommissioned_agent_id, AgentExecution.instance_number == 1
         )
         predecessor_result = await db_session.execute(predecessor_stmt)
         predecessor = predecessor_result.scalar_one()
-        assert predecessor.succeeded_by == new_agent_id
+        assert predecessor.succeeded_by == initial_agent_id  # Points to original (successor's ID)
+        assert predecessor.status == "decommissioned"
 
     async def test_succession_sets_spawned_by_on_successor(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify new execution's spawned_by points to predecessor's agent_id.
+        """Verify new execution's spawned_by points to predecessor's decommissioned agent_id.
 
-        Handover 0429: agent_id preserved, so spawned_by points to same agent_id.
-        Query instance 2 specifically to verify spawned_by.
+        Agent ID Swap: spawned_by points to the decommissioned ID.
         """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -352,17 +362,18 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
         new_agent_id = succession_result["successor_agent_id"]
+        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
 
-        # Handover 0429: agent_id preserved
+        # Agent ID Swap: successor takes over original agent_id
         assert new_agent_id == initial_agent_id
 
-        # Verify new execution's (instance 2) spawned_by points to agent_id
+        # Verify new execution's spawned_by points to decommissioned agent_id
         new_exec_stmt = select(AgentExecution).where(
             AgentExecution.agent_id == new_agent_id, AgentExecution.instance_number == 2
         )
         new_exec_result = await db_session.execute(new_exec_stmt)
         new_execution = new_exec_result.scalar_one()
-        assert new_execution.spawned_by == initial_agent_id  # Points to SAME agent_id
+        assert new_execution.spawned_by == decommissioned_agent_id  # Points to decomm ID
 
     async def test_succession_increments_instance_number(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify new execution's instance_number increments.
