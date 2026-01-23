@@ -16,6 +16,10 @@ We now have three clearly separated layers:
   - Emphasizes that MCP tools are native: `mcp__giljo-mcp__*` (no HTTP/curl/SDK).
   - Points agents to `get_agent_mission` and `full_protocol`.
   - Avoids re-encoding the full lifecycle.
+  - **Orchestrator vs Agent differences** (Handover 0432):
+    - Orchestrator: MCP + Check-in + Orchestrator Messaging + Closeout framing
+    - Regular agents: Agent Guidelines + MCP + Context Request + Check-in + Agent Messaging
+    - Orchestrator excludes "REQUESTING BROADER CONTEXT" (doesn't ask itself for context)
 
 - **Protocol layer**:
   - `_generate_agent_protocol()` + `get_agent_mission()` in `src/giljo_mcp/services/orchestration_service.py`.
@@ -101,32 +105,70 @@ When `spawn_agent_job()` is called, the backend checks `Project.execution_mode`:
 2.5 Seeder / exported MCP section
 
 - File: `src/giljo_mcp/template_seeder.py`, `_get_mcp_coordination_section()`.
-- Keeps CRITICAL “MCP tools are native” section.
+- Keeps CRITICAL "MCP tools are native" section.
 - Replaces detailed lifecycle steps with:
   - Tool summary.
   - Bootstrap sequence pointing to `get_agent_mission` + `full_protocol`.
   - Generic tool-call format and self-navigation notes.
+- **Orchestrator template** (Handover 0432):
+  - Excludes "REQUESTING BROADER CONTEXT" section
+  - Includes "Before Closeout" verification steps
+  - Includes "If Requirements Are Unclear" with BLOCKED protocol
+- **Regular agent templates** (Handover 0432):
+  - Include "Agent Guidelines" section with BLOCKED protocol
+  - Include "REQUESTING BROADER CONTEXT" (to ask orchestrator)
+  - Include "If Blocked or Unclear" with correct `report_error()` syntax
+
+2.6 Status Values and BLOCKED Protocol (Handover 0432)
+
+**AgentExecution status values** (from `models/agent_identity.py`):
+- `waiting` → `working` → `complete` / `blocked` / `failed` / `cancelled` / `decommissioned`
+
+**Status transitions**:
+```
+waiting ─[acknowledge_job()]─→ working
+working ─[report_progress()]─→ working (updates progress/todos, no status change)
+working ─[complete_job()]─→ complete
+working ─[report_error()]─→ blocked
+blocked ─[acknowledge_job()]─→ working (resume from blocked)
+```
+
+**BLOCKED protocol**:
+1. Call `report_error(job_id, "BLOCKED: <reason>")` to mark blocked
+2. Send message explaining what you need
+3. Wait for response via `receive_messages()`
+4. Call `acknowledge_job()` to resume (sets status back to working)
+
+**Note**: All `report_error()` calls set status to "blocked" (not "failed"). Use "BLOCKED:" prefix in message for clarity.
 
 ---
 
-3. Planned Slimming Strategy (0353)
+3. Slimming Strategy (0353) - Implementation Status
 
-We will implement a **slimming strategy** for seeded/exported agent templates:
+**Slimming strategy** for seeded/exported agent templates:
 
 - Seeded templates (`template_seeder.py` → DB → Agent Template Manager → export → `.claude/agents/*.md`) will:
   - Keep:
     - Front matter (name, description, model).
-    - CRITICAL MCP wiring + “tools are native” block.
+    - CRITICAL MCP wiring + "tools are native" block.
     - Role-specific guidance (implementer vs tester vs analyzer etc.).
     - A short startup note:
-      - “Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`.”
-      - “Follow `full_protocol` for lifecycle behavior.”
-      - “Team information (if any) is provided in your mission text.”
+      - "Call `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)`."
+      - "Follow `full_protocol` for lifecycle behavior."
+      - "Team information (if any) is provided in your mission text."
   - Remove:
     - Full Phase 1–6 lifecycle sections.
     - CHECK-IN PROTOCOL pseudo-code.
     - Inter-agent messaging pseudo-code.
     - Placeholder-heavy examples (`<AGENT_TYPE>`, `<TENANT_KEY>`, etc.).
+
+**Implementation status** (Handover 0432):
+- ✅ Agent Guidelines section implemented (regular agents)
+- ✅ BLOCKED protocol documented with correct `report_error()` / `acknowledge_job()` syntax
+- ✅ Orchestrator/agent template separation (different system_instructions)
+- ✅ Closeout framing added to orchestrator
+- ⏳ Team/dependency sections in mission text - pending
+- ⏳ Detailed closeout verification protocol in `full_protocol` - pending
 
 - Mission text (set via `spawn_agent_job`) will be enhanced (0353) to include:
   - **YOUR IDENTITY** – role + job_id.
