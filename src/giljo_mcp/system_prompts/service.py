@@ -181,10 +181,10 @@ class SystemPromptService:
         # Import lazily to avoid circular import issues during startup.
         from ..template_seeder import (
             _get_check_in_protocol_section,
-            _get_context_request_section,
             _get_default_templates_v103,
             _get_mcp_coordination_section,
             _get_orchestrator_context_response_section,
+            _get_orchestrator_messaging_protocol_section,
         )
 
         base_template = ""
@@ -198,11 +198,12 @@ class SystemPromptService:
 
         orchestrator_response = _get_orchestrator_context_response_section().strip()
         mcp_section = _get_mcp_coordination_section().strip()
-        context_request = _get_context_request_section().strip()
         check_in = _get_check_in_protocol_section().strip()
+        orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
         user_instructions = f"{base_template}\n\n{orchestrator_response}".strip()
-        system_instructions = f"{mcp_section}\n\n{context_request}\n\n{check_in}".strip()
+        # Orchestrator doesn't need context_request (it doesn't ask itself for context)
+        system_instructions = f"{mcp_section}\n\n{check_in}\n\n{orchestrator_messaging}".strip()
 
         self._default_orchestrator_prompt = f"{user_instructions}\n\n{system_instructions}".strip()
         return self._default_orchestrator_prompt
