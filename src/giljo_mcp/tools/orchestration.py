@@ -24,7 +24,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.logging import get_logger, ErrorCode
 from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.orchestrator import ProjectOrchestrator
+# Handover 0450: Removed dead import of ProjectOrchestrator
 
 
 logger = get_logger(__name__)
