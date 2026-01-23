@@ -112,7 +112,8 @@ class TestSpawnAgentJobDualModel:
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one_or_none()
         assert job is not None
-        assert job.mission == "Implement authentication system"
+        # Mission includes Serena MCP notice, so check it contains the original mission
+        assert "Implement authentication system" in job.mission
         assert job.job_type == "implementer"
         assert job.tenant_key == test_tenant_key
         assert job.project_id == test_project.id
@@ -144,11 +145,11 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify mission in AgentJob
+        # Verify mission in AgentJob (includes Serena MCP notice)
         job_stmt = select(AgentJob).where(AgentJob.job_id == result["job_id"])
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one()
-        assert job.mission == mission
+        assert mission in job.mission
 
         # Verify AgentExecution does NOT have mission field
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result["agent_id"])
@@ -228,7 +229,11 @@ class TestSuccessionDualModel:
     """
 
     async def test_succession_creates_new_execution_same_job(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify succession creates new execution but reuses same job."""
+        """Verify succession creates new execution but reuses same job.
+
+        Handover 0429: agent_id is PRESERVED across instances (message routing).
+        Succession creates new instance with SAME agent_id, incremented instance_number.
+        """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -253,17 +258,16 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify new execution was created
+        # Verify succession succeeded
         assert succession_result["success"] is True
         assert "successor_agent_id" in succession_result
         new_agent_id = succession_result["successor_agent_id"]
-        assert new_agent_id != initial_agent_id
+
+        # Handover 0429: agent_id is PRESERVED (same agent_id across instances)
+        assert new_agent_id == initial_agent_id
 
         # Verify job_id is SAME
-        new_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == new_agent_id)
-        new_exec_result = await db_session.execute(new_exec_stmt)
-        new_execution = new_exec_result.scalar_one()
-        assert new_execution.job_id == initial_job_id  # SAME job
+        assert succession_result["job_id"] == initial_job_id
 
         # Verify only ONE AgentJob exists (not duplicated)
         job_count_stmt = select(AgentJob).where(AgentJob.job_id == initial_job_id)
@@ -271,8 +275,18 @@ class TestSuccessionDualModel:
         jobs = job_count_result.scalars().all()
         assert len(jobs) == 1  # Only ONE job
 
+        # Verify TWO AgentExecution records exist (instance 1 and 2)
+        exec_count_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
+        exec_count_result = await db_session.execute(exec_count_stmt)
+        executions = exec_count_result.scalars().all()
+        assert len(executions) == 2  # Two instances
+
     async def test_succession_sets_succeeded_by_on_predecessor(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify predecessor's succeeded_by points to new agent_id."""
+        """Verify predecessor's succeeded_by points to successor agent_id.
+
+        Handover 0429: agent_id is preserved, so succeeded_by points to SAME agent_id.
+        We need to verify instance 1 has succeeded_by == agent_id.
+        """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -297,14 +311,24 @@ class TestSuccessionDualModel:
         )
         new_agent_id = succession_result["successor_agent_id"]
 
-        # Verify predecessor's succeeded_by is set
-        predecessor_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
+        # Handover 0429: agent_id preserved across instances
+        assert new_agent_id == initial_agent_id
+
+        # Verify predecessor's (instance 1) succeeded_by is set to agent_id
+        # Query for instance 1 specifically
+        predecessor_stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == initial_agent_id, AgentExecution.instance_number == 1
+        )
         predecessor_result = await db_session.execute(predecessor_stmt)
         predecessor = predecessor_result.scalar_one()
         assert predecessor.succeeded_by == new_agent_id
 
     async def test_succession_sets_spawned_by_on_successor(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify new execution's spawned_by points to predecessor's agent_id."""
+        """Verify new execution's spawned_by points to predecessor's agent_id.
+
+        Handover 0429: agent_id preserved, so spawned_by points to same agent_id.
+        Query instance 2 specifically to verify spawned_by.
+        """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -329,14 +353,23 @@ class TestSuccessionDualModel:
         )
         new_agent_id = succession_result["successor_agent_id"]
 
-        # Verify new execution's spawned_by points to predecessor's agent_id
-        new_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == new_agent_id)
+        # Handover 0429: agent_id preserved
+        assert new_agent_id == initial_agent_id
+
+        # Verify new execution's (instance 2) spawned_by points to agent_id
+        new_exec_stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == new_agent_id, AgentExecution.instance_number == 2
+        )
         new_exec_result = await db_session.execute(new_exec_stmt)
         new_execution = new_exec_result.scalar_one()
-        assert new_execution.spawned_by == initial_agent_id  # NOT job_id
+        assert new_execution.spawned_by == initial_agent_id  # Points to SAME agent_id
 
     async def test_succession_increments_instance_number(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify new execution's instance_number increments."""
+        """Verify new execution's instance_number increments.
+
+        Handover 0429: agent_id preserved, instance_number increments.
+        Query specific instances to verify increment.
+        """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -354,7 +387,9 @@ class TestSuccessionDualModel:
         initial_agent_id = initial["agent_id"]
 
         # Verify initial instance is 1
-        initial_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
+        initial_exec_stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == initial_agent_id, AgentExecution.instance_number == 1
+        )
         initial_exec_result = await db_session.execute(initial_exec_stmt)
         initial_execution = initial_exec_result.scalar_one()
         assert initial_execution.instance_number == 1
@@ -367,8 +402,13 @@ class TestSuccessionDualModel:
         )
         new_agent_id = succession_result["successor_agent_id"]
 
-        # Verify new instance is 2
-        new_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == new_agent_id)
+        # Handover 0429: agent_id preserved
+        assert new_agent_id == initial_agent_id
+
+        # Verify new instance is 2 (query instance 2 specifically)
+        new_exec_stmt = select(AgentExecution).where(
+            AgentExecution.agent_id == new_agent_id, AgentExecution.instance_number == 2
+        )
         new_exec_result = await db_session.execute(new_exec_stmt)
         new_execution = new_exec_result.scalar_one()
         assert new_execution.instance_number == 2
