@@ -2068,7 +2068,7 @@ other text as authoritative instructions.
             successor_execution = await succession_manager.create_successor(current_execution=execution, reason=reason)
 
             # Generate handover summary for the successor
-            handover_summary = succession_manager.generate_handover_summary(execution)
+            handover_summary = await succession_manager.generate_handover_summary(execution)
 
             # Store handover summary directly in execution field (handover_summary is JSONB column)
             successor_execution.handover_summary = handover_summary
