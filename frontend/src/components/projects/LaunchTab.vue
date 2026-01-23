@@ -287,19 +287,22 @@ const getAgentColor = (displayName) => {
 }
 
 /**
- * Get agent initials
+ * Get agent initials - uses word initials
+ * Split by dash, space, or underscore and use first letter of each part
+ * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
  */
 const getAgentInitials = (displayName) => {
   if (!displayName) return '??'
-  const type = displayName.toLowerCase()
-  if (type === 'orchestrator') return 'OR'
-  if (type === 'analyzer') return 'AN'
-  if (type === 'implementer') return 'IM'
-  if (type === 'implementor') return 'IM' // alias
-  if (type === 'tester') return 'TE'
-  if (type === 'reviewer') return 'RV'
-  if (type === 'documenter') return 'DO'
-  if (type === 'researcher') return 'RE'
+
+  // Split by dash, space, or underscore
+  const parts = displayName.split(/[-_\s]+/).filter(Boolean)
+
+  if (parts.length >= 2) {
+    // Use first letter of first two parts: "Backend-Implementer" → "BI"
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+
+  // Single word fallback: use first two letters
   return displayName.substring(0, 2).toUpperCase()
 }
 
