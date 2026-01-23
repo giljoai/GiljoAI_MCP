@@ -66,6 +66,7 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
         context_request_section = _get_context_request_section()
         agent_messaging_section = _get_agent_messaging_protocol_section()
         orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
+        agent_guidelines_section = _get_agent_guidelines_section()
 
         # Query existing templates for tenant
         stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
@@ -80,13 +81,15 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
         for template in templates:
             # Build new system_instructions based on role
             if template.role == "orchestrator":
+                # Orchestrator doesn't need context_request (it doesn't ask itself for context)
                 new_system_instructions = (
-                    f"{mcp_section}\n\n{context_request_section}\n\n"
+                    f"{mcp_section}\n\n"
                     f"{check_in_section}\n\n{orchestrator_messaging_section}"
                 )
             else:
+                # Regular agents get guidelines + context request protocol (Handover 0432)
                 new_system_instructions = (
-                    f"{mcp_section}\n\n{context_request_section}\n\n"
+                    f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n"
                     f"{check_in_section}\n\n{agent_messaging_section}"
                 )
 
@@ -210,8 +213,8 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
             # Handover 0118: Add messaging protocol to system instructions
             # Build system_instructions: MCP + Context Request + Check-In + Messaging Protocol
             if template_def["role"] == "orchestrator":
-                # Orchestrator gets enhanced messaging protocol
-                system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
+                # Orchestrator gets enhanced messaging protocol (no context_request - orchestrator doesn't ask itself)
+                system_instructions = f"{mcp_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
             else:
                 # Regular agents get guidelines + standard messaging protocol (Handover 0432)
                 system_instructions = f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
