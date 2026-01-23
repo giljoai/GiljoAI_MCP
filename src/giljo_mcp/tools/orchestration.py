@@ -805,13 +805,14 @@ Action: Report to user - template configuration required
 Fix: User must activate templates in My Settings → Agent Templates
 
 ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
-pending ─[acknowledge_job()]─→ active
-active ─[report_progress()]─→ active (updates progress)
-active ─[complete_job()]─→ completed
-active ─[report_error()]─→ failed
-active ─[report_error("BLOCKED:...")]─→ blocked
+waiting ─[acknowledge_job()]─→ working
+working ─[report_progress()]─→ working (updates progress/todos)
+working ─[complete_job()]─→ complete
+working ─[report_error()]─→ blocked
+blocked ─[acknowledge_job()]─→ working (resume from blocked)
 
-Note: Use "BLOCKED:" prefix in error message for blocked state.
+Note: All report_error() calls set status to "blocked". Use "BLOCKED: <reason>"
+message format when asking for clarification vs actual errors.
 
 GENERAL ERROR PROTOCOL:
 
