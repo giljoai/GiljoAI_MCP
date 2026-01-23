@@ -177,14 +177,34 @@ Created → Active → Paused → Active → Completed
 
 ### **OrchestrationService** (`src/giljo_mcp/services/orchestration_service.py`)
 
-**Purpose**: Context tracking, succession management, orchestrator coordination
+**Purpose**: Context tracking, succession management, orchestrator coordination, agent spawning
 
-**Key Methods**:
+**Note**: As of Handovers 0450-0452 (Jan 2026), all orchestration logic from `orchestrator.py` has been consolidated into OrchestrationService. The `tool_accessor.py` now acts as a pure delegation layer.
+
+**Core Methods**:
 - `create_orchestrator_job(project_id, mission, context_budget)` - Create orchestrator with context tracking
 - `update_context_usage(job_id, additional_tokens)` - Track context consumption
 - `trigger_succession(job_id, reason)` - Spawn successor orchestrator
 - `get_context_status(job_id)` - Check context usage vs budget
 - `generate_handover_summary(job_id)` - Generate condensed context (<10K tokens)
+
+**Orchestrator Instructions** (moved from orchestrator.py):
+- `get_orchestrator_instructions(job_id, tenant_key)` - Fetch orchestrator context and mission
+- `update_agent_mission(job_id, tenant_key, mission)` - Update agent job mission field
+
+**Agent Spawning & Management** (moved from orchestrator.py):
+- `spawn_agent_job(agent_display_name, agent_name, mission, project_id)` - Create agent job and execution
+- `get_agent_mission(job_id, tenant_key)` - Fetch agent-specific mission with full protocol
+
+**Succession Management** (moved from orchestrator.py):
+- `create_successor_orchestrator(current_job_id, tenant_key, reason)` - Create successor and transfer context
+- `check_succession_status(job_id, tenant_key)` - Check if succession needed based on context threshold
+
+**Vision Processing** (moved from orchestrator.py):
+- `process_product_vision(product_id, vision_content, project_id)` - Process vision, create/update project
+
+**Delegation Pattern**:
+All MCP tools in `tool_accessor.py` delegate to OrchestrationService methods. The ToolAccessor class acts as a thin adapter layer between MCP protocol and service layer.
 
 **Context Tracking Pattern** (Handover 0502):
 ```python
