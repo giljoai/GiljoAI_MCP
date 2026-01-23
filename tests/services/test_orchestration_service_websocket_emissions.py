@@ -209,10 +209,23 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None
     )
 
+    # complete_job makes 5 execute calls: execution, job, unread messages, todo items, other active executions
+    # unread messages, todo items, and other active use .scalars().all() not .scalar_one_or_none()
+    unread_result = MagicMock()
+    unread_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
+    todo_result = MagicMock()
+    todo_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
+    other_active_result = MagicMock()
+    other_active_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
-        _scalar_result(None),
+        unread_result,       # unread messages (empty list)
+        todo_result,         # todo items (empty list)
+        other_active_result, # other active executions (empty list)
     ]
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)
@@ -247,11 +260,23 @@ async def test_report_progress_fallback_emits_message_new_event(
         mission_acknowledged_at=datetime.now(timezone.utc),
         instance_number=1,
     )
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()))
+    job = SimpleNamespace(
+        job_id=job_id,
+        tenant_key=tenant_key,
+        project_id=str(uuid4()),
+        job_metadata={}  # Required for websocket broadcast
+    )
+
+    # report_progress uses 2 session contexts with 3 total execute calls:
+    # Session 1: execution, job (both scalar_one_or_none)
+    # Session 2: todo_items (scalars().all())
+    todo_items_result = MagicMock()
+    todo_items_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
+        todo_items_result,  # todo_items query (empty list)
     ]
 
     # Force fallback path by ensuring MessageService is unavailable
@@ -265,7 +290,7 @@ async def test_report_progress_fallback_emits_message_new_event(
         async def send_message(self, **_kwargs):
             return {"status": "success"}
 
-    monkeypatch.setattr("giljo_mcp.agent_message_queue.AgentMessageQueue", _FakeQueue)
+    monkeypatch.setattr("src.giljo_mcp.agent_message_queue.AgentMessageQueue", _FakeQueue)
 
     result = await orchestration_service.report_progress(
         job_id=job_id,
@@ -276,9 +301,10 @@ async def test_report_progress_fallback_emits_message_new_event(
     assert result["status"] == "success"
     mock_websocket_manager.broadcast_to_tenant.assert_awaited()
 
+    # report_progress emits job:progress_update event (not message:new)
     last_call = mock_websocket_manager.broadcast_to_tenant.await_args_list[-1].kwargs
     assert last_call["tenant_key"] == tenant_key
-    assert last_call["event_type"] == "message:new"
+    assert last_call["event_type"] == "job:progress_update"
 
 
 async def test_websocket_failures_do_not_break_orchestration_calls(
