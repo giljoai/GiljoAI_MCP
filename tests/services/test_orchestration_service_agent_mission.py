@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 @pytest.fixture
@@ -53,19 +53,56 @@ def orchestration_service(mock_db_manager, mock_tenant_manager):
 
 @pytest.fixture
 def mock_agent_job():
-    """Create mock agent job."""
-    job = AgentExecution(
-        job_id=str(uuid4()),
+    """Create mock agent job and execution."""
+    job_id = str(uuid4())
+
+    # Create AgentJob (work order)
+    job = AgentJob(
+        job_id=job_id,
         tenant_key="tenant-test",
         project_id=str(uuid4()),
+        mission="Test mission for implementation",
+        job_type="orchestrator",
+        status="active",
+    )
+
+    # Create AgentExecution (executor instance)
+    execution = AgentExecution(
+        job_id=job_id,
+        tenant_key="tenant-test",
         agent_display_name="implementer",
         agent_name="implementer-1",
-        mission="Implement the user authentication module with JWT tokens.",
         status="waiting",
         mission_acknowledged_at=None,
         started_at=None,
     )
-    return job
+
+    return job, execution
+
+
+def setup_get_agent_mission_mocks(session, job, execution):
+    """
+    Helper to setup database mocks for get_agent_mission() calls.
+
+    The method makes 3 database queries:
+    1. Get AgentJob by job_id
+    2. Get AgentExecution by job_id
+    3. Get all project executions (if job has project_id)
+    """
+    # 1. Get AgentJob
+    job_result = MagicMock()
+    job_result.scalar_one_or_none = MagicMock(return_value=job)
+
+    # 2. Get AgentExecution
+    exec_result = MagicMock()
+    exec_result.scalar_one_or_none = MagicMock(return_value=execution)
+
+    # 3. Get all project executions (returns a list of tuples)
+    all_exec_result = MagicMock()
+    all_exec_result.all = MagicMock(return_value=[(execution, job)])
+
+    # Mock session.execute to return different results for different queries
+    session.execute = AsyncMock(side_effect=[job_result, exec_result, all_exec_result])
 
 
 class TestGetAgentMissionFullProtocol:
@@ -77,12 +114,10 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that get_agent_mission returns full_protocol field by default."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
-        # Mock database query to return job
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         # Stub httpx to avoid real WebSocket bridge calls
         with patch("httpx.AsyncClient") as MockHttpxClient:
@@ -110,11 +145,10 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that full_protocol contains all 5 lifecycle phases (Handover 0359)."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -145,11 +179,10 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that full_protocol references required MCP tools."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -177,12 +210,11 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that full_protocol includes job-specific context."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
         job.job_id = "unique-job-id-12345"
 
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -209,11 +241,10 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that full_protocol addition maintains backward compatibility."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -248,12 +279,11 @@ class TestGetAgentMissionFullProtocol:
     ):
         """Test that protocol includes message handling instructions (Issue 0361-5)."""
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
         # Mock database query
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -292,12 +322,11 @@ class TestAgentProtocolMessageHandlingEnhancements:
         not just at startup and completion.
         """
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
         # Mock database query
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -338,12 +367,11 @@ class TestAgentProtocolMessageHandlingEnhancements:
         orchestrator feedback first.
         """
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
         # Mock database query
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -388,12 +416,11 @@ class TestAgentProtocolMessageHandlingEnhancements:
         This prevents agents from completing while orchestrator has pending instructions.
         """
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
         # Mock database query
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()
@@ -437,12 +464,11 @@ class TestAgentProtocolMessageHandlingEnhancements:
         all phases of execution.
         """
         db_manager, session = mock_db_manager
-        job = mock_agent_job
+        job, execution = mock_agent_job
 
         # Mock database query
-        result = MagicMock()
-        result.scalar_one_or_none = MagicMock(return_value=job)
-        session.execute = AsyncMock(return_value=result)
+        # Setup database mocks
+        setup_get_agent_mission_mocks(session, job, execution)
 
         with patch("httpx.AsyncClient") as MockHttpxClient:
             mock_client = AsyncMock()

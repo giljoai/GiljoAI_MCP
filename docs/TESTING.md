@@ -19,13 +19,15 @@ tests/
 ├── services/          # Unit tests for service layer
 │   ├── test_product_service.py
 │   ├── test_project_service.py
-│   ├── test_orchestration_service.py
+│   ├── test_orchestration_service_full.py  # Comprehensive orchestration tests (Handover 0452)
 │   └── test_settings_service.py
 ├── integration/       # Integration tests (DB + services + endpoints)
 │   ├── test_product_workflows.py
 │   ├── test_project_lifecycle.py
-│   ├── test_orchestrator_succession.py
+│   ├── test_orchestration_e2e.py           # E2E orchestration workflow tests (Handover 0453)
 │   └── test_multi_tenant_isolation.py
+├── tools/             # MCP tool delegation tests
+│   └── test_tool_accessor_delegation.py    # Verify delegation to OrchestrationService (Handover 0453)
 ├── endpoints/         # API endpoint tests
 │   ├── test_products_api.py
 │   ├── test_projects_api.py
@@ -33,6 +35,8 @@ tests/
 ├── conftest.py        # Shared fixtures
 └── pytest.ini         # pytest configuration
 ```
+
+**Note**: As of Handover 0452 (Jan 2026), 30+ orchestrator test files were deleted (~13,500 lines) after consolidating orchestration logic into OrchestrationService. The new test structure focuses on testing the service layer directly.
 
 ---
 
@@ -136,57 +140,75 @@ async def test_project_summary_generation(db_session, test_tenant):
 
 ### **OrchestrationService Tests**
 
+**Location**: `tests/services/test_orchestration_service_full.py`
+
+**Note**: As of Handovers 0450-0452 (Jan 2026), OrchestrationService contains all orchestration logic (previously in `orchestrator.py`). Tests are comprehensive and cover:
+- Agent spawning and execution creation
+- Multi-tenant isolation
+- Succession management
+- Vision processing
+- Error handling
+
 ```python
-# tests/services/test_orchestration_service.py
+# tests/services/test_orchestration_service_full.py
 
 @pytest.mark.asyncio
-async def test_context_tracking(db_session, test_tenant):
-    """Test context usage tracking"""
+async def test_spawn_creates_both_job_and_execution(db_session, test_tenant):
+    """Test spawn_agent_job creates AgentJob and AgentExecution"""
     service = OrchestrationService(db_session, test_tenant)
 
-    job = await service.create_orchestrator_job(
-        project_id=1,
-        mission="Test mission",
-        context_budget=200000
+    result = await service.spawn_agent_job(
+        agent_display_name="backend-implementer",
+        agent_name="Backend Developer",
+        mission="Implement user auth",
+        project_id=test_project.id
     )
 
-    # Initial state
-    assert job.context_used == 0
-    assert job.context_budget == 200000
-
-    # Update context usage
-    await service.update_context_usage(job.id, 50000)
-
-    # Verify tracking
-    status = await service.get_context_status(job.id)
-    assert status['context_used'] == 50000
-    assert status['percentage_used'] == 0.25
-    assert status['tokens_remaining'] == 150000
+    assert result["job_id"] is not None
+    assert result["agent_id"] is not None
+    assert result["thin_prompt"] is not None
 
 
 @pytest.mark.asyncio
-async def test_auto_succession_trigger(db_session, test_tenant):
-    """Test automatic succession at 90% threshold"""
+async def test_create_successor_creates_new_execution(db_session, test_tenant):
+    """Test create_successor_orchestrator creates new AgentExecution"""
     service = OrchestrationService(db_session, test_tenant)
 
-    job = await service.create_orchestrator_job(
-        project_id=1,
-        mission="Test mission",
-        context_budget=100000  # Small budget for testing
+    # Create original orchestrator
+    original = await service.create_orchestrator_job(...)
+
+    # Create successor
+    result = await service.create_successor_orchestrator(
+        current_job_id=original.job_id,
+        tenant_key=test_tenant,
+        reason="context_limit"
     )
 
-    # Approach 90% threshold
-    await service.update_context_usage(job.id, 91000)  # 91% used
+    assert result["successor_agent_id"] != original.agent_id
+    assert result["thin_prompt"] is not None
 
-    # Trigger succession
-    successor = await service.trigger_succession(job.id, "context_limit")
 
-    # Verify successor
-    assert successor.instance_number == job.instance_number + 1
-    assert successor.spawned_by == job.id
-    assert successor.handover_summary is not None
-    assert len(successor.handover_summary) < 10000  # <10K tokens
+@pytest.mark.asyncio
+async def test_get_agent_mission_returns_full_protocol(db_session, test_tenant):
+    """Test get_agent_mission returns mission with full protocol"""
+    service = OrchestrationService(db_session, test_tenant)
+
+    result = await service.spawn_agent_job(...)
+    mission_result = await service.get_agent_mission(
+        job_id=result["job_id"],
+        tenant_key=test_tenant
+    )
+
+    assert mission_result["mission"] is not None
+    assert mission_result["full_protocol"] is not None
+    assert "EXPLORE" in mission_result["full_protocol"]
 ```
+
+**Test Coverage** (as of Handover 0452):
+- 11 tests in `test_orchestration_service_full.py`
+- 9 passing, 2 skipped (process_product_vision pending implementation)
+- Tests cover: spawning, succession, multi-tenant isolation, error handling
+- Previous `test_orchestrator*.py` files deleted (30+ files, ~13,500 lines)
 
 ---
 
