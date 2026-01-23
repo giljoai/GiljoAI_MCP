@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-19 (0425 added - Platform Detection Injection)
+**Last Updated:** 2026-01-22 (0440a added - Project Taxonomy Database & Backend)
 
 ---
 
@@ -59,6 +59,15 @@
 > **Purpose**: Ensure orchestrators/agents write platform-appropriate shell commands
 > **Solution**: Target platform (Product card) + Dev environment (agent self-detection)
 > **MCP Enhancement**: #14 (Platform-Specific Command Guidance)
+
+### Project Organization Series (0440) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0440a** | **Project Taxonomy Database & Backend** | **Ready** | **MEDIUM** | 8-12h |
+
+> **Purpose**: Organize projects with types/series (e.g., "BE-0042a" for Backend #42, subseries 'a')
+> **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
+> **Follow-up**: 0440b (Frontend UI), 0440c (Documentation)
 
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
