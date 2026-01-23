@@ -346,6 +346,16 @@ During staging, if project requirements have major gaps or conflicts:
 4. Call `acknowledge_job()` to resume (sets status back to working)
 
 Do not guess at major ambiguities - ask first.
+
+## Before Closeout
+
+Before closing the project, verify all agents have completed cleanly:
+1. Check `get_workflow_status()` - all agents should be complete
+2. Verify no agent has unread messages (messages sent after they completed)
+3. If issues found: mark BLOCKED and inform user which agents need attention
+4. Write 360 memory via `close_project_and_update_memory()` only after verification
+
+Detailed closeout protocol in `full_protocol`.
 """,
             "model": "sonnet",
             "tools": None,
