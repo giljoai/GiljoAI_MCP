@@ -892,6 +892,13 @@ class ToolAccessor:
                 )
                 response["orchestrator_protocol"] = orchestrator_protocol
 
+                # Handover 0431: Inject orchestrator identity/behavioral guidance
+                # Orchestrators don't have AgentTemplate records (SYSTEM_MANAGED_ROLES skip)
+                # so they get behavioral guidance via this field instead of fetch_context(self_identity)
+                from giljo_mcp.template_seeder import get_orchestrator_identity_content
+
+                response["orchestrator_identity"] = get_orchestrator_identity_content()
+
                 logger.info(
                     f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
                     extra={
