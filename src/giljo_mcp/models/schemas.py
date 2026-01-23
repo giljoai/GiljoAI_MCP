@@ -184,30 +184,33 @@ class SuccessionResponse(BaseModel):
 
     Handover 0358b: Updated for dual-model architecture (AgentJob + AgentExecution).
     Handover 0381: Clean contract - job_id (work order) + successor_agent_id (new executor).
+    Agent ID Swap: Old orchestrator gets decommissioned ID, new orchestrator takes over original.
     Returns successor execution details and handover summary for launching new instance.
     """
 
-    current_agent_id: str = Field(..., description="Current executor agent_id being succeeded")
+    current_agent_id: str = Field(..., description="Decommissioned agent_id of old orchestrator (after swap)")
     job_id: str = Field(..., description="Work order UUID (persists across succession)")
-    successor_agent_id: str = Field(..., description="NEW executor agent_id")
+    successor_agent_id: str = Field(..., description="Agent_id of new orchestrator (takes over original ID)")
     instance_number: int = Field(..., description="Successor instance number")
     launch_prompt: str = Field(..., description="Thin-client launch prompt for successor")
     handover_summary: Optional[str] = Field(None, description="Compressed handover summary")
     succession_reason: str = Field(..., description="Reason for succession")
     created_at: datetime = Field(..., description="Successor creation timestamp")
+    decommissioned_agent_id: Optional[str] = Field(None, description="Decommissioned ID of old orchestrator")
 
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
             "example": {
-                "current_agent_id": "agent-123",
+                "current_agent_id": "decomm-agent12-abc12345",
                 "job_id": "job-456",
-                "successor_agent_id": "agent-789",
+                "successor_agent_id": "agent-123",
                 "instance_number": 2,
                 "launch_prompt": "Continue orchestration from instance 1...",
                 "handover_summary": "Project 60% complete, 3 active agents...",
                 "succession_reason": "manual",
                 "created_at": "2025-01-13T14:22:00Z",
+                "decommissioned_agent_id": "decomm-agent12-abc12345",
             }
         },
     )
