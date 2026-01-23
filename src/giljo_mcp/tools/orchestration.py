@@ -174,7 +174,7 @@ async def _get_user_config(
         - Ensures multi-tenant isolation (user must belong to tenant_key)
         - Normalizes depth_config keys from UI format to internal format
     """
-    from giljo_mcp.models.auth import User
+    from src.giljo_mcp.models.auth import User
 
     try:
         # Query user with tenant isolation
