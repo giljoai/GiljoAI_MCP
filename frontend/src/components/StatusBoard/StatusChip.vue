@@ -75,6 +75,7 @@ const props = defineProps({
         'failed',
         'cancelled',
         'decommissioned',
+        'handed_over',
       ].includes(value),
   },
   healthStatus: {
