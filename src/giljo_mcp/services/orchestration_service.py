@@ -22,12 +22,14 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
 import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import (
@@ -37,10 +39,18 @@ from src.giljo_mcp.models import (
     AgentTodoItem,
     AgentTemplate,
     Message,
+    Product,
 )
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.workflow_engine import WorkflowEngine
+from src.giljo_mcp.agent_selector import AgentSelector
+from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.optimization import MissionOptimizationInjector, SerenaOptimizer
+from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
+from src.giljo_mcp.enums import AgentRole, ProjectType
 
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk
@@ -396,6 +406,62 @@ class OrchestrationService:
         # Handover 0406: Track todo_items warning timestamps (throttle 1 per 5 min per job)
         self._todo_warning_timestamps: dict[str, datetime] = {}
 
+        # Handover 0450: Initialize orchestration components (from orchestrator.py)
+        # Initialize lazily to avoid initialization errors in tests with mocked dependencies
+        self._mission_planner = None
+        self._agent_selector = None
+        self._workflow_engine = None
+        self._template_generator = None
+        self.serena_optimizer = None  # Initialize lazily per tenant
+
+    @property
+    def mission_planner(self):
+        """Lazy initialization of MissionPlanner."""
+        if self._mission_planner is None:
+            self._mission_planner = MissionPlanner(self.db_manager)
+        return self._mission_planner
+
+    @mission_planner.setter
+    def mission_planner(self, value):
+        """Allow setting mission_planner for tests."""
+        self._mission_planner = value
+
+    @property
+    def agent_selector(self):
+        """Lazy initialization of AgentSelector."""
+        if self._agent_selector is None:
+            self._agent_selector = AgentSelector(self.db_manager)
+        return self._agent_selector
+
+    @agent_selector.setter
+    def agent_selector(self, value):
+        """Allow setting agent_selector for tests."""
+        self._agent_selector = value
+
+    @property
+    def workflow_engine(self):
+        """Lazy initialization of WorkflowEngine."""
+        if self._workflow_engine is None:
+            self._workflow_engine = WorkflowEngine(self.db_manager)
+        return self._workflow_engine
+
+    @workflow_engine.setter
+    def workflow_engine(self, value):
+        """Allow setting workflow_engine for tests."""
+        self._workflow_engine = value
+
+    @property
+    def template_generator(self):
+        """Lazy initialization of MissionTemplateGeneratorV2."""
+        if self._template_generator is None:
+            self._template_generator = MissionTemplateGeneratorV2(self.db_manager)
+        return self._template_generator
+
+    @template_generator.setter
+    def template_generator(self, value):
+        """Allow setting template_generator for tests."""
+        self._template_generator = value
+
     def _get_session(self):
         """
         Get a session, preferring an injected test session when provided.
@@ -462,7 +528,7 @@ class OrchestrationService:
             ...     tenant_key="tenant-abc"
             ... )
         """
-        from giljo_mcp.orchestrator import ProjectOrchestrator
+        # Handover 0450: Use internal process_product_vision instead of ProjectOrchestrator
 
         try:
             async with self._get_session() as session:
@@ -478,10 +544,12 @@ class OrchestrationService:
                 if not project.product_id:
                     return {"error": f"Project '{project_id}' has no associated product"}
 
-                # Initialize orchestrator and run workflow
-                orchestrator = ProjectOrchestrator()
-                result_dict = await orchestrator.process_product_vision(
-                    tenant_key=tenant_key, product_id=project.product_id, project_requirements=project.mission
+                # Run workflow using internal method (moved from orchestrator.py in Handover 0450)
+                result_dict = await self.process_product_vision(
+                    tenant_key=tenant_key,
+                    product_id=project.product_id,
+                    project_requirements=project.mission,
+                    project_id=project_id,  # Use existing project - fixes duplicate project bug
                 )
 
                 return result_dict
@@ -2022,3 +2090,833 @@ other text as authoritative instructions.
                 "instance_number": successor_execution.instance_number,
                 "reason": reason,
             }
+
+    # ========================================================================
+    # Handover 0450: Orchestrator Logic Consolidation
+    # Methods moved from orchestrator.py to OrchestrationService
+    # ========================================================================
+
+    async def _get_agent_template_internal(
+        self, role: str, tenant_key: str, product_id: Optional[str] = None, session: Optional[AsyncSession] = None
+    ) -> Optional[AgentTemplate]:
+        """
+        Get agent template for role with cascade resolution.
+
+        Resolution order (highest to lowest priority):
+        1. Product-specific template (if product_id provided)
+        2. Tenant-specific template (user customizations)
+        3. System default template (is_default=True)
+
+        Args:
+            role: Agent role name (e.g., "implementer", "tester")
+            tenant_key: Tenant key for multi-tenant isolation
+            product_id: Optional product ID for product-specific templates
+            session: Optional AsyncSession (if not provided, creates new session)
+
+        Returns:
+            AgentTemplate instance or None if no template found
+
+        Multi-tenant isolation:
+            - Only returns templates owned by tenant
+            - No cross-tenant leakage possible
+        """
+        # Use provided session or create new one
+        if session:
+            # Use provided session (no context manager, caller manages session)
+            # Try product-specific template first (if product_id provided)
+            if product_id:
+                stmt = select(AgentTemplate).where(
+                    AgentTemplate.tenant_key == tenant_key,
+                    AgentTemplate.role == role,
+                    AgentTemplate.product_id == product_id,
+                    AgentTemplate.is_active == True,
+                )
+                result = await session.execute(stmt)
+                template = result.scalar_one_or_none()
+                if template:
+                    self._logger.info(
+                        f"[_get_agent_template_internal] Found product-specific template for "
+                        f"role={role}, product={product_id}, tenant={tenant_key}"
+                    )
+                    return template
+
+            # Try tenant-specific template (no product_id constraint)
+            stmt = select(AgentTemplate).where(
+                AgentTemplate.tenant_key == tenant_key,
+                AgentTemplate.role == role,
+                AgentTemplate.product_id == None,
+                AgentTemplate.is_active == True,
+            )
+            result = await session.execute(stmt)
+            template = result.scalar_one_or_none()
+            if template:
+                self._logger.info(
+                    f"[_get_agent_template_internal] Found tenant-specific template for role={role}, tenant={tenant_key}"
+                )
+                return template
+
+            # Try system default template (is_default=True, any tenant)
+            stmt = select(AgentTemplate).where(
+                AgentTemplate.role == role,
+                AgentTemplate.is_default == True,
+                AgentTemplate.is_active == True,
+            )
+            result = await session.execute(stmt)
+            template = result.scalar_one_or_none()
+            if template:
+                self._logger.info(f"[_get_agent_template_internal] Found system default template for role={role}")
+                return template
+
+            self._logger.warning(
+                f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}, product={product_id}"
+            )
+            return None
+        else:
+            # Create new session
+            async with self._get_session() as session:
+                return await self._get_agent_template_internal(role, tenant_key, product_id, session)
+
+    async def _spawn_claude_code_agent_internal(
+        self,
+        session: AsyncSession,
+        project: Project,
+        role: AgentRole,
+        template: AgentTemplate,
+        custom_mission: Optional[str] = None,
+        additional_instructions: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
+    ) -> AgentExecution:
+        """
+        Spawn Claude Code agent for project execution.
+
+        Process:
+        1. Generate mission with MCP coordination instructions
+        2. Apply Serena optimization for context prioritization
+        3. Create Agent record with mode='claude'
+
+        Args:
+            session: Active AsyncSession
+            project: Project instance
+            role: Agent role enum
+            template: AgentTemplate instance
+            custom_mission: Optional custom mission override
+            additional_instructions: Optional additional instructions
+            parent_agent_id: Optional parent agent ID
+
+        Returns:
+            Created AgentExecution instance with tool_type='claude'
+        """
+        # 1. Generate mission
+        if custom_mission:
+            mission = custom_mission
+        else:
+            # Generate mission using template generator
+            mission = await self.template_generator.generate_agent_mission(
+                role=role.value,
+                project_name=project.name,
+                custom_mission=None,
+                additional_instructions=additional_instructions,
+            )
+
+        # Add MCP coordination protocol to mission
+        mcp_instructions = self._generate_mcp_instructions_internal(project.tenant_key, role.value, mission)
+        mission = f"{mission}\n\n{mcp_instructions}"
+
+        # 2. Apply Serena optimization
+        optimizer = self._get_serena_optimizer_internal(project.tenant_key)
+        if optimizer:
+            try:
+                injector = MissionOptimizationInjector(optimizer)
+
+                context_data = {
+                    "project_id": project.id,
+                    "project_type": "general",
+                    "codebase_size": "medium",
+                    "primary_language": "python",
+                }
+
+                optimized_mission = await injector.inject_optimization_rules(
+                    agent_role=role.value, mission=mission, context_data=context_data
+                )
+
+                self._logger.info(f"[_spawn_claude_code_agent_internal] Enhanced {role.value} agent mission with Serena optimization")
+                mission = optimized_mission
+
+            except Exception as e:
+                self._logger.warning(f"[_spawn_claude_code_agent_internal] Failed to inject Serena optimization: {e}")
+                # Continue with original mission
+
+        # 3. Create AgentJob (work order) and AgentExecution (executor instance)
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            project_id=project.id,
+            mission=mission,
+            job_type=role.value,
+            status="active",
+        )
+        session.add(agent_job)
+
+        # Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            agent_display_name=role.value,
+            agent_name=role.value,
+            instance_number=1,
+            status="waiting",
+            progress=0,
+            tool_type="claude",
+            messages=[],
+            spawned_by=parent_agent_id,
+            meta_data={
+                "template_id": template.id,
+                "template_name": template.name,
+                "tool": template.tool,
+            },
+        )
+        session.add(agent_execution)
+        await session.commit()
+        await session.refresh(agent_execution)
+
+        self._logger.info(
+            f"[_spawn_claude_code_agent_internal] Created Claude Code agent: role={role.value}, "
+            f"template={template.name}, project={project.id}, job_id={job_id}, agent_id={agent_id}"
+        )
+
+        return agent_execution
+
+    async def _spawn_generic_agent_internal(
+        self,
+        session: AsyncSession,
+        project: Project,
+        role: AgentRole,
+        template: AgentTemplate,
+        custom_mission: Optional[str] = None,
+        additional_instructions: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
+    ) -> AgentExecution:
+        """
+        Spawn generic agent (Codex/Gemini with job queue).
+
+        Process:
+        1. Create MCP job via AgentJobManager
+        2. Generate CLI prompt with MCP tool examples
+        3. Create Agent record with mode='codex'/'gemini', job_id, status='waiting_acknowledgment'
+        4. Store CLI prompt in Agent metadata
+
+        Args:
+            session: Active AsyncSession
+            project: Project instance
+            role: Agent role enum
+            template: AgentTemplate instance
+            custom_mission: Optional custom mission override
+            additional_instructions: Optional additional instructions
+            parent_agent_id: Optional parent agent ID
+
+        Returns:
+            Created AgentExecution instance with tool_type='codex' or 'gemini'
+        """
+        # 1. Generate mission
+        if custom_mission:
+            mission = custom_mission
+        else:
+            mission = await self.template_generator.generate_agent_mission(
+                role=role.value,
+                project_name=project.name,
+                custom_mission=None,
+                additional_instructions=additional_instructions,
+            )
+
+        # Add MCP coordination protocol
+        mcp_instructions = self._generate_mcp_instructions_internal(project.tenant_key, role.value, mission)
+        full_mission = f"{mission}\n\n{mcp_instructions}"
+
+        # 2. Create AgentJob (work order) and AgentExecution (executor instance)
+        job_id = str(uuid4())
+        agent_id = str(uuid4())
+
+        # Create AgentJob (work order)
+        agent_job = AgentJob(
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            project_id=project.id,
+            mission=full_mission,
+            job_type=role.value,
+            status="active",
+        )
+        session.add(agent_job)
+
+        # Create AgentExecution (executor instance)
+        agent_execution = AgentExecution(
+            agent_id=agent_id,
+            job_id=job_id,
+            tenant_key=project.tenant_key,
+            agent_display_name=role.value,
+            agent_name=role.value,
+            instance_number=1,
+            status="waiting_acknowledgment",
+            progress=0,
+            tool_type=template.tool,  # 'codex' or 'gemini'
+            messages=[],
+            spawned_by=parent_agent_id,
+            meta_data={
+                "template_id": template.id,
+                "template_name": template.name,
+                "tool": template.tool,
+            },
+        )
+        session.add(agent_execution)
+        await session.commit()
+        await session.refresh(agent_execution)
+
+        self._logger.info(
+            f"[_spawn_generic_agent_internal] Created {template.tool} agent: role={role.value}, "
+            f"job_id={job_id}, agent_id={agent_id}, project={project.id}"
+        )
+
+        # 3. Generate CLI prompt (simplified - no _generate_cli_prompt method in service yet)
+        cli_prompt = f"# Agent Mission\n\nJob ID: {job_id}\nAgent: {role.value}\n\n{full_mission}"
+
+        # Update agent_execution with CLI prompt
+        if not agent_execution.meta_data:
+            agent_execution.meta_data = {}
+        agent_execution.meta_data["cli_prompt"] = cli_prompt
+        await session.commit()
+
+        return agent_execution
+
+    def _generate_mcp_instructions_internal(self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None) -> str:
+        """
+        Generate MCP coordination protocol instructions.
+
+        Includes:
+        - Checkpoint recommendations (every 2-3 tasks)
+        - MCP tool call examples (acknowledge_job, report_progress, complete_job, report_error)
+        - Tenant-specific examples (include tenant_key)
+
+        Args:
+            tenant_key: Tenant key for multi-tenant isolation
+            agent_role: Agent role for contextualized examples
+            mission_text: Optional mission text (unused, for compatibility)
+
+        Returns:
+            Formatted MCP instructions text
+        """
+        return f"""
+## MCP Coordination Protocol
+
+**IMPORTANT**: Use MCP tools for coordination and progress tracking.
+
+### Checkpointing Guidelines
+- Report progress every 2-3 completed tasks
+- Use `report_progress` tool to save state
+- Include files modified and context used
+- Request handoff if context usage exceeds 25K tokens
+
+### MCP Tool Examples
+
+1. **Acknowledge Job** (First step after assignment):
+```
+acknowledge_job(
+    job_id="<your-job-id>",
+    agent_id="{agent_role}",
+    tenant_key="{tenant_key}"
+)
+```
+
+2. **Report Progress** (After completing tasks):
+```
+report_progress(
+    job_id="<your-job-id>",
+    completed_todo="Implemented user authentication module",
+    files_modified=["src/auth.py", "tests/test_auth.py"],
+    context_used=15000,
+    tenant_key="{tenant_key}"
+)
+```
+
+3. **Complete Job** (When mission accomplished):
+```
+complete_job(
+    job_id="<your-job-id>",
+    result={{
+        "summary": "Successfully implemented feature X",
+        "files_created": ["src/new_module.py"],
+        "files_modified": ["src/main.py"],
+        "tests_written": ["tests/test_new_module.py"],
+        "coverage": "95%",
+        "notes": "All tests passing"
+    }},
+    tenant_key="{tenant_key}"
+)
+```
+
+4. **Report Error** (If blocking issues encountered):
+```
+report_error(
+    job_id="<your-job-id>",
+    error_type="test_failure",
+    error_message="<full error details>",
+    context="What you were doing when error occurred",
+    tenant_key="{tenant_key}"
+)
+```
+"""
+
+    def _get_serena_optimizer_internal(self, tenant_key: str) -> Optional[SerenaOptimizer]:
+        """
+        Get or initialize Serena optimizer for tenant.
+
+        Args:
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            SerenaOptimizer instance or None if initialization fails
+        """
+        if self.serena_optimizer is None:
+            try:
+                self.serena_optimizer = SerenaOptimizer(tenant_key=tenant_key)
+                self._logger.info(f"Initialized Serena optimizer for tenant {tenant_key}")
+            except Exception as e:
+                self._logger.warning(f"Failed to initialize Serena optimizer: {e}")
+                return None
+        return self.serena_optimizer
+
+    async def spawn_agent_legacy(
+        self,
+        project_id: str,
+        role: AgentRole,
+        custom_mission: Optional[str] = None,
+        project_type: Optional[ProjectType] = None,
+        additional_instructions: Optional[str] = None,
+    ) -> AgentExecution:
+        """
+        Spawn a new agent with intelligent routing to Claude Code OR Codex/Gemini.
+
+        Routes agents based on template.tool field:
+        - tool='claude' → Claude Code (hybrid mode with auto-export)
+        - tool='codex' → Codex CLI (job queue mode)
+        - tool='gemini' → Gemini CLI (job queue mode)
+
+        Args:
+            project_id: Project UUID
+            role: Agent role from AgentRole enum
+            custom_mission: Optional custom mission override
+            project_type: Optional project type for customization
+            additional_instructions: Optional additional instructions
+
+        Returns:
+            Created AgentExecution instance
+        """
+        async with self._get_session() as session:
+            # Get project
+            result = await session.execute(select(Project).where(Project.id == project_id))
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            # Validate product is active before spawning agents
+            if project.product_id:
+                product = await session.get(Product, project.product_id)
+                if product and not product.is_active:
+                    raise ValueError(
+                        f"Cannot spawn agent - product '{product.name}' is not active. "
+                        f"Please activate the product before spawning agents."
+                    )
+
+            # Try to get agent template for routing
+            template = await self._get_agent_template_internal(
+                role=role.value,
+                tenant_key=project.tenant_key,
+                product_id=project.product_id,
+                session=session,
+            )
+
+            # Route based on template.tool field
+            if template:
+                self._logger.info(
+                    f"[spawn_agent_legacy] Routing {role.value} agent via template: "
+                    f"tool={template.tool}, template={template.name}"
+                )
+
+                if template.tool == "claude":
+                    # Claude Code mode: Auto-export template + create agent
+                    agent = await self._spawn_claude_code_agent_internal(
+                        session=session,
+                        project=project,
+                        role=role,
+                        template=template,
+                        custom_mission=custom_mission,
+                        additional_instructions=additional_instructions,
+                    )
+                elif template.tool in ["codex", "gemini"]:
+                    # Generic mode: Create job + link agent
+                    agent = await self._spawn_generic_agent_internal(
+                        session=session,
+                        project=project,
+                        role=role,
+                        template=template,
+                        custom_mission=custom_mission,
+                        additional_instructions=additional_instructions,
+                    )
+                else:
+                    self._logger.warning(f"[spawn_agent_legacy] Unknown tool type: {template.tool}, falling back to default")
+                    template = None  # Force fallback
+
+                # If routing succeeded, return agent
+                if template:
+                    self._logger.info(f"[spawn_agent_legacy] Spawned {agent.tool_type} agent for project {project_id}")
+                    return agent
+
+            # FALLBACK: Original spawn logic (no template or unknown tool)
+            self._logger.info(f"[spawn_agent_legacy] No template found for {role.value}, using legacy spawn logic")
+
+            # Generate mission based on role
+            if role == AgentRole.ORCHESTRATOR:
+                # Use comprehensive orchestrator template
+                additional_context = {"project_type": project_type} if project_type else None
+                mission = await self.template_generator.generate_orchestrator_mission(
+                    project_name=project.name,
+                    project_mission=project.mission,
+                    additional_context=additional_context,
+                )
+            else:
+                # Use role-specific agent template
+                mission = await self.template_generator.generate_agent_mission(
+                    role=role.value,
+                    project_name=project.name,
+                    custom_mission=custom_mission,
+                    additional_instructions=additional_instructions,
+                )
+
+            # SERENA OPTIMIZATION: Inject optimization rules into mission
+            try:
+                optimizer = self._get_serena_optimizer_internal(project.tenant_key)
+                if optimizer:
+                    injector = MissionOptimizationInjector(optimizer)
+
+                    # Gather context for optimization
+                    context_data = {
+                        "project_id": project_id,
+                        "project_type": project_type.value if project_type else "general",
+                        "codebase_size": "medium",
+                        "primary_language": "python",
+                    }
+
+                    # Inject optimization rules
+                    optimized_mission = await injector.inject_optimization_rules(
+                        agent_role=role.value, mission=mission, context_data=context_data
+                    )
+
+                    self._logger.info(f"Enhanced {role.value} agent mission with Serena optimization rules")
+                    mission = optimized_mission
+
+            except Exception as e:
+                self._logger.warning(f"Failed to inject Serena optimization rules: {e}")
+                # Continue with original mission if optimization fails
+
+            # Create AgentJob (work order) and AgentExecution (executor instance)
+            job_id = str(uuid4())
+            agent_id = str(uuid4())
+
+            # Create AgentJob (work order)
+            agent_job = AgentJob(
+                job_id=job_id,
+                tenant_key=project.tenant_key,
+                project_id=project_id,
+                mission=mission,
+                job_type=role.value,
+                status="active",
+            )
+            session.add(agent_job)
+
+            # Create AgentExecution (executor instance)
+            agent_execution = AgentExecution(
+                agent_id=agent_id,
+                job_id=job_id,
+                tenant_key=project.tenant_key,
+                agent_display_name=role.value,
+                agent_name=role.value,
+                instance_number=1,
+                status="waiting",
+                progress=0,
+                tool_type="claude",  # Default to claude for legacy
+                messages=[],
+                spawned_by=None,  # No parent in fallback path
+            )
+            session.add(agent_execution)
+            await session.commit()
+            await session.refresh(agent_execution)
+
+            self._logger.info(
+                f"Spawned optimized {role.value} agent (fallback): job_id={job_id}, "
+                f"agent_id={agent_id}, project={project_id}"
+            )
+
+            return agent_execution
+
+    async def generate_mission_plan(
+        self, product: "Product", project_description: str, user_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Generate missions from vision analysis.
+
+        Algorithm:
+        1. Analyze requirements (MissionPlanner.analyze_requirements)
+        2. Generate missions (MissionPlanner.generate_missions)
+        3. Return mission plan
+
+        Args:
+            product: Product with vision document
+            project_description: Project requirements description
+            user_id: Optional user ID for field priority configuration
+
+        Returns:
+            Dict mapping agent roles to Mission objects
+        """
+        self._logger.info(
+            "Generating mission plan",
+            extra={
+                "product_id": str(product.id),
+                "user_id": user_id,
+                "has_user_id": user_id is not None,
+            },
+        )
+
+        # Generate missions based on requirements
+        missions = await self.mission_planner.generate_mission(
+            product=product,
+            project_description=project_description,
+            user_id=user_id,
+        )
+
+        self._logger.info(f"Generated mission plan for product {product.id}: {len(missions)} missions created")
+
+        return missions
+
+    async def select_agents_for_mission(
+        self, requirements: Any, tenant_key: str, product_id: Optional[str] = None
+    ) -> list[Any]:
+        """
+        Smart agent selection based on requirements.
+
+        Uses AgentSelector to query database templates.
+
+        Args:
+            requirements: RequirementAnalysis from MissionPlanner
+            tenant_key: Tenant key for isolation
+            product_id: Optional product ID for context
+
+        Returns:
+            List of AgentConfig objects
+        """
+        agent_configs = await self.agent_selector.select_agents(
+            requirements=requirements, tenant_key=tenant_key, product_id=product_id
+        )
+
+        self._logger.info(f"Selected {len(agent_configs)} agents for mission: {[ac.role for ac in agent_configs]}")
+
+        return agent_configs
+
+    async def coordinate_agent_workflow(
+        self, agent_configs: list[Any], workflow_type: str, tenant_key: str, project_id: str
+    ) -> Any:
+        """
+        Monitor and coordinate agent team.
+
+        Uses WorkflowEngine to execute workflow pattern.
+
+        Args:
+            agent_configs: List of AgentConfig objects
+            workflow_type: 'waterfall' or 'parallel'
+            tenant_key: Tenant key for isolation
+            project_id: Project ID
+
+        Returns:
+            WorkflowResult from execution
+        """
+        workflow_result = await self.workflow_engine.execute_workflow(
+            agent_configs=agent_configs, workflow_type=workflow_type, tenant_key=tenant_key, project_id=project_id
+        )
+
+        self._logger.info(
+            f"Workflow coordination complete for project {project_id}: "
+            f"status={workflow_result.status}, "
+            f"completed={len(workflow_result.completed)}, "
+            f"failed={len(workflow_result.failed)}"
+        )
+
+        return workflow_result
+
+    async def process_product_vision(
+        self,
+        tenant_key: str,
+        product_id: str,
+        project_requirements: str,
+        user_id: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        MAIN ORCHESTRATION WORKFLOW.
+
+        Complete workflow:
+        1. Load product and validate vision
+        2. Chunk vision if needed
+        3. Create or use existing project
+        4. Analyze requirements
+        5. Select agents
+        6. Generate missions
+        7. Coordinate workflow
+
+        Args:
+            tenant_key: Tenant key for isolation
+            product_id: Product UUID
+            project_requirements: Project requirements description
+            user_id: Optional user ID for field priority configuration
+            project_id: Optional project UUID to use existing project instead of creating new
+
+        Returns:
+            Dict with:
+            - project_id: Created/used project ID
+            - mission_plan: Generated missions
+            - selected_agents: List of agent roles
+            - spawned_jobs: List of job IDs
+            - workflow_result: Workflow execution result
+            - token_reduction: Context prioritization metrics
+
+        Raises:
+            ValueError: If product not found or not active
+        """
+        self._logger.info(
+            "Processing product vision",
+            extra={
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "user_id": user_id,
+                "has_user_id": user_id is not None,
+                "project_id": project_id,
+            },
+        )
+
+        # 1. Load product and validate vision
+        async with self._get_session() as session:
+            product = await session.get(Product, product_id)
+            if not product or product.tenant_key != tenant_key:
+                raise ValueError(f"Product {product_id} not found")
+
+            # Validate product is active before processing
+            if not product.is_active:
+                raise ValueError(
+                    f"Cannot process product vision - product '{product.name}' is not active. "
+                    f"Activate the product before creating agent missions."
+                )
+
+            # Get vision content from VisionDocument relationship
+            storage_type = product.primary_vision_storage_type
+            if storage_type == "inline":
+                vision_content = product.primary_vision_text
+            elif storage_type == "file" and product.primary_vision_path:
+                vision_content = Path(product.primary_vision_path).read_text(encoding="utf-8")
+            else:
+                raise ValueError(f"Product {product_id} has no vision document")
+
+        # 2. Chunk vision if needed (using new vision_documents relationship)
+        if not product.vision_is_chunked:
+            self._logger.info(f"Chunking vision document for product {product_id}")
+            chunker = VisionDocumentChunker(target_chunk_size=2000)
+            chunks = chunker.chunk_document(vision_content, product_id=product_id)
+
+            # Store chunks in database and mark primary vision document as chunked
+            async with self._get_session() as session:
+                db_product = await session.get(Product, product_id)
+                # Mark the first vision document as chunked
+                if db_product.vision_documents:
+                    db_product.vision_documents[0].chunked = True
+                await session.commit()
+
+            self._logger.info(f"Chunked vision into {len(chunks)} chunks")
+
+        # 3. Create project or use existing
+        if project_id:
+            # Use existing project
+            async with self._get_session() as session:
+                result = await session.execute(select(Project).where(Project.id == project_id))
+                project = result.scalar_one_or_none()
+                if not project:
+                    raise ValueError(f"Project {project_id} not found")
+            self._logger.info(f"Using existing project {project_id}")
+        else:
+            # Create new project
+            from src.giljo_mcp.services.project_service import ProjectService
+            project_service = ProjectService(self.db_manager, self.tenant_manager)
+            project = await project_service.create_project(
+                name=f"Vision Project: {product.name}",
+                description=project_requirements,
+                tenant_key=tenant_key,
+                product_id=product_id,
+            )
+            self._logger.info(f"Created new project {project.id}")
+
+        # 4. Generate mission plan
+        missions = await self.generate_mission_plan(product, project_requirements, user_id=user_id)
+
+        # 5. Select agents
+        analysis = await self.mission_planner.analyze_requirements(product, project_requirements)
+        agent_configs = await self.select_agents_for_mission(
+            requirements=analysis, tenant_key=tenant_key, product_id=product_id
+        )
+
+        # 6. Assign missions to agents
+        for agent_config in agent_configs:
+            if agent_config.role in missions:
+                agent_config.mission = missions[agent_config.role]
+
+        # 7. Coordinate workflow (default: waterfall)
+        workflow_result = await self.coordinate_agent_workflow(
+            agent_configs=agent_configs, workflow_type="waterfall", tenant_key=tenant_key, project_id=project.id
+        )
+
+        # 8. Calculate context prioritization metrics
+        total_mission_tokens = sum(
+            mission.token_count for mission in missions.values() if hasattr(mission, "token_count")
+        )
+        # Estimate what it would have been without optimization (3x)
+        estimated_unoptimized = total_mission_tokens * 3
+        token_reduction_percent = (
+            ((estimated_unoptimized - total_mission_tokens) / estimated_unoptimized) * 100
+            if estimated_unoptimized > 0
+            else 0
+        )
+
+        # 9. Collect job IDs from workflow result
+        spawned_jobs = []
+        for stage in workflow_result.completed:
+            if hasattr(stage, "job_ids"):
+                spawned_jobs.extend(stage.job_ids)
+
+        self._logger.info(
+            f"Completed product vision processing for {product_id}: "
+            f"project={project.id}, agents={len(agent_configs)}, "
+            f"jobs={len(spawned_jobs)}, token_reduction={token_reduction_percent:.1f}%"
+        )
+
+        # 10. Return comprehensive result
+        return {
+            "project_id": project.id,
+            "mission_plan": {role: mission.to_dict() for role, mission in missions.items()},
+            "selected_agents": [ac.role for ac in agent_configs],
+            "spawned_jobs": spawned_jobs,
+            "workflow_result": workflow_result,
+            "token_reduction": {
+                "original_tokens": estimated_unoptimized,
+                "optimized_tokens": total_mission_tokens,
+                "reduction_percent": round(token_reduction_percent, 1),
+            },
+        }

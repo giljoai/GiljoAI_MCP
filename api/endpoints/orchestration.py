@@ -7,13 +7,13 @@ agent_jobs orchestration endpoints and the OrchestrationService.
 
 This keeps the modular design (agent_jobs package + services) while
 preserving import paths and public APIs relied on by tests and tools.
+
+Handover 0450: Removed ProjectOrchestrator re-export - methods moved to OrchestrationService.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter
-
-from src.giljo_mcp.orchestrator import ProjectOrchestrator  # Core orchestrator logic
 
 from .agent_jobs import orchestration as agent_jobs_orchestration
 
@@ -27,5 +27,5 @@ router = APIRouter()
 router.include_router(agent_jobs_orchestration.router, prefix="")
 
 
-__all__ = ["router", "ProjectOrchestrator"]
+__all__ = ["router"]
 
