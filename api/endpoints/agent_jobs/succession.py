@@ -52,6 +52,7 @@ router = APIRouter()
     description="Manually trigger orchestrator succession (create successor instance)",
     tags=["agent-jobs", "succession"]
 )
+
 async def trigger_succession(
     job_id: str,
     request: SuccessionRequest = SuccessionRequest(),
@@ -96,21 +97,30 @@ async def trigger_succession(
         )
 
         # Extract results (dual-model aware - Handover 0381: clean contract)
+        # Agent ID Swap: decommissioned_agent_id is the old orchestrator's new ID
         work_order_id = succession_result["job_id"]  # The work order (persists across succession)
-        successor_agent_id = succession_result.get("successor_agent_id")  # NEW executor (agent_id)
+        successor_agent_id = succession_result.get("successor_agent_id")  # Takes over original agent_id
+        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")  # Old orch's new ID
         instance_number = succession_result["successor_instance_number"]
 
         # Get successor for additional details (backwards compat: check both models)
+        # NOTE: Same agent_id can have multiple instances (Handover 0429), so we must
+        # filter by the specific instance_number returned from the service
         successor = None
         if successor_agent_id:
-            # New dual-model path: look up by agent_id
+            # New dual-model path: look up by agent_id AND instance_number (exact match)
+            # Use joinedload for job relationship (needed for response at line 217)
+            from sqlalchemy.orm import joinedload
             from src.giljo_mcp.models import AgentExecution
-            stmt = select(AgentExecution).where(
+            stmt = select(AgentExecution).options(
+                joinedload(AgentExecution.job)
+            ).where(
                 AgentExecution.agent_id == successor_agent_id,
-                AgentExecution.tenant_key == current_user.tenant_key
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.instance_number == instance_number  # Exact match
             )
             result = await db.execute(stmt)
-            successor = result.scalar_one_or_none()
+            successor = result.scalars().first()
 
         # Note: Removed MCPAgentJob fallback - only use AgentExecution
 
@@ -121,21 +131,38 @@ async def trigger_succession(
             )
 
         # Get current execution for handover summary (job_id param could be agent_id)
+        # NOTE: Same agent_id can have multiple instances (Handover 0429), so we must
+        # order by instance_number DESC and limit to 1 to get the latest instance.
+        # However, after succession, the current execution is instance N-1, so we want
+        # the second-latest (or filter by instance_number = successor.instance_number - 1)
+        current_instance_number = instance_number - 1
         stmt = select(AgentExecution).where(
             AgentExecution.agent_id == job_id,
-            AgentExecution.tenant_key == current_user.tenant_key
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.instance_number == current_instance_number
         )
         result = await db.execute(stmt)
-        current_execution = result.scalar_one_or_none()
+        current_execution = result.scalars().first()
 
         # Fallback: try job_id if not found by agent_id
         if not current_execution:
             stmt = select(AgentExecution).where(
                 AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == current_user.tenant_key
-            ).order_by(AgentExecution.instance_number.desc())
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.instance_number == current_instance_number
+            )
             result = await db.execute(stmt)
-            current_execution = result.scalar_one_or_none()
+            current_execution = result.scalars().first()
+
+        # Final fallback: if still not found, get by job_id with latest completed status
+        if not current_execution:
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job_id,
+                AgentExecution.tenant_key == current_user.tenant_key,
+                AgentExecution.status == "complete"
+            ).order_by(AgentExecution.instance_number.desc()).limit(1)
+            result = await db.execute(stmt)
+            current_execution = result.scalars().first()
 
         # Generate handover summary from current execution
         handover_summary_str = "Succession triggered - handover context available"
@@ -152,17 +179,18 @@ async def trigger_succession(
         )
 
         prompt_result = await prompt_generator.generate(
-            project_id=successor.project_id,
+            project_id=successor.job.project_id,  # project_id is on AgentJob, not AgentExecution
             user_id=str(current_user.id),
             instance_number=instance_number
         )
 
-        launch_prompt = prompt_result["prompt"]
+        launch_prompt = prompt_result["thin_prompt"]  # Key is "thin_prompt", not "prompt"
 
         # Get current agent_id for response (Handover 0381: clean contract)
         current_agent_id = current_execution.agent_id if current_execution else job_id
 
         # Emit WebSocket event for UI updates (Handover 0381: clean contract)
+        # Agent ID Swap: Include decommissioned_agent_id for UI reference
         try:
             from api.app import state  # Lazy import to avoid circular dependency
             if state.websocket_manager:
@@ -170,9 +198,10 @@ async def trigger_succession(
                     tenant_key=current_user.tenant_key,
                     event_type="orchestrator:succession_triggered",
                     data={
-                        "current_agent_id": str(current_agent_id),  # Executor being succeeded
+                        "current_agent_id": decommissioned_agent_id or str(current_agent_id),  # Decommissioned ID
+                        "decommissioned_agent_id": decommissioned_agent_id,  # Explicit field
                         "job_id": work_order_id,  # Work order (persists across succession)
-                        "successor_agent_id": successor_agent_id,  # NEW executor
+                        "successor_agent_id": successor_agent_id,  # Takes over original ID
                         "instance_number": instance_number,
                         "reason": request.reason,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -181,20 +210,25 @@ async def trigger_succession(
                 )
                 logger.info(
                     f"WebSocket event 'orchestrator:succession_triggered' "
-                    f"broadcasted for agent {current_agent_id} -> {successor_agent_id}"
+                    f"broadcasted: {decommissioned_agent_id} (decommissioned) -> {successor_agent_id}"
                 )
         except Exception as ws_error:
             logger.error(f"Failed to broadcast WebSocket event: {ws_error}", exc_info=True)
 
+        # Agent ID Swap: current_agent_id is now the decommissioned ID
+        # For backward compatibility, use decommissioned_agent_id if available
+        current_agent_id_value = decommissioned_agent_id or str(current_agent_id)
+
         return SuccessionResponse(
-            current_agent_id=str(current_agent_id),
+            current_agent_id=current_agent_id_value,
             job_id=work_order_id,
             successor_agent_id=successor_agent_id,
             instance_number=instance_number,
             launch_prompt=launch_prompt,
             handover_summary=handover_summary_str,
             succession_reason=request.reason,
-            created_at=successor.started_at or successor.job.created_at
+            created_at=successor.started_at or successor.job.created_at,
+            decommissioned_agent_id=decommissioned_agent_id,
         )
 
     except ValueError as e:
@@ -221,6 +255,7 @@ async def trigger_succession(
     description="Check if succession is needed based on context usage",
     tags=["agent-jobs", "succession"]
 )
+
 async def check_succession_status(
     job_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -248,21 +283,23 @@ async def check_succession_status(
 
     try:
         # Get execution with tenant isolation (job_id could be agent_id)
+        # NOTE: Same agent_id can have multiple instances (Handover 0429), so we must
+        # order by instance_number DESC and limit to 1 to get the latest instance
         stmt = select(AgentExecution).where(
             AgentExecution.agent_id == job_id,
             AgentExecution.tenant_key == current_user.tenant_key
-        )
+        ).order_by(AgentExecution.instance_number.desc()).limit(1)
         result = await db.execute(stmt)
-        execution = result.scalar_one_or_none()
+        execution = result.scalars().first()
 
-        # Fallback: try job_id
+        # Fallback: try job_id (get latest instance for this work order)
         if not execution:
             stmt = select(AgentExecution).where(
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == current_user.tenant_key
-            ).order_by(AgentExecution.instance_number.desc())
+            ).order_by(AgentExecution.instance_number.desc()).limit(1)
             result = await db.execute(stmt)
-            execution = result.scalar_one_or_none()
+            execution = result.scalars().first()
 
         if not execution:
             raise HTTPException(
@@ -355,6 +392,8 @@ async def initiate_handover(
 
     try:
         # Get execution (job_id could be agent_id)
+        # NOTE: Same agent_id can have multiple instances (Handover 0429), so we must
+        # order by instance_number DESC to get the latest active instance
         from sqlalchemy import select
         from sqlalchemy.orm import joinedload
 
@@ -363,18 +402,18 @@ async def initiate_handover(
         ).where(
             AgentExecution.agent_id == job_id,
             AgentExecution.tenant_key == current_user.tenant_key
-        )
+        ).order_by(AgentExecution.instance_number.desc()).limit(1)
         result = await db.execute(stmt)
         execution = result.scalars().first()
 
-        # Fallback: try job_id
+        # Fallback: try job_id (get latest instance for this work order)
         if not execution:
             stmt = select(AgentExecution).options(
                 joinedload(AgentExecution.job)
             ).where(
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == current_user.tenant_key
-            ).order_by(AgentExecution.instance_number.desc())
+            ).order_by(AgentExecution.instance_number.desc()).limit(1)
             result = await db.execute(stmt)
             execution = result.scalars().first()
 

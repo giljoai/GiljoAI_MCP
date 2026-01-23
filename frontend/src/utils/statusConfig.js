@@ -50,6 +50,13 @@ export const statusConfig = {
     italic: false,
     chipColor: 'default',
   },
+  // Agent ID Swap: Status for old orchestrator after succession (ID swapped to decomm-xxx)
+  decommissioned: {
+    label: 'Decommissioned',
+    color: '#757575', // Dark grey
+    italic: false,
+    chipColor: 'default',
+  },
 }
 
 /**
