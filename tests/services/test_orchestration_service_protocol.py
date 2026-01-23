@@ -14,7 +14,7 @@ class TestAgentProtocolFormat:
     """Test agent protocol string format matches backend expectations."""
 
     def test_protocol_includes_mode_todo(self):
-        """Verify protocol instructs agents to include mode='todo' in progress."""
+        """Verify protocol instructs agents to use todo_items array format (Handover 0392)."""
         # Generate protocol
         protocol = _generate_agent_protocol(
             job_id="test-job-123",
@@ -22,34 +22,38 @@ class TestAgentProtocolFormat:
             agent_name="test-agent"
         )
 
-        # Assert protocol contains correct format (mode="todo")
-        assert '"mode": "todo"' in protocol, \
-            "Protocol must instruct agents to use mode='todo' for todo-based progress"
-        assert '"completed_steps":' in protocol or 'completed_steps' in protocol, \
-            "Protocol must use 'completed_steps' (not 'steps_completed')"
-        assert '"total_steps":' in protocol or 'total_steps' in protocol, \
-            "Protocol must use 'total_steps' (not 'steps_total')"
+        # Assert protocol contains new todo_items array format (Handover 0392)
+        assert 'todo_items=' in protocol, \
+            "Protocol must instruct agents to use todo_items array in report_progress"
+        assert '"content":' in protocol, \
+            "Protocol must show todo_items with 'content' field"
+        assert '"status":' in protocol, \
+            "Protocol must show todo_items with 'status' field"
 
-        # Assert protocol does NOT contain old wrong format
+        # Assert protocol does NOT contain old formats
+        assert '"mode": "todo"' not in protocol, \
+            "Protocol should NOT use deprecated mode='todo' format"
         assert '"steps_completed"' not in protocol, \
-            "Protocol must NOT use old format 'steps_completed' (use 'completed_steps' instead)"
+            "Protocol must NOT use old format 'steps_completed'"
         assert '"steps_total"' not in protocol, \
-            "Protocol must NOT use old format 'steps_total' (use 'total_steps' instead)"
+            "Protocol must NOT use old format 'steps_total'"
 
     def test_protocol_includes_current_step(self):
-        """Verify protocol includes current_step field for todo description."""
+        """Verify protocol includes todo_items content field for task descriptions (Handover 0392)."""
         protocol = _generate_agent_protocol(
             job_id="test-job-456",
             tenant_key="tenant-xyz",
             agent_name="another-agent"
         )
 
-        # current_step is optional but recommended for better tracking
-        assert '"current_step"' in protocol or 'current_step' in protocol, \
-            "Protocol should include 'current_step' for task description"
+        # New format uses todo_items array with content field for task descriptions
+        assert 'todo_items' in protocol, \
+            "Protocol should include todo_items array"
+        assert '"content"' in protocol, \
+            "Protocol should show content field for task descriptions in todo_items"
 
     def test_protocol_backward_compatibility(self):
-        """Verify protocol supports optional agent_id parameter."""
+        """Verify protocol supports optional agent_id parameter and uses todo_items format."""
         # Test with agent_id provided
         protocol_with_id = _generate_agent_protocol(
             job_id="job-123",
@@ -65,12 +69,12 @@ class TestAgentProtocolFormat:
             agent_name="agent-1"
         )
 
-        # Both should contain mode="todo" format
-        assert '"mode": "todo"' in protocol_with_id
-        assert '"mode": "todo"' in protocol_without_id
+        # Both should contain todo_items array format (Handover 0392)
+        assert 'todo_items=' in protocol_with_id, "Protocol with agent_id should use todo_items format"
+        assert 'todo_items=' in protocol_without_id, "Protocol without agent_id should use todo_items format"
 
     def test_protocol_phase_3_order(self):
-        """Verify Phase 3 contains correct progress reporting format."""
+        """Verify Phase 3 contains correct progress reporting format with todo_items array (Handover 0392)."""
         protocol = _generate_agent_protocol(
             job_id="test-job-789",
             tenant_key="tenant-def",
@@ -85,11 +89,11 @@ class TestAgentProtocolFormat:
         phase_4_start = protocol.index("### Phase 4: COMPLETION")
         phase_3_content = protocol[phase_3_start:phase_4_start]
 
-        # Verify Phase 3 contains report_progress call with mode="todo"
-        assert "report_progress" in phase_3_content
-        assert '"mode": "todo"' in phase_3_content
-        assert '"completed_steps"' in phase_3_content or 'completed_steps' in phase_3_content
-        assert '"total_steps"' in phase_3_content or 'total_steps' in phase_3_content
+        # Verify Phase 3 contains report_progress call with todo_items array format
+        assert "report_progress" in phase_3_content, "Phase 3 should show report_progress call"
+        assert "todo_items=" in phase_3_content, "Phase 3 should show todo_items parameter"
+        assert '"content":' in phase_3_content, "Phase 3 should show content field in todo_items"
+        assert '"status":' in phase_3_content, "Phase 3 should show status field in todo_items"
 
     def test_protocol_distinct_identifiers(self):
         """Verify protocol shows different values for job_id and agent_id (Bug 2)."""
