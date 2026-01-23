@@ -23,11 +23,11 @@
     >
       <v-btn value="launch" data-testid="launch-tab">
         <v-icon start size="20">mdi-rocket-launch</v-icon>
-        Launch
+        STAGING
       </v-btn>
       <v-btn value="jobs" data-testid="jobs-tab">
         <v-icon start size="20">mdi-code-braces</v-icon>
-        Implement
+        IMPLEMENTATION
       </v-btn>
     </v-btn-toggle>
 
@@ -39,7 +39,6 @@
           class="stage-button"
           variant="outlined"
           :color="hasActiveOrchestrator ? undefined : 'yellow-darken-2'"
-          prepend-icon="mdi-content-copy"
           :loading="loadingStageProject"
           :disabled="hasActiveOrchestrator"
           :title="hasActiveOrchestrator ? 'An orchestrator is already active for this project' : 'Generate orchestrator prompt'"
@@ -57,7 +56,7 @@
           data-testid="launch-jobs-btn"
           @click="handleLaunchJobs"
         >
-          Launch Jobs
+          Implement
         </v-btn>
       </div>
 
