@@ -187,6 +187,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         agent_messaging_section = _get_agent_messaging_protocol_section()
         orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
 
+        # Get Agent Guidelines section (Handover 0432) - for non-orchestrator agents
+        agent_guidelines_section = _get_agent_guidelines_section()
+
         # Use new comprehensive templates (Handover 0103)
         default_templates = _get_default_templates_v103()
 
@@ -210,8 +213,8 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 # Orchestrator gets enhanced messaging protocol
                 system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
             else:
-                # Regular agents get standard messaging protocol
-                system_instructions = f"{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
+                # Regular agents get guidelines + standard messaging protocol (Handover 0432)
+                system_instructions = f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
 
             # Get role-specific user instructions
             user_instructions = template_def["template_content"]
@@ -330,6 +333,16 @@ You are the **Orchestrator Agent** for the **GiljoAI Agent Orchestration MCP Ser
 - Deliverables meet quality standards
 - Handover documentation complete and actionable
 - 360 memory updated with project summary
+
+## If Requirements Are Unclear
+
+During staging, if project requirements have major gaps or conflicts:
+1. Mark yourself as BLOCKED via `report_progress()`
+2. Ask the USER for clarification (not another agent)
+3. Wait for response before proceeding
+4. Mark yourself as WORKING when resuming
+
+Do not guess at major ambiguities - ask first.
 """,
             "model": "sonnet",
             "tools": None,
@@ -851,7 +864,6 @@ When agents request broader context via send_message():
 1. Respond promptly to agent context requests
 2. Provide filtered excerpts from Project.mission, not full text
 3. Focus on specific information requested
-4. Document context requests in coordination log
 
 **Response Pattern**:
 ```
@@ -884,6 +896,37 @@ def _get_agent_messaging_protocol_section() -> str:
 
 **Prefixes:** BLOCKER: (urgent), PROGRESS: (update), COMPLETE: (done), READY: (available)
 Use `send_message()` and `receive_messages()`. Full protocol in `full_protocol`.
+"""
+
+
+def _get_agent_guidelines_section() -> str:
+    """
+    Generate shared agent guidelines section (Handover 0432).
+
+    Provides baseline guidelines applicable to ALL non-orchestrator agents.
+    Includes simplified Technical Environment and blocking behavior.
+
+    Returns:
+        str - Agent guidelines section in markdown format
+    """
+    return """## Technical Environment
+
+- **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
+- **Multi-tenant**: Operations isolated by `tenant_key` (auto-injected by server)
+
+## Agent Guidelines
+
+- **Follow Mission**: Execute your assigned mission from `get_agent_mission()`
+- **Report Progress**: Update status at natural workflow breaks
+- **Escalate Blockers**: Message orchestrator if stuck, mark yourself BLOCKED
+- **Request Context**: Ask orchestrator if mission is unclear (don't guess)
+
+## If Blocked or Unclear
+
+1. Mark yourself as BLOCKED via `report_progress()`
+2. Send BLOCKER: or REQUEST_CONTEXT: message to orchestrator
+3. Wait for response before proceeding
+4. Mark yourself as WORKING when resuming
 """
 
 
