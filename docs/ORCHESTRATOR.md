@@ -1,7 +1,7 @@
 # Orchestrator Context Tracking & Succession
 
-**Version**: v3.2+ (Handover 0080, 0246a, 0246b, 0334)
-**Last Updated**: 2025-12-07
+**Version**: v3.3+ (Handover 0080, 0246a, 0246b, 0334, 0431)
+**Last Updated**: 2026-01-22
 
 ## Overview
 
@@ -684,6 +684,193 @@ send_message(to_agent="all", message="Milestone X completed, team status update.
 
 ---
 
+## Pre-Closeout Verification Protocol (v3.3)
+
+### Overview
+
+**Implementation**: Handover 0431
+**Purpose**: Prevent premature project closeouts by verifying all agents are ready
+
+Before calling `write_360_memory()` or `close_project_and_update_memory()`, orchestrators MUST verify all spawned agents have completed their work. The verification protocol automatically blocks closeout when unfinished work exists.
+
+### Verification Checks
+
+The `write_360_memory()` function performs four verification checks when `author_job_id` is provided:
+
+```
+1. AGENT STATUS CHECK
+   ├─ All agents must have status == 'complete'
+   ├─ Skips: decommissioned, cancelled, failed agents
+   └─ Blocks if any agent still working, blocked, or waiting
+
+2. UNREAD MESSAGES CHECK
+   ├─ All agents must have messages_waiting_count == 0
+   ├─ Indicates: Agent may have missed important coordination
+   └─ Blocks if any agent has unacknowledged messages
+
+3. AGENT TODO CHECK
+   ├─ All agent todos must have status == 'completed'
+   ├─ Checks: AgentTodoItem table for pending/in_progress items
+   └─ Blocks if any agent has incomplete todos
+
+4. ORCHESTRATOR TODO CHECK
+   ├─ Orchestrator's own todos must be complete
+   ├─ Ensures: Orchestrator has finished all coordination tasks
+   └─ Blocks if orchestrator has incomplete todos
+```
+
+### CLOSEOUT_BLOCKED Response
+
+When verification fails, `write_360_memory()` returns:
+
+```python
+{
+    "success": False,
+    "error": "CLOSEOUT_BLOCKED",
+    "blockers": [
+        {
+            "job_id": "uuid-of-blocking-agent",
+            "agent_id": "uuid-of-agent-execution",
+            "agent_name": "implementer-auth",
+            "issue_type": "still_working",  # or "unread_messages" or "incomplete_todos"
+            "status": "working",  # Only for still_working
+            "messages_waiting": 3,  # Only for unread_messages
+            "pending_count": 1,  # Only for incomplete_todos
+            "in_progress_count": 2,  # Only for incomplete_todos
+            "incomplete_items": ["Review auth module", "Check coverage"]  # Only for todos
+        }
+    ],
+    "summary": {
+        "agents_checked": 5,
+        "still_working": 1,
+        "agents_with_unread": 0,
+        "agents_with_incomplete_todos": 1,
+        "orchestrator_incomplete_todos": 0
+    },
+    "message": "Closeout blocked: 2 unresolved blocker(s) found",
+    "action_required": "Resolve all blockers before closeout. Use report_error() if unable to resolve."
+}
+```
+
+### Handling CLOSEOUT_BLOCKED
+
+When orchestrator receives CLOSEOUT_BLOCKED, it should:
+
+```python
+# 1. Check which agents are blocking
+result = await write_360_memory(
+    project_id=project_id,
+    tenant_key=tenant_key,
+    summary="Project completion summary",
+    key_outcomes=["..."],
+    decisions_made=["..."],
+    author_job_id=orchestrator_job_id  # Required for verification
+)
+
+if result["error"] == "CLOSEOUT_BLOCKED":
+    # 2. Process each blocker
+    for blocker in result["blockers"]:
+        if blocker["issue_type"] == "still_working":
+            # Send message asking agent for status update
+            send_message(
+                to_agent=blocker["agent_id"],
+                message=f"Project closeout pending. Please complete work or report blockers."
+            )
+
+        elif blocker["issue_type"] == "unread_messages":
+            # Agent may have missed important info
+            send_message(
+                to_agent=blocker["agent_id"],
+                message="You have unread messages. Please acknowledge before closeout."
+            )
+
+        elif blocker["issue_type"] == "incomplete_todos":
+            # Check if todos are actually needed
+            incomplete = blocker["incomplete_items"]
+            send_message(
+                to_agent=blocker["agent_id"],
+                message=f"Incomplete todos: {incomplete}. Complete or mark as unnecessary."
+            )
+
+        elif blocker["issue_type"] == "orchestrator_incomplete_todos":
+            # Orchestrator's own todos - complete them
+            for item in blocker["incomplete_items"]:
+                # Complete the todo item
+                pass
+
+    # 3. Retry after resolution
+    # Wait for agents to respond, then retry closeout
+```
+
+### Successful Closeout Response
+
+When all checks pass, `write_360_memory()` includes verification summary:
+
+```python
+{
+    "success": True,
+    "entry_id": "uuid-of-memory-entry",
+    "sequence_number": 5,
+    "git_commits_count": 12,
+    "entry_type": "project_completion",
+    "message": "360 Memory entry written successfully",
+    "verified": {
+        "all_complete": True,
+        "all_messages_read": True,
+        "all_todos_done": True,
+        "agents_checked": 5
+    }
+}
+```
+
+### Best Practices
+
+**1. Always Provide author_job_id for Final Closeout**
+
+```python
+# Enable verification by passing orchestrator's job_id
+result = await write_360_memory(
+    project_id=project_id,
+    tenant_key=tenant_key,
+    summary="...",
+    key_outcomes=["..."],
+    decisions_made=["..."],
+    author_job_id=orchestrator_job_id  # REQUIRED for verification
+)
+```
+
+**2. Check Todos Before Closeout Attempt**
+
+```python
+# Use TodoWrite to ensure your todos are complete
+todos = await get_todos(job_id=orchestrator_job_id)
+incomplete = [t for t in todos if t.status != "completed"]
+if incomplete:
+    # Complete or cancel incomplete todos first
+    pass
+```
+
+**3. Final Message Check Before Closeout**
+
+```python
+# Always check messages before attempting closeout
+final_messages = await receive_messages(agent_id=orchestrator_id)
+for msg in final_messages:
+    # Process any last-minute updates
+    pass
+
+# Then attempt closeout
+result = await write_360_memory(...)
+```
+
+### Code Reference
+
+- **Implementation**: `src/giljo_mcp/tools/write_360_memory.py::_check_closeout_readiness()`
+- **Tests**: `tests/tools/test_closeout_verification.py` (17 tests)
+- **Models**: `src/giljo_mcp/models/agent_identity.py` (AgentExecution, AgentTodoItem)
+
+---
+
 ## Context Tracking Architecture
 
 ### **How It Works**
@@ -1205,4 +1392,4 @@ if not job.handover_context_refs:
 
 ---
 
-**Last Updated**: 2025-12-15 (v3.2 - Handovers 0246a-c, 0350a-c integrated)
+**Last Updated**: 2026-01-22 (v3.3 - Handover 0431 closeout verification added)
