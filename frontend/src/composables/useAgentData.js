@@ -102,18 +102,25 @@ export function useAgentData(agents) {
    * Agent display name abbreviation
    * Extracted from AgentCard.vue avatar text
    *
+   * Split by dash, space, or underscore and use first letter of each part
+   * e.g., "Backend-Implementer" → "BI", "Backend-Tester" → "BT"
+   *
    * @param {String} displayName - Agent display name
    * @returns {String} - Two-letter abbreviation
    */
   const getAgentAbbreviation = (displayName) => {
-    const abbr = {
-      orchestrator: 'Or',
-      analyzer: 'An',
-      implementer: 'Im',
-      tester: 'Te',
-      reviewer: 'Re',
+    if (!displayName) return '??'
+
+    // Split by dash, space, or underscore
+    const parts = displayName.split(/[-_\s]+/).filter(Boolean)
+
+    if (parts.length >= 2) {
+      // Use first letter of first two parts: "Backend-Implementer" → "BI"
+      return (parts[0][0] + parts[1][0]).toUpperCase()
     }
-    return abbr[displayName] || displayName.substring(0, 2).toUpperCase()
+
+    // Single word fallback: use first two letters
+    return displayName.substring(0, 2).toUpperCase()
   }
 
   /**
