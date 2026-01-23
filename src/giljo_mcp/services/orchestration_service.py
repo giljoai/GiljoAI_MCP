@@ -2920,3 +2920,532 @@ report_error(
                 "reduction_percent": round(token_reduction_percent, 1),
             },
         }
+
+    # ============================================================================
+    # Orchestrator Instructions & Mission Management (Handover 0451 Phase 2)
+    # ============================================================================
+
+    async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+        """
+        Fetch orchestrator mission with framing-based context instructions (Handover 0350b).
+
+        Returns a lean response (~500 tokens) with:
+        - identity: Orchestrator/project identifiers
+        - project_description_inline: Description + mission (always inline)
+        - context_fetch_instructions: Framing pointers to fetch_context() tool
+
+        The orchestrator uses these instructions to call fetch_context() on-demand,
+        avoiding the 50K+ token truncation risk of inline context.
+        """
+        try:
+            async with self._get_session() as session:
+                from sqlalchemy import and_
+                from sqlalchemy.orm import selectinload, joinedload
+
+                from src.giljo_mcp.mission_planner import MissionPlanner
+                from src.giljo_mcp.models import AgentTemplate, Product, Project
+
+                # Validate inputs
+                if not job_id or not job_id.strip():
+                    return {"error": "VALIDATION_ERROR", "message": "Job ID is required"}
+
+                if not tenant_key or not tenant_key.strip():
+                    return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
+
+                # Phase C: Query AgentExecution and join to AgentJob
+                # Get current execution for this job (latest instance)
+                result = await session.execute(
+                    select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
+                    .where(
+                        and_(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
+                )
+                execution = result.scalars().first()
+
+                if not execution:
+                    return {"error": "NOT_FOUND", "message": f"Orchestrator execution for job {job_id} not found"}
+
+                # Get the associated AgentJob
+                agent_job = execution.job
+                if not agent_job:
+                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
+
+                # Verify it's an orchestrator
+                if agent_job.job_type != "orchestrator":
+                    return {"error": "VALIDATION_ERROR", "message": f"Job {job_id} is not an orchestrator"}
+
+                # Get project and product
+                result = await session.execute(
+                    select(Project).where(and_(Project.id == agent_job.project_id, Project.tenant_key == tenant_key))
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"error": "NOT_FOUND", "message": "Project not found"}
+
+                product = None
+                if project.product_id:
+                    result = await session.execute(
+                        select(Product)
+                        .where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
+                        .options(selectinload(Product.vision_documents))
+                    )
+                    product = result.scalar_one_or_none()
+
+                # Get user configuration
+                planner = MissionPlanner(self.db_manager)
+                metadata = agent_job.job_metadata or {}
+                user_id = metadata.get("user_id")
+
+                # Handover 0346: Fetch FRESH user config if user_id available
+                if user_id:
+                    from src.giljo_mcp.tools.orchestration import _get_user_config
+                    user_config = await _get_user_config(user_id, tenant_key, session)
+                    field_priorities = user_config["field_priorities"]
+                    depth_config = user_config["depth_config"]
+                    logger.info(
+                        "[USER_CONFIG] Fetched fresh user config for OrchestrationService",
+                        extra={"job_id": job_id, "user_id": user_id}
+                    )
+                else:
+                    field_priorities = metadata.get("field_priorities", {})
+                    depth_config = metadata.get("depth_config", {})
+                    logger.debug(
+                        "[USER_CONFIG] No user_id, using frozen job_metadata config",
+                        extra={"job_id": job_id}
+                    )
+
+                # Handover 0350b: Generate framing instructions (replaces inline context)
+                # This returns ~500 tokens instead of 4-8K (up to 50K with vision)
+                fetch_instructions = planner._build_fetch_instructions(
+                    product=product,
+                    project=project,
+                    field_priorities=field_priorities,
+                    depth_config=depth_config,
+                )
+
+                # Get agent templates for reference
+                result = await session.execute(
+                    select(AgentTemplate)
+                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
+                    .limit(8)
+                )
+                templates = result.scalars().all()
+
+                # Build agent template summary (needed for spawning - staging prompt references this)
+                template_list = [
+                    {"name": t.name, "role": t.role, "description": t.description[:200] if t.description else ""}
+                    for t in templates
+                ]
+
+                # Resolve project path (local developer folder pointer, stored on Product)
+                project_path = None
+                if product is not None:
+                    # Product.project_path is a developer-provided filesystem hint.
+                    # It is returned verbatim so agents know where the codebase lives locally.
+                    project_path = getattr(product, "project_path", None)
+
+                # Handover 0408: Read integration toggles from config
+                include_serena = False
+                git_integration_enabled = False
+                try:
+                    from pathlib import Path
+                    import yaml
+
+                    config_path = Path.cwd() / "config.yaml"
+                    if config_path.exists():
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f) or {}
+                        features = config_data.get("features", {})
+                        include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
+                        git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
+                except Exception as e:
+                    logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
+
+                # Build framing-based response (Handover 0350b + Phase C)
+                # Includes: identity, project context, fetch instructions, AND agent templates
+                response = {
+                    "identity": {
+                        "job_id": job_id,
+                        "agent_id": execution.agent_id,  # Phase C: Add executor UUID
+                        "project_id": str(project.id),
+                        "project_name": project.name,
+                        "tenant_key": tenant_key,
+                        "instance_number": execution.instance_number or 1,
+                        "id_glossary": {
+                            "job_id": "Use for: acknowledge_job, report_progress, complete_job, report_error",
+                            "agent_id": "Use for: send_message(from_agent), receive_messages",
+                        },
+                    },
+                    "project_description_inline": {
+                        "description": project.description or "",
+                        "mission": agent_job.mission or "",  # Phase C: Mission from AgentJob
+                        "project_path": project_path,
+                    },
+                    "context_fetch_instructions": fetch_instructions,
+                    "agent_templates": template_list,  # Staging prompt: "Returns: ... AVAILABLE AGENT TEMPLATES"
+                    "mcp_tools_available": [
+                        "fetch_context",
+                        "spawn_agent_job",
+                        "get_available_agents",
+                        "send_message",
+                        "check_succession_status",
+                        "create_successor_orchestrator",
+                        "report_progress",
+                        "complete_job",
+                    ],
+                    "context_budget": execution.context_budget or 150000,  # Phase C: From AgentExecution
+                    "context_used": execution.context_used or 0,  # Phase C: From AgentExecution
+                    "field_priorities": field_priorities,
+                    "thin_client": True,
+                    "architecture": "framing_based",
+                    # Handover 0408: Integration toggles status
+                    "integrations": {
+                        "serena_mcp_enabled": include_serena,
+                        "git_integration_enabled": git_integration_enabled,
+                    },
+                }
+
+                # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
+                # agent_name is SINGLE SOURCE OF TRUTH for template matching
+                execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
+                if execution_mode == "claude_code_cli":
+                    allowed_agent_names = [t.name for t in templates]
+
+                    response["agent_spawning_constraint"] = {
+                        "mode": "strict_task_tool",
+                        "allowed_agent_names": allowed_agent_names,
+                        "instruction": (
+                            "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
+                            "The agent_name parameter must be EXACTLY one of the allowed template names. "
+                            f"Allowed agent names: {allowed_agent_names}"
+                        ),
+                    }
+
+                    # Handover 0389: Build dynamic example from actual allowed agent names
+                    example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
+                    example_str = ", ".join(f"'{n}'" for n in example_agents) if example_agents else "'implementer'"
+
+                    response["cli_mode_rules"] = {
+                        "agent_name_usage": (
+                            "SINGLE SOURCE OF TRUTH - binds DB record, Task tool, and template filename. "
+                            f"MUST match template filename exactly (e.g., {example_str})."
+                        ),
+                        "agent_display_name_usage": (
+                            "Dashboard label - what humans see in UI. "
+                            "MUST be unique per agent instance when spawning multiple agents of same template."
+                        ),
+                        "multi_agent_example": {
+                            "scenario": "Spawning 2 implementers for different domains",
+                            "agent_1": {"agent_name": "implementer", "agent_display_name": "api-implementer"},
+                            "agent_2": {"agent_name": "implementer", "agent_display_name": "ui-implementer"},
+                        },
+                        "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
+                        "validation": "soft",
+                        "template_locations": [
+                            "{project}/.claude/agents/",
+                            "~/.claude/agents/",
+                        ],
+                    }
+
+                    logger.info(
+                        f"[CLI_MODE_RULES] Added CLI mode rules for orchestrator {job_id}",
+                        extra={
+                            "job_id": job_id,
+                            "execution_mode": execution_mode,
+                            "allowed_names": allowed_agent_names,
+                        }
+                    )
+
+                # Handover 0415: Add chapter-based orchestrator protocol
+                # Handover 0420d: Exclude CH5 during staging to save tokens
+                from src.giljo_mcp.tools.orchestration import _build_orchestrator_protocol
+
+                cli_mode = execution_mode == "claude_code_cli"
+                # Staging phase (waiting status) does not need CH5 implementation reference
+                is_staging = agent_job.status == "waiting"
+                orchestrator_protocol = _build_orchestrator_protocol(
+                    cli_mode=cli_mode,
+                    context_budget=execution.context_budget or 150000,
+                    project_id=str(project.id),
+                    orchestrator_id=job_id,
+                    tenant_key=tenant_key,
+                    include_implementation_reference=not is_staging  # False for staging, True for implementation
+                )
+                response["orchestrator_protocol"] = orchestrator_protocol
+
+                # Handover 0431: Inject orchestrator identity/behavioral guidance
+                # Orchestrators don't have AgentTemplate records (SYSTEM_MANAGED_ROLES skip)
+                # so they get behavioral guidance via this field instead of fetch_context(self_identity)
+                from src.giljo_mcp.template_seeder import get_orchestrator_identity_content
+
+                response["orchestrator_identity"] = get_orchestrator_identity_content()
+
+                logger.info(
+                    f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
+                    extra={
+                        "job_id": job_id,
+                        "critical_count": len(fetch_instructions.get("critical", [])),
+                        "important_count": len(fetch_instructions.get("important", [])),
+                        "reference_count": len(fetch_instructions.get("reference", [])),
+                    }
+                )
+
+                return response
+
+        except Exception as e:
+            logger.exception(f"Failed to get orchestrator instructions: {e}")
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+
+    async def update_agent_mission(
+        self, job_id: str, tenant_key: str, mission: str
+    ) -> dict[str, Any]:
+        """
+        Update the mission field of an AgentJob.
+
+        Handover 0380: Used by orchestrators to persist their execution plan during staging.
+        This allows fresh-session orchestrators to retrieve the plan via get_agent_mission()
+        during implementation phase.
+
+        Args:
+            job_id: The AgentJob.job_id (work order UUID)
+            tenant_key: Tenant isolation key
+            mission: The execution plan/mission to persist
+
+        Returns:
+            {"success": True, "job_id": job_id, "mission_updated": True}
+        """
+        try:
+            async with self._get_session() as session:
+                from sqlalchemy import and_, select
+
+                from src.giljo_mcp.models.agent_identity import AgentJob
+
+                result = await session.execute(
+                    select(AgentJob).where(
+                        and_(
+                            AgentJob.job_id == job_id,
+                            AgentJob.tenant_key == tenant_key,
+                        )
+                    )
+                )
+                job = result.scalar_one_or_none()
+
+                if not job:
+                    return {
+                        "error": "NOT_FOUND",
+                        "message": f"Agent job {job_id} not found",
+                        "troubleshooting": [
+                            "Verify job_id is correct",
+                            "Ensure tenant_key matches",
+                            f"Check database: SELECT * FROM agent_jobs WHERE job_id = '{job_id}'",
+                        ],
+                    }
+
+                job.mission = mission
+                await session.commit()
+
+                # Emit WebSocket event for UI update
+                if self._websocket_manager:
+                    try:
+                        await self._websocket_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="job:mission_updated",
+                            data={
+                                "job_id": job_id,
+                                "job_type": job.job_type,
+                                "mission_length": len(mission),
+                                "project_id": str(job.project_id) if job.project_id else None,
+                            },
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
+                            extra={"job_id": job_id, "tenant_key": tenant_key},
+                        )
+                    except Exception as ws_error:
+                        logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
+
+                logger.info(
+                    f"[UPDATE_AGENT_MISSION] Updated mission for job {job_id}",
+                    extra={
+                        "job_id": job_id,
+                        "job_type": job.job_type,
+                        "mission_length": len(mission),
+                        "tenant_key": tenant_key,
+                    },
+                )
+
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "mission_updated": True,
+                    "mission_length": len(mission),
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to update agent mission: {e}")
+            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+
+    async def create_successor_orchestrator(
+        self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
+    ) -> dict[str, Any]:
+        """Create successor orchestrator for context handover (Handover 0080 + Phase C)"""
+        try:
+            from datetime import datetime, timezone
+            from sqlalchemy.orm import joinedload
+
+            async with self._get_session() as session:
+                # Phase C: Get current execution (latest instance for this job)
+                result = await session.execute(
+                    select(AgentExecution)
+                    .options(joinedload(AgentExecution.job))
+                    .where(
+                        and_(
+                            AgentExecution.job_id == current_job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
+                )
+                current_execution = result.scalars().first()
+
+                if not current_execution:
+                    return {
+                        "success": False,
+                        "error": f"Orchestrator execution for job {current_job_id} not found for tenant {tenant_key}",
+                    }
+
+                # Get the associated AgentJob
+                agent_job = current_execution.job
+                if not agent_job:
+                    return {"success": False, "error": f"Agent job {current_job_id} not found"}
+
+                # Verify it's an orchestrator
+                if agent_job.job_type != "orchestrator":
+                    return {
+                        "success": False,
+                        "error": f"Job {current_job_id} is not an orchestrator (type: {agent_job.job_type})",
+                    }
+
+                # Verify job is not already completed
+                if agent_job.status == "completed":
+                    return {"success": False, "error": f"Job {current_job_id} is already completed"}
+
+                # Phase C: Create successor execution (SAME job_id, NEW agent_id)
+                successor_agent_id = str(uuid4())
+                successor_instance = (current_execution.instance_number or 1) + 1
+
+                # Generate simple handover summary
+                handover_summary = (
+                    f"Succession from instance {current_execution.instance_number} to {successor_instance}. "
+                    f"Reason: {reason}. "
+                    f"Context used: {current_execution.context_used or 0}/{current_execution.context_budget or 150000}."
+                )
+
+                # Create new execution
+                successor_execution = AgentExecution(
+                    agent_id=successor_agent_id,
+                    job_id=current_job_id,  # SAME job_id (work order persists)
+                    tenant_key=tenant_key,
+                    agent_display_name="orchestrator",  # Lowercase for frontend compatibility
+                    agent_name="orchestrator",  # Type key for color lookup
+                    instance_number=successor_instance,
+                    status="waiting",
+                    spawned_by=current_execution.agent_id,  # Track previous executor
+                    succession_reason=reason,
+                    handover_summary=handover_summary,
+                    progress=0,
+                    context_used=0,
+                    context_budget=current_execution.context_budget or 150000,
+                )
+
+                session.add(successor_execution)
+
+                # Mark current execution as decommissioned
+                current_execution.status = "decommissioned"
+                current_execution.succeeded_by = successor_agent_id
+                current_execution.completed_at = datetime.now(timezone.utc)
+
+                # Commit changes
+                await session.commit()
+                await session.refresh(successor_execution)
+
+                logger.info(
+                    f"Succession completed: agent {current_execution.agent_id} → {successor_agent_id}, "
+                    f"instance {current_execution.instance_number} → {successor_instance}, "
+                    f"job {current_job_id} (persistent), reason: {reason}"
+                )
+
+                return {
+                    "success": True,
+                    "successor_id": successor_agent_id,  # NEW: agent_id of successor
+                    "job_id": current_job_id,  # SAME: work order persists
+                    "instance_number": successor_instance,
+                    "status": successor_execution.status,
+                    "handover_summary": handover_summary,
+                    "message": (
+                        f"Successor orchestrator created (instance {successor_instance}). "
+                        f"Previous orchestrator marked decommissioned. "
+                        f"Launch successor manually from dashboard."
+                    ),
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to create successor orchestrator: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+        """Check if orchestrator should trigger succession (Handover 0080 + Phase C)"""
+        try:
+            async with self._get_session() as session:
+                # Phase C: Get current execution (latest instance)
+                result = await session.execute(
+                    select(AgentExecution)
+                    .where(
+                        and_(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    .order_by(AgentExecution.instance_number.desc())
+                )
+                execution = result.scalars().first()
+
+                if not execution:
+                    return {"should_trigger": False, "error": f"Job {job_id} not found"}
+
+                # Calculate context usage percentage (from execution)
+                context_used = execution.context_used or 0
+                context_budget = execution.context_budget or 200000
+                usage_percentage = (context_used / context_budget) * 100 if context_budget > 0 else 0
+
+                # Determine if succession should be triggered (90% threshold)
+                should_trigger = usage_percentage >= 90.0
+
+                recommendation = ""
+                if usage_percentage < 70:
+                    recommendation = "Context usage healthy. Continue normal operation."
+                elif usage_percentage < 85:
+                    recommendation = "Monitor context usage. Begin planning for potential succession."
+                elif usage_percentage < 90:
+                    recommendation = "Context usage high. Prepare for succession soon."
+                else:
+                    recommendation = "Trigger succession now to avoid context overflow."
+
+                return {
+                    "should_trigger": should_trigger,
+                    "context_used": context_used,
+                    "context_budget": context_budget,
+                    "usage_percentage": round(usage_percentage, 2),
+                    "threshold_reached": should_trigger,
+                    "recommendation": recommendation,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to check succession status: {e}")
+            return {"should_trigger": False, "error": str(e)}
