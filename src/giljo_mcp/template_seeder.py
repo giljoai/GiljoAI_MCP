@@ -988,32 +988,38 @@ Tool signatures and full protocol in `full_protocol` from `get_agent_mission()`.
 
 def get_orchestrator_identity_content() -> str:
     """
-    Generate orchestrator behavioral guidance for get_orchestrator_instructions().
+    Generate FULL orchestrator identity and behavioral guidance for get_orchestrator_instructions().
 
     Handover 0431: This content is injected into the MCP tool response so orchestrators
     get their identity/behavioral guidance without needing an AgentTemplate record.
     Orchestrators stay OUT of the template table, exports, and available_agents list.
 
     Returns:
-        str - Orchestrator identity and behavioral guidance in markdown format
+        str - Full orchestrator identity and behavioral guidance in markdown format
     """
+    # Get base template (Identity, Workflow, Responsibilities, etc.)
+    base_template = ""
+    for template_def in _get_default_templates_v103():
+        if template_def.get("role") == "orchestrator":
+            base_template = template_def["template_content"].strip()
+            break
+
+    # Get all protocol sections
+    orchestrator_response = _get_orchestrator_context_response_section().strip()
     mcp_section = _get_mcp_coordination_section().strip()
     check_in = _get_check_in_protocol_section().strip()
     orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
-    # Build the identity content (same structure as SystemPromptService uses)
-    # Orchestrator doesn't need context_request (it doesn't ask itself for context)
-    return f"""{mcp_section}
+    # Build the FULL identity content (same structure as SystemPromptService uses)
+    # user_instructions = base_template + orchestrator_response
+    # system_instructions = mcp + check_in + messaging
+    return f"""{base_template}
+
+{orchestrator_response}
+
+{mcp_section}
 
 {check_in}
 
 {orchestrator_messaging}
-
-## BEFORE CLOSEOUT
-
-Before calling `close_project_and_update_memory()`:
-1. Verify all spawned agents completed (check `get_workflow_status()`)
-2. Review any blocked agents - resolve or document why unresolved
-3. Confirm deliverables match project requirements
-4. Prepare concise summary of outcomes for 360 Memory
 """
