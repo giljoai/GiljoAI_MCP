@@ -24,7 +24,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.logging import get_logger, ErrorCode
 from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.orchestrator import ProjectOrchestrator
+# Handover 0450: Removed dead import of ProjectOrchestrator
 
 
 logger = get_logger(__name__)
@@ -174,7 +174,7 @@ async def _get_user_config(
         - Ensures multi-tenant isolation (user must belong to tenant_key)
         - Normalizes depth_config keys from UI format to internal format
     """
-    from giljo_mcp.models.auth import User
+    from src.giljo_mcp.models.auth import User
 
     try:
         # Query user with tenant isolation
