@@ -1,0 +1,124 @@
+{
+  "chain_id": "0461",
+  "chain_name": "Handover Simplification Series",
+  "created_at": "2025-01-24",
+  "total_sessions": 5,
+  "sessions": [
+    {
+      "session_id": "0461a",
+      "title": "Remove 90% Auto-Succession Dead Code",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Delete calculate_context_usage() from orchestrator_succession.py",
+        "Delete CONTEXT_THRESHOLD = 0.90",
+        "Delete should_trigger_succession() method",
+        "Fix misleading comments in tools/orchestration.py",
+        "Fix misleading comments in succession.py",
+        "Update CLAUDE.md lines 74 and 333",
+        "Update documentation files",
+        "Fix/remove outdated tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0461b",
+      "title": "Database Schema Cleanup",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Add deprecation comments to instance_number column",
+        "Add deprecation comments to decommissioned_at column",
+        "Add deprecation comments to succeeded_by column",
+        "Add deprecation comments to succession_reason column",
+        "Add deprecation comments to handover_summary column",
+        "Update AgentExecution class docstring",
+        "Add session_handover entry type to write_360_memory.py",
+        "Document session_handover schema"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0461c",
+      "title": "Backend Simplification",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Create simple_handover.py endpoint",
+        "Register endpoint in __init__.py and app.py",
+        "Update ThinClientPromptGenerator._generate_continuation_prompt()",
+        "Simplify OrchestrationService.trigger_succession()",
+        "Update /gil_handover slash command",
+        "Write unit tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0461d",
+      "title": "Frontend Simplification",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Update ActionIcons.vue handleHandOver()",
+        "Mark LaunchSuccessorDialog.vue as deprecated",
+        "Mark SuccessionTimeline.vue as deprecated",
+        "Simplify AgentCard.vue",
+        "Update agentJobsStore.js",
+        "Update websocketEventRouter.js",
+        "Simplify JobsTab.vue",
+        "Update actionConfig.js",
+        "Update/remove tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0461e",
+      "title": "Final Verification & Cleanup",
+      "color": "#F44336",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Orphan detection - backend",
+        "Orphan detection - frontend",
+        "Full test suite",
+        "Manual E2E testing",
+        "Update ORCHESTRATOR.md",
+        "Update 360_MEMORY_MANAGEMENT.md",
+        "Archive old docs",
+        "Create series summary"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "not_started"
+}

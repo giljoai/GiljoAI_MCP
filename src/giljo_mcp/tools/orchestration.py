@@ -1688,11 +1688,13 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                     event_type="agent:created",
                     data={
                         "project_id": project_id,
+                        "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
                         "agent_id": agent_id,  # Executor UUID
                         "job_id": job_id,  # Work order UUID
                         "agent_display_name": agent_display_name,
                         "agent_name": agent_name,
                         "status": "waiting",
+                        "instance_number": 1,  # Handover 0457: First instance
                         "thin_client": True,
                         "prompt_tokens": prompt_tokens,
                         "mission_tokens": mission_tokens,
@@ -1706,6 +1708,8 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
             "success": True,
             "job_id": job_id,  # Work order UUID
             "agent_id": agent_id,  # Executor UUID
+            "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
+            "instance_number": 1,  # Handover 0457: First instance
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,

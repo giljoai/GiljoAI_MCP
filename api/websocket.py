@@ -769,6 +769,9 @@ class WebSocketManager:
         project_id: Optional[str] = None,
         agent_name: Optional[str] = None,
         status: str = "waiting",
+        execution_id: Optional[str] = None,  # Handover 0457: Unique row ID for frontend Map key
+        agent_id: Optional[str] = None,  # Handover 0457: Executor UUID
+        instance_number: int = 1,  # Handover 0457: Instance number for succession
     ):
         """Broadcast agent job creation events."""
         created_ts = (created_at or datetime.now(timezone.utc)).isoformat()
@@ -786,6 +789,9 @@ class WebSocketManager:
                 "project_id": project_id,
                 "agent_name": agent_name,
                 "status": status,
+                "execution_id": execution_id,  # Handover 0457
+                "agent_id": agent_id,  # Handover 0457
+                "instance_number": instance_number,  # Handover 0457
             },
             schema_version="1.0",
         )
@@ -799,10 +805,13 @@ class WebSocketManager:
                 data={
                     "tenant_key": tenant_key,
                     "project_id": project_id,
+                    "execution_id": execution_id,  # Handover 0457: Unique row ID for frontend Map key
+                    "agent_id": agent_id,  # Handover 0457: Executor UUID
                     "job_id": job_id,
                     "agent_display_name": agent_display_name,
                     "agent_name": agent_name,
                     "status": status,
+                    "instance_number": instance_number,  # Handover 0457
                 },
                 schema_version="1.0",
             )
