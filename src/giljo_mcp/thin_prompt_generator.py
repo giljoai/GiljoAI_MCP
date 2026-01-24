@@ -520,7 +520,7 @@ STARTUP SEQUENCE:
    └─► Agents will EXECUTE the work (not you)
 6. SIGNAL COMPLETE: mcp__giljo-mcp__send_message() to broadcast staging done
    └─► Message: "STAGING_COMPLETE: Mission created, N agents spawned: [list agent names]"
-   └─► This enables the Launch Jobs button in UI (required for workflow)
+   └─► This enables the Implement button in UI (required for workflow)
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (READ THIS for context)
@@ -635,7 +635,7 @@ WORKFLOW:
 5. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
 6. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
 7. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
-   → This broadcast enables the Launch Jobs button in UI (REQUIRED)
+   → This broadcast enables the Implement button in UI (REQUIRED)
 
 Claude Code: Use TodoWrite tool to track workflow progress.
 
