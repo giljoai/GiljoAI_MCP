@@ -6,9 +6,16 @@ function ensureArray(value) {
 }
 
 function normalizeJob(rawJob) {
+  const job_id = rawJob?.job_id || rawJob?.id || rawJob?.agent_id
+  const instance_number = rawJob?.instance_number || 1
+  // Unique key for Map storage - prefer execution_id (true unique row ID)
+  // Fallback to composite key for backward compatibility
+  const unique_key = rawJob?.execution_id || `${job_id}-${instance_number}`
   return {
     ...rawJob,
-    job_id: rawJob?.job_id || rawJob?.id || rawJob?.agent_id,
+    job_id,
+    instance_number,
+    unique_key,  // Used as Map key - execution_id when available (production-grade)
     messages_sent_count: rawJob?.messages_sent_count ?? 0,
     messages_waiting_count: rawJob?.messages_waiting_count ?? 0,
     messages_read_count: rawJob?.messages_read_count ?? 0,
@@ -81,23 +88,42 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     return list
   })
 
-  function getJob(jobId) {
+  function getJob(jobId, instanceNumber = null) {
     if (!jobId) return null
-    return jobsById.value.get(jobId) || null
+    // Try unique_key first if instanceNumber provided
+    if (instanceNumber !== null) {
+      const uniqueKey = `${jobId}-${instanceNumber}`
+      return jobsById.value.get(uniqueKey) || null
+    }
+    // Try direct lookup (might be unique_key already)
+    if (jobsById.value.has(jobId)) {
+      return jobsById.value.get(jobId)
+    }
+    // Fallback: find first job with matching job_id
+    for (const job of jobsById.value.values()) {
+      if (job.job_id === jobId) {
+        return job
+      }
+    }
+    return null
   }
 
   function setJobs(rows = []) {
     const next = new Map()
     for (const rawJob of ensureArray(rows)) {
       const job = normalizeJob(rawJob)
-      if (!job.job_id) continue
-      next.set(job.job_id, job)
+      if (!job.unique_key) continue
+      // Use unique_key (job_id + instance_number) to allow multiple succession instances
+      next.set(job.unique_key, job)
     }
     jobsById.value = next
   }
 
   function upsertJob(patch) {
     const jobId = patch?.job_id || patch?.id || patch?.agent_id
+    const instanceNumber = patch?.instance_number || 1
+    // Prefer execution_id (true unique row ID), fallback to composite key
+    const uniqueKey = patch?.execution_id || patch?.unique_key || `${jobId}-${instanceNumber}`
     if (!jobId) return
 
     // Handover 0388: Filter undefined values to prevent state corruption
@@ -106,7 +132,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       Object.entries(patch || {}).filter(([_, v]) => v !== undefined)
     )
 
-    const previous = jobsById.value.get(jobId)
+    const previous = jobsById.value.get(uniqueKey)
     const nextJob = normalizeJob({ ...(previous || {}), ...cleanPatch, job_id: jobId })
 
     // Avoid unnecessary churn if nothing changed.
@@ -114,12 +140,23 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       return
     }
 
-    jobsById.value = createNextMapWith(jobsById.value, jobId, nextJob)
+    jobsById.value = createNextMapWith(jobsById.value, nextJob.unique_key, nextJob)
   }
 
-  function removeJob(jobId) {
-    if (!jobId || !jobsById.value.has(jobId)) return
-    jobsById.value = createNextMapWithout(jobsById.value, jobId)
+  function removeJob(uniqueKeyOrJobId) {
+    if (!uniqueKeyOrJobId) return
+    // Try direct removal by unique_key
+    if (jobsById.value.has(uniqueKeyOrJobId)) {
+      jobsById.value = createNextMapWithout(jobsById.value, uniqueKeyOrJobId)
+      return
+    }
+    // Fallback: find and remove by job_id
+    for (const [key, job] of jobsById.value.entries()) {
+      if (job.job_id === uniqueKeyOrJobId) {
+        jobsById.value = createNextMapWithout(jobsById.value, key)
+        return
+      }
+    }
   }
 
   // =========================
@@ -198,21 +235,29 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   function resolveJobId(identifier) {
     if (!identifier) return null
 
+    // Direct match by unique_key
     if (jobsById.value.has(identifier)) {
       return identifier
     }
 
-    // Check by agent_id (executor UUID from messaging)
+    // Check by agent_id (executor UUID from messaging) - return unique_key
     for (const job of jobsById.value.values()) {
       if (job.agent_id === identifier) {
-        return job.job_id
+        return job.unique_key
+      }
+    }
+
+    // Check by job_id - return unique_key of first match
+    for (const job of jobsById.value.values()) {
+      if (job.job_id === identifier) {
+        return job.unique_key
       }
     }
 
     // Legacy fallback: from_agent may be agent_display_name (e.g., "orchestrator").
     for (const job of jobsById.value.values()) {
       if (job.agent_display_name === identifier || job.agent_name === identifier) {
-        return job.job_id
+        return job.unique_key
       }
     }
 
