@@ -185,12 +185,13 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        executions = result.scalars().all()
+        executions = result.unique().scalars().all()
 
         return [
             AgentHealthStatus(
+                execution_id=execution.id,  # Primary key - guaranteed unique
                 job_id=execution.job_id,
-                agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
+                agent_id=execution.agent_id,
                 agent_display_name=execution.agent_display_name,
                 current_status="waiting",
                 health_state="critical",
@@ -248,7 +249,7 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        executions = result.scalars().all()
+        executions = result.unique().scalars().all()
 
         stalled = []
         for execution in executions:
@@ -265,8 +266,9 @@ class AgentHealthMonitor:
                     health_state = "warning"
 
                 stalled.append(AgentHealthStatus(
+                    execution_id=execution.id,  # Primary key - guaranteed unique
                     job_id=execution.job_id,
-                    agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
+                    agent_id=execution.agent_id,
                     agent_display_name=execution.agent_display_name,
                     current_status="active",
                     health_state=health_state,
@@ -316,7 +318,7 @@ class AgentHealthMonitor:
         )
 
         result = await session.execute(query)
-        executions = result.scalars().all()
+        executions = result.unique().scalars().all()
 
         failures = []
         for execution in executions:
@@ -329,8 +331,9 @@ class AgentHealthMonitor:
                 minutes_silent = (datetime.now(timezone.utc) - last_activity).total_seconds() / 60
 
                 failures.append(AgentHealthStatus(
+                    execution_id=execution.id,  # Primary key - guaranteed unique
                     job_id=execution.job_id,
-                    agent_id=execution.agent_id,  # Unique execution identifier (Handover 0389)
+                    agent_id=execution.agent_id,
                     agent_display_name=execution.agent_display_name,
                     current_status=execution.status,
                     health_state="timeout",
@@ -357,8 +360,9 @@ class AgentHealthMonitor:
             tenant_key: Tenant key
         """
         logger.warning(
-            f"Unhealthy execution detected: {health_status.agent_id} (job: {health_status.job_id})",
+            f"Unhealthy execution detected: {health_status.execution_id} (job: {health_status.job_id})",
             extra={
+                "execution_id": health_status.execution_id,
                 "agent_id": health_status.agent_id,
                 "job_id": health_status.job_id,
                 "agent_display_name": health_status.agent_display_name,
@@ -367,17 +371,16 @@ class AgentHealthMonitor:
             }
         )
 
-        # Get execution from database (query by agent_id UUID - unique identifier)
-        # NOTE (Handover 0389): Must use agent_id not job_id because succession creates
-        # multiple AgentExecution records for the same job_id
+        # Get execution from database by primary key (guaranteed unique)
+        # NOTE: Use execution_id (primary key) not agent_id which may have duplicates
         result = await session.execute(
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
-            .where(AgentExecution.agent_id == health_status.agent_id)
+            .where(AgentExecution.id == health_status.execution_id)
         )
-        execution = result.scalar_one_or_none()
+        execution = result.unique().scalar_one_or_none()
         if not execution:
-            logger.error(f"Execution {health_status.agent_id} not found in database")
+            logger.error(f"Execution {health_status.execution_id} not found in database")
             return
 
         # Update execution health fields
