@@ -96,10 +96,12 @@ class JobResponse(BaseModel):
     id: str  # Changed from int to str for UUID (0366 series)
     job_id: str
     agent_id: Optional[str] = None  # Handover 0401: Executor UUID for WebSocket event matching
+    execution_id: Optional[str] = None  # UNIQUE per row - AgentExecution primary key
     tenant_key: str
     project_id: Optional[str] = None
     agent_display_name: str
     agent_name: Optional[str] = None
+    instance_number: int = 1  # Succession instance number (1, 2, 3...)
     mission: str
     status: str
     progress: int = 0
