@@ -12,6 +12,24 @@ export const useNotificationStore = defineStore('notifications', () => {
     notifications.value.filter((n) => n.type === 'agent_health'),
   )
 
+  // Badge color based on highest priority unread notification (Handover: notification color system)
+  // Priority: connection_lost (red/error) > agent_health (yellow/warning) > others (default)
+  const badgeColor = computed(() => {
+    const unread = notifications.value.filter((n) => !n.read)
+    if (unread.length === 0) return 'error' // default when no unread
+
+    // Check for critical notifications first (red)
+    const hasCritical = unread.some((n) => n.type === 'connection_lost' || n.type === 'system_alert')
+    if (hasCritical) return 'error'
+
+    // Check for warning notifications (yellow)
+    const hasWarning = unread.some((n) => n.type === 'agent_health')
+    if (hasWarning) return 'warning'
+
+    // Default color for other notification types
+    return 'primary'
+  })
+
   const sortedNotifications = computed(() => {
     const sorted = [...notifications.value]
     sorted.sort((a, b) => {
@@ -69,6 +87,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     unreadCount,
     agentHealthNotifications,
     sortedNotifications,
+    badgeColor,
 
     // Actions
     addNotification,
