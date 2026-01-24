@@ -761,7 +761,7 @@ class ProductService:
             ...     print(f"{product['name']} - purge in {product['days_until_purge']} days")
         """
         try:
-            PURGE_DAYS = 30  # 30-day purge policy
+            PURGE_DAYS = 10  # 10-day purge policy (matches purge_expired_deleted_products)
 
             async with self._get_session() as session:
                 stmt = (

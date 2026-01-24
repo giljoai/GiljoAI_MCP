@@ -329,7 +329,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           timeout: 3000,
         })
 
-        // Add to notification bell
+        // Add to notification log only (no badge/ring - mark as already read)
         try {
           const notificationStore = useNotificationStore()
           notificationStore.addNotification({
@@ -337,7 +337,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             title: 'Connection Restored',
             message: `Successfully reconnected after ${reconnectAttempts.value} attempt(s)`,
             timestamp: new Date().toISOString(),
-            read: false,
+            read: true, // Mark as read so it only appears in log, no badge/ring
             metadata: {
               reconnectAttempts: reconnectAttempts.value,
               connectedAt: stats.value.connectedAt,

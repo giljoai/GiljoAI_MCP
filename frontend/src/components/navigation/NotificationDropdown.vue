@@ -10,7 +10,7 @@
       <v-badge
         :content="unreadCount"
         :model-value="unreadCount > 0"
-        color="error"
+        :color="badgeColor"
         overlap
         offset-x="4"
         offset-y="4"
@@ -20,7 +20,7 @@
           icon="mdi-bell"
           variant="text"
           aria-label="View notifications"
-          :class="['mr-2', { 'notification-bell--unread': unreadCount > 0 }]"
+          :class="['mr-2', notificationBellClass]"
         ></v-btn>
       </v-badge>
     </template>
@@ -120,6 +120,16 @@ let unsubscribeNotification = null
 // Computed properties
 const notifications = computed(() => notificationStore.sortedNotifications || [])
 const unreadCount = computed(() => notificationStore.unreadCount || 0)
+const badgeColor = computed(() => notificationStore.badgeColor || 'error')
+
+// Dynamic bell class based on notification priority
+const notificationBellClass = computed(() => {
+  if (unreadCount.value === 0) return ''
+  const color = badgeColor.value
+  if (color === 'warning') return 'notification-bell--warning'
+  if (color === 'error') return 'notification-bell--error'
+  return 'notification-bell--unread'
+})
 
 // Get icon based on notification type
 const getNotificationIcon = (type) => {
@@ -240,8 +250,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Pulsing glow animation for unread notifications */
-@keyframes notification-pulse {
+/* Pulsing glow animation for error notifications (connection lost, system alerts) */
+@keyframes notification-pulse-error {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0.6);
   }
@@ -250,8 +260,29 @@ onUnmounted(() => {
   }
 }
 
+/* Pulsing glow animation for warning notifications (agent health) */
+@keyframes notification-pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-warning), 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(var(--v-theme-warning), 0);
+  }
+}
+
+.notification-bell--error {
+  animation: notification-pulse-error 2s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+.notification-bell--warning {
+  animation: notification-pulse-warning 2s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+/* Fallback for other notification types */
 .notification-bell--unread {
-  animation: notification-pulse 2s ease-in-out infinite;
+  animation: notification-pulse-error 2s ease-in-out infinite;
   border-radius: 50%;
 }
 

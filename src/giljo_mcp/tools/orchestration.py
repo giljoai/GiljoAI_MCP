@@ -451,7 +451,7 @@ def _get_required_final_action() -> dict:
     Generate required_final_action field.
 
     Returns:
-        Dict with required broadcast action for enabling Launch button
+        Dict with required broadcast action for enabling Implement button
     """
     return {
         "action": "send_message",
@@ -460,7 +460,7 @@ def _get_required_final_action() -> dict:
             "message_type": "broadcast",
             "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned",
         },
-        "why": "Enables Launch Jobs button in UI - REQUIRED",
+        "why": "Enables Implement button in UI - REQUIRED",
     }
 
 
@@ -669,13 +669,13 @@ Call: send_message(
       )
 Note: tenant_key auto-injected by server from API key session
 
-This broadcast enables the "Launch Jobs" button in UI (REQUIRED)
+This broadcast enables the "Implement" button in UI (REQUIRED)
 
 ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
    Your session is done. Implementation happens in a new session.
 
 ⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.
-   Your job remains in 'waiting' status - this enables the Launch
+   Your job remains in 'waiting' status - this enables the Implement
    button in UI. acknowledge_job() is for implementation phase only.
 """
 
