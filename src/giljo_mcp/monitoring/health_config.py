@@ -64,8 +64,9 @@ class AgentHealthStatus:
     Health status for a single agent execution.
 
     Attributes:
+        execution_id: Primary key of AgentExecution (guaranteed unique)
         job_id: Job identifier (work order - may have multiple executions via succession)
-        agent_id: Unique execution identifier (UUID - always unique per executor instance)
+        agent_id: Agent identifier (may have duplicates in edge cases)
         agent_display_name: Type of agent (orchestrator, implementer, etc.)
         current_status: Current job status (waiting, active, etc.)
         health_state: Health state (healthy, warning, critical, timeout)
@@ -75,8 +76,9 @@ class AgentHealthStatus:
         recommended_action: Recommended remediation action
     """
 
+    execution_id: str  # Primary key - guaranteed unique (AgentExecution.id)
     job_id: str
-    agent_id: str  # Unique execution UUID - required for succession support (Handover 0389)
+    agent_id: str  # Agent identifier (for WebSocket events)
     agent_display_name: str
     current_status: str  # Job status (waiting, active, etc.)
     health_state: str  # Health state (healthy, warning, critical, timeout)

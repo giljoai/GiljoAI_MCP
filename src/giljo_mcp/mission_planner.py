@@ -1607,9 +1607,16 @@ Partial reading defeats the purpose of this configuration."""
             },
         }
 
+        # Fields that are already inlined in the response (no fetch needed)
+        inlined_fields = {"project_description"}
+
         # Iterate through field priorities and build instructions
         for field, priority in field_priorities.items():
             if priority >= 4:  # Excluded
+                continue
+
+            # Skip fields that are already inlined in the response
+            if field in inlined_fields:
                 continue
 
             config = tool_configs.get(field)

@@ -115,12 +115,12 @@ const props = defineProps({
     required: true,
   },
   projectId: {
-    type: String,
-    required: true,
+    type: [String, null],
+    default: null,
   },
   projectName: {
     type: String,
-    required: true,
+    default: '',
   },
 })
 

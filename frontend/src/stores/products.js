@@ -80,22 +80,47 @@ export const useProductStore = defineStore('products', () => {
   }
 
   async function setCurrentProduct(productId) {
-    if (productId === currentProductId.value) {
+    if (productId === currentProductId.value && productId !== null) {
       return
     }
 
     await fetchProducts()
-    if (products.value.length === 0) {
-      console.warn('No products available to set as current product')
-      return
+
+    // Handle null productId or no products available - switch to first available or clear
+    if (!productId || products.value.length === 0) {
+      if (products.value.length > 0) {
+        // Switch to first available product
+        productId = products.value[0].id
+      } else {
+        // No products available - clear everything
+        currentProductId.value = null
+        currentProduct.value = null
+        localStorage.removeItem('currentProductId')
+        console.warn('No products available to set as current product')
+        return
+      }
     }
 
     const product = await fetchProductById(productId)
     if (!product) {
-      console.warn(`Product ${productId} not found`)
+      console.warn(`Product ${productId} not found, switching to first available`)
 
       if (products.value.length > 0) {
         productId = products.value[0].id
+        const fallbackProduct = await fetchProductById(productId)
+        if (fallbackProduct) {
+          currentProductId.value = productId
+          currentProduct.value = fallbackProduct
+          localStorage.setItem('currentProductId', productId)
+          await fetchProductMetrics(productId)
+          await projectStore.fetchProjects()
+          window.dispatchEvent(
+            new CustomEvent('product-changed', {
+              detail: { productId, product: fallbackProduct },
+            }),
+          )
+        }
+        return
       } else {
         currentProductId.value = null
         currentProduct.value = null
