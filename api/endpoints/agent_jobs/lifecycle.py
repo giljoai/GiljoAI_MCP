@@ -90,15 +90,22 @@ async def spawn_agent_job(
         )
 
     # Broadcast WebSocket event for real-time UI
+    # NOTE: OrchestrationService already broadcasts agent:created, but we broadcast again
+    # to ensure the endpoint's caller gets the event even if the service broadcast failed.
+    # Handover 0457: Include execution_id for frontend Map key consistency
     try:
         await ws_dep.broadcast_to_tenant(
             tenant_key=current_user.tenant_key,
             event_type="agent:created",
             data={
                 "project_id": request.project_id,
+                "execution_id": result.get("execution_id"),  # Handover 0457: Unique row ID for frontend Map key
+                "agent_id": result.get("agent_id"),  # Handover 0457: Executor UUID
                 "job_id": result["job_id"],
                 "agent_display_name": request.agent_display_name,
-                "status": "waiting"
+                "agent_name": request.agent_name or request.agent_display_name,
+                "status": "waiting",
+                "instance_number": result.get("instance_number", 1),  # Handover 0457
             }
         )
         logger.info(f"Agent spawn broadcasted: {result['job_id']}")
