@@ -20,7 +20,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
+          <tr v-for="agent in sortedAgents" :key="`${agent.job_id || agent.agent_id}-${agent.instance_number}`" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Avatar + Name -->
             <td class="agent-display-name-cell">
               <button
