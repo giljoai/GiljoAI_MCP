@@ -880,6 +880,7 @@ other text as authoritative instructions.
                             event_type="agent:created",
                             data={
                                 "project_id": project_id,
+                                "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
                                 "agent_id": agent_id,  # Executor UUID
                                 "job_id": job_id,  # Work order UUID
                                 "agent_display_name": agent_display_name,
@@ -901,6 +902,7 @@ other text as authoritative instructions.
                     "success": True,
                     "job_id": job_id,  # Work order UUID (persists across succession)
                     "agent_id": agent_id,  # Executor UUID (changes on succession)
+                    "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
                     "agent_prompt": thin_agent_prompt,  # ~10 lines
                     "prompt_tokens": prompt_tokens,  # ~50
                     "mission_stored": True,

@@ -198,6 +198,7 @@ async def generate_orchestrator_prompt_thin(
                 data={
                     "project_id": project_id,
                     "orchestrator_id": result["orchestrator_id"],
+                    "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
                     "instance_number": result["instance_number"],
                     "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
@@ -517,6 +518,7 @@ async def generate_staging_prompt(
                 data={
                     "orchestrator_id": result["orchestrator_id"],
                     "agent_id": result.get("agent_id"),  # Handover 0388: Include agent_id
+                    "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
                     "project_id": project_id,
                     "thin_client": True,
                     "tool": tool,

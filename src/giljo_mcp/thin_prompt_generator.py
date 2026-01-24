@@ -205,6 +205,7 @@ class ThinClientPromptGenerator:
             # Reuse existing active orchestrator
             orchestrator_id = existing_execution.job_id  # WHAT - work order ID
             agent_id = existing_execution.agent_id  # WHO - executor ID (for MCP tool calls)
+            execution_id = existing_execution.id  # UNIQUE row ID - for frontend Map key
             instance_number = existing_execution.instance_number
 
             # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
@@ -307,6 +308,9 @@ class ThinClientPromptGenerator:
             await self.db.refresh(agent_execution)
             await self.db.refresh(project)  # Refresh project to get updated staging_status
 
+            # Get execution_id after refresh (DB assigns id)
+            execution_id = agent_execution.id  # UNIQUE row ID - for frontend Map key
+
             logger.info(
                 f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} "
                 f"(instance #{instance_number}), project staging_status='staged'"
@@ -356,6 +360,7 @@ class ThinClientPromptGenerator:
         return {
             "orchestrator_id": orchestrator_id,  # WHAT - work order/job ID (backward compat)
             "agent_id": agent_id,  # WHO - executor ID for MCP tool calls (Handover 0388)
+            "execution_id": execution_id,  # UNIQUE row ID - for frontend Map key (prevents duplicates)
             "thin_prompt": thin_prompt,
             "instance_number": instance_number,
             "context_budget": project.context_budget,
