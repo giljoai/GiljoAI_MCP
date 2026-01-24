@@ -1107,6 +1107,7 @@ class ProjectService:
                     event_type="agent:created",
                     data={
                         "project_id": project.id,
+                        "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
                         "agent_id": agent_id,
                         "job_id": job_id,
                         "agent_display_name": "orchestrator",
