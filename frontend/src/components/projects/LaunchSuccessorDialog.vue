@@ -15,6 +15,18 @@
       </v-card-title>
 
       <v-card-text>
+        <!-- Warning: Existing waiting successors -->
+        <v-alert v-if="waitingSuccessors.length > 0" type="error" variant="tonal" class="mb-4" density="compact">
+          <template #prepend>
+            <v-icon>mdi-alert-circle</v-icon>
+          </template>
+          <strong>Warning:</strong> There are already {{ waitingSuccessors.length }} waiting successor(s):
+          <span v-for="(s, i) in waitingSuccessors" :key="s.instance_number">
+            Instance #{{ s.instance_number }}<span v-if="i < waitingSuccessors.length - 1">, </span>
+          </span>.
+          Consider launching one of those instead of creating another.
+        </v-alert>
+
         <v-alert type="warning" variant="tonal" class="mb-4" density="compact">
           <template #prepend>
             <v-icon>mdi-alert</v-icon>
@@ -108,7 +120,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
@@ -150,6 +162,7 @@ export default {
     const notes = ref('')
     const launchPrompt = ref('')
     const error = ref(null)
+    const allExecutions = ref([])  // All executions for this job
 
     const reasonOptions = [
       { title: 'Manual Handover', value: 'manual' },
@@ -157,10 +170,37 @@ export default {
       { title: 'Phase Transition', value: 'phase_transition' },
     ]
 
-    // nextInstanceNumber - Computed next instance number
-    // Returns: num - currentJob.instance_number + 1
+    // Fetch all executions when dialog opens
+    watch(dialog, async (isOpen) => {
+      if (isOpen && props.currentJob?.job_id) {
+        try {
+          const response = await api.agentJobs.getExecutions(props.currentJob.job_id)
+          allExecutions.value = response.data || []
+        } catch (err) {
+          console.warn('Could not fetch executions:', err)
+          allExecutions.value = []
+        }
+      }
+    })
+
+    // waitingSuccessors - Executions in "waiting" status (excluding current)
+    const waitingSuccessors = computed(() => {
+      return allExecutions.value
+        .filter(e => e.status === 'waiting' && e.instance_number !== props.currentJob.instance_number)
+        .sort((a, b) => a.instance_number - b.instance_number)
+    })
+
+    // maxInstanceNumber - Highest instance number across all executions
+    const maxInstanceNumber = computed(() => {
+      if (allExecutions.value.length === 0) {
+        return props.currentJob.instance_number || 1
+      }
+      return Math.max(...allExecutions.value.map(e => e.instance_number || 1))
+    })
+
+    // nextInstanceNumber - Computed next instance number (max + 1)
     const nextInstanceNumber = computed(() => {
-      return (props.currentJob.instance_number || 1) + 1
+      return maxInstanceNumber.value + 1
     })
 
     // contextPercentage - Calculates current context usage %
@@ -200,12 +240,18 @@ export default {
 
         launchPrompt.value = response.data.launch_prompt
 
-        toast.success(`Successor instance ${response.data.instance_number} created`)
+        toast.showToast({
+          type: 'success',
+          message: `Successor instance ${response.data.instance_number} created`,
+        })
         emit('succession-triggered', response.data)
       } catch (err) {
         console.error('Succession trigger failed:', err)
         error.value = err.response?.data?.detail || 'Failed to trigger succession'
-        toast.error(error.value)
+        toast.showToast({
+          type: 'error',
+          message: error.value,
+        })
       } finally {
         loading.value = false
       }
@@ -216,9 +262,15 @@ export default {
     const copyPrompt = async () => {
       try {
         await navigator.clipboard.writeText(launchPrompt.value)
-        toast.success('Launch prompt copied to clipboard')
+        toast.showToast({
+          type: 'success',
+          message: 'Launch prompt copied to clipboard',
+        })
       } catch (err) {
-        toast.error('Failed to copy prompt')
+        toast.showToast({
+          type: 'error',
+          message: 'Failed to copy prompt',
+        })
       }
     }
 
@@ -237,6 +289,7 @@ export default {
       error,
       reasonOptions,
       nextInstanceNumber,
+      waitingSuccessors,  // For warning about existing waiting instances
       contextPercentage,
       contextColor,
       formatNumber,
