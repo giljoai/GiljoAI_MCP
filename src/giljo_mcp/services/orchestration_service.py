@@ -44,7 +44,7 @@ from src.giljo_mcp.models import (
 from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.workflow_engine import WorkflowEngine
+# WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
 from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
@@ -2768,6 +2768,9 @@ report_error(
         Returns:
             WorkflowResult from execution
         """
+        # Lazy import to avoid circular dependency
+        from src.giljo_mcp.workflow_engine import WorkflowEngine
+
         workflow_result = await self.workflow_engine.execute_workflow(
             agent_configs=agent_configs, workflow_type=workflow_type, tenant_key=tenant_key, project_id=project_id
         )
@@ -2873,7 +2876,12 @@ report_error(
         if project_id:
             # Use existing project
             async with self._get_session() as session:
-                result = await session.execute(select(Project).where(Project.id == project_id))
+                result = await session.execute(
+                    select(Project).where(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key
+                    )
+                )
                 project = result.scalar_one_or_none()
                 if not project:
                     raise ValueError(f"Project {project_id} not found")
