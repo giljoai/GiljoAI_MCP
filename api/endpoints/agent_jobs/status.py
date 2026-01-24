@@ -50,10 +50,12 @@ def job_to_response(job: dict) -> JobResponse:
         id=job.get("agent_id", job.get("id", "")),  # 0366: prefer agent_id (UUID)
         job_id=job["job_id"],
         agent_id=job.get("agent_id"),  # Handover 0401: Executor UUID for WebSocket event matching
+        execution_id=job.get("execution_id"),  # UNIQUE per row - use as Map key
         tenant_key=job["tenant_key"],
         project_id=job.get("project_id"),
         agent_display_name=job["agent_display_name"],
         agent_name=job.get("agent_name"),
+        instance_number=job.get("instance_number", 1),  # Succession instance number
         mission=job["mission"],
         status=job["status"],
         progress=job.get("progress", 0),
