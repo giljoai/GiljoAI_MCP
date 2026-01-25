@@ -38,14 +38,14 @@ export const ACTION_CONFIG = {
   handOver: {
     icon: 'mdi-hand-wave',
     color: 'warning',
-    label: 'Initiate Handover',
-    tooltip: 'Get prompt to hand over to successor orchestrator',
-    // Handover 0506: No confirmation - copies prompt to clipboard immediately
-    // User pastes prompt into current orchestrator terminal to trigger handover
+    label: 'Refresh Session',
+    tooltip: 'Refresh Session (reset context)',
+    // Handover 0461d: Direct API call - no confirmation dialog
+    // Copies continuation prompt to clipboard automatically
     confirmation: false,
     requiresStatus: ['working'],
     requiresAgentType: 'orchestrator',
-    // Handover 0506: Removed context threshold - user decides when to hand over
+    // Handover 0461d: Session refresh available while working
     excludeTerminalStates: true,
   },
 }

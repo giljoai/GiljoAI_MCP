@@ -21,7 +21,7 @@ Curated list of user-facing workflows to visualize in the Developer Panel. Each 
   _Sources_: tests/integration/test_stage_project_workflow.py, handovers/0105_orchestrator_mission_workflow.md
 - **Launch & Execution Flow** – Orchestrator run, agent handoffs, completion criteria.  
   _Sources_: handovers/start_to_finish_agent_FLOW.md, tests/integration/test_orchestration_workflow.py, tests/test_orchestrator_workflow.py
-- **Succession & Handover Flow** – Manual `/gil_handover` command, automatic 90% context succession.  
+- **Succession & Handover Flow** – Manual `/gil_handover` command or UI "Hand Over" button for user-triggered succession.  
   _Sources_: docs/user_guides/orchestrator_succession_guide.md, handovers/README.md (0080a), tests/integration/test_succession_workflow.py
 - **Implementation & QA Flow** – Staging to implementation to QA handoff and sign-off.  
   _Sources_: docs/Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md, handovers/0106_agent_template_hardcoded_rules.md, tests/integration/test_agent_workflow.py

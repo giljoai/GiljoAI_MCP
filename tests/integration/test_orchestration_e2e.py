@@ -141,6 +141,7 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() method deleted (manual succession only)")
 async def test_e2e_succession_workflow(
     db_session: AsyncSession,
     test_tenant_key: str,
@@ -148,75 +149,10 @@ async def test_e2e_succession_workflow(
     orchestration_service_with_session,
 ):
     """
-    Full succession workflow: check -> create -> handover.
-
-    Verifies:
-    1. check_succession_status returns threshold
-    2. create_successor_orchestrator creates new execution
-    3. Predecessor marked for succession
+    DEPRECATED: This test tested check_succession_status() which was removed in Handover 0461a.
+    Succession is now manual-only via UI or /gil_handover command.
     """
-    service = orchestration_service_with_session
-
-    # Create orchestrator job with high context usage
-    orchestrator_job = AgentJob(
-        job_id=str(uuid4()),
-        tenant_key=test_tenant_key,
-        project_id=str(test_project.id),
-        mission="Orchestrate project delivery",
-        job_type="orchestrator",
-        status="active",
-    )
-    db_session.add(orchestrator_job)
-
-    orchestrator_execution = AgentExecution(
-        agent_id=str(uuid4()),
-        job_id=orchestrator_job.job_id,
-        tenant_key=test_tenant_key,
-        agent_display_name="orchestrator",
-        agent_name="orchestrator",
-        instance_number=1,
-        status="working",
-        context_used=135000,  # 90% of 150000 default budget
-        context_budget=150000,
-    )
-    db_session.add(orchestrator_execution)
-    await db_session.commit()
-
-    # Step 1: Check succession status
-    check_result = await service.check_succession_status(
-        job_id=orchestrator_job.job_id,
-        tenant_key=test_tenant_key,
-    )
-
-    assert check_result["should_trigger"] is True
-    assert check_result["usage_percentage"] == 90
-    assert check_result["threshold_reached"] is True
-
-    # Step 2: Create successor
-    successor_result = await service.create_successor_orchestrator(
-        current_job_id=orchestrator_job.job_id,
-        tenant_key=test_tenant_key,
-        reason="context_limit",
-    )
-
-    assert successor_result["success"] is True
-    successor_agent_id = successor_result["successor_id"]
-    assert successor_agent_id != orchestrator_execution.agent_id  # Different executor, same job
-
-    # Verify predecessor marked as decommissioned
-    await db_session.refresh(orchestrator_execution)
-    assert orchestrator_execution.status == "decommissioned"
-    assert orchestrator_execution.succeeded_by == successor_agent_id
-
-    # Verify successor execution created (same job_id, new agent_id)
-    result = await db_session.execute(
-        select(AgentExecution).where(AgentExecution.agent_id == successor_agent_id)
-    )
-    successor_execution = result.scalar_one_or_none()
-    assert successor_execution is not None
-    assert successor_execution.job_id == orchestrator_job.job_id  # Same work order
-    assert successor_execution.instance_number == 2  # Next instance
-    assert successor_execution.status == "waiting"
+    pass
 
 
 @pytest.mark.asyncio

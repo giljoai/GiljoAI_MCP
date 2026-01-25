@@ -136,27 +136,27 @@ class AgentJob(Base):
 
 class AgentExecution(Base):
     """
-    Executor instance - changes on agent succession.
+    Executor instance - represents an active agent.
 
     Represents the WHO (which agent instance is executing).
-    Changes when agents hand over to successors (new execution, SAME job).
 
-    Handover 0366a: Extracted from MCPAgentJob to separate concerns.
+    Handover 0461b DEPRECATION NOTICE:
+    The following columns are deprecated and will be removed in v4.0:
+    - instance_number: Use single instance per agent
+    - decommissioned_at: Agents no longer decommissioned
+    - succeeded_by: Use 360 Memory for handover tracking
+    - succession_reason: Use 360 Memory session_handover entry
+    - handover_summary: Use 360 Memory session_handover entry
 
-    NOTE: The `messages` JSONB column is DEPRECATED as of Handover 0387i.
+    NOTE: The `messages` JSONB column is also DEPRECATED (Handover 0387i).
     Use `messages_sent_count`, `messages_waiting_count`, `messages_read_count` instead.
-    The column will be removed in v4.0.
 
     Relationships:
     - job: Many executions → One job (work order)
-
-    Succession Chain:
-    - spawned_by: Points to parent agent_id (who spawned this executor)
-    - succeeded_by: Points to successor agent_id (who took over from this executor)
+    - spawned_by: Points to parent agent_id (who spawned this executor) - STILL ACTIVE
 
     Multi-tenant Isolation:
     - All queries MUST filter by tenant_key
-    - Composite indexes for (tenant_key, job_id) queries
     """
 
     __tablename__ = "agent_executions"
@@ -185,7 +185,7 @@ class AgentExecution(Base):
         Integer,
         default=1,
         nullable=False,
-        comment="Sequential instance number for succession (1, 2, 3, ...)",
+        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use single instance per agent.",
     )
 
     # Execution lifecycle
@@ -197,7 +197,11 @@ class AgentExecution(Base):
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    decommissioned_at = Column(DateTime(timezone=True), nullable=True)
+    decommissioned_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Agents no longer decommissioned.",
+    )
 
     # Succession tracking (points to OTHER executions via agent_id)
     spawned_by = Column(
@@ -208,7 +212,7 @@ class AgentExecution(Base):
     succeeded_by = Column(
         String(36),
         nullable=True,
-        comment="Agent ID of successor executor (clear: agent, not job)",
+        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory for handover tracking.",
     )
 
     # Progress tracking
@@ -278,12 +282,12 @@ class AgentExecution(Base):
     succession_reason = Column(
         String(100),
         nullable=True,
-        comment="Reason for succession: context_limit, manual, phase_transition",
+        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
     )
     handover_summary = Column(
         JSONB,
         nullable=True,
-        comment="Compressed state transfer for successor orchestrator",
+        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
     )
 
     # DEPRECATED (Handover 0387i): This column is no longer used.

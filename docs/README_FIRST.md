@@ -697,9 +697,9 @@ database:
 **Handover 0080 - Orchestrator Succession for Unlimited Project Duration** (✅ COMPLETE):
 - **[Complete Documentation](../handovers/0080_orchestrator_succession_architecture.md)**
 - **[User Guide](user_guides/orchestrator_succession_guide.md)** | **[Developer Guide](developer_guides/orchestrator_succession_developer_guide.md)** | **[Quick Reference](quick_reference/succession_quick_ref.md)**
-- **Purpose**: Enable unlimited project duration through automatic orchestrator succession when context windows approach capacity
+- **Purpose**: Enable unlimited project duration through manual orchestrator succession when context is high
 - **Key Features**:
-  - Automatic succession at 90% context usage
+  - Manual succession when context is high (triggered by user via UI or slash command)
   - Compressed handover summaries (<10K tokens)
   - Full lineage tracking via spawned_by chain
   - UI timeline visualization

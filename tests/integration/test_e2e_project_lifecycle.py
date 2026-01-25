@@ -1040,10 +1040,10 @@ class TestCompleteProjectLifecycle:
 
         await db_session.refresh(orchestrator_job)
         utilization = orchestrator_job.context_used / orchestrator_job.context_budget
-        assert utilization == 0.9  # 90% (trigger point)
+        assert utilization == 0.9  # 90% context usage
 
-        # In real system, succession would be triggered here
-        # (via OrchestrationService.check_succession_status)
+        # In real system, manual succession could be triggered via UI or /gil_handover
+        # (Auto-succession removed in Handover 0461a)
 
 
 # =============================================================================

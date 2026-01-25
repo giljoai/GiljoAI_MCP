@@ -214,7 +214,7 @@ async def write_360_memory(
         summary: 2-3 paragraph summary of work accomplished
         key_outcomes: 3-5 specific achievements
         decisions_made: 3-5 architectural/design decisions
-        entry_type: Type of entry ("project_completion" or "handover_closeout")
+        entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
         author_job_id: Job ID of agent writing entry (optional)
         db_manager: Database manager (dependency injection)
         session: Optional existing session
@@ -255,10 +255,11 @@ async def write_360_memory(
         decisions_made = decisions_made[:MAX_DECISIONS_MADE]
 
     # Validate entry_type
-    if entry_type not in ["project_completion", "handover_closeout"]:
+    VALID_ENTRY_TYPES = {"project_completion", "handover_closeout", "session_handover"}
+    if entry_type not in VALID_ENTRY_TYPES:
         return {
             "success": False,
-            "error": f"Invalid entry_type '{entry_type}'. Must be 'project_completion' or 'handover_closeout'",
+            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {VALID_ENTRY_TYPES}",
         }
 
     try:

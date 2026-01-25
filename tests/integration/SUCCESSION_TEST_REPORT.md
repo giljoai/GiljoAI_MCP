@@ -35,9 +35,9 @@ Comprehensive integration test suite for Orchestrator Succession Architecture (H
 
 **Fixtures Provided**:
 - `test_tenant_key` - Unique tenant key for test isolation
-- `orchestrator_at_90_percent` - Orchestrator at 90% context threshold
-- `orchestrator_below_threshold` - Orchestrator at 40% context (below trigger)
-- `orchestrator_over_100_percent` - Emergency scenario (103% context)
+- `orchestrator_at_90_percent` - Orchestrator at 90% context usage (manual succession scenario)
+- `orchestrator_below_threshold` - Orchestrator at 40% context usage
+- `orchestrator_over_100_percent` - Orchestrator exceeding budget (103% context)
 - `succession_chain_3_instances` - Pre-built chain of 3 orchestrators
 - `handover_summary_sample` - Valid handover summary for testing
 - `multi_tenant_orchestrators` - Two-tenant setup for isolation tests
@@ -80,8 +80,8 @@ Comprehensive integration test suite for Orchestrator Succession Architecture (H
    - **Verifies**: Database ordering by instance_number ASC
 
 6. `test_succession_at_exact_90_percent`
-   - **Scenario**: Succession at precisely 90% threshold
-   - **Verifies**: Boundary condition handling
+   - **Scenario**: Manual succession triggered at 90% context usage
+   - **Verifies**: Context usage tracking and succession workflow at boundary conditions
 
 ---
 

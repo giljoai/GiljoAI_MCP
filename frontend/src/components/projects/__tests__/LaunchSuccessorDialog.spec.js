@@ -30,7 +30,7 @@ Object.assign(navigator, {
   },
 })
 
-describe('LaunchSuccessorDialog.vue', () => {
+describe.skip('LaunchSuccessorDialog (DEPRECATED - Handover 0461d)', () => {
   let vuetify
 
   beforeEach(() => {
