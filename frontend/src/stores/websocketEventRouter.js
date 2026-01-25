@@ -351,14 +351,19 @@ export const EVENT_MAP = {
   // Handover 0386: Progress updates should NOT create messages
   // This handler receives direct WebSocket events from report_progress()
   // Handover 0402: Include todo_items array for Plan/TODOs tab
+  // Handover 0462: Include agent_display_name and agent_name to prevent "??" avatar bug
   'job:progress_update': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
 
       // Update the job's progress fields
+      // CRITICAL: Include identity fields to prevent incomplete entries if this event
+      // arrives before agent:created (race condition causing "??" avatars)
       agentJobsStore.handleProgressUpdate?.({
         job_id: payload.job_id,
         agent_id: payload.agent_id,
+        agent_display_name: payload.agent_display_name, // Handover 0462: Identity field
+        agent_name: payload.agent_name, // Handover 0462: Identity field
         progress: payload.progress_percent,
         current_task: payload.current_task,
         todo_steps: payload.todo_steps,

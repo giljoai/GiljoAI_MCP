@@ -218,12 +218,25 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     upsertJob(payload)
   }
 
+  // Handover 0462: Include identity fields to prevent "??" avatar bug from race conditions
   function handleMissionAcknowledged(payload) {
     if (!payload?.job_id) return
-    upsertJob({
+    const updates = {
       job_id: payload.job_id,
       mission_acknowledged_at: payload.mission_acknowledged_at,
-    })
+    }
+    // Handover 0462: Include identity fields if present in payload
+    // If this event arrives before agent:created, these fields ensure the entry is complete
+    if (payload.agent_display_name) {
+      updates.agent_display_name = payload.agent_display_name
+    }
+    if (payload.agent_name) {
+      updates.agent_name = payload.agent_name
+    }
+    if (payload.agent_id) {
+      updates.agent_id = payload.agent_id
+    }
+    upsertJob(updates)
   }
 
   // Handover 0386: Handle progress updates from job:progress_update WebSocket events
@@ -231,6 +244,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   // Handover 0388: Conditionally build updates to prevent undefined corruption
   // Handover 0401: Transform todo_steps array to steps summary object
   // Handover 0402: Store todo_items for Plan/TODOs tab display
+  // Handover 0462: Include identity fields to prevent "??" avatar bug from race conditions
   function handleProgressUpdate(payload) {
     if (!payload?.job_id) return
 
@@ -239,6 +253,18 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       progress: payload.progress,
       current_task: payload.current_task,
       last_progress_at: payload.last_progress_at,
+    }
+
+    // Handover 0462: Include identity fields to prevent "??" avatar bug
+    // If this event arrives before agent:created, these fields ensure the entry is complete
+    if (payload.agent_display_name) {
+      updates.agent_display_name = payload.agent_display_name
+    }
+    if (payload.agent_name) {
+      updates.agent_name = payload.agent_name
+    }
+    if (payload.agent_id) {
+      updates.agent_id = payload.agent_id
     }
 
     // Only add job_metadata when todo_steps exists (prevents undefined overwrite)
