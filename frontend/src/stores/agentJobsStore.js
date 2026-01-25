@@ -111,60 +111,21 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   }
 
   function setJobs(rows = []) {
-    // Handover 0462: Start with existing data to prevent race condition data loss
-    // WebSocket events may have delivered data that API response doesn't contain yet
-    const next = new Map(jobsById.value)
-
+    const next = new Map()
     for (const rawJob of ensureArray(rows)) {
       const job = normalizeJob(rawJob)
       if (!job.unique_key) continue
 
-      // Check if this job already exists under a different key (identity matching)
-      let existingKey = null
-      if (job.agent_id) {
-        for (const [key, existing] of next.entries()) {
-          if (existing.agent_id === job.agent_id) {
-            existingKey = key
-            break
-          }
-        }
-      }
-      // Also try job_id if agent_id didn't match
-      if (!existingKey && job.job_id) {
-        for (const [key, existing] of next.entries()) {
-          if (existing.job_id === job.job_id && existing.instance_number === job.instance_number) {
-            existingKey = key
-            break
-          }
-        }
+      // Handover 0463: Only preserve identity fields from existing entry
+      // This prevents "??" avatars when API response lacks identity fields
+      const existing = jobsById.value.get(job.unique_key)
+      if (existing) {
+        job.agent_display_name = job.agent_display_name || existing.agent_display_name
+        job.agent_name = job.agent_name || existing.agent_name
       }
 
-      if (existingKey && existingKey !== job.unique_key) {
-        // Job exists under different key - merge and migrate to new key
-        const existingJob = next.get(existingKey)
-        next.delete(existingKey)
-        next.set(job.unique_key, {
-          ...existingJob,
-          ...job,
-          // Preserve identity fields if API response lacks them (the core fix)
-          agent_display_name: job.agent_display_name || existingJob.agent_display_name,
-          agent_name: job.agent_name || existingJob.agent_name,
-        })
-      } else if (next.has(job.unique_key)) {
-        // Same key exists - merge preserving identity fields
-        const existingJob = next.get(job.unique_key)
-        next.set(job.unique_key, {
-          ...existingJob,
-          ...job,
-          agent_display_name: job.agent_display_name || existingJob.agent_display_name,
-          agent_name: job.agent_name || existingJob.agent_name,
-        })
-      } else {
-        // New job from API
-        next.set(job.unique_key, job)
-      }
+      next.set(job.unique_key, job)
     }
-
     jobsById.value = next
   }
 
@@ -403,9 +364,10 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     const previous = jobsById.value.get(senderId)
     if (!previous) return
 
+    // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
     // Use server-provided counter from WebSocket event
     upsertJob({
-      job_id: senderId,
+      ...previous,
       messages_sent_count: payload.sender_sent_count ?? (previous.messages_sent_count || 0) + 1,
     })
 
@@ -416,8 +378,9 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       if (recipientId) {
         const recipientPrevious = jobsById.value.get(recipientId)
         if (recipientPrevious) {
+          // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
           upsertJob({
-            job_id: recipientId,
+            ...recipientPrevious,
             messages_waiting_count: payload.recipient_waiting_count ?? (recipientPrevious.messages_waiting_count || 0) + 1,
           })
         }
@@ -436,9 +399,10 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       const previous = jobsById.value.get(recipientId)
       if (!previous) continue
 
+      // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
       // Use server-provided counter from WebSocket event
       upsertJob({
-        job_id: recipientId,
+        ...previous,
         messages_waiting_count: payload.recipient_waiting_count ?? (previous.messages_waiting_count || 0) + 1,
       })
     }
@@ -471,9 +435,10 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       return
     }
 
+    // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
     // Use server-provided counters from WebSocket event
     upsertJob({
-      job_id: recipientId,
+      ...previous,
       messages_waiting_count: payload.waiting_count ?? previous.messages_waiting_count ?? 0,
       messages_read_count: payload.read_count ?? previous.messages_read_count ?? 0,
     })
@@ -495,9 +460,13 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       return
     }
 
+    const previous = jobsById.value.get(jobIdentifier)
+    if (!previous) return
+
+    // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
     // Update the agent with new context_used value
     upsertJob({
-      job_id: jobIdentifier,
+      ...previous,
       context_used: new_context_used,
     })
 
