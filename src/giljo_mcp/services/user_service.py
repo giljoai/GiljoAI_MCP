@@ -149,12 +149,13 @@ class UserService:
             "data": user_list
         }
 
-    async def get_user(self, user_id: str) -> Dict[str, Any]:
+    async def get_user(self, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
         """
         Get a specific user by ID.
 
         Args:
             user_id: User UUID
+            include_all_tenants: If True, allow fetching users from any tenant (admin only)
 
         Returns:
             Dict with success status and user details (password excluded) or error
@@ -167,24 +168,29 @@ class UserService:
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._get_user_impl(self._session, user_id)
+                return await self._get_user_impl(self._session, user_id, include_all_tenants)
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._get_user_impl(session, user_id)
+                return await self._get_user_impl(session, user_id, include_all_tenants)
 
         except Exception as e:
             self._logger.exception(f"Failed to get user: {e}")
             return {"success": False, "error": str(e)}
 
-    async def _get_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _get_user_impl(self, session: AsyncSession, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
+        if include_all_tenants:
+            # Admin cross-tenant fetch
+            stmt = select(User).where(User.id == user_id)
+        else:
+            # Regular tenant-isolated fetch
+            stmt = select(User).where(
+                and_(
+                    User.id == user_id,
+                    User.tenant_key == self.tenant_key
+                )
             )
-        )
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
@@ -331,6 +337,7 @@ class UserService:
     async def update_user(
         self,
         user_id: str,
+        include_all_tenants: bool = False,
         **updates
     ) -> Dict[str, Any]:
         """
@@ -338,6 +345,7 @@ class UserService:
 
         Args:
             user_id: User UUID
+            include_all_tenants: If True, allow updating users from any tenant (admin only)
             **updates: Fields to update (email, full_name, is_active)
 
         Returns:
@@ -353,26 +361,31 @@ class UserService:
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._update_user_impl(self._session, user_id, updates)
+                return await self._update_user_impl(self._session, user_id, updates, include_all_tenants)
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._update_user_impl(session, user_id, updates)
+                return await self._update_user_impl(session, user_id, updates, include_all_tenants)
 
         except Exception as e:
             self._logger.exception(f"Failed to update user: {e}")
             return {"success": False, "error": str(e)}
 
     async def _update_user_impl(
-        self, session: AsyncSession, user_id: str, updates: dict
+        self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
+        if include_all_tenants:
+            # Admin cross-tenant update
+            stmt = select(User).where(User.id == user_id)
+        else:
+            # Regular tenant-isolated update
+            stmt = select(User).where(
+                and_(
+                    User.id == user_id,
+                    User.tenant_key == self.tenant_key
+                )
             )
-        )
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
@@ -398,6 +411,12 @@ class UserService:
         for field, value in updates.items():
             if field in allowed_fields:
                 setattr(user, field, value)
+
+        # Handle password update separately (needs hashing)
+        if "password" in updates and updates["password"]:
+            from passlib.hash import bcrypt
+            user.password_hash = bcrypt.hash(updates["password"])
+            self._logger.info(f"Password updated for user {user_id}")
 
         await session.commit()
         await session.refresh(user)
