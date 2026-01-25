@@ -76,9 +76,12 @@ class UserService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_users(self) -> Dict[str, Any]:
+    async def list_users(self, include_all_tenants: bool = False) -> Dict[str, Any]:
         """
-        List all users in tenant.
+        List all users in tenant (or all tenants for admin view).
+
+        Args:
+            include_all_tenants: If True, return users from all tenants (admin only)
 
         Returns:
             Dict with success status and list of users (passwords excluded)
@@ -99,23 +102,28 @@ class UserService:
                     or getattr(self._session, "_is_ctx_manager_closed", False)
                 ):
                     raise RuntimeError("Session is closed")
-                return await self._list_users_impl(self._session)
+                return await self._list_users_impl(self._session, include_all_tenants)
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._list_users_impl(session)
+                return await self._list_users_impl(session, include_all_tenants)
 
         except Exception as e:
             self._logger.exception(f"Failed to list users: {e}")
             return {"success": False, "error": str(e)}
 
-    async def _list_users_impl(self, session: AsyncSession) -> Dict[str, Any]:
+    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = (
-            select(User)
-            .where(User.tenant_key == self.tenant_key)
-            .order_by(User.created_at)
-        )
+        if include_all_tenants:
+            # Admin cross-tenant view - see all users
+            stmt = select(User).order_by(User.created_at)
+        else:
+            # Regular tenant-isolated view
+            stmt = (
+                select(User)
+                .where(User.tenant_key == self.tenant_key)
+                .order_by(User.created_at)
+            )
         result = await session.execute(stmt)
         users = result.scalars().all()
 
@@ -133,7 +141,8 @@ class UserService:
                 "last_login": user.last_login.isoformat() if user.last_login else None
             })
 
-        self._logger.debug(f"Found {len(user_list)} users for tenant {self.tenant_key}")
+        log_msg = f"Found {len(user_list)} users" + (" (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}")
+        self._logger.debug(log_msg)
 
         return {
             "success": True,
