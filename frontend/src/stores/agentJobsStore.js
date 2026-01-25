@@ -8,14 +8,16 @@ function ensureArray(value) {
 function normalizeJob(rawJob) {
   const job_id = rawJob?.job_id || rawJob?.id || rawJob?.agent_id
   const instance_number = rawJob?.instance_number || 1
-  // Unique key for Map storage - prefer execution_id (true unique row ID)
-  // Fallback to composite key for backward compatibility
-  const unique_key = rawJob?.execution_id || `${job_id}-${instance_number}`
+  // Handover 0462: Prefer agent_id (executor UUID) - always present and unique after spawn
+  // This prevents unique_key mismatches between WebSocket and API data
+  const unique_key = rawJob?.agent_id ||
+                     rawJob?.execution_id ||
+                     `${job_id}-${instance_number}`
   return {
     ...rawJob,
     job_id,
     instance_number,
-    unique_key,  // Used as Map key - execution_id when available (production-grade)
+    unique_key,
     messages_sent_count: rawJob?.messages_sent_count ?? 0,
     messages_waiting_count: rawJob?.messages_waiting_count ?? 0,
     messages_read_count: rawJob?.messages_read_count ?? 0,
@@ -109,13 +111,60 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   }
 
   function setJobs(rows = []) {
-    const next = new Map()
+    // Handover 0462: Start with existing data to prevent race condition data loss
+    // WebSocket events may have delivered data that API response doesn't contain yet
+    const next = new Map(jobsById.value)
+
     for (const rawJob of ensureArray(rows)) {
       const job = normalizeJob(rawJob)
       if (!job.unique_key) continue
-      // Use unique_key (job_id + instance_number) to allow multiple succession instances
-      next.set(job.unique_key, job)
+
+      // Check if this job already exists under a different key (identity matching)
+      let existingKey = null
+      if (job.agent_id) {
+        for (const [key, existing] of next.entries()) {
+          if (existing.agent_id === job.agent_id) {
+            existingKey = key
+            break
+          }
+        }
+      }
+      // Also try job_id if agent_id didn't match
+      if (!existingKey && job.job_id) {
+        for (const [key, existing] of next.entries()) {
+          if (existing.job_id === job.job_id && existing.instance_number === job.instance_number) {
+            existingKey = key
+            break
+          }
+        }
+      }
+
+      if (existingKey && existingKey !== job.unique_key) {
+        // Job exists under different key - merge and migrate to new key
+        const existingJob = next.get(existingKey)
+        next.delete(existingKey)
+        next.set(job.unique_key, {
+          ...existingJob,
+          ...job,
+          // Preserve identity fields if API response lacks them (the core fix)
+          agent_display_name: job.agent_display_name || existingJob.agent_display_name,
+          agent_name: job.agent_name || existingJob.agent_name,
+        })
+      } else if (next.has(job.unique_key)) {
+        // Same key exists - merge preserving identity fields
+        const existingJob = next.get(job.unique_key)
+        next.set(job.unique_key, {
+          ...existingJob,
+          ...job,
+          agent_display_name: job.agent_display_name || existingJob.agent_display_name,
+          agent_name: job.agent_name || existingJob.agent_name,
+        })
+      } else {
+        // New job from API
+        next.set(job.unique_key, job)
+      }
     }
+
     jobsById.value = next
   }
 
@@ -215,6 +264,16 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   }
 
   function handleStatusChanged(payload) {
+    // Handover 0462 hardening (from 0463 recommendation):
+    // Only update existing jobs, don't create new ones from status events
+    // This prevents ghost rows from cross-project event leaks
+    const existingKey = resolveJobId(payload?.job_id) || resolveJobId(payload?.agent_id)
+    if (!existingKey) {
+      // Job not in store - this might be cross-project leak, ignore
+      // eslint-disable-next-line no-console
+      console.debug('[handleStatusChanged] Ignoring status for unknown job:', payload?.job_id)
+      return
+    }
     upsertJob(payload)
   }
 

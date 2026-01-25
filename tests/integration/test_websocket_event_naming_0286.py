@@ -68,20 +68,36 @@ async def mock_websocket_connection(websocket_manager):
 
 @pytest_asyncio.fixture
 async def test_agent_job_data(db_session, test_project):
-    """Create test agent job in database"""
-    job = AgentExecution(
+    """Create test agent job and execution in database"""
+    from src.giljo_mcp.models.agent_identity import AgentJob
+
+    # Create AgentJob first (contains project_id)
+    job = AgentJob(
         job_id=str(uuid.uuid4()),
         tenant_key=test_project.tenant_key,
         project_id=test_project.id,
-        agent_display_name="implementer",
+        job_type="implementer",
         mission="Test mission for implementer agent",
-        status="waiting",  # Valid status: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
-        created_at=datetime.now(timezone.utc),
+        status="active",
     )
     db_session.add(job)
     await db_session.commit()
     await db_session.refresh(job)
-    return job
+
+    # Create AgentExecution for this job
+    execution = AgentExecution(
+        job_id=job.job_id,
+        tenant_key=test_project.tenant_key,
+        agent_display_name="implementer",
+        status="waiting",  # Valid status: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
+        started_at=datetime.now(timezone.utc),
+    )
+    db_session.add(execution)
+    await db_session.commit()
+    await db_session.refresh(execution)
+
+    # Return both job and execution for testing
+    return {"job": job, "execution": execution}
 
 
 @pytest_asyncio.fixture
@@ -92,7 +108,7 @@ async def test_message_data(test_agent_job_data, test_project):
     return {
         "id": str(uuid.uuid4()),
         "from_agent": "orchestrator",
-        "to_agent": test_agent_job_data.job_id,
+        "to_agent": test_agent_job_data["job"].job_id,
         "content": "Test message content for integration testing",
         "project_id": test_project.id,
         "tenant_key": test_project.tenant_key,
@@ -127,8 +143,8 @@ async def test_status_change_emits_agent_status_changed_event(
     # Broadcast status update (use same tenant as mock connection)
     # Valid statuses: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned'
     await manager.broadcast_job_status_update(
-        job_id=test_agent_job_data.job_id,
-        agent_display_name=test_agent_job_data.agent_display_name,
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -308,8 +324,8 @@ async def test_status_payload_includes_status_field_not_new_status(
 
     # Broadcast status update
     await manager.broadcast_job_status_update(
-        job_id=test_agent_job_data.job_id,
-        agent_display_name=test_agent_job_data.agent_display_name,
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -399,8 +415,8 @@ async def test_all_events_include_tenant_key_in_payload(
 
     # Test 1: Status update event
     await manager.broadcast_job_status_update(
-        job_id=test_agent_job_data.job_id,
-        agent_display_name=test_agent_job_data.agent_display_name,
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="active"
@@ -539,8 +555,8 @@ async def test_status_change_event_complete_structure(
     tenant_key = mock_websocket_connection["tenant_key"]
 
     await manager.broadcast_job_status_update(
-        job_id=test_agent_job_data.job_id,
-        agent_display_name=test_agent_job_data.agent_display_name,
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
         new_status="working"
@@ -564,10 +580,10 @@ async def test_status_change_event_complete_structure(
     assert "agent_display_name" in data
 
     # Verify data values
-    assert data["job_id"] == test_agent_job_data.job_id
+    assert data["job_id"] == test_agent_job_data["job"].job_id
     assert data["status"] == "working"
     assert data["tenant_key"] == tenant_key
-    assert data["agent_display_name"] == test_agent_job_data.agent_display_name
+    assert data["agent_display_name"] == test_agent_job_data["execution"].agent_display_name
 
 
 @pytest.mark.asyncio
@@ -626,3 +642,208 @@ async def test_message_sent_event_complete_structure(
     assert data["message_id"] == test_message_data["id"]
     assert data["to_agent"] == test_message_data["to_agent"]
     assert data["tenant_key"] == tenant_key
+
+
+# ============================================================================
+# HANDOVER 0463: Project-Aware Event Filtering Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_status_update_includes_project_id_when_provided(
+    mock_websocket_connection, test_agent_job_data
+):
+    """
+    Test that project_id is included in agent:status_changed payload when provided.
+
+    Handover 0463: Ghost Agents Cross-Project Event Leak Fix
+
+    When project_id is provided to broadcast_job_status_update(), it MUST be
+    included in the WebSocket event payload to enable frontend project-aware
+    filtering.
+
+    Frontend can then filter: if (data.project_id !== activeProjectId) return;
+
+    References:
+    - Backend: websocket.py line 834: project_id parameter added
+    - Backend: websocket.py lines 852-854: project_id conditionally added to payload
+    """
+    manager = mock_websocket_connection["manager"]
+    mock_ws = mock_websocket_connection["mock_ws"]
+    tenant_key = mock_websocket_connection["tenant_key"]
+
+    # Create a project_id for testing
+    project_id = str(uuid.uuid4())
+
+    # Broadcast status update WITH project_id
+    await manager.broadcast_job_status_update(
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
+        tenant_key=tenant_key,
+        old_status="waiting",
+        new_status="working",
+        project_id=project_id,  # CRITICAL: Handover 0463 addition
+    )
+
+    # Verify WebSocket was called
+    assert mock_ws.send_json.called, "WebSocket send_json should be called"
+
+    # Get the message that was sent
+    sent_message = mock_ws.send_json.call_args[0][0]
+
+    # CRITICAL: project_id MUST be in payload when provided
+    assert "project_id" in sent_message["data"], (
+        "Payload must include 'project_id' field when provided to "
+        "broadcast_job_status_update(). This enables frontend project-aware "
+        "filtering to prevent cross-project ghost agent rows."
+    )
+
+    # Verify project_id value matches
+    assert sent_message["data"]["project_id"] == project_id, (
+        f"Expected project_id '{project_id}', got '{sent_message['data']['project_id']}'"
+    )
+
+
+@pytest.mark.asyncio
+async def test_status_update_excludes_project_id_when_not_provided(
+    mock_websocket_connection, test_agent_job_data
+):
+    """
+    Test backward compatibility - project_id NOT in payload when not provided.
+
+    Handover 0463: Ghost Agents Cross-Project Event Leak Fix
+
+    When project_id is NOT provided (None), the field should be excluded from
+    the payload to maintain backward compatibility with callers that don't
+    provide project_id.
+
+    This ensures existing code paths (that don't know about project_id) continue
+    to work without breaking changes.
+
+    References:
+    - Backend: websocket.py lines 852-854: if project_id is not None check
+    """
+    manager = mock_websocket_connection["manager"]
+    mock_ws = mock_websocket_connection["mock_ws"]
+    tenant_key = mock_websocket_connection["tenant_key"]
+
+    # Broadcast status update WITHOUT project_id (backward compatibility)
+    await manager.broadcast_job_status_update(
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
+        tenant_key=tenant_key,
+        old_status="waiting",
+        new_status="working",
+        # project_id intentionally NOT provided (None by default)
+    )
+
+    # Verify WebSocket was called
+    assert mock_ws.send_json.called, "WebSocket send_json should be called"
+
+    # Get the message that was sent
+    sent_message = mock_ws.send_json.call_args[0][0]
+
+    # CRITICAL: project_id should NOT be in payload when not provided
+    assert "project_id" not in sent_message["data"], (
+        "Payload should NOT include 'project_id' field when not provided to "
+        "broadcast_job_status_update(). This maintains backward compatibility "
+        "with existing callers that don't provide project_id."
+    )
+
+    # Verify other required fields are still present (sanity check)
+    assert "job_id" in sent_message["data"]
+    assert "status" in sent_message["data"]
+    assert "tenant_key" in sent_message["data"]
+
+
+@pytest.mark.asyncio
+async def test_status_update_with_explicit_none_project_id(
+    mock_websocket_connection, test_agent_job_data
+):
+    """
+    Test explicit None project_id excludes field from payload.
+
+    Edge case: Caller explicitly passes project_id=None (vs not providing it).
+    Should behave identically to not providing project_id.
+
+    Handover 0463: Ghost Agents Cross-Project Event Leak Fix
+    """
+    manager = mock_websocket_connection["manager"]
+    mock_ws = mock_websocket_connection["mock_ws"]
+    tenant_key = mock_websocket_connection["tenant_key"]
+
+    # Broadcast with explicit project_id=None
+    await manager.broadcast_job_status_update(
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name=test_agent_job_data["execution"].agent_display_name,
+        tenant_key=tenant_key,
+        old_status="waiting",
+        new_status="working",
+        project_id=None,  # Explicit None
+    )
+
+    # Get the message that was sent
+    sent_message = mock_ws.send_json.call_args[0][0]
+
+    # CRITICAL: Explicit None should exclude field from payload
+    assert "project_id" not in sent_message["data"], (
+        "Explicit project_id=None should exclude field from payload, "
+        "maintaining backward compatibility."
+    )
+
+
+@pytest.mark.asyncio
+async def test_project_id_enables_cross_project_filtering(
+    mock_websocket_connection, test_agent_job_data
+):
+    """
+    Integration test: project_id enables frontend to filter cross-project events.
+
+    Scenario:
+    1. User has two projects open in different browser tabs
+    2. Agent status change happens in Project A
+    3. Both tabs receive the WebSocket event (same tenant_key)
+    4. Tab viewing Project B should ignore the event using project_id filter
+
+    Handover 0463: This is the core use case - preventing ghost agent rows
+    when users have multiple project tabs open simultaneously.
+    """
+    manager = mock_websocket_connection["manager"]
+    mock_ws = mock_websocket_connection["mock_ws"]
+    tenant_key = mock_websocket_connection["tenant_key"]
+
+    # Simulate two different projects
+    project_a_id = str(uuid.uuid4())
+    project_b_id = str(uuid.uuid4())
+
+    # Broadcast event for Project A
+    await manager.broadcast_job_status_update(
+        job_id=test_agent_job_data["job"].job_id,
+        agent_display_name="implementer",
+        tenant_key=tenant_key,
+        old_status="waiting",
+        new_status="working",
+        project_id=project_a_id,  # Event belongs to Project A
+    )
+
+    sent_message = mock_ws.send_json.call_args[0][0]
+
+    # Frontend logic (simulated):
+    # Tab viewing Project B should reject this event
+    active_project_in_tab = project_b_id
+    event_project_id = sent_message["data"].get("project_id")
+
+    # CRITICAL: Frontend can now filter cross-project events
+    should_process_event = (
+        event_project_id is None  # Backward compat: process if no project_id
+        or event_project_id == active_project_in_tab  # Match active project
+    )
+
+    assert not should_process_event, (
+        "Frontend should reject event when project_id doesn't match active project. "
+        f"Event project: {event_project_id}, Active project: {active_project_in_tab}"
+    )
+
+    # Verify event structure is correct for filtering
+    assert event_project_id == project_a_id
+    assert event_project_id != project_b_id

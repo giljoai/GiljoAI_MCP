@@ -25,7 +25,19 @@ export const STORE_REGISTRY = {
   projectTabs: () => useProjectTabsStore(),
 }
 
-function defaultShouldRoute(_type, payload) {
+// Handover 0463: Project-scoped event types that require project filtering
+export const PROJECT_SCOPED_EVENTS = new Set([
+  'agent:status_changed',
+  'agent:created',
+  'agent:spawn',
+  'agent:updated',
+  'agent:update',
+  'agent_update',
+  'job:progress_update',
+  'job:mission_acknowledged',
+])
+
+export function defaultShouldRoute(type, payload) {
   const currentTenantKey = useUserStore()?.currentUser?.tenant_key
 
   if (!currentTenantKey) {
@@ -35,6 +47,37 @@ function defaultShouldRoute(_type, payload) {
   // If payload is tenant-scoped, enforce match. If missing, allow.
   if (payload?.tenant_key && payload.tenant_key !== currentTenantKey) {
     return false
+  }
+
+  // Handover 0463: Project-aware filtering to prevent cross-project ghost rows
+  // For project-scoped events, verify the event belongs to the current project
+  if (PROJECT_SCOPED_EVENTS.has(type)) {
+    const projectTabsStore = useProjectTabsStore()
+    const currentProjectId = projectTabsStore?.currentProject?.id
+
+    // If we have a current project and the event has a project_id, filter by project
+    if (currentProjectId && payload?.project_id) {
+      if (payload.project_id !== currentProjectId) {
+        // eslint-disable-next-line no-console
+        console.debug('[websocketEventRouter] Dropping cross-project event:', {
+          type,
+          event_project: payload.project_id,
+          current_project: currentProjectId,
+        })
+        return false
+      }
+    }
+
+    // If event lacks project_id but we're in a project view, drop it
+    // (prevents ghost rows from legacy/incomplete events)
+    if (currentProjectId && !payload?.project_id && type === 'agent:status_changed') {
+      // eslint-disable-next-line no-console
+      console.debug('[websocketEventRouter] Dropping status event without project_id:', {
+        type,
+        job_id: payload?.job_id,
+      })
+      return false
+    }
   }
 
   return true
