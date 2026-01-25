@@ -62,7 +62,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
     assert "task_tool_usage" in result, "Response must include task_tool_usage field"
 
     # Verify it uses agent_name (not agent_display_name)
-    expected_usage = "Task(subagent_display_name='implementer-frontend', ...)"
+    expected_usage = "Task(subagent_type='implementer-frontend', ...)"
     assert result["task_tool_usage"] == expected_usage, (
         f"task_tool_usage should use agent_name. "
         f"Expected: {expected_usage}, Got: {result['task_tool_usage']}"
@@ -179,7 +179,7 @@ async def test_spawn_response_no_warning_when_names_match(db_session, db_manager
 
     # But task_tool_usage should still be present
     assert "task_tool_usage" in result, "task_tool_usage should always be present"
-    assert result["task_tool_usage"] == "Task(subagent_display_name='analyzer', ...)"
+    assert result["task_tool_usage"] == "Task(subagent_type='analyzer', ...)"
 
 
 @pytest.mark.asyncio
@@ -246,9 +246,9 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
     from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
     test_cases = [
-        ("backend-tester", "backend-tester", "Task(subagent_display_name='backend-tester', ...)", False),
-        ("implementer", "frontend-dev", "Task(subagent_display_name='frontend-dev', ...)", True),
-        ("analyzer", "code-reviewer", "Task(subagent_display_name='code-reviewer', ...)", True),
+        ("backend-tester", "backend-tester", "Task(subagent_type='backend-tester', ...)", False),
+        ("implementer", "frontend-dev", "Task(subagent_type='frontend-dev', ...)", True),
+        ("analyzer", "code-reviewer", "Task(subagent_type='code-reviewer', ...)", True),
     ]
 
     for idx, (agent_display_name, agent_name, expected_usage, should_warn) in enumerate(test_cases):
