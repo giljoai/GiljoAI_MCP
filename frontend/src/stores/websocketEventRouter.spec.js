@@ -1,7 +1,339 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-import { EVENT_MAP, routeWebsocketEvent } from '@/stores/websocketEventRouter'
+import {
+  EVENT_MAP,
+  routeWebsocketEvent,
+  defaultShouldRoute,
+} from '@/stores/websocketEventRouter'
+import { useProjectTabsStore } from '@/stores/projectTabs'
+import { useUserStore } from '@/stores/user'
+
+describe('websocketEventRouter - defaultShouldRoute (Handover 0463)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    // Reset the mocked user store to ensure tenant key is set
+    const userStore = useUserStore()
+    if (!userStore.currentUser) {
+      userStore.currentUser = {}
+    }
+    userStore.currentUser.tenant_key = 'test-tenant'
+  })
+
+  describe('Project-scoped event filtering', () => {
+    it('routes events when project_id matches current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const agentJobsStore = { handleStatusChanged: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:status_changed',
+          data: { job_id: 'job-1', status: 'complete', project_id: 'project-1', tenant_key: 'test-tenant' },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleStatusChanged).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops events when project_id does not match current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleStatusChanged: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:status_changed',
+          data: { job_id: 'job-1', status: 'complete', project_id: 'project-2', tenant_key: 'test-tenant' },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleStatusChanged).not.toHaveBeenCalled()
+    })
+
+    it('drops agent:status_changed without project_id when viewing project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleStatusChanged: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:status_changed',
+          data: { job_id: 'job-1', status: 'complete', tenant_key: 'test-tenant' },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleStatusChanged).not.toHaveBeenCalled()
+    })
+
+    it('routes agent:status_changed without project_id when no project is active', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject(null)
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleStatusChanged: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:status_changed',
+          data: { job_id: 'job-1', status: 'complete', tenant_key: 'test-tenant' },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleStatusChanged).toHaveBeenCalledTimes(1)
+    })
+
+    it('routes agent:created when project_id matches current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleCreated: vi.fn() }
+      const agentsStore = { handleAgentSpawn: vi.fn() }
+      const storeRegistry = {
+        agentJobs: () => agentJobsStore,
+        agents: () => agentsStore,
+      }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:created',
+          data: {
+            job_id: 'job-1',
+            agent_display_name: 'tester',
+            project_id: 'project-1',
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleCreated).toHaveBeenCalledTimes(1)
+      expect(agentsStore.handleAgentSpawn).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops agent:created when project_id does not match current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleCreated: vi.fn() }
+      const agentsStore = { handleAgentSpawn: vi.fn() }
+      const storeRegistry = {
+        agentJobs: () => agentJobsStore,
+        agents: () => agentsStore,
+      }
+
+      await routeWebsocketEvent(
+        {
+          type: 'agent:created',
+          data: {
+            job_id: 'job-1',
+            agent_display_name: 'tester',
+            project_id: 'project-2',
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleCreated).not.toHaveBeenCalled()
+      expect(agentsStore.handleAgentSpawn).not.toHaveBeenCalled()
+    })
+
+    it('drops job:progress_update when project_id does not match current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleProgressUpdate: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'job:progress_update',
+          data: {
+            job_id: 'job-1',
+            project_id: 'project-2',
+            agent_display_name: 'orchestrator',
+            progress_percent: 50,
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleProgressUpdate).not.toHaveBeenCalled()
+    })
+
+    it('routes job:progress_update when project_id matches current project', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = { handleProgressUpdate: vi.fn() }
+      const storeRegistry = { agentJobs: () => agentJobsStore }
+
+      await routeWebsocketEvent(
+        {
+          type: 'job:progress_update',
+          data: {
+            job_id: 'job-1',
+            project_id: 'project-1',
+            agent_display_name: 'orchestrator',
+            progress_percent: 50,
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+
+      expect(agentJobsStore.handleProgressUpdate).toHaveBeenCalledTimes(1)
+    })
+
+    it('routes all PROJECT_SCOPED_EVENTS when project_id matches', async () => {
+      const projectTabsStore = useProjectTabsStore()
+      projectTabsStore.setCurrentProject({ id: 'project-1' })
+
+      const userStore = useUserStore()
+      userStore.currentUser = { tenant_key: 'test-tenant' }
+
+      const agentJobsStore = {
+        handleStatusChanged: vi.fn(),
+        handleUpdated: vi.fn(),
+        handleCreated: vi.fn(),
+      }
+      const agentsStore = {
+        handleRealtimeUpdate: vi.fn(),
+        handleAgentSpawn: vi.fn(),
+      }
+      const storeRegistry = {
+        agentJobs: () => agentJobsStore,
+        agents: () => agentsStore,
+      }
+
+      // Test agent:status_changed (store/action pattern)
+      await routeWebsocketEvent(
+        {
+          type: 'agent:status_changed',
+          data: {
+            job_id: 'job-1',
+            status: 'working',
+            project_id: 'project-1',
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+      expect(agentJobsStore.handleStatusChanged).toHaveBeenCalled()
+
+      vi.clearAllMocks()
+
+      // Test agent:spawn (custom handler pattern - calls handleCreated)
+      await routeWebsocketEvent(
+        {
+          type: 'agent:spawn',
+          data: {
+            job_id: 'job-1',
+            status: 'working',
+            project_id: 'project-1',
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+      expect(agentJobsStore.handleCreated).toHaveBeenCalled()
+
+      vi.clearAllMocks()
+
+      // Test agent:update (custom handler pattern - calls handleUpdated)
+      await routeWebsocketEvent(
+        {
+          type: 'agent:update',
+          data: {
+            job_id: 'job-1',
+            status: 'working',
+            project_id: 'project-1',
+            tenant_key: 'test-tenant',
+          },
+        },
+        {
+          eventMap: EVENT_MAP,
+          storeRegistry,
+          shouldRoute: defaultShouldRoute,
+        },
+      )
+      expect(agentJobsStore.handleUpdated).toHaveBeenCalled()
+    })
+  })
+})
 
 describe('websocketEventRouter - normalization + routing', () => {
   beforeEach(() => {
@@ -25,7 +357,7 @@ describe('websocketEventRouter - normalization + routing', () => {
     await routeWebsocketEvent(
       {
         type: 'agent:update',
-        tenant_key: 'tk_test',
+        tenant_key: 'test-tenant',
         data: { job_id: 'job-1', status: 'working' },
       },
       { eventMap, storeRegistry },
@@ -34,7 +366,7 @@ describe('websocketEventRouter - normalization + routing', () => {
     expect(handleUpdated).toHaveBeenCalledTimes(1)
     expect(handleUpdated).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenant_key: 'tk_test',
+        tenant_key: 'test-tenant',
         job_id: 'job-1',
         status: 'working',
       }),
@@ -97,7 +429,7 @@ describe('websocketEventRouter - normalization + routing', () => {
         type: 'agent:created',
         data: {
           project_id: 'project-1',
-          tenant_key: 'tk_test',
+          tenant_key: 'test-tenant',
           agent: {
             id: 'job-1',
             job_id: 'job-1',
@@ -144,7 +476,7 @@ describe('websocketEventRouter - normalization + routing', () => {
     await routeWebsocketEvent(
       {
         type: 'project:mission_updated',
-        data: { project_id: 'project-1', tenant_key: 'tk_test', mission: 'Hello' },
+        data: { project_id: 'project-1', tenant_key: 'test-tenant', mission: 'Hello' },
       },
       { eventMap: EVENT_MAP, storeRegistry },
     )
