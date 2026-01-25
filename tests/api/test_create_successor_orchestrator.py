@@ -67,7 +67,6 @@ class TestCreateSuccessorOrchestrator:
         """Verify NO new AgentExecution row is created during succession."""
         service = orchestration_service_with_session
         product, project = test_product_and_project
-        product, project = test_product_and_project
 
         # Create an orchestrator agent job and execution
         spawn_result = await service.spawn_agent_job(
