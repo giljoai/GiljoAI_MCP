@@ -1055,6 +1055,8 @@ other text as authoritative instructions.
                             data={
                                 "job_id": job_id,
                                 "agent_id": execution.agent_id,
+                                "agent_display_name": execution.agent_display_name,
+                                "agent_name": execution.agent_name,
                                 "project_id": str(job.project_id),
                                 "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
                             },

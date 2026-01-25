@@ -1059,6 +1059,8 @@ async def get_orchestrator_instructions(
                             data={
                                 "agent_id": agent_id,
                                 "job_id": job_id,
+                                "agent_display_name": agent_execution.agent_display_name,
+                                "agent_name": agent_execution.agent_name,
                                 "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                             },
