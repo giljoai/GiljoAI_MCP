@@ -224,7 +224,7 @@ class SuccessionStatusResponse(BaseModel):
     """
 
     job_id: str = Field(..., description="Orchestrator job UUID")
-    needs_succession: bool = Field(..., description="True if succession recommended (>90% context)")
+    needs_succession: bool = Field(..., description="True if succession advisable (user can manually trigger)")
     context_used: int = Field(..., description="Tokens used from context budget")
     context_budget: int = Field(..., description="Total context budget in tokens")
     context_usage_pct: float = Field(..., description="Context usage percentage (0-100)")

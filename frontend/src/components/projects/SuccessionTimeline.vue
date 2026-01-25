@@ -1,3 +1,8 @@
+<!--
+  DEPRECATED (Handover 0461d): This component is no longer used.
+  Simple handover uses direct API call instead of timeline visualization.
+  Will be removed in v4.0.
+-->
 <template>
   <v-card class="succession-timeline" data-testid="succession-timeline">
     <v-card-title>Orchestrator Succession Timeline</v-card-title>

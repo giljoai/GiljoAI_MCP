@@ -232,14 +232,15 @@ if status['percentage_used'] >= 0.9:
     # successor.handover_summary contains condensed context (<10K tokens)
 ```
 
-**Auto-Succession Flow**:
+**Manual Succession Flow**:
 ```
 1. Context usage tracked per message send
-2. At 90% threshold: Auto-trigger succession
-3. Generate handover summary (<10K tokens via mission condensation)
-4. Spawn successor orchestrator (instance_number++)
-5. Transfer active jobs to successor
-6. Update UI timeline (SuccessionTimeline.vue)
+2. User monitors context via dashboard
+3. User triggers succession via /gil_handover or UI "Hand Over" button
+4. Generate handover summary (<10K tokens via mission condensation)
+5. Spawn successor orchestrator (instance_number++)
+6. Transfer active jobs to successor
+7. Update UI timeline (SuccessionTimeline.vue)
 ```
 
 **Database Fields**:

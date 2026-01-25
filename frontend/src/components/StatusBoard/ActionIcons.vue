@@ -129,6 +129,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { getAvailableActions, getActionConfig } from '@/utils/actionConfig'
+import api from '@/services/api'
 
 export default {
   name: 'ActionIcons',
@@ -204,12 +205,37 @@ export default {
       emit('view-messages', props.job)
     }
 
-    const handleHandOver = () => {
-      const config = getActionConfig('handOver')
-      if (config.confirmation) {
-        showConfirmation('handOver', config)
-      } else {
-        executeHandOver()
+    const handleHandOver = async () => {
+      try {
+        loadingStates.value.handOver = true
+
+        // Call simple-handover endpoint (Handover 0461d)
+        const response = await api.post(`/agent-jobs/${props.job.job_id}/simple-handover`)
+
+        if (response.data.success) {
+          // Copy continuation prompt to clipboard
+          await navigator.clipboard.writeText(response.data.continuation_prompt)
+
+          // Emit action event with success info
+          emit('hand-over', {
+            type: 'handOver',
+            job: props.job,
+            success: true,
+            message: 'Session refreshed! Continuation prompt copied to clipboard.',
+          })
+        } else {
+          throw new Error(response.data.error || 'Session refresh failed')
+        }
+      } catch (error) {
+        // Emit action event with failure info
+        emit('hand-over', {
+          type: 'handOver',
+          job: props.job,
+          success: false,
+          error: error.message,
+        })
+      } finally {
+        loadingStates.value.handOver = false
       }
     }
 
@@ -234,21 +260,12 @@ export default {
       confirmationLoading.value = true
       try {
         if (pendingAction.value === 'handOver') {
-          await executeHandOver()
+          await handleHandOver()
         }
       } finally {
         confirmationLoading.value = false
         showConfirmDialog.value = false
         pendingAction.value = null
-      }
-    }
-
-    const executeHandOver = async () => {
-      loadingStates.value.handOver = true
-      try {
-        emit('hand-over', props.job)
-      } finally {
-        loadingStates.value.handOver = false
       }
     }
 

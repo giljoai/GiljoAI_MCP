@@ -5,9 +5,9 @@
 
 ## When Does It Happen?
 
-- **Context usage >= 90%** (automatic)
-- **Manual handover** (user-triggered)
-- **Phase transition** (optional)
+- **Manual handover** (user-triggered via UI or slash command)
+- **High context usage** (user monitors and triggers when approaching 90%)
+- **Phase transition** (user-triggered at project milestones)
 
 ## UI Indicators
 
@@ -205,7 +205,8 @@ status = await check_succession_status(
 ---
 
 **Quick Tips:**
-- Succession is automatic at 90% context usage
+- Succession is manual (triggered via UI or slash command)
+- Monitor context usage and trigger succession when high
 - Successors require manual launch (full user control)
 - All project history is preserved in database
 - Timeline view shows complete succession chain

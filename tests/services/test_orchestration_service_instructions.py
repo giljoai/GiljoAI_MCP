@@ -4,8 +4,9 @@ Tests for OrchestrationService instruction-related methods (Handover 0451 - Phas
 These methods are being moved from tool_accessor.py to OrchestrationService:
 - get_orchestrator_instructions() - Returns orchestrator context with framing-based instructions
 - create_successor_orchestrator() - Creates successor execution, marks current as decommissioned
-- check_succession_status() - Returns context usage metrics and succession recommendation
 - update_agent_mission() - Updates AgentJob.mission field
+
+NOTE: check_succession_status() tests removed in Handover 0461a (manual succession only).
 
 All tests should FAIL initially (RED phase) since the methods don't exist yet in OrchestrationService.
 """
@@ -469,242 +470,24 @@ class TestCreateSuccessorOrchestrator:
 # ============================================================================
 
 
+@pytest.mark.skip(reason="Test class removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
 class TestCheckSuccessionStatus:
-    """Tests for check_succession_status() method."""
+    """
+    DEPRECATED: This test class tested check_succession_status() which was removed in Handover 0461a.
+    Succession is now manual-only via UI or /gil_handover command.
+    """
 
     @pytest.mark.asyncio
-    async def test_returns_context_metrics(
-        self, db_session: AsyncSession, test_project
-    ):
-        """Test returns context_used, context_budget, usage_percentage."""
-        # Setup: Create orchestrator execution with known context usage
-        orchestrator_job = AgentJob(
+    async def test_placeholder(self):
+        """Placeholder to prevent pytest collection errors."""
+        pass
 
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate the project",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(orchestrator_job)
-        await db_session.commit()
 
-        orchestrator_execution = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=orchestrator_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=75000,
-            context_budget=150000,
-        )
-        db_session.add(orchestrator_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
-        service._test_session = db_session
-
-        # Act: Check succession status
-        result = await service.check_succession_status(
-            job_id=orchestrator_job.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-
-        # Assert: Returns context metrics
-        assert "context_used" in result
-        assert "context_budget" in result
-        assert "usage_percentage" in result
-        assert result["context_used"] == 75000
-        assert result["context_budget"] == 150000
-        assert result["usage_percentage"] == 50.0  # 75000/150000 * 100
-
-    @pytest.mark.asyncio
-    async def test_returns_recommendation(
-        self, db_session: AsyncSession, test_project
-    ):
-        """Test returns recommendation based on usage: healthy (<70%), monitor (70-85%), prepare (85-90%), trigger (>=90%)."""
-        # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
-        service._test_session = db_session
-
-        # Test case 1: Healthy (<70%)
-        job_healthy = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(job_healthy)
-        await db_session.commit()
-
-        exec_healthy = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=job_healthy.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=50000,  # 33%
-            context_budget=150000,
-        )
-        db_session.add(exec_healthy)
-        await db_session.commit()
-
-        result_healthy = await service.check_succession_status(
-            job_id=job_healthy.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-        assert "healthy" in result_healthy["recommendation"].lower()
-
-        # Test case 2: Monitor (70-85%)
-        job_monitor = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(job_monitor)
-        await db_session.commit()
-
-        exec_monitor = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=job_monitor.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=120000,  # 80%
-            context_budget=150000,
-        )
-        db_session.add(exec_monitor)
-        await db_session.commit()
-
-        result_monitor = await service.check_succession_status(
-            job_id=job_monitor.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-        assert "monitor" in result_monitor["recommendation"].lower()
-
-        # Test case 3: Prepare (85-90%)
-        job_prepare = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(job_prepare)
-        await db_session.commit()
-
-        exec_prepare = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=job_prepare.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=130000,  # 87%
-            context_budget=150000,
-        )
-        db_session.add(exec_prepare)
-        await db_session.commit()
-
-        result_prepare = await service.check_succession_status(
-            job_id=job_prepare.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-        assert "prepare" in result_prepare["recommendation"].lower()
-
-        # Test case 4: Trigger (>=90%)
-        job_trigger = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(job_trigger)
-        await db_session.commit()
-
-        exec_trigger = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=job_trigger.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=140000,  # 93%
-            context_budget=150000,
-        )
-        db_session.add(exec_trigger)
-        await db_session.commit()
-
-        result_trigger = await service.check_succession_status(
-            job_id=job_trigger.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-        assert "trigger" in result_trigger["recommendation"].lower()
-
-    @pytest.mark.asyncio
-    async def test_returns_should_trigger_at_90_percent(
-        self, db_session: AsyncSession, test_project
-    ):
-        """Test should_trigger=True when usage >= 90%."""
-        # Setup: Create orchestrator execution at 90% usage
-        orchestrator_job = AgentJob(
-
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Orchestrate the project",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(orchestrator_job)
-        await db_session.commit()
-
-        orchestrator_execution = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=orchestrator_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
-            context_used=135000,  # 90%
-            context_budget=150000,
-        )
-        db_session.add(orchestrator_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
-        service._test_session = db_session
-
-        # Act: Check succession status
-        result = await service.check_succession_status(
-            job_id=orchestrator_job.job_id,
-            tenant_key=test_project.tenant_key,
-        )
-
-        # Assert: should_trigger is True
-        assert result["should_trigger"] is True
-        assert result["usage_percentage"] == 90.0
-
+# NOTE: The following tests were removed in Handover 0461a:
+# - test_returns_context_metrics
+# - test_returns_recommendation (healthy, monitor, prepare, trigger scenarios)
+# - test_should_trigger_at_90_percent
+# All tested the deleted check_succession_status() method.
 
 # ============================================================================
 # TestUpdateAgentMission
