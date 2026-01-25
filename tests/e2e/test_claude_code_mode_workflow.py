@@ -124,7 +124,7 @@ class TestClaudeCodeModeWorkflow:
             "Prompt must reference get_available_agents() for dynamic discovery"
 
         # Claude Code mode should spawn agents like this:
-        # Task(description="...", prompt="...", subagent_display_name="implementer")
+        # Task(description="...", prompt="...", subagent_type="implementer")
         assert "subagent" in prompt.lower() or "spawn" in prompt.lower(), \
             "Prompt should include agent spawning instructions"
 

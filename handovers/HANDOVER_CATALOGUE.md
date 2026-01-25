@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-22 (0440a added - Project Taxonomy Database & Backend)
+**Last Updated:** 2026-01-25 (0460-0463 completed - Agent ID Swap Simplification & Ghost Agent Fixes)
 
 ---
 
@@ -14,6 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
+| 0401-0500 | Agent Monitoring & Ghost Fixes | 0460-0463 Complete (Agent ID Swap + Ghost Agent Fixes) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -69,9 +70,27 @@
 > **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
 > **Follow-up**: 0440b (Frontend UI), 0440c (Documentation)
 
+### Agent ID Swap & Ghost Agent Series (0460-0463) - COMPLETE
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0460** | **Agent ID Swap Succession Implementation** | **COMPLETE** | HIGH | - |
+| **0461** | **Simplify Handover - Agent ID Swap to 360 Memory** | **COMPLETE** | HIGH | - |
+| 0461f | Complete Agent ID Swap removal | **COMPLETE** | HIGH | - |
+| 0461g | Quality polish | **COMPLETE** | MEDIUM | - |
+| **0462** | **Ghost Agent Avatar Fix ("??" Bug)** | **COMPLETE** | CRITICAL | - |
+| **0463** | **Ghost Agents Cross-Project Event Leak** | **COMPLETE** | HIGH | - |
+
+> **Status**: 100% COMPLETE (2026-01-25)
+> **Summary**: 0460 introduced complex Agent ID Swap → 0461 simplified to 360 Memory → 0462/0463 fixed residual UI bugs
+> **Commits**: 25c15952, 2856c4ab, d61b1973, 53d7628c, fc2442ab, 264efb06, 9bc17183, 7c324c6b
+> **Key Fixes**:
+> - 0462: `setJobs()` now preserves identity fields (prevents "??" avatars)
+> - 0463: `websocketEventRouter.js` filters by project_id (prevents cross-project ghost rows)
+
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| **0391** | **Task Tool Parameter Terminology Fix** | **COMPLETE** | **MEDIUM** | Fixed `subagent_display_name` → `subagent_type` (8 files, 27 changes) - moved to completed/ |
 | **0423** | **Session & TemplateAugmentation Dead Code Cleanup** | **COMPLETE** | **MEDIUM** | Removed dead tables, ~290 lines (2026-01-19) |
 | **0422** | **TODO Tab Relocation to Assigned Job Modal** | **Ready** | **MEDIUM** | Move TODOs from MessageAuditModal to AgentJobModal (5-8h) |
 | 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
@@ -147,6 +166,10 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0463 | Ghost Agents Cross-Project Event Leak | **COMPLETE** (2026-01-25) |
+| 0462 | Ghost Agent Avatar Fix ("??" Bug) | **COMPLETE** (2026-01-25) |
+| 0461 | Simplify Handover - Agent ID Swap to 360 Memory | **COMPLETE** (2026-01-24) |
+| 0460 | Agent ID Swap Succession Implementation | **COMPLETE** (2026-01-23) |
 | 0390 | 360 Memory Normalization (Master Plan) | **COMPLETE** (2026-01-18) |
 | 0390a | Add Product Memory Entries Table | **COMPLETE** (2026-01-18) |
 | 0390b | Switch Reads to Table | **COMPLETE** (2026-01-18) |
@@ -489,7 +512,7 @@ completed/reference/
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
 - **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
-- **0391-0399**: Gaps in 0301-0400 range (0388-0390 now used)
+- **0392-0399**: Gaps in 0301-0400 range (0388-0391 now used)
 - **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
@@ -508,6 +531,16 @@ completed/reference/
 ## History
 
 ### January 2026
+- **0460-0463 Series: Agent ID Swap & Ghost Agent Fixes (2026-01-23 to 2026-01-25)**: Complete lifecycle from complexity to simplification
+  - 0460: Agent ID Swap Succession Implementation (introduced complexity)
+  - 0461: Simplify Handover - Agent ID Swap to 360 Memory (backend simplification)
+  - 0461f: Complete Agent ID Swap removal (cleanup)
+  - 0461g: Quality polish
+  - 0462: Ghost Agent Avatar Fix - setJobs() race condition causing "??" avatars
+  - 0463: Cross-Project Event Leak - project_id filtering in websocketEventRouter
+  - Result: Clean succession via 360 Memory, no ghost agents in UI
+  - Commits: 25c15952, 2856c4ab, d61b1973, 53d7628c, fc2442ab, 264efb06, 9bc17183, 7c324c6b
+
 - **0390 Series: 360 Memory Normalization (2026-01-18)**: Complete migration from JSONB to normalized table
   - 0390: Master plan for JSONB to table migration
   - 0390a: Add `product_memory_entries` table with foreign keys
