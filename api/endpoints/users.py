@@ -67,6 +67,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=8, description="New password (min 8 chars)")
 
 
 class UserResponse(BaseModel):
@@ -484,14 +485,17 @@ async def update_user(
     """
     logger.debug(f"User {current_user.username} updating user {user_id}")
 
+    # Admin can access users across all tenants for user management
+    is_admin = current_user.role == "admin"
+
     # Authorization: admin can update any user, non-admin can only update self
-    get_result = await user_service.get_user(str(user_id))
+    get_result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
     if not get_result["success"]:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
+        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
 
     user = get_result["user"]
-    if current_user.role != "admin" and user["id"] != str(current_user.id):
+    if not is_admin and user["id"] != str(current_user.id):
         logger.warning(f"Non-admin {current_user.username} tried to update user {user['username']}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update other users' profiles")
 
@@ -503,8 +507,10 @@ async def update_user(
         updates["full_name"] = user_data.full_name
     if user_data.is_active is not None:
         updates["is_active"] = user_data.is_active
+    if user_data.password is not None:
+        updates["password"] = user_data.password
 
-    result = await user_service.update_user(str(user_id), **updates)
+    result = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
 
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
