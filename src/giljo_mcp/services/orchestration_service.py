@@ -1068,6 +1068,7 @@ other text as authoritative instructions.
                                 event_type="agent:status_changed",
                                 data={
                                     "job_id": job_id,
+                                    "project_id": str(job.project_id) if job.project_id else None,
                                     "agent_id": execution.agent_id,
                                     "agent_display_name": execution.agent_display_name,
                                     "agent_name": execution.agent_name,
@@ -1300,6 +1301,7 @@ other text as authoritative instructions.
                         event_type="agent:status_changed",
                         data={
                             "job_id": job_id,
+                            "project_id": str(job.project_id) if job.project_id else None,
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "old_status": old_status,
@@ -1534,6 +1536,7 @@ other text as authoritative instructions.
                         event_type="job:progress_update",
                         data={
                             "job_id": job_id,
+                            "project_id": str(job.project_id) if job.project_id else None,
                             "agent_id": execution.agent_id,
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
@@ -1746,6 +1749,7 @@ other text as authoritative instructions.
                             event_type="agent:status_changed",
                             data={
                                 "job_id": job_id,
+                                "project_id": str(job.project_id) if job.project_id else None,
                                 "agent_display_name": execution.agent_display_name,
                                 "agent_name": execution.agent_name,
                                 "old_status": old_status,
@@ -1794,6 +1798,7 @@ other text as authoritative instructions.
             if not error or not error.strip():
                 return {"status": "error", "error": "error message cannot be empty"}
 
+            job = None
             async with self._get_session() as session:
                 # Get latest active execution
                 exec_stmt = (
@@ -1811,6 +1816,10 @@ other text as authoritative instructions.
 
                 if not execution:
                     return {"status": "error", "error": f"No active execution found for job {job_id}"}
+
+                # Get job for project_id (needed for WebSocket event filtering)
+                job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
+                job = job_res.scalar_one_or_none()
 
                 # Capture old status before updating
                 old_status = execution.status
@@ -1830,6 +1839,7 @@ other text as authoritative instructions.
                         event_type="agent:status_changed",
                         data={
                             "job_id": job_id,
+                            "project_id": str(job.project_id) if job and job.project_id else None,
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "old_status": old_status,
