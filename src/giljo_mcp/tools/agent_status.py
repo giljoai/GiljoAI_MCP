@@ -324,6 +324,8 @@ async def report_progress(
                             "type": "job:progress_update",
                             "agent_id": agent_id,
                             "job_id": execution.job_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
                             "tenant_key": tenant_key,
                             "progress": progress,
                             "timestamp": now.isoformat(),
