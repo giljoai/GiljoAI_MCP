@@ -545,9 +545,10 @@ async def test_succession_at_exact_90_percent(
     test_tenant_key: str,
 ):
     """
-    Test succession trigger at exactly 90% context threshold.
+    Test manual succession workflow at exactly 90% context usage.
 
-    Edge case: Precise threshold boundary condition.
+    Edge case: Verifies context tracking and succession workflow at boundary conditions.
+    Note: Succession is now manual-only via UI or /gil_handover command.
     """
     context_budget = 150000
     context_used = int(context_budget * 0.90)  # Exactly 135000 tokens
@@ -569,15 +570,14 @@ async def test_succession_at_exact_90_percent(
 
     # ========== VERIFICATIONS ==========
 
-    # Verify exactly at threshold
+    # Verify exactly at 90% usage
     threshold = context_budget * 0.90
     assert orchestrator.context_used == threshold
     assert orchestrator.context_used == 135000
 
-    # Verify should trigger succession
+    # Verify context percentage calculation
     percentage = (orchestrator.context_used / context_budget) * 100
     assert percentage == 90.0
 
-    # Succession should be triggered
-    should_trigger = orchestrator.context_used >= threshold
-    assert should_trigger is True
+    # Manual succession can be triggered at this point
+    # (Automatic succession was removed in Handover 0461a)

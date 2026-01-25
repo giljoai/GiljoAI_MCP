@@ -8,7 +8,7 @@ Handles manual orchestrator succession operations:
 Used by:
 - "Hand Over" button in AgentCardEnhanced.vue
 - /gil_handover slash command
-- Auto-succession at 90% context threshold (from OrchestrationService)
+- Manual succession via UI or slash command
 
 All operations use OrchestrationService (no direct DB access).
 """
@@ -265,7 +265,7 @@ async def check_succession_status(
     Check if orchestrator should trigger succession.
 
     Returns context usage metrics and succession recommendations.
-    Succession is recommended at >= 90% context usage.
+    Returns context usage metrics for user decision on manual succession.
 
     Args:
         job_id: Orchestrator job UUID
@@ -322,7 +322,7 @@ async def check_succession_status(
         if context_budget > 0:
             context_usage_pct = (context_used / context_budget) * 100
 
-        # Recommend succession at >= 90% threshold
+        # Calculate whether succession would be advisable based on context usage
         needs_succession = context_usage_pct >= 90.0
 
         logger.info(

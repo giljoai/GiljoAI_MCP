@@ -31,9 +31,9 @@ class SlashCommandResponse(BaseModel):
 
     success: bool
     message: str
-    successor_id: Optional[str] = None
-    launch_prompt: Optional[str] = None
-    handover_summary: Optional[dict[str, Any]] = None
+    launch_prompt: Optional[str] = None  # Continuation prompt for simple handover
+    memory_entry_id: Optional[str] = None  # 360 Memory entry ID (simple handover)
+    context_reset: Optional[bool] = None  # Whether context was reset (simple handover)
     error: Optional[str] = None
     details: Optional[str] = None
 

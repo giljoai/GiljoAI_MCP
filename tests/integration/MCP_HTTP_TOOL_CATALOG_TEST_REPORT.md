@@ -52,8 +52,9 @@ Context: discover_context, get_file_context, search_context, get_context_summary
 Health: health_check
 Coordination: get_pending_jobs, acknowledge_job, report_progress, get_next_instruction, complete_job, report_error
 Orchestration: orchestrate_project, get_agent_mission, spawn_agent_job, get_workflow_status
-Succession: create_successor_orchestrator, check_succession_status
+Succession: create_successor_orchestrator
 Slash Commands: setup_slash_commands, gil_import_productagents, gil_import_personalagents, gil_handover
+Note: check_succession_status removed in Handover 0461a (manual succession only)
 ```
 
 ---

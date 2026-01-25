@@ -40,7 +40,7 @@ def create_example_product_git_enabled():
                 },
                 {
                     "sequence": 3,
-                    "summary": "Orchestrator succession implemented with 90% auto-trigger",
+                    "summary": "Orchestrator succession implemented with manual handover",
                     "key_outcomes": ["Context handover working", "Lineage tracking complete"],
                     "timestamp": "2025-11-10T09:15:00Z"
                 }

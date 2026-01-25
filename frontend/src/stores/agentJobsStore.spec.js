@@ -188,4 +188,59 @@ describe('agentJobsStore (map-based)', () => {
       expect(job.job_metadata).toEqual({ key: 'value' })
     })
   })
+
+  // Handover 0461d: Context reset event handling
+  describe('handleContextReset', () => {
+    it('should handle context reset event without errors', () => {
+      // Setup: Job with context usage
+      store.handleCreated({
+        job_id: 'orch-1',
+        agent_id: 'executor-1',
+        agent_display_name: 'orchestrator',
+        status: 'working',
+        context_used: 5000
+      })
+
+      // Handle reset event - should not throw
+      expect(() => {
+        store.handleContextReset({
+          agent_id: 'executor-1',
+          old_context_used: 5000,
+          new_context_used: 0
+        })
+      }).not.toThrow()
+
+      // Verify job still exists
+      const job = store.getJob('orch-1')
+      expect(job).toBeDefined()
+    })
+
+    it('should handle context reset for non-existent agent gracefully', () => {
+      // Should not throw error when agent not found
+      expect(() => {
+        store.handleContextReset({
+          agent_id: 'non-existent-agent',
+          old_context_used: 5000,
+          new_context_used: 0
+        })
+      }).not.toThrow()
+    })
+
+    it('should be called by orchestrator:context_reset WebSocket events', () => {
+      // Verify the method exists and is exported
+      expect(typeof store.handleContextReset).toBe('function')
+
+      // Simulate WebSocket event payload structure
+      const payload = {
+        agent_id: 'some-agent-id',
+        old_context_used: 5000,
+        new_context_used: 0
+      }
+
+      // Should handle the event without errors
+      expect(() => {
+        store.handleContextReset(payload)
+      }).not.toThrow()
+    })
+  })
 })

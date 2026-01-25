@@ -3,16 +3,16 @@ Orchestrator Succession Manager for GiljoAI MCP Server.
 
 Handover 0080: Manages orchestrator succession lifecycle for unlimited project duration.
 Handover 0366b: Updated to use dual-model architecture (AgentJob + AgentExecution).
+Handover 0461a: Removed 90% auto-succession (polling-based, never used).
 
 Responsibilities:
-- Context threshold detection (90% trigger point)
+- Manual succession support
 - Successor EXECUTION creation (not new job) with instance numbering
 - Handover summary generation with compression (<10K tokens target)
 - State transfer between execution instances
 - Multi-tenant isolation enforcement
 
 Valid succession reasons:
-- context_limit: Context usage >= 90% of budget
 - manual: User-requested handover
 - phase_transition: Project phase change
 
@@ -39,34 +39,6 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# Context Monitoring Utilities
-# ============================================================================
-
-
-def calculate_context_usage(execution: AgentExecution) -> tuple[int, int]:
-    """
-    Calculate context window usage for an agent execution.
-
-    Handover 0366b: Now uses AgentExecution (context tracking is executor-specific).
-
-    For now: Returns (context_used, context_budget) from execution record.
-    Future: Integrate with actual LLM token counting via API.
-
-    Args:
-        execution: AgentExecution instance (executor context tracking)
-
-    Returns:
-        Tuple of (context_used, context_budget) in tokens
-
-    Example:
-        >>> used, budget = calculate_context_usage(execution)
-        >>> percentage = (used / budget) * 100
-        >>> print(f"Context usage: {percentage:.1f}%")
-    """
-    return (execution.context_used, execution.context_budget)
-
-
-# ============================================================================
 # Orchestrator Succession Manager
 # ============================================================================
 
@@ -76,7 +48,6 @@ class OrchestratorSuccessionManager:
     Manages orchestrator succession lifecycle with multi-tenant isolation.
 
     Handles:
-    - Context threshold detection
     - Successor creation with instance numbering
     - Handover summary generation and compression
     - State transfer between instances
@@ -86,23 +57,18 @@ class OrchestratorSuccessionManager:
         >>> with db_manager.get_session() as session:
         >>>     manager = OrchestratorSuccessionManager(session, tenant_key)
         >>>
-        >>>     # Check if succession needed
-        >>>     if manager.should_trigger_succession(orchestrator):
-        >>>         # Create successor
-        >>>         successor = manager.create_successor(orchestrator, "context_limit")
+        >>>     # Create successor
+        >>>     successor = manager.create_successor(orchestrator, "manual")
         >>>
-        >>>         # Generate handover summary
-        >>>         summary = manager.generate_handover_summary(orchestrator)
+        >>>     # Generate handover summary
+        >>>     summary = manager.generate_handover_summary(orchestrator)
         >>>
-        >>>         # Complete handover
-        >>>         manager.complete_handover(orchestrator, successor, summary)
+        >>>     # Complete handover
+        >>>     manager.complete_handover(orchestrator, successor, summary)
     """
 
-    # Context usage threshold for automatic succession (90%)
-    CONTEXT_THRESHOLD = 0.90
-
     # Valid succession reasons
-    VALID_REASONS = {"context_limit", "manual", "phase_transition"}
+    VALID_REASONS = {"manual", "phase_transition"}
 
     def __init__(self, db_session: AsyncSession, tenant_key: str):
         """
@@ -114,48 +80,6 @@ class OrchestratorSuccessionManager:
         """
         self.db_session = db_session
         self.tenant_key = tenant_key
-
-    def should_trigger_succession(
-        self,
-        execution: AgentExecution,
-        manual_request: bool = False,
-    ) -> bool:
-        """
-        Check if execution should trigger succession.
-
-        Handover 0366b: Now checks AgentExecution (context is executor-specific).
-
-        Triggers when:
-        - Context usage >= 90% of context budget
-        - OR manual handover requested (manual_request=True)
-
-        Args:
-            execution: AgentExecution instance to check
-            manual_request: True if manual succession requested
-
-        Returns:
-            True if succession should be triggered, False otherwise
-
-        Example:
-            >>> if manager.should_trigger_succession(execution):
-            >>>     print("Succession threshold reached!")
-        """
-        # Manual request always triggers
-        if manual_request:
-            return True
-
-        # Calculate context usage percentage
-        used, budget = calculate_context_usage(execution)
-
-        # Avoid division by zero
-        if budget == 0:
-            logger.warning(f"Execution {execution.agent_id} has zero context budget")
-            return False
-
-        usage_percentage = used / budget
-
-        # Trigger if >= 90% threshold
-        return usage_percentage >= self.CONTEXT_THRESHOLD
 
     async def create_successor(
         self,
@@ -181,7 +105,7 @@ class OrchestratorSuccessionManager:
 
         Args:
             current_execution: Current execution to hand over from
-            reason: Succession reason ('context_limit', 'manual', 'phase_transition')
+            reason: Succession reason ('manual', 'phase_transition')
 
         Returns:
             New AgentExecution instance (successor)
@@ -190,7 +114,7 @@ class OrchestratorSuccessionManager:
             ValueError: If reason is invalid
 
         Example:
-            >>> successor = await manager.create_successor(current_execution, "context_limit")
+            >>> successor = await manager.create_successor(current_execution, "manual")
             >>> print(f"Created successor instance {successor.instance_number}")
             >>> # Old execution now has decomm-xxx agent_id and 'decommissioned' status
         """
@@ -407,7 +331,7 @@ class OrchestratorSuccessionManager:
         current_execution: AgentExecution,
         successor_execution: AgentExecution,
         handover_summary: dict[str, Any],
-        reason: str = "context_limit",
+        reason: str = "manual",
     ) -> None:
         """
         Complete handover from current execution to successor.
@@ -425,7 +349,7 @@ class OrchestratorSuccessionManager:
             current_execution: Current execution handing over
             successor_execution: Successor execution taking over
             handover_summary: Generated handover summary
-            reason: Succession reason (default: 'context_limit')
+            reason: Succession reason (default: 'manual')
 
         Raises:
             ValueError: If reason is invalid

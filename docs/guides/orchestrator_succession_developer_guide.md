@@ -1,5 +1,9 @@
 # Orchestrator Succession - Developer Guide
 
+> **ARCHIVED (Handover 0461e)**: This documentation describes the old complex
+> succession system which has been replaced by simple 360 Memory-based handover.
+> See [ORCHESTRATOR.md](../ORCHESTRATOR.md) for current documentation.
+
 **Last Updated**: 2025-11-02
 **Version**: v3.0+
 **Handover**: 0080
@@ -800,7 +804,7 @@ from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.models import MCPAgentJob
 
 def test_context_threshold_detection(db_session, tenant_key):
-    """Test that succession triggers at 90% context usage."""
+    """Test that succession can be triggered when context is high."""
     manager = OrchestratorSuccessionManager(db_session, tenant_key)
 
     orchestrator = MCPAgentJob(
@@ -811,7 +815,8 @@ def test_context_threshold_detection(db_session, tenant_key):
         context_budget=150000
     )
 
-    assert manager.should_trigger_succession(orchestrator) is True
+    # User can manually trigger succession when context is high
+    assert (orchestrator.context_used / orchestrator.context_budget) >= 0.9
 
 def test_handover_summary_generation(db_session, tenant_key, orchestrator_with_messages):
     """Test that handover summary is properly compressed."""
@@ -940,9 +945,9 @@ def test_succession_latency(db_session, tenant_key, orchestrator):
 
     start_time = time.time()
 
-    successor = manager.create_successor(orchestrator, reason="context_limit")
+    successor = manager.create_successor(orchestrator, reason="manual")
     summary = manager.generate_handover_summary(orchestrator)
-    manager.complete_handover(orchestrator, successor, summary, reason="context_limit")
+    manager.complete_handover(orchestrator, successor, summary, reason="manual")
 
     elapsed_time = time.time() - start_time
 
@@ -981,23 +986,25 @@ class OrchestratorAgent:
         self.context_budget = 150000
 
     async def update_context_usage(self, tokens_used):
-        """Update context usage and check for succession."""
+        """Update context usage."""
         self.context_used += tokens_used
 
-        # Check if 90% threshold reached
-        if self.context_used >= (self.context_budget * 0.90):
-            await self.trigger_succession()
+        # Check if context is high (approaching 90%)
+        usage_percent = (self.context_used / self.context_budget) * 100
+        if usage_percent >= 80:
+            print(f"Warning: Context usage at {usage_percent:.1f}%")
+            print("Consider triggering manual succession via /gil_handover")
 
     async def trigger_succession(self):
-        """Trigger succession and hand over to successor."""
+        """Trigger manual succession (called by user action)."""
         print(f"Context usage: {self.context_used}/{self.context_budget} tokens")
-        print("Triggering succession...")
+        print("User triggered succession...")
 
         # Call MCP tool
         result = await self.client.create_successor_orchestrator(
             current_job_id=self.job_id,
             tenant_key=self.tenant_key,
-            reason="context_limit"
+            reason="manual"
         )
 
         print(f"Successor created: {result['successor_id']}")
@@ -1015,10 +1022,10 @@ orchestrator = OrchestratorAgent(
     tenant_key="tenant-abc123"
 )
 
-# Simulate context growth
+# Simulate context growth (user monitors and triggers succession)
 await orchestrator.update_context_usage(50000)  # 50K tokens
-await orchestrator.update_context_usage(40000)  # 90K total
-await orchestrator.update_context_usage(45000)  # 135K total → triggers succession
+await orchestrator.update_context_usage(40000)  # 90K total (60%)
+await orchestrator.update_context_usage(45000)  # 135K total (90%) → user sees warning, triggers succession manually
 ```
 
 ### Example 2: Manual Succession via API

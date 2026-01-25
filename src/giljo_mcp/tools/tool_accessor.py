@@ -687,21 +687,22 @@ class ToolAccessor:
 
     async def gil_handover(self, job_id: str = None, reason: str = "manual") -> dict[str, Any]:
         """
-        DEPRECATED (Handover 0391): This method is no longer exposed via MCP.
-        Users trigger succession via UI "Hand Over" button which calls REST API:
-        POST /api/agent-jobs/{job_id}/trigger-succession
+        DEPRECATED (Handover 0391, updated 0461c): This method is no longer exposed via MCP.
+        Users trigger handover via UI "Hand Over" button which calls REST API:
+        POST /api/agent-jobs/{job_id}/simple-handover
 
-        Original purpose: Trigger orchestrator succession for context handover.
-        Removed because: MCP tool had tenant_key parameter mismatch, and since
-        agents cannot self-detect context exhaustion, user-triggered UI is the
-        correct approach.
+        Updated behavior (0461c): Simple session handover via 360 Memory.
+        - Writes session context to 360 Memory (session_handover entry)
+        - Resets context_used to 0 (no new AgentExecution created)
+        - Returns continuation prompt that reads 360 Memory
+        - No more Agent ID Swap or successor creation
 
         Args:
             job_id: Current orchestrator job UUID (work order identifier)
-            reason: Succession reason (context_limit, manual, phase_transition)
+            reason: DEPRECATED - No longer used (kept for backwards compatibility)
 
         Returns:
-            dict with success, message, successor_id, launch_prompt, error (optional)
+            dict with success, message, launch_prompt (continuation), memory_entry_id, context_reset
         """
         try:
             from ..slash_commands import get_slash_command
@@ -717,7 +718,6 @@ class ToolAccessor:
                     tenant_key=self.tenant_manager.get_current_tenant(),
                     project_id=None,  # Not used by handover
                     orchestrator_job_id=job_id,
-                    reason=reason,
                 )
 
             return result
@@ -906,7 +906,7 @@ class ToolAccessor:
             summary: 2-3 paragraph summary of work accomplished
             key_outcomes: 3-5 specific achievements
             decisions_made: 3-5 architectural/design decisions
-            entry_type: Type of entry ("project_completion" or "handover_closeout")
+            entry_type: Type of entry ("project_completion", "handover_closeout", or "session_handover")
             author_job_id: Job ID of agent writing entry (optional)
 
         Returns:

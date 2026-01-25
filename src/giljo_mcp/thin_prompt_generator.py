@@ -10,7 +10,7 @@ Architecture (Handover 0315):
 - User configures priorities (Handover 0313) and depth (Handover 0314)
 - Generator creates thin prompt listing available MCP tools by priority
 - Orchestrator fetches context on-demand via MCP tool calls
-- Manual succession available via /gil_handover when context handover needed
+- Simple handover available via /gil_handover when context reset needed (0461c)
 
 Token Reduction:
 - Fat Prompt (v1.0): ~3500 tokens (inline context embedded in prompt)
@@ -119,6 +119,7 @@ class ThinClientPromptGenerator:
         instance_number: int = 1,
         field_priorities: Optional[Dict[str, int]] = None,
         depth_config: Optional[Dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
+        continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
     ) -> Dict[str, Any]:
         """
         Generate a thin orchestrator prompt for a specified project.
@@ -130,13 +131,17 @@ class ThinClientPromptGenerator:
         for on-demand context fetching, replacing fat prompts (~3500 tokens) with
         inline context.
 
+        Handover 0461c: Added continuation_mode parameter for session handover.
+        When True, generates continuation prompt that reads 360 Memory.
+
         Args:
             project_id: Project UUID
             user_id: Optional user ID for tracking and fetching priorities/depth config
             tool: AI coding tool (claude-code, codex, gemini, universal)
-            instance_number: Orchestrator instance number (for succession)
+            instance_number: Orchestrator instance number (for succession) - DEPRECATED in continuation mode
             field_priorities: Optional field importance weights (v2.0 categories)
             depth_config: Optional depth configuration (v2.0 depth settings)
+            continuation_mode: If True, generate continuation prompt (reads 360 Memory instead of re-staging)
 
         Returns:
             Dict with orchestrator_id and thin_prompt
@@ -316,20 +321,38 @@ class ThinClientPromptGenerator:
                 f"(instance #{instance_number}), project staging_status='staged'"
             )
 
-        # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
-        # Handover 0388: Pass agent_id for correct MCP tool call in prompt
-        thin_prompt = await self._generate_thin_prompt(
-            orchestrator_id=orchestrator_id,
-            agent_id=agent_id,  # WHO - executor ID for MCP tool calls
-            project_id=project_id,
-            project=project,
-            product=product,
-            instance_number=instance_number,
-            tool=tool,
-            field_priorities=field_priorities or {},
-            depth_config=depth_config,
-            user_id=user_id,
-        )
+        # Handover 0461c: Generate continuation prompt if continuation_mode enabled
+        if continuation_mode:
+            # Get MCP server URL
+            config = get_config()
+            mcp_host = self._get_external_host()
+            mcp_port = config.server.api_port
+            mcp_url = f"http://{mcp_host}:{mcp_port}"
+
+            thin_prompt = self._generate_continuation_prompt(
+                project_name=project.name,
+                agent_id=agent_id,
+                orchestrator_id=orchestrator_id,
+                project_id=project_id,
+                product_id=str(product.id) if product else None,
+                instance_number=1,  # Always 1 in new model (no more instance tracking)
+                mcp_url=mcp_url,
+            )
+        else:
+            # Handover 0315: Generate thin prompt with MCP tool references (NOT fat prompt)
+            # Handover 0388: Pass agent_id for correct MCP tool call in prompt
+            thin_prompt = await self._generate_thin_prompt(
+                orchestrator_id=orchestrator_id,
+                agent_id=agent_id,  # WHO - executor ID for MCP tool calls
+                project_id=project_id,
+                project=project,
+                product=product,
+                instance_number=instance_number,
+                tool=tool,
+                field_priorities=field_priorities or {},
+                depth_config=depth_config,
+                user_id=user_id,
+            )
 
         # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
         estimated_tokens = len(thin_prompt) // 4
@@ -1092,65 +1115,75 @@ START NOW:
         agent_id: str,
         orchestrator_id: str,
         project_id: str,
+        product_id: Optional[str],
         instance_number: int,
         mcp_url: str,
     ) -> str:
         """
-        Generate continuation prompt for successor orchestrators (instance > 1).
+        Generate continuation prompt that reads 360 Memory for session context.
 
-        Handover 0429 Phase 4: When orchestrator runs out of context and a
-        successor is created, they should NOT re-stage the project. Instead,
-        they should check messages, review workflow status, and continue work.
+        Handover 0461c: Instead of hardcoded instructions, tell successor
+        to read 360 Memory for session context from previous session.
 
         Args:
             project_name: Project display name
             agent_id: Agent execution ID (WHO)
             orchestrator_id: Job ID (WHAT)
             project_id: Project UUID
-            instance_number: Orchestrator instance number (> 1)
+            product_id: Product UUID (for fetch_context call)
+            instance_number: DEPRECATED - kept for backward compatibility only
             mcp_url: MCP server URL
 
         Returns:
-            Continuation prompt instructing to check messages and workflow status
+            Continuation prompt instructing to read 360 Memory session_handover entry
         """
-        prompt = f"""I am Orchestrator #{instance_number} for Project "{project_name}" (CONTINUATION).
+        # Validate product_id is available
+        if not product_id:
+            logger.warning(
+                f"[ThinPromptGenerator] product_id not provided for continuation prompt. "
+                f"Orchestrator may not be able to fetch 360 Memory context."
+            )
+            product_id = "(fetch from project data)"
 
-My predecessor ran out of context. I am taking over with SAME identity.
+        prompt = f"""I am Orchestrator for Project "{project_name}" (CONTINUATION SESSION).
+
+A previous session ran out of context. I am continuing the work.
 
 YOUR IDENTITY (use these in all MCP calls):
   YOUR Agent ID: {agent_id}
   YOUR Job ID: {orchestrator_id}
   THE Project ID: {project_id}
-  Instance Number: {instance_number}
+  THE Product ID: {product_id}
 
 MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
+Note: tenant_key is auto-injected by server from your API key session
 
 FIRST ACTIONS (DO NOT RE-STAGE):
+
 1. Verify MCP: mcp__giljo-mcp__health_check()
-   → Expected: {{"status": "healthy"}} - If failed, STOP and report error
+   → Expected: {{"status": "healthy"}}
 
-2. Check messages from predecessor and agents:
+2. Read 360 Memory for session context:
+   mcp__giljo-mcp__fetch_context(
+       product_id="{product_id}",
+       categories=["memory_360"]
+   )
+   → Look for "session_handover" entry with session context
+   → Contains: previous context_used, progress, current_task
+
+3. Check messages from agents:
    mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-   → Read messages from agents and predecessor's handover notes
 
-3. Check workflow status:
+4. Check workflow status:
    mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
-   → See which agents are active, completed, or pending
-
-4. Review context before spawning new agents:
-   → Check in with ACTIVE agents first
-   → Review completed work
-   → Identify blockers or pending tasks
 
 CRITICAL RULES:
-- Do NOT call get_orchestrator_instructions() to re-stage the workflow
-- Do NOT re-write the project mission (it's already done)
-- Do NOT re-introduce yourself to agents (they already know you)
-- Check existing agent progress before spawning new agents
+- Do NOT call get_orchestrator_instructions() to re-stage
+- Do NOT re-write the project mission
+- Read 360 Memory session_handover for context from previous session
 - You are CONTINUING work, not starting from scratch
 
-When ready to proceed, coordinate agents based on their current status.
+When ready, coordinate agents based on current status.
 """
 
         return prompt
@@ -1438,8 +1471,9 @@ Monitor workflow via: mcp__giljo-mcp__get_workflow_status('{project.id}')
             "",
             "### Handover (if needed)",
             "If you reach context limits before completion:",
-            "- Call mcp__giljo-mcp__gil_handover to trigger succession",
-            "- A new orchestrator will continue from where you left off",
+            "- Use /gil_handover slash command to reset your context",
+            "- Your session context will be saved to 360 Memory",
+            "- You'll receive a continuation prompt to continue work",
             "",
         ]
 

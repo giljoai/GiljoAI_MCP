@@ -144,9 +144,6 @@
         <!-- Jobs Tab - Complete State -->
         <div v-else-if="agent.status === 'complete'" class="complete-content text-center py-4">
           <div class="complete-text">Complete</div>
-          <div v-if="instanceNumber > 1" class="instance-badge mt-2">
-            Instance {{ instanceNumber }}
-          </div>
         </div>
 
         <!-- Jobs Tab - Failure State (Handover 0113: Shows failure_reason) -->
@@ -187,29 +184,13 @@
           <div class="text-caption text-grey mt-1">Job was cancelled by user</div>
         </div>
 
-        <!-- Jobs Tab - Decommissioned State (Handover 0113) -->
-        <div
-          v-else-if="agent.status === 'decommissioned'"
-          class="decommissioned-content text-center py-4"
-        >
-          <v-icon size="48" color="grey-darken-1" class="mb-2">mdi-archive</v-icon>
-          <div class="text-body-1 font-weight-medium">Decommissioned</div>
-          <div class="text-caption text-grey mt-1">Project closeout complete</div>
-          <div v-if="agent.decommissioned_at" class="text-caption text-grey mt-1">
-            {{ new Date(agent.decommissioned_at).toLocaleString() }}
-          </div>
-        </div>
+        <!-- Decommissioned state removed (Handover 0461d) - Uses simple handover API now -->
       </div>
 
       <!-- Orchestrator special launch icons removed per UX request -->
     </v-card-text>
 
-    <!-- Succession Timeline (Handover 0509) - Shows instance chain for orchestrators -->
-    <succession-timeline
-      v-if="isOrchestrator && mode === 'jobs'"
-      :project-id="agent.project_id"
-      class="mt-2 mx-4"
-    />
+    <!-- REMOVED: Succession Timeline (0461d) - Uses simple handover API now -->
 
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0 agent-card-actions">
@@ -272,20 +253,7 @@
 
         <!-- Orchestrator: Copy Execution Prompt removed - Launch button handles prompt copy -->
 
-        <!-- Orchestrator: Hand Over (Handover 0509) - Opens LaunchSuccessorDialog -->
-        <launch-successor-dialog
-          v-if="mode === 'jobs' && isOrchestrator && agent.status === 'working'"
-          :job-id="agent.id"
-          :current-job="agent"
-          @succession-triggered="onSuccessionTriggered"
-        >
-          <template #activator="{ props: activatorProps }">
-            <v-btn v-bind="activatorProps" variant="outlined" color="warning" block class="mt-2">
-              <v-icon start>mdi-hand-wave</v-icon>
-              Hand Over
-            </v-btn>
-          </template>
-        </launch-successor-dialog>
+        <!-- REMOVED: Hand Over button (0461d) - Uses simple handover API now -->
 
         <!-- Jobs Tab: Working State - Details -->
         <v-btn
@@ -336,23 +304,16 @@
           </v-btn>
         </div>
 
-        <!-- Cancelled/Decommissioned State: No actions (terminal states) -->
-        <div
-          v-else-if="
-            mode === 'jobs' && (agent.status === 'cancelled' || agent.status === 'decommissioned')
-          "
-          class="terminal-state"
-        >
+        <!-- Cancelled State: No actions (terminal state) -->
+        <div v-else-if="mode === 'jobs' && agent.status === 'cancelled'" class="terminal-state">
           <v-chip
             color="grey"
             variant="flat"
             block
             style="width: 100%; justify-content: center; height: 36px"
           >
-            <v-icon start>{{ agent.status === 'cancelled' ? 'mdi-cancel' : 'mdi-archive' }}</v-icon>
-            <span class="text-caption">{{
-              agent.status === 'cancelled' ? 'Cancelled' : 'Archived'
-            }}</span>
+            <v-icon start>mdi-cancel</v-icon>
+            <span class="text-caption">Cancelled</span>
           </v-chip>
         </div>
       </slot>
@@ -366,9 +327,9 @@ import { getAgentColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import SuccessionTimeline from '@/components/projects/SuccessionTimeline.vue'
-import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import { getStatusConfig } from '@/utils/statusConfig'
+
+// Handover 0461d: Removed instance_number, decommissioned, and succession chain UI
 
 /**
  * AgentCard Component (Consolidated - Handover 0515a)
@@ -384,7 +345,6 @@ import { getStatusConfig } from '@/utils/statusConfig'
  * Props:
  * - agent: Agent job object (required)
  * - mode: 'launch' | 'jobs' (default: 'jobs')
- * - instanceNumber: Instance number for multi-instance agents
  * - isOrchestrator: Special orchestrator features
  * - showCloseoutButton: Show closeout button when all agents complete
  *
@@ -410,11 +370,6 @@ const props = defineProps({
     type: String,
     default: 'jobs',
     validator: (value) => ['launch', 'jobs'].includes(value),
-  },
-  instanceNumber: {
-    type: Number,
-    default: 1,
-    validator: (value) => value >= 1,
   },
   isOrchestrator: {
     type: Boolean,
@@ -642,18 +597,7 @@ const requestCancel = async () => {
 
 // Removed forceStop method (Handover 0113 - atomic cancellation)
 
-/**
- * Handover 0509: Succession event handler
- * onSuccessionTriggered(successorData) - Handles succession-triggered event from LaunchSuccessorDialog
- * Args: successorData - {successor_job_id, instance_number, launch_prompt}
- * Emits: refresh-jobs to parent to reload job list and show new instance
- */
-const onSuccessionTriggered = (successorData) => {
-  console.log('Successor created:', successorData)
-  showToast(`Successor instance ${successorData.instance_number} created`, 'success')
-  // Notify parent to refresh job list
-  emit('refresh-jobs')
-}
+// REMOVED: onSuccessionTriggered handler (0461d) - Uses simple handover API now
 
 /**
  * Lifecycle hooks for WebSocket event listeners
@@ -808,12 +752,6 @@ onBeforeUnmount(() => {
     color: #ffc107;
     text-transform: uppercase;
     letter-spacing: 1px;
-  }
-
-  .instance-badge {
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(0, 0, 0, 0.6);
   }
 }
 
