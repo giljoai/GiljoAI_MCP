@@ -58,7 +58,7 @@ def tool_accessor(mock_db_manager, mock_tenant_manager):
     accessor._orchestration_service.complete_job = AsyncMock()
     accessor._orchestration_service.report_error = AsyncMock()
     accessor._orchestration_service.create_successor_orchestrator = AsyncMock()
-    accessor._orchestration_service.check_succession_status = AsyncMock()
+    # NOTE: check_succession_status removed in Handover 0461a (manual succession only)
     accessor._orchestration_service.update_agent_mission = AsyncMock()
 
     return accessor
@@ -381,31 +381,10 @@ async def test_create_successor_orchestrator_delegates_to_service(tool_accessor)
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
 async def test_check_succession_status_delegates_to_service(tool_accessor):
-    """ToolAccessor.check_succession_status calls OrchestrationService.check_succession_status"""
-    job_id = str(uuid4())
-    tenant_key = "test_tenant"
-
-    # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {
-            "succession_needed": True,
-            "context_percent": 90
-        }
-    }
-    tool_accessor._orchestration_service.check_succession_status.return_value = expected_result
-
-    # Call accessor method
-    result = await tool_accessor.check_succession_status(job_id, tenant_key)
-
-    # Verify service method was called with correct args
-    tool_accessor._orchestration_service.check_succession_status.assert_called_once_with(
-        job_id, tenant_key
-    )
-
-    # Verify result passed through
-    assert result == expected_result
+    """DEPRECATED: check_succession_status() removed in Handover 0461a."""
+    pass
 
 
 @pytest.mark.asyncio
@@ -447,6 +426,7 @@ async def test_all_orchestration_methods_delegate_without_modification(tool_acce
     This meta-test ensures ToolAccessor remains a thin wrapper.
     """
     # List of methods that should delegate to OrchestrationService
+    # NOTE: check_succession_status removed in Handover 0461a (manual succession only)
     delegation_methods = [
         'get_orchestrator_instructions',
         'spawn_agent_job',
@@ -459,7 +439,6 @@ async def test_all_orchestration_methods_delegate_without_modification(tool_acce
         'complete_job',
         'report_error',
         'create_successor_orchestrator',
-        'check_succession_status',
         'update_agent_mission',
     ]
 

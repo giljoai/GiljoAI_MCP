@@ -65,15 +65,15 @@ An **Agent Execution** represents a **specific agent instance** working on a job
 
 ### When Do Agents Succeed Each Other?
 
-Orchestrator agents automatically trigger succession in these scenarios:
+Orchestrator agents trigger succession via user action in these scenarios:
 
-1. **Context Threshold (90% capacity)**: When an orchestrator approaches its context window limit (e.g., 135K/150K tokens), it automatically spawns a successor to prevent context truncation.
+1. **High Context Usage**: When an orchestrator's context window is high (e.g., 135K/150K tokens or 90%), the user can trigger succession manually to prevent context issues.
 
-2. **Manual Handover**: User or orchestrator triggers succession via:
+2. **Manual Handover**: User triggers succession via:
    - `/gil_handover` slash command in CLI
    - "Hand Over" button in dashboard UI
 
-3. **Phase Transition**: Some agents may choose to hand off when transitioning between major phases (e.g., planning → implementation).
+3. **Phase Transition**: Users may choose to hand off when transitioning between major phases (e.g., planning → implementation).
 
 **Typical Timeline**: Succession takes 2-5 minutes (handover summary generation, new agent spawn, context transfer).
 

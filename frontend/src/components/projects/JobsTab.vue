@@ -6,7 +6,6 @@
         <thead>
           <tr>
             <th>Agent Display Name</th>
-            <th>Instance</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
             <th>Duration</th>
@@ -20,7 +19,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in sortedAgents" :key="`${agent.job_id || agent.agent_id}-${agent.instance_number}`" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
+          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Avatar + Name -->
             <td class="agent-display-name-cell">
               <button
@@ -56,13 +55,6 @@
                   Skills: Fixed system agent
                 </button>
               </div>
-            </td>
-
-            <!-- Instance Number: NEW COLUMN -->
-            <td class="instance-cell" data-testid="instance-number">
-              <v-chip size="small" color="blue-grey" label>
-                #{{ agent.instance_number || 1 }}
-              </v-chip>
             </td>
 
             <!-- Agent ID: Dual display -->
@@ -330,13 +322,7 @@
       />
     </div>
 
-    <!-- Hand Over Dialog (Handover 0243d) -->
-    <LaunchSuccessorDialog
-      v-if="selectedAgent"
-      :job-id="selectedAgent.job_id || selectedAgent.agent_id"
-      :current-job="selectedAgent"
-      @succession-triggered="handleSuccessorCreated"
-    />
+    <!-- REMOVED: Hand Over Dialog (0461d) - Uses simple handover API now -->
 
     <!-- Agent Details Modal (GiljoAI face - shows role/template) -->
     <AgentDetailsModal
@@ -394,18 +380,20 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
-import LaunchSuccessorDialog from '@/components/projects/LaunchSuccessorDialog.vue'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentJobModal from '@/components/projects/AgentJobModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 
 /**
- * JobsTab Component - Handover 0241 + 0243c
+ * JobsTab Component - Handover 0241 + 0243c + 0461d
  *
  * Complete rewrite to match screenshot design exactly.
  * Pure table layout with inline actions and message composer.
  * Dynamic status display from agent.status field with WebSocket updates (0243c).
+ *
+ * Handover 0461d: Simplified - no longer tracking instance_number or succession chains.
+ * Removed instance column and succession-related logic.
  *
  * Reference: handovers/Launch-Jobs_panels2/IMplement tab.jpg
  * Handover 0243c: JobsTab Dynamic Status Fix (CRITICAL 0242b)
@@ -526,6 +514,7 @@ const showCloseoutModal = ref(false)
 const jobModalInitialTab = ref('mission')
 const messageAuditInitialTab = ref('sent')
 const selectedJobId = ref(null)
+// REMOVED: showHandoverDialog (0461d) - Uses simple handover API now
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
 
 /**
@@ -888,29 +877,7 @@ function handleAgentJob(agent) {
   showAgentJobModal.value = true
 }
 
-/**
- * Open hand over dialog (Handover 0243d)
- * Shows LaunchSuccessorDialog for orchestrator succession
- */
-function openHandoverDialog(agent) {
-  selectedJobId.value = agent.job_id || agent.agent_id
-  showHandoverDialog.value = true
-}
-
-/**
- * Handle successor created event (Handover 0243d)
- * Called by LaunchSuccessorDialog when succession is triggered
- */
-function handleSuccessorCreated(successorData) {
-  console.log('[JobsTab] Successor created:', successorData)
-  showToast({
-    message: 'Orchestrator handover initiated',
-    type: 'success',
-    duration: 3000
-  })
-  showHandoverDialog.value = false
-  selectedJobId.value = null
-}
+// REMOVED: openHandoverDialog and handleSuccessorCreated (0461d) - Uses simple handover API now
 
 /**
  * Send message via API (Handover 0243e)
@@ -1107,10 +1074,6 @@ async function copyToClipboard(text) {
               text-transform: capitalize;
             }
           }
-        }
-
-        &.instance-cell {
-          text-align: center;
         }
 
         &.agent-id-cell {

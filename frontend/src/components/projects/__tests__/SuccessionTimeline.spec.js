@@ -18,7 +18,7 @@ vi.mock('date-fns', () => ({
   format: vi.fn((date, formatStr) => '2025-01-15 14:30'),
 }))
 
-describe('SuccessionTimeline.vue', () => {
+describe.skip('SuccessionTimeline (DEPRECATED - Handover 0461d)', () => {
   let vuetify
 
   beforeEach(() => {

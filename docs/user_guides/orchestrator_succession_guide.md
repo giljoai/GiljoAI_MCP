@@ -1,5 +1,9 @@
 # Orchestrator Succession - User Guide
 
+> **ARCHIVED (Handover 0461e)**: This documentation describes the old complex
+> succession system which has been replaced by simple 360 Memory-based handover.
+> See [ORCHESTRATOR.md](../ORCHESTRATOR.md) for current documentation.
+
 **Last Updated**: 2025-11-02
 **Version**: v3.0+
 **Applies To**: GiljoAI MCP Server with Handover 0080
@@ -34,7 +38,7 @@ Think of it like a relay race: when one orchestrator agent approaches the limit 
    - Long-running projects (months, years) are now possible
 
 2. **Graceful Context Management**
-   - Automatic handover at 90% context usage (before problems occur)
+   - Manual handover when context is high (user-triggered via UI or slash command)
    - Compressed handover summaries (under 10,000 tokens)
    - No loss of project state or continuity
 
@@ -330,14 +334,19 @@ This historical view is valuable for:
 
 ### Q1: How often does succession occur?
 
-**A**: Succession triggers automatically when an orchestrator's context usage reaches 90% of its budget (typically 135,000 out of 150,000 tokens). The frequency depends on project complexity:
+**A**: Succession is triggered manually by the user when an orchestrator's context usage is high (e.g., approaching 90% of its budget, typically 135,000 out of 150,000 tokens). The frequency depends on project complexity and user monitoring:
 - Simple projects: May never need succession
-- Medium projects: 1-2 successions over several weeks
-- Complex projects: 3-5 successions over months
+- Medium projects: 1-2 manual successions over several weeks
+- Complex projects: 3-5 manual successions over months
 
-### Q2: Can I manually trigger succession before 90%?
+### Q2: Can I manually trigger succession at any time?
 
-**A**: Yes, if your administrator has enabled manual succession triggers. Look for a **"Trigger Succession"** button on the orchestrator card. This is useful for:
+**A**: Yes, you can manually trigger succession via:
+- **Slash command**: Type `/gil_handover` in your AI coding tool (Claude Code, Codex, Gemini)
+- **UI Button**: Click the **"Hand Over"** button on the orchestrator card in the dashboard
+
+This is useful for:
+- When context usage is high (e.g., 80-90%)
 - Phase transitions (e.g., switching from planning to implementation)
 - Starting fresh after major project changes
 - Proactive context management
@@ -395,11 +404,10 @@ The timeline view also highlights the active instance.
 
 **A**: The system has multiple safeguards:
 1. **Atomic transactions**: Database changes are rolled back if handover fails
-2. **Retry logic**: Succession will automatically retry once
-3. **Graceful degradation**: Instance 1 remains active if succession fails
-4. **User notification**: Alert shown in dashboard with error details
+2. **Graceful degradation**: Instance 1 remains active if succession fails
+3. **User notification**: Alert shown in dashboard with error details
 
-You can manually retry succession or contact administrator for assistance.
+You can manually retry succession via the UI or slash command, or contact administrator for assistance.
 
 ### Q9: Does succession cost extra?
 
@@ -410,9 +418,9 @@ You can manually retry succession or contact administrator for assistance.
 
 Succession actually REDUCES costs by avoiding context bloat.
 
-### Q10: Can I customize the succession threshold (90%)?
+### Q10: How do I know when to trigger succession?
 
-**A**: Currently, the 90% threshold is fixed at the system level. Future versions may allow per-project customization via settings. Contact your administrator if you have specific threshold requirements.
+**A**: Monitor the context usage bar on the orchestrator card in the dashboard. When it approaches 80-90% (yellow or red), it's a good time to consider triggering succession manually. You can also trigger succession at any time during phase transitions or after major project milestones.
 
 ---
 

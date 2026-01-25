@@ -9,6 +9,7 @@ Module Structure:
 - progress.py: Progress reporting
 - orchestration.py: Orchestrate project, workflow status, regenerate mission, launch project
 - succession.py: Orchestrator succession (Handover 0505)
+- simple_handover.py: Simple 360 Memory-based handover (Handover 0461c)
 - operations.py: Cancel, force-fail, health endpoints (Handover 0107)
 - table_view.py: Optimized table view for status board (Handover 0226)
 - filters.py: Quick filter options for status board (Handover 0226)
@@ -21,7 +22,7 @@ Operations router also exported separately with /api/jobs prefix for compatibili
 
 from fastapi import APIRouter
 
-from . import executions, filters, lifecycle, messages, operations, orchestration, progress, status, succession, table_view
+from . import executions, filters, lifecycle, messages, operations, orchestration, progress, simple_handover, status, succession, table_view
 
 
 # Create main router for agent_jobs module
@@ -33,6 +34,7 @@ router.include_router(status.router)
 router.include_router(progress.router)
 router.include_router(orchestration.router)
 router.include_router(succession.router)
+router.include_router(simple_handover.router)  # Handover 0461c
 router.include_router(table_view.router)  # Handover 0226
 router.include_router(filters.router)  # Handover 0226
 router.include_router(executions.router)  # Handover 0366d-1

@@ -28,7 +28,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.2+)**: Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.2+)**: Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Orchestrator Workflow Series (Nov 2025)** - Handovers 0246a-0246c:
 - 0246a: 7-Task Staging Workflow (931 tokens, 22% under budget)
@@ -71,7 +71,7 @@ HTTP-only MCP (Nov-Dec 2025)
 **Critical Remediation (v3.1.1)**: Handovers 0500-0515 completed major remediation after 0120-0130 refactoring:
 - Vision upload with chunking (<25K tokens per chunk)
 - Project lifecycle methods (activate, deactivate, summary, launch)
-- Orchestrator succession with context tracking (90% auto-trigger)
+- Orchestrator succession with context tracking (manual trigger)
 - Settings endpoints (general, network, product-info)
 - Test suite restored (>80% coverage across services, endpoints, integration)
 - E2E integration tests for critical workflows
@@ -330,10 +330,9 @@ Do not read from or write to this column. It will be removed in v4.0.
 
 **Key Features**:
 - Real-time context monitoring (context_used / context_budget tracked per message)
-- Automatic succession trigger at 90% capacity (configurable)
+- Manual succession via `/gil_handover` slash command or UI "Hand Over" button
 - Handover summary generation (<10K tokens via mission condensation)
 - Full lineage tracking (spawned_by chain preserved across instances)
-- Manual succession via `/gil_handover` slash command or UI "Hand Over" button
 
 ## 360 Memory Management
 

@@ -914,15 +914,13 @@ CONTEXT MANAGEMENT (Implementation Phase):
 
 Budget: {context_budget} tokens (default 150,000)
 Warning Threshold: 80% ({int(context_budget * 0.8)} tokens)
-Succession Trigger: 90% ({int(context_budget * 0.9)} tokens)
+Simple Handover: Available via /gil_handover command or UI "Hand Over" button
 
-If approaching 90%:
-  - System auto-triggers succession (creates successor orchestrator)
-  - Current instance generates handover summary (<10K tokens)
-  - Successor retrieves condensed context + handover
-  - Lineage preserved via spawned_by chain
-
-Manual succession available via /gil_handover slash command or UI button.
+When context is high:
+  - User can manually trigger handover
+  - Session context written to 360 Memory
+  - Context counter reset to 0
+  - Continuation prompt returned for same session
 
 ────────────────────────────────────────────────────────────────────────────
 
