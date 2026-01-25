@@ -128,7 +128,7 @@
         </v-card-title>
 
         <v-card-text>
-          <v-form ref="userForm" @submit.prevent="saveUser">
+          <v-form ref="formRef" @submit.prevent="saveUser">
             <v-text-field
               v-model="userForm.username"
               label="Username"
@@ -158,6 +158,8 @@
               type="password"
               :rules="[rules.required, rules.minLength]"
               prepend-inner-icon="mdi-lock"
+              hint="Min 8 characters"
+              persistent-hint
               required
               class="mb-3"
             />
@@ -167,6 +169,8 @@
               label="Role"
               variant="outlined"
               :items="roleOptions"
+              item-value="value"
+              item-title="title"
               :rules="[rules.required]"
               prepend-inner-icon="mdi-shield-account"
               required
@@ -331,6 +335,19 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="5000"
+      location="top"
+    >
+      {{ snackbar.message }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -344,10 +361,20 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 const currentUser = computed(() => userStore.currentUser)
 
+// Snackbar state
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'error',
+})
+
 // State
 const users = ref([])
 const loading = ref(false)
 const search = ref('')
+
+// Template refs
+const formRef = ref(null)
 
 // Dialog state
 const showUserDialog = ref(false)
@@ -536,6 +563,22 @@ async function saveUser() {
     closeUserDialog()
   } catch (err) {
     console.error('[UserManager] Failed to save user:', err)
+    // Extract error message from response
+    const errorMessage = err.response?.data?.detail || err.message || 'Failed to save user'
+    // Show user-friendly message
+    if (errorMessage.toLowerCase().includes('already exists')) {
+      snackbar.value = {
+        show: true,
+        message: 'Username or email already exists. Please use different values.',
+        color: 'warning',
+      }
+    } else {
+      snackbar.value = {
+        show: true,
+        message: errorMessage,
+        color: 'error',
+      }
+    }
   } finally {
     saving.value = false
   }
