@@ -344,13 +344,13 @@ class TestCLIModeRules:
         assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), \
             "agent_display_name_usage should emphasize exact matching"
 
-    async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_display_name(
+    async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_type(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,
     ):
         """
-        task_tool_mapping explains the Task(subagent_display_name=X) pattern.
+        task_tool_mapping explains the Task(subagent_type=X) pattern.
         """
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor

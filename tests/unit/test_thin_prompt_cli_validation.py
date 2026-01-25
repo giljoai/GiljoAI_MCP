@@ -108,7 +108,7 @@ class TestCLIValidationSection:
         staging_context: dict,
     ):
         """
-        CLI mode staging prompt explains Task(subagent_display_name=X) pattern.
+        CLI mode staging prompt explains Task(subagent_type=X) pattern.
         """
         prompt = await self._generate_staging_prompt(
             db_manager=db_manager,

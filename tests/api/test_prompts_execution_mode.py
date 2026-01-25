@@ -272,7 +272,7 @@ class TestStagingPromptContentByMode:
         prompt = response.json()['prompt']
 
         # Handover 0342: Concise Task tool reference
-        assert 'Task(subagent_display_name=' in prompt or 'subagent_type' in prompt
+        assert 'Task(subagent_type=' in prompt
         # Must clarify field distinction between agent_display_name and agent_name
         assert 'NOT agent_name' in prompt or 'agent_display_name value' in prompt
 
