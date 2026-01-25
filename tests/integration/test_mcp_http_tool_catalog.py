@@ -17,9 +17,9 @@ MCP_ENDPOINT = "/mcp"
 
 # Source of truth: api/endpoints/mcp_http.py tool_map keys (Jan 2026)
 # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
+# NOTE: check_succession_status removed (0461a) - succession is manual-only
 EXPECTED_TOOL_NAMES = {
     "acknowledge_job",
-    "check_succession_status",
     "close_project_and_update_memory",
     "complete_job",
     "create_successor_orchestrator",

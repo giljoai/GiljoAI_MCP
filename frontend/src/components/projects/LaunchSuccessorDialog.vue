@@ -1,3 +1,8 @@
+<!--
+  DEPRECATED (Handover 0461d): This component is no longer used.
+  Simple handover uses direct API call instead of this dialog.
+  Will be removed in v4.0.
+-->
 <template>
   <v-dialog v-model="dialog" max-width="800">
     <template #activator="{ props: activatorProps }">

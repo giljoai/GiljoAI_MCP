@@ -899,9 +899,9 @@ To add new slash commands:
 ---
 
 **End of Slash Commands Documentation**
-### X. `/gil_handover` (alias: `/gil-handover`) — Orchestrator Succession
+### X. `/gil_handover` (alias: `/gil-handover`) — Simple Session Handover
 
-Purpose: Trigger orchestrator handover to a successor when context is high or during phase changes.
+Purpose: Reset orchestrator context via 360 Memory when running out of context (Handover 0461c).
 
 Usage:
 ```
@@ -910,16 +910,14 @@ Usage:
 ```
 
 What it does:
-- Validates current/target orchestrator job
-- Generates compressed handover summary
-- Creates successor orchestrator (instance_number + 1) in “waiting”
-- Marks predecessor complete with handover_to reference
-- Returns a CLI launch snippet for the successor
+- Writes current session context to 360 Memory (session_handover entry)
+- Resets context_used counter to 0 (no new AgentExecution created)
+- Returns a continuation prompt that instructs reading 360 Memory
+- Emits WebSocket event for UI updates
 
 Events:
-- `job:succession_triggered` (start)
-- `job:successor_created` (successor ready)
+- `orchestrator:context_reset` (context reset complete)
 
 See also:
-- `docs/developer_guides/orchestrator_succession_developer_guide.md`
-- `docs/features/agent_grid_static_0073.md`
+- `docs/features/360_MEMORY_MANAGEMENT.md`
+- `handovers/0461c_backend_simplification.md`

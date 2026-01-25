@@ -165,6 +165,72 @@ memory = await fetch_360_memory(
 
 ---
 
+## Entry Types
+
+### project_completion
+Standard entry type for when a project is completed successfully.
+
+### handover_closeout
+Entry type for when an agent hands over to a successor with closeout summary.
+
+### session_handover (Handover 0461e)
+
+Used when an orchestrator refreshes their session and needs to preserve context for continuation in a new terminal.
+
+**Purpose**: Enables orchestrator session continuity by storing current state in 360 Memory rather than complex database succession chains. This is the foundation of the simplified handover system introduced in Handover 0461e.
+
+**Created By**: `/api/agent-jobs/{job_id}/simple-handover` endpoint (see `api/endpoints/agent_jobs/simple_handover.py`)
+
+**Read By**: Continuation session via `fetch_context(categories=["memory_360"])` in new Claude Code terminal
+
+**Fields**:
+- `summary`: 2-3 paragraph overview of current session state
+- `key_outcomes`: List of completed work items during the session
+- `decisions_made`: List of architectural/technical decisions made
+- `metrics.session_context`: Object containing:
+  - `last_spawned_agents`: List of agent job IDs spawned in this session
+  - `pending_coordination`: List of unfinished coordination tasks
+  - `blockers`: List of issues blocking progress
+  - `next_steps`: Recommended actions for continuation session
+
+**Example**:
+```python
+await write_360_memory(
+    project_id="uuid-123",
+    summary="Completed frontend implementation. Backend API endpoints working. Auth integration pending.",
+    key_outcomes=["Vue components created", "API integration tested", "WebSocket events wired"],
+    decisions_made=["Used Vuetify for UI", "JWT for auth", "PostgreSQL for persistence"],
+    entry_type="session_handover",
+    metrics={
+        "session_context": {
+            "last_spawned_agents": ["job-uuid-1", "job-uuid-2"],
+            "pending_coordination": ["Wait for implementer to finish auth module"],
+            "blockers": ["SendGrid API key needed from client"],
+            "next_steps": ["Complete auth integration", "Run full test suite", "Update docs"]
+        }
+    }
+)
+```
+
+**Usage Flow**:
+1. User clicks "Refresh Session" button in UI (working orchestrator cards)
+2. System calls `/api/agent-jobs/{job_id}/simple-handover` endpoint
+3. Endpoint creates `session_handover` entry in `product_memory_entries` table
+4. Endpoint returns continuation prompt for new terminal
+5. User copies prompt and launches new Claude Code session
+6. New session calls `get_agent_mission()` which instructs agent to fetch 360 Memory
+7. Agent calls `fetch_context(categories=["memory_360"])` to load handover entry
+8. Agent continues work using context from previous session
+
+**Benefits**:
+- No complex Agent ID swapping required
+- No database migrations during handover
+- Proven 360 Memory pattern reused
+- Single API call for complete handover
+- Automatic context loading in new session
+
+---
+
 ## Real-Time Updates
 
 ### WebSocket Events

@@ -81,14 +81,19 @@ This transitions the project from staging to execution.
 
 ---
 
-## Optional: Context Handover (Orchestrator Succession)
+## Optional: Simple Session Handover
 
 Run:
 ```
 /gil_handover
 ```
 
-Use this when the orchestrator context is getting large or when you want to start a fresh orchestrator session while preserving lineage and continuity.
+Use this when running out of context. This command:
+- Writes your current session context to 360 Memory
+- Resets your context counter to 0
+- Returns a continuation prompt to continue work in the same session
+
+No new agent instances are created - you simply continue with a fresh context window.
 
 ---
 

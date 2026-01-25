@@ -68,8 +68,8 @@ def generate_realistic_document(tokens: int) -> str:
         (
             "Agent job management provides lifecycle control for spawned agents including "
             "creation, execution monitoring, cancellation, and handover coordination. The system "
-            "tracks context usage and automatically triggers succession when approaching token "
-            "budget limits. Job status updates are broadcast through WebSocket events to enable "
+            "tracks context usage and supports manual succession via UI or slash commands. "
+            "Job status updates are broadcast through WebSocket events to enable "
             "real-time UI updates and orchestrator coordination across distributed agents."
         ),
         (
