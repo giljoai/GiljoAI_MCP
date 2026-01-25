@@ -32,6 +32,7 @@ class ProductMemoryEntry(Base):
     key_outcomes = Column(ARRAY(Text), nullable=True)
     decisions_made = Column(ARRAY(Text), nullable=True)
     git_commits = Column(JSONB, nullable=True)
+    metrics = Column(JSONB, nullable=True)  # For session_handover context (Handover 0461e)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 ```
 
@@ -47,7 +48,7 @@ class ProductMemoryEntry(Base):
 Memory entries are stored as normalized table rows in `product_memory_entries`:
 
 ```python
-# Example entry from database
+# Example entry from database (project_closeout type)
 {
     "id": "uuid-789",
     "product_id": "uuid-456",
@@ -65,7 +66,30 @@ Memory entries are stored as normalized table rows in `product_memory_entries`:
             "timestamp": "2025-11-16T10:00:00Z"
         }
     ],
+    "metrics": null,  # Not used for project_closeout
     "created_at": "2025-11-16T10:00:00Z"
+}
+
+# Example entry from database (session_handover type)
+{
+    "id": "uuid-790",
+    "product_id": "uuid-456",
+    "project_id": "uuid-124",
+    "sequence": 2,
+    "entry_type": "session_handover",
+    "summary": "Completed frontend implementation. Backend API endpoints working...",
+    "key_outcomes": ["Vue components created", "API integration tested"],
+    "decisions_made": ["Used Vuetify for UI", "JWT for auth"],
+    "git_commits": null,  # Optional for session_handover
+    "metrics": {
+        "session_context": {
+            "last_spawned_agents": ["job-uuid-1", "job-uuid-2"],
+            "pending_coordination": ["Wait for implementer to finish auth module"],
+            "blockers": ["SendGrid API key needed from client"],
+            "next_steps": ["Complete auth integration", "Run full test suite"]
+        }
+    },
+    "created_at": "2025-11-16T12:00:00Z"
 }
 ```
 

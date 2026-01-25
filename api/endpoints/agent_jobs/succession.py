@@ -1,13 +1,16 @@
 """
 Orchestrator Succession Endpoints - Handover 0505
 
+DEPRECATED (Handover 0461f): This module supports legacy Agent ID Swap succession.
+Use simple_handover.py endpoint instead for 360 Memory-based session continuity.
+
 Handles manual orchestrator succession operations:
-- POST /api/agent-jobs/{job_id}/trigger-succession - Manually trigger succession
+- POST /api/agent-jobs/{job_id}/trigger-succession - Manually trigger succession (DEPRECATED)
 - GET /api/agent-jobs/{job_id}/succession-status - Check succession status
 
 Used by:
-- "Hand Over" button in AgentCardEnhanced.vue
-- /gil_handover slash command
+- "Hand Over" button in AgentCardEnhanced.vue (should migrate to simple-handover)
+- /gil_handover slash command (should migrate to simple-handover)
 - Manual succession via UI or slash command
 
 All operations use OrchestrationService (no direct DB access).
@@ -97,10 +100,10 @@ async def trigger_succession(
         )
 
         # Extract results (dual-model aware - Handover 0381: clean contract)
-        # Agent ID Swap: decommissioned_agent_id is the old orchestrator's new ID
+        # NOTE: This endpoint is DEPRECATED (Handover 0461f) - use simple-handover instead
         work_order_id = succession_result["job_id"]  # The work order (persists across succession)
-        successor_agent_id = succession_result.get("successor_agent_id")  # Takes over original agent_id
-        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")  # Old orch's new ID
+        successor_agent_id = succession_result.get("successor_agent_id")  # Successor agent ID
+        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")  # Legacy field
         instance_number = succession_result["successor_instance_number"]
 
         # Get successor for additional details (backwards compat: check both models)
@@ -190,7 +193,7 @@ async def trigger_succession(
         current_agent_id = current_execution.agent_id if current_execution else job_id
 
         # Emit WebSocket event for UI updates (Handover 0381: clean contract)
-        # Agent ID Swap: Include decommissioned_agent_id for UI reference
+        # NOTE: Legacy endpoint - includes decommissioned_agent_id for backward compatibility
         try:
             from api.app import state  # Lazy import to avoid circular dependency
             if state.websocket_manager:
@@ -215,8 +218,8 @@ async def trigger_succession(
         except Exception as ws_error:
             logger.error(f"Failed to broadcast WebSocket event: {ws_error}", exc_info=True)
 
-        # Agent ID Swap: current_agent_id is now the decommissioned ID
-        # For backward compatibility, use decommissioned_agent_id if available
+        # NOTE: For backward compatibility with legacy endpoint
+        # Use decommissioned_agent_id if available
         current_agent_id_value = decommissioned_agent_id or str(current_agent_id)
 
         return SuccessionResponse(
