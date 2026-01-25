@@ -490,7 +490,7 @@ async def handle_tools_list(
         # Orchestrator Succession Tools (Handover 0080)
         {
             "name": "create_successor_orchestrator",
-            "description": "Create successor orchestrator for context handover",
+            "description": "Write session context to 360 Memory and reset context for continuation. Use in new session: fetch_context(categories=['memory_360']) to retrieve handover context.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

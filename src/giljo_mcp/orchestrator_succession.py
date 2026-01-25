@@ -48,7 +48,6 @@ class OrchestratorSuccessionManager:
     Manages orchestrator succession lifecycle with multi-tenant isolation.
 
     Handles:
-    - Successor creation with instance numbering
     - Handover summary generation and compression
     - State transfer between instances
     - Multi-tenant isolation enforcement
@@ -57,14 +56,11 @@ class OrchestratorSuccessionManager:
         >>> with db_manager.get_session() as session:
         >>>     manager = OrchestratorSuccessionManager(session, tenant_key)
         >>>
-        >>>     # Create successor
-        >>>     successor = manager.create_successor(orchestrator, "manual")
-        >>>
         >>>     # Generate handover summary
         >>>     summary = manager.generate_handover_summary(orchestrator)
         >>>
-        >>>     # Complete handover
-        >>>     manager.complete_handover(orchestrator, successor, summary)
+        >>>     # Complete handover (if needed)
+        >>>     manager.complete_handover(orchestrator, successor, summary, "manual")
     """
 
     # Valid succession reasons
@@ -81,101 +77,6 @@ class OrchestratorSuccessionManager:
         self.db_session = db_session
         self.tenant_key = tenant_key
 
-    async def create_successor(
-        self,
-        current_execution: AgentExecution,
-        reason: str,
-    ) -> AgentExecution:
-        """
-        Create successor execution for handover using Agent ID Swap.
-
-        Handover 0366b: Creates new AgentExecution on SAME job (not new job).
-        Handover 0xxx: Agent ID Swap - OLD orchestrator gets decommissioned ID,
-                       NEW orchestrator TAKES OVER the original agent_id.
-
-        This eliminates multi-row query issues since only ONE execution owns
-        the active agent_id at any given time.
-
-        Process:
-        1. Preserve original agent_id
-        2. Generate decommissioned ID for OLD orchestrator (decomm-{prefix}-{suffix})
-        3. Update OLD orchestrator: agent_id → decomm ID, status → 'decommissioned'
-        4. Create NEW orchestrator with ORIGINAL agent_id
-        5. Link via spawned_by (new → decomm ID)
-
-        Args:
-            current_execution: Current execution to hand over from
-            reason: Succession reason ('manual', 'phase_transition')
-
-        Returns:
-            New AgentExecution instance (successor)
-
-        Raises:
-            ValueError: If reason is invalid
-
-        Example:
-            >>> successor = await manager.create_successor(current_execution, "manual")
-            >>> print(f"Created successor instance {successor.instance_number}")
-            >>> # Old execution now has decomm-xxx agent_id and 'decommissioned' status
-        """
-        # Validate reason
-        if reason not in self.VALID_REASONS:
-            raise ValueError(f"Invalid succession reason: {reason}. Must be one of: {', '.join(self.VALID_REASONS)}")
-
-        # Verify tenant isolation
-        if current_execution.tenant_key != self.tenant_key:
-            raise ValueError(
-                f"Tenant mismatch: execution belongs to {current_execution.tenant_key}, "
-                f"manager initialized for {self.tenant_key}"
-            )
-
-        # =========================================================
-        # Agent ID Swap Implementation
-        # =========================================================
-
-        # Step 1: Preserve original agent_id (this is what agents/UI use to reach orchestrator)
-        original_agent_id = current_execution.agent_id
-
-        # Step 2: Generate decommissioned ID for OLD orchestrator
-        # Format: decomm-{first 8 chars of original}-{random 8 chars}
-        decomm_id = f"decomm-{original_agent_id[:8]}-{uuid4().hex[:8]}"
-
-        # Step 3: Update OLD orchestrator with decommissioned ID and status
-        current_execution.agent_id = decomm_id  # Swap to decommissioned ID
-        current_execution.succession_reason = reason
-        current_execution.status = "decommissioned"  # New status for handed-over orchestrators
-        current_execution.completed_at = datetime.now(timezone.utc)
-
-        # Step 4: Create NEW execution that TAKES OVER the original agent_id
-        successor_execution = AgentExecution(
-            agent_id=original_agent_id,  # TAKE OVER original agent_id
-            job_id=current_execution.job_id,  # SAME work order
-            tenant_key=self.tenant_key,
-            agent_display_name=current_execution.agent_display_name,
-            instance_number=current_execution.instance_number + 1,
-            status="waiting",  # Manual launch required
-            spawned_by=decomm_id,  # Points to decommissioned predecessor
-            context_used=0,  # Fresh context window
-            context_budget=current_execution.context_budget,  # Same budget
-            tool_type=current_execution.tool_type,  # Preserve tool assignment
-        )
-
-        # Step 5: Update succession chain (OLD → NEW)
-        current_execution.succeeded_by = original_agent_id  # Points to successor (which has original ID)
-
-        # Add to session and commit
-        self.db_session.add(successor_execution)
-        await self.db_session.commit()
-        await self.db_session.refresh(successor_execution)
-        await self.db_session.refresh(current_execution)
-
-        logger.info(
-            f"Agent ID Swap succession: {decomm_id} (decommissioned, was {original_agent_id}) "
-            f"→ {successor_execution.agent_id} (instance {successor_execution.instance_number}), "
-            f"job_id: {current_execution.job_id}, reason: {reason}"
-        )
-
-        return successor_execution
 
     async def generate_handover_summary(self, execution: AgentExecution) -> dict[str, Any]:
         """

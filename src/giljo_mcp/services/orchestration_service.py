@@ -3337,18 +3337,29 @@ report_error(
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
     async def create_successor_orchestrator(
-        self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
+        self, current_job_id: str, tenant_key: str, reason: str = "manual"
     ) -> dict[str, Any]:
-        """Create successor orchestrator for context handover (Handover 0080 + Phase C)"""
+        """
+        Create successor orchestrator context via 360 Memory (Handover 0461f).
+
+        SIMPLIFIED: No longer creates new AgentExecution rows or swaps IDs.
+        Instead, writes session context to 360 Memory and resets context_used.
+
+        Args:
+            current_job_id: Current orchestrator job_id or agent_id
+            tenant_key: Tenant key for isolation
+            reason: Handover reason (default: "manual")
+
+        Returns:
+            Dict with success status, continuation instructions, and memory entry info
+        """
         try:
             from datetime import datetime, timezone
-            from sqlalchemy.orm import joinedload
 
             async with self._get_session() as session:
-                # Phase C: Get current execution (latest instance for this job)
+                # Find current execution by job_id
                 result = await session.execute(
                     select(AgentExecution)
-                    .options(joinedload(AgentExecution.job))
                     .where(
                         and_(
                             AgentExecution.job_id == current_job_id,
@@ -3357,87 +3368,93 @@ report_error(
                     )
                     .order_by(AgentExecution.instance_number.desc())
                 )
-                current_execution = result.scalars().first()
+                execution = result.scalars().first()
 
-                if not current_execution:
+                # Fallback: try agent_id if job_id didn't match
+                if not execution:
+                    result = await session.execute(
+                        select(AgentExecution)
+                        .where(
+                            and_(
+                                AgentExecution.agent_id == current_job_id,
+                                AgentExecution.tenant_key == tenant_key,
+                            )
+                        )
+                    )
+                    execution = result.scalars().first()
+
+                if not execution:
                     return {
                         "success": False,
-                        "error": f"Orchestrator execution for job {current_job_id} not found for tenant {tenant_key}",
+                        "error": f"Execution not found for {current_job_id}",
                     }
-
-                # Get the associated AgentJob
-                agent_job = current_execution.job
-                if not agent_job:
-                    return {"success": False, "error": f"Agent job {current_job_id} not found"}
 
                 # Verify it's an orchestrator
-                if agent_job.job_type != "orchestrator":
+                if execution.agent_display_name != "orchestrator":
                     return {
                         "success": False,
-                        "error": f"Job {current_job_id} is not an orchestrator (type: {agent_job.job_type})",
+                        "error": f"Only orchestrators can use succession (found: {execution.agent_display_name})",
                     }
 
-                # Verify job is not already completed
-                if agent_job.status == "completed":
-                    return {"success": False, "error": f"Job {current_job_id} is already completed"}
-
-                # Phase C: Create successor execution (SAME job_id, NEW agent_id)
-                successor_agent_id = str(uuid4())
-                successor_instance = (current_execution.instance_number or 1) + 1
-
-                # Generate simple handover summary
-                handover_summary = (
-                    f"Succession from instance {current_execution.instance_number} to {successor_instance}. "
-                    f"Reason: {reason}. "
-                    f"Context used: {current_execution.context_used or 0}/{current_execution.context_budget or 150000}."
+                # Get project_id from associated job
+                job_result = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == execution.job_id)
                 )
+                job = job_result.scalars().first()
 
-                # Create new execution
-                successor_execution = AgentExecution(
-                    agent_id=successor_agent_id,
-                    job_id=current_job_id,  # SAME job_id (work order persists)
+                if not job or not job.project_id:
+                    return {"success": False, "error": "Associated project not found"}
+
+                # Build session context for 360 Memory
+                session_context = {
+                    "context_used": execution.context_used or 0,
+                    "context_budget": execution.context_budget or 150000,
+                    "progress": execution.progress or 0,
+                    "current_task": execution.current_task,
+                    "agent_id": execution.agent_id,
+                    "job_id": execution.job_id,
+                    "reason": reason,
+                    "handover_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                # Write to 360 Memory using the existing tool
+                from src.giljo_mcp.tools.write_360_memory import write_360_memory
+
+                memory_result = await write_360_memory(
+                    project_id=str(job.project_id),
+                    summary=f"Session handover ({reason}) at {execution.context_used or 0}/{execution.context_budget or 150000} tokens.",
+                    key_outcomes=[
+                        f"Progress: {execution.progress or 0}%",
+                        f"Task: {execution.current_task or 'N/A'}",
+                    ],
+                    decisions_made=[f"Handover triggered: {reason}"],
+                    entry_type="session_handover",
+                    author_job_id=execution.job_id,
                     tenant_key=tenant_key,
-                    agent_display_name="orchestrator",  # Lowercase for frontend compatibility
-                    agent_name="orchestrator",  # Type key for color lookup
-                    instance_number=successor_instance,
-                    status="waiting",
-                    spawned_by=current_execution.agent_id,  # Track previous executor
-                    succession_reason=reason,
-                    handover_summary=handover_summary,
-                    progress=0,
-                    context_used=0,
-                    context_budget=current_execution.context_budget or 150000,
                 )
 
-                session.add(successor_execution)
-
-                # Mark current execution as decommissioned
-                current_execution.status = "decommissioned"
-                current_execution.succeeded_by = successor_agent_id
-                current_execution.completed_at = datetime.now(timezone.utc)
-
-                # Commit changes
+                # Reset context_used (same agent continues, fresh context)
+                old_context = execution.context_used or 0
+                execution.context_used = 0
                 await session.commit()
-                await session.refresh(successor_execution)
 
                 logger.info(
-                    f"Succession completed: agent {current_execution.agent_id} → {successor_agent_id}, "
-                    f"instance {current_execution.instance_number} → {successor_instance}, "
-                    f"job {current_job_id} (persistent), reason: {reason}"
+                    f"Simple succession: {execution.agent_id} context reset "
+                    f"({old_context} -> 0), reason: {reason}, "
+                    f"memory_entry: {memory_result.get('entry_id') if isinstance(memory_result, dict) else 'created'}"
                 )
 
+                # Return simplified response - SAME agent_id (no swap!)
                 return {
                     "success": True,
-                    "successor_id": successor_agent_id,  # NEW: agent_id of successor
-                    "job_id": current_job_id,  # SAME: work order persists
-                    "instance_number": successor_instance,
-                    "status": successor_execution.status,
-                    "handover_summary": handover_summary,
-                    "message": (
-                        f"Successor orchestrator created (instance {successor_instance}). "
-                        f"Previous orchestrator marked decommissioned. "
-                        f"Launch successor manually from dashboard."
-                    ),
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,  # SAME agent_id (no swap)
+                    "context_reset": True,
+                    "old_context_used": old_context,
+                    "new_context_used": 0,
+                    "memory_entry_created": True,
+                    "reason": reason,
+                    "message": "Session context written to 360 Memory. Use fetch_context(categories=['memory_360']) in new session to retrieve.",
                 }
 
         except Exception as e:
