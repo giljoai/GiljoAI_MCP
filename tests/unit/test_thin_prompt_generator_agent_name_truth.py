@@ -153,7 +153,7 @@ class TestAgentNameSingleSourceOfTruth:
             "CLI mode prompt must NOT declare 'agent_display_name: SINGLE SOURCE OF TRUTH'"
 
     @pytest.mark.asyncio
-    async def test_task_tool_example_uses_agent_name_for_subagent_display_name(
+    async def test_task_tool_example_uses_agent_name_for_subagent_type(
         self, generator, test_project
     ):
         """
@@ -161,7 +161,7 @@ class TestAgentNameSingleSourceOfTruth:
 
         GIVEN: Claude Code CLI mode enabled
         WHEN: Generating staging prompt
-        THEN: Prompt states "Task(subagent_display_name=X) uses agent_name value"
+        THEN: Prompt states "Task(subagent_type=X) uses agent_name value"
         """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
@@ -170,11 +170,11 @@ class TestAgentNameSingleSourceOfTruth:
         )
 
         # Staging prompt states Task tool uses agent_name (not literal code example)
-        assert "Task(subagent_display_name=X) uses agent_name value" in prompt, \
-            "Staging prompt must state 'Task(subagent_display_name=X) uses agent_name value'"
+        assert "Task(subagent_type=X) uses agent_name value" in prompt, \
+            "Staging prompt must state 'Task(subagent_type=X) uses agent_name value'"
 
     @pytest.mark.asyncio
-    async def test_task_tool_example_does_not_use_agent_type_for_subagent_display_name(
+    async def test_task_tool_example_does_not_use_agent_type_for_subagent_type(
         self, generator, test_project
     ):
         """
@@ -182,7 +182,7 @@ class TestAgentNameSingleSourceOfTruth:
 
         GIVEN: Claude Code CLI mode enabled
         WHEN: Generating staging prompt
-        THEN: Task tool example does NOT show subagent_display_name="{agent_display_name}"
+        THEN: Task tool example does NOT show subagent_type="{agent_display_name}"
         """
         prompt = await generator.generate_staging_prompt(
             orchestrator_id=str(uuid4()),
@@ -191,8 +191,8 @@ class TestAgentNameSingleSourceOfTruth:
         )
 
         # Task tool example must NOT use agent_display_name
-        assert 'subagent_display_name="{agent_display_name}"' not in prompt, \
-            "Task tool example must NOT use subagent_display_name=\"{agent_display_name}\""
+        assert 'subagent_type="{agent_display_name}"' not in prompt, \
+            "Task tool example must NOT use subagent_type=\"{agent_display_name}\""
 
     @pytest.mark.asyncio
     async def test_prompt_references_agent_name_matching_template_filename(

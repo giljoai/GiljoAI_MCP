@@ -684,7 +684,7 @@ This broadcast enables the "Implement" button in UI (REQUIRED)
     if cli_mode:
         cli_mode_block = """── CLAUDE CODE CLI MODE ────────────────────────────────────────────────────
 Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
-  Task(subagent_display_name='{agent_name}', instructions='...')
+  Task(subagent_type='{agent_name}', instructions='...')
 
 CRITICAL: Task() uses agent_name value, NOT agent_display_name
 
@@ -693,7 +693,7 @@ Example:
                   agent_display_name='implementer', ...)
 
   Later in implementation:
-  Task(subagent_display_name='tdd-implementor', ...)  # agent_name!
+  Task(subagent_type='tdd-implementor', ...)  # agent_name!
 
 DO NOT invoke Task() during staging - this is planning reference only
 """
@@ -728,7 +728,7 @@ Common mistakes:
   ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
 
 Claude Code CLI Mode Note:
-  - Task(subagent_display_name=X) where X = agent_name (NOT display_name)
+  - Task(subagent_type=X) where X = agent_name (NOT display_name)
   - agent_name binds DB record, Task tool, and template filename
   - Example: spawn with agent_name='tdd-implementor', Task uses 'tdd-implementor'
 
@@ -1715,7 +1715,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,
             # Handover 0383 Option B: Explicit Task tool usage
-            "task_tool_usage": f"Task(subagent_display_name='{agent_name}', ...)",
+            "task_tool_usage": f"Task(subagent_type='{agent_name}', ...)",
         }
 
         # Handover 0383 Option C: Warning when agent_name != agent_display_name
