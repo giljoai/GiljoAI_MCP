@@ -311,9 +311,10 @@ async def list_users(
     current_user: User = Depends(require_admin), user_service: UserService = Depends(get_user_service)
 ) -> list[UserResponse]:
     """
-    List all users in current tenant.
+    List all users (admin cross-tenant view).
 
-    Requires admin role. Returns all users filtered by tenant_key for multi-tenant isolation.
+    Requires admin role. Returns all users across all tenants so admins can manage
+    users they created (per-user tenancy means each user has their own tenant_key).
 
     Args:
         current_user: Current authenticated admin user
@@ -325,13 +326,14 @@ async def list_users(
     Raises:
         HTTPException: 403 if user is not admin
     """
-    logger.debug(f"Admin {current_user.username} listing users for tenant {current_user.tenant_key}")
+    logger.debug(f"Admin {current_user.username} listing all users (cross-tenant admin view)")
 
-    result = await user_service.list_users()
+    # Admin sees all users across all tenants for user management
+    result = await user_service.list_users(include_all_tenants=True)
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-    logger.info(f"Found {len(result['data'])} users for tenant {current_user.tenant_key}")
+    logger.info(f"Found {len(result['data'])} users (all tenants)")
 
     # Convert service response to UserResponse objects
     return [
