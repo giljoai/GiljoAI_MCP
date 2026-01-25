@@ -230,6 +230,7 @@ async def update_agent_job_status(
             await db.commit()
 
             # Broadcast status update via WebSocket
+            # Handover 0463: Include project_id for frontend project-aware filtering
             if state.websocket_manager:
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
@@ -238,6 +239,7 @@ async def update_agent_job_status(
                     old_status=old_status,
                     new_status=status_update.status,
                     duration_seconds=duration_seconds,
+                    project_id=job.project_id,
                 )
 
             return {"message": f"Job status updated to {status_update.status}"}
@@ -275,6 +277,7 @@ async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_ten
             await db.commit()
 
             # Broadcast acknowledgment via WebSocket (transitions to 'active')
+            # Handover 0463: Include project_id for frontend project-aware filtering
             if state.websocket_manager and old_status == "pending":
                 await state.websocket_manager.broadcast_job_status_update(
                     job_id=job_id,
@@ -282,6 +285,7 @@ async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_ten
                     tenant_key=tenant_key,
                     old_status=old_status,
                     new_status="active",  # Acknowledgment implies active status
+                    project_id=job.project_id,
                 )
 
             return {"message": "Job acknowledged successfully"}
