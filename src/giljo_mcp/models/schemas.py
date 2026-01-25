@@ -204,15 +204,15 @@ class SuccessionResponse(BaseModel):
         from_attributes=True,
         json_schema_extra={
             "example": {
-                "current_agent_id": "decomm-agent12-abc12345",
-                "job_id": "job-456",
-                "successor_agent_id": "agent-123",
+                "current_agent_id": "agent-456-xyz",
+                "job_id": "job-123-abc",
+                "successor_agent_id": "agent-456-xyz",
                 "instance_number": 2,
                 "launch_prompt": "Continue orchestration from instance 1...",
                 "handover_summary": "Project 60% complete, 3 active agents...",
                 "succession_reason": "manual",
                 "created_at": "2025-01-13T14:22:00Z",
-                "decommissioned_agent_id": "decomm-agent12-abc12345",
+                "decommissioned_agent_id": None,
             }
         },
     )

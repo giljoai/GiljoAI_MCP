@@ -1395,6 +1395,22 @@ GiljoAI v3.3 provides a **simplified session handover** mechanism that replaces 
    └─ Continues: Work where previous session left off
 ```
 
+### Critical Behavioral Notes (Handover 0461g)
+
+**Same Agent Identity**:
+- Simple handover does NOT create new AgentExecution rows
+- Same `agent_id` is retained throughout all session refreshes
+- `context_used` counter resets to 0 **in-place** on the same row
+- No database migrations or ID swaps occur
+
+**Comparison**:
+| Aspect | Old (Agent ID Swap) | New (Simple Handover) |
+|--------|---------------------|----------------------|
+| AgentExecution rows | New row per handover | Same row always |
+| agent_id | Changes (decomm-xxx) | Stays the same |
+| Database complexity | High (migrations) | Minimal (counter reset) |
+| 360 Memory | Not used | Stores session context |
+
 ### Session Handover Entry Type
 
 **Created by**: `/api/agent-jobs/{job_id}/simple-handover` endpoint
@@ -1459,13 +1475,15 @@ context = fetch_context(
 ### Benefits Over Complex Succession
 
 **Simplified Architecture**:
-- ❌ Removed: Agent ID swapping logic
-- ❌ Removed: Database record migrations (AgentJob.current_execution_id)
-- ❌ Removed: Complex lineage tracking for succession
-- ❌ Removed: Succession timeline UI components
-- ✅ Kept: 360 Memory writing (proven, reliable pattern)
-- ✅ Added: Simple continuation prompt generation
-- ✅ Improved: Faster handover (single API call vs multi-step swap)
+- ❌ **Eliminated**: Creating new AgentExecution rows on handover
+- ❌ **Eliminated**: Swapping agent_id to new UUID (decomm-xxx pattern)
+- ❌ **Eliminated**: Database record migrations (AgentJob.current_execution_id)
+- ❌ **Eliminated**: Complex lineage tracking for succession
+- ❌ **Eliminated**: Succession timeline UI components
+- ✅ **Added**: 360 Memory-based context preservation
+- ✅ **Added**: Simple continuation prompt generation
+- ✅ **Result**: Same agent continues with fresh context window
+- ✅ **Improved**: Faster handover (single API call vs multi-step swap)
 
 **User Experience**:
 - Single click to refresh session (no multi-step wizard)
