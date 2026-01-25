@@ -11,7 +11,7 @@ GiljoAI MCP orchestrators have **automatic context tracking**, **staging workflo
 - **7-Task Staging Workflow**: Validates environment before agent execution (Handover 0246a)
 - **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates, 71% token reduction)
 - **Generic Agent Template**: Unified protocol for multi-terminal mode (Handover 0246b)
-- **Automatic Succession**: Spawns successor at 90% context capacity
+- **Manual Succession**: User-triggered via UI or slash command
 - **Context Prioritization**: Condenses missions to <10K tokens for handover
 - **Token Optimization**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
 
@@ -61,7 +61,7 @@ User Action: "Launch Project"
 │ PHASE 4: EXECUTION                                  │
 │ - Agents execute 6-phase protocol                   │
 │ - Real-time coordination via messaging              │
-│ - Context tracking (90% → auto succession)          │
+│ - Context tracking (manual succession available)    │
 │ - Progress reporting via WebSocket                  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -877,7 +877,7 @@ result = await write_360_memory(...)
 
 1. **Context Budget**: Each orchestrator starts with a context budget (default: 200,000 tokens)
 2. **Usage Tracking**: Every message sent/received updates `context_used` counter
-3. **Auto-Succession Trigger**: At 90% capacity, successor spawned automatically
+3. **Manual Succession**: User triggers succession via `/gil_handover` command or UI "Hand Over" button
 4. **Handover Summary**: Mission condensed to <10K tokens via MissionPlanner
 5. **Lineage Preservation**: Full succession chain tracked via `spawned_by` links
 
@@ -942,22 +942,22 @@ status = await service.get_context_status(job.id)
 # }
 ```
 
-### **Auto-Succession Trigger** (90% Threshold)
+### **Manual Succession Trigger**
 
 ```python
-# Automatic succession when context reaches 90%
-if status['percentage_used'] >= 0.9:
-    successor = await service.trigger_succession(
-        job_id=job.id,
-        reason="context_limit"
-    )
+# User-triggered succession via UI or slash command
+# When orchestrator context is high, user can manually trigger succession
+successor = await service.trigger_succession(
+    job_id=job.id,
+    reason="manual"
+)
 
-    # Successor details:
-    # successor.instance_number = 2  (parent was 1)
-    # successor.spawned_by = job.id  (lineage preserved)
-    # successor.handover_summary = "<10K tokens condensed context>"
-    # successor.context_used = 0  (fresh start)
-    # successor.context_budget = 200000  (same as parent)
+# Successor details:
+# successor.instance_number = 2  (parent was 1)
+# successor.spawned_by = job.id  (lineage preserved)
+# successor.handover_summary = "<10K tokens condensed context>"
+# successor.context_used = 0  (fresh start)
+# successor.context_budget = 200000  (same as parent)
 ```
 
 ---
@@ -1150,7 +1150,7 @@ Handover reason: (pending)
 
 ```python
 @pytest.mark.asyncio
-async def test_auto_succession_trigger(db_session, test_tenant):
+async def test_manual_succession_trigger(db_session, test_tenant):
     service = OrchestrationService(db_session, test_tenant)
 
     # Create orchestrator with small budget for testing
@@ -1160,15 +1160,15 @@ async def test_auto_succession_trigger(db_session, test_tenant):
         context_budget=10000  # Small budget
     )
 
-    # Simulate context usage approaching 90%
+    # Simulate context usage approaching threshold
     await service.update_context_usage(job.id, 9100)  # 91% used
 
-    # Check succession triggered
+    # Check succession status
     status = await service.get_context_status(job.id)
     assert status['percentage_used'] >= 0.9
 
-    # Trigger succession
-    successor = await service.trigger_succession(job.id, "context_limit")
+    # Manually trigger succession (user action)
+    successor = await service.trigger_succession(job.id, "manual")
 
     # Verify successor
     assert successor.instance_number == 2
@@ -1230,8 +1230,7 @@ Response:
   "context_used": 180000,
   "context_budget": 200000,
   "percentage_used": 0.90,
-  "tokens_remaining": 20000,
-  "auto_succession_threshold": 0.90
+  "tokens_remaining": 20000
 }
 ```
 
@@ -1327,7 +1326,7 @@ pytest tests/integration/test_succession.py::test_handover_summary_completeness 
 
 ## Troubleshooting
 
-### **Issue: Succession Not Triggering at 90%**
+### **Issue: Context Tracking Not Working**
 
 **Diagnosis**:
 ```python
@@ -1340,7 +1339,7 @@ if job.context_budget is None:
 # Add logging to OrchestrationService.update_context_usage()
 ```
 
-**Solution**: Ensure `create_orchestrator_job()` sets `context_budget` and `update_context_usage()` is called after every message.
+**Solution**: Ensure `create_orchestrator_job()` sets `context_budget` and `update_context_usage()` is called after every message. Succession must be triggered manually when context is high.
 
 ### **Issue: Handover Summary Too Large (>10K tokens)**
 
@@ -1364,6 +1363,196 @@ if not job.handover_context_refs:
 ```
 
 **Solution**: Populate `handover_context_refs` with vision doc IDs, agent job IDs, and message timestamps for full context retrieval.
+
+---
+
+## Session Handover (Simplified)
+
+### Overview
+
+**Implementation**: Handover 0461e
+**Purpose**: Enable orchestrators to refresh their Claude Code session with minimal context loss
+
+GiljoAI v3.3 provides a **simplified session handover** mechanism that replaces the complex Agent ID Swap succession system. Session handover writes current state to 360 Memory and generates a continuation prompt for the next terminal session.
+
+### How It Works
+
+**Three-Step Process**:
+
+```
+1. User Action: Click "Refresh Session" button in UI
+   ├─ Triggers: POST /api/agent-jobs/{job_id}/simple-handover
+   └─ Button shown on working orchestrator cards
+
+2. System Action: Save session state to 360 Memory
+   ├─ Creates: ProductMemoryEntry with entry_type = "session_handover"
+   ├─ Includes: Summary, key outcomes, decisions, session_context
+   └─ Preserves: Current work state for continuation
+
+3. User Action: Copy continuation prompt to new terminal
+   ├─ New session reads: fetch_context(categories=["memory_360"])
+   ├─ Loads: Previous session's context automatically
+   └─ Continues: Work where previous session left off
+```
+
+### Session Handover Entry Type
+
+**Created by**: `/api/agent-jobs/{job_id}/simple-handover` endpoint
+
+**Entry Structure**:
+```json
+{
+  "entry_type": "session_handover",
+  "summary": "2-3 paragraph summary of current session work",
+  "key_outcomes": ["Outcome 1", "Outcome 2", "..."],
+  "decisions_made": ["Decision 1", "Decision 2", "..."],
+  "metrics": {
+    "session_context": {
+      "last_spawned_agents": ["agent-uuid-1", "agent-uuid-2"],
+      "pending_coordination": ["Task 1", "Task 2"],
+      "blockers": ["Issue 1"],
+      "next_steps": ["Step 1", "Step 2"]
+    }
+  }
+}
+```
+
+### UI Integration
+
+**Refresh Session Button**:
+- **Location**: Agent card action menu (working orchestrators only)
+- **Icon**: Refresh icon
+- **Label**: "Refresh Session"
+- **Action**: Calls `/api/agent-jobs/{job_id}/simple-handover`
+- **Result**: Shows continuation prompt in dialog for copy/paste
+
+**HandoverDialog Component**:
+- Displays generated continuation prompt
+- Copy button for clipboard
+- Instructions for launching new terminal session
+- No manual input required (fully automated)
+
+### Continuation Flow
+
+**New Session Startup**:
+1. User pastes continuation prompt in new Claude Code terminal
+2. Agent calls `get_agent_mission(job_id, tenant_key)`
+3. Mission includes instruction to fetch 360 Memory
+4. Agent calls `fetch_context(categories=["memory_360"])`
+5. Loads previous session's handover entry automatically
+6. Continues work with full context from previous session
+
+**Memory Retrieval**:
+```python
+# Continuation agent automatically fetches memory
+context = fetch_context(
+    product_id=product_id,
+    tenant_key=tenant_key,
+    categories=["memory_360"],
+    depth_config={"memory_360": "5"}  # Last 5 projects/sessions
+)
+
+# Receives handover entries including session_handover type
+# Agent reads last session's summary and continues work
+```
+
+### Benefits Over Complex Succession
+
+**Simplified Architecture**:
+- ❌ Removed: Agent ID swapping logic
+- ❌ Removed: Database record migrations (AgentJob.current_execution_id)
+- ❌ Removed: Complex lineage tracking for succession
+- ❌ Removed: Succession timeline UI components
+- ✅ Kept: 360 Memory writing (proven, reliable pattern)
+- ✅ Added: Simple continuation prompt generation
+- ✅ Improved: Faster handover (single API call vs multi-step swap)
+
+**User Experience**:
+- Single click to refresh session (no multi-step wizard)
+- Copy/paste continuation prompt (no manual configuration)
+- Automatic context loading in new session (no manual setup)
+- Minimal disruption (continue work in ~30 seconds)
+
+### When to Use Session Handover
+
+**Good Reasons**:
+- Claude Code terminal becoming unresponsive
+- Context window filling up with long conversation
+- Want fresh terminal for performance reasons
+- Switching between different development machines
+- Need to pause work and resume later
+
+**Not Needed For**:
+- Normal agent spawning (agents are independent)
+- Project completion (use close_project_and_update_memory)
+- Changing orchestrator strategy (spawn new orchestrator)
+
+### Code References
+
+- **Endpoint**: `api/endpoints/agent_jobs/simple_handover.py`
+- **Memory Writer**: `src/giljo_mcp/tools/write_360_memory.py`
+- **UI Component**: `frontend/src/components/projects/HandoverDialog.vue`
+- **Tests**: `tests/api/test_simple_handover.py`
+
+---
+
+## What Changed (Handover 0461)
+
+### Removed (Complex Succession System)
+
+**Database Schema**:
+- `AgentJob.current_execution_id` column (DEPRECATED)
+- `AgentJob.spawned_by` foreign key (DEPRECATED)
+- `AgentJob.handover_to` foreign key (DEPRECATED)
+- `AgentJob.handover_summary` column (DEPRECATED)
+- `AgentJob.succession_reason` column (DEPRECATED)
+- `AgentJob.handover_context_refs` JSONB (DEPRECATED)
+
+**Backend Code**:
+- `src/giljo_mcp/orchestrator_succession.py` (ARCHIVED)
+- Complex succession triggers in OrchestrationService
+- Agent ID swap logic in succession endpoints
+- Lineage tracking code
+
+**Frontend Components**:
+- `SuccessionTimeline.vue` (ARCHIVED)
+- `LaunchSuccessorDialog.vue` (ARCHIVED)
+- Succession-related store actions
+- Complex succession UI workflows
+
+**API Endpoints**:
+- `/api/agent-jobs/{job_id}/succession/launch` (DEPRECATED)
+- `/api/agent-jobs/{job_id}/succession/check` (DEPRECATED)
+- Complex succession status endpoints
+
+### Added (Simplified Handover)
+
+**Backend**:
+- `api/endpoints/agent_jobs/simple_handover.py` - Single endpoint for handover
+- `session_handover` entry type in 360 Memory
+- Simplified continuation prompt generation
+
+**Frontend**:
+- "Refresh Session" action button in agent cards
+- Simple handover dialog (copy/paste prompt only)
+
+### Migration Notes
+
+**Existing Projects** (v3.3 → v3.4):
+- Old succession fields remain in database (ignored)
+- No data migration required
+- Succession timeline UI shows "ARCHIVED" message
+- Old succession endpoints return deprecation warnings
+
+**Future Cleanup** (v4.0):
+- All succession columns will be dropped from schema
+- Archived code/components will be removed
+- Database migration will clean up legacy data
+
+**Recommended Action**:
+- Start using "Refresh Session" button for new handovers
+- Existing succession chains remain viewable (read-only)
+- No breaking changes for current projects
 
 ---
 

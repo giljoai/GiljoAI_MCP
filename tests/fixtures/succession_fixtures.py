@@ -92,10 +92,11 @@ async def test_tenant_key() -> str:
 @pytest_asyncio.fixture(scope="function")
 async def orchestrator_at_90_percent(db_session: AsyncSession, test_project: Project, test_tenant_key: str):
     """
-    Create an orchestrator job at 90% context usage threshold.
+    Create an orchestrator job at 90% context usage.
 
-    This simulates an orchestrator that should trigger succession.
+    This simulates an orchestrator approaching context limits (manual succession scenario).
     Context: 135K/150K = 90%
+    Note: Auto-succession removed in Handover 0461a - succession is now manual-only.
     """
     context_budget = 150000
     context_used = int(context_budget * 0.90)  # 135000 tokens
@@ -120,9 +121,9 @@ async def orchestrator_at_90_percent(db_session: AsyncSession, test_project: Pro
 @pytest_asyncio.fixture(scope="function")
 async def orchestrator_below_threshold(db_session: AsyncSession, test_project: Project, test_tenant_key: str):
     """
-    Create an orchestrator job below the 90% context threshold.
+    Create an orchestrator job with moderate context usage.
 
-    Context: 60K/150K = 40% - should NOT trigger succession
+    Context: 60K/150K = 40% - well within budget
     """
     context_budget = 150000
     context_used = int(context_budget * 0.40)  # 60000 tokens
@@ -147,10 +148,10 @@ async def orchestrator_below_threshold(db_session: AsyncSession, test_project: P
 @pytest_asyncio.fixture(scope="function")
 async def orchestrator_over_100_percent(db_session: AsyncSession, test_project: Project, test_tenant_key: str):
     """
-    Create an orchestrator job that exceeded 100% context usage.
+    Create an orchestrator job that exceeded 100% context budget.
 
-    This simulates an emergency scenario requiring immediate succession.
-    Context: 155K/150K = 103% - emergency truncation needed
+    This simulates an edge case where context usage exceeded the budget.
+    Context: 155K/150K = 103% - manual succession recommended
     """
     context_budget = 150000
     context_used = int(context_budget * 1.03)  # 154500 tokens

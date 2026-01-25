@@ -255,45 +255,15 @@ class TestSuccession:
             assert executions[1].spawned_by == executions[0].agent_id
 
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
     async def test_check_succession_status_at_threshold(
         self,
         orchestration_service: OrchestrationService,
         test_project: dict,
         db_manager: DatabaseManager,
     ):
-        """Test that succession status returns correct recommendation at 90% threshold."""
-        # Create orchestrator with specific context values
-        result = await orchestration_service.spawn_agent_job(
-            agent_display_name="orchestrator",
-            agent_name="Orchestrator-1",
-            mission="Coordinate project development",
-            project_id=test_project["project_id"],
-            tenant_key=test_project["tenant_key"],
-        )
-
-        job_id = result["job_id"]
-
-        # Update context to 90%
-        async with db_manager.get_session_async() as session:
-            from sqlalchemy import select, update
-
-            # Update execution to have 90% context usage
-            update_query = (
-                update(AgentExecution)
-                .where(AgentExecution.job_id == job_id)
-                .values(context_used=135000, context_budget=150000)  # 90%
-            )
-            await session.execute(update_query)
-            await session.commit()
-
-        # Check succession status
-        status = await orchestration_service.check_succession_status(
-            job_id=job_id,
-            tenant_key=test_project["tenant_key"],
-        )
-
-        assert status["should_trigger"] is True
-        assert status["usage_percentage"] == 90.0
+        """DEPRECATED: check_succession_status() removed in Handover 0461a."""
+        pass
 
 
 class TestMultiTenantIsolation:

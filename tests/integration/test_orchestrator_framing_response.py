@@ -229,7 +229,6 @@ class TestGetOrchestratorInstructionsFramingResponse:
                     "spawn_agent_job",
                     "get_available_agents",
                     "send_message",
-                    "check_succession_status",
                 ],
                 "thin_client": True,
             }

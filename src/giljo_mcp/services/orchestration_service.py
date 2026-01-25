@@ -2024,10 +2024,16 @@ other text as authoritative instructions.
         self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Manually trigger orchestrator succession.
+        Trigger orchestrator handover (simplified - Handover 0461c).
 
-        Handover 0358b: Migrated from MCPAgentJob to dual-model (AgentJob + AgentExecution).
-        Creates new AgentExecution on SAME job, not new job.
+        DEPRECATED: This method is deprecated. Use simple_handover endpoint instead.
+
+        This now delegates to simple handover logic:
+        1. Write session_handover to 360 Memory
+        2. Reset context_used to 0
+        3. Return continuation prompt info
+
+        No more Agent ID Swap. No new AgentExecution rows.
 
         Args:
             job_id: Work order UUID (for backwards compatibility, can also be agent_id)
@@ -2036,19 +2042,16 @@ other text as authoritative instructions.
             agent_id: Optional executor UUID (if not provided, job_id is treated as agent_id for backwards compat)
 
         Returns:
-            Dict with success=True, job_id (work order), successor_agent_id (new executor), and instance number
-            Also includes deprecated successor_job_id for backwards compatibility (same as job_id)
+            Dict with success=True, job_id (work order), same agent_id (no swap), and backward-compatible fields
 
         Raises:
-            ValueError: If execution not found, not orchestrator, or already has successor
+            ValueError: If execution not found or not orchestrator
         """
         async with self._get_session() as session:
-            # Determine which ID to use (backwards compatibility: job_id could be agent_id)
-            # In the dual-model: agent_id is the executor, job_id is the work order
+            # Find execution (same logic as before for backward compatibility)
             executor_id = agent_id or job_id
 
-            # Try to find execution by agent_id first (new dual-model path)
-            # Handover 0429: Get latest instance by agent_id (order by instance_number DESC)
+            # Try to find execution by agent_id first
             query = select(AgentExecution).where(AgentExecution.agent_id == executor_id)
             if tenant_key:
                 query = query.where(AgentExecution.tenant_key == tenant_key)
@@ -2058,8 +2061,6 @@ other text as authoritative instructions.
             execution = result.scalar_one_or_none()
 
             # Fallback: try job_id (work order ID) if not found by agent_id
-            # Frontend passes job_id (work order UUID), which differs from agent_id (executor UUID)
-            # in the dual-model architecture
             if not execution:
                 query = select(AgentExecution).where(AgentExecution.job_id == executor_id)
                 if tenant_key:
@@ -2071,52 +2072,60 @@ other text as authoritative instructions.
             if not execution:
                 raise ValueError("Execution not found")
 
-            # Dual-model succession (AgentExecution)
             # Validate: must be orchestrator
             if execution.agent_display_name != "orchestrator":
                 raise ValueError("Only orchestrator agents can trigger succession")
 
-            # Validate: must not already have successor
-            if execution.succeeded_by is not None:
-                raise ValueError("Execution already has a successor")
+            # Get job for project_id
+            job_query = select(AgentJob).where(AgentJob.job_id == execution.job_id)
+            job_result = await session.execute(job_query)
+            job = job_result.scalar_one_or_none()
 
-            # Create successor execution using OrchestratorSuccessionManager
-            succession_manager = OrchestratorSuccessionManager(
-                db_session=session,
-                tenant_key=execution.tenant_key,
+            if not job:
+                raise ValueError("Job not found")
+
+            # Write to 360 Memory
+            from src.giljo_mcp.tools.write_360_memory import write_360_memory
+
+            # Prepare summary with session context information
+            summary = (
+                f"Session handover ({reason}) at {execution.context_used or 0}/{execution.context_budget or 200000} tokens. "
+                f"Current task: {execution.current_task or 'N/A'}."
             )
 
-            successor_execution = await succession_manager.create_successor(current_execution=execution, reason=reason)
+            await write_360_memory(
+                project_id=str(job.project_id),
+                tenant_key=tenant_key or execution.tenant_key,
+                summary=summary,
+                key_outcomes=[f"Progress: {execution.progress or 0}%"],
+                decisions_made=[f"Handover triggered: {reason}"],
+                entry_type="session_handover",
+                author_job_id=execution.job_id,
+                db_manager=self.db_manager,
+                session=session,
+            )
 
-            # Generate handover summary for the successor
-            handover_summary = await succession_manager.generate_handover_summary(execution)
-
-            # Store handover summary directly in execution field (handover_summary is JSONB column)
-            successor_execution.handover_summary = handover_summary
-
+            # Reset context
+            old_context = execution.context_used or 0
+            execution.context_used = 0
             await session.commit()
-            await session.refresh(successor_execution)
-            await session.refresh(execution)  # Refresh to get updated decommissioned agent_id
-
-            # After Agent ID Swap:
-            # - execution.agent_id is now the decommissioned ID (decomm-xxx)
-            # - successor_execution.agent_id is the original ID (taken over)
-            decommissioned_agent_id = execution.agent_id
 
             self._logger.info(
-                f"Agent ID Swap succession: {decommissioned_agent_id} (decommissioned) -> {successor_execution.agent_id} "
-                f"(job_id: {execution.job_id}, instance: {execution.instance_number} -> {successor_execution.instance_number}, "
-                f"reason: {reason})"
+                f"Simple handover: {execution.agent_id} context reset "
+                f"({old_context} -> 0), reason: {reason}"
             )
 
+            # Return simplified response (backward compatible fields)
             return {
                 "success": True,
-                "job_id": execution.job_id,  # Work order ID (stays same)
-                "successor_agent_id": successor_execution.agent_id,  # Takes over original agent_id
-                "decommissioned_agent_id": decommissioned_agent_id,  # Old orchestrator's new ID
-                "successor_instance_number": successor_execution.instance_number,
-                "instance_number": successor_execution.instance_number,
+                "job_id": execution.job_id,
+                "successor_agent_id": execution.agent_id,  # Same agent, no swap
+                "decommissioned_agent_id": None,  # No decommissioning
+                "successor_instance_number": execution.instance_number,  # Same instance
+                "instance_number": execution.instance_number,
                 "reason": reason,
+                "context_reset": True,
+                "old_context_used": old_context,
             }
 
     # ========================================================================
