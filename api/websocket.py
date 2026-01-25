@@ -831,8 +831,13 @@ class WebSocketManager:
         new_status: str,
         updated_at: Optional[datetime] = None,
         duration_seconds: Optional[float] = None,
+        project_id: Optional[str] = None,
     ):
-        """Broadcast agent job status change event."""
+        """Broadcast agent job status change event.
+
+        Handover 0463: Added project_id to enable frontend project-aware filtering
+        and prevent cross-project ghost rows.
+        """
         event_type = "agent:status_changed"
 
         message_data: dict[str, Any] = {
@@ -843,6 +848,10 @@ class WebSocketManager:
             "tenant_key": tenant_key,
             "updated_at": (updated_at or datetime.now(timezone.utc)).isoformat(),
         }
+
+        # Handover 0463: Include project_id for frontend project-aware filtering
+        if project_id is not None:
+            message_data["project_id"] = project_id
 
         if duration_seconds is not None:
             message_data["duration_seconds"] = duration_seconds
@@ -856,7 +865,7 @@ class WebSocketManager:
 
         await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
-        logger.info(f"Broadcast {event_type} - {job_id} ({old_status} -> {new_status})")
+        logger.info(f"Broadcast {event_type} - {job_id} ({old_status} -> {new_status}, project: {project_id})")
 
     async def broadcast_job_message(
         self,
