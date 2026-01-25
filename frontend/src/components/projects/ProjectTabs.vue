@@ -160,7 +160,7 @@
       :project-name="project.name"
       :product-id="project.product_id"
       @close="showCloseoutModal = false"
-      @complete="handleCloseoutComplete"
+      @closeout="handleCloseoutComplete"
     />
   </div>
 </template>
@@ -666,7 +666,8 @@ async function handleLaunchAgent(agent) {
 async function handleCloseoutProject(closeoutData) {
   try {
     emit('closeout-project', closeoutData)
-    activeTab.value = 'launch'
+    // Navigate to projects list after closeout
+    router.push('/projects')
   } catch (error) {
     console.error('Closeout project failed:', error)
   }
@@ -730,6 +731,9 @@ function handleCloseoutComplete(closeoutData) {
 
   showCloseoutModal.value = false
   emit('closeout-project', normalized)
+
+  // Navigate to projects list after closeout
+  router.push('/projects')
 }
 </script>
 

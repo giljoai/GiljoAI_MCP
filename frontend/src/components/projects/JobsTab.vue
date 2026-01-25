@@ -354,7 +354,7 @@
       :project-name="project.name"
       :product-id="project.product_id"
       @continue="handleContinue"
-      @complete="handleCloseout"
+      @closeout="handleCloseout"
       @close="showCloseoutModal = false"
     />
 
