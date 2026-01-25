@@ -676,7 +676,14 @@ class ToolAccessor:
     async def create_successor_orchestrator(
         self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
     ) -> dict[str, Any]:
-        """Delegate to OrchestrationService (Handover 0451)"""
+        """
+        Create successor orchestrator context via 360 Memory (Handover 0461f).
+
+        SIMPLIFIED: Writes session context to 360 Memory and resets context_used.
+        No new AgentExecution rows created. Same agent_id continues.
+
+        Use fetch_context(categories=['memory_360']) in new session to retrieve context.
+        """
         return await self._orchestration_service.create_successor_orchestrator(current_job_id, tenant_key, reason)
 
     async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
