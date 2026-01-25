@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.config import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
@@ -172,8 +173,6 @@ async def simple_handover(
 
         # Emit WebSocket event
         try:
-            from api.app import app
-
             websocket_manager = getattr(app.state, "websocket_manager", None)
             if websocket_manager:
                 await websocket_manager.broadcast_to_tenant(
@@ -230,8 +229,8 @@ def _build_continuation_prompt(
         Continuation prompt string
     """
     # Note: We use the MCP server URL pattern from config
-    # In production, this would be dynamically determined
-    mcp_url = "http://localhost:7272/mcp"
+    config = get_config()
+    mcp_url = f"http://{config.get('host', 'localhost')}:{config.get('port', 7272)}/mcp"
 
     prompt = f"""I am Orchestrator for Project (CONTINUATION SESSION).
 

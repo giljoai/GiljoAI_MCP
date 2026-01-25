@@ -182,15 +182,17 @@ class SuccessionResponse(BaseModel):
     """
     Response for manual succession trigger.
 
+    DEPRECATED (Handover 0461f): This schema supports the legacy /trigger-succession endpoint.
+    Use simple-handover endpoint instead for 360 Memory-based session continuity.
+
     Handover 0358b: Updated for dual-model architecture (AgentJob + AgentExecution).
     Handover 0381: Clean contract - job_id (work order) + successor_agent_id (new executor).
-    Agent ID Swap: Old orchestrator gets decommissioned ID, new orchestrator takes over original.
     Returns successor execution details and handover summary for launching new instance.
     """
 
-    current_agent_id: str = Field(..., description="Decommissioned agent_id of old orchestrator (after swap)")
+    current_agent_id: str = Field(..., description="Agent ID of current orchestrator (deprecated)")
     job_id: str = Field(..., description="Work order UUID (persists across succession)")
-    successor_agent_id: str = Field(..., description="Agent_id of new orchestrator (takes over original ID)")
+    successor_agent_id: str = Field(..., description="Agent ID of new orchestrator")
     instance_number: int = Field(..., description="Successor instance number")
     launch_prompt: str = Field(..., description="Thin-client launch prompt for successor")
     handover_summary: Optional[str] = Field(None, description="Compressed handover summary")
