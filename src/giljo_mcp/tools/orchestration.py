@@ -616,6 +616,14 @@ Returns:
 
 Read this protocol via orchestrator_protocol field.
 
+⚠️  CONTEXT VARIABLES (CRITICAL):
+Your fetch_context() responses contain AUTHORITATIVE values:
+  - project_path: The project directory - USE THIS in missions
+  - product_name: The product name
+  - tenant_key: Your tenant isolation key
+When writing missions or referencing directories, ALWAYS use values from context.
+NEVER hardcode paths you observe in your terminal session.
+
 ── STEP 3: Discover Agents ─────────────────────────────────────────────────
 Call: get_available_agents(active_only=true)
 Note: tenant_key auto-injected by server from API key session
