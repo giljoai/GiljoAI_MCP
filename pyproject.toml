@@ -39,7 +39,6 @@ dependencies = [
     "asyncpg>=0.29.0",
 
     # Authentication & Security
-    "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=3.2.0,<4.0.0",
     "python-multipart>=0.0.6",
@@ -47,7 +46,6 @@ dependencies = [
 
     # MCP SDK (Model Context Protocol)
     "mcp==1.12.3",
-    "fastmcp>=0.1.0",
 
     # Core Utilities
     "python-dotenv>=1.0.0",
@@ -61,8 +59,6 @@ dependencies = [
     "aiofiles>=24.1.0",
     "tiktoken>=0.5.0",
     "structlog>=25.0.0",
-    "rich>=13.0.0",
-    "typer>=0.9.0",
     "watchdog>=3.0.0",
 
     # Vision Document Summarization
@@ -83,12 +79,11 @@ dev = [
     "pre-commit>=3.4.0",
     "types-PyYAML",
     "types-passlib",
+    "fastmcp>=0.1.0",  # MCP server framework (test-only dependency)
 ]
 
-# Windows-specific dependencies
-windows = [
-    "pywin32>=306",
-]
+# Windows-specific dependencies - removed in Handover 0394
+# pywin32 was unused (no imports found in codebase)
 
 [project.urls]
 Homepage = "https://github.com/giljoai/giljo-mcp"

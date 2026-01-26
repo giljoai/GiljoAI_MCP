@@ -18,14 +18,13 @@ psycopg2-binary>=2.9.0      # PostgreSQL driver (sync)
 asyncpg>=0.29.0             # PostgreSQL driver (async)
 
 # Authentication & Security
-python-jose[cryptography]>=3.3.0  # JWT token handling
 passlib[bcrypt]>=1.7.4            # Password hashing
 bcrypt>=3.2.0,<4.0.0              # bcrypt backend (pinned: passlib 1.7.4 incompatible with 4.x+)
 python-multipart>=0.0.6           # Form data and file upload support
+PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of python-jose)
 
 # MCP SDK (Model Context Protocol)
 mcp==1.12.3                 # MCP SDK (pinned for serena-agent compatibility)
-fastmcp>=0.1.0              # MCP server framework
 
 # Core Utilities
 python-dotenv>=1.0.0        # Environment variable loading
@@ -39,6 +38,7 @@ psutil>=5.9.0              # Process and system utilities (required for network 
 aiofiles>=24.1.0           # Async file I/O operations (required for product vision uploads)
 tiktoken>=0.5.0            # Token counting for Context Management System (context prioritization and orchestration)
 structlog>=25.0.0          # Structured logging (required by MCP context tools)
+watchdog>=3.0.0            # File system event monitoring
 
 # Vision Document Summarization (Handover 0345b - Optional CPU-based feature)
 sumy>=0.11.0               # Extractive summarization using LSA algorithm
@@ -47,7 +47,4 @@ numpy>=1.24.0              # Required by sumy for LSA calculations
 scipy>=1.10.0              # Required by sumy for SVD in LSA
 
 # Platform-Specific
-pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)
-
-PyJWT>=2.8.0
-watchdog>=3.0.0
+# pywin32 removed in Handover 0394 - no usage found in codebase
