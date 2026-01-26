@@ -142,18 +142,24 @@ async function copySlashCommandSetup() {
     generatingInstructions.value = true
     console.log('[SLASH COMMAND SETUP] Generating download instructions...')
 
-    // Call backend MCP tool - returns natural language instructions directly
+    // Call backend to generate timed download URL
     const response = await api.downloads.generateSlashCommandsInstructions()
-    const instructions =
-      response.data.instructions || response.data.message || 'Download link generated successfully'
+    const downloadUrl = response.data.download_url
 
-    // Copy instructions to clipboard
-    await copyToClipboard(instructions)
+    if (!downloadUrl) {
+      throw new Error('No download URL received from server')
+    }
+
+    // Construct curl command for CLI installation
+    const curlCommand = `curl -O ${downloadUrl} && unzip -o slash_commands.zip -d ~/.claude/commands/ && rm slash_commands.zip`
+
+    // Copy curl command to clipboard
+    await copyToClipboard(curlCommand)
 
     copied.value = true
     showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Installation instructions copied to clipboard!'
-    console.log('[SLASH COMMAND SETUP] Instructions copied successfully')
+    copyFeedbackMessage.value = 'Installation command copied to clipboard!'
+    console.log('[SLASH COMMAND SETUP] Curl command copied successfully')
 
     // Reset copied state after 2 seconds
     setTimeout(() => {
