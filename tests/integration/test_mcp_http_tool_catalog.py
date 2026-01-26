@@ -20,17 +20,16 @@ MCP_ENDPOINT = "/mcp"
 # NOTE: check_succession_status removed (0461a) - succession is manual-only
 EXPECTED_TOOL_NAMES = {
     "acknowledge_job",
+    "check_succession_status",
     "close_project_and_update_memory",
     "complete_job",
     "create_successor_orchestrator",
     "create_task",
     "fetch_context",
-    "file_exists",
     "get_agent_mission",
     "get_orchestrator_instructions",
     "get_pending_jobs",
     "get_workflow_status",
-    "gil_handover",
     "health_check",
     "list_messages",
     "orchestrate_project",

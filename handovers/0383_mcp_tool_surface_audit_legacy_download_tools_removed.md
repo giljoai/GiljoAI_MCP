@@ -43,7 +43,7 @@ create_project
 create_successor_orchestrator
 create_task
 fetch_context
-file_exists
+~~file_exists~~ (removed 0501)
 get_agent_download_url
 get_agent_mission
 get_next_instruction
@@ -116,7 +116,7 @@ Used for agent-to-agent communication and UI visibility:
 
 Used for context loading and template resolution:
 - `fetch_context`
-- `file_exists`
+- ~~`file_exists`~~ (removed in Handover 0501 - flawed assumption: MCP server cannot access user local files)
 - `get_template`
 
 ### Succession helpers
