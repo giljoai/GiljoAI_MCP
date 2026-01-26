@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-25 (0460-0463 completed - Agent ID Swap Simplification & Ghost Agent Fixes)
+**Last Updated:** 2026-01-25 (0500 completed - Agent ID Lookup Display Name Resolution)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
-| 0401-0500 | Agent Monitoring & Ghost Fixes | 0460-0463 Complete (Agent ID Swap + Ghost Agent Fixes) |
+| 0401-0500 | Agent Monitoring & Ghost Fixes | 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -108,6 +108,7 @@
 | **0405** | **Message Counter Fallback + TodoWrite Enforcement** | **COMPLETE** | **HIGH** | Frontend counter sync, moved to completed/ (2026-01-03) |
 | **0406** | **Reactive Feedback for TodoWrite Compliance** | **COMPLETE** | **MEDIUM** | Response warnings + throttle, moved to completed/ (2026-01-03) |
 | **0407** | **Message Acknowledged Counter Sync** | **COMPLETE** | **HIGH** | Frontend job_id resolution, moved to completed/ (2026-01-03) |
+| **0500** | **Agent ID Lookup Display Name Resolution** | **COMPLETE** | **MEDIUM** | MCP schema docs fix - send_message already supports display names (2026-01-25) |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
