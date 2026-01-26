@@ -511,6 +511,23 @@ def upgrade() -> None:
     op.create_index('idx_agent_jobs_tenant_project', 'agent_jobs', ['tenant_key', 'project_id'], unique=False)
     # Removed duplicate ix_agent_jobs_project_id (same as idx_agent_jobs_project)
     # Removed duplicate ix_agent_jobs_tenant_key (same as idx_agent_jobs_tenant)
+    op.create_table('agent_todo_items',
+    sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('job_id', sa.String(length=36), nullable=False, comment='Foreign key to parent AgentJob'),
+    sa.Column('tenant_key', sa.String(length=64), nullable=False),
+    sa.Column('content', sa.String(length=255), nullable=False, comment='TODO item description/task text'),
+    sa.Column('status', sa.String(length=20), nullable=False, server_default='pending', comment='Item status: pending, in_progress, completed'),
+    sa.Column('sequence', sa.Integer(), nullable=False, comment='Display order (0-based index in agent TODO list)'),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.CheckConstraint("status IN ('pending', 'in_progress', 'completed')", name='ck_agent_todo_item_status'),
+    sa.CheckConstraint('sequence >= 0', name='ck_agent_todo_item_sequence_positive'),
+    sa.ForeignKeyConstraint(['job_id'], ['agent_jobs.job_id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_todo_items_job', 'agent_todo_items', ['job_id'], unique=False)
+    op.create_index('idx_todo_items_tenant_status', 'agent_todo_items', ['tenant_key', 'status'], unique=False)
+    op.create_index('idx_todo_items_job_sequence', 'agent_todo_items', ['job_id', 'sequence'], unique=False)
     op.create_table('configurations',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=True),
@@ -1031,6 +1048,10 @@ def downgrade() -> None:
     op.drop_index('idx_config_tenant', table_name='configurations')
     op.drop_index('idx_config_category', table_name='configurations')
     op.drop_table('configurations')
+    op.drop_index('idx_todo_items_job_sequence', table_name='agent_todo_items')
+    op.drop_index('idx_todo_items_tenant_status', table_name='agent_todo_items')
+    op.drop_index('idx_todo_items_job', table_name='agent_todo_items')
+    op.drop_table('agent_todo_items')
     # Removed: op.drop_index(op.f('ix_agent_jobs_tenant_key'), table_name='agent_jobs')
     # Removed: op.drop_index(op.f('ix_agent_jobs_project_id'), table_name='agent_jobs')
     op.drop_index('idx_agent_jobs_tenant_project', table_name='agent_jobs')
