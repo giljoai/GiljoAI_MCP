@@ -579,6 +579,9 @@ export const api = {
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
       apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
+    // Generate slash commands installation instructions with timed download URL
+    generateSlashCommandsInstructions: () =>
+      apiClient.post('/api/download/generate-token', null, { params: { content_type: 'slash_commands' } }),
   },
 
   system: {
