@@ -338,8 +338,19 @@ If you call `complete_job()` without meeting these requirements:
    - Sets status back to "working"
 2. Continue execution with Phase 2
 
-**Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions
-**Use actual errors for**: System failures, unrecoverable issues (these also set "blocked" status)
+**Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions (recoverable)
+
+**To mark yourself FAILED** (unrecoverable error, intentional failure):
+1. Call `mcp__giljo-mcp__set_agent_status(
+       agent_id="{executor_id}",
+       tenant_key="{tenant_key}",
+       status="failed",
+       reason="<failure reason>"
+   )`
+2. This is a TERMINAL state - no further work expected
+3. Do NOT call complete_job() after failing
+
+**Use FAILED for**: Unrecoverable errors, intentional test failures, cannot proceed (terminal)
 
 ## Handover on Context Exhaustion
 
