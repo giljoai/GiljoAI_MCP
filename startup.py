@@ -40,7 +40,22 @@ from colorama import Fore, Style, init
 
 
 def ensure_project_virtualenv() -> None:
-    """Re-exec inside the installer-managed virtualenv when available."""
+    """Re-exec inside the installer-managed virtualenv when available.
+
+    Uses subprocess.run() instead of os.execv() for cross-platform compatibility.
+
+    Why not os.execv()?
+    - On Unix: os.execv() replaces the current process (works correctly)
+    - On Windows: os.execv() spawns a new process and exits immediately,
+      losing the child's exit code and running the child in "background"
+
+    The subprocess.run() + sys.exit() pattern works identically on all platforms:
+    parent waits for child, then exits with child's return code.
+
+    References:
+    - https://github.com/python/cpython/issues/101191
+    - https://bugs.python.org/issue19124
+    """
     try:
         project_root = Path(__file__).resolve().parent
         venv_dir = project_root / "venv"
@@ -52,26 +67,29 @@ def ensure_project_virtualenv() -> None:
         if Path(sys.prefix).resolve() == venv_dir.resolve():
             return
 
-        candidates = []
+        # Find venv Python executable (platform-specific paths)
         if platform.system() == "Windows":
-            candidates.append(venv_dir / "Scripts" / "python.exe")
+            venv_python = venv_dir / "Scripts" / "python.exe"
         else:
-            candidates.extend(
-                [
-                    venv_dir / "bin" / "python",
-                    venv_dir / "bin" / "python3",
-                ]
-            )
+            # Try python first, fallback to python3
+            venv_python = venv_dir / "bin" / "python"
+            if not venv_python.exists():
+                venv_python = venv_dir / "bin" / "python3"
 
-        target = next((path for path in candidates if path.exists()), None)
-        if target is None:
+        if not venv_python.exists():
             return
 
         print("Re-launching GiljoAI MCP startup inside project virtual environment...")
-        target_path = str(target)
-        os.execv(target_path, [target_path, *sys.argv])
-    except Exception:
-        # Fail silently; startup will continue with current interpreter
+
+        # Cross-platform process replacement:
+        # subprocess.run() waits for child and captures exit code
+        # sys.exit() propagates the exit code to parent/shell
+        result = subprocess.run([str(venv_python)] + sys.argv)
+        sys.exit(result.returncode)
+
+    except Exception as e:
+        # Log error but continue - don't block startup entirely
+        print(f"Warning: Could not activate venv: {e}", file=sys.stderr)
         return
 
 
