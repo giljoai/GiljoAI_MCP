@@ -2187,8 +2187,8 @@ pg_restore -l {backup_file.name} | head -20
         """
         Reset to fresh state for testing setup flow.
 
-        Resets the admin user to default password (admin/admin) and
-        sets must_change_password=True so you can test the password
+        Resets the dev admin user (patrik) to dev credentials (***REMOVED***)
+        and sets must_change_password=True so you can test the password
         change flow without reinstalling.
 
         Does NOT delete venv or configs - only resets authentication state.
@@ -2196,8 +2196,8 @@ pg_restore -l {backup_file.name} | head -20
         # Confirmation dialog
         confirm = messagebox.askyesno(
             "Confirm Reset to Fresh State",
-            "This will reset the admin user for testing setup flow:\n\n"
-            "- Reset admin password to 'admin'\n"
+            "This will reset the dev admin user for testing setup flow:\n\n"
+            "- Reset 'patrik' password to '***REMOVED***'\n"
             "- Set must_change_password = True\n"
             "- Set must_set_pin = True\n"
             "- Clear recovery PIN\n\n"
@@ -2213,7 +2213,7 @@ pg_restore -l {backup_file.name} | head -20
         if not confirm:
             return
 
-        self.update_status_message("Resetting admin user to default state...")
+        self.update_status_message("Resetting dev admin user to test state...")
 
         # Reset admin user in database
         if psycopg2 is None:
@@ -2235,10 +2235,10 @@ pg_restore -l {backup_file.name} | head -20
             conn.autocommit = True
 
             with conn.cursor() as cur:
-                # Step 1: Reset admin user password to 'admin' and set flags
-                self.update_status_message("Resetting admin password to 'admin'...")
-                # This is the bcrypt hash for 'admin'
-                admin_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPfL0fJLKZ9S"
+                # Step 1: Reset dev admin user password and set flags
+                self.update_status_message("Resetting patrik password to dev credentials...")
+                # This is the bcrypt hash for '***REMOVED***'
+                dev_admin_hash = "$2b$12$ax7nbk8fPDnQjbgj3Cz9fe4h1bM7MDUiS9UQ0i3ZeJW8GvCVE3VGa"
 
                 cur.execute(
                     """
@@ -2249,24 +2249,24 @@ pg_restore -l {backup_file.name} | head -20
                         recovery_pin_hash = NULL,
                         failed_pin_attempts = 0,
                         pin_lockout_until = NULL
-                    WHERE username = 'admin'
+                    WHERE username = 'patrik'
                 """,
-                    (admin_hash,),
+                    (dev_admin_hash,),
                 )
 
                 # Check if update was successful
                 if cur.rowcount == 0:
-                    raise Exception("Admin user not found in database")
+                    raise Exception("User 'patrik' not found in database")
 
             conn.close()
 
             self.update_status_message("Reset complete - ready for testing!")
             messagebox.showinfo(
                 "Reset Complete",
-                "Admin user reset successfully!\n\n"
+                "Dev admin user reset successfully!\n\n"
                 "You can now test the setup flow:\n\n"
                 "1. Visit http://localhost:7274\n"
-                "2. Login with admin/admin\n"
+                "2. Login with patrik / ***REMOVED***\n"
                 "3. Change password (forced)\n"
                 "4. Set recovery PIN (forced)\n\n"
                 "No reinstallation needed!",
@@ -2276,11 +2276,11 @@ pg_restore -l {backup_file.name} | head -20
             self.update_status_message(f"Reset failed: {e}")
             messagebox.showerror(
                 "Reset Failed",
-                f"Failed to reset admin user:\n\n{e}\n\n"
+                f"Failed to reset dev admin user:\n\n{e}\n\n"
                 "Make sure:\n"
                 "1. PostgreSQL is running\n"
                 "2. giljo_mcp database exists\n"
-                "3. Backend services are stopped",
+                "3. User 'patrik' exists in database",
             )
 
     def reset_to_pristine(self):

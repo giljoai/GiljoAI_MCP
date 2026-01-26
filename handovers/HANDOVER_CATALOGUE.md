@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-25 (0393 completed - Context variable framing protocol update)
+**Last Updated:** 2026-01-25 (0394 completed - Python dependency cleanup)
 
 ---
 
@@ -168,6 +168,7 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0394 | Python Dependency Cleanup | **COMPLETE** (2026-01-25) |
 | 0393 | Context Variable Framing Protocol Update | **COMPLETE** (2026-01-25) |
 | 0463 | Ghost Agents Cross-Project Event Leak | **COMPLETE** (2026-01-25) |
 | 0462 | Ghost Agent Avatar Fix ("??" Bug) | **COMPLETE** (2026-01-25) |
@@ -506,7 +507,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0383, 0387, 0388-0393 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0383, 0387, 0388-0394 (includes Alpha Trial 0356-0362, 0364-0365)
 **0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
@@ -515,7 +516,7 @@ completed/reference/
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
 - **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
-- **0394-0399**: Gaps in 0301-0400 range (0388-0393 now used)
+- **0395-0399**: Gaps in 0301-0400 range (0388-0394 now used)
 - **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
