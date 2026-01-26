@@ -92,7 +92,6 @@ Repository = "https://github.com/giljoai/giljo-mcp.git"
 Issues = "https://github.com/giljoai/giljo-mcp/issues"
 
 [project.scripts]
-giljo-mcp = "giljo_mcp.__main__:main"
 giljo-setup = "setup_gui:main"
 
 [tool.black]
