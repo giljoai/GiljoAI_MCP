@@ -245,6 +245,10 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
    - Clear: Windows 'cls' | Unix 'clear'
    - Path separator: Windows '\' | Unix '/'
 
+   **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
+   When creating files or referencing directories, use context-provided paths.
+   Do NOT hardcode paths observed in your terminal environment.
+
 1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
 2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
 3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
