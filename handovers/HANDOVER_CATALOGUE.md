@@ -109,7 +109,7 @@
 | **0406** | **Reactive Feedback for TodoWrite Compliance** | **COMPLETE** | **MEDIUM** | Response warnings + throttle, moved to completed/ (2026-01-03) |
 | **0407** | **Message Acknowledged Counter Sync** | **COMPLETE** | **HIGH** | Frontend job_id resolution, moved to completed/ (2026-01-03) |
 | **0500** | **Agent ID Lookup Display Name Resolution** | **COMPLETE** | **MEDIUM** | MCP schema docs fix - send_message already supports display names (2026-01-25) |
-| **0501** | **Remove file_exists MCP Tool** | **Ready** | **MEDIUM** | Architectural mismatch - server can't access user's file system (2026-01-25) |
+| **0501** | **Remove file_exists MCP Tool** | **COMPLETE** | **MEDIUM** | Removed - architectural mismatch, server can't access user's file system (2026-01-25) |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
