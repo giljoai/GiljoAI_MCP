@@ -566,29 +566,6 @@ async def handle_tools_list(
                 "required": ["product_id"]
             }
         },
-        # File Utilities (Handover 0360 Feature 3)
-        {
-            "name": "file_exists",
-            "description": "Check whether a file or directory exists within the allowed workspace. Prevents token waste from reading entire files just to check existence. Returns exists, is_file, is_dir flags. Respects workspace sandbox - blocks path traversal attacks.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to check (relative or absolute within workspace)"
-                    },
-                    "tenant_key": {
-                        "type": "string",
-                        "description": "Tenant isolation key"
-                    },
-                    "workspace_root": {
-                        "type": "string",
-                        "description": "Optional workspace root (defaults to product workspace)"
-                    }
-                },
-                "required": ["path"]
-            }
-        },
         # Project Closeout Tool (Handover 0411)
         {
             "name": "close_project_and_update_memory",
@@ -713,8 +690,6 @@ async def handle_tools_call(
         # NOTE: gil_handover removed (0391) - users trigger via UI button, REST API handles it
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
-        # File Utilities (Handover 0360 Feature 3)
-        "file_exists": state.tool_accessor.file_exists,
         # Project Closeout (Handover 0411)
         "close_project_and_update_memory": state.tool_accessor.close_project_and_update_memory,
         # 360 Memory Writing (Handover 0412)
