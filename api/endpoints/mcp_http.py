@@ -254,7 +254,7 @@ async def handle_tools_list(
             },
         },
         # Message Communication Tools
-        # Handover 0405: UUID Normalization - Use agent_id UUIDs for precise identification
+        # Handover 0500: Document all supported recipient formats (UUIDs, display names, broadcast)
         {
             "name": "send_message",
             "description": "Send a message to one or more agents. Use to_agents=['all'] for broadcast.",
@@ -264,7 +264,12 @@ async def handle_tools_list(
                     "to_agents": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of target agent_id UUIDs. Use ['all'] for broadcast to all agents.",
+                        "description": (
+                            "List of recipients. Accepts: "
+                            "(1) agent_id UUIDs for direct targeting, "
+                            "(2) agent_display_name strings (e.g., 'Implementer') for automatic resolution, "
+                            "(3) ['all'] for broadcast to all active agents (sender excluded)."
+                        ),
                     },
                     "content": {"type": "string", "description": "Message content"},
                     "project_id": {"type": "string", "description": "Project ID for the message"},
