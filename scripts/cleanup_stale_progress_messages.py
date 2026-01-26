@@ -99,7 +99,7 @@ async def find_agent_job_for_message(
             select(AgentExecution).join(
                 AgentJob, AgentExecution.job_id == AgentJob.job_id
             ).where(
-                AgentExecution.agent_type == from_agent,
+                AgentExecution.agent_display_name == from_agent,
                 AgentJob.project_id == message.project_id,
                 AgentExecution.tenant_key == message.tenant_key
             ).order_by(AgentExecution.started_at.desc()).limit(1)
@@ -154,7 +154,7 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
                 agent_execution = await find_agent_job_for_message(session, message)
 
                 if agent_execution:
-                    print(f"  Found agent execution: {agent_execution.job_id} ({agent_execution.agent_type})")
+                    print(f"  Found agent execution: {agent_execution.job_id} ({agent_execution.agent_display_name})")
 
                     if not dry_run:
                         # Update agent execution with progress
