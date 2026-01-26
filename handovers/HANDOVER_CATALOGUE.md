@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-25 (0395 completed - Explicit FAILED status protocol documentation)
+**Last Updated:** 2026-01-26 (0450-0459 Exception Handling Remediation Series added to catalogue)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
-| 0401-0500 | Agent Monitoring & Ghost Fixes | 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
+| 0401-0500 | Agent Monitoring & Ghost Fixes | 0450-0459 Ready (Exception Handling), 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -70,6 +70,27 @@
 > **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
 > **Follow-up**: 0440b (Frontend UI), 0440c (Documentation)
 
+### Exception Handling Remediation Series (0450-0459) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0450** | **Exception-to-HTTP Mapping Framework** | **Ready** | **HIGH** | 4h |
+| **0451** | **Service Base Class & Migration Pattern** | **Ready** | **HIGH** | 3h |
+| **0452** | **Test Infrastructure for Exception Flows** | **Ready** | **HIGH** | 2h |
+| **0453** | **High-Value Service Migration** | **Ready** | **CRITICAL** | 6h wall (18h seq) |
+| **0454** | **Core Services Migration** | **Ready** | **HIGH** | 5h wall (15h seq) |
+| **0455** | **Low-Priority Services Migration** | **Ready** | **MEDIUM** | 3h wall (9h seq) |
+| **0456** | **Endpoint Migration (205 endpoints)** | **Ready** | **HIGH** | 5h wall (20h seq) |
+| **0457** | **Frontend Error Discrimination** | **Ready** | **MEDIUM** | 4h |
+| **0458** | **Integration Testing (54+ scenarios)** | **Ready** | **HIGH** | 8h |
+| **0459** | **Cleanup & Documentation** | **Ready** | **LOW** | 4h |
+
+> **Purpose**: Fix 500 errors on fresh install, establish production-grade exception handling
+> **Root Cause**: Services return dicts `{"success": False}`, endpoints use catch-all `except Exception` → 500
+> **Solution**: Wire existing exception infrastructure (35+ exceptions, 45+ error codes, structlog)
+> **Impact**: Zero dict returns, zero catch-all handlers, proper HTTP status codes (404 not 500)
+> **Parallelization**: 0453-0455 (9 services in 3 parallel batches), 0456 (47 modules in batches)
+> **Total Effort**: 44h wall time (87h sequential) over 5.5 days
+
 ### Agent ID Swap & Ghost Agent Series (0460-0463) - COMPLETE
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
@@ -99,6 +120,7 @@
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
 | **0383** | **MCP Tool Surface Audit + Legacy Download Tool Removal** | **COMPLETE** | **MEDIUM** | Removed `gil_fetch`/`gil_import_*`; catalog + decommission candidates |
+| **0384** | **Slash Command Copy Button Fix** | **COMPLETE** | **MEDIUM** | Fixed missing `generateSlashCommandsInstructions()` API method (2026-01-26) |
 | **0387** | **Broadcast Fan-out + JSONB Cleanup** | **Ready** | **HIGH** | Fan-out at write + Phase 4 JSONB normalization (12-19h) |
 | **0400** | **Alpha Test Findings - Claude Code CLI** | **COMPLETE** | - | Reference doc, moved to completed/ (2026-01-03) |
 | **0401** | **Unified WebSocket Platform Refactor** | **COMPLETE** | **HIGH** | agent_id/job_id resolution, moved to completed/ (2026-01-03) |
@@ -508,15 +530,15 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0383, 0387, 0388-0395 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387, 0388-0395 (includes Alpha Trial 0356-0362, 0364-0365)
+**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready), 0424-0425 (ready), 0440a (ready), 0450-0459 (ready), 0460-0463, 0500 (complete)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0384-0386**: Gaps in 0301-0400 range (between 0383 and 0387)
+- **0385-0386**: Gaps in 0301-0400 range (between 0384 and 0387)
 - **0396-0399**: Gaps in 0301-0400 range (0388-0395 now used)
 - **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
