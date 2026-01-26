@@ -20,8 +20,10 @@ asyncpg>=0.29.0             # PostgreSQL driver (async)
 # Authentication & Security
 passlib[bcrypt]>=1.7.4            # Password hashing
 bcrypt>=3.2.0,<4.0.0              # bcrypt backend (pinned: passlib 1.7.4 incompatible with 4.x+)
+cryptography>=42.0.0              # Fernet encryption for auth tokens (auth_manager.py)
 python-multipart>=0.0.6           # Form data and file upload support
 PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of python-jose)
+email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
 mcp==1.12.3                 # MCP SDK (pinned for serena-agent compatibility)
