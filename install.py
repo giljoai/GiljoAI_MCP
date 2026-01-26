@@ -1128,7 +1128,7 @@ class UnifiedInstaller:
                     context_used=35000,
                     context_budget=100000,
                     health_status="healthy",
-                    last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+                    last_progress_at=datetime.now(timezone.utc),  # Current time to avoid immediate staleness alert
                     agent_name="Orchestrator Instance #2",
                 )
                 session.add(second_execution)
