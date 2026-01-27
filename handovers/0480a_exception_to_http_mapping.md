@@ -1,11 +1,20 @@
 # Handover 0480a: Exception-to-HTTP Mapping Framework
 
+> **DEPRECATED 2026-01-27**: This handover proposes creating an exception hierarchy that ALREADY EXISTS.
+>
+> **Issues Found**:
+> - `src/giljo_mcp/exceptions.py` already has 40+ exception classes including `BaseGiljoException`
+> - Proposed `src/giljo_mcp/exceptions/base.py` duplicates existing infrastructure
+> - Code examples don't match actual codebase patterns
+>
+> **Use Instead**: `prompts/0480_chain/0480a_foundation.md` (revised version)
+
 **Date:** 2026-01-26
 **From Agent:** Documentation Manager
 **To Agent:** System Architect + TDD Implementor
-**Priority:** CRITICAL
-**Estimated Complexity:** 12-16 hours
-**Status:** Ready for Implementation
+**Priority:** ~~CRITICAL~~ HIGH
+**Estimated Complexity:** ~~12-16 hours~~ 6-8 hours (revised)
+**Status:** ~~Ready for Implementation~~ **DEPRECATED**
 **Series:** 0480 (Exception Handling Architecture Remediation)
 
 ---
