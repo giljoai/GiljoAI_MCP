@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_CONFIG } from '@/config/api'
+import { parseErrorResponse, getErrorMessage } from '@/utils/errorMessages'
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -48,6 +49,35 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Parse error response (handles both structured and legacy errors)
+    const parsedError = parseErrorResponse(error)
+
+    // Log structured errors for debugging
+    if (parsedError.isStructured) {
+      console.error('[API] Structured error:', {
+        errorCode: parsedError.errorCode,
+        message: parsedError.message,
+        context: parsedError.context,
+        timestamp: parsedError.timestamp,
+        status: parsedError.status,
+      })
+
+      // Log validation errors with field details
+      if (parsedError.errors) {
+        console.error('[API] Validation errors:', parsedError.errors)
+      }
+    } else if (error.response) {
+      // Log legacy errors for debugging
+      console.error('[API] Legacy error:', {
+        status: error.response.status,
+        message: error.response.data?.message || error.message,
+        data: error.response.data,
+      })
+    } else {
+      // Log network errors
+      console.error('[API] Network error:', error.message)
+    }
+
     if (error.response?.status === 401) {
       // Handle unauthorized: clear cached state
       localStorage.removeItem('auth_token')
@@ -91,12 +121,15 @@ apiClient.interceptors.response.use(
 
     // Handle 403 Forbidden
     if (error.response?.status === 403) {
-      console.error('[API] Access forbidden:', error.response.data)
+      console.error('[API] Access forbidden:', {
+        message: parsedError.message,
+        context: parsedError.context,
+      })
     }
 
     // Handle network errors
     if (!error.response) {
-      console.error('[API] Network error - server may be unreachable')
+      console.error('[API] Network error - server may be unreachable:', error.message)
     }
 
     return Promise.reject(error)
@@ -597,5 +630,8 @@ export const api = {
     getCallCounts: () => apiClient.get('/api/v1/stats/call-counts'),
   },
 }
+
+// Export error handling utilities for use in components (Handover 0480f)
+export { parseErrorResponse, getErrorMessage }
 
 export default api
