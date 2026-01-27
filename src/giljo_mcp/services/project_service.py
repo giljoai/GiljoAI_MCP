@@ -21,7 +21,7 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select, update
@@ -211,8 +211,8 @@ class ProjectService:
 
         Example:
             >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
-            >>> print(result["project"]["name"])
-            >>> print(f"Agents: {len(result['project']['agents'])}")
+            >>> print(result["name"])
+            >>> print(f"Agents: {len(result['agents'])}")
         """
         # SECURITY FIX: Require tenant_key (Handover 0424 Phase 0)
         if not tenant_key:
@@ -262,27 +262,24 @@ class ProjectService:
                 self._logger.info(f"Retrieved project {project.name} with {len(agent_dicts)} agents")
 
                 return {
-                    "success": True,
-                    "project": {
-                        "id": str(project.id),
-                        "alias": project.alias,  # Include alias for consistency
-                        "name": project.name,
-                        "mission": project.mission,
-                        "description": project.description,
-                        "status": project.status,
-                        "staging_status": project.staging_status,
-                        "product_id": project.product_id,
-                        "tenant_key": project.tenant_key,
-                        "context_budget": project.context_budget,
-                        "context_used": project.context_used,
-                        "execution_mode": project.execution_mode,  # Handover 0260
-                        "created_at": project.created_at.isoformat() if project.created_at else None,
-                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                        "agents": agent_dicts,  # Production-grade: Include agents in response
-                        "agent_count": len(agent_dicts),
-                        "message_count": 0,  # Placeholder for consistency with ProjectResponse
-                    },
+                    "id": str(project.id),
+                    "alias": project.alias,  # Include alias for consistency
+                    "name": project.name,
+                    "mission": project.mission,
+                    "description": project.description,
+                    "status": project.status,
+                    "staging_status": project.staging_status,
+                    "product_id": project.product_id,
+                    "tenant_key": project.tenant_key,
+                    "context_budget": project.context_budget,
+                    "context_used": project.context_used,
+                    "execution_mode": project.execution_mode,  # Handover 0260
+                    "created_at": project.created_at.isoformat() if project.created_at else None,
+                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                    "completed_at": project.completed_at.isoformat() if project.completed_at else None,
+                    "agents": agent_dicts,  # Production-grade: Include agents in response
+                    "agent_count": len(agent_dicts),
+                    "message_count": 0,  # Placeholder for consistency with ProjectResponse
                 }
 
         except (ValueError, ResourceNotFoundError):
@@ -295,7 +292,7 @@ class ProjectService:
                 context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
-    async def get_active_project(self) -> dict[str, Any]:
+    async def get_active_project(self) -> Optional[dict[str, Any]]:
         """
         Get the currently active project for the current tenant.
 
@@ -306,7 +303,7 @@ class ProjectService:
         - Database enforces this via partial unique index
 
         Returns:
-            Dict with project details (or None if no active project)
+            Dict with project details, or None if no active project
 
         Raises:
             ValidationError: When no tenant context is available
@@ -314,8 +311,8 @@ class ProjectService:
 
         Example:
             >>> result = await service.get_active_project()
-            >>> if result["project"]:
-            ...     print(f"Active project: {result['project']['name']}")
+            >>> if result:
+            ...     print(f"Active project: {result['name']}")
         """
         try:
             # Get current tenant from context
@@ -342,7 +339,7 @@ class ProjectService:
 
                 if not project:
                     self._logger.info(f"No active project found for tenant {tenant_key}")
-                    return {"success": True, "project": None}
+                    return None
 
                 # Get agent job and message counts (migrated to AgentJob - Handover 0367a)
                 agent_job_stmt = select(func.count(AgentJob.job_id)).where(AgentJob.project_id == project.id)
@@ -356,24 +353,21 @@ class ProjectService:
                 self._logger.info(f"Found active project: {project.name} (ID: {project.id})")
 
                 return {
-                    "success": True,
-                    "project": {
-                        "id": str(project.id),
-                        "alias": project.alias or "",
-                        "name": project.name,
-                        "mission": project.mission or "",
-                        "description": project.description,
-                        "status": project.status,
-                        "product_id": project.product_id,
-                        "created_at": project.created_at.isoformat() if project.created_at else None,
-                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                        "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                        "context_budget": project.context_budget or 150000,
-                        "context_used": project.context_used or 0,
-                        "agent_count": agent_count,
-                        "message_count": message_count,
-                    },
+                    "id": str(project.id),
+                    "alias": project.alias or "",
+                    "name": project.name,
+                    "mission": project.mission or "",
+                    "description": project.description,
+                    "status": project.status,
+                    "product_id": project.product_id,
+                    "created_at": project.created_at.isoformat() if project.created_at else None,
+                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                    "completed_at": project.completed_at.isoformat() if project.completed_at else None,
+                    "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
+                    "context_budget": project.context_budget or 150000,
+                    "context_used": project.context_used or 0,
+                    "agent_count": agent_count,
+                    "message_count": message_count,
                 }
 
         except ValidationError:
@@ -386,7 +380,7 @@ class ProjectService:
                 context={}
             ) from e
 
-    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> List[dict[str, Any]]:
         """
         List all projects with optional filters.
 
@@ -395,15 +389,15 @@ class ProjectService:
             tenant_key: Tenant key for filtering (uses current tenant if not provided)
 
         Returns:
-            Dict with list of projects
+            List of project dicts
 
         Raises:
             ValidationError: When no tenant context is available
             BaseGiljoException: When operation fails
 
         Example:
-            >>> result = await service.list_projects(status="active")
-            >>> for project in result["projects"]:
+            >>> projects = await service.list_projects(status="active")
+            >>> for project in projects:
             ...     print(project["name"])
         """
         try:
@@ -456,7 +450,7 @@ class ProjectService:
                         }
                     )
 
-                return {"success": True, "projects": project_list}
+                return project_list
 
         except ValidationError:
             # Re-raise our custom exceptions
@@ -545,7 +539,7 @@ class ProjectService:
                 if project:
                     await self._broadcast_mission_update(project_id, mission, project.tenant_key)
 
-                return {"success": True, "message": "Mission updated successfully"}
+                return {"message": "Mission updated successfully", "project_id": project_id}
 
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
