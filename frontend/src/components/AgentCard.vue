@@ -194,22 +194,6 @@
 
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0 agent-card-actions">
-      <!-- Cancel Controls (Handover 0107) -->
-      <div v-if="canCancel && mode === 'jobs'" class="cancel-controls mb-2" style="width: 100%">
-        <!-- Cancel Button -->
-        <v-btn
-          color="warning"
-          variant="outlined"
-          size="small"
-          block
-          @click="requestCancel"
-          class="mb-2"
-        >
-          <v-icon start>mdi-cancel</v-icon>
-          Cancel Job
-        </v-btn>
-      </div>
-
       <!-- Custom Actions Slot (for orchestrator special buttons) -->
       <slot name="actions">
         <!-- Default Action Buttons -->
@@ -325,8 +309,6 @@
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { getAgentColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
-import { useToast } from '@/composables/useToast'
-import api from '@/services/api'
 import { getStatusConfig } from '@/utils/statusConfig'
 
 // Handover 0461d: Removed instance_number, decommissioned, and succession chain UI
@@ -556,48 +538,10 @@ const isStale = computed(() => {
   )
 })
 
-// Check if cancel controls should be shown
-const canCancel = computed(() => {
-  return ['working'].includes(props.agent.status)
-})
-
-// Removed: minutesCancelling and showForceStop (Handover 0113 - atomic cancellation)
-
 /**
  * Initialize composables
  */
 const { on, off } = useWebSocket()
-const { showToast } = useToast()
-
-/**
- * Methods for Handover 0107: Agent Cancellation
- */
-
-// Request graceful cancellation
-const requestCancel = async () => {
-  const confirmed = confirm(
-    'Cancel Agent Job?\n\n' +
-      'The agent will stop work on its next check-in (usually within 5 minutes).\n\n' +
-      'Do you want to continue?',
-  )
-
-  if (!confirmed) return
-
-  try {
-    await api.post(`/jobs/${props.agent.id}/cancel`, {
-      reason: 'User requested cancellation',
-    })
-
-    showToast('Job cancelled successfully', 'success')
-  } catch (error) {
-    console.error('Failed to cancel job:', error)
-    showToast(error.response?.data?.detail || 'Failed to cancel job', 'error')
-  }
-}
-
-// Removed forceStop method (Handover 0113 - atomic cancellation)
-
-// REMOVED: onSuccessionTriggered handler (0461d) - Uses simple handover API now
 
 /**
  * Lifecycle hooks for WebSocket event listeners
