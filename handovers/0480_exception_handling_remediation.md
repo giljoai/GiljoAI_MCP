@@ -1,9 +1,19 @@
 # Exception Handling Architecture Remediation Series (0480)
 
+> **DEPRECATED 2026-01-27**: This document has critical design flaws discovered during audit.
+> See `0480_exception_handling_remediation_REVISED.md` for the corrected version.
+>
+> **Issues Found**:
+> - FALSE PREMISE: Services use dict returns, NOT HTTPException (only 5 occurrences)
+> - DUPLICATE: Proposed creating exception hierarchy that already exists (40+ classes)
+> - OVER-ENGINEERED: 94-120 hours for work that needs ~40-55 hours
+>
+> **Use Instead**: `handovers/0480_exception_handling_remediation_REVISED.md`
+
 **Created**: 2026-01-26
-**Status**: Ready for Implementation
-**Priority**: CRITICAL
-**Total Estimated Effort**: 94-120 hours sequential, 48-60 hours parallel
+**Status**: ~~Ready for Implementation~~ **DEPRECATED**
+**Priority**: ~~CRITICAL~~ HIGH
+**Total Estimated Effort**: ~~94-120 hours~~ See revised document
 
 ---
 
