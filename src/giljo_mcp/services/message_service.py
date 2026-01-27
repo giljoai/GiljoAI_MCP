@@ -981,9 +981,11 @@ class MessageService:
                         project = project_result.scalar_one_or_none()
 
                     if not project:
+                        # No project = no messages - return empty list, not error (Handover 0464)
                         return {
-                            "success": False,
-                            "error": "Project not found"
+                            "success": True,
+                            "messages": [],
+                            "count": 0
                         }
 
                     query = select(Message).where(Message.project_id == project.id)
