@@ -113,6 +113,7 @@ try:
         # CSRFProtectionMiddleware,  # Optional - requires frontend integration
     )
     from .websocket import WebSocketManager
+    from .exception_handlers import register_exception_handlers
 
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
@@ -619,33 +620,9 @@ def create_app() -> FastAPI:
             if client_id in state.connections:
                 del state.connections[client_id]
 
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request, exc):  # noqa: ARG001
-        """Custom HTTP exception handler (JSON, with detail for tooling/tests)"""
-        logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "error": exc.detail,
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-            },
-        )
 
-    @app.exception_handler(Exception)
-    async def general_exception_handler(request, exc):
-        """General exception handler"""
-        logger.error(f"Unhandled exception: {exc}", exc_info=True)
-        logger.error(f"Request path: {request.url.path if hasattr(request, 'url') else 'unknown'}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "Internal server error",
-                "detail": str(exc),  # Always show details in verbose mode
-                "type": type(exc).__name__,
-            },
-        )
-
+    # Register global exception handlers (Handover 0480a)
+    register_exception_handlers(app)
     # Store state reference in app
     app.state.api_state = state
 

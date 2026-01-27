@@ -256,8 +256,6 @@ async def download_agent_template(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Failed to download template {filename}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
