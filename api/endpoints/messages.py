@@ -216,6 +216,9 @@ async def list_messages(
         messages.sort(key=lambda m: m.created_at, reverse=True)
         return messages
 
+    except HTTPException:
+        # Re-raise HTTP exceptions with their original status codes (Handover 0464)
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
