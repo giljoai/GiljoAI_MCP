@@ -99,8 +99,6 @@ async def first_run_status(request: Request) -> Dict[str, Any]:
     """
     try:
         return await check_first_run(request)
-    except HTTPException:
-        raise
     except Exception as e:  # pragma: no cover - defensive
         logger.error("Failed to determine first-run status: %s", e)
         raise HTTPException(status_code=500, detail="Failed to determine first-run status") from e

@@ -728,8 +728,6 @@ async def download_temp_file(
                 "Expires": "0",
             },
         )
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Unexpected error during download: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

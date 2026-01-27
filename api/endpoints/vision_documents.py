@@ -260,9 +260,6 @@ async def create_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except HTTPException:
-        await db.rollback()
-        raise
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to create vision document: {e}", exc_info=True)
@@ -431,9 +428,6 @@ async def update_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except HTTPException:
-        await db.rollback()
-        raise
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to update vision document: {e}", exc_info=True)
@@ -478,9 +472,6 @@ async def delete_vision_document(
 
         return DeleteResponse(**result)
 
-    except HTTPException:
-        await db.rollback()
-        raise
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
@@ -565,9 +556,6 @@ async def regenerate_summaries(
             total_tokens=summaries["original_tokens"]
         )
 
-    except HTTPException:
-        await db.rollback()
-        raise
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)

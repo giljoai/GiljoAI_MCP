@@ -30,6 +30,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import (
+    ResourceNotFoundError,
+    ValidationError,
+    AuthorizationError,
+    DatabaseError,
+    BaseGiljoException,
+)
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
 
@@ -144,7 +151,11 @@ class ProductService:
             target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
 
         Returns:
-            Dict with success status and product details or error
+            Dict with product details
+
+        Raises:
+            ValidationError: If target_platforms invalid or product name already exists
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.create_product(
@@ -160,7 +171,10 @@ class ProductService:
             if target_platforms is not None:
                 is_valid, error_msg = self._validate_target_platforms(target_platforms)
                 if not is_valid:
-                    return {"success": False, "error": error_msg}
+                    raise ValidationError(
+                        message=error_msg,
+                        context={"target_platforms": target_platforms}
+                    )
 
             async with self._get_session() as session:
                 # Check for duplicate name (excluding soft-deleted)
@@ -169,7 +183,10 @@ class ProductService:
                 )
                 result = await session.execute(stmt)
                 if result.scalar_one_or_none():
-                    return {"success": False, "error": f"Product '{name}' already exists"}
+                    raise ValidationError(
+                        message=f"Product '{name}' already exists",
+                        context={"product_name": name, "tenant_key": self.tenant_key}
+                    )
 
                 # Create product
                 # Handover 0135: Initialize product_memory with default structure
@@ -211,9 +228,15 @@ class ProductService:
                     "created_at": product.created_at.isoformat() if product.created_at else None,
                 }
 
+        except ValidationError:
+            # Re-raise validation errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to create product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to create product: {str(e)}",
+                context={"product_name": name, "tenant_key": self.tenant_key}
+            )
 
     async def get_product(self, product_id: str, include_metrics: bool = True) -> Dict[str, Any]:
         """
@@ -224,12 +247,15 @@ class ProductService:
             include_metrics: Include project/task counts (default: True)
 
         Returns:
-            Dict with success status and product details or error
+            Dict with product details
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.get_product("abc-123")
-            >>> if result["success"]:
-            ...     print(result["product"]["name"])
+            >>> print(result["product"]["name"])
         """
         try:
             async with self._get_session() as session:
@@ -249,7 +275,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Handover 0136: Ensure product_memory is initialized (backward compatibility)
                 await self._ensure_product_memory_initialized(session, product)
@@ -285,9 +314,15 @@ class ProductService:
 
                 return {"success": True, "product": product_data}
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to get product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> Dict[str, Any]:
         """
@@ -298,7 +333,10 @@ class ProductService:
             include_metrics: Include project/task counts (default: True)
 
         Returns:
-            Dict with success status and list of products or error
+            Dict with list of products
+
+        Raises:
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.list_products()
@@ -359,7 +397,10 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list products: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to list products: {str(e)}",
+                context={"tenant_key": self.tenant_key}
+            )
 
     async def update_product(self, product_id: str, **updates) -> Dict[str, Any]:
         """
@@ -370,7 +411,12 @@ class ProductService:
             **updates: Fields to update (name, description, project_path, config_data, product_memory, target_platforms, etc.)
 
         Returns:
-            Dict with success status and updated product or error
+            Dict with updated product
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            ValidationError: If target_platforms invalid
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.update_product(
@@ -386,7 +432,10 @@ class ProductService:
             if "target_platforms" in updates:
                 is_valid, error_msg = self._validate_target_platforms(updates["target_platforms"])
                 if not is_valid:
-                    return {"success": False, "error": error_msg}
+                    raise ValidationError(
+                        message=error_msg,
+                        context={"target_platforms": updates["target_platforms"]}
+                    )
 
             async with self._get_session() as session:
                 stmt = select(Product).where(
@@ -396,7 +445,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Apply updates
                 for field, value in updates.items():
@@ -429,9 +481,15 @@ class ProductService:
                     },
                 }
 
+        except (ResourceNotFoundError, ValidationError):
+            # Re-raise our custom errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to update product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def update_quality_standards(
         self,
@@ -532,7 +590,11 @@ class ProductService:
             product_id: Product UUID to activate
 
         Returns:
-            Dict with success status and activated product or error
+            Dict with activated product
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.activate_product("abc-123")
@@ -547,7 +609,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Deactivate all other products for tenant FIRST
                 # Must flush deactivation before activation due to unique constraint
@@ -607,9 +672,15 @@ class ProductService:
                     "deactivated_count": len(products_to_deactivate),
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to activate product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to activate product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def deactivate_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -619,7 +690,11 @@ class ProductService:
             product_id: Product UUID to deactivate
 
         Returns:
-            Dict with success status and deactivated product or error
+            Dict with deactivated product
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.deactivate_product("abc-123")
@@ -633,7 +708,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 product.is_active = False
                 product.updated_at = datetime.now(timezone.utc)
@@ -652,9 +730,15 @@ class ProductService:
                     },
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to deactivate product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to deactivate product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def delete_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -664,7 +748,11 @@ class ProductService:
             product_id: Product UUID to delete
 
         Returns:
-            Dict with success status or error
+            Dict with deletion status
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.delete_product("abc-123")
@@ -678,7 +766,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Soft delete
                 product.deleted_at = datetime.now(timezone.utc)
@@ -695,9 +786,15 @@ class ProductService:
                     "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to delete product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to delete product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def restore_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -707,7 +804,11 @@ class ProductService:
             product_id: Product UUID to restore
 
         Returns:
-            Dict with success status and restored product or error
+            Dict with restored product
+
+        Raises:
+            ResourceNotFoundError: If deleted product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.restore_product("abc-123")
@@ -723,7 +824,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Deleted product not found"}
+                    raise ResourceNotFoundError(
+                        message="Deleted product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Restore
                 product.deleted_at = None
@@ -744,16 +848,25 @@ class ProductService:
                     },
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to restore product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to restore product: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def list_deleted_products(self) -> Dict[str, Any]:
         """
         List soft-deleted products with purge information.
 
         Returns:
-            Dict with success status and list of deleted products
+            Dict with list of deleted products
+
+        Raises:
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.list_deleted_products()
@@ -804,7 +917,10 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list deleted products: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to list deleted products: {str(e)}",
+                context={"tenant_key": self.tenant_key}
+            )
 
     # ============================================================================
     # Active Product Management
@@ -815,11 +931,14 @@ class ProductService:
         Get the currently active product for the tenant.
 
         Returns:
-            Dict with success status and active product or error
+            Dict with active product (or None if no active product)
+
+        Raises:
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.get_active_product()
-            >>> if result["success"] and result.get("product"):
+            >>> if result.get("product"):
             ...     print(f"Active: {result['product']['name']}")
         """
         try:
@@ -863,7 +982,10 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to get active product: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to get active product: {str(e)}",
+                context={"tenant_key": self.tenant_key}
+            )
 
     # ============================================================================
     # Metrics & Statistics
@@ -877,7 +999,11 @@ class ProductService:
             product_id: Product UUID
 
         Returns:
-            Dict with success status and statistics or error
+            Dict with statistics
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.get_product_statistics("abc-123")
@@ -893,7 +1019,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 metrics = await self._get_product_metrics(session, product_id)
 
@@ -909,9 +1038,15 @@ class ProductService:
                     },
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get product statistics: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to get product statistics: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def get_cascade_impact(self, product_id: str) -> Dict[str, Any]:
         """
@@ -923,7 +1058,11 @@ class ProductService:
             product_id: Product UUID
 
         Returns:
-            Dict with success status and impact analysis
+            Dict with impact analysis
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.get_cascade_impact("abc-123")
@@ -939,7 +1078,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Count related entities
                 project_count = await session.execute(
@@ -968,9 +1110,15 @@ class ProductService:
                     },
                 }
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get cascade impact: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to get cascade impact: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
 
     async def update_git_integration(
@@ -1000,7 +1148,11 @@ class ProductService:
             default_branch: Default branch name (default: "main")
 
         Returns:
-            Dict with success status and settings or error
+            Dict with settings
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoException: If database operation fails
 
         Example:
             >>> result = await service.update_git_integration(
@@ -1020,7 +1172,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": "Product not found"}
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Ensure product_memory exists
                 if not product.product_memory:
@@ -1063,9 +1218,15 @@ class ProductService:
 
                 return {"success": True, "settings": product.product_memory["git_integration"]}
 
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update git integration: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to update git integration: {str(e)}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key}
+            )
 
     async def upload_vision_document(
         self,
@@ -1123,7 +1284,10 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": False, "error": f"Product {product_id} not found or access denied"}
+                    raise ResourceNotFoundError(
+                        message=f"Product {product_id} not found or access denied",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
 
                 # Create vision document via repository
                 vision_repo = VisionDocumentRepository(db_manager=self.db_manager)
@@ -1240,10 +1404,19 @@ class ProductService:
 
         except ValueError as e:
             self._logger.error(f"Validation error uploading vision document: {e}")
-            return {"success": False, "error": str(e)}
+            raise ValidationError(
+                message=f"Validation error uploading vision document: {str(e)}",
+                context={"product_id": product_id, "filename": filename}
+            )
+        except ResourceNotFoundError:
+            # Re-raise resource not found errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to upload vision document: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to upload vision document: {str(e)}",
+                context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key}
+            )
 
     # ============================================================================
     # Validation Methods
@@ -1699,7 +1872,10 @@ class ProductService:
 
         if not self.db_manager:
             self._logger.error("[Product Purge] Cannot purge - database manager not available")
-            return {"success": False, "error": "Database not available"}
+            raise DatabaseError(
+                message="Database not available",
+                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key}
+            )
 
         try:
             async with self._get_session() as session:
@@ -1747,6 +1923,12 @@ class ProductService:
 
                 return {"success": True, "purged_count": len(purged_products), "products": purged_products}
 
+        except DatabaseError:
+            # Re-raise database errors as-is
+            raise
         except Exception as e:
             self._logger.exception(f"[Product Purge] Failed to purge expired deleted products: {e}")
-            return {"success": False, "error": str(e), "purged_count": 0}
+            raise BaseGiljoException(
+                message=f"Failed to purge expired deleted products: {str(e)}",
+                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key, "days_before_purge": days_before_purge}
+            )

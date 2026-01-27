@@ -68,25 +68,16 @@ async def activate_project(
     """
     logger.info(f"User {current_user.username} activating project {project_id} (force={force})")
 
-    # Activate via ProjectService
-    result = await project_service.activate_project(
+    # Activate via ProjectService (raises exceptions on error)
+    await project_service.activate_project(
         project_id=project_id,
         force=force
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to activate project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Activated project {project_id}")
 
-    # Get updated project
-    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    proj = get_result.get("project", {})
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
         id=proj.get("id"),
@@ -134,25 +125,16 @@ async def deactivate_project(
     """
     logger.info(f"User {current_user.username} deactivating project {project_id}")
 
-    # Deactivate via ProjectService
-    result = await project_service.deactivate_project(
+    # Deactivate via ProjectService (raises exceptions on error)
+    await project_service.deactivate_project(
         project_id=project_id,
         reason=reason
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to deactivate project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Deactivated project {project_id}")
 
-    # Get updated project
-    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    proj = get_result.get("project", {})
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
         id=proj.get("id"),
@@ -198,25 +180,16 @@ async def cancel_project(
     """
     logger.info(f"User {current_user.username} cancelling project {project_id}")
 
-    # Cancel via ProjectService
-    result = await project_service.cancel_project(
+    # Cancel via ProjectService (raises exceptions on error)
+    await project_service.cancel_project(
         project_id=project_id,
         reason=reason
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to cancel project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Cancelled project {project_id}")
 
-    # Get updated project
-    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    proj = get_result.get("project", {})
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
         id=proj.get("id"),
@@ -260,22 +233,13 @@ async def restore_project(
     """
     logger.info(f"User {current_user.username} restoring project {project_id}")
 
-    # Restore via ProjectService
-    result = await project_service.restore_project(project_id=project_id)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to restore project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+    # Restore via ProjectService (raises exceptions on error)
+    await project_service.restore_project(project_id=project_id)
 
     logger.info(f"Restored project {project_id}")
 
-    # Get updated project
-    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    proj = get_result.get("project", {})
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
         id=proj.get("id"),
@@ -324,22 +288,13 @@ async def cancel_project_staging(
     """
     logger.info(f"User {current_user.username} cancelling staging for project {project_id}")
 
-    # Cancel staging via ProjectService
-    result = await project_service.cancel_staging(project_id=project_id)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to cancel staging")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+    # Cancel staging via ProjectService (raises exceptions on error)
+    await project_service.cancel_staging(project_id=project_id)
 
     logger.info(f"Cancelled staging for project {project_id}")
 
-    # Get updated project
-    get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    proj = get_result.get("project", {})
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
         id=proj.get("id"),
@@ -370,10 +325,8 @@ async def purge_all_deleted_projects(
     """
     logger.info("User %s purging all deleted projects", current_user.username)
 
+    # Service raises exceptions on error
     result = await project_service.purge_all_deleted_projects()
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to purge deleted projects")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     projects = [PurgedProject(**proj) for proj in result.get("projects", [])]
     return ProjectPurgeResponse(
@@ -398,14 +351,8 @@ async def purge_deleted_project(
     """
     logger.info("User %s performing NUCLEAR PURGE on deleted project %s", current_user.username, project_id)
 
-    # Use nuclear delete for immediate permanent deletion
+    # Use nuclear delete for immediate permanent deletion (raises exceptions on error)
     result = await project_service.nuclear_delete_project(project_id)
-
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to purge project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     # Format response to match PurgeResponse model
     project_info = {
@@ -450,65 +397,45 @@ async def archive_project(
     """
     logger.info(f"User {current_user.username} archiving project {project_id}")
 
-    try:
-        # Get project first to validate
-        get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-        if not get_result.get("success"):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    # Get project first to validate (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    current_status = proj.get("status", "")
 
-        proj = get_result.get("project", {})
-        current_status = proj.get("status", "")
-
-        # Only deactivate if not already inactive/completed
-        if current_status not in ("inactive", "completed", "archived"):
-            result = await project_service.deactivate_project(
-                project_id=project_id,
-                reason="User archived project after completion"
-            )
-            if not result.get("success"):
-                error_msg = result.get("error", "Failed to archive project")
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-        # Set completed_at timestamp to mark as archived
-        update_result = await project_service.update_project(
+    # Only deactivate if not already inactive/completed
+    if current_status not in ("inactive", "completed", "archived"):
+        await project_service.deactivate_project(
             project_id=project_id,
-            updates={"status": "completed", "completed_at": datetime.utcnow()}
-        )
-        if not update_result.get("success"):
-            logger.warning(f"Could not set completed status: {update_result.get('error')}")
-
-        logger.info(f"Archived project {project_id}")
-
-        # Get updated project
-        get_result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-        proj = get_result.get("project", {})
-
-        return ProjectResponse(
-            id=proj.get("id"),
-            alias=proj.get("alias", ""),
-            name=proj.get("name"),
-            description=proj.get("description"),
-            mission=proj.get("mission", ""),
-            status=proj.get("status"),
-            product_id=proj.get("product_id"),
-            created_at=proj.get("created_at"),
-            updated_at=proj.get("updated_at"),
-            completed_at=proj.get("completed_at"),
-            context_budget=proj.get("context_budget", 150000),
-            context_used=proj.get("context_used", 0),
-            agent_count=proj.get("agent_count", 0),
-            message_count=proj.get("message_count", 0),
-            agents=[]
+            reason="User archived project after completion"
         )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to archive project: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to archive project: {str(e)}",
-        )
+    # Set completed_at timestamp to mark as archived (raises exceptions on error)
+    await project_service.update_project(
+        project_id=project_id,
+        updates={"status": "completed", "completed_at": datetime.utcnow()}
+    )
+
+    logger.info(f"Archived project {project_id}")
+
+    # Get updated project (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+
+    return ProjectResponse(
+        id=proj.get("id"),
+        alias=proj.get("alias", ""),
+        name=proj.get("name"),
+        description=proj.get("description"),
+        mission=proj.get("mission", ""),
+        status=proj.get("status"),
+        product_id=proj.get("product_id"),
+        created_at=proj.get("created_at"),
+        updated_at=proj.get("updated_at"),
+        completed_at=proj.get("completed_at"),
+        context_budget=proj.get("context_budget", 150000),
+        context_used=proj.get("context_used", 0),
+        agent_count=proj.get("agent_count", 0),
+        message_count=proj.get("message_count", 0),
+        agents=[]
+    )
 
 
 @router.delete("/{project_id}", response_model=ProjectDeleteResponse)
@@ -525,29 +452,14 @@ async def delete_project(
     """
     logger.info(f"User {current_user.username} deleting project {project_id}")
 
-    try:
-        result = await project_service.delete_project(project_id)
+    # Service raises exceptions on error
+    result = await project_service.delete_project(project_id)
 
-        if not result.get("success"):
-            error_msg = result.get("error", "Failed to delete project")
-            if "not found" in error_msg.lower():
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-        return ProjectDeleteResponse(
-            success=True,
-            message=result.get("message", "Project deleted successfully"),
-            deleted_at=result.get("deleted_at"),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to nuclear delete project: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete project: {str(e)}",
-        )
+    return ProjectDeleteResponse(
+        success=True,
+        message=result.get("message", "Project deleted successfully"),
+        deleted_at=result.get("deleted_at"),
+    )
 
 
 @router.post("/{project_id}/launch", response_model=ProjectLaunchResponse)
@@ -578,25 +490,15 @@ async def launch_project(
     """
     logger.info(f"User {current_user.username} launching project {project_id}")
 
-    # Launch via ProjectService - pass user_id for depth_config lookup (Handover 0357)
-    result = await project_service.launch_project(
+    # Launch via ProjectService (raises exceptions on error)
+    launch_data = await project_service.launch_project(
         project_id=project_id,
         user_id=str(current_user.id),
         launch_config=launch_config
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to launch project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Launched project {project_id}")
 
-    # Return data as ProjectLaunchResponse
-    launch_data = result.get("data", {})
     return ProjectLaunchResponse(**launch_data)
 
 
@@ -626,36 +528,21 @@ async def continue_project(
     """
     logger.info(f"User {current_user.username} continuing project {project_id}")
 
-    # Resume project via ProjectService
-    result = await project_service.continue_working(
+    # Resume project via ProjectService (raises exceptions on error)
+    await project_service.continue_working(
         project_id=project_id,
         tenant_key=current_user.tenant_key
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to continue project")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Resumed project {project_id}, now launching new orchestrator")
 
-    # Launch new orchestrator
-    launch_result = await project_service.launch_project(
+    # Launch new orchestrator (raises exceptions on error)
+    launch_data = await project_service.launch_project(
         project_id=project_id,
         user_id=str(current_user.id),
         launch_config=None
     )
 
-    # Check for errors
-    if not launch_result.get("success"):
-        error_msg = launch_result.get("error", "Failed to launch new orchestrator")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
     logger.info(f"Launched new orchestrator for project {project_id}")
 
-    # Return data as ProjectLaunchResponse
-    launch_data = launch_result.get("data", {})
     return ProjectLaunchResponse(**launch_data)

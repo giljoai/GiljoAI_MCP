@@ -27,6 +27,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError, MessageDeliveryError
 
 
 # ============================================================================
@@ -618,28 +619,28 @@ class TestMessageServiceErrorHandling:
         self,
         message_service: MessageService,
     ):
-        """Test that sending to nonexistent project fails gracefully."""
-        result = await message_service.send_message(
-            to_agents=["analyzer"],
-            content="Test message",
-            project_id="nonexistent-project-id",
-            from_agent="orchestrator",
-        )
+        """Test that sending to nonexistent project raises ResourceNotFoundError."""
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await message_service.send_message(
+                to_agents=["analyzer"],
+                content="Test message",
+                project_id="nonexistent-project-id",
+                from_agent="orchestrator",
+            )
 
-        assert result["success"] is False
-        assert "not found" in result["error"].lower()
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_complete_nonexistent_message_fails(
         self,
         message_service: MessageService,
     ):
-        """Test that completing nonexistent message fails gracefully."""
-        result = await message_service.complete_message(
-            message_id="nonexistent-message-id",
-            agent_name="analyzer",
-            result="Test result",
-        )
+        """Test that completing nonexistent message raises ResourceNotFoundError."""
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await message_service.complete_message(
+                message_id="nonexistent-message-id",
+                agent_name="analyzer",
+                result="Test result",
+            )
 
-        assert result["success"] is False
-        assert "not found" in result["error"].lower()
+        assert "not found" in str(exc_info.value).lower()
