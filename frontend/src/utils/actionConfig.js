@@ -36,7 +36,7 @@ export const ACTION_CONFIG = {
   },
 
   handOver: {
-    icon: 'mdi-hand-wave',
+    icon: 'mdi-refresh',
     color: 'warning',
     label: 'Refresh Session',
     tooltip: 'Refresh Session (reset context)',
