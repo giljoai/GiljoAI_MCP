@@ -27,6 +27,12 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    BaseGiljoException,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models import Project, Task
 from src.giljo_mcp.tenant import TenantManager
 
@@ -112,9 +118,15 @@ class TaskService:
                 return await self._log_task_impl(
                     session, content, category, priority, project_id, tenant_key
                 )
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to log task: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "log_task"}
+            ) from e
 
     async def _log_task_impl(
         self,
@@ -154,10 +166,10 @@ class TaskService:
             # If project_id was provided but project not found, fail immediately
             # This prevents cross-tenant access attempts from creating default projects
             if not project:
-                return {
-                    "success": False,
-                    "error": f"Project {project_id} not found or access denied"
-                }
+                raise ResourceNotFoundError(
+                    message=f"Project {project_id} not found or access denied",
+                    context={"project_id": project_id, "tenant_key": tenant_key}
+                )
         else:
             # Find first active project
             stmt = select(Project).where(Project.status == "active").limit(1)
@@ -286,10 +298,10 @@ class TaskService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "list_tasks"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # Start with tenant-scoped base query
@@ -302,7 +314,7 @@ class TaskService:
                         query = query.where(Task.product_id == product_id)
                     else:
                         # Get active product for tenant
-                        from giljo_mcp.models.products import Product
+                        from src.giljo_mcp.models.products import Product
                         product_query = select(Product).where(
                             and_(
                                 Product.tenant_key == tenant_key,
@@ -376,9 +388,15 @@ class TaskService:
                     "count": len(task_list)
                 }
 
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to list tasks: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "list_tasks"}
+            ) from e
 
     # ============================================================================
     # Task Updates
@@ -417,10 +435,10 @@ class TaskService:
                 task = task_result.scalar_one_or_none()
 
                 if not task:
-                    return {
-                        "success": False,
-                        "error": f"Task {task_id} not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Task {task_id} not found",
+                        context={"task_id": task_id}
+                    )
 
                 # Update fields
                 updated_fields = []
@@ -458,9 +476,15 @@ class TaskService:
                     "updated_fields": updated_fields
                 }
 
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update task: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_task", "task_id": task_id}
+            ) from e
 
     async def assign_task(
         self,
@@ -540,15 +564,24 @@ class TaskService:
                 return await self._get_task_impl(self._session, task_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._get_task_impl(session, task_id)
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get task {task_id}: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_task", "task_id": task_id}
+            ) from e
 
     async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
         """Implementation of get_task with explicit session parameter."""
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "get_task", "task_id": task_id}
+            )
 
         stmt = select(Task).where(
             and_(
@@ -560,7 +593,10 @@ class TaskService:
         task = result.scalar_one_or_none()
 
         if not task:
-            return {"success": False, "error": "Task not found"}
+            raise ResourceNotFoundError(
+                message="Task not found",
+                context={"task_id": task_id, "tenant_key": tenant_key}
+            )
 
         # Convert to dict
         task_data = {
@@ -614,15 +650,24 @@ class TaskService:
                 return await self._delete_task_impl(self._session, task_id, user_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._delete_task_impl(session, task_id, user_id)
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to delete task {task_id}: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "delete_task", "task_id": task_id}
+            ) from e
 
     async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> dict[str, Any]:
         """Implementation of delete_task with explicit session parameter."""
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "delete_task", "task_id": task_id}
+            )
 
         # Get task
         task_stmt = select(Task).where(
@@ -635,23 +680,29 @@ class TaskService:
         task = task_result.scalar_one_or_none()
 
         if not task:
-            return {"success": False, "error": "Task not found"}
+            raise ResourceNotFoundError(
+                message="Task not found",
+                context={"task_id": task_id, "tenant_key": tenant_key}
+            )
 
         # Get user for permission check
-        from giljo_mcp.models.auth import User
+        from src.giljo_mcp.models.auth import User
         user_stmt = select(User).where(User.id == user_id)
         user_result = await session.execute(user_stmt)
         user = user_result.scalar_one_or_none()
 
         if not user:
-            return {"success": False, "error": "User not found"}
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Permission check
         if not self.can_delete_task(task, user):
-            return {
-                "success": False,
-                "error": "Not authorized to delete this task. Only task creator or admin can delete."
-            }
+            raise AuthorizationError(
+                message="Not authorized to delete this task. Only task creator or admin can delete.",
+                context={"task_id": task_id, "user_id": user_id}
+            )
 
         # Delete task
         await session.delete(task)
@@ -719,9 +770,15 @@ class TaskService:
                 return await self._convert_to_project_impl(
                     session, task_id, project_name, strategy, include_subtasks, user_id
                 )
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to convert task {task_id} to project: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "convert_to_project", "task_id": task_id}
+            ) from e
 
     async def _convert_to_project_impl(
         self,
@@ -735,7 +792,10 @@ class TaskService:
         """Implementation of convert_to_project with explicit session parameter."""
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "convert_to_project", "task_id": task_id}
+            )
 
         # Get task
         task_stmt = select(Task).where(
@@ -748,33 +808,39 @@ class TaskService:
         task = task_result.scalar_one_or_none()
 
         if not task:
-            return {"success": False, "error": "Task not found"}
+            raise ResourceNotFoundError(
+                message="Task not found",
+                context={"task_id": task_id, "tenant_key": tenant_key}
+            )
 
         # Check if already converted
         if task.converted_to_project_id:
-            return {
-                "success": False,
-                "error": f"Task already converted to project {task.converted_to_project_id}"
-            }
+            raise ValidationError(
+                message=f"Task already converted to project {task.converted_to_project_id}",
+                context={"task_id": task_id, "converted_to_project_id": task.converted_to_project_id}
+            )
 
         # Get user for permission check
-        from giljo_mcp.models.auth import User
+        from src.giljo_mcp.models.auth import User
         user_stmt = select(User).where(User.id == user_id)
         user_result = await session.execute(user_stmt)
         user = user_result.scalar_one_or_none()
 
         if not user:
-            return {"success": False, "error": "User not found"}
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Permission check (only creator or admin can convert)
         if user.role != "admin" and task.created_by_user_id != user.id:
-            return {
-                "success": False,
-                "error": "Not authorized to convert this task. Only task creator or admin can convert."
-            }
+            raise AuthorizationError(
+                message="Not authorized to convert this task. Only task creator or admin can convert.",
+                context={"task_id": task_id, "user_id": user_id}
+            )
 
         # Get active product (required for project creation per Handover 0050)
-        from giljo_mcp.models.products import Product
+        from src.giljo_mcp.models.products import Product
         product_stmt = select(Product).where(
             and_(
                 Product.tenant_key == tenant_key,
@@ -785,10 +851,10 @@ class TaskService:
         active_product = product_result.scalar_one_or_none()
 
         if not active_product:
-            return {
-                "success": False,
-                "error": "No active product. Please activate a product before converting tasks to projects."
-            }
+            raise ValidationError(
+                message="No active product. Please activate a product before converting tasks to projects.",
+                context={"operation": "convert_to_project", "tenant_key": tenant_key}
+            )
 
         # Check for existing active project and deactivate it
         # (only ONE project can be active per product - Handover 0050b)
@@ -891,15 +957,24 @@ class TaskService:
                 return await self._change_status_impl(self._session, task_id, new_status)
             async with self.db_manager.get_session_async() as session:
                 return await self._change_status_impl(session, task_id, new_status)
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to change task {task_id} status: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "change_status", "task_id": task_id}
+            ) from e
 
     async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
         """Implementation of change_status with explicit session parameter."""
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "change_status", "task_id": task_id}
+            )
 
         stmt = select(Task).where(
             and_(
@@ -911,7 +986,10 @@ class TaskService:
         task = result.scalar_one_or_none()
 
         if not task:
-            return {"success": False, "error": "Task not found"}
+            raise ResourceNotFoundError(
+                message="Task not found",
+                context={"task_id": task_id, "tenant_key": tenant_key}
+            )
 
         # Update status
         task.status = new_status
@@ -985,15 +1063,24 @@ class TaskService:
                 return await self._get_summary_impl(self._session, product_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._get_summary_impl(session, product_id)
+        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get task summary: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_summary"}
+            ) from e
 
     async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:
         """Implementation of get_summary with explicit session parameter."""
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "get_summary"}
+            )
 
         # Build base query
         base_query = select(Task).where(Task.tenant_key == tenant_key)
@@ -1069,7 +1156,7 @@ class TaskService:
             >>> if service.can_modify_task(task, current_user):
             ...     # Allow modification
         """
-        from giljo_mcp.models.auth import User
+        from src.giljo_mcp.models.auth import User
 
         # Admin can modify any task in their tenant
         if user.role == "admin":
@@ -1098,7 +1185,7 @@ class TaskService:
             >>> if service.can_delete_task(task, current_user):
             ...     # Allow deletion
         """
-        from giljo_mcp.models.auth import User
+        from src.giljo_mcp.models.auth import User
 
         # Admin can delete any task in their tenant
         if user.role == "admin":
