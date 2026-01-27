@@ -518,6 +518,8 @@ export const api = {
     checkSuccessionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
     // Handover 0506: Initiate handover - returns prompt for retiring orchestrator
     initiateHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/initiate-handover`),
+    // Handover 0461d: Simple handover - reset context and get continuation prompt
+    simpleHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/simple-handover`),
     // Get all executions for a job (succession history)
     getExecutions: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/executions`),
 

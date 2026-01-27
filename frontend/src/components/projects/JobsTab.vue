@@ -884,8 +884,8 @@ async function handleHandOver(agent) {
     const jobId = agent.job_id || agent.agent_id
     console.log('[JobsTab] Hand over action:', agent.agent_display_name, jobId)
 
-    // Call simple-handover endpoint (Handover 0461c)
-    const response = await api.post(`/agent-jobs/${jobId}/simple-handover`)
+    // Call simple-handover endpoint (Handover 0461d)
+    const response = await api.agentJobs.simpleHandover(jobId)
 
     if (response.data.success) {
       // Copy continuation prompt to clipboard
