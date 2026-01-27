@@ -78,7 +78,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
             "spawn_agent_job": state.tool_accessor.spawn_agent_job,
             "get_agent_mission": state.tool_accessor.get_agent_mission,
-            "orchestrate_project": state.tool_accessor.orchestrate_project,
             "get_workflow_status": state.tool_accessor.get_workflow_status,
             # Agent coordination tools
             "get_pending_jobs": state.tool_accessor.get_pending_jobs,
@@ -383,23 +382,6 @@ async def list_mcp_tools():
                         "description": "Agent retrieves its mission on startup",
                         "payload": {
                             "job_id": "job-abc123-def456",
-                            "tenant_key": "tk-tenant123-456",
-                        },
-                    },
-                ],
-            },
-            {
-                "name": "orchestrate_project",
-                "description": "Execute complete project orchestration workflow (context prioritization and orchestration)",
-                "arguments": {
-                    "project_id": "string (UUID) REQUIRED - Project UUID",
-                    "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
-                },
-                "examples": [
-                    {
-                        "description": "Start full orchestration for project",
-                        "payload": {
-                            "project_id": "proj-abc123-def456",
                             "tenant_key": "tk-tenant123-456",
                         },
                     },
