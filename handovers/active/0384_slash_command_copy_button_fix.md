@@ -103,6 +103,24 @@ User clicks "Copy Command"
 curl -O {download_url} && unzip -o slash_commands.zip -d ~/.claude/commands/ && rm slash_commands.zip
 ```
 
+**Commits:**
+- `2d0748b3` - fix(frontend): Restore slash command copy button functionality
+
+### 2026-01-26 - Claude Opus 4.5 (Part 2)
+**Status:** Complete
+**Additional Issue Found:**
+- `/gil_get_claude_agents` slash command was using wrong API key (`gc_` prefix instead of `gk_`)
+- Claude Code was grabbing key from another MCP server in user's config
+
+**Additional Fix:**
+- Updated `src/giljo_mcp/tools/slash_command_templates.py`
+- Added explicit instructions for finding GiljoAI API key (`gk_` prefix)
+- Added config file location (`~/.claude.json`)
+- Added example config structure showing `giljo-mcp` entry
+- Added warning about `gc_` and other prefixes being from different MCP servers
+
+**Commits:**
+- `a5b80adc` - fix(slash-cmd): Explicit API key instructions for gil_get_claude_agents
+
 **Next Steps:**
-- Manual testing to verify end-to-end flow
-- Commit changes
+- User to test on remote workstation
