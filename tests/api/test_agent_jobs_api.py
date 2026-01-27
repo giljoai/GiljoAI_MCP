@@ -6,7 +6,7 @@ Comprehensive validation of all 13+ agent job endpoints across 5 modules:
 - Status endpoints (status.py): list, get, pending, mission
 - Operations endpoints (operations.py): cancel, force-fail, health
 - Progress endpoints (progress.py): report_progress
-- Orchestration endpoints (orchestration.py): orchestrate_project, workflow_status
+- Orchestration endpoints (orchestration.py): workflow_status
 
 Test Coverage:
 - Happy path scenarios (200/201 responses)
