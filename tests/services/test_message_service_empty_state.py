@@ -22,6 +22,51 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.services.message_service import MessageService
 
 
+def _create_empty_query_result():
+    """
+    Helper to create a properly mocked empty query result.
+
+    SQLAlchemy async query chain:
+    - session.execute() is async, returns a result object
+    - result.scalars() is sync, returns scalars object
+    - scalars.all() is sync, returns list
+    """
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = []
+
+    # Result object is NOT async - execute() is what's async
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+
+    return mock_result
+
+
+def _create_service_with_empty_db():
+    """
+    Helper to create MessageService with mocked empty database.
+
+    Returns tuple of (service, mock_session, mock_db_manager, mock_tenant_manager)
+    """
+    # Create async mock session
+    mock_session = AsyncMock(spec=AsyncSession)
+
+    # Mock execute() to return a MagicMock result (not AsyncMock)
+    # execute() itself is async, but its return value is not
+    mock_result = _create_empty_query_result()
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    mock_db_manager = MagicMock()
+    mock_tenant_manager = MagicMock()
+
+    service = MessageService(
+        db_manager=mock_db_manager,
+        tenant_manager=mock_tenant_manager,
+        test_session=mock_session
+    )
+
+    return service, mock_session, mock_db_manager, mock_tenant_manager
+
+
 @pytest.mark.asyncio
 async def test_list_messages_no_project_returns_empty():
     """
@@ -30,19 +75,8 @@ async def test_list_messages_no_project_returns_empty():
     Scenario: Fresh install, user has no projects yet.
     Expected: Returns [] without throwing exceptions.
     """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
-
-    # Mock query result - no messages found
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-
-    # Create service
-    service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
-    )
+    # Create service with empty database
+    service, _, _, _ = _create_service_with_empty_db()
 
     # Call list_messages
     messages = await service.list_messages(
@@ -65,19 +99,8 @@ async def test_list_messages_empty_database_returns_empty():
     Scenario: Fresh install with zero data in any table.
     Expected: Returns [] without database errors.
     """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
-
-    # Mock empty result
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-
-    # Create service
-    service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
-    )
+    # Create service with empty database
+    service, _, _, _ = _create_service_with_empty_db()
 
     # Call without project_id (query all)
     messages = await service.list_messages()
@@ -103,10 +126,15 @@ async def test_broadcast_no_project_returns_graceful():
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    # Create service
+    # Mock db_manager and tenant_manager
+    mock_db_manager = MagicMock()
+    mock_tenant_manager = MagicMock()
+
+    # Create service with test_session
     service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
+        db_manager=mock_db_manager,
+        tenant_manager=mock_tenant_manager,
+        test_session=mock_session
     )
 
     # Attempt broadcast with no agents
@@ -155,10 +183,15 @@ async def test_get_message_by_id_nonexistent_returns_none():
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    # Create service
+    # Mock db_manager and tenant_manager
+    mock_db_manager = MagicMock()
+    mock_tenant_manager = MagicMock()
+
+    # Create service with test_session
     service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
+        db_manager=mock_db_manager,
+        tenant_manager=mock_tenant_manager,
+        test_session=mock_session
     )
 
     # Query nonexistent message
@@ -184,10 +217,15 @@ async def test_list_messages_with_filters_empty_returns_empty():
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    # Create service
+    # Mock db_manager and tenant_manager
+    mock_db_manager = MagicMock()
+    mock_tenant_manager = MagicMock()
+
+    # Create service with test_session
     service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
+        db_manager=mock_db_manager,
+        tenant_manager=mock_tenant_manager,
+        test_session=mock_session
     )
 
     # Apply multiple filters on empty database
@@ -219,10 +257,15 @@ async def test_count_messages_empty_database_returns_zero():
     mock_result.scalar.return_value = 0
     mock_session.execute.return_value = mock_result
 
-    # Create service
+    # Mock db_manager and tenant_manager
+    mock_db_manager = MagicMock()
+    mock_tenant_manager = MagicMock()
+
+    # Create service with test_session
     service = MessageService(
-        db_session=mock_session,
-        tenant_key="test_tenant"
+        db_manager=mock_db_manager,
+        tenant_manager=mock_tenant_manager,
+        test_session=mock_session
     )
 
     # Count messages
@@ -254,19 +297,8 @@ class TestEmptyStateBoundaryConditions:
         Scenario: Request page 2 when no data exists.
         Expected: Returns [], no index errors.
         """
-        # Mock session
-        mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock empty result
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-
-        # Create service
-        service = MessageService(
-            db_session=mock_session,
-            tenant_key="test_tenant"
-        )
+        # Create service with empty database
+        service, _, _, _ = _create_service_with_empty_db()
 
         # Request page 2 (skip=10) on empty database
         messages = await service.list_messages(
@@ -285,19 +317,13 @@ class TestEmptyStateBoundaryConditions:
         Scenario: Request message counts by status when no messages exist.
         Expected: Returns all zeros, no errors.
         """
-        # Mock session
-        mock_session = AsyncMock(spec=AsyncSession)
+        # Create service with empty database
+        service, mock_session, _, _ = _create_service_with_empty_db()
 
-        # Mock aggregation result - all zeros
-        mock_result = MagicMock()
+        # Mock aggregation result for stats query
+        mock_result = AsyncMock()
         mock_result.all.return_value = []  # No rows returned
         mock_session.execute.return_value = mock_result
-
-        # Create service
-        service = MessageService(
-            db_session=mock_session,
-            tenant_key="test_tenant"
-        )
 
         # Get message counts by status
         stats = await service.get_message_stats(project_id="test-project")
@@ -318,20 +344,14 @@ class TestEmptyStateBoundaryConditions:
         Scenario: Attempt to delete messages from empty database.
         Expected: Returns success (0 deleted), no errors.
         """
-        # Mock session
-        mock_session = AsyncMock(spec=AsyncSession)
+        # Create service with empty database
+        service, mock_session, _, _ = _create_service_with_empty_db()
 
         # Mock delete result - zero rows affected
-        mock_result = MagicMock()
+        mock_result = AsyncMock()
         mock_result.rowcount = 0
         mock_session.execute.return_value = mock_result
         mock_session.commit = AsyncMock()
-
-        # Create service
-        service = MessageService(
-            db_session=mock_session,
-            tenant_key="test_tenant"
-        )
 
         # Attempt to delete nonexistent messages
         deleted_count = await service.delete_messages(
