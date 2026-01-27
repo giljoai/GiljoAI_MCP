@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-26 (0450-0459 Exception Handling Remediation Series added to catalogue)
+**Last Updated:** 2026-01-26 (0480 Exception Handling Remediation Series added to catalogue)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
-| 0401-0500 | Agent Monitoring & Ghost Fixes | 0450-0459 Ready (Exception Handling), 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
+| 0401-0500 | Agent Monitoring & Ghost Fixes | 0480 Ready (Exception Handling), 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 
@@ -70,25 +70,25 @@
 > **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
 > **Follow-up**: 0440b (Frontend UI), 0440c (Documentation)
 
-### Exception Handling Remediation Series (0450-0459) - NEW
+### Exception Handling Remediation Series (0480) - NEW
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
-| **0450** | **Exception-to-HTTP Mapping Framework** | **Ready** | **HIGH** | 4h |
-| **0451** | **Service Base Class & Migration Pattern** | **Ready** | **HIGH** | 3h |
-| **0452** | **Test Infrastructure for Exception Flows** | **Ready** | **HIGH** | 2h |
-| **0453** | **High-Value Service Migration** | **Ready** | **CRITICAL** | 6h wall (18h seq) |
-| **0454** | **Core Services Migration** | **Ready** | **HIGH** | 5h wall (15h seq) |
-| **0455** | **Low-Priority Services Migration** | **Ready** | **MEDIUM** | 3h wall (9h seq) |
-| **0456** | **Endpoint Migration (205 endpoints)** | **Ready** | **HIGH** | 5h wall (20h seq) |
-| **0457** | **Frontend Error Discrimination** | **Ready** | **MEDIUM** | 4h |
-| **0458** | **Integration Testing (54+ scenarios)** | **Ready** | **HIGH** | 8h |
-| **0459** | **Cleanup & Documentation** | **Ready** | **LOW** | 4h |
+| **0480a** | **Exception-to-HTTP Mapping Framework** | **Ready** | **HIGH** | 4h |
+| **0480b** | **Service Base Class & Migration Pattern** | **Ready** | **HIGH** | 3h |
+| **0480c** | **Test Infrastructure for Exception Flows** | **Ready** | **HIGH** | 2h |
+| **0480d** | **High-Value Service Migration** | **Ready** | **CRITICAL** | 6h wall (18h seq) |
+| **0480e** | **Core Services Migration** | **Ready** | **HIGH** | 5h wall (15h seq) |
+| **0480f** | **Low-Priority Services Migration** | **Ready** | **MEDIUM** | 3h wall (9h seq) |
+| **0480g** | **Endpoint Migration (205 endpoints)** | **Ready** | **HIGH** | 5h wall (20h seq) |
+| **0480h** | **Frontend Error Discrimination** | **Ready** | **MEDIUM** | 4h |
+| **0480i** | **Integration Testing (54+ scenarios)** | **Ready** | **HIGH** | 8h |
+| **0480j** | **Cleanup & Documentation** | **Ready** | **LOW** | 4h |
 
 > **Purpose**: Fix 500 errors on fresh install, establish production-grade exception handling
 > **Root Cause**: Services return dicts `{"success": False}`, endpoints use catch-all `except Exception` → 500
 > **Solution**: Wire existing exception infrastructure (35+ exceptions, 45+ error codes, structlog)
 > **Impact**: Zero dict returns, zero catch-all handlers, proper HTTP status codes (404 not 500)
-> **Parallelization**: 0453-0455 (9 services in 3 parallel batches), 0456 (47 modules in batches)
+> **Parallelization**: 0480d-0480f (9 services in 3 parallel batches), 0480g (47 modules in batches)
 > **Total Effort**: 44h wall time (87h sequential) over 5.5 days
 
 ### Agent ID Swap & Ghost Agent Series (0460-0463) - COMPLETE
@@ -531,7 +531,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387, 0388-0395 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready), 0424-0425 (ready), 0440a (ready), 0450-0459 (ready), 0460-0463, 0500 (complete)
+**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready), 0424-0425 (ready), 0440a (ready), 0480 (ready), 0460-0463, 0500 (complete)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **1000-1014** (Greptile Security): 1000-1014
