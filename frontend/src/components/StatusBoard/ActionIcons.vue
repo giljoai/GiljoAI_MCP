@@ -210,7 +210,7 @@ export default {
         loadingStates.value.handOver = true
 
         // Call simple-handover endpoint (Handover 0461d)
-        const response = await api.post(`/agent-jobs/${props.job.job_id}/simple-handover`)
+        const response = await api.agentJobs.simpleHandover(props.job.job_id)
 
         if (response.data.success) {
           // Copy continuation prompt to clipboard
