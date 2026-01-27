@@ -268,11 +268,11 @@
                 <template #activator="{ props: tooltipProps }">
                   <v-btn
                     v-bind="tooltipProps"
-                    icon="mdi-hand-wave"
+                    icon="mdi-refresh"
                     size="small"
                     variant="text"
                     :color="actionIconColor"
-                    @click="openHandoverDialog(agent)"
+                    @click="handleHandOver(agent)"
                   />
                 </template>
               </v-tooltip>
@@ -506,7 +506,6 @@ const sending = ref(false)
 /**
  * Dialog modal state (Handover 0243d, 0331)
  */
-const showHandoverDialog = ref(false)
 const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
@@ -514,7 +513,6 @@ const showCloseoutModal = ref(false)
 const jobModalInitialTab = ref('mission')
 const messageAuditInitialTab = ref('sent')
 const selectedJobId = ref(null)
-// REMOVED: showHandoverDialog (0461d) - Uses simple handover API now
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
 
 /**
@@ -877,7 +875,40 @@ function handleAgentJob(agent) {
   showAgentJobModal.value = true
 }
 
-// REMOVED: openHandoverDialog and handleSuccessorCreated (0461d) - Uses simple handover API now
+/**
+ * Handle Hand Over button click (Handover 0461d fix)
+ * Calls simple-handover API and copies continuation prompt to clipboard
+ */
+async function handleHandOver(agent) {
+  try {
+    const jobId = agent.job_id || agent.agent_id
+    console.log('[JobsTab] Hand over action:', agent.agent_display_name, jobId)
+
+    // Call simple-handover endpoint (Handover 0461c)
+    const response = await api.post(`/agent-jobs/${jobId}/simple-handover`)
+
+    if (response.data.success) {
+      // Copy continuation prompt to clipboard
+      await navigator.clipboard.writeText(response.data.continuation_prompt)
+
+      showLocalToast({
+        message: 'Session refreshed! Continuation prompt copied to clipboard.',
+        type: 'success',
+        duration: 5000,
+      })
+    } else {
+      throw new Error(response.data.error || 'Session refresh failed')
+    }
+  } catch (error) {
+    console.error('[JobsTab] Hand over failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Hand over failed'
+    showLocalToast({
+      message: msg,
+      type: 'error',
+      duration: 5000,
+    })
+  }
+}
 
 /**
  * Send message via API (Handover 0243e)
