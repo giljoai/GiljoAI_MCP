@@ -1,11 +1,18 @@
 # Handover 0480b: Service Base Class Migration Pattern
 
+> **DEPRECATED 2026-01-27**: This handover is part of the deprecated 0480 series.
+> The series was redesigned due to critical flaws (false premises about codebase state).
+>
+> **Use Instead**:
+> - Master: `handovers/0480_exception_handling_remediation_REVISED.md`
+> - Chain prompts: `prompts/0480_chain/`
+
 **Date:** 2026-01-26
 **From Agent:** Documentation Manager
 **To Agent:** Database Expert + TDD Implementor
 **Priority:** HIGH
 **Estimated Complexity:** 8-10 hours
-**Status:** Ready for Implementation
+**Status:** DEPRECATED
 **Series:** 0480 (Exception Handling Architecture Remediation)
 **Dependencies:** Handover 0480a (Exception framework must exist first)
 

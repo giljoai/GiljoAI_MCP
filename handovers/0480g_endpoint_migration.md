@@ -1,11 +1,18 @@
 # Handover 0480g: API Endpoint Migration (205 Endpoints Across 47 Files)
 
+> **DEPRECATED 2026-01-27**: This handover is part of the deprecated 0480 series.
+> The series was redesigned due to critical flaws (false premises about codebase state).
+>
+> **Use Instead**:
+> - Master: `handovers/0480_exception_handling_remediation_REVISED.md`
+> - Chain prompts: `prompts/0480_chain/`
+
 **Date:** 2026-01-26
 **From Agent:** Documentation Manager
 **To Agent:** Backend Integration Tester (Multi-Terminal)
 **Priority:** HIGH
 **Estimated Complexity:** 16-20 hours (parallel: 6-8 hours)
-**Status:** Ready for Implementation
+**Status:** DEPRECATED
 **Series:** 0480 (Exception Handling Architecture Remediation)
 **Dependencies:** Handovers 0480d-0480f (All services migrated)
 

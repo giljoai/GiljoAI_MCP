@@ -5,13 +5,14 @@ These tests ensure that ToolAccessor methods are thin wrappers that delegate
 to OrchestrationService without adding business logic.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+import pytest
+
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
 # ============================================================================
@@ -50,7 +51,6 @@ def tool_accessor(mock_db_manager, mock_tenant_manager):
     accessor._orchestration_service.get_orchestrator_instructions = AsyncMock()
     accessor._orchestration_service.spawn_agent_job = AsyncMock()
     accessor._orchestration_service.get_agent_mission = AsyncMock()
-    accessor._orchestration_service.orchestrate_project = AsyncMock()
     accessor._orchestration_service.get_workflow_status = AsyncMock()
     accessor._orchestration_service.get_pending_jobs = AsyncMock()
     accessor._orchestration_service.acknowledge_job = AsyncMock()
@@ -154,31 +154,6 @@ async def test_get_agent_mission_delegates_to_service(tool_accessor):
     # Verify service method was called with correct args
     tool_accessor._orchestration_service.get_agent_mission.assert_called_once_with(
         job_id=job_id, tenant_key=tenant_key
-    )
-
-    # Verify result passed through
-    assert result == expected_result
-
-
-@pytest.mark.asyncio
-async def test_orchestrate_project_delegates_to_service(tool_accessor):
-    """ToolAccessor.orchestrate_project calls OrchestrationService.orchestrate_project"""
-    project_id = str(uuid4())
-    tenant_key = "test_tenant"
-
-    # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"orchestrator_job_id": str(uuid4())}
-    }
-    tool_accessor._orchestration_service.orchestrate_project.return_value = expected_result
-
-    # Call accessor method
-    result = await tool_accessor.orchestrate_project(project_id, tenant_key)
-
-    # Verify service method was called with correct args
-    tool_accessor._orchestration_service.orchestrate_project.assert_called_once_with(
-        project_id=project_id, tenant_key=tenant_key
     )
 
     # Verify result passed through
@@ -380,11 +355,6 @@ async def test_create_successor_orchestrator_delegates_to_service(tool_accessor)
     assert result == expected_result
 
 
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
-async def test_check_succession_status_delegates_to_service(tool_accessor):
-    """DEPRECATED: check_succession_status() removed in Handover 0461a."""
-    pass
 
 
 @pytest.mark.asyncio
@@ -427,19 +397,19 @@ async def test_all_orchestration_methods_delegate_without_modification(tool_acce
     """
     # List of methods that should delegate to OrchestrationService
     # NOTE: check_succession_status removed in Handover 0461a (manual succession only)
+    # NOTE: orchestrate_project removed in Handover 0470 (deprecated)
     delegation_methods = [
-        'get_orchestrator_instructions',
-        'spawn_agent_job',
-        'get_agent_mission',
-        'orchestrate_project',
-        'get_workflow_status',
-        'get_pending_jobs',
-        'acknowledge_job',
-        'report_progress',
-        'complete_job',
-        'report_error',
-        'create_successor_orchestrator',
-        'update_agent_mission',
+        "get_orchestrator_instructions",
+        "spawn_agent_job",
+        "get_agent_mission",
+        "get_workflow_status",
+        "get_pending_jobs",
+        "acknowledge_job",
+        "report_progress",
+        "complete_job",
+        "report_error",
+        "create_successor_orchestrator",
+        "update_agent_mission",
     ]
 
     # Verify all methods exist on ToolAccessor

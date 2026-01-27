@@ -4,7 +4,6 @@ Provides direct access to MCP tool functions for API endpoints
 """
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
@@ -12,11 +11,10 @@ from uuid import uuid4
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-import yaml
 from sqlalchemy import and_, select, update
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Message, Product, Project, Task
+from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.template_service import TemplateService
@@ -649,10 +647,6 @@ class ToolAccessor:
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
         return await self._orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
-
-    async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
-        """Full project orchestration workflow (delegates to OrchestrationService)"""
-        return await self._orchestration_service.orchestrate_project(project_id=project_id, tenant_key=tenant_key)
 
     async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Get workflow status for a project (delegates to OrchestrationService)"""
