@@ -597,10 +597,17 @@ class ToolAccessor:
                 # Mark ready and build URL
                 await token_manager.mark_ready(token)
 
-                # Get server URL from config
+                # Get server URL from config (same approach as downloads.py)
+                from pathlib import Path
+                import yaml
                 from giljo_mcp.config_manager import get_config
                 config = get_config()
-                server_url = f"http://{config.server.host}:{config.server.api_port}"
+                config_path = Path.cwd() / "config.yaml"
+                with open(config_path) as f:
+                    config_data = yaml.safe_load(f)
+                host = config_data.get("services", {}).get("external_host", "localhost")
+                port = config.server.api_port
+                server_url = f"http://{host}:{port}"
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
                 token_data = await token_manager.get_token_info(token, tenant_key)
