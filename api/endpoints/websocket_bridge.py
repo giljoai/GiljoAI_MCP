@@ -125,8 +125,6 @@ async def emit_websocket_event(
             message=f"Event broadcasted to {clients_notified} client(s)",
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(
             f"Failed to emit WebSocket event: {e}",

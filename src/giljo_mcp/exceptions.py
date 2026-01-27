@@ -16,6 +16,8 @@ class BaseGiljoException(Exception):
     to enable consistent error handling and categorization.
     """
 
+    default_status_code: int = 500
+
     def __init__(self, message: str, error_code: Optional[str] = None, context: Optional[dict] = None):
         """
         Initialize the base exception.
@@ -25,20 +27,39 @@ class BaseGiljoException(Exception):
             error_code: Optional machine-readable error code
             context: Optional dictionary with additional error context
         """
+        from datetime import datetime, timezone
+        
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__.upper()
         self.context = context or {}
+        self.timestamp = datetime.now(timezone.utc)
 
     def __str__(self):
         if self.context:
             return f"{self.message} (Context: {self.context})"
         return self.message
 
+    def to_dict(self) -> dict:
+        """
+        Convert exception to dictionary format for API responses.
+
+        Returns:
+            Dictionary containing error details
+        """
+        return {
+            "error_code": self.error_code,
+            "message": self.message,
+            "context": self.context,
+            "timestamp": self.timestamp.isoformat(),
+            "status_code": self.default_status_code
+        }
+
 
 # Configuration related exceptions
 class ConfigurationError(BaseGiljoException):
     """Raised when there are configuration issues."""
+    default_status_code: int = 500
 
 
 class ConfigValidationError(ConfigurationError):
@@ -52,6 +73,7 @@ class TemplateError(BaseGiljoException):
 
 class TemplateNotFoundError(TemplateError):
     """Raised when a requested template cannot be found."""
+    default_status_code: int = 404
 
 
 class TemplateValidationError(TemplateError):
@@ -65,6 +87,7 @@ class TemplateRenderError(TemplateError):
 # Orchestration related exceptions
 class OrchestrationError(BaseGiljoException):
     """Base class for orchestration-related errors."""
+    default_status_code: int = 500
 
 
 class AgentCreationError(OrchestrationError):
@@ -86,6 +109,7 @@ class HandoffError(OrchestrationError):
 # Database related exceptions
 class DatabaseError(BaseGiljoException):
     """Base class for database-related errors."""
+    default_status_code: int = 500
 
 
 class DatabaseConnectionError(DatabaseError):
@@ -103,6 +127,7 @@ class DatabaseIntegrityError(DatabaseError):
 # Validation related exceptions
 class ValidationError(BaseGiljoException):
     """Base class for validation errors."""
+    default_status_code: int = 400
 
 
 class SchemaValidationError(ValidationError):
@@ -146,14 +171,17 @@ class APIError(BaseGiljoException):
 
 class AuthenticationError(APIError):
     """Raised when API authentication fails."""
+    default_status_code: int = 401
 
 
 class AuthorizationError(APIError):
     """Raised when API authorization fails."""
+    default_status_code: int = 403
 
 
 class RateLimitError(APIError):
     """Raised when API rate limits are exceeded."""
+    default_status_code: int = 429
 
 
 # Resource related exceptions
@@ -163,6 +191,7 @@ class ResourceError(BaseGiljoException):
 
 class ResourceNotFoundError(ResourceError):
     """Raised when a requested resource cannot be found."""
+    default_status_code: int = 404
 
 
 class ResourceExhaustedError(ResourceError):

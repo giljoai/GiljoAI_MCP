@@ -285,8 +285,6 @@ async def create_template(
 
         return _convert_to_response(new_template)
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Failed to create template: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create template: {str(e)}")
@@ -402,8 +400,6 @@ async def update_template(
 
         return _convert_to_response(template)
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Failed to update template: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update template: {str(e)}")
@@ -480,8 +476,6 @@ async def delete_template(
 
         return {"message": f"Template '{template_name}' permanently deleted", "template_id": template_id}
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Failed to delete template: {e}")
         await session.rollback()

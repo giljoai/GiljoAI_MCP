@@ -926,10 +926,6 @@ async def get_implementation_prompt(
             "agent_count": len(agent_executions)
         }
 
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-
     except Exception as e:
         # Unexpected error during generation
         logger.exception(f"[IMPLEMENTATION PROMPT] Generation failed for project={project_id}: {e}")

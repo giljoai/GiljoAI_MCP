@@ -89,8 +89,6 @@ async def get_system_configuration():
         # Return the full structure (matches config.yaml format)
         return config
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load configuration: {e!s}") from e
 
@@ -118,8 +116,6 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
 
         return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -150,8 +146,6 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
             "message": "Configuration updated (runtime only)",
         }
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -267,8 +261,6 @@ async def get_tenant_configuration(tenant_key: str):
             # result = await session.execute(select(Configuration).where(Configuration.tenant_key == tenant_key))
             # configs = result.scalars().all()
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -364,8 +356,6 @@ async def delete_tenant_configuration(tenant_key: str):
             # if result.rowcount == 0:
             #     raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -415,8 +405,6 @@ async def get_database_configuration():
 
         return DatabaseConfigResponse(host=host, port=port, name=name, user=user, password_masked=password_masked)
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read database configuration: {e!s}") from e
 
@@ -542,8 +530,6 @@ async def update_database_password(update: DatabasePasswordUpdate):
             "details": {"postgresql_updated": True, "env_file_updated": True, "connection_tested": True},
         }
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update password: {e!s}") from e
 
@@ -613,8 +599,6 @@ async def get_frontend_configuration():
             },
         }
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load frontend configuration: {e!s}") from e
 
