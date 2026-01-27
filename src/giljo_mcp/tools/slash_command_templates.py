@@ -16,47 +16,20 @@ allowed-tools: []
 
 Install GiljoAI agent templates to your Claude Code environment.
 
-## STEP 1: Get Your GiljoAI API Key and Server URL
+## STEP 1: Generate Download URL
 
-**IMPORTANT**: You need the GiljoAI API key (starts with `gk_`), NOT keys from other MCP servers.
+Call the MCP tool to generate a download URL:
 
-1. Read your Claude Code MCP config file:
-   - **macOS/Linux**: `~/.claude.json`
-   - **Windows**: `%USERPROFILE%\.claude.json`
-
-2. Find the `giljo-mcp` server entry and extract:
-   - **Server URL**: The `--server-url` value (e.g., `http://10.1.0.116:7272`)
-   - **API Key**: The `--api-key` value - MUST start with `gk_` prefix
-
-Example config structure:
-```json
-{
-  "mcpServers": {
-    "giljo-mcp": {
-      "command": "uvx",
-      "args": ["--from", "giljo-mcp", "giljo-mcp", "--server-url", "http://10.1.0.116:7272", "--api-key", "gk_YourKeyHere..."]
-    }
-  }
-}
+```
+mcp__giljo-mcp__generate_download_token(content_type="agent_templates")
 ```
 
-**WARNING**: If your key starts with `gc_` or another prefix, it's from a different MCP server - use only the `gk_` key.
+This returns:
+- `download_url` - Valid for 15 minutes, one-time use
+- `expires_at` - Expiration timestamp
+- `content_type` - "agent_templates"
 
-## STEP 2: Generate Download URL
-
-Make a POST request with your `gk_` API key:
-
-```bash
-curl -X POST "{SERVER_URL}/api/download/generate-token?content_type=agent_templates" \
-  -H "X-API-Key: {YOUR_GK_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-Replace `{SERVER_URL}` with your server URL and `{YOUR_GK_API_KEY}` with your `gk_...` key.
-
-Returns JSON with: `download_url` (valid 15 minutes, one-time use), `expires_at`, and `content_type`
-
-## STEP 3: Download Templates
+## STEP 2: Download Templates
 
 Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no headers needed:
 
@@ -64,7 +37,7 @@ Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no
 curl -o /tmp/agents.zip "{download_url}"
 ```
 
-## STEP 4: Ask User Install Location
+## STEP 3: Ask User Install Location
 
 Ask: "Where should I install the {template_count} agent templates?"
 
@@ -72,7 +45,7 @@ Options:
 - **Project agents** (`.claude/agents/`) - Available only in this project
 - **User agents** (`~/.claude/agents/`) - Available across all your projects
 
-## STEP 5: Extract to Chosen Location
+## STEP 4: Extract to Chosen Location
 
 Use Bash to extract based on user choice:
 
@@ -86,7 +59,7 @@ mkdir -p .claude/agents && unzip -o /tmp/agents.zip -d .claude/agents/ && rm /tm
 mkdir -p ~/.claude/agents && unzip -o /tmp/agents.zip -d ~/.claude/agents/ && rm /tmp/agents.zip
 ```
 
-## STEP 6: Confirm and Restart Notice
+## STEP 5: Confirm and Restart Notice
 
 Tell the user:
 1. How many templates were installed (from `template_count`)
