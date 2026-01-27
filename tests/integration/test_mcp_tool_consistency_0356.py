@@ -24,9 +24,9 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.message_service import MessageService
 
 
@@ -184,9 +184,10 @@ async def test_get_orchestrator_instructions_uses_job_id_not_orchestrator_id(db_
 
     This test WILL FAIL initially because the schema still uses orchestrator_id.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-    from src.giljo_mcp.tenant import TenantManager
     import inspect
+
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     tenant_manager = TenantManager()
     tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -241,7 +242,6 @@ async def test_report_progress_schema_requires_tenant_key():
     This test WILL FAIL initially because schema is missing tenant_key.
     """
     from pathlib import Path
-    import json
 
     # Read MCP HTTP schema
     mcp_http_path = Path("F:/GiljoAI_MCP/api/endpoints/mcp_http.py")
@@ -290,7 +290,7 @@ async def test_complete_job_schema_requires_tenant_key():
         "complete_job schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "complete_job schema missing 'tenant_key' in required array"
 
 
@@ -316,7 +316,7 @@ async def test_report_error_schema_requires_tenant_key():
         "report_error schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "report_error schema missing 'tenant_key' in required array"
 
 
@@ -342,7 +342,7 @@ async def test_acknowledge_job_schema_requires_tenant_key():
         "acknowledge_job schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "acknowledge_job schema missing 'tenant_key' in required array"
 
 
@@ -368,7 +368,7 @@ async def test_send_message_schema_requires_tenant_key():
         "send_message schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "send_message schema missing 'tenant_key' in required array"
 
 
@@ -394,7 +394,7 @@ async def test_receive_messages_schema_requires_tenant_key():
         "receive_messages schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "receive_messages schema missing 'tenant_key' in required array"
 
 
@@ -420,7 +420,7 @@ async def test_list_messages_schema_requires_tenant_key():
         "list_messages schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "list_messages schema missing 'tenant_key' in required array"
 
 
@@ -446,7 +446,7 @@ async def test_gil_handover_schema_requires_tenant_key():
         "gil_handover schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split(']')[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
         "gil_handover schema missing 'tenant_key' in required array"
 
 
@@ -462,9 +462,10 @@ async def test_tool_accessor_passes_tenant_key_to_report_progress(db_manager):
 
     This test WILL FAIL initially because ToolAccessor may not have tenant_key parameter.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-    from src.giljo_mcp.tenant import TenantManager
     import inspect
+
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     tenant_manager = TenantManager()
     tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -485,9 +486,10 @@ async def test_tool_accessor_passes_tenant_key_to_complete_job(db_manager):
 
     This test WILL FAIL initially because ToolAccessor may not have tenant_key parameter.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-    from src.giljo_mcp.tenant import TenantManager
     import inspect
+
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     tenant_manager = TenantManager()
     tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -508,9 +510,10 @@ async def test_tool_accessor_passes_tenant_key_to_report_error(db_manager):
 
     This test WILL FAIL initially because ToolAccessor may not have tenant_key parameter.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-    from src.giljo_mcp.tenant import TenantManager
     import inspect
+
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     tenant_manager = TenantManager()
     tool_accessor = ToolAccessor(db_manager, tenant_manager)
@@ -539,8 +542,8 @@ async def test_report_progress_rejects_cross_tenant_access(multi_tenant_setup, d
 
     This test WILL FAIL initially if tenant_key is not enforced in the service layer.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
     from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     setup = multi_tenant_setup
     tenant_manager = TenantManager()
@@ -676,7 +679,6 @@ async def test_all_tenant_scoped_tools_have_tenant_key():
         "gil_handover",
         "get_orchestrator_instructions",
         "get_agent_mission",
-        "orchestrate_project",
         "fetch_context",
     ]
 
@@ -696,7 +698,7 @@ async def test_all_tenant_scoped_tools_have_tenant_key():
             f"Tool {tool_name} missing 'tenant_key' in properties"
 
         # Assert: tenant_key in required array
-        required_section = tool_def.split('"required":')[1].split(']')[0] if '"required":' in tool_def else ""
+        required_section = tool_def.split('"required":')[1].split("]")[0] if '"required":' in tool_def else ""
         assert '"tenant_key"' in required_section, \
             f"Tool {tool_name} missing 'tenant_key' in required array"
 
@@ -791,8 +793,9 @@ async def test_no_tools_rely_on_implicit_tenant_context(db_manager, tenant_manag
     This test verifies that all tools explicitly require tenant_key in their signatures.
     This is a DESIGN ENFORCEMENT test to prevent future regressions.
     """
-    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
     import inspect
+
+    from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
     tool_accessor = ToolAccessor(db_manager, tenant_manager)
 
@@ -804,7 +807,6 @@ async def test_no_tools_rely_on_implicit_tenant_context(db_manager, tenant_manag
         "acknowledge_job",
         "get_orchestrator_instructions",
         "get_agent_mission",
-        "orchestrate_project",
     ]
 
     for method_name in tenant_scoped_methods:

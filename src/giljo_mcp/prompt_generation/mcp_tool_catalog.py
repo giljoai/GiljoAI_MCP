@@ -78,24 +78,6 @@ agent_id = result['job_id']
 prompt = result['agent_prompt']  # ~10 lines for agent to paste
 """,
             },
-            "orchestrate_project": {
-                "params": ["project_id: str", "tenant_key: str"],
-                "description": "Complete project orchestration workflow end-to-end",
-                "returns": "Dict with mission plan, selected agents, spawned jobs, and results",
-                "when": [
-                    "When starting complete orchestration from scratch",
-                    "For automated end-to-end project setup (rare - typically orchestrate manually)",
-                ],
-                "example": """# Full orchestration (uncommon - manual orchestration preferred)
-result = await orchestrate_project(
-    project_id='proj-123',
-    tenant_key='tenant-abc'
-)
-
-spawned_jobs = result['spawned_jobs']  # List of agent job IDs
-mission_plan = result['mission_plan']  # Generated execution plan
-""",
-            },
             "get_workflow_status": {
                 "params": ["project_id: str", "tenant_key: str"],
                 "description": "Get current workflow status including active, completed, and failed agents",
@@ -443,7 +425,6 @@ for agent in members['agents']:
         "orchestrator": [
             "orchestration.get_orchestrator_instructions",
             "orchestration.spawn_agent_job",
-            "orchestration.orchestrate_project",
             "orchestration.get_workflow_status",
             "context.get_agent_mission",
             "context.get_available_agents",

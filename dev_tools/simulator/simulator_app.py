@@ -202,16 +202,8 @@ async def sim_convert_task(payload: dict) -> dict:
 
 
 # ------------------------ Jobs & Orchestrator -------------
-@app.post("/api/sim/jobs/orchestrate")
-async def sim_orchestrate(payload: dict) -> dict:
-    prj_id = payload.get("project_id")
-    res = await state.client.orchestrate_project(prj_id)
-    if res.get("success"):
-        job_id = res["data"].get("orchestrator_job_id") or res["data"].get("job_id")
-        if job_id:
-            state.registry.add("agent_jobs", job_id)
-    return res
-
+# Note: orchestrate_project endpoint removed (deprecated 2026-01-26)
+# Use manual staging workflow: get_orchestrator_instructions -> spawn_agent_job
 
 @app.get("/api/sim/jobs/workflow")
 async def sim_workflow(project_id: str) -> dict:

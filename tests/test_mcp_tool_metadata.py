@@ -129,11 +129,10 @@ class TestMCPToolMetadata:
             "get_orchestrator_instructions",
             "spawn_agent_job",
             "get_agent_mission",
-            "orchestrate_project",
             "get_workflow_status",
         ]
 
-        assert len(orchestration_tools) == 6
+        assert len(orchestration_tools) == 5
 
         for tool in orchestration_tools:
             assert tool["name"] in expected_tools
