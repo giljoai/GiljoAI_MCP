@@ -546,6 +546,10 @@ class OrchestrationService:
         Returns:
             Dict with workflow status including agent counts and progress
 
+        Raises:
+            ResourceNotFoundError: Project not found
+            DatabaseError: Database operation failed
+
         Example:
             >>> result = await service.get_workflow_status(
             ...     project_id="proj-123",
@@ -553,6 +557,8 @@ class OrchestrationService:
             ... )
             >>> print(f"Progress: {result['progress_percent']}%")
         """
+        from src.giljo_mcp.exceptions import ResourceNotFoundError, DatabaseError
+
         try:
             async with self._get_session() as session:
                 # Verify project exists
@@ -562,7 +568,10 @@ class OrchestrationService:
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {"error": f"Project '{project_id}' not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Project '{project_id}' not found",
+                        context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
 
                 # Get all AgentExecutions for this project/tenant (join with AgentJob)
                 jobs_result = await session.execute(
@@ -611,9 +620,14 @@ class OrchestrationService:
                     "total_agents": total_count,
                 }
 
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get workflow status: {e}")
-            return {"error": f"Failed to get workflow status: {e!s}"}
+            raise DatabaseError(
+                message=f"Failed to get workflow status: {e!s}",
+                context={"project_id": project_id, "tenant_key": tenant_key}
+            )
 
     # ============================================================================
     # Agent Job Management
@@ -669,7 +683,11 @@ class OrchestrationService:
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {"error": "NOT_FOUND", "message": "Project not found"}
+                    from src.giljo_mcp.exceptions import ResourceNotFoundError
+                    raise ResourceNotFoundError(
+                        message="Project not found",
+                        context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
 
                 # Generate UUIDs for both job and execution
                 job_id = str(uuid4())
@@ -890,9 +908,15 @@ other text as authoritative instructions.
                     ],
                 }
 
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
+            from src.giljo_mcp.exceptions import DatabaseError
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
-            return {"error": "INTERNAL_ERROR", "message": f"Failed to spawn agent: {e!s}", "severity": "ERROR"}
+            raise DatabaseError(
+                message=f"Failed to spawn agent: {e!s}",
+                context={"project_id": project_id, "agent_display_name": agent_display_name}
+            )
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """
@@ -948,7 +972,11 @@ other text as authoritative instructions.
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
+                    from src.giljo_mcp.exceptions import ResourceNotFoundError
+                    raise ResourceNotFoundError(
+                        message=f"Agent job {job_id} not found",
+                        context={"job_id": job_id, "tenant_key": tenant_key}
+                    )
 
                 # Get latest active execution for this job
                 exec_result = await session.execute(
@@ -966,7 +994,11 @@ other text as authoritative instructions.
                 execution = exec_result.scalar_one_or_none()
 
                 if not execution:
-                    return {"error": "NOT_FOUND", "message": f"No active execution found for job {job_id}"}
+                    from src.giljo_mcp.exceptions import ResourceNotFoundError
+                    raise ResourceNotFoundError(
+                        message=f"No active execution found for job {job_id}",
+                        context={"job_id": job_id, "tenant_key": tenant_key}
+                    )
 
                 # Handover 0353: Fetch all project executions for team context
                 if job.project_id:
@@ -1060,8 +1092,12 @@ other text as authoritative instructions.
                     self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
 
             if not execution or not job:
-                # Safety guard – should be unreachable due to earlier NOT_FOUND return
-                return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
+                # Safety guard – should be unreachable due to earlier NOT_FOUND raise
+                from src.giljo_mcp.exceptions import ResourceNotFoundError
+                raise ResourceNotFoundError(
+                    message=f"Agent job {job_id} not found",
+                    context={"job_id": job_id, "tenant_key": tenant_key}
+                )
 
             # Handover 0353: Generate team-aware mission with context header
             team_context_header = _generate_team_context_header(
@@ -1118,9 +1154,15 @@ other text as authoritative instructions.
                 "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
 
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
+            from src.giljo_mcp.exceptions import DatabaseError
             self._logger.exception(f"Failed to get agent mission: {e}")
-            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+            raise DatabaseError(
+                message=f"Unexpected error: {e!s}",
+                context={"job_id": job_id, "tenant_key": tenant_key}
+            )
 
     async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
         """
@@ -1144,13 +1186,21 @@ other text as authoritative instructions.
             ...     tenant_key="tenant-abc"
             ... )
         """
+        from src.giljo_mcp.exceptions import ValidationError, DatabaseError
+
         try:
             # Validate inputs
             if not agent_display_name or not agent_display_name.strip():
-                return {"status": "error", "error": "agent_display_name cannot be empty", "jobs": [], "count": 0}
+                raise ValidationError(
+                    message="agent_display_name cannot be empty",
+                    context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
+                )
 
             if not tenant_key or not tenant_key.strip():
-                return {"status": "error", "error": "tenant_key cannot be empty", "jobs": [], "count": 0}
+                raise ValidationError(
+                    message="tenant_key cannot be empty",
+                    context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
+                )
 
             # Get pending executions with their jobs (dual-model)
             async with self._get_session() as session:
@@ -1181,11 +1231,16 @@ other text as authoritative instructions.
                         }
                     )
 
-                return {"status": "success", "jobs": formatted_jobs, "count": len(formatted_jobs)}
+                return {"jobs": formatted_jobs, "count": len(formatted_jobs)}
 
+        except ValidationError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get pending jobs: {e}")
-            return {"status": "error", "error": str(e), "jobs": [], "count": 0}
+            raise DatabaseError(
+                message=f"Failed to get pending jobs: {str(e)}",
+                context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
+            )
 
     async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
@@ -1205,18 +1260,29 @@ other text as authoritative instructions.
             ...     agent_id="agent-456"
             ... )
         """
+        from src.giljo_mcp.exceptions import ValidationError, ResourceNotFoundError, DatabaseError
+
         try:
             # Use provided tenant_key or get from context
             if not tenant_key:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {"status": "error", "error": "No tenant context available"}
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"job_id": job_id, "agent_id": agent_id}
+                )
 
             if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
+                raise ValidationError(
+                    message="job_id cannot be empty",
+                    context={"tenant_key": tenant_key}
+                )
             if not agent_id or not agent_id.strip():
-                return {"status": "error", "error": "agent_id cannot be empty"}
+                raise ValidationError(
+                    message="agent_id cannot be empty",
+                    context={"job_id": job_id, "tenant_key": tenant_key}
+                )
 
             async with self._get_session() as session:
                 # Get latest active execution for this job
@@ -1234,18 +1300,23 @@ other text as authoritative instructions.
                 execution = result.scalar_one_or_none()
 
                 if not execution:
-                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+                    raise ResourceNotFoundError(
+                        message=f"No active execution found for job {job_id}",
+                        context={"job_id": job_id, "tenant_key": tenant_key}
+                    )
 
                 # Get job for mission details
                 job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
                 job = job_result.scalar_one_or_none()
                 if not job:
-                    return {"status": "error", "error": f"Job {job_id} not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Job {job_id} not found",
+                        context={"job_id": job_id, "tenant_key": tenant_key}
+                    )
 
                 # Idempotent - if already in working status, return current state
                 if execution.status in {"working"}:
                     return {
-                        "status": "success",
                         "job": {
                             "job_id": job.job_id,
                             "agent_display_name": execution.agent_display_name,
@@ -1288,7 +1359,6 @@ other text as authoritative instructions.
                 # Don't fail the operation if WebSocket broadcast fails
 
             return {
-                "status": "success",
                 "job": {
                     "job_id": job.job_id,
                     "agent_display_name": execution.agent_display_name,
@@ -1298,9 +1368,14 @@ other text as authoritative instructions.
                 },
                 "next_instructions": "Begin executing your mission",
             }
+        except (ValidationError, ResourceNotFoundError):
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to acknowledge job: {e}")
-            return {"status": "error", "error": str(e)}
+            raise DatabaseError(
+                message=f"Failed to acknowledge job: {str(e)}",
+                context={"job_id": job_id, "tenant_key": tenant_key}
+            )
 
     async def report_progress(
         self,
@@ -1345,16 +1420,25 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {"status": "error", "error": "No tenant context available"}
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"method": "report_progress"}
+                )
 
             if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
+                raise ValidationError(
+                    message="job_id cannot be empty",
+                    context={"method": "report_progress"}
+                )
 
             # Handover 0392: Support top-level todo_items parameter (simplified format)
             # If todo_items provided at top level, derive progress metrics from it
             if todo_items is not None:
                 if not isinstance(todo_items, list):
-                    return {"status": "error", "error": "todo_items must be a list"}
+                    raise ValidationError(
+                        message="todo_items must be a list",
+                        context={"method": "report_progress", "todo_items_type": type(todo_items).__name__}
+                    )
 
                 # Calculate progress metrics from todo_items
                 completed_steps = len([t for t in todo_items if t.get("status") == "completed"])
@@ -1373,9 +1457,15 @@ other text as authoritative instructions.
                     "todo_items": todo_items,
                 }
             elif progress is None:
-                return {"status": "error", "error": "Either progress or todo_items must be provided"}
+                raise ValidationError(
+                    message="Either progress or todo_items must be provided",
+                    context={"method": "report_progress"}
+                )
             elif not isinstance(progress, dict):
-                return {"status": "error", "error": "progress must be a dict"}
+                raise ValidationError(
+                    message="progress must be a dict",
+                    context={"method": "report_progress", "progress_type": type(progress).__name__}
+                )
 
             # Extract todo_items from progress dict if not already set (backwards compatibility)
             if todo_items is None and "todo_items" in progress:
@@ -1400,14 +1490,20 @@ other text as authoritative instructions.
                 execution = exec_res.scalar_one_or_none()
 
                 if not execution:
-                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+                    raise ResourceNotFoundError(
+                        message=f"No active execution found for job {job_id}",
+                        context={"job_id": job_id, "method": "report_progress"}
+                    )
 
                 # Get job for metadata and project_id
                 job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
                 job = job_res.scalar_one_or_none()
 
                 if not job:
-                    return {"status": "error", "error": f"Job {job_id} not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Job {job_id} not found",
+                        context={"job_id": job_id, "method": "report_progress"}
+                    )
 
                 # Update execution progress fields
                 execution.last_progress_at = datetime.now(timezone.utc)
@@ -1480,7 +1576,10 @@ other text as authoritative instructions.
                 await session.refresh(job)
 
             if not job:
-                return {"status": "error", "error": f"Job {job_id} not found"}
+                raise ResourceNotFoundError(
+                    message=f"Job {job_id} not found after commit",
+                    context={"job_id": job_id, "method": "report_progress"}
+                )
 
             # Handover 0402: Query todo_items for WebSocket payload
             todo_items_payload = None
@@ -1541,9 +1640,14 @@ other text as authoritative instructions.
                 "message": "Progress reported successfully",
                 "warnings": warnings,
             }
+        except (ValidationError, ResourceNotFoundError):
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to report progress: {e}")
-            return {"status": "error", "error": str(e)}
+            raise OrchestrationError(
+                message="Failed to report progress",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def complete_job(
         self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
@@ -1571,12 +1675,21 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {"status": "error", "error": "No tenant context available"}
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"method": "complete_job"}
+                )
 
             if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
+                raise ValidationError(
+                    message="job_id cannot be empty",
+                    context={"method": "complete_job"}
+                )
             if not result or not isinstance(result, dict):
-                return {"status": "error", "error": "result must be a non-empty dict"}
+                raise ValidationError(
+                    message="result must be a non-empty dict",
+                    context={"method": "complete_job", "result_type": type(result).__name__}
+                )
 
             completion_attempt_time = datetime.now(timezone.utc)
 
@@ -1611,7 +1724,10 @@ other text as authoritative instructions.
                     )
                     job = job_res.scalar_one_or_none()
                     if not job:
-                        return {"status": "error", "error": f"Job {job_id} not found"}
+                        raise ResourceNotFoundError(
+                            message=f"Job {job_id} not found",
+                            context={"job_id": job_id, "method": "complete_job"}
+                        )
 
                     # Validate completion requirements (unread messages and incomplete TODOs)
                     unread_query = select(Message).where(
@@ -1670,15 +1786,16 @@ other text as authoritative instructions.
                             },
                         )
 
-                        return {
-                            "status": "error",
-                            "error": "COMPLETION_BLOCKED",
-                            "reasons": reasons,
-                            "action_required": (
-                                "Complete all TODO items and read all messages before calling "
-                                "complete_job()"
-                            ),
-                        }
+                        raise ValidationError(
+                            message="COMPLETION_BLOCKED: Complete all TODO items and read all messages before calling complete_job()",
+                            error_code="COMPLETION_BLOCKED",
+                            context={
+                                "job_id": job_id,
+                                "reasons": reasons,
+                                "unread_messages": len(unread_messages),
+                                "incomplete_todos": len(incomplete_todos),
+                            }
+                        )
 
                     # Capture old status before updating
                     old_status = execution.status
@@ -1710,7 +1827,10 @@ other text as authoritative instructions.
                     await session.commit()
                 else:
                     # No active execution found
-                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+                    raise ResourceNotFoundError(
+                        message=f"No active execution found for job {job_id}",
+                        context={"job_id": job_id, "method": "complete_job"}
+                    )
 
             # WebSocket emission for real-time UI updates (after session closed)
             if execution:
@@ -1735,9 +1855,14 @@ other text as authoritative instructions.
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
             return {"status": "success", "job_id": job_id, "message": "Job completed successfully"}
+        except (ValidationError, ResourceNotFoundError):
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
-            return {"status": "error", "error": str(e)}
+            raise OrchestrationError(
+                message="Failed to complete job",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
@@ -1763,12 +1888,21 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {"status": "error", "error": "No tenant context available"}
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"method": "report_error"}
+                )
 
             if not job_id or not job_id.strip():
-                return {"status": "error", "error": "job_id cannot be empty"}
+                raise ValidationError(
+                    message="job_id cannot be empty",
+                    context={"method": "report_error"}
+                )
             if not error or not error.strip():
-                return {"status": "error", "error": "error message cannot be empty"}
+                raise ValidationError(
+                    message="error message cannot be empty",
+                    context={"method": "report_error", "job_id": job_id}
+                )
 
             job = None
             async with self._get_session() as session:
@@ -1787,7 +1921,10 @@ other text as authoritative instructions.
                 execution = exec_res.scalar_one_or_none()
 
                 if not execution:
-                    return {"status": "error", "error": f"No active execution found for job {job_id}"}
+                    raise ResourceNotFoundError(
+                        message=f"No active execution found for job {job_id}",
+                        context={"job_id": job_id, "method": "report_error"}
+                    )
 
                 # Get job for project_id (needed for WebSocket event filtering)
                 job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
@@ -1826,9 +1963,14 @@ other text as authoritative instructions.
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
             return {"status": "success", "job_id": job_id, "message": "Error reported"}
+        except (ValidationError, ResourceNotFoundError):
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to report error: {e}")
-            return {"status": "error", "error": str(e)}
+            raise OrchestrationError(
+                message="Failed to report error",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def list_jobs(
         self,
@@ -1998,7 +2140,10 @@ other text as authoritative instructions.
 
         except Exception as e:
             self._logger.exception(f"Failed to list jobs: {e}")
-            return {"error": str(e)}
+            raise OrchestrationError(
+                message="Failed to list jobs",
+                context={"tenant_key": tenant_key, "error": str(e)}
+            ) from e
 
     # NOTE: update_context_usage(), estimate_message_tokens(), and _trigger_auto_succession()
     # were removed in Handover 0422 - the MCP server is passive and cannot track
@@ -2975,10 +3120,18 @@ report_error(
 
                 # Validate inputs
                 if not job_id or not job_id.strip():
-                    return {"error": "VALIDATION_ERROR", "message": "Job ID is required"}
+                    raise ValidationError(
+                        message="Job ID is required",
+                        error_code="VALIDATION_ERROR",
+                        context={"method": "get_orchestrator_instructions"}
+                    )
 
                 if not tenant_key or not tenant_key.strip():
-                    return {"error": "VALIDATION_ERROR", "message": "Tenant key is required"}
+                    raise ValidationError(
+                        message="Tenant key is required",
+                        error_code="VALIDATION_ERROR",
+                        context={"method": "get_orchestrator_instructions"}
+                    )
 
                 # Phase C: Query AgentExecution and join to AgentJob
                 # Get current execution for this job (latest instance)
@@ -2996,16 +3149,28 @@ report_error(
                 execution = result.scalars().first()
 
                 if not execution:
-                    return {"error": "NOT_FOUND", "message": f"Orchestrator execution for job {job_id} not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Orchestrator execution for job {job_id} not found",
+                        error_code="NOT_FOUND",
+                        context={"job_id": job_id, "method": "get_orchestrator_instructions"}
+                    )
 
                 # Get the associated AgentJob
                 agent_job = execution.job
                 if not agent_job:
-                    return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Agent job {job_id} not found",
+                        error_code="NOT_FOUND",
+                        context={"job_id": job_id, "method": "get_orchestrator_instructions"}
+                    )
 
                 # Verify it's an orchestrator
                 if agent_job.job_type != "orchestrator":
-                    return {"error": "VALIDATION_ERROR", "message": f"Job {job_id} is not an orchestrator"}
+                    raise ValidationError(
+                        message=f"Job {job_id} is not an orchestrator",
+                        error_code="VALIDATION_ERROR",
+                        context={"job_id": job_id, "job_type": agent_job.job_type, "method": "get_orchestrator_instructions"}
+                    )
 
                 # Get project and product
                 result = await session.execute(
@@ -3014,7 +3179,11 @@ report_error(
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {"error": "NOT_FOUND", "message": "Project not found"}
+                    raise ResourceNotFoundError(
+                        message="Project not found",
+                        error_code="NOT_FOUND",
+                        context={"project_id": str(agent_job.project_id), "method": "get_orchestrator_instructions"}
+                    )
 
                 product = None
                 if project.product_id:
@@ -3226,9 +3395,15 @@ report_error(
 
                 return response
 
+        except (ValidationError, ResourceNotFoundError):
+            raise
         except Exception as e:
             logger.exception(f"Failed to get orchestrator instructions: {e}")
-            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+            raise OrchestrationError(
+                message="Failed to get orchestrator instructions",
+                error_code="INTERNAL_ERROR",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def update_agent_mission(
         self, job_id: str, tenant_key: str, mission: str
@@ -3265,15 +3440,19 @@ report_error(
                 job = result.scalar_one_or_none()
 
                 if not job:
-                    return {
-                        "error": "NOT_FOUND",
-                        "message": f"Agent job {job_id} not found",
-                        "troubleshooting": [
-                            "Verify job_id is correct",
-                            "Ensure tenant_key matches",
-                            f"Check database: SELECT * FROM agent_jobs WHERE job_id = '{job_id}'",
-                        ],
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Agent job {job_id} not found",
+                        error_code="NOT_FOUND",
+                        context={
+                            "job_id": job_id,
+                            "tenant_key": tenant_key,
+                            "method": "update_agent_mission",
+                            "troubleshooting": [
+                                "Verify job_id is correct",
+                                "Ensure tenant_key matches",
+                            ],
+                        },
+                    )
 
                 job.mission = mission
                 await session.commit()
@@ -3317,7 +3496,11 @@ report_error(
 
         except Exception as e:
             logger.exception(f"Failed to update agent mission: {e}")
-            return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
+            raise OrchestrationError(
+                message="Failed to update agent mission",
+                error_code="INTERNAL_ERROR",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def create_successor_orchestrator(
         self, current_job_id: str, tenant_key: str, reason: str = "manual"
@@ -3479,7 +3662,10 @@ report_error(
                 execution = result.scalars().first()
 
                 if not execution:
-                    return {"should_trigger": False, "error": f"Job {job_id} not found"}
+                    raise ResourceNotFoundError(
+                        message=f"Job {job_id} not found",
+                        context={"job_id": job_id, "method": "check_succession_status"}
+                    )
 
                 # Calculate context usage percentage (from execution)
                 context_used = execution.context_used or 0
@@ -3508,6 +3694,11 @@ report_error(
                     "recommendation": recommendation,
                 }
 
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
             logger.exception(f"Failed to check succession status: {e}")
-            return {"should_trigger": False, "error": str(e)}
+            raise OrchestrationError(
+                message="Failed to check succession status",
+                context={"job_id": job_id, "error": str(e)}
+            ) from e
