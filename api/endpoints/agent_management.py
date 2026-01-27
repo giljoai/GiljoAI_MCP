@@ -244,8 +244,6 @@ async def update_agent_job_status(
 
             return {"message": f"Job status updated to {status_update.status}"}
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -290,8 +288,6 @@ async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_ten
 
             return {"message": "Job acknowledged successfully"}
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -341,8 +337,6 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
 
             return {"message": "Message added to job successfully"}
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -385,8 +379,6 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
                 for chunk in chunks
             ]
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -427,8 +419,6 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
                 for chunk in chunks
             ]
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -458,8 +448,6 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
 
             return TokenReductionStats(**stats)
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
