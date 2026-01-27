@@ -31,10 +31,9 @@ Located in: `F:\GiljoAI_MCP\src\giljo_mcp\prompt_generation\mcp_tool_catalog.py`
 
 ### 2. Tool Categories (5 total)
 
-#### Orchestration Tools (4 tools)
+#### Orchestration Tools (3 tools)
 - `get_orchestrator_instructions`: Fetch mission and available agents
 - `spawn_agent_job`: Create agent job and generate thin prompt
-- `orchestrate_project`: Complete end-to-end orchestration
 - `get_workflow_status`: Monitor team progress
 
 #### Context Tools (5 tools)
