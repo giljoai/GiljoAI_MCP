@@ -34,6 +34,13 @@ from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.repositories.message_repository import MessageRepository
+from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    ResourceNotFoundError,
+    ValidationError,
+    MessageDeliveryError,
+    DatabaseError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -154,10 +161,10 @@ class MessageService:
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found or access denied"
-                    }
+                    raise ResourceNotFoundError(
+                        message="Project not found or access denied",
+                        context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
 
                 # Resolve agent_display_name strings to agent_id UUIDs (executor, not work order)
                 # Handover 0372: This enables succession - messages route to NEW executor after handover
@@ -413,9 +420,14 @@ class MessageService:
                     }
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to send message: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "send_message", "project_id": project_id}
+            ) from e
 
     async def broadcast(
         self,
@@ -452,10 +464,10 @@ class MessageService:
                 agent_jobs = result.scalars().all()
 
                 if not agent_jobs:
-                    return {
-                        "success": False,
-                        "error": "No agent jobs found in project"
-                    }
+                    raise ResourceNotFoundError(
+                        message="No agent jobs found in project",
+                        context={"project_id": project_id}
+                    )
 
                 agent_display_names = [job.job_type for job in agent_jobs]
 
@@ -492,9 +504,14 @@ class MessageService:
 
                 return result
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to broadcast message: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "broadcast", "project_id": project_id}
+            ) from e
 
     async def broadcast_to_project(
         self,
@@ -540,10 +557,10 @@ class MessageService:
                 executions = result.scalars().all()
 
                 if not executions:
-                    return {
-                        "success": False,
-                        "error": "No active executions found in project"
-                    }
+                    raise ResourceNotFoundError(
+                        message="No active executions found in project",
+                        context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
 
                 agent_ids = [exec.agent_id for exec in executions]
 
@@ -563,9 +580,14 @@ class MessageService:
 
                 return result
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to broadcast message to project: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "broadcast_to_project", "project_id": project_id}
+            ) from e
 
     # ============================================================================
     # Message Retrieval
@@ -628,9 +650,14 @@ class MessageService:
                     "messages": agent_messages,
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to get messages: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_messages", "agent_name": agent_name, "project_id": project_id}
+            ) from e
 
     async def receive_messages(
         self,
@@ -671,10 +698,10 @@ class MessageService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "receive_messages"}
+                )
 
             async with self._get_session() as session:
                 # Handover 0372: Look up AgentExecution by agent_id, then get job
@@ -690,10 +717,10 @@ class MessageService:
                 execution = result.scalar_one_or_none()
 
                 if not execution:
-                    return {
-                        "success": False,
-                        "error": f"Agent execution {agent_id} not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Agent execution {agent_id} not found",
+                        context={"agent_id": agent_id, "tenant_key": tenant_key}
+                    )
 
                 # Get the job to access project_id
                 job_result = await session.execute(
@@ -702,10 +729,10 @@ class MessageService:
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {
-                        "success": False,
-                        "error": f"Job not found for execution {agent_id}"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Job not found for execution {agent_id}",
+                        context={"agent_id": agent_id, "job_id": execution.job_id}
+                    )
 
                 # Query messages using native SQLAlchemy queries
                 # Handover 0387: Simplified query - fan-out at write means no 'all' broadcast matching needed
@@ -843,9 +870,14 @@ class MessageService:
                     }
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to receive messages: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "receive_messages", "agent_id": agent_id}
+            ) from e
 
     async def list_messages(
         self,
@@ -883,10 +915,10 @@ class MessageService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key and not project_id:
-                return {
-                    "success": False,
-                    "error": "No active project or tenant context"
-                }
+                raise ValidationError(
+                    message="No active project or tenant context",
+                    context={"operation": "list_messages"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # If agent_id provided, filter messages for that agent
@@ -903,10 +935,10 @@ class MessageService:
                     job = result.scalar_one_or_none()
 
                     if not job:
-                        return {
-                            "success": False,
-                            "error": f"Job {agent_id} not found"
-                        }
+                        raise ResourceNotFoundError(
+                            message=f"Job {agent_id} not found",
+                            context={"agent_id": agent_id, "tenant_key": tenant_key}
+                        )
 
                     # Query messages for this agent using native queries
                     from sqlalchemy import or_, func
@@ -1030,9 +1062,14 @@ class MessageService:
                     "count": len(message_list)
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to list messages: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
+            ) from e
 
     # ============================================================================
     # Message Status Updates
@@ -1070,10 +1107,10 @@ class MessageService:
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
-                    return {
-                        "success": False,
-                        "error": "Message not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message="Message not found",
+                        context={"message_id": message_id}
+                    )
 
                 # Update message
                 message.status = "completed"
@@ -1108,9 +1145,14 @@ class MessageService:
                     "completed_by": agent_name,
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to complete message: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "complete_message", "message_id": message_id}
+            ) from e
 
     async def acknowledge_message(
         self,
@@ -1145,10 +1187,10 @@ class MessageService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "acknowledge_message"}
+                )
 
             async with self._get_session() as session:
                 # Get message
@@ -1163,10 +1205,10 @@ class MessageService:
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
-                    return {
-                        "success": False,
-                        "error": "Message not found or access denied"
-                    }
+                    raise ResourceNotFoundError(
+                        message="Message not found or access denied",
+                        context={"message_id": message_id, "tenant_key": tenant_key}
+                    )
 
                 # Update message
                 message.status = "acknowledged"
@@ -1228,9 +1270,14 @@ class MessageService:
                     "message_id": message_id,
                 }
 
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to acknowledge message: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "acknowledge_message", "message_id": message_id}
+            ) from e
 
     # ============================================================================
     # DEPRECATED: JSONB Persistence Methods (Handover 0387f)

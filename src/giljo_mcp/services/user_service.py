@@ -31,6 +31,13 @@ from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    ResourceNotFoundError,
+    ValidationError,
+    AuthenticationError,
+    AuthorizationError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -108,9 +115,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._list_users_impl(session, include_all_tenants)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to list users: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "list_users", "include_all_tenants": include_all_tenants}
+            ) from e
 
     async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -174,9 +186,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._get_user_impl(session, user_id, include_all_tenants)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to get user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_user", "user_id": user_id}
+            ) from e
 
     async def _get_user_impl(self, session: AsyncSession, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -195,10 +212,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         self._logger.info("Fetched user", extra={"user_id": user_id})
 
@@ -260,9 +277,14 @@ class UserService:
                     session, username, email, full_name, password, role, is_active
                 )
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to create user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "create_user", "username": username}
+            ) from e
 
     async def _create_user_impl(
         self,
@@ -279,20 +301,20 @@ class UserService:
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
         if result.scalar_one_or_none():
-            return {
-                "success": False,
-                "error": f"Username '{username}' already exists"
-            }
+            raise ValidationError(
+                message=f"Username '{username}' already exists",
+                context={"username": username}
+            )
 
         # Check for duplicate email if provided
         if email:
             stmt = select(User).where(User.email == email)
             result = await session.execute(stmt)
             if result.scalar_one_or_none():
-                return {
-                    "success": False,
-                    "error": f"Email '{email}' already exists"
-                }
+                raise ValidationError(
+                    message=f"Email '{email}' already exists",
+                    context={"email": email}
+                )
 
         # Hash password (default to "GiljoMCP" per Handover 0023)
         password_hash = bcrypt.hash(password or "GiljoMCP")
@@ -367,9 +389,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._update_user_impl(session, user_id, updates, include_all_tenants)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to update user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_user", "user_id": user_id}
+            ) from e
 
     async def _update_user_impl(
         self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
@@ -390,10 +417,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Check for duplicate email if changing email
         if "email" in updates and updates["email"] and updates["email"] != user.email:
@@ -401,10 +428,10 @@ class UserService:
             result = await session.execute(stmt)
             existing_user = result.scalar_one_or_none()
             if existing_user:
-                return {
-                    "success": False,
-                    "error": f"Email '{updates['email']}' already exists"
-                }
+                raise ValidationError(
+                    message=f"Email '{updates['email']}' already exists",
+                    context={"email": updates['email'], "user_id": user_id}
+                )
 
         # Apply updates (only allowed fields)
         allowed_fields = {"email", "full_name", "is_active"}
@@ -457,9 +484,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._delete_user_impl(session, user_id)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to delete user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "delete_user", "user_id": user_id}
+            ) from e
 
     async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -473,10 +505,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Soft delete
         user.is_active = False
@@ -519,9 +551,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._change_role_impl(session, user_id, new_role)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to change role: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
+            ) from e
 
     async def _change_role_impl(
         self, session: AsyncSession, user_id: str, new_role: str
@@ -530,10 +567,10 @@ class UserService:
         # Validate role
         valid_roles = ["admin", "developer", "viewer"]
         if new_role not in valid_roles:
-            return {
-                "success": False,
-                "error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
-            }
+            raise ValidationError(
+                message=f"Invalid role. Must be one of: {', '.join(valid_roles)}",
+                context={"new_role": new_role, "valid_roles": valid_roles}
+            )
 
         stmt = select(User).where(
             and_(
@@ -545,10 +582,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Check if this is the last admin (prevent lockout)
         if user.role == "admin" and new_role != "admin":
@@ -564,10 +601,10 @@ class UserService:
             admin_count = admin_count_result.scalar() or 0
 
             if admin_count == 0:
-                return {
-                    "success": False,
-                    "error": "Cannot demote the last admin. At least one admin must remain."
-                }
+                raise AuthorizationError(
+                    message="Cannot demote the last admin. At least one admin must remain.",
+                    context={"user_id": user_id, "current_role": "admin", "new_role": new_role}
+                )
 
         # Update role
         old_role = user.role
@@ -629,9 +666,14 @@ class UserService:
                     session, user_id, old_password, new_password, is_admin
                 )
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to change password: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "change_password", "user_id": user_id}
+            ) from e
 
     async def _change_password_impl(
         self,
@@ -652,24 +694,24 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # If not admin, verify old password
         if not is_admin:
             if not old_password:
-                return {
-                    "success": False,
-                    "error": "Current password is required"
-                }
+                raise ValidationError(
+                    message="Current password is required",
+                    context={"user_id": user_id}
+                )
 
             if not bcrypt.verify(old_password, user.password_hash):
-                return {
-                    "success": False,
-                    "error": "Current password is incorrect"
-                }
+                raise AuthenticationError(
+                    message="Current password is incorrect",
+                    context={"user_id": user_id}
+                )
 
         # Hash and update password
         user.password_hash = bcrypt.hash(new_password)
@@ -706,9 +748,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._reset_password_impl(session, user_id)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to reset password: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "reset_password", "user_id": user_id}
+            ) from e
 
     async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -722,10 +769,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Reset password to default 'GiljoMCP'
         user.password_hash = bcrypt.hash("GiljoMCP")
@@ -774,9 +821,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._check_username_exists_impl(session, username)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to check username: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "check_username_exists", "username": username}
+            ) from e
 
     async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -813,9 +865,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._check_email_exists_impl(session, email)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to check email: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "check_email_exists", "email": email}
+            ) from e
 
     async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -853,9 +910,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._verify_password_impl(session, user_id, password)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to verify password: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "verify_password", "user_id": user_id}
+            ) from e
 
     async def _verify_password_impl(
         self, session: AsyncSession, user_id: str, password: str
@@ -871,10 +933,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         verified = bcrypt.verify(password, user.password_hash)
 
@@ -910,9 +972,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._get_field_priority_config_impl(session, user_id)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to get field priority config: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_field_priority_config", "user_id": user_id}
+            ) from e
 
     async def _get_field_priority_config_impl(
         self, session: AsyncSession, user_id: str
@@ -928,10 +995,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Return custom config if set, otherwise defaults
         if user.field_priority_config:
@@ -978,9 +1045,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._update_field_priority_config_impl(session, user_id, config)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to update field priority config: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_field_priority_config", "user_id": user_id}
+            ) from e
 
     async def _update_field_priority_config_impl(
         self, session: AsyncSession, user_id: str, config: Dict[str, Any]
@@ -988,18 +1060,18 @@ class UserService:
         """Implementation that uses provided session"""
         # Validate config structure
         if "version" not in config or "priorities" not in config:
-            return {
-                "success": False,
-                "error": "Invalid config structure. Must contain 'version' and 'priorities'"
-            }
+            raise ValidationError(
+                message="Invalid config structure. Must contain 'version' and 'priorities'",
+                context={"config_keys": list(config.keys())}
+            )
 
         # Validate priorities (1-4 range)
         for category, priority in config["priorities"].items():
             if not isinstance(priority, int) or priority < 1 or priority > 4:
-                return {
-                    "success": False,
-                    "error": f"Invalid priority {priority} for category '{category}'. Must be 1-4"
-                }
+                raise ValidationError(
+                    message=f"Invalid priority {priority} for category '{category}'. Must be 1-4",
+                    context={"category": category, "priority": priority}
+                )
 
         stmt = select(User).where(
             and_(
@@ -1011,10 +1083,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Update config
         user.field_priority_config = config
@@ -1059,9 +1131,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._reset_field_priority_config_impl(session, user_id)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to reset field priority config: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "reset_field_priority_config", "user_id": user_id}
+            ) from e
 
     async def _reset_field_priority_config_impl(
         self, session: AsyncSession, user_id: str
@@ -1077,10 +1154,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Clear custom config
         user.field_priority_config = None
@@ -1116,9 +1193,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._get_depth_config_impl(session, user_id)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to get depth config: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_depth_config", "user_id": user_id}
+            ) from e
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -1132,10 +1214,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Return depth config (from user or defaults)
         depth_config = user.depth_config or {
@@ -1182,9 +1264,14 @@ class UserService:
             async with self.db_manager.get_session_async() as session:
                 return await self._update_depth_config_impl(session, user_id, config)
 
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to update depth config: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_depth_config", "user_id": user_id}
+            ) from e
 
     async def _update_depth_config_impl(
         self, session: AsyncSession, user_id: str, config: Dict[str, Any]
@@ -1197,10 +1284,10 @@ class UserService:
         valid_agent_templates = ["type_only", "full"]
 
         if "vision_documents" in config and config["vision_documents"] not in valid_vision:
-            return {
-                "success": False,
-                "error": f"Invalid vision_documents. Must be one of: {', '.join(valid_vision)}"
-            }
+            raise ValidationError(
+                message=f"Invalid vision_documents. Must be one of: {', '.join(valid_vision)}",
+                context={"vision_documents": config["vision_documents"], "valid_values": valid_vision}
+            )
 
         stmt = select(User).where(
             and_(
@@ -1212,10 +1299,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {
-                "success": False,
-                "error": "User not found"
-            }
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         # Update config
         user.depth_config = config
@@ -1249,9 +1336,14 @@ class UserService:
 
             async with self.db_manager.get_session_async() as session:
                 return await self._get_execution_mode_impl(session, user_id)
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             logger.error(f"Failed to get execution mode for user {user_id}: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "get_execution_mode", "user_id": user_id}
+            ) from e
 
     async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         stmt = select(User).where(
@@ -1264,7 +1356,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {"success": False, "error": "User not found"}
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         depth_config = user.depth_config or {}
         mode = depth_config.get("execution_mode", "claude_code")
@@ -1279,16 +1374,24 @@ class UserService:
 
             async with self.db_manager.get_session_async() as session:
                 return await self._update_execution_mode_impl(session, user_id, execution_mode)
+        except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
+            raise  # Re-raise without wrapping
         except Exception as e:
             logger.error(f"Failed to update execution mode for user {user_id}: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_execution_mode", "user_id": user_id}
+            ) from e
 
     async def _update_execution_mode_impl(
         self, session: AsyncSession, user_id: str, execution_mode: str
     ) -> Dict[str, Any]:
         valid_modes = {"claude_code", "multi_terminal"}
         if execution_mode not in valid_modes:
-            return {"success": False, "error": "Invalid execution_mode. Must be claude_code or multi_terminal"}
+            raise ValidationError(
+                message="Invalid execution_mode. Must be claude_code or multi_terminal",
+                context={"execution_mode": execution_mode, "valid_modes": list(valid_modes)}
+            )
 
         stmt = select(User).where(
             and_(
@@ -1300,7 +1403,10 @@ class UserService:
         user = result.scalar_one_or_none()
 
         if not user:
-            return {"success": False, "error": "User not found"}
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         depth_config = user.depth_config or {
             "vision_documents": "medium",

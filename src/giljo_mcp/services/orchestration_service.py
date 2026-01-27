@@ -48,6 +48,12 @@ from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.optimization import MissionOptimizationInjector, SerenaOptimizer
 from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
 from src.giljo_mcp.enums import AgentRole, ProjectType
+from src.giljo_mcp.exceptions import (
+    ResourceNotFoundError,
+    ValidationError,
+    OrchestrationError,
+    BaseGiljoException,
+)
 
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk
@@ -3329,6 +3335,11 @@ report_error(
 
         Returns:
             Dict with success status, continuation instructions, and memory entry info
+            
+        Raises:
+            ResourceNotFoundError: When execution or project not found
+            ValidationError: When non-orchestrator attempts succession
+            OrchestrationError: When succession operation fails
         """
         try:
             from datetime import datetime, timezone
@@ -3361,17 +3372,20 @@ report_error(
                     execution = result.scalars().first()
 
                 if not execution:
-                    return {
-                        "success": False,
-                        "error": f"Execution not found for {current_job_id}",
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Execution not found for {current_job_id}",
+                        context={"job_id": current_job_id, "tenant_key": tenant_key}
+                    )
 
                 # Verify it's an orchestrator
                 if execution.agent_display_name != "orchestrator":
-                    return {
-                        "success": False,
-                        "error": f"Only orchestrators can use succession (found: {execution.agent_display_name})",
-                    }
+                    raise ValidationError(
+                        message=f"Only orchestrators can use succession (found: {execution.agent_display_name})",
+                        context={
+                            "job_id": current_job_id,
+                            "agent_display_name": execution.agent_display_name,
+                        }
+                    )
 
                 # Get project_id from associated job
                 job_result = await session.execute(
@@ -3380,7 +3394,10 @@ report_error(
                 job = job_result.scalars().first()
 
                 if not job or not job.project_id:
-                    return {"success": False, "error": "Associated project not found"}
+                    raise ResourceNotFoundError(
+                        message="Associated project not found",
+                        context={"job_id": execution.job_id}
+                    )
 
                 # Build session context for 360 Memory
                 session_context = {
@@ -3434,9 +3451,15 @@ report_error(
                     "message": "Session context written to 360 Memory. Use fetch_context(categories=['memory_360']) in new session to retrieve.",
                 }
 
+        except (ResourceNotFoundError, ValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             logger.exception(f"Failed to create successor orchestrator: {e}")
-            return {"success": False, "error": str(e)}
+            raise OrchestrationError(
+                message=f"Failed to create successor orchestrator: {str(e)}",
+                context={"job_id": current_job_id, "reason": reason}
+            ) from e
 
     async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Check if orchestrator should trigger succession (Handover 0080 + Phase C)"""

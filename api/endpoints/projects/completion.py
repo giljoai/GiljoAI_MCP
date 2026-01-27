@@ -51,18 +51,10 @@ async def can_close_project(
     """
     logger.info(f"User {current_user.username} checking can-close for project {project_id}")
 
-    result = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    # Service raises exceptions on error
+    data = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to evaluate closeout readiness")
-        status_code = (
-            status.HTTP_404_NOT_FOUND
-            if "not found" in error_msg.lower() or "access denied" in error_msg.lower()
-            else status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        raise HTTPException(status_code=status_code, detail=error_msg)
-
-    return ProjectCanCloseResponse(**result["data"])
+    return ProjectCanCloseResponse(**data)
 
 
 @router.post(
@@ -81,18 +73,10 @@ async def generate_closeout_prompt(
     """
     logger.info(f"User {current_user.username} generating closeout prompt for project {project_id}")
 
-    result = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
+    # Service raises exceptions on error
+    data = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to generate closeout prompt")
-        status_code = (
-            status.HTTP_404_NOT_FOUND
-            if "not found" in error_msg.lower() or "access denied" in error_msg.lower()
-            else status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        raise HTTPException(status_code=status_code, detail=error_msg)
-
-    return ProjectCloseoutPromptResponse(**result["data"])
+    return ProjectCloseoutPromptResponse(**data)
 
 
 @router.post(
@@ -118,6 +102,7 @@ async def complete_project(
             detail="Must confirm closeout (confirm_closeout=True)",
         )
 
+    # Service raises exceptions on error
     result = await project_service.complete_project(
         project_id=project_id,
         summary=request.summary,
@@ -125,15 +110,6 @@ async def complete_project(
         decisions_made=request.decisions_made,
         tenant_key=current_user.tenant_key,
     )
-
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to complete project")
-        status_code = (
-            status.HTTP_404_NOT_FOUND
-            if "not found" in error_msg.lower() or "access denied" in error_msg.lower()
-            else status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        raise HTTPException(status_code=status_code, detail=error_msg)
 
     return ProjectCompleteResponse(
         success=True,
@@ -161,18 +137,10 @@ async def get_project_closeout_data(
     """
     logger.info(f"User {current_user.username} fetching closeout data for project {project_id}")
 
-    result = await project_service.get_closeout_data(project_id=project_id)
+    # Service raises exceptions on error
+    data = await project_service.get_closeout_data(project_id=project_id)
 
-    if not result.get("success"):
-        error_msg = result.get("error", "Project not found")
-        status_code = (
-            status.HTTP_404_NOT_FOUND
-            if "not found" in error_msg.lower() or "access denied" in error_msg.lower()
-            else status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        raise HTTPException(status_code=status_code, detail=error_msg)
-
-    return ProjectCloseoutDataResponse(**result["data"])
+    return ProjectCloseoutDataResponse(**data)
 
 
 @router.post("/{project_id}/close-out", response_model=ProjectCloseOutResponse)
@@ -198,15 +166,8 @@ async def close_out_project(
     """
     logger.info(f"User {current_user.username} closing out project {project_id}")
 
-    # Close out project via ProjectService
+    # Close out project via ProjectService (raises exceptions on error)
     result = await project_service.close_out_project(project_id=project_id, tenant_key=current_user.tenant_key)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to close out project")
-        if "not found" in error_msg.lower() or "access denied" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Closed out project {project_id}")
 
@@ -242,15 +203,8 @@ async def continue_working(
     """
     logger.info(f"User {current_user.username} resuming work on project {project_id}")
 
-    # Resume work via ProjectService
+    # Resume work via ProjectService (raises exceptions on error)
     result = await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to resume project")
-        if "not found" in error_msg.lower() or "access denied" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Resumed work on project {project_id}")
 
