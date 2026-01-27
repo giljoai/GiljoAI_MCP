@@ -16,25 +16,47 @@ allowed-tools: []
 
 Install GiljoAI agent templates to your Claude Code environment.
 
-## STEP 1: Get Download URL
+## STEP 1: Get Your GiljoAI API Key and Server URL
 
-Call the HTTP endpoint to stage templates and get download URL.
+**IMPORTANT**: You need the GiljoAI API key (starts with `gk_`), NOT keys from other MCP servers.
 
-First, get the server URL and API key from the MCP config:
-- Server URL is typically `http://localhost:7272` or the URL you used to connect to GiljoAI
-- API key is in your MCP connection config (X-API-Key header value)
+1. Read your Claude Code MCP config file:
+   - **macOS/Linux**: `~/.claude.json`
+   - **Windows**: `%USERPROFILE%\.claude.json`
 
-Then make a POST request:
+2. Find the `giljo-mcp` server entry and extract:
+   - **Server URL**: The `--server-url` value (e.g., `http://10.1.0.116:7272`)
+   - **API Key**: The `--api-key` value - MUST start with `gk_` prefix
+
+Example config structure:
+```json
+{
+  "mcpServers": {
+    "giljo-mcp": {
+      "command": "uvx",
+      "args": ["--from", "giljo-mcp", "giljo-mcp", "--server-url", "http://10.1.0.116:7272", "--api-key", "gk_YourKeyHere..."]
+    }
+  }
+}
+```
+
+**WARNING**: If your key starts with `gc_` or another prefix, it's from a different MCP server - use only the `gk_` key.
+
+## STEP 2: Generate Download URL
+
+Make a POST request with your `gk_` API key:
 
 ```bash
-curl -X POST "http://localhost:7272/api/download/generate-token?content_type=agent_templates" \
-  -H "X-API-Key: YOUR_API_KEY_HERE" \
+curl -X POST "{SERVER_URL}/api/download/generate-token?content_type=agent_templates" \
+  -H "X-API-Key: {YOUR_GK_API_KEY}" \
   -H "Content-Type: application/json"
 ```
 
+Replace `{SERVER_URL}` with your server URL and `{YOUR_GK_API_KEY}` with your `gk_...` key.
+
 Returns JSON with: `download_url` (valid 15 minutes, one-time use), `expires_at`, and `content_type`
 
-## STEP 2: Download Templates
+## STEP 3: Download Templates
 
 Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no headers needed:
 
@@ -42,7 +64,7 @@ Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no
 curl -o /tmp/agents.zip "{download_url}"
 ```
 
-## STEP 3: Ask User Install Location
+## STEP 4: Ask User Install Location
 
 Ask: "Where should I install the {template_count} agent templates?"
 
@@ -50,7 +72,7 @@ Options:
 - **Project agents** (`.claude/agents/`) - Available only in this project
 - **User agents** (`~/.claude/agents/`) - Available across all your projects
 
-## STEP 4: Extract to Chosen Location
+## STEP 5: Extract to Chosen Location
 
 Use Bash to extract based on user choice:
 
@@ -64,7 +86,7 @@ mkdir -p .claude/agents && unzip -o /tmp/agents.zip -d .claude/agents/ && rm /tm
 mkdir -p ~/.claude/agents && unzip -o /tmp/agents.zip -d ~/.claude/agents/ && rm /tmp/agents.zip
 ```
 
-## STEP 5: Confirm and Restart Notice
+## STEP 6: Confirm and Restart Notice
 
 Tell the user:
 1. How many templates were installed (from `template_count`)
