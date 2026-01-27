@@ -148,6 +148,33 @@
             <v-tabs-window-item value="vision">
               <div class="text-subtitle-1 mb-4">Vision Documents</div>
 
+              <!-- Project path hint for file navigation -->
+              <v-alert
+                v-if="productForm.projectPath"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+              >
+                <div class="d-flex align-center justify-space-between">
+                  <div>
+                    <strong>Project path:</strong>
+                    <code class="ml-2">{{ productForm.projectPath }}</code>
+                  </div>
+                  <v-btn
+                    size="small"
+                    variant="text"
+                    @click="copyProjectPath"
+                    :icon="pathCopied ? 'mdi-check' : 'mdi-content-copy'"
+                    :color="pathCopied ? 'success' : 'default'"
+                    :title="pathCopied ? 'Copied!' : 'Copy path to clipboard'"
+                  />
+                </div>
+                <div class="text-caption mt-1">
+                  Navigate to this folder when browsing for vision documents
+                </div>
+              </v-alert>
+
               <!-- Upload error alert -->
               <v-alert
                 v-if="visionUploadError"
@@ -741,6 +768,7 @@ const visionFiles = ref([])
 const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
+const pathCopied = ref(false)
 
 // Product form data
 const productForm = ref({
@@ -929,6 +957,19 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
+async function copyProjectPath() {
+  if (!productForm.value.projectPath) return
+  try {
+    await navigator.clipboard.writeText(productForm.value.projectPath)
+    pathCopied.value = true
+    setTimeout(() => {
+      pathCopied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy path:', err)
+  }
+}
+
 // Handover 0425: Platform selection handlers
 function handleAllPlatformChange(value) {
   platformValidationError.value = ''
@@ -1045,6 +1086,7 @@ watch(
       uploadProgress.value = 0
       uploadingVision.value = false
       saving.value = false
+      pathCopied.value = false
       loadProductData()
     }
   },
