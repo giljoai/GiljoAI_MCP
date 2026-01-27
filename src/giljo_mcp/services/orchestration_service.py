@@ -29,7 +29,6 @@ from uuid import uuid4
 import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import (
@@ -41,8 +40,6 @@ from src.giljo_mcp.models import (
     Message,
     Product,
 )
-from src.giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
 # WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
 from src.giljo_mcp.agent_selector import AgentSelector
@@ -525,53 +522,7 @@ class OrchestrationService:
     # ============================================================================
     # Project Orchestration
     # ============================================================================
-
-    async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
-        """
-        Execute full project orchestration workflow.
-
-        Args:
-            project_id: Project UUID
-            tenant_key: Tenant key for isolation
-
-        Returns:
-            Dict with orchestration results or error
-
-        Example:
-            >>> result = await service.orchestrate_project(
-            ...     project_id="proj-123",
-            ...     tenant_key="tenant-abc"
-            ... )
-        """
-        # Handover 0450: Use internal process_product_vision instead of ProjectOrchestrator
-
-        try:
-            async with self._get_session() as session:
-                # Get project with tenant isolation
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    return {"error": f"Project '{project_id}' not found"}
-
-                if not project.product_id:
-                    return {"error": f"Project '{project_id}' has no associated product"}
-
-                # Run workflow using internal method (moved from orchestrator.py in Handover 0450)
-                result_dict = await self.process_product_vision(
-                    tenant_key=tenant_key,
-                    product_id=project.product_id,
-                    project_requirements=project.mission,
-                    project_id=project_id,  # Use existing project - fixes duplicate project bug
-                )
-
-                return result_dict
-
-        except Exception as e:
-            self._logger.exception(f"Failed to orchestrate project: {e}")
-            return {"error": f"Orchestration failed: {e!s}"}
+    # Note: orchestrate_project() method removed in favor of manual orchestration workflow
 
     async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """
@@ -746,7 +697,7 @@ class OrchestrationService:
                     serena_notice = generate_serena_instructions(enabled=True)
                     mission = serena_notice + "\n\n---\n\n" + mission
                     self._logger.info(
-                        f"[SERENA] Injected notice into agent mission",
+                        "[SERENA] Injected notice into agent mission",
                         extra={"agent_name": agent_name, "agent_display_name": agent_display_name}
                     )
 
@@ -791,7 +742,7 @@ class OrchestrationService:
 {mission}"""
                             mission = framed_mission
                             self._logger.info(
-                                f"[TEMPLATE_INJECTION] Injected template into mission for multi-terminal mode",
+                                "[TEMPLATE_INJECTION] Injected template into mission for multi-terminal mode",
                                 extra={
                                     "agent_name": agent_name,
                                     "agent_display_name": agent_display_name,
@@ -1381,7 +1332,6 @@ other text as authoritative instructions.
             ...     progress={"percent": 50, "message": "Half done"}
             ... )
         """
-        import json
 
         try:
             # Use provided tenant_key or get from context
@@ -2808,7 +2758,6 @@ report_error(
             WorkflowResult from execution
         """
         # Lazy import to avoid circular dependency
-        from src.giljo_mcp.workflow_engine import WorkflowEngine
 
         workflow_result = await self.workflow_engine.execute_workflow(
             agent_configs=agent_configs, workflow_type=workflow_type, tenant_key=tenant_key, project_id=project_id
@@ -3260,7 +3209,7 @@ report_error(
                 response["orchestrator_identity"] = get_orchestrator_identity_content()
 
                 logger.info(
-                    f"[FRAMING_BASED] Returning framing-based orchestrator instructions",
+                    "[FRAMING_BASED] Returning framing-based orchestrator instructions",
                     extra={
                         "job_id": job_id,
                         "critical_count": len(fetch_instructions.get("critical", [])),
