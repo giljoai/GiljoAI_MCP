@@ -459,18 +459,6 @@ async def handle_tools_list(
         },
         # Orchestration Tools (Handover 0088)
         {
-            "name": "orchestrate_project",
-            "description": "Complete project orchestration workflow with context prioritization and orchestration",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"},
-                },
-                "required": ["project_id"],
-            },
-        },
-        {
             "name": "get_agent_mission",
             "description": "Fetch agent-specific mission and context. Called by: ANY AGENT (implementer, tester, analyzer, etc.) immediately after receiving thin prompt from spawn_agent_job. Agent's first action. Returns targeted mission for this specific agent (not entire project vision). Part of thin-client architecture - mission stored in database, not embedded in prompt. Idempotent (safe to call multiple times). Handover 0381: Uses job_id (work order UUID).",
             "inputSchema": {
@@ -697,7 +685,6 @@ async def handle_tools_call(
         "complete_job": state.tool_accessor.complete_job,
         "report_error": state.tool_accessor.report_error,
         # Orchestration Tools (Handover 0088)
-        "orchestrate_project": state.tool_accessor.orchestrate_project,
         "get_agent_mission": state.tool_accessor.get_agent_mission,
         "spawn_agent_job": state.tool_accessor.spawn_agent_job,
         "get_workflow_status": state.tool_accessor.get_workflow_status,
