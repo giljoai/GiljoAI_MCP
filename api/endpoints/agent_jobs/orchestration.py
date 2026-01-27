@@ -28,7 +28,7 @@ from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
-from .models import OrchestrateProjectRequest, OrchestrationResponse, WorkflowStatusResponse
+from .models import WorkflowStatusResponse
 
 
 logger = logging.getLogger(__name__)
@@ -85,55 +85,7 @@ class LaunchProjectResponse(BaseModel):
 # ============================================================================
 # Core Orchestration Endpoints (OrchestrationService)
 # ============================================================================
-
-@router.post("/orchestrate/{project_id}", response_model=OrchestrationResponse)
-async def orchestrate_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    orchestration_service: OrchestrationService = Depends(get_orchestration_service),
-) -> OrchestrationResponse:
-    """
-    Execute full project orchestration workflow.
-
-    Orchestrates project by analyzing requirements and spawning appropriate agents.
-
-    Args:
-        project_id: Project UUID to orchestrate
-        current_user: Authenticated user (from dependency)
-        orchestration_service: Service for orchestration operations (from dependency)
-
-    Returns:
-        OrchestrationResponse with orchestration results
-
-    Raises:
-        HTTPException 404: Project not found
-        HTTPException 400: Orchestration failed
-    """
-    logger.info(f"User {current_user.username} orchestrating project {project_id}")
-
-    # Orchestrate via OrchestrationService
-    result = await orchestration_service.orchestrate_project(
-        project_id=project_id,
-        tenant_key=current_user.tenant_key
-    )
-
-    # Check for errors
-    if "error" in result:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-    logger.info(f"Orchestrated project {project_id} for tenant {current_user.tenant_key}")
-
-    return OrchestrationResponse(
-        success=True,
-        project_id=project_id,
-        message="Project orchestrated successfully",
-        result=result
-    )
-
+# Note: orchestrate_project endpoint removed - use manual orchestration workflow
 
 @router.get("/workflow/{project_id}", response_model=WorkflowStatusResponse)
 async def get_workflow_status(
