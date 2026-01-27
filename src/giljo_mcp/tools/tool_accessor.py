@@ -555,6 +555,67 @@ class ToolAccessor:
 
         return await health_check()
 
+    async def generate_download_token(self, content_type: str, tenant_key: str) -> dict[str, Any]:
+        """
+        Generate one-time download URL for agent templates or slash commands.
+
+        The MCP session is already authenticated, so no API key needed.
+        Returns download_url valid for 15 minutes.
+
+        Handover 0384: Fix for slash command hallucinating API keys.
+        """
+        from giljo_mcp.downloads.token_manager import TokenManager
+        from giljo_mcp.file_staging import FileStaging
+
+        if content_type not in ["agent_templates", "slash_commands"]:
+            return {"success": False, "error": "content_type must be 'agent_templates' or 'slash_commands'"}
+
+        try:
+            async with self.get_session_async() as session:
+                token_manager = TokenManager(db_session=session)
+                staging = FileStaging(db_session=session)
+
+                # Generate token
+                filename = "slash_commands.zip" if content_type == "slash_commands" else "agent_templates.zip"
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type=content_type,
+                    metadata={"filename": filename},
+                )
+
+                # Stage files
+                staging_path = await staging.create_staging_directory(tenant_key, token)
+                if content_type == "slash_commands":
+                    zip_path, message = await staging.stage_slash_commands(staging_path)
+                else:
+                    zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    return {"success": False, "error": message}
+
+                # Mark ready and build URL
+                await token_manager.mark_ready(token)
+
+                # Get server URL from config
+                from giljo_mcp.config_manager import get_config
+                config = get_config()
+                server_url = f"http://{config.server.host}:{config.server.api_port}"
+                download_url = f"{server_url}/api/download/temp/{token}/{filename}"
+
+                token_data = await token_manager.get_token_info(token, tenant_key)
+
+                return {
+                    "success": True,
+                    "download_url": download_url,
+                    "expires_at": token_data.get("expires_at") if token_data else None,
+                    "content_type": content_type,
+                    "one_time_use": True,
+                }
+        except Exception as e:
+            logger.exception(f"Failed to generate download token: {e}")
+            return {"success": False, "error": str(e)}
+
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.get_orchestrator_instructions(job_id, tenant_key)
