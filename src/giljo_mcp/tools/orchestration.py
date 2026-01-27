@@ -550,7 +550,7 @@ def _build_orchestrator_protocol(
     """
     # CH1: YOUR MISSION (~180 tokens)
     ch1 = f"""════════════════════════════════════════════════════════════════════════════
-                           CH1: YOUR MISSION                                
+                           CH1: YOUR MISSION
 ════════════════════════════════════════════════════════════════════════════
 
 YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
@@ -584,7 +584,7 @@ Completion protocol applies (see CH5 - shown in implementation only)
 
     # CH2: STARTUP SEQUENCE (~350 tokens - reduced via deduplication)
     ch2 = f"""════════════════════════════════════════════════════════════════════════════
-                       CH2: STARTUP SEQUENCE                              
+                       CH2: STARTUP SEQUENCE
 ════════════════════════════════════════════════════════════════════════════
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
@@ -718,7 +718,7 @@ Orchestrator has NO active role after STAGING_COMPLETE broadcast
 """
 
     ch3 = f"""════════════════════════════════════════════════════════════════════════════
-                    CH3: AGENT SPAWNING RULES                             
+                    CH3: AGENT SPAWNING RULES
 ════════════════════════════════════════════════════════════════════════════
 
 PARAMETER REQUIREMENTS:
@@ -771,7 +771,7 @@ VALIDATION BEFORE SPAWNING:
 
     # CH4: ERROR HANDLING (~400 tokens with status machine)
     ch4 = """════════════════════════════════════════════════════════════════════════════
-                       CH4: ERROR HANDLING                                
+                       CH4: ERROR HANDLING
 ════════════════════════════════════════════════════════════════════════════
 
 COMMON ERRORS AND RESPONSES:
@@ -841,7 +841,7 @@ ERROR SEVERITY LEVELS:
     # CH5: REFERENCE (~380 tokens or minimal if not included)
     if include_implementation_reference:
         ch5 = f"""════════════════════════════════════════════════════════════════════════════
-                CH5: REFERENCE (Implementation Phase Only)                
+                CH5: REFERENCE (Implementation Phase Only)
 ════════════════════════════════════════════════════════════════════════════
 
 ⚠️  NOTE: This chapter is for IMPLEMENTATION PHASE reference only.
@@ -1707,6 +1707,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "thin_client": True,
                         "prompt_tokens": prompt_tokens,
                         "mission_tokens": mission_tokens,
+                        "mission": mission,  # Handover 0464: Include mission for UI display
                     },
                 )
         except Exception as ws_error:

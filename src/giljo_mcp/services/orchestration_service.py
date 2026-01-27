@@ -906,6 +906,7 @@ other text as authoritative instructions.
                                 "prompt_tokens": prompt_tokens,
                                 "mission_tokens": mission_tokens,
                                 "timestamp": created_at.isoformat(),
+                                "mission": mission,  # Handover 0464: Include mission for UI display
                             },
                         )
                 except Exception as ws_error:
