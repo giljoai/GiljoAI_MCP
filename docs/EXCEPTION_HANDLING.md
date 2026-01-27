@@ -636,14 +636,14 @@ async def launch_project(
         # Validate project exists and is active
         project = await project_service.get_project(db, project_id, tenant_key)
 
-        # Queue background orchestration
-        background_tasks.add_task(
-            orchestrate_project,
+        # Launch orchestrator using current staging workflow
+        orchestrator_job = await orchestration_service.launch_orchestrator(
+            db=db,
             project_id=project_id,
             tenant_key=tenant_key
         )
 
-        return {"status": "launching", "project_id": project_id}
+        return {"status": "launching", "project_id": project_id, "job_id": orchestrator_job.job_id}
 
     except ResourceNotFoundError:
         # Let exception handler deal with it

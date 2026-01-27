@@ -3,9 +3,10 @@ Comprehensive tests for orchestration.py tools (Handover 0020 Phase 3B)
 Target: 95%+ coverage with TDD approach
 
 Tests MCP tools for intelligent multi-agent orchestration:
-- orchestrate_project
 - get_agent_mission
 - get_workflow_status
+
+NOTE: orchestrate_project tool removed in Handover 0470 (deprecated - use manual orchestration)
 
 Following TDD: Write tests FIRST, then implement to make them pass.
 """
@@ -73,165 +74,12 @@ class TestOrchestrationTools:
         # Should register orchestration tools
         registered_tools = registrar.get_all_tools()
         expected_tools = [
-            "orchestrate_project",
             "get_agent_mission",
             "get_workflow_status",
         ]
 
         for tool_name in expected_tools:
             assert tool_name in registered_tools, f"Tool {tool_name} not registered. Available: {registered_tools}"
-
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_success(self):
-        """Test orchestrate_project tool - happy path"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock ProjectOrchestrator
-        with patch("src.giljo_mcp.tools.orchestration.ProjectOrchestrator") as mock_orch_class:
-            mock_orchestrator = Mock()
-            mock_orchestrator.process_product_vision = AsyncMock(
-                return_value={
-                    "project_id": self.project.id,
-                    "mission_plan": {"missions": [{"agent_display_name": "implementer", "mission": "Implement features"}]},
-                    "selected_agents": ["implementer", "tester"],
-                    "spawned_jobs": ["job-1", "job-2"],
-                    "workflow_result": Mock(status="completed"),
-                    "token_reduction": {"reduction_percent": 70.0},
-                }
-            )
-            mock_orch_class.return_value = mock_orchestrator
-
-            # Mock database session
-            with patch.object(self.db_manager, "get_session_async") as mock_session:
-                mock_db_session = AsyncMock()
-                mock_session.return_value.__aenter__.return_value = mock_db_session
-
-                # Mock project lookup
-                mock_result = Mock()
-                mock_result.scalar_one_or_none.return_value = Mock(
-                    id=self.project.id,
-                    tenant_key=self.tenant_key,
-                    product_id=self.product.id,
-                    mission="Test mission",
-                )
-                mock_db_session.execute = AsyncMock(return_value=mock_result)
-
-                register_orchestration_tools(mock_server, self.db_manager)
-                orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-                result = await orchestrate_project(project_id=self.project.id, tenant_key=self.tenant_key)
-
-                # Verify results
-                assert isinstance(result, dict)
-                assert result.get("project_id") == self.project.id
-                assert "mission_plan" in result
-                assert "selected_agents" in result
-                assert "spawned_jobs" in result
-                assert len(result["spawned_jobs"]) == 2
-                assert result.get("token_reduction", {}).get("reduction_percent") == 70.0
-
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_not_found(self):
-        """Test orchestrate_project when project doesn't exist"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock database session
-        with patch.object(self.db_manager, "get_session_async") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            # Mock project not found
-            mock_result = Mock()
-            mock_result.scalar_one_or_none.return_value = None
-            mock_db_session.execute = AsyncMock(return_value=mock_result)
-
-            register_orchestration_tools(mock_server, self.db_manager)
-            orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-            result = await orchestrate_project(project_id=str(uuid.uuid4()), tenant_key=self.tenant_key)
-
-            # Should return error
-            assert isinstance(result, dict)
-            assert "error" in result
-            assert "not found" in result["error"].lower()
-
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_tenant_mismatch(self):
-        """Test orchestrate_project with wrong tenant key"""
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Generate a different valid tenant key
-        different_tenant_key = TenantManager.generate_tenant_key()
-
-        # Mock database session
-        with patch.object(self.db_manager, "get_session_async") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            # Mock project not found due to tenant mismatch (WHERE clause filters it out)
-            mock_result = Mock()
-            mock_result.scalar_one_or_none.return_value = None  # Query with tenant filter returns None
-            mock_db_session.execute = AsyncMock(return_value=mock_result)
-
-            register_orchestration_tools(mock_server, self.db_manager)
-            orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-            result = await orchestrate_project(project_id=self.project.id, tenant_key=different_tenant_key)
-
-            # Should return not found (tenant isolation)
-            assert isinstance(result, dict)
-            assert "error" in result
-
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_orchestrator_failure(self):
-        """Test orchestrate_project when orchestrator fails"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock ProjectOrchestrator with failure
-        with patch("src.giljo_mcp.tools.orchestration.ProjectOrchestrator") as mock_orch_class:
-            mock_orchestrator = Mock()
-            mock_orchestrator.process_product_vision = AsyncMock(
-                side_effect=ValueError("Orchestration failed: Invalid vision")
-            )
-            mock_orch_class.return_value = mock_orchestrator
-
-            # Mock database session
-            with patch.object(self.db_manager, "get_session_async") as mock_session:
-                mock_db_session = AsyncMock()
-                mock_session.return_value.__aenter__.return_value = mock_db_session
-
-                # Mock project lookup
-                mock_result = Mock()
-                mock_result.scalar_one_or_none.return_value = Mock(
-                    id=self.project.id,
-                    tenant_key=self.tenant_key,
-                    product_id=self.product.id,
-                    mission="Test mission",
-                )
-                mock_db_session.execute = AsyncMock(return_value=mock_result)
-
-                register_orchestration_tools(mock_server, self.db_manager)
-                orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-                result = await orchestrate_project(project_id=self.project.id, tenant_key=self.tenant_key)
-
-                # Should return error
-                assert isinstance(result, dict)
-                assert "error" in result
-                assert "Invalid vision" in result["error"]
 
     @pytest.mark.asyncio
     async def test_get_agent_mission_success(self):
@@ -247,7 +95,7 @@ class TestOrchestrationTools:
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock agent lookup with mission (using MCPAgentJob)
-            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+            from src.giljo_mcp.models.agent_identity import AgentExecution
 
             mock_agent = Mock(spec=AgentExecution)
             mock_agent.job_id = str(uuid.uuid4())
@@ -312,7 +160,7 @@ class TestOrchestrationTools:
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock agent without mission (using MCPAgentJob)
-            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+            from src.giljo_mcp.models.agent_identity import AgentExecution
 
             mock_agent = Mock(spec=AgentExecution)
             mock_agent.job_id = str(uuid.uuid4())
@@ -352,7 +200,6 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock MCPAgentJob lookup
-            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(
@@ -461,26 +308,6 @@ class TestOrchestrationTools:
             assert "error" in result
             assert "not found" in result["error"].lower()
 
-    @pytest.mark.asyncio
-    async def test_orchestration_tools_error_handling(self):
-        """Test orchestration tools error handling"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock database error
-        with patch.object(self.db_manager, "get_session_async") as mock_session:
-            mock_session.side_effect = Exception("Database connection failed")
-
-            register_orchestration_tools(mock_server, self.db_manager)
-            orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-            result = await orchestrate_project(project_id=self.project.id, tenant_key="tk_test")
-
-            # Should handle error gracefully
-            assert isinstance(result, dict)
-            assert "error" in result
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_with_failed_jobs(self):
@@ -500,7 +327,6 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock jobs with failures
-            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(
@@ -534,36 +360,6 @@ class TestOrchestrationTools:
             assert result["failed_agents"] == 1
             assert result["completed_agents"] == 1
 
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_invalid_alias_format(self):
-        """Test orchestrate_project with invalid alias format"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        # Mock database session
-        with patch.object(self.db_manager, "get_session_async") as mock_session:
-            mock_db_session = AsyncMock()
-            mock_session.return_value.__aenter__.return_value = mock_db_session
-
-            # Mock no project found
-            mock_result = Mock()
-            mock_result.scalar_one_or_none.return_value = None
-            mock_db_session.execute = AsyncMock(return_value=mock_result)
-
-            register_orchestration_tools(mock_server, self.db_manager)
-            orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-            # Test with invalid alias (too long, special chars, etc.)
-            result = await orchestrate_project(
-                project_id=str(uuid.uuid4()),
-                tenant_key=self.tenant_key,
-            )
-
-            # Should return error
-            assert isinstance(result, dict)
-            assert "error" in result
 
     @pytest.mark.asyncio
     async def test_get_agent_mission_tenant_isolation(self):
@@ -596,23 +392,6 @@ class TestOrchestrationTools:
             assert isinstance(result, dict)
             assert "error" in result
 
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_null_tenant_key(self):
-        """Test orchestrate_project with null/empty tenant key"""
-        from src.giljo_mcp.tools.orchestration import register_orchestration_tools
-
-        registrar = MockMCPToolRegistrar()
-        mock_server = registrar.create_tool_decorator()
-
-        register_orchestration_tools(mock_server, self.db_manager)
-        orchestrate_project = registrar.get_registered_tool("orchestrate_project")
-
-        # Test with empty tenant key
-        result = await orchestrate_project(project_id=self.project.id, tenant_key="")
-
-        # Should handle gracefully
-        assert isinstance(result, dict)
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_calculates_progress(self):
@@ -632,7 +411,6 @@ class TestOrchestrationTools:
             mock_project_result.scalar_one_or_none.return_value = Mock(id=self.project.id, tenant_key=self.tenant_key)
 
             # Mock 5 jobs: 3 completed, 1 active, 1 pending
-            from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
             mock_jobs = [
                 Mock(spec=MCPAgentJob, status="completed"),

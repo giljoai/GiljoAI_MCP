@@ -224,7 +224,6 @@ Modern software development involves:
   - `POST /api/orchestrator/coordinate` - Workflow coordination
   - `POST /api/orchestrator/handle-failure` - Failure recovery
 - **MCP Tools**:
-  - `orchestrate_project()` - Complete project orchestration
   - `get_agent_mission()` - Retrieve agent-specific missions
   - `get_workflow_status()` - Monitor workflow progress
 

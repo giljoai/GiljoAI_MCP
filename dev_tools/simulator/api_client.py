@@ -94,10 +94,6 @@ class APIClient:
         r = await self._client.post(f"/api/v1/projects/{project_id}/restore")
         return self._result(r)
 
-    async def orchestrate_project(self, project_id: str) -> dict:
-        r = await self._client.post(f"/api/agent-jobs/orchestrate/{project_id}")
-        return self._result(r)
-
     async def workflow_status(self, project_id: str) -> dict:
         r = await self._client.get(f"/api/agent-jobs/workflow/{project_id}")
         return self._result(r)
