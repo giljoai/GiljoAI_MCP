@@ -188,22 +188,6 @@ class TestOrchestrationToolsHTTPExposure:
         # Should return structured error, not crash
         assert "error" in result or "job_id" in result
 
-    @pytest.mark.asyncio
-    async def test_orchestrate_project_accessible(self, db_manager):
-        """Test orchestrate_project method exists"""
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        tenant_manager = TenantManager()
-        tool_accessor = ToolAccessor(db_manager, tenant_manager)
-
-        # Call with fake ID (should return error but not crash)
-        fake_project_id = str(uuid4())
-        tenant_key = f"tk_{uuid4().hex}"
-        result = await tool_accessor.orchestrate_project(fake_project_id, tenant_key)
-
-        # Should return structured error, not crash
-        assert "error" in result or "project_id" in result
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_accessible(self, db_manager):
@@ -240,7 +224,6 @@ class TestToolMapExposure:
             "get_orchestrator_instructions",
             "spawn_agent_job",
             "get_agent_mission",
-            "orchestrate_project",
             "get_workflow_status",
         ]
 

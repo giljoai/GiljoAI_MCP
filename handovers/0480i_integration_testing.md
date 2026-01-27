@@ -1,11 +1,18 @@
 # Handover 0480i: Integration Testing & E2E Verification
 
+> **DEPRECATED 2026-01-27**: This handover is part of the deprecated 0480 series.
+> The series was redesigned due to critical flaws (false premises about codebase state).
+>
+> **Use Instead**:
+> - Master: `handovers/0480_exception_handling_remediation_REVISED.md`
+> - Chain prompts: `prompts/0480_chain/`
+
 **Date:** 2026-01-26
 **From Agent:** Documentation Manager
 **To Agent:** Backend Integration Tester + Frontend Tester
 **Priority:** CRITICAL
 **Estimated Complexity:** 12-14 hours
-**Status:** Ready for Implementation
+**Status:** DEPRECATED
 **Series:** 0480 (Exception Handling Architecture Remediation)
 **Dependencies:** Handovers 0480g (Endpoints), 0480h (Frontend)
 
