@@ -302,14 +302,12 @@ async def login(
     rate_limiter.check_rate_limit(request, limit=5, window=60, raise_on_limit=True)
 
     # Authenticate user via service
+    # Service raises AuthenticationError on failure (0480 migration)
     auth_result = await auth_service.authenticate_user(login_data.username, login_data.password)
 
-    if not auth_result["success"]:
-        logger.warning(f"Login failed for username: {login_data.username}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=auth_result["error"])
-
-    user_data = auth_result["data"]["user"]
-    token = auth_result["data"]["token"]
+    # Service now returns data directly, exceptions handle errors
+    user_data = auth_result["user"]
+    token = auth_result["token"]
 
     # Update last login timestamp
     await auth_service.update_last_login(user_data["id"], datetime.now(timezone.utc))
