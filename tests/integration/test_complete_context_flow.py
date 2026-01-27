@@ -23,22 +23,15 @@ These are INTEGRATION tests, validating complete user journeys across system
 boundaries, not isolated unit tests.
 """
 
-import json
-import pytest
-import pytest_asyncio
-from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from uuid import uuid4
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+import pytest_asyncio
+
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-
-from tests.fixtures.base_fixtures import db_manager, db_session
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 # ============================================================================
@@ -173,7 +166,6 @@ class TestCompleteSettingsPersistence:
             job_metadata={
                 "user_id": fully_configured_user.id,
                 "field_priorities": priorities,
-                "tool": "orchestrate_project",
             },
         )
         db_session.add(job)
