@@ -360,6 +360,23 @@ async def handle_tools_list(
             "description": "Check MCP server health status",
             "inputSchema": {"type": "object", "properties": {}},
         },
+        # Download Tools (Handover 0384)
+        {
+            "name": "generate_download_token",
+            "description": "Generate a one-time download URL for agent templates or slash commands. Returns a URL valid for 15 minutes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "content_type": {
+                        "type": "string",
+                        "enum": ["agent_templates", "slash_commands"],
+                        "description": "Type of content to download"
+                    },
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                },
+                "required": ["content_type"],
+            },
+        },
         # Agent Coordination Tools (Handover 0045)
         {
             "name": "get_pending_jobs",
@@ -694,6 +711,8 @@ async def handle_tools_call(
         "close_project_and_update_memory": state.tool_accessor.close_project_and_update_memory,
         # 360 Memory Writing (Handover 0412)
         "write_360_memory": state.tool_accessor.write_360_memory,
+        # Download Tools (Handover 0384)
+        "generate_download_token": state.tool_accessor.generate_download_token,
     }
 
     if tool_name not in tool_map:
