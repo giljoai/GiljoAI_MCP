@@ -41,9 +41,9 @@ curl -o /tmp/agents.zip "{download_url}"
 
 Ask: "Where should I install the {template_count} agent templates?"
 
-Options:
-- **Project agents** (`.claude/agents/`) - Available only in this project
-- **User agents** (`~/.claude/agents/`) - Available across all your projects
+Options (present in this order):
+1. **Project agents (Recommended)** (`.claude/agents/`) - Available only in this project
+2. **User agents** (`~/.claude/agents/`) - Available across all your projects
 
 ## STEP 4: Extract to Chosen Location
 
