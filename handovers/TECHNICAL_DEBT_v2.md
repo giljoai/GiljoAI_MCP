@@ -2422,4 +2422,49 @@ will be removed after shipping as a branch perhaps
 
 
 
+---
+
+## 🔧 FRONTEND API PATTERN DEBT: Broken api.post()/api.get() Calls
+
+**Status**: NEEDS FIX
+**Impact**: MEDIUM - These calls will fail at runtime
+**Complexity**: LOW
+**Effort**: 2-3 hours total
+**Date Identified**: 2025-01-27
+
+### Root Cause
+
+The API service (`frontend/src/services/api.js`) uses a namespaced structure (e.g., `api.agentJobs.*`, `api.products.*`) rather than exposing raw axios methods like `api.post()` or `api.get()`. Several components use the incorrect pattern.
+
+### Affected Files
+
+| File | Line | Broken Pattern | Fix Required |
+|------|------|----------------|--------------|
+| `OrchestratorCard.vue` | 154 | `api.get('/api/v1/prompts/orchestrator/...')` | Add `api.prompts.getOrchestrator()` method |
+| `AgentExecutionModal.vue` | 108 | `api.get('/jobs/...')` | Add `api.jobs.get()` method or use existing |
+| `TemplateArchive.vue` | 248 | `api.get('/api/templates/.../history')` | Add `api.templates.getHistory()` method |
+| `TemplateArchive.vue` | 312 | `api.post('/api/templates/.../restore')` | Add `api.templates.restore()` method |
+
+### Implementation Pattern
+
+Each broken call requires:
+1. Add method to appropriate namespace in `api.js`
+2. Update component to use namespaced method
+3. Test the functionality
+
+**Example Fix** (from ActionIcons.vue handover fix):
+```javascript
+// api.js - Add to agentJobs namespace
+simpleHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/simple-handover`),
+
+// Component - Use namespaced method
+const response = await api.agentJobs.simpleHandover(props.job.job_id)
+```
+
+### Priority
+
+**MEDIUM** - These features will fail when used, but may be infrequently accessed paths. Fix when touching these files or before v4.0 release.
+
+---
+
 **End of Technical Debt v2.0**
