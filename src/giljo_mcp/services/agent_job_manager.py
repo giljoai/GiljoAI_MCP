@@ -30,6 +30,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import BaseGiljoException, ResourceNotFoundError
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
@@ -181,9 +182,15 @@ class AgentJobManager:
                     "status": execution.status,
                 }
 
+        except BaseGiljoException:
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to spawn agent: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "spawn_agent"}
+            ) from e
 
     # ============================================================================
     # Execution Status Updates (execution-specific, not job-level)
@@ -236,10 +243,10 @@ class AgentJobManager:
                 execution = result.scalar_one_or_none()
 
                 if not execution:
-                    return {
-                        "success": False,
-                        "error": f"Execution {agent_id} not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Execution {agent_id} not found",
+                        context={"agent_id": agent_id}
+                    )
 
                 # Update execution status
                 execution.status = status
@@ -267,9 +274,15 @@ class AgentJobManager:
 
                 return {"success": True, "status": status}
 
+        except (ResourceNotFoundError, BaseGiljoException):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update agent status: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_agent_status"}
+            ) from e
 
     async def update_agent_progress(
         self,
@@ -309,10 +322,10 @@ class AgentJobManager:
                 execution = result.scalar_one_or_none()
 
                 if not execution:
-                    return {
-                        "success": False,
-                        "error": f"Execution {agent_id} not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Execution {agent_id} not found",
+                        context={"agent_id": agent_id}
+                    )
 
                 execution.progress = progress
                 if current_task:
@@ -324,9 +337,15 @@ class AgentJobManager:
 
                 return {"success": True, "progress": progress}
 
+        except (ResourceNotFoundError, BaseGiljoException):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update agent progress: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "update_agent_progress"}
+            ) from e
 
     # ============================================================================
     # Job Completion (decommissions all executions)
@@ -369,10 +388,10 @@ class AgentJobManager:
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    return {
-                        "success": False,
-                        "error": f"Job {job_id} not found"
-                    }
+                    raise ResourceNotFoundError(
+                        message=f"Job {job_id} not found",
+                        context={"job_id": job_id}
+                    )
 
                 # Mark job complete
                 job.status = "completed"
@@ -403,9 +422,15 @@ class AgentJobManager:
                     "executions_decommissioned": len(executions)
                 }
 
+        except (ResourceNotFoundError, BaseGiljoException):
+            # Re-raise our custom exceptions without wrapping
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=str(e),
+                context={"operation": "complete_job"}
+            ) from e
 
     # ============================================================================
     # Query Operations

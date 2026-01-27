@@ -12,7 +12,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,9 +86,9 @@ class TestUpdateAgentStatusExceptions:
         """Test that update_agent_status raises ResourceNotFoundError when execution not found."""
         # Mock session that returns no execution
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_session.execute.return_value = mock_result
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -143,9 +143,9 @@ class TestUpdateAgentProgressExceptions:
         """Test that update_agent_progress raises ResourceNotFoundError when execution not found."""
         # Mock session that returns no execution
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_session.execute.return_value = mock_result
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -200,9 +200,9 @@ class TestCompleteJobExceptions:
         """Test that complete_job raises ResourceNotFoundError when job not found."""
         # Mock session that returns no job
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_session.execute.return_value = mock_result
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
