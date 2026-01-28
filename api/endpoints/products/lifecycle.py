@@ -27,7 +27,6 @@ from .models import (
     ProductActivationResponse,
     ProductDeleteResponse,
     ProductResponse,
-    TokenEstimateResponse,
     VisionDocumentStatsResponse,
 )
 
@@ -441,77 +440,6 @@ async def refresh_active_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error refreshing active product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
-
-
-@router.get("/active/token-estimate", response_model=TokenEstimateResponse)
-async def get_token_estimate(
-    current_user: User = Depends(get_current_active_user),
-    service: ProductService = Depends(get_product_service),
-) -> TokenEstimateResponse:
-    """
-    Get token estimate for active product.
-
-    Uses ProductService.get_active_product() and calculates token estimate
-    based on project statistics.
-    """
-    logger.debug(f"User {current_user.username} requesting token estimate for active product")
-
-    try:
-        result = await service.get_active_product()
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
-
-        product_data = result.get("product")
-
-        if not product_data:
-            raise HTTPException(
-                status_code=404,
-                detail="No active product found"
-            )
-
-        # Calculate token estimate (simplified - can be enhanced)
-        # Base tokens for product metadata
-        token_estimate = 500
-
-        # Add tokens for projects (estimate ~1000 tokens per project)
-        project_count = product_data.get("project_count", 0)
-        token_estimate += project_count * 1000
-
-        # Add tokens for vision documents (estimate ~2000 tokens per doc)
-        vision_count = product_data.get("vision_documents_count", 0)
-        token_estimate += vision_count * 2000
-
-        # Add tokens for config data
-        if product_data.get("has_config_data"):
-            token_estimate += 500
-
-        return TokenEstimateResponse(
-            product_id=product_data["id"],
-            product_name=product_data["name"],
-            estimated_tokens=token_estimate,
-            breakdown={
-                "base": 500,
-                "projects": project_count * 1000,
-                "vision_documents": vision_count * 2000,
-                "config_data": 500 if product_data.get("has_config_data") else 0
-            }
-        )
-
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error getting token estimate: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

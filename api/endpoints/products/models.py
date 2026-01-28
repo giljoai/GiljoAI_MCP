@@ -147,19 +147,6 @@ class VisionChunk(BaseModel):
     headers: List[str]
 
 
-class TokenEstimateResponse(BaseModel):
-    """Token estimation response for active product"""
-
-    product_id: str = Field(..., description="Active product ID")
-    product_name: str = Field(..., description="Active product name")
-    field_tokens: Dict[str, int] = Field(..., description="Token count per prioritized field")
-    total_field_tokens: int = Field(..., description="Sum of all field tokens")
-    overhead_tokens: int = Field(..., description="Fixed overhead for mission structure")
-    total_tokens: int = Field(..., description="Total tokens (field_tokens + overhead)")
-    token_budget: int = Field(..., description="User's configured token budget")
-    percentage_used: float = Field(..., description="Percentage of budget used")
-
-
 class VisionDocumentStatsResponse(BaseModel):
     """Vision document statistics response for active product"""
 

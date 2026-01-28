@@ -14,19 +14,6 @@ from pydantic import BaseModel, ConfigDict, Field
 # Prompt Generation Schemas
 
 
-class TokenEstimateRequest(BaseModel):
-    """
-    Schema for token estimation request.
-    POST /api/prompts/estimate-tokens
-    """
-
-    mission: str = Field(..., description="Mission text to estimate tokens for")
-    agent_count: int = Field(..., ge=0, description="Number of agents (must be >= 0)")
-    project_description: Optional[str] = Field(None, description="Optional project context/description")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class OrchestratorPromptResponse(BaseModel):
     """
     Schema for orchestrator prompt generation response.

@@ -17,7 +17,6 @@ describe('api.js - Prompts Service', () => {
 
     it('prompts has all required methods', () => {
       // Verify all methods exist (mocked in tests/setup.js)
-      expect(typeof api.prompts.estimateTokens).toBe('function')
       expect(typeof api.prompts.staging).toBe('function')
       expect(typeof api.prompts.execution).toBe('function')
       expect(typeof api.prompts.agentPrompt).toBe('function')

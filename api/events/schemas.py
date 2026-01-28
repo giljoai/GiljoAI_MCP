@@ -20,8 +20,7 @@ Example Usage:
     >>> event = EventFactory.project_mission_updated(
     ...     project_id=UUID("..."),
     ...     tenant_key="tenant_123",
-    ...     mission="Implement feature X",
-    ...     token_estimate=5000
+    ...     mission="Implement feature X"
     ... )
     >>> await ws_manager.broadcast_to_tenant(
     ...     tenant_key="tenant_123",
@@ -91,14 +90,12 @@ class ProjectMissionUpdatedData(BaseModel):
     Data payload for project:mission_updated event.
 
     Emitted when a project's mission is updated by the orchestrator
-    or user configuration. Includes token estimation and metadata
-    about the generation process.
+    or user configuration.
     """
 
     project_id: str = Field(..., description="Project UUID as string")
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
     mission: str = Field(..., min_length=1, description="Generated mission text")
-    token_estimate: int = Field(..., ge=0, description="Estimated token count")
     generated_by: Literal["orchestrator", "user"] = Field(
         default="orchestrator", description="Source of mission generation"
     )
@@ -131,7 +128,6 @@ class ProjectMissionUpdatedEvent(BaseModel):
                     "project_id": "550e8400-e29b-41d4-a716-446655440000",
                     "tenant_key": "tenant_123",
                     "mission": "Implement user authentication with OAuth2",
-                    "token_estimate": 5000,
                     "generated_by": "orchestrator",
                     "user_config_applied": True,
                     "field_priorities": {"security": 5, "performance": 4, "ux": 3},
@@ -458,7 +454,6 @@ class EventFactory:
         project_id: Union[str, UUID],
         tenant_key: str,
         mission: str,
-        token_estimate: int,
         generated_by: Literal["orchestrator", "user"] = "orchestrator",
         user_config_applied: bool = False,
         field_priorities: Optional[Dict[str, int]] = None,
@@ -470,7 +465,6 @@ class EventFactory:
             project_id: Project UUID (str or UUID object)
             tenant_key: Tenant identifier
             mission: Generated mission text
-            token_estimate: Estimated token count (>= 0)
             generated_by: Source of generation ("orchestrator" or "user")
             user_config_applied: Whether user configuration was applied
             field_priorities: Field priorities used (1-5 scale)
@@ -483,7 +477,6 @@ class EventFactory:
             ...     project_id="550e8400-e29b-41d4-a716-446655440000",
             ...     tenant_key="tenant_123",
             ...     mission="Build feature X",
-            ...     token_estimate=5000,
             ...     user_config_applied=True
             ... )
             >>> await ws.send_json(event)
@@ -497,7 +490,6 @@ class EventFactory:
                 project_id=project_id_str,
                 tenant_key=tenant_key,
                 mission=mission,
-                token_estimate=token_estimate,
                 generated_by=generated_by,
                 user_config_applied=user_config_applied,
                 field_priorities=field_priorities,
