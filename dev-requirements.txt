@@ -8,6 +8,7 @@
 pytest>=7.4.0              # Testing framework
 pytest-asyncio>=0.21.0     # Async test support
 pytest-cov>=4.1.0          # Coverage reporting
+fakeredis>=2.20.0          # Fake Redis for testing cache behavior
 
 # Code Quality & Formatting
 black>=23.0.0              # Code formatter (opinionated)
