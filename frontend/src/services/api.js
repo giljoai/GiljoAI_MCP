@@ -181,8 +181,6 @@ export const api = {
     listVision: (id) => apiClient.get(`/api/v1/products/${id}/vision`),
     deleteVision: (id, docId) => apiClient.delete(`/api/v1/products/${id}/vision/${docId}`),
     getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks`),
-    // Real-time token estimate for active product (Handover 0049)
-    getActiveProductTokenEstimate: () => apiClient.get('/api/v1/products/active/token-estimate'),
     // Product activation endpoints (Handover 0049)
     activate: (id) => apiClient.post(`/api/v1/products/${id}/activate`),
     deactivate: (id) => apiClient.post(`/api/v1/products/${id}/deactivate`),
@@ -595,7 +593,6 @@ export const api = {
   // Prompts (Handover 0119 Phase 1 - Standardized to /api/v1/prompts)
   // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
   prompts: {
-    estimateTokens: (data) => apiClient.post('/api/v1/prompts/estimate-tokens', data),
     staging: (projectId, params) =>
       apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
     execution: (orchestratorJobId, claudeCodeMode) =>
