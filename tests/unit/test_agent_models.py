@@ -9,7 +9,7 @@ because models use JSONB columns which are PostgreSQL-specific. SQLite doesn't s
 Tests clean up after themselves by rolling back transactions.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -44,10 +44,11 @@ class TestMCPContextIndex:
     @pytest.fixture
     def sample_product(self, db_session):
         """Create a sample product for testing."""
+        import uuid
         product = Product(
-            id="test-product-id",
+            id=str(uuid.uuid4()),
             tenant_key="test-tenant",
-            name="Test Product",
+            name=f"Test Product {uuid.uuid4()}",
             description="Test product for context indexing",
         )
         db_session.add(product)
@@ -176,10 +177,11 @@ class TestMCPContextSummary:
     @pytest.fixture
     def sample_product(self, db_session):
         """Create a sample product for testing."""
+        import uuid
         product = Product(
-            id="test-product-id",
+            id=str(uuid.uuid4()),
             tenant_key="test-tenant",
-            name="Test Product",
+            name=f"Test Product {uuid.uuid4()}",
             description="Test product for context summarization",
         )
         db_session.add(product)
@@ -371,7 +373,7 @@ class TestAgentExecution:
 
         # Move to working
         agent_execution.status = "working"
-        agent_execution.started_at = datetime.utcnow()
+        agent_execution.started_at = datetime.now(timezone.utc)
         db_session.commit()
 
         assert agent_execution.status == "working"
@@ -380,7 +382,7 @@ class TestAgentExecution:
 
         # Move to complete
         agent_execution.status = "complete"
-        agent_execution.completed_at = datetime.utcnow()
+        agent_execution.completed_at = datetime.now(timezone.utc)
         db_session.commit()
 
         assert agent_execution.status == "complete"
@@ -541,12 +543,13 @@ class TestProductVisionDocumentRelationship:
     def test_product_with_vision_documents(self, db_session):
         """Test Product with VisionDocument relationship."""
         from src.giljo_mcp.models.products import VisionDocument
+        import uuid
 
         # Create product
         product = Product(
-            id="product-with-vision",
+            id=str(uuid.uuid4()),
             tenant_key="test-tenant",
-            name="Product with Vision Documents",
+            name=f"Product with Vision Documents {uuid.uuid4()}",
             description="Test VisionDocument relationship",
         )
         db_session.add(product)
@@ -575,6 +578,7 @@ class TestProductVisionDocumentRelationship:
             vision_document="This is inline API documentation",
             storage_type="inline",
             chunked=True,
+            chunk_count=1,  # Must be > 0 when chunked=True
             is_active=True,
         )
         db_session.add(vision_inline)
