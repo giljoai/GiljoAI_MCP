@@ -318,7 +318,7 @@ class TestAgentJobLifecycle:
         )
 
         assert response.status_code == 403
-        assert "Admin access required" in response.json()["detail"]
+        assert "Admin access required" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_spawn_agent_job_requires_auth(
