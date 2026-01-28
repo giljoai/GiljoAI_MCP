@@ -11,12 +11,17 @@ import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
 from api.schemas.vision_document import VisionDocumentResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models import User
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import VisionChunk
 
@@ -124,6 +129,14 @@ async def upload_vision_document(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Vision upload failed: {e}")
         # Handover 0508: Check for IntegrityError (duplicate constraint violation)
@@ -153,7 +166,8 @@ async def list_vision_documents(
 
     Handover 0503: Added GET endpoint for listing vision documents.
     """
-    from sqlalchemy import select, and_
+    from sqlalchemy import and_, select
+
     from src.giljo_mcp.models import VisionDocument
 
     logger.debug(f"User {current_user.username} listing vision documents for product {product_id}")
@@ -209,11 +223,19 @@ async def list_vision_documents(
 
         return response_docs
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Failed to list vision documents: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list vision documents: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -232,8 +254,9 @@ async def delete_vision_document(
 
     Handover 0503: Added DELETE endpoint for vision documents.
     """
-    from sqlalchemy import select, and_, delete
-    from src.giljo_mcp.models import VisionDocument, MCPContextIndex
+    from sqlalchemy import and_, delete, select
+
+    from src.giljo_mcp.models import MCPContextIndex, VisionDocument
 
     logger.info(f"User {current_user.username} deleting vision document {doc_id} for product {product_id}")
 
@@ -273,13 +296,19 @@ async def delete_vision_document(
 
         return None
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
         logger.exception(f"Failed to delete vision document: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete vision document: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -300,8 +329,8 @@ async def get_vision_chunks(
 
     Handover 0500: Implemented vision chunks retrieval.
     """
-    from src.giljo_mcp.repositories.context_repository import ContextRepository
-    from sqlalchemy import select, and_
+    from sqlalchemy import and_, select
+
     from src.giljo_mcp.models import MCPContextIndex
 
     logger.debug(
@@ -327,7 +356,7 @@ async def get_vision_chunks(
 
         # Convert to response model
         response_chunks = []
-        for idx, chunk in enumerate(chunks):
+        for chunk in chunks:
             response_chunks.append(VisionChunk(
                 chunk_number=chunk.chunk_order,
                 total_chunks=len(chunks),
@@ -343,9 +372,17 @@ async def get_vision_chunks(
 
         return response_chunks
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Failed to retrieve vision chunks: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve vision chunks: {str(e)}"
+            detail="Internal server error"
         )
