@@ -388,6 +388,9 @@ class TestProductCRUD:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_get_product_cross_tenant_forbidden(
@@ -405,6 +408,9 @@ class TestProductCRUD:
         )
         # Should return 404 (not found) to prevent information leakage
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_get_product_unauthorized(
@@ -522,6 +528,9 @@ class TestProductCRUD:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_update_product_cross_tenant_forbidden(
@@ -537,6 +546,9 @@ class TestProductCRUD:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_update_product_unauthorized(
@@ -651,6 +663,9 @@ class TestProductLifecycle:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_activate_product_unauthorized(
@@ -694,6 +709,9 @@ class TestProductLifecycle:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_deactivate_product_unauthorized(
@@ -726,9 +744,9 @@ class TestProductLifecycle:
 
         assert delete_response.status_code == 200
         data = delete_response.json()
-        assert data["success"] is True
         assert "message" in data
-        assert "deleted_at" in data
+        assert "deleted_product_id" in data
+        assert data["deleted_product_id"] == product["id"]
 
         # Verify product no longer appears in regular list
         list_response = await api_client.get(
@@ -756,6 +774,9 @@ class TestProductLifecycle:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_delete_product_unauthorized(
@@ -814,6 +835,9 @@ class TestProductLifecycle:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_restore_product_unauthorized(
@@ -854,6 +878,9 @@ class TestProductLifecycle:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_get_cascade_impact_unauthorized(
@@ -1017,7 +1044,7 @@ class TestProductVision:
         )
 
         assert response.status_code == 400
-        assert "Invalid file type" in response.json()["detail"]
+        assert "Invalid file type" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_upload_vision_document_duplicate_name(
@@ -1155,6 +1182,9 @@ class TestProductVision:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
+        assert "error_code" in data
 
     @pytest.mark.asyncio
     async def test_delete_vision_document_unauthorized(
@@ -1225,6 +1255,8 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404  # Not found (prevents info leakage)
+        data = response.json()
+        assert "message" in data
 
         # Test UPDATE product
         response = await api_client.put(
@@ -1233,6 +1265,8 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
 
         # Test DELETE product
         response = await api_client.delete(
@@ -1240,6 +1274,8 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
 
         # Test ACTIVATE product
         response = await api_client.post(
@@ -1247,6 +1283,8 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
 
         # Test CASCADE IMPACT
         response = await api_client.get(
@@ -1254,6 +1292,8 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
 
     @pytest.mark.asyncio
     async def test_vision_documents_tenant_isolation(
@@ -1291,3 +1331,5 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
+        data = response.json()
+        assert "message" in data
