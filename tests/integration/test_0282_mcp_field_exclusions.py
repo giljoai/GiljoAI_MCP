@@ -23,11 +23,14 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+import pytest
+
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
-from src.giljo_mcp.auth.dependencies import get_db_session
+from src.giljo_mcp.database import DatabaseManager
 
 
-async def test_all_fields_excluded():
+@pytest.mark.asyncio
+async def test_all_fields_excluded(db_manager: DatabaseManager):
     """
     Test Scenario 1: All fields excluded (Priority 4)
 
@@ -136,7 +139,8 @@ async def test_all_fields_excluded():
         return False
 
 
-async def test_vision_included():
+@pytest.mark.asyncio
+async def test_vision_included(db_manager: DatabaseManager):
     """
     Test Scenario 2: Vision included (Priority 2), rest excluded
 
@@ -152,7 +156,7 @@ async def test_vision_included():
     # First, update user config to include vision
     print("\n→ Updating user config to include vision_documents at Priority 2...")
 
-    async with get_db_session() as session:
+    async with db_manager.get_session_async() as session:
         from src.giljo_mcp.models import User
         from sqlalchemy import select
 
