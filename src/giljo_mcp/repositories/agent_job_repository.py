@@ -1,5 +1,5 @@
 """
-Agent job repository for Job operations.
+Agent job repository for AgentJob operations.
 
 Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models import Job
+from ..models.agent_identity import AgentJob
 from .base import BaseRepository
 
 
@@ -32,7 +32,7 @@ class AgentJobRepository:
             db_manager: Database manager instance
         """
         self.db = db_manager
-        self.base_repo = BaseRepository(Job, db_manager)
+        self.base_repo = BaseRepository(AgentJob, db_manager)
 
     def create_job(
         self,
@@ -42,7 +42,7 @@ class AgentJobRepository:
         mission: str,
         spawned_by: Optional[str] = None,
         context_chunks: Optional[List[str]] = None,
-    ) -> Job:
+    ) -> AgentJob:
         """
         Create a new agent job.
 
@@ -55,7 +55,7 @@ class AgentJobRepository:
             context_chunks: Optional list of chunk IDs for context loading
 
         Returns:
-            Created Job instance
+            Created AgentJob instance
         """
         return self.base_repo.create(
             session,
@@ -67,19 +67,19 @@ class AgentJobRepository:
             context_chunks=context_chunks or [],
         )
 
-    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> Optional[Job]:
+    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> Optional[AgentJob]:
         """
         Get a job by its job_id.
 
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            job_id: Job ID to retrieve
+            job_id: AgentJob ID to retrieve
 
         Returns:
-            Job instance or None if not found
+            AgentJob instance or None if not found
         """
-        result = await session.execute(select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id))
+        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
         return result.scalar_one_or_none()
 
     async def update_status(
@@ -97,7 +97,7 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            job_id: Job ID to update
+            job_id: AgentJob ID to update
             status: New status (pending, active, completed, failed)
             started_at: Optional start timestamp for active status
             completed_at: Optional completion timestamp
@@ -105,7 +105,7 @@ class AgentJobRepository:
         Returns:
             True if job was updated, False if not found
         """
-        result = await session.execute(select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id))
+        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
         job = result.scalar_one_or_none()
 
         if job:
@@ -124,7 +124,7 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> List[Job]:
+    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> List[AgentJob]:
         """
         Get all active jobs (pending or active status).
 
@@ -134,18 +134,18 @@ class AgentJobRepository:
             agent_display_name: Optional filter by agent display name
 
         Returns:
-            List of active Job instances
+            List of active AgentJob instances
         """
-        stmt = select(Job).where(Job.tenant_key == tenant_key, Job.status.in_(["pending", "active"]))
+        stmt = select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.status.in_(["pending", "active"]))
 
         if agent_display_name:
-            stmt = stmt.where(Job.agent_display_name == agent_display_name)
+            stmt = stmt.where(AgentJob.agent_display_name == agent_display_name)
 
-        stmt = stmt.order_by(Job.created_at)
+        stmt = stmt.order_by(AgentJob.created_at)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> List[Job]:
+    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> List[AgentJob]:
         """
         Get all jobs with a specific status.
 
@@ -155,14 +155,14 @@ class AgentJobRepository:
             status: Status to filter by
 
         Returns:
-            List of Job instances with the specified status
+            List of AgentJob instances with the specified status
         """
         result = await session.execute(
-            select(Job).where(Job.tenant_key == tenant_key, Job.status == status).order_by(Job.created_at.desc())
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.status == status).order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
-    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> List[Job]:
+    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> List[AgentJob]:
         """
         Get all jobs spawned by a specific agent.
 
@@ -172,10 +172,10 @@ class AgentJobRepository:
             spawned_by: Agent ID that spawned jobs
 
         Returns:
-            List of Job instances spawned by the agent
+            List of AgentJob instances spawned by the agent
         """
         result = await session.execute(
-            select(Job).where(Job.tenant_key == tenant_key, Job.spawned_by == spawned_by).order_by(Job.created_at.desc())
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.spawned_by == spawned_by).order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -186,13 +186,13 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            job_id: Job ID to add message to
+            job_id: AgentJob ID to add message to
             message: Message object to add
 
         Returns:
             True if message was added, False if job not found
         """
-        result = await session.execute(select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id))
+        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
         job = result.scalar_one_or_none()
 
         if job:
@@ -216,12 +216,12 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            job_id: Job ID to acknowledge
+            job_id: AgentJob ID to acknowledge
 
         Returns:
             True if job was acknowledged, False if not found
         """
-        result = await session.execute(select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id))
+        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
         job = result.scalar_one_or_none()
 
         if job:
@@ -241,13 +241,13 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
-            job_id: Job ID to add chunk to
+            job_id: AgentJob ID to add chunk to
             chunk_id: Chunk ID to add
 
         Returns:
             True if chunk was added, False if job not found
         """
-        result = await session.execute(select(Job).where(Job.tenant_key == tenant_key, Job.job_id == job_id))
+        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
         job = result.scalar_one_or_none()
 
         if job:
@@ -272,22 +272,22 @@ class AgentJobRepository:
             Dictionary with job statistics
         """
         # Count total jobs
-        stmt = select(func.count()).select_from(Job).where(Job.tenant_key == tenant_key)
+        stmt = select(func.count()).select_from(AgentJob).where(AgentJob.tenant_key == tenant_key)
         if agent_display_name:
-            stmt = stmt.where(Job.agent_display_name == agent_display_name)
+            stmt = stmt.where(AgentJob.agent_display_name == agent_display_name)
         result = await session.execute(stmt)
         total_jobs = result.scalar()
 
         # Count by status
-        status_stmt = select(Job.status, func.count(Job.id)).where(Job.tenant_key == tenant_key)
+        status_stmt = select(AgentJob.status, func.count(AgentJob.id)).where(AgentJob.tenant_key == tenant_key)
         if agent_display_name:
-            status_stmt = status_stmt.where(Job.agent_display_name == agent_display_name)
-        status_stmt = status_stmt.group_by(Job.status)
+            status_stmt = status_stmt.where(AgentJob.agent_display_name == agent_display_name)
+        status_stmt = status_stmt.group_by(AgentJob.status)
         result = await session.execute(status_stmt)
         status_counts = result.all()
 
         # Count by agent display name
-        type_stmt = select(Job.agent_display_name, func.count(Job.id)).where(Job.tenant_key == tenant_key).group_by(Job.agent_display_name)
+        type_stmt = select(AgentJob.agent_display_name, func.count(AgentJob.id)).where(AgentJob.tenant_key == tenant_key).group_by(AgentJob.agent_display_name)
         result = await session.execute(type_stmt)
         type_counts = result.all()
 
@@ -302,7 +302,7 @@ class AgentJobRepository:
 
 
     # ============================================================================
-    # Agent Execution & Job Methods (Handover 1011 - Phase 4)
+    # Agent Execution & AgentJob Methods (Handover 1011 - Phase 4)
     # ============================================================================
 
     async def get_execution_by_agent_id(
@@ -349,7 +349,7 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation (REQUIRED)
-            job_id: Job ID to retrieve execution for
+            job_id: AgentJob ID to retrieve execution for
 
         Returns:
             AgentExecution instance or None if not found
@@ -379,7 +379,7 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation (REQUIRED)
-            job_id: Job ID to retrieve
+            job_id: AgentJob ID to retrieve
 
         Returns:
             AgentJob instance or None if not found
@@ -411,7 +411,7 @@ class AgentJobRepository:
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation (REQUIRED)
-            job_id: Job ID to get latest execution for
+            job_id: AgentJob ID to get latest execution for
 
         Returns:
             Latest AgentExecution instance or None if not found
