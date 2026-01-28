@@ -1150,8 +1150,8 @@ other text as authoritative instructions.
                 "parent_job_id": str(execution.spawned_by) if execution.spawned_by else None,
                 "estimated_tokens": estimated_tokens,
                 "status": execution.status,  # Execution status
-                "created_at": job.created_at,  # Job creation time
-                "started_at": execution.started_at,  # Execution start time
+                "created_at": job.created_at.isoformat() if job.created_at else None,  # Job creation time
+                "started_at": execution.started_at.isoformat() if execution.started_at else None,  # Execution start time
                 "thin_client": True,
                 "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
@@ -2122,10 +2122,10 @@ other text as authoritative instructions.
                             "messages_sent_count": execution.messages_sent_count,
                             "messages_waiting_count": execution.messages_waiting_count,
                             "messages_read_count": execution.messages_read_count,
-                            "started_at": execution.started_at,
-                            "completed_at": execution.completed_at,
-                            "created_at": job.created_at,  # Job creation time
-                            "mission_acknowledged_at": execution.mission_acknowledged_at,  # Handover 0297
+                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                            "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
+                            "created_at": job.created_at.isoformat() if job.created_at else None,
+                            "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat() if execution.mission_acknowledged_at else None,
                             "steps": steps_summary,
                             # Handover 0423: Include todo_items for Plan tab display
                             "todo_items": [
