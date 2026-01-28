@@ -70,8 +70,12 @@ async def send_message(
         from_agent=message.from_agent,
     )
 
+    # Extract from nested data structure (Handover 0405 consistency)
+    data = result.get("data", {})
+    message_id = data.get("message_id")
+
     response = MessageResponse(
-        id=result["message_id"],
+        id=message_id,
         from_agent=message.from_agent or "orchestrator",
         to_agents=message.to_agents,
         content=message.content,
@@ -84,7 +88,7 @@ async def send_message(
     # Broadcast new message
     if state.websocket_manager:
         await state.websocket_manager.broadcast_message_update(
-            message_id=result["message_id"],
+            message_id=message_id,
             project_id=message.project_id,
             update_type="new",
             message_data={
@@ -293,13 +297,15 @@ async def broadcast_message(
         from_agent=broadcast.from_agent or "user",
     )
 
-    # Get agent names from the result
-    agent_names = message_result.get("to_agents", [])
+    # Extract from nested data structure (Handover 0405 consistency)
+    data = message_result.get("data", {})
+    message_id = data.get("message_id")
+    agent_names = data.get("to_agents", [])
 
     # Broadcast WebSocket notification
     if state.websocket_manager:
         await state.websocket_manager.broadcast_message_update(
-            message_id=message_result["message_id"],
+            message_id=message_id,
             project_id=broadcast.project_id,
             update_type="broadcast",
             message_data={
@@ -314,7 +320,7 @@ async def broadcast_message(
 
     return {
         "success": True,
-        "message_id": message_result["message_id"],
+        "message_id": message_id,
         "recipient_count": len(agent_names),
         "recipients": agent_names,
         "timestamp": datetime.now(timezone.utc).isoformat(),
