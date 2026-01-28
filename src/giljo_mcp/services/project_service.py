@@ -1103,10 +1103,10 @@ class ProjectService:
                         "mission": project.mission,
                         "description": project.description,
                         "meta_data": project.meta_data or {},
-                        "created_at": project.created_at,
-                        "updated_at": project.updated_at,
-                        "activated_at": project.activated_at,
-                        "completed_at": project.completed_at,
+                        "created_at": project.created_at.isoformat() if project.created_at else None,
+                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                        "activated_at": project.activated_at.isoformat() if project.activated_at else None,
+                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                         "product_id": project.product_id,
                     },
                 }
@@ -1340,10 +1340,10 @@ class ProjectService:
                 "mission": project.mission,
                 "description": project.description,
                 "meta_data": project.meta_data or {},
-                "created_at": project.created_at,
-                "updated_at": project.updated_at,
-                "activated_at": project.activated_at,
-                "completed_at": project.completed_at,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
+                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                 "product_id": project.product_id,
             }
 
@@ -1424,10 +1424,10 @@ class ProjectService:
                 "mission": project.mission,
                 "description": project.description,
                 "meta_data": project.meta_data or {},
-                "created_at": project.created_at,
-                "updated_at": project.updated_at,
-                "activated_at": project.activated_at,
-                "completed_at": project.completed_at,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
+                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                 "product_id": project.product_id,
             }
 
@@ -1548,9 +1548,9 @@ class ProjectService:
                 "active_jobs": active_jobs,
                 "pending_jobs": pending_jobs,
                 "completion_percentage": completion_percentage,
-                "created_at": project.created_at,
-                "activated_at": project.activated_at,
-                "last_activity_at": last_activity_at,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
+                "last_activity_at": last_activity_at.isoformat() if last_activity_at else None,
                 "product_id": project.product_id or "",
                 "product_name": product_name,
             }
@@ -1911,10 +1911,10 @@ class ProjectService:
                 "description": project.description,
                 "execution_mode": project.execution_mode,  # Handover 0260
                 "meta_data": project.meta_data or {},
-                "created_at": project.created_at,
-                "updated_at": project.updated_at,
-                "activated_at": project.activated_at,
-                "completed_at": project.completed_at,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
+                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                 "product_id": project.product_id,
             }
 
