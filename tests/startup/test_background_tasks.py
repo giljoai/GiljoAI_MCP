@@ -76,6 +76,7 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
     # This test verifies the internal cleanup_expired_download_tokens function behavior
     # We'll test it by importing and calling it directly
     from api.startup.background_tasks import cleanup_expired_download_tokens
+    import asyncio
 
     state = APIState()
     mock_db_manager = MagicMock()
@@ -86,7 +87,10 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
 
     state.db_manager = mock_db_manager
 
-    with patch('api.startup.background_tasks.TokenManager') as mock_token_manager, \
+    # TokenManager is imported inside the function, so patch at the import location
+    # Implementation sleeps FIRST (900s), then runs cleanup
+    # So we need: sleep(900) → cleanup → sleep(900) → CancelledError
+    with patch('src.giljo_mcp.download_tokens.TokenManager') as mock_token_manager, \
          patch('api.startup.background_tasks.asyncio.sleep', side_effect=[None, asyncio.CancelledError]):
 
         mock_tm_instance = MagicMock()
@@ -94,13 +98,12 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
         mock_token_manager.return_value = mock_tm_instance
 
         # Run once then cancel
-        import asyncio
         try:
             await cleanup_expired_download_tokens(state)
         except asyncio.CancelledError:
             pass
 
-        # Verify TokenManager was used
+        # Verify TokenManager was used after the first sleep
         mock_token_manager.assert_called_once_with(mock_session)
         mock_tm_instance.cleanup_expired_tokens.assert_awaited_once()
 
@@ -109,6 +112,7 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
 async def test_sync_api_metrics_to_db_syncs_counters():
     """Metrics sync task should sync api_call_count and mcp_call_count to database"""
     from api.startup.background_tasks import sync_api_metrics_to_db
+    import asyncio
 
     state = APIState()
     state.api_call_count = {"tenant1": 100, "tenant2": 50}
@@ -124,18 +128,19 @@ async def test_sync_api_metrics_to_db_syncs_counters():
 
     state.db_manager = mock_db_manager
 
+    # Implementation sleeps FIRST (300s), then syncs
+    # So we need: sleep(300) → sync → sleep(300) → CancelledError
     with patch('api.startup.background_tasks.asyncio.sleep', side_effect=[None, asyncio.CancelledError]):
-        import asyncio
         try:
             await sync_api_metrics_to_db(state)
         except asyncio.CancelledError:
             pass
 
-        # Verify counters were cleared after sync
+        # Verify counters were cleared after sync (which happens after first sleep)
         assert len(state.api_call_count) == 0
         assert len(state.mcp_call_count) == 0
-        # Verify session execute was called (for insert statements)
-        assert mock_session.execute.await_count >= 2
+        # Verify session execute was called (for insert statements, one per tenant)
+        assert mock_session.execute.await_count == 2  # Two tenants: tenant1, tenant2
 
 
 @pytest.mark.asyncio
