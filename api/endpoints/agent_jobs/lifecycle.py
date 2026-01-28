@@ -175,17 +175,14 @@ async def acknowledge_job(
             started_at=job_data.get("started_at"),
             message=result.get("next_instructions", "Job acknowledged successfully")
         )
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    except (ResourceNotFoundError, ValidationError, AuthorizationError):
+        # Let domain exceptions propagate to global exception handler
+        raise
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error acknowledging job: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{job_id}/complete", response_model=JobCompleteResponse)
@@ -214,10 +211,12 @@ async def complete_job(
     logger.debug(f"User {current_user.username} completing job {job_id}")
 
     try:
+        # Service expects result as dict, wrap string result for compatibility
+        result_dict = {"summary": complete_request.result} if complete_request.result else {"summary": "Job completed"}
         result = await orchestration_service.complete_job(
             job_id=job_id,
             tenant_key=current_user.tenant_key,
-            result=complete_request.result
+            result=result_dict
         )
 
         logger.info(f"Completed job {job_id} for tenant {current_user.tenant_key}")
@@ -272,7 +271,7 @@ async def report_job_error(
         result = await orchestration_service.report_error(
             job_id=job_id,
             tenant_key=current_user.tenant_key,
-            error_message=error_request.error
+            error=error_request.error
         )
 
         logger.info(f"Reported error for job {job_id} for tenant {current_user.tenant_key}")
