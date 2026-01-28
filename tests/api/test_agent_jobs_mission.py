@@ -115,7 +115,7 @@ async def test_update_mission_tenant_isolation(
 
     # Should return 404 (not exposing that job exists)
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert "not found" in response.json()["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -243,7 +243,7 @@ async def test_update_mission_not_found(
     )
 
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert "not found" in response.json()["message"].lower()
 
 
 @pytest.mark.asyncio
