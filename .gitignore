@@ -181,3 +181,4 @@ backup*.sql
 tmpclaude-e682-cwd
 tmpclaude-787f-cwd
 *.dump
+*.0
