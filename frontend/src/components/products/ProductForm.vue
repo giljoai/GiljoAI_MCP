@@ -93,15 +93,15 @@
                 class="mb-4 mt-2"
               ></v-text-field>
 
-              <!-- Project Path -->
+              <!-- Codebase Folder -->
               <v-text-field
                 v-model="productForm.projectPath"
-                label="Project Path (optional)"
+                label="Codebase Folder (optional)"
                 variant="outlined"
                 density="comfortable"
-                placeholder="F:/Projects/MyProduct"
-                prepend-inner-icon="mdi-folder-outline"
-                hint="File system path to your product folder. Required for exporting agents."
+                placeholder="e.g., F:\Projects\MyApp or /home/user/myapp"
+                prepend-icon="mdi-folder-outline"
+                hint="Your local codebase path"
                 persistent-hint
                 class="mb-4"
               ></v-text-field>
@@ -109,12 +109,12 @@
               <!-- Description -->
               <v-textarea
                 v-model="productForm.description"
-                label="Description (Context for Orchestrator)"
+                label="Product Description"
                 variant="outlined"
                 density="comfortable"
                 rows="6"
                 auto-grow
-                hint="This description will be used by the orchestrator for mission generation"
+                hint="Product description will be used by the orchestrator as context during planning."
                 persistent-hint
                 class="mb-4"
               ></v-textarea>
@@ -122,7 +122,7 @@
               <!-- Core Features -->
               <v-textarea
                 v-model="productForm.configData.features.core"
-                hint="Main functionality and capabilities of this product"
+                hint="Main functionality and capabilities of this product used by the orchestrator as context during planning."
                 persistent-hint
                 variant="outlined"
                 density="comfortable"
@@ -131,7 +131,7 @@
                 class="mb-4"
               >
                 <template #label>
-                  <span>Core Features</span>
+                  <span>Core Product Features</span>
                   <v-chip
                     v-if="hasFieldPriority('features.core')"
                     :color="getPriorityColor(getPriorityForField('features.core'))"
