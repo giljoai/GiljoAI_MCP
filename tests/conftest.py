@@ -59,12 +59,28 @@ __all__ = [
 ]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create event loop for async tests"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """
+    Create event loop for async tests.
+
+    Note: Using function scope to avoid event loop closed issues.
+    Each test gets a fresh event loop for proper async isolation.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
-    loop.close()
+    # Cleanup pending tasks before closing
+    try:
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    except Exception:
+        pass
+    finally:
+        loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
