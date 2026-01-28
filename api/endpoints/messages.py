@@ -163,7 +163,7 @@ async def list_messages(
 
     messages = []
 
-    for msg in messages_data:
+    for msg in messages_data.get("messages", []):
             # Apply agent_name filter if provided
             if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
                 continue
