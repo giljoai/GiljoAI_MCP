@@ -14,11 +14,16 @@ async def test_init_event_bus_creates_event_bus():
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus') as mock_event_bus, \
-         patch('api.startup.event_bus.WebSocketEventListener'):
+    with patch('api.event_bus.EventBus') as mock_event_bus, \
+         patch('api.websocket_event_listener.WebSocketEventListener') as mock_ws_listener:
 
         mock_event_bus_instance = MagicMock()
         mock_event_bus.return_value = mock_event_bus_instance
+
+        # Need to mock the start() method as AsyncMock
+        mock_listener_instance = MagicMock()
+        mock_listener_instance.start = AsyncMock()
+        mock_ws_listener.return_value = mock_listener_instance
 
         await init_event_bus(state)
 
@@ -35,8 +40,8 @@ async def test_init_event_bus_creates_websocket_listener():
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus') as mock_event_bus, \
-         patch('api.startup.event_bus.WebSocketEventListener') as mock_ws_listener:
+    with patch('api.event_bus.EventBus') as mock_event_bus, \
+         patch('api.websocket_event_listener.WebSocketEventListener') as mock_ws_listener:
 
         mock_event_bus_instance = MagicMock()
         mock_event_bus.return_value = mock_event_bus_instance
@@ -62,8 +67,8 @@ async def test_init_event_bus_starts_websocket_listener():
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus'), \
-         patch('api.startup.event_bus.WebSocketEventListener') as mock_ws_listener:
+    with patch('api.event_bus.EventBus'), \
+         patch('api.websocket_event_listener.WebSocketEventListener') as mock_ws_listener:
 
         mock_listener_instance = MagicMock()
         mock_listener_instance.start = AsyncMock()
@@ -83,8 +88,8 @@ async def test_init_event_bus_logs_verbose_messages():
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus') as mock_event_bus, \
-         patch('api.startup.event_bus.WebSocketEventListener') as mock_ws_listener, \
+    with patch('api.event_bus.EventBus') as mock_event_bus, \
+         patch('api.websocket_event_listener.WebSocketEventListener') as mock_ws_listener, \
          patch('api.startup.event_bus.logger') as mock_logger:
 
         mock_event_bus_instance = MagicMock()
@@ -107,20 +112,31 @@ async def test_init_event_bus_logs_verbose_messages():
 @pytest.mark.asyncio
 async def test_init_event_bus_raises_on_import_failure():
     """Should raise and log detailed error if EventBus import fails"""
+    import sys
     from api.startup.event_bus import init_event_bus
 
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus', side_effect=ImportError("EventBus not found")), \
-         patch('api.startup.event_bus.logger') as mock_logger:
+    # Temporarily remove api.event_bus from sys.modules to simulate import failure
+    original_module = sys.modules.get('api.event_bus')
+    if 'api.event_bus' in sys.modules:
+        del sys.modules['api.event_bus']
 
-        with pytest.raises(ImportError):
-            await init_event_bus(state)
+    try:
+        with patch.dict('sys.modules', {'api.event_bus': None}), \
+             patch('api.startup.event_bus.logger') as mock_logger:
 
-        # Verify error logging
-        error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
-        assert any('FAILED TO INITIALIZE EVENT BUS' in msg for msg in error_calls)
+            with pytest.raises(ImportError):
+                await init_event_bus(state)
+
+            # Verify error logging
+            error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
+            assert any('FAILED TO INITIALIZE EVENT BUS' in msg for msg in error_calls)
+    finally:
+        # Restore original module
+        if original_module is not None:
+            sys.modules['api.event_bus'] = original_module
 
 
 @pytest.mark.asyncio
@@ -131,8 +147,8 @@ async def test_init_event_bus_raises_on_listener_start_failure():
     state = APIState()
     state.websocket_manager = MagicMock()
 
-    with patch('api.startup.event_bus.EventBus'), \
-         patch('api.startup.event_bus.WebSocketEventListener') as mock_ws_listener:
+    with patch('api.event_bus.EventBus'), \
+         patch('api.websocket_event_listener.WebSocketEventListener') as mock_ws_listener:
 
         mock_listener_instance = MagicMock()
         mock_listener_instance.start = AsyncMock(side_effect=RuntimeError("Start failed"))

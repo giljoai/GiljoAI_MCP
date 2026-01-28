@@ -201,8 +201,10 @@ class TestMessageCreationAndJSONBMirroring:
         if not result["success"]:
             pytest.fail(f"Message sending failed: {result.get('error', 'Unknown error')}")
         assert result["success"] is True
-        assert "message_id" in result
-        message_id = result["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        assert "data" in result
+        assert "message_id" in result["data"]
+        message_id = result["data"]["message_id"]
 
         # Assert: Message row exists in database
         msg_result = await db_session.execute(
@@ -293,7 +295,8 @@ class TestMessageCompletion:
             tenant_key=project.tenant_key,
         )
         assert send_result["success"] is True
-        message_id = send_result["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        message_id = send_result["data"]["message_id"]
 
         # Auto-acknowledge via receive_messages (Handover 0326)
         # Handover 0372: Now uses agent_id (executor), not job_id (work order)
@@ -303,7 +306,8 @@ class TestMessageCompletion:
             tenant_key=project.tenant_key,
         )
         assert receive_result["success"] is True, f"receive_messages failed: {receive_result.get('error', 'unknown')}"
-        assert len(receive_result["messages"]) >= 1, f"Expected messages but got {receive_result['count']}"
+        # Handover 0480: Result structure is {"success": True, "data": {"messages": [...], "count": N}}
+        assert len(receive_result["data"]["messages"]) >= 1, f"Expected messages but got {receive_result['data']['count']}"
 
         # Act: Complete the message
         complete_result = await message_service.complete_message(
@@ -363,11 +367,13 @@ class TestBroadcastMessaging:
             message_type="broadcast",
             priority="normal",
             from_agent=orchestrator.agent_display_name,
+            tenant_key=project.tenant_key,
         )
 
         # Assert: Broadcast succeeded
         assert result["success"] is True
-        message_id = result["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        message_id = result["data"]["message_id"]
 
         # Assert: Message row exists
         msg_result = await db_session.execute(
@@ -499,7 +505,8 @@ class TestMultiTenantIsolation:
             from_agent="orchestrator",
         )
         assert result_a["success"] is True
-        message_a_id = result_a["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        message_a_id = result_a["data"]["message_id"]
 
         # Act: Tenant B sends a message
         result_b = await service_b.send_message(
@@ -509,7 +516,8 @@ class TestMultiTenantIsolation:
             from_agent="orchestrator",
         )
         assert result_b["success"] is True
-        message_b_id = result_b["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        message_b_id = result_b["data"]["message_id"]
 
         # Assert: Tenant A's message is NOT visible to Tenant B's agent
         await db_session.refresh(agent_b)
@@ -574,7 +582,8 @@ class TestMessagePersistenceContract:
             from_agent=orchestrator.agent_display_name,
         )
         assert result["success"] is True
-        message_id = result["message_id"]
+        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
+        message_id = result["data"]["message_id"]
 
         # Commit and detach (simulate session close)
         await db_session.commit()
