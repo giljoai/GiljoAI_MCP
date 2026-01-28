@@ -1071,7 +1071,7 @@ class TestProductVision:
         )
 
         assert response2.status_code == 409
-        assert "already exists" in response2.json()["detail"].lower()
+        assert "already exists" in response2.json()["message"].lower()
 
     @pytest.mark.asyncio
     async def test_upload_vision_document_unauthorized(

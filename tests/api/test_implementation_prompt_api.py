@@ -175,7 +175,7 @@ async def test_implementation_prompt_project_not_found(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "not found" in response.json()["detail"].lower()
+    assert "not found" in response.json()["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -237,7 +237,7 @@ async def test_implementation_prompt_not_cli_mode(
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    detail = response.json()["detail"].lower()
+    detail = response.json()["message"].lower()
     assert "cli" in detail or "mode" in detail
 
 
@@ -311,7 +311,7 @@ async def test_implementation_prompt_no_active_orchestrator(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    detail = response.json()["detail"].lower()
+    detail = response.json()["message"].lower()
     assert "orchestrator" in detail
 
 
@@ -385,7 +385,7 @@ async def test_implementation_prompt_no_spawned_agents(
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    detail = response.json()["detail"].lower()
+    detail = response.json()["message"].lower()
     assert "agent" in detail or "staging" in detail
 
 
