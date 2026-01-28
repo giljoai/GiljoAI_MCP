@@ -374,7 +374,7 @@ class TestSimpleHandover:
         assert response.status_code == 400
         data = response.json()
 
-        assert "orchestrator" in data["detail"].lower()
+        assert "orchestrator" in data["message"].lower()
 
 
     @pytest.mark.asyncio
@@ -401,7 +401,7 @@ class TestSimpleHandover:
         assert response.status_code == 404
         data = response.json()
 
-        assert "not found" in data["detail"].lower()
+        assert "not found" in data["message"].lower()
 
 
     @pytest.mark.asyncio
@@ -435,7 +435,7 @@ class TestSimpleHandover:
         assert response.status_code == 500
         data = response.json()
 
-        assert "360 memory" in data["detail"].lower()
+        assert "360 memory" in data["message"].lower()
 
 
     @pytest.mark.asyncio
