@@ -39,6 +39,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             id=str(uuid4()),
             name="Test Project",
             description="Test project for counter reads",
+            mission="Test mission for counter reads testing",
             status="active",
             tenant_key=test_tenant_key,
             context_used=0,
