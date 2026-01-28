@@ -287,46 +287,6 @@ def test_event_factory_generated_by_orchestrator():
 # ============================================================================
 
 
-def test_event_schema_validates_token_estimate_positive():
-    """
-    Test ProjectMissionUpdatedData validates token_estimate >= 0.
-
-    Validates Pydantic constraints on token_estimate field.
-    """
-    # Arrange & Act
-    event = ProjectMissionUpdatedEvent(
-        timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        data=ProjectMissionUpdatedData(
-            project_id=str(uuid4()),
-            tenant_key="tenant_abc",
-            mission="Test mission",
-            token_estimate=5000,  # Valid (>= 0)
-        ),
-    )
-
-    # Assert
-    assert event.data.token_estimate == 5000
-
-
-def test_event_schema_rejects_negative_token_estimate():
-    """
-    Test ProjectMissionUpdatedData rejects negative token_estimate.
-
-    Validates Pydantic validation for invalid input.
-    """
-    # Arrange & Act & Assert
-    with pytest.raises(ValidationError) as exc_info:
-        ProjectMissionUpdatedData(
-            project_id=str(uuid4()),
-            tenant_key="tenant_abc",
-            mission="Test mission",
-            token_estimate=-100,  # Invalid (< 0)
-        )
-
-    # Verify error message
-    assert "greater than or equal to 0" in str(exc_info.value).lower()
-
-
 def test_event_schema_validates_tenant_key_not_empty():
     """
     Test ProjectMissionUpdatedData validates tenant_key is not empty.

@@ -3,7 +3,7 @@ Products API Integration Tests - Handover 0609
 
 Comprehensive validation of all 12+ product endpoints across 3 modules:
 - CRUD endpoints (crud.py): create, list, get, update, list_deleted
-- Lifecycle endpoints (lifecycle.py): activate, deactivate, delete, restore, cascade_impact, refresh_active, token_estimate
+- Lifecycle endpoints (lifecycle.py): activate, deactivate, delete, restore, cascade_impact, refresh_active
 - Vision endpoints (vision.py): upload, list, delete, list_chunks
 
 Test Coverage:
@@ -587,7 +587,7 @@ class TestProductCRUD:
 # ============================================================================
 
 class TestProductLifecycle:
-    """Test lifecycle operations: activate, deactivate, delete, restore, cascade_impact, refresh_active, token_estimate"""
+    """Test lifecycle operations: activate, deactivate, delete, restore, cascade_impact, refresh_active"""
 
     @pytest.mark.asyncio
     async def test_activate_product_happy_path(
@@ -933,50 +933,6 @@ class TestProductLifecycle:
     async def test_refresh_active_product_unauthorized(self, api_client: AsyncClient):
         """Test GET /api/v1/products/refresh-active - 401 without authentication."""
         response = await api_client.get("/api/v1/products/refresh-active")
-        assert response.status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_get_token_estimate_with_active(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
-    ):
-        """Test GET /api/v1/products/active/token-estimate - Get token estimate for active product."""
-        # Activate product first
-        await api_client.post(
-            f"/api/v1/products/{tenant_a_product['id']}/activate",
-            cookies={"access_token": tenant_a_token}
-        )
-
-        response = await api_client.get(
-            "/api/v1/products/active/token-estimate",
-            cookies={"access_token": tenant_a_token}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["product_id"] == tenant_a_product["id"]
-        assert data["product_name"] == tenant_a_product["name"]
-        assert "estimated_tokens" in data
-        assert "breakdown" in data
-        assert "base" in data["breakdown"]
-        assert "projects" in data["breakdown"]
-        assert "vision_documents" in data["breakdown"]
-
-    @pytest.mark.asyncio
-    async def test_get_token_estimate_without_active(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
-        """Test GET /api/v1/products/active/token-estimate - 404 without active product."""
-        response = await api_client.get(
-            "/api/v1/products/active/token-estimate",
-            cookies={"access_token": tenant_a_token}
-        )
-
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_get_token_estimate_unauthorized(self, api_client: AsyncClient):
-        """Test GET /api/v1/products/active/token-estimate - 401 without authentication."""
-        response = await api_client.get("/api/v1/products/active/token-estimate")
         assert response.status_code == 401
 
 
