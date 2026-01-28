@@ -20,6 +20,11 @@ from fastapi import status as http_status
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
@@ -166,10 +171,7 @@ async def get_job_health(
             )
 
         if not execution:
-            raise HTTPException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                detail=f"Job {job_id} not found"
-            )
+            raise ResourceNotFoundError(f"Job {job_id} not found")
 
         # ORIGINAL QUERY (kept for reference):
         # stmt = select(AgentExecution).where(
@@ -212,16 +214,17 @@ async def get_job_health(
             is_stale=is_stale,
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
-
     except Exception as e:
-        logger.error(f"Unexpected error getting health for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get job health: {str(e)}"
-        )
+        logger.error(f"Unexpected error getting health for job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 
@@ -267,10 +270,7 @@ async def update_agent_mission(
         )
 
         if not job:
-            raise HTTPException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                detail=f"Agent job {job_id} not found"
-            )
+            raise ResourceNotFoundError(f"Agent job {job_id} not found")
 
         # ORIGINAL QUERY (kept for reference):
         # stmt = select(AgentJob).where(
@@ -328,13 +328,14 @@ async def update_agent_mission(
             mission=job.mission,
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
-
     except Exception as e:
-        logger.error(f"Unexpected error updating mission for job {job_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update mission: {str(e)}"
-        )
+        logger.error(f"Unexpected error updating mission for job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
