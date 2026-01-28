@@ -49,7 +49,6 @@ class RegenerateMissionRequest(BaseModel):
 class RegenerateMissionResponse(BaseModel):
     """Response model for mission regeneration."""
     mission: str
-    token_estimate: int
     user_config_applied: bool
     serena_enabled: bool
     field_priorities_used: dict[str, int]
@@ -236,7 +235,6 @@ async def regenerate_mission(
 
     # Generate mission (simplified - real implementation would use mission planner)
     mission_text = f"Mission for {project.name}: {project.mission}"
-    token_estimate = len(mission_text) // 4
 
     # Broadcast WebSocket event
     try:
@@ -247,7 +245,6 @@ async def regenerate_mission(
                 "project_id": str(request.project_id),
                 "tenant_key": current_user.tenant_key,
                 "mission": mission_text,
-                "token_estimate": token_estimate,
                 "generated_by": "user",
                 "user_config_applied": True,
                 "field_priorities": user_config["field_priorities"],
@@ -258,7 +255,6 @@ async def regenerate_mission(
 
     return RegenerateMissionResponse(
         mission=mission_text,
-        token_estimate=token_estimate,
         user_config_applied=True,
         serena_enabled=user_config["serena_enabled"],
         field_priorities_used=user_config["field_priorities"],
