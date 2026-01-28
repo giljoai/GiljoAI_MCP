@@ -126,15 +126,35 @@ async def auth_headers_b(api_client: AsyncClient, tenant_b_admin):
 @pytest.fixture
 async def agent_job_with_messages(db_manager, tenant_a_admin):
     """Create an agent job with test messages."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
     job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     other_agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Test Project {uuid4().hex[:8]}",
+            description="Test project for agent job with messages",
+            mission="Test mission for message testing",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
         # Create agent job (work order - minimal fields)
         agent_job = AgentJob(
             job_id=job_id,
@@ -151,7 +171,7 @@ async def agent_job_with_messages(db_manager, tenant_a_admin):
             job_id=job_id,
             agent_display_name="Test Agent",
             tenant_key=tenant_a_admin.tenant_key,
-            status="active",
+            status="working",
         )
         session.add(execution)
 
@@ -201,14 +221,34 @@ async def agent_job_with_messages(db_manager, tenant_a_admin):
 @pytest.fixture
 async def agent_job_cross_tenant(db_manager, tenant_b_admin):
     """Create an agent job in Tenant B for cross-tenant testing."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
     job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Test Product B {uuid4().hex[:8]}",
+            tenant_key=tenant_b_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Test Project B {uuid4().hex[:8]}",
+            description="Test project for Tenant B agent job",
+            mission="Test mission for Tenant B",
+            tenant_key=tenant_b_admin.tenant_key,
+        )
+        session.add(project)
+
         # Create agent job for Tenant B (work order - minimal fields)
         agent_job = AgentJob(
             job_id=job_id,
@@ -225,7 +265,7 @@ async def agent_job_cross_tenant(db_manager, tenant_b_admin):
             job_id=job_id,
             agent_display_name="Tenant B Agent",
             tenant_key=tenant_b_admin.tenant_key,
-            status="active",
+            status="working",
         )
         session.add(execution)
 
@@ -344,15 +384,35 @@ async def test_get_job_messages_empty_result(
     tenant_a_admin,
 ):
     """Test retrieving messages for a job with no messages."""
-    from src.giljo_mcp.models import AgentJob
+    from src.giljo_mcp.models import AgentJob, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
     job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     # Create job without messages
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Empty Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Empty Test Project {uuid4().hex[:8]}",
+            description="Test project for empty messages test",
+            mission="Test mission for empty messages test",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
@@ -367,7 +427,7 @@ async def test_get_job_messages_empty_result(
             job_id=job_id,
             agent_display_name="Empty Agent",
             tenant_key=tenant_a_admin.tenant_key,
-            status="active",
+            status="working",
         )
         session.add(execution)
         await session.commit()
@@ -490,17 +550,37 @@ async def test_get_job_messages_truncation(
     tenant_a_admin,
 ):
     """Test that message content is truncated to 500 characters."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
     job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     # Create job with long message
     long_content = "A" * 1000  # 1000 character message
 
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Truncation Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Truncation Test Project {uuid4().hex[:8]}",
+            description="Test project for message truncation test",
+            mission="Test mission for truncation test",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
@@ -515,7 +595,7 @@ async def test_get_job_messages_truncation(
             job_id=job_id,
             agent_display_name="Test Agent",
             tenant_key=tenant_a_admin.tenant_key,
-            status="active",
+            status="working",
         )
         session.add(execution)
 
