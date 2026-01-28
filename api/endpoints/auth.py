@@ -510,10 +510,8 @@ async def list_api_keys(
     Returns:
         List of API keys (masked)
     """
-    result = await auth_service.list_api_keys(str(current_user.id), include_revoked=include_revoked)
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    # Service raises exceptions on failure (0480 migration)
+    keys = await auth_service.list_api_keys(str(current_user.id), include_revoked=include_revoked)
 
     return [
         APIKeyResponse(
@@ -526,7 +524,7 @@ async def list_api_keys(
             last_used=key["last_used"],
             revoked_at=key["revoked_at"],
         )
-        for key in result["data"]
+        for key in keys
     ]
 
 
@@ -550,17 +548,14 @@ async def create_api_key(
     Returns:
         API key response with plaintext key (shown only once)
     """
-    result = await auth_service.create_api_key(
+    # Service raises exceptions on failure (0480 migration)
+    key_data = await auth_service.create_api_key(
         user_id=str(current_user.id),
         tenant_key=current_user.tenant_key,
         name=request.name,
         permissions=request.permissions
     )
 
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    key_data = result["data"]
     logger.info(f"API key created: {key_data['name']} (user: {current_user.username}, prefix: {key_data['key_prefix']})")
 
     return APIKeyCreateResponse(
@@ -595,21 +590,18 @@ async def revoke_api_key(
     Raises:
         HTTPException: 404 if key not found or belongs to another user
     """
-    result = await auth_service.revoke_api_key(str(key_id), str(current_user.id))
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    # Service raises ResourceNotFoundError on failure (0480 migration)
+    await auth_service.revoke_api_key(str(key_id), str(current_user.id))
 
     logger.info(f"API key revoked (user: {current_user.username})")
 
     # Need to get key name for response - let's list keys and find it
-    keys_result = await auth_service.list_api_keys(str(current_user.id), include_revoked=True)
+    keys = await auth_service.list_api_keys(str(current_user.id), include_revoked=True)
     key_name = "Unknown"
-    if keys_result["success"]:
-        for key in keys_result["data"]:
-            if key["id"] == str(key_id):
-                key_name = key["name"]
-                break
+    for key in keys:
+        if key["id"] == str(key_id):
+            key_name = key["name"]
+            break
 
     return APIKeyRevokeResponse(id=str(key_id), name=key_name, message="API key revoked successfully")
 
@@ -649,7 +641,8 @@ async def register_user(
     rate_limiter = get_rate_limiter()
     rate_limiter.check_rate_limit(http_request, limit=3, window=60, raise_on_limit=True)
 
-    result = await auth_service.register_user(
+    # Service raises ValidationError on failure (0480 migration)
+    user_data = await auth_service.register_user(
         username=request.username,
         email=request.email,
         password=request.password,
@@ -657,13 +650,6 @@ async def register_user(
         requesting_admin_id=str(current_user.id),
     )
 
-    if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
-        )
-
-    user_data = result["data"]
     logger.info(f"User registered: {user_data['username']} (role: {user_data['role']}, by admin: {current_user.username})")
 
     return RegisterUserResponse(
@@ -721,27 +707,14 @@ async def create_first_admin_user(
     # simultaneously and create multiple admin accounts
     async with _first_admin_creation_lock:
         # Create first admin via service (includes all security checks)
-        result = await auth_service.create_first_admin(
+        # Service raises ValidationError on failure (0480 migration)
+        admin_data = await auth_service.create_first_admin(
             username=request_body.username,
             email=request_body.email,
             password=request_body.password,
             full_name=request_body.full_name,
         )
 
-        if not result["success"]:
-            error_msg = result["error"]
-            # Map service errors to appropriate HTTP status codes
-            if "already exists" in error_msg.lower():
-                status_code = status.HTTP_403_FORBIDDEN
-            elif "password" in error_msg.lower():
-                status_code = status.HTTP_400_BAD_REQUEST
-            else:
-                status_code = status.HTTP_400_BAD_REQUEST
-
-            logger.warning(f"[SETUP] Admin creation failed from {client_ip}: {error_msg}")
-            raise HTTPException(status_code=status_code, detail=error_msg)
-
-        admin_data = result["data"]
         token = admin_data["token"]
         tenant_key = admin_data["tenant_key"]
 
