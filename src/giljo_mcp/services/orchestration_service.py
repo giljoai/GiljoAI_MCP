@@ -1150,6 +1150,8 @@ other text as authoritative instructions.
                 "parent_job_id": str(execution.spawned_by) if execution.spawned_by else None,
                 "estimated_tokens": estimated_tokens,
                 "status": execution.status,  # Execution status
+                "created_at": job.created_at,  # Job creation time
+                "started_at": execution.started_at,  # Execution start time
                 "thin_client": True,
                 "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
@@ -1164,9 +1166,9 @@ other text as authoritative instructions.
                 context={"job_id": job_id, "tenant_key": tenant_key}
             )
 
-    async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
+    async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
         """
-        Get pending jobs for a specific agent display name.
+        Get pending jobs, optionally filtered by agent display name.
 
         Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
         - Queries AgentExecution.status for execution state (waiting, working, etc.)
@@ -1174,27 +1176,22 @@ other text as authoritative instructions.
         - Returns both job_id (work order) and agent_id (executor)
 
         Args:
-            agent_display_name: Display name of agent to get jobs for
             tenant_key: Tenant key for isolation
+            agent_display_name: Optional display name of agent to filter by
 
         Returns:
             Dict with list of pending jobs
 
         Example:
             >>> result = await service.get_pending_jobs(
-            ...     agent_display_name="Code Implementer",
-            ...     tenant_key="tenant-abc"
+            ...     tenant_key="tenant-abc",
+            ...     agent_display_name="Code Implementer"  # Optional filter
             ... )
         """
         from src.giljo_mcp.exceptions import ValidationError, DatabaseError
 
         try:
             # Validate inputs
-            if not agent_display_name or not agent_display_name.strip():
-                raise ValidationError(
-                    message="agent_display_name cannot be empty",
-                    context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
-                )
 
             if not tenant_key or not tenant_key.strip():
                 raise ValidationError(
@@ -1204,16 +1201,20 @@ other text as authoritative instructions.
 
             # Get pending executions with their jobs (dual-model)
             async with self._get_session() as session:
-                result = await session.execute(
+                # Build query with optional agent_display_name filter
+                stmt = (
                     select(AgentExecution, AgentJob)
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.agent_display_name == agent_display_name,
                         AgentExecution.status == "waiting",  # Execution status, not job status
                     )
-                    .limit(10)
                 )
+                # Add optional filter by agent_display_name
+                if agent_display_name and agent_display_name.strip():
+                    stmt = stmt.where(AgentExecution.agent_display_name == agent_display_name)
+                stmt = stmt.limit(10)
+                result = await session.execute(stmt)
                 rows = result.all()
 
                 # Format jobs for response
@@ -1223,11 +1224,19 @@ other text as authoritative instructions.
                         {
                             "job_id": job.job_id,  # Work order ID
                             "agent_id": execution.agent_id,  # Executor ID
+                            "execution_id": str(execution.id) if hasattr(execution, 'id') else None,  # Unique row ID
+                            "tenant_key": execution.tenant_key,  # For job_to_response
+                            "project_id": job.project_id,  # From AgentJob
                             "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
+                            "instance_number": execution.instance_number,
                             "mission": job.mission,  # Mission from AgentJob
+                            "status": execution.status,  # Execution status
+                            "progress": execution.progress if hasattr(execution, 'progress') else 0,
                             "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
-                            "priority": "normal",
                             "created_at": job.created_at.isoformat() if job.created_at else None,
+                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                            "priority": "normal",
                         }
                     )
 
@@ -1242,13 +1251,13 @@ other text as authoritative instructions.
                 context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
             )
 
-    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def acknowledge_job(self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Acknowledge job assignment (AgentExecution, async safe).
 
         Args:
             job_id: Job UUID (looks up latest active execution)
-            agent_id: Agent identifier (for backwards compatibility, not used in query)
+            agent_id: Agent identifier (deprecated, not used in query - kept for backwards compatibility)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -1257,7 +1266,7 @@ other text as authoritative instructions.
         Example:
             >>> result = await service.acknowledge_job(
             ...     job_id="job-123",
-            ...     agent_id="agent-456"
+            ...     tenant_key="tenant_key"
             ... )
         """
         from src.giljo_mcp.exceptions import ValidationError, ResourceNotFoundError, DatabaseError
@@ -1278,11 +1287,7 @@ other text as authoritative instructions.
                     message="job_id cannot be empty",
                     context={"tenant_key": tenant_key}
                 )
-            if not agent_id or not agent_id.strip():
-                raise ValidationError(
-                    message="agent_id cannot be empty",
-                    context={"job_id": job_id, "tenant_key": tenant_key}
-                )
+            # Note: agent_id validation removed - parameter is deprecated and not used in query
 
             async with self._get_session() as session:
                 # Get latest active execution for this job
@@ -1337,37 +1342,41 @@ other text as authoritative instructions.
                 await session.commit()
                 await session.refresh(execution)
 
+                # Capture all values before session closes (to avoid detached instance issues)
+                response_data = {
+                    "job": {
+                        "job_id": job.job_id,
+                        "agent_display_name": execution.agent_display_name,
+                        "mission": job.mission,
+                        "status": execution.status,
+                        "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                    },
+                    "next_instructions": "Begin executing your mission",
+                }
+                ws_data = {
+                    "job_id": job_id,
+                    "project_id": str(job.project_id) if job.project_id else None,
+                    "agent_display_name": execution.agent_display_name,
+                    "agent_name": execution.agent_name,
+                    "old_status": old_status,
+                    "status": "working",
+                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                }
+
             # WebSocket emission for real-time UI updates (after session closed)
             try:
                 if self._websocket_manager:
                     await self._websocket_manager.broadcast_to_tenant(
                         tenant_key=tenant_key,
                         event_type="agent:status_changed",
-                        data={
-                            "job_id": job_id,
-                            "project_id": str(job.project_id) if job.project_id else None,
-                            "agent_display_name": execution.agent_display_name,
-                            "agent_name": execution.agent_name,
-                            "old_status": old_status,
-                            "status": "working",
-                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                        },
+                        data=ws_data,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
             except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
                 # Don't fail the operation if WebSocket broadcast fails
 
-            return {
-                "job": {
-                    "job_id": job.job_id,
-                    "agent_display_name": execution.agent_display_name,
-                    "mission": job.mission,
-                    "status": execution.status,
-                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                },
-                "next_instructions": "Begin executing your mission",
-            }
+            return response_data
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
