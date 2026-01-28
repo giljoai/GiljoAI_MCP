@@ -17,6 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
@@ -200,34 +205,44 @@ async def get_job(
     """
     logger.debug(f"User {current_user.username} getting job {job_id}")
 
-    # Service raises ResourceNotFoundError (404) or DatabaseError (500)
-    # Caught by global exception handler
-    result = await orchestration_service.get_agent_mission(
-        job_id=job_id,
-        tenant_key=current_user.tenant_key
-    )
+    try:
+        result = await orchestration_service.get_agent_mission(
+            job_id=job_id,
+            tenant_key=current_user.tenant_key
+        )
 
-    logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
+        logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
 
-    # Convert result to JobResponse
-    # The get_agent_mission returns: job_id, mission, context_chunks, status
-    # We need to expand this or call a different service method
-    # For now, return what we have (this may need enhancement)
-    return job_to_response({
-        "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
-        "job_id": result["job_id"],
-        "tenant_key": current_user.tenant_key,
-        "agent_display_name": result.get("agent_display_name", "unknown"),
-        "mission": result["mission"],
-        "status": result["status"],
-        "spawned_by": result.get("spawned_by"),
-        "context_chunks": result.get("context_chunks", []),
-        "messages": result.get("messages", []),
-        "acknowledged": result.get("acknowledged", False),
-        "started_at": result.get("started_at"),
-        "completed_at": result.get("completed_at"),
-        "created_at": result.get("created_at")
-    })
+        # Convert result to JobResponse
+        # The get_agent_mission returns: job_id, mission, context_chunks, status
+        # We need to expand this or call a different service method
+        # For now, return what we have (this may need enhancement)
+        return job_to_response({
+            "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
+            "job_id": result["job_id"],
+            "tenant_key": current_user.tenant_key,
+            "agent_display_name": result.get("agent_display_name", "unknown"),
+            "mission": result["mission"],
+            "status": result["status"],
+            "spawned_by": result.get("spawned_by"),
+            "context_chunks": result.get("context_chunks", []),
+            "messages": result.get("messages", []),
+            "acknowledged": result.get("acknowledged", False),
+            "started_at": result.get("started_at"),
+            "completed_at": result.get("completed_at"),
+            "created_at": result.get("created_at")
+        })
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting job: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{job_id}/mission", response_model=JobMissionResponse)
@@ -254,18 +269,28 @@ async def get_job_mission(
     """
     logger.debug(f"User {current_user.username} getting mission for job {job_id}")
 
-    # Service raises ResourceNotFoundError (404) or DatabaseError (500)
-    # Caught by global exception handler
-    result = await orchestration_service.get_agent_mission(
-        job_id=job_id,
-        tenant_key=current_user.tenant_key
-    )
+    try:
+        result = await orchestration_service.get_agent_mission(
+            job_id=job_id,
+            tenant_key=current_user.tenant_key
+        )
 
-    logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
+        logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
 
-    return JobMissionResponse(
-        job_id=result["job_id"],
-        mission=result["mission"],
-        context_chunks=result.get("context_chunks", []),
-        status=result["status"]
-    )
+        return JobMissionResponse(
+            job_id=result["job_id"],
+            mission=result["mission"],
+            context_chunks=result.get("context_chunks", []),
+            status=result["status"]
+        )
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting job mission: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
