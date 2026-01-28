@@ -199,17 +199,33 @@ class TransactionalTestContext:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Rollback transaction and close connection."""
-        try:
-            if self.session:
-                await self.session.close()
-        finally:
+        # Close session first
+        if self.session:
             try:
-                if self.transaction:
-                    # Always rollback - this ensures clean state
-                    await self.transaction.rollback()
+                await self.session.close()
+            except Exception:
+                pass  # Ignore session close errors
             finally:
-                if self.connection:
-                    await self.connection.close()
+                self.session = None
+
+        # Then rollback transaction
+        if self.transaction:
+            try:
+                # Always rollback - this ensures clean state
+                await self.transaction.rollback()
+            except Exception:
+                pass  # Ignore rollback errors
+            finally:
+                self.transaction = None
+
+        # Finally close connection
+        if self.connection:
+            try:
+                await self.connection.close()
+            except Exception:
+                pass  # Ignore connection close errors
+            finally:
+                self.connection = None
 
 
 async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) -> bool:
