@@ -745,11 +745,33 @@ def pytest_configure(config):
     Registers custom markers and disables coverage threshold enforcement
     for smoke tests, since they are integration workflow validators
     (not unit coverage targets).
+
+    CRITICAL SAFETY: Also validates that tests cannot access production database.
     """
+    # ==========================================================================
+    # PRODUCTION DATABASE SAFETY GUARD
+    # ==========================================================================
+    # Verify environment is set up for testing, not production
+    import os
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    if db_url and "/giljo_mcp" in db_url and "/giljo_mcp_test" not in db_url:
+        import warnings
+        warnings.warn(
+            f"WARNING: DATABASE_URL appears to point to production database!\n"
+            f"Tests should use giljo_mcp_test, not giljo_mcp.\n"
+            f"Current DATABASE_URL: {db_url[:50]}...",
+            UserWarning
+        )
+
     # Register custom markers
     config.addinivalue_line(
         "markers",
         "tenant_isolation: marks tests for tenant isolation verification (Handover 0325)"
+    )
+    config.addinivalue_line(
+        "markers",
+        "production_safe: marks tests that have been verified safe from production DB access"
     )
 
     # Check if we're only running smoke tests

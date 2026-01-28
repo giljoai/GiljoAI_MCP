@@ -112,7 +112,7 @@ class TestSlashCommandExecute:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "not found" in response.json()["detail"]
+        assert "not found" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_execute_without_auth(self, api_client):
@@ -196,7 +196,7 @@ class TestTriggerSuccessionEndpoint:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "not an orchestrator" in response.json()["detail"]
+        assert "not an orchestrator" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_trigger_succession_already_handed_over(self, api_client, auth_headers, db_session, mock_orchestrator):
@@ -212,7 +212,7 @@ class TestTriggerSuccessionEndpoint:
         )
 
         assert response.status_code == status.HTTP_409_CONFLICT
-        assert "already been handed over" in response.json()["detail"]
+        assert "already been handed over" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_trigger_succession_without_auth(self, api_client, mock_orchestrator):
