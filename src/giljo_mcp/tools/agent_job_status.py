@@ -30,8 +30,10 @@ from src.giljo_mcp.tenant import TenantManager
 
 logger = logging.getLogger(__name__)
 
-# Valid statuses for Kanban board (Handover 0066)
-VALID_STATUSES = {"pending", "active", "completed", "blocked"}
+# Valid statuses for AgentJob (matches database check constraint)
+# Note: AgentJob supports: active, completed, cancelled
+# AgentExecution has different statuses: waiting, working, blocked, complete, cancelled, failed, decommissioned
+VALID_STATUSES = {"active", "completed", "cancelled"}
 
 # Module-level db_manager, job_manager, and test_session (initialized by register function or tests)
 _db_manager: Optional[DatabaseManager] = None
@@ -444,9 +446,6 @@ async def update_job_status(
 
     Handover 0366c: Uses AgentJob model (not deprecated Job model)
     """
-    # Import here to satisfy test inspection
-    from giljo_mcp.models.agent_identity import AgentJob
-
     # Use provided db_manager or fall back to module-level
     db_mgr = db_manager if db_manager is not None else _db_manager
 
@@ -543,18 +542,15 @@ async def _update_job_status_impl(
     old_status = job.status
 
     # Update status based on transition
-    if new_status == "completed":
-        job.status = "completed"
-        if not job.completed_at:
-            job.completed_at = datetime.now(timezone.utc)
-    elif new_status == "blocked":
-        job.status = "blocked"
+    # AgentJob supports: active, completed, cancelled
+    if new_status in ("completed", "cancelled"):
+        job.status = new_status
         if not job.completed_at:
             job.completed_at = datetime.now(timezone.utc)
     elif new_status == "active":
         job.status = "active"
     else:
-        # Generic status update (e.g., back to pending)
+        # This shouldn't happen given VALID_STATUSES validation
         job.status = new_status
 
     await session.commit()
