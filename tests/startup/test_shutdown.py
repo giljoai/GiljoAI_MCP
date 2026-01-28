@@ -13,19 +13,18 @@ async def test_shutdown_cancels_heartbeat_task():
     from api.startup.shutdown import shutdown
 
     state = APIState()
-    state.heartbeat_task = MagicMock()
-    state.heartbeat_task.cancel = MagicMock()
 
-    # Mock the awaited task to raise CancelledError
-    async def mock_cancelled_task():
-        raise asyncio.CancelledError()
+    # Create a proper async task that can be cancelled
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    state.heartbeat_task.__await__ = mock_cancelled_task().__await__
+    state.heartbeat_task = asyncio.create_task(mock_task())
 
     await shutdown(state)
 
     # Verify task was cancelled
-    state.heartbeat_task.cancel.assert_called_once()
+    assert state.heartbeat_task.cancelled()
 
 
 @pytest.mark.asyncio
@@ -34,18 +33,18 @@ async def test_shutdown_cancels_cleanup_task():
     from api.startup.shutdown import shutdown
 
     state = APIState()
-    state.cleanup_task = MagicMock()
-    state.cleanup_task.cancel = MagicMock()
 
-    async def mock_cancelled_task():
-        raise asyncio.CancelledError()
+    # Create a proper async task that can be cancelled
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    state.cleanup_task.__await__ = mock_cancelled_task().__await__
+    state.cleanup_task = asyncio.create_task(mock_task())
 
     await shutdown(state)
 
     # Verify task was cancelled
-    state.cleanup_task.cancel.assert_called_once()
+    assert state.cleanup_task.cancelled()
 
 
 @pytest.mark.asyncio
@@ -54,18 +53,18 @@ async def test_shutdown_cancels_metrics_sync_task():
     from api.startup.shutdown import shutdown
 
     state = APIState()
-    state.metrics_sync_task = MagicMock()
-    state.metrics_sync_task.cancel = MagicMock()
 
-    async def mock_cancelled_task():
-        raise asyncio.CancelledError()
+    # Create a proper async task that can be cancelled
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    state.metrics_sync_task.__await__ = mock_cancelled_task().__await__
+    state.metrics_sync_task = asyncio.create_task(mock_task())
 
     await shutdown(state)
 
     # Verify task was cancelled
-    state.metrics_sync_task.cancel.assert_called_once()
+    assert state.metrics_sync_task.cancelled()
 
 
 @pytest.mark.asyncio
@@ -148,19 +147,20 @@ async def test_shutdown_continues_on_task_cancel_error():
     from api.startup.shutdown import shutdown
 
     state = APIState()
-    state.heartbeat_task = MagicMock()
-    state.heartbeat_task.cancel = MagicMock()
 
-    async def raise_cancelled():
-        raise asyncio.CancelledError()
+    # Create a proper async task that can be cancelled
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    state.heartbeat_task.__await__ = raise_cancelled().__await__
+    state.heartbeat_task = asyncio.create_task(mock_task())
     state.connections = {}
 
     # Should not propagate CancelledError
     await shutdown(state)
 
-    # Test passes if no exception raised
+    # Test passes if no exception raised - task should be cancelled
+    assert state.heartbeat_task.cancelled()
 
 
 @pytest.mark.asyncio
@@ -193,24 +193,35 @@ async def test_shutdown_logs_progress():
     from api.startup.shutdown import shutdown
 
     state = APIState()
-    state.heartbeat_task = MagicMock()
-    state.heartbeat_task.cancel = MagicMock()
 
-    async def mock_cancelled_task():
-        raise asyncio.CancelledError()
+    # Create a proper async task mock that can be cancelled and awaited
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    state.heartbeat_task.__await__ = mock_cancelled_task().__await__
+    # Start the task so it's a real asyncio.Task
+    state.heartbeat_task = asyncio.create_task(mock_task())
+    state.cleanup_task = None
+    state.metrics_sync_task = None
+    state.health_monitor = None
     state.connections = {}
     state.db_manager = MagicMock()
     state.db_manager.close_async = AsyncMock()
+    state.websocket_broker = None  # Avoid WebSocket broker shutdown logs
 
     with patch('api.startup.shutdown.logger') as mock_logger:
         await shutdown(state)
 
         # Verify shutdown messages were logged
         info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
+
+        # Check for the actual log messages from shutdown.py
         assert any('Shutting down GiljoAI MCP API' in msg for msg in info_calls)
+        assert any('Canceling background tasks' in msg for msg in info_calls)
         assert any('Background tasks canceled' in msg for msg in info_calls)
+        assert any('Closing WebSocket connections' in msg for msg in info_calls)
+        assert any('WebSocket connections closed' in msg for msg in info_calls)
+        assert any('Closing database connection' in msg for msg in info_calls)
         assert any('Database connection closed' in msg for msg in info_calls)
 
 
@@ -222,14 +233,23 @@ async def test_shutdown_all_tasks_in_order():
     state = APIState()
     execution_order = []
 
-    # Create mock tasks that track execution order
-    state.heartbeat_task = MagicMock()
-    state.heartbeat_task.cancel = MagicMock(side_effect=lambda: execution_order.append('cancel_heartbeat'))
+    # Create a proper async task
+    async def mock_task():
+        while True:
+            await asyncio.sleep(1)
 
-    async def mock_cancelled():
-        raise asyncio.CancelledError()
+    # Track when task is cancelled
+    original_task = asyncio.create_task(mock_task())
 
-    state.heartbeat_task.__await__ = mock_cancelled().__await__
+    # Wrap cancel to track execution
+    original_cancel = original_task.cancel
+
+    def tracked_cancel():
+        execution_order.append('cancel_heartbeat')
+        return original_cancel()
+
+    original_task.cancel = tracked_cancel
+    state.heartbeat_task = original_task
 
     state.health_monitor = MagicMock()
     state.health_monitor.stop = AsyncMock(side_effect=lambda: execution_order.append('stop_health_monitor'))

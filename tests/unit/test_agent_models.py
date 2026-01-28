@@ -1,18 +1,25 @@
 """
 Unit tests for Handover 0017 agent models.
 
-Tests MCPContextIndex, MCPContextSummary, and MCPAgentJob models
+Tests MCPContextIndex, MCPContextSummary, and AgentExecution models
 with focus on tenant isolation and data integrity.
+
+NOTE: These tests use existing giljo_mcp database (not a separate test database)
+because models use JSONB columns which are PostgreSQL-specific. SQLite doesn't support JSONB.
+Tests clean up after themselves by rolling back transactions.
 """
 
 from datetime import datetime
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.giljo_mcp.models import Base, MCPContextIndex, MCPContextSummary, Product
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+
+# Use giljo_mcp_test database (tests will rollback changes)
+TEST_DB_URL = "postgresql://postgres:***@localhost:5432/giljo_mcp_test"
 
 
 class TestMCPContextIndex:
@@ -20,13 +27,19 @@ class TestMCPContextIndex:
 
     @pytest.fixture
     def db_session(self):
-        """Create in-memory SQLite database for testing."""
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
+        """Create PostgreSQL test database session with transaction rollback."""
+        engine = create_engine(TEST_DB_URL)
+        connection = engine.connect()
+        transaction = connection.begin()
+        Session = sessionmaker(bind=connection)
         session = Session()
+
         yield session
+
+        # Cleanup: rollback transaction (undoes all test changes)
         session.close()
+        transaction.rollback()
+        connection.close()
 
     @pytest.fixture
     def sample_product(self, db_session):
@@ -146,13 +159,19 @@ class TestMCPContextSummary:
 
     @pytest.fixture
     def db_session(self):
-        """Create in-memory SQLite database for testing."""
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
+        """Create PostgreSQL test database session with transaction rollback."""
+        engine = create_engine(TEST_DB_URL)
+        connection = engine.connect()
+        transaction = connection.begin()
+        Session = sessionmaker(bind=connection)
         session = Session()
+
         yield session
+
+        # Cleanup: rollback transaction (undoes all test changes)
         session.close()
+        transaction.rollback()
+        connection.close()
 
     @pytest.fixture
     def sample_product(self, db_session):
@@ -263,256 +282,337 @@ class TestMCPContextSummary:
         assert tenant_b_summaries[0].condensed_mission == "Mission for tenant B"
 
 
-class TestMCPAgentJob:
-    """Test MCPAgentJob model functionality."""
+class TestAgentExecution:
+    """Test AgentExecution model functionality."""
 
     @pytest.fixture
     def db_session(self):
-        """Create in-memory SQLite database for testing."""
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
+        """Create PostgreSQL test database session with transaction rollback."""
+        engine = create_engine(TEST_DB_URL)
+        connection = engine.connect()
+        transaction = connection.begin()
+        Session = sessionmaker(bind=connection)
         session = Session()
-        yield session
-        session.close()
 
-    def test_mcp_agent_job_creation(self, db_session):
-        """Test creating agent job with all fields."""
-        agent_job = AgentExecution(
+        yield session
+
+        # Cleanup: rollback transaction (undoes all test changes)
+        session.close()
+        transaction.rollback()
+        connection.close()
+
+    def test_agent_execution_creation(self, db_session):
+        """Test creating agent execution with all fields."""
+        # First create an AgentJob (work order)
+        agent_job = AgentJob(
             tenant_key="test-tenant",
-            agent_display_name="orchestrator",
+            job_type="orchestrator",
             mission="Coordinate development project tasks",
+            status="active",
+        )
+        db_session.add(agent_job)
+        db_session.commit()
+
+        # Then create an AgentExecution (executor)
+        agent_execution = AgentExecution(
+            tenant_key="test-tenant",
+            job_id=agent_job.job_id,
+            agent_display_name="orchestrator",
             status="waiting",
             spawned_by="parent-agent-id",
-            context_chunks=["chunk-1", "chunk-2", "chunk-3"],
-            messages=[
-                {"type": "info", "content": "Job created", "timestamp": "2025-01-01T00:00:00Z"},
-                {"type": "update", "content": "Job assigned", "timestamp": "2025-01-01T00:01:00Z"},
-            ],
         )
 
-        db_session.add(agent_job)
+        db_session.add(agent_execution)
         db_session.commit()
 
         # Verify creation
-        assert agent_job.id is not None
-        assert agent_job.job_id is not None
-        assert agent_job.tenant_key == "test-tenant"
-        assert agent_job.agent_display_name == "orchestrator"
-        assert agent_job.mission == "Coordinate development project tasks"
-        assert agent_job.status == "pending"
-        assert agent_job.spawned_by == "parent-agent-id"
-        assert agent_job.context_chunks == ["chunk-1", "chunk-2", "chunk-3"]
-        assert len(agent_job.messages) == 2
-        assert agent_job.messages[0]["type"] == "info"
-        assert agent_job.acknowledged is False  # Default value
-        assert agent_job.created_at is not None
+        assert agent_execution.id is not None
+        assert agent_execution.agent_id is not None
+        assert agent_execution.job_id == agent_job.job_id
+        assert agent_execution.tenant_key == "test-tenant"
+        assert agent_execution.agent_display_name == "orchestrator"
+        assert agent_execution.status == "waiting"
+        assert agent_execution.spawned_by == "parent-agent-id"
+        # Message counters (Handover 0387e)
+        assert agent_execution.messages_sent_count == 0
+        assert agent_execution.messages_waiting_count == 0
+        assert agent_execution.messages_read_count == 0
+        # Verify relationship to job
+        assert agent_execution.job == agent_job
+        assert agent_execution.job.mission == "Coordinate development project tasks"
 
-    def test_mcp_agent_job_status_workflow(self, db_session):
-        """Test job status transitions."""
-        agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_display_name="analyzer", mission="Analyze codebase structure", status="waiting"
+    def test_agent_execution_status_workflow(self, db_session):
+        """Test execution status transitions."""
+        # Create job first
+        job = AgentJob(
+            tenant_key="test-tenant",
+            job_type="analyzer",
+            mission="Analyze codebase structure",
+            status="active",
+        )
+        db_session.add(job)
+        db_session.commit()
+
+        # Create execution
+        agent_execution = AgentExecution(
+            tenant_key="test-tenant",
+            job_id=job.job_id,
+            agent_display_name="analyzer",
+            status="waiting"
         )
 
-        db_session.add(agent_job)
+        db_session.add(agent_execution)
         db_session.commit()
 
         # Test status transitions
-        assert agent_job.status == "pending"
-        assert agent_job.started_at is None
-        assert agent_job.completed_at is None
+        assert agent_execution.status == "waiting"
+        assert agent_execution.started_at is None
+        assert agent_execution.completed_at is None
 
-        # Move to active
-        agent_job.status = "active"
-        agent_job.started_at = datetime.utcnow()
+        # Move to working
+        agent_execution.status = "working"
+        agent_execution.started_at = datetime.utcnow()
         db_session.commit()
 
-        assert agent_job.status == "active"
-        assert agent_job.started_at is not None
-        assert agent_job.completed_at is None
+        assert agent_execution.status == "working"
+        assert agent_execution.started_at is not None
+        assert agent_execution.completed_at is None
 
-        # Move to completed
-        agent_job.status = "completed"
-        agent_job.completed_at = datetime.utcnow()
+        # Move to complete
+        agent_execution.status = "complete"
+        agent_execution.completed_at = datetime.utcnow()
         db_session.commit()
 
-        assert agent_job.status == "completed"
-        assert agent_job.started_at is not None
-        assert agent_job.completed_at is not None
+        assert agent_execution.status == "complete"
+        assert agent_execution.started_at is not None
+        assert agent_execution.completed_at is not None
 
-    def test_mcp_agent_job_tenant_isolation(self, db_session):
-        """Test tenant isolation in agent jobs."""
-        # Create job for tenant A
-        job_a = AgentExecution(
-            tenant_key="tenant-a", agent_display_name="implementer", mission="Implement feature for tenant A", status="waiting"
+    def test_agent_execution_tenant_isolation(self, db_session):
+        """Test tenant isolation in agent executions."""
+        # Create jobs first
+        job_a = AgentJob(
+            tenant_key="tenant-a",
+            job_type="implementer",
+            mission="Implement feature for tenant A",
+            status="active"
         )
-
-        # Create job for tenant B
-        job_b = AgentExecution(
-            tenant_key="tenant-b", agent_display_name="tester", mission="Test feature for tenant B", status="active"
+        job_b = AgentJob(
+            tenant_key="tenant-b",
+            job_type="tester",
+            mission="Test feature for tenant B",
+            status="active"
         )
-
         db_session.add_all([job_a, job_b])
         db_session.commit()
 
-        # Query for tenant A only
-        tenant_a_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-a").all()
+        # Create executions
+        execution_a = AgentExecution(
+            tenant_key="tenant-a",
+            job_id=job_a.job_id,
+            agent_display_name="implementer",
+            status="waiting"
+        )
+        execution_b = AgentExecution(
+            tenant_key="tenant-b",
+            job_id=job_b.job_id,
+            agent_display_name="tester",
+            status="working"
+        )
 
-        assert len(tenant_a_jobs) == 1
-        assert tenant_a_jobs[0].agent_display_name == "implementer"
-        assert tenant_a_jobs[0].mission.endswith("tenant A")
+        db_session.add_all([execution_a, execution_b])
+        db_session.commit()
+
+        # Query for tenant A only
+        tenant_a_executions = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-a").all()
+
+        assert len(tenant_a_executions) == 1
+        assert tenant_a_executions[0].agent_display_name == "implementer"
+        assert tenant_a_executions[0].job.mission.endswith("tenant A")
 
         # Query for tenant B only
-        tenant_b_jobs = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-b").all()
+        tenant_b_executions = db_session.query(AgentExecution).filter(AgentExecution.tenant_key == "tenant-b").all()
 
-        assert len(tenant_b_jobs) == 1
-        assert tenant_b_jobs[0].agent_display_name == "tester"
-        assert tenant_b_jobs[0].mission.endswith("tenant B")
+        assert len(tenant_b_executions) == 1
+        assert tenant_b_executions[0].agent_display_name == "tester"
+        assert tenant_b_executions[0].job.mission.endswith("tenant B")
 
-    def test_mcp_agent_job_message_array(self, db_session):
-        """Test agent job message array functionality."""
-        agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_display_name="orchestrator", mission="Test message handling", status="active"
+    def test_agent_execution_message_counters(self, db_session):
+        """Test agent execution message counter functionality (Handover 0387e)."""
+        # Create job first
+        job = AgentJob(
+            tenant_key="test-tenant",
+            job_type="orchestrator",
+            mission="Test message handling",
+            status="active"
+        )
+        db_session.add(job)
+        db_session.commit()
+
+        # Create execution
+        agent_execution = AgentExecution(
+            tenant_key="test-tenant",
+            job_id=job.job_id,
+            agent_display_name="orchestrator",
+            status="working"
         )
 
-        db_session.add(agent_job)
+        db_session.add(agent_execution)
         db_session.commit()
 
-        # Start with empty messages
-        assert agent_job.messages == []
+        # Start with zero message counts
+        assert agent_execution.messages_sent_count == 0
+        assert agent_execution.messages_waiting_count == 0
+        assert agent_execution.messages_read_count == 0
 
-        # Add messages
-        messages = [
-            {"type": "start", "content": "Job started", "timestamp": "2025-01-01T00:00:00Z"},
-            {"type": "progress", "content": "50% complete", "timestamp": "2025-01-01T00:30:00Z"},
-            {"type": "complete", "content": "Job finished", "timestamp": "2025-01-01T01:00:00Z"},
-        ]
+        # Simulate sending messages
+        agent_execution.messages_sent_count = 3
+        db_session.commit()
+        assert agent_execution.messages_sent_count == 3
 
-        agent_job.messages = messages
+        # Simulate receiving messages
+        agent_execution.messages_waiting_count = 2
+        db_session.commit()
+        assert agent_execution.messages_waiting_count == 2
+
+        # Simulate reading messages
+        agent_execution.messages_read_count = 2
+        agent_execution.messages_waiting_count = 0
+        db_session.commit()
+        assert agent_execution.messages_read_count == 2
+        assert agent_execution.messages_waiting_count == 0
+
+    def test_agent_execution_context_tracking(self, db_session):
+        """Test agent execution context tracking for orchestrator."""
+        # Create job first
+        job = AgentJob(
+            tenant_key="test-tenant",
+            job_type="orchestrator",
+            mission="Analyze with context",
+            status="active"
+        )
+        db_session.add(job)
         db_session.commit()
 
-        # Verify messages are stored correctly
-        assert len(agent_job.messages) == 3
-        assert agent_job.messages[0]["type"] == "start"
-        assert agent_job.messages[1]["content"] == "50% complete"
-        assert agent_job.messages[2]["type"] == "complete"
-
-    def test_mcp_agent_job_context_chunks_array(self, db_session):
-        """Test agent job context chunks array functionality."""
-        agent_job = AgentExecution(
-            tenant_key="test-tenant", agent_display_name="analyzer", mission="Analyze with context", status="waiting"
+        # Create execution with context tracking
+        agent_execution = AgentExecution(
+            tenant_key="test-tenant",
+            job_id=job.job_id,
+            agent_display_name="analyzer",
+            status="waiting",
+            context_used=0,
+            context_budget=150000
         )
 
-        db_session.add(agent_job)
+        db_session.add(agent_execution)
         db_session.commit()
 
-        # Start with empty context chunks
-        assert agent_job.context_chunks == []
+        # Verify default context tracking
+        assert agent_execution.context_used == 0
+        assert agent_execution.context_budget == 150000
 
-        # Add context chunks
-        chunks = ["chunk-uuid-1", "chunk-uuid-2", "chunk-uuid-3", "chunk-uuid-4"]
-        agent_job.context_chunks = chunks
+        # Simulate context usage
+        agent_execution.context_used = 50000
         db_session.commit()
 
-        # Verify chunks are stored correctly
-        assert len(agent_job.context_chunks) == 4
-        assert agent_job.context_chunks[0] == "chunk-uuid-1"
-        assert agent_job.context_chunks[-1] == "chunk-uuid-4"
+        # Verify updated context usage
+        assert agent_execution.context_used == 50000
+        assert agent_execution.context_used < agent_execution.context_budget
 
 
-class TestProductHybridVisionStorage:
-    """Test Product model hybrid vision storage enhancement."""
+class TestProductVisionDocumentRelationship:
+    """Test Product model VisionDocument relationship (Handover 0128e)."""
 
     @pytest.fixture
     def db_session(self):
-        """Create in-memory SQLite database for testing."""
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
+        """Create PostgreSQL test database session with transaction rollback."""
+        engine = create_engine(TEST_DB_URL)
+        connection = engine.connect()
+        transaction = connection.begin()
+        Session = sessionmaker(bind=connection)
         session = Session()
+
         yield session
+
+        # Cleanup: rollback transaction (undoes all test changes)
         session.close()
+        transaction.rollback()
+        connection.close()
 
-    def test_product_hybrid_vision_storage(self, db_session):
-        """Test both file and inline vision storage."""
-        # Test file-based vision storage
-        product_file = Product(
-            id="product-file",
+    def test_product_with_vision_documents(self, db_session):
+        """Test Product with VisionDocument relationship."""
+        from src.giljo_mcp.models.products import VisionDocument
+
+        # Create product
+        product = Product(
+            id="product-with-vision",
             tenant_key="test-tenant",
-            name="Product with File Vision",
-            description="Test file-based vision",
-            vision_path="/path/to/vision.md",
-            vision_type="file",
+            name="Product with Vision Documents",
+            description="Test VisionDocument relationship",
+        )
+        db_session.add(product)
+        db_session.commit()
+
+        # Add vision document with file storage
+        vision_file = VisionDocument(
+            tenant_key="test-tenant",
+            product_id=product.id,
+            document_name="Architecture",
+            document_type="architecture",
+            vision_path="/path/to/architecture.md",
+            storage_type="file",
             chunked=False,
+            is_active=True,
         )
+        db_session.add(vision_file)
+        db_session.commit()
 
-        # Test inline vision storage
-        product_inline = Product(
-            id="product-inline",
+        # Add vision document with inline storage
+        vision_inline = VisionDocument(
             tenant_key="test-tenant",
-            name="Product with Inline Vision",
-            description="Test inline vision",
-            vision_document="This is inline vision content",
-            vision_type="inline",
+            product_id=product.id,
+            document_name="API Docs",
+            document_type="api",
+            vision_document="This is inline API documentation",
+            storage_type="inline",
             chunked=True,
+            is_active=True,
         )
+        db_session.add(vision_inline)
+        db_session.commit()
 
-        # Test no vision
+        # Refresh product to load relationships
+        db_session.refresh(product)
+
+        # Verify relationships
+        assert len(product.vision_documents) == 2
+        assert product.has_vision_documents is True
+
+        # Check file-based document
+        file_doc = [d for d in product.vision_documents if d.storage_type == "file"][0]
+        assert file_doc.vision_path == "/path/to/architecture.md"
+        assert file_doc.vision_document is None
+
+        # Check inline document
+        inline_doc = [d for d in product.vision_documents if d.storage_type == "inline"][0]
+        assert inline_doc.vision_document == "This is inline API documentation"
+        assert inline_doc.vision_path is None
+
+    def test_product_without_vision(self, db_session):
+        """Test Product without any vision documents."""
+        # Create product without vision documents
         product_none = Product(
             id="product-none",
             tenant_key="test-tenant",
             name="Product without Vision",
             description="Test no vision",
-            vision_type="none",
-            chunked=False,
         )
-
-        db_session.add_all([product_file, product_inline, product_none])
+        db_session.add(product_none)
         db_session.commit()
 
-        # Verify file-based storage
-        assert product_file.vision_path == "/path/to/vision.md"
-        assert product_file.vision_document is None
-        assert product_file.vision_type == "file"
-        assert product_file.chunked is False
-
-        # Verify inline storage
-        assert product_inline.vision_path is None
-        assert product_inline.vision_document == "This is inline vision content"
-        assert product_inline.vision_type == "inline"
-        assert product_inline.chunked is True
-
-        # Verify no vision
-        assert product_none.vision_path is None
-        assert product_none.vision_document is None
-        assert product_none.vision_type == "none"
-        assert product_none.chunked is False
-
-    def test_product_vision_type_constraint(self, db_session):
-        """Test vision_type check constraint."""
-        # Valid vision types should work
-        valid_types = ["file", "inline", "none"]
-
-        for vision_type in valid_types:
-            product = Product(
-                id=f"product-{vision_type}",
-                tenant_key="test-tenant",
-                name=f"Product {vision_type}",
-                vision_type=vision_type,
-            )
-            db_session.add(product)
-
-        db_session.commit()
-
-        # Verify all products were created
-        products = db_session.query(Product).all()
-        assert len(products) == 3
-
-        # Get vision types
-        vision_types = [p.vision_type for p in products]
-        assert "file" in vision_types
-        assert "inline" in vision_types
-        assert "none" in vision_types
+        # Verify no vision documents
+        assert len(product_none.vision_documents) == 0
+        assert product_none.has_vision_documents is False
+        assert product_none.has_vision is False
 
 
 if __name__ == "__main__":
