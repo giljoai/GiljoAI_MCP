@@ -39,6 +39,13 @@ async def get_template_history(
     """
     logger.info("User %s requesting history for template %s", current_user.username, template_id)
 
+    # Verify template exists and belongs to user's tenant (tenant isolation)
+    template = await template_service.get_template_by_id(
+        session, template_id, current_user.tenant_key
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
     # ORIGINAL QUERY: history.py line 41-50 (replaced with service call)
     # stmt = (
     #     select(TemplateArchive)

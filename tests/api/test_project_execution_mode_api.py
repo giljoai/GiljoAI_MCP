@@ -234,7 +234,7 @@ class TestProjectCreateWithExecutionMode:
 
             # When validation is implemented, error should mention execution_mode
             if response.status_code == 400:
-                error_detail = response.json().get("detail", "")
+                error_detail = response.json().get("message", "")
                 assert "execution_mode" in str(error_detail).lower(), \
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
 
@@ -440,7 +440,7 @@ class TestProjectUpdateExecutionMode:
 
             # Error should mention execution_mode
             if patch_response.status_code == 400:
-                error_detail = patch_response.json().get("detail", "")
+                error_detail = patch_response.json().get("message", "")
                 assert "execution_mode" in str(error_detail).lower(), \
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
 

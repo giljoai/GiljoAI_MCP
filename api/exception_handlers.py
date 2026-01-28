@@ -26,12 +26,26 @@ def register_exception_handlers(app):
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """Handle Pydantic validation errors."""
+        # Sanitize errors for JSON serialization - convert non-serializable values to strings
+        sanitized_errors = []
+        for error in exc.errors():
+            sanitized = {
+                "loc": error.get("loc", []),
+                "msg": error.get("msg", ""),
+                "type": error.get("type", ""),
+            }
+            # Include input if it's a simple JSON-serializable type
+            input_val = error.get("input")
+            if input_val is not None and isinstance(input_val, (str, int, float, bool, list, dict, type(None))):
+                sanitized["input"] = input_val
+            sanitized_errors.append(sanitized)
+
         return JSONResponse(
             status_code=422,
             content={
                 "error_code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
-                "errors": exc.errors(),
+                "errors": sanitized_errors,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
