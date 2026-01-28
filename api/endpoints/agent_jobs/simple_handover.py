@@ -199,6 +199,8 @@ async def simple_handover(
             "old_context_used": old_context,
         }
 
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
         logger.exception(f"Simple handover failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
