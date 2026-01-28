@@ -13,6 +13,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 # Model imports: Use modular pattern (Post-0128a refactoring)
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services import ProductService
@@ -89,11 +94,17 @@ async def create_product(
             target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to create product: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create product: {str(e)}")
+        logger.error(f"Unexpected error creating product: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/", response_model=List[ProductResponse])
@@ -148,11 +159,17 @@ async def list_products(
             for p in result["products"]
         ]
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to list products: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list products: {str(e)}")
+        logger.error(f"Unexpected error listing products: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/deleted", response_model=list[DeletedProductResponse])
@@ -185,11 +202,17 @@ async def list_deleted_products(
             for p in result["products"]
         ]
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to list deleted products: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error listing deleted products: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
@@ -243,11 +266,17 @@ async def get_product(
             target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get product: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get product: {str(e)}")
+        logger.error(f"Unexpected error getting product: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -312,8 +341,14 @@ async def update_product(
             target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update product: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update product: {str(e)}")
+        logger.error(f"Unexpected error updating product: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
