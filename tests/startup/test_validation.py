@@ -22,7 +22,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager:
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager:
 
         mock_manager_instance = MagicMock()
         mock_manager_instance.requires_migration.return_value = False
@@ -54,7 +54,7 @@ server:
 
     with patch('api.startup.validation.open', mock_open(read_data=minimal_config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager:
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager:
 
         mock_manager_instance = MagicMock()
         mock_manager_instance.requires_migration.return_value = False
@@ -86,7 +86,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager:
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager:
 
         mock_manager_instance = MagicMock()
         mock_manager_instance.requires_migration.return_value = False
@@ -114,7 +114,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager, \
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager, \
          patch('api.startup.validation.logger') as mock_logger:
 
         mock_manager_instance = MagicMock()
@@ -146,7 +146,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager:
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager:
 
         mock_manager_instance = MagicMock()
         mock_manager_instance.requires_migration.return_value = False
@@ -179,7 +179,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager, \
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager, \
          patch('api.startup.validation.logger') as mock_logger:
 
         mock_manager_instance = MagicMock()
@@ -210,7 +210,7 @@ installation:
 
     with patch('api.startup.validation.open', mock_open(read_data=config_yaml)), \
          patch('api.startup.validation.Path.exists', return_value=True), \
-         patch('api.startup.validation.SetupStateManager') as mock_state_manager, \
+         patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager, \
          patch('api.startup.validation.logger') as mock_logger:
 
         mock_manager_instance = MagicMock()
@@ -234,7 +234,9 @@ async def test_init_validation_continues_on_error():
     state = APIState()
     state.db_manager = MagicMock()
 
-    with patch('api.startup.validation.Path.exists', return_value=False), \
+    # Simulate an exception during validation (e.g., file read error)
+    with patch('api.startup.validation.Path.exists', return_value=True), \
+         patch('api.startup.validation.open', side_effect=Exception("Test error")), \
          patch('api.startup.validation.logger') as mock_logger:
 
         # Should not raise exception
@@ -253,7 +255,7 @@ async def test_init_validation_skips_when_no_db_manager():
     state = APIState()
     state.db_manager = None
 
-    with patch('api.startup.validation.SetupStateManager') as mock_state_manager:
+    with patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock_state_manager:
         await init_validation(state)
 
         # Should not call SetupStateManager when db_manager is None
