@@ -35,8 +35,8 @@ class TestConfigManager:
         assert config.app_version == "0.1.0"
         assert config.server.debug is False
         assert config.database.database_type == "postgresql"  # Project standardized on PostgreSQL
-        assert config.server.api_host == "127.0.0.1"
-        assert config.server.api_port == 8000
+        assert config.server.api_host == "0.0.0.0"  # v3.0: Always bind to all interfaces
+        assert config.server.api_port == 7272  # Production default (changed from 8000)
         assert config.tenant.enable_multi_tenant is True
         assert config.session.vision_chunk_size == 50000
         assert config.session.vision_overlap == 500
@@ -127,6 +127,9 @@ class TestConfigManager:
         """Test configuration validation."""
         config = get_config()
 
+        # Save original port value
+        original_port = config.server.api_port
+
         # Test valid port range
         config.server.api_port = 8000
         assert config.server.api_port == 8000
@@ -138,6 +141,9 @@ class TestConfigManager:
         except ValueError:
             # If validation exists, this is expected
             pass
+
+        # Restore original port to avoid affecting other tests
+        config.server.api_port = original_port
 
     def test_feature_flags(self):
         """Test feature flag configuration."""
