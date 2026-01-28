@@ -4,12 +4,17 @@ Dependency injection for agent_jobs endpoints.
 Provides FastAPI dependencies for service layer access.
 """
 
+import logging
+
 from fastapi import Depends
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+
+
+logger = logging.getLogger(__name__)
 
 
 async def get_db_manager() -> DatabaseManager:
@@ -35,7 +40,7 @@ async def get_tenant_manager():
     return state.tenant_manager
 
 
-def get_orchestration_service(
+async def get_orchestration_service(
     current_user: User = Depends(get_current_active_user),
 ) -> OrchestrationService:
     """
@@ -53,6 +58,10 @@ def get_orchestration_service(
     """
     # Import state lazily to avoid circular import
     from api.app import state
+
+    logger.debug(f"get_orchestration_service called for user {current_user.username}")
+    logger.debug(f"state.db_manager is None: {state.db_manager is None}")
+    logger.debug(f"state.tenant_manager is None: {state.tenant_manager is None}")
 
     # OrchestrationService uses db_manager (not session) for its own session management
     return OrchestrationService(
