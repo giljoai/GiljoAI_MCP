@@ -119,6 +119,7 @@ async def list_jobs(
         f"limit={limit}, offset={offset})"
     )
 
+    # Service raises OrchestrationError on failure, caught by global exception handler
     result = await orchestration_service.list_jobs(
         tenant_key=current_user.tenant_key,
         project_id=project_id,
@@ -127,13 +128,6 @@ async def list_jobs(
         limit=limit,
         offset=offset,
     )
-
-    if "error" in result:
-        logger.error(f"Failed to list jobs: {result['error']}")
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list jobs: {result['error']}"
-        )
 
     logger.info(
         f"Found {len(result['jobs'])} jobs for user {current_user.username} "
@@ -170,18 +164,10 @@ async def list_pending_jobs(
     """
     logger.debug(f"User {current_user.username} listing pending jobs")
 
-    # Get pending jobs via OrchestrationService
+    # Service raises exceptions on failure, caught by global exception handler
     result = await orchestration_service.get_pending_jobs(
         tenant_key=current_user.tenant_key
     )
-
-    # Check for errors
-    if "error" in result:
-        logger.error(f"Failed to get pending jobs: {result['error']}")
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result["error"]
-        )
 
     jobs = result.get("jobs", [])
     logger.info(f"Found {len(jobs)} pending jobs for tenant {current_user.tenant_key}")
@@ -214,21 +200,12 @@ async def get_job(
     """
     logger.debug(f"User {current_user.username} getting job {job_id}")
 
-    # Get job via OrchestrationService
-    # Note: OrchestrationService doesn't have a get_job_by_id method yet
-    # We'll need to use get_agent_mission which includes job details
+    # Service raises ResourceNotFoundError (404) or DatabaseError (500)
+    # Caught by global exception handler
     result = await orchestration_service.get_agent_mission(
         job_id=job_id,
         tenant_key=current_user.tenant_key
     )
-
-    # Check for errors
-    if "error" in result:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
-        else:
-            raise HTTPException(status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
 
@@ -277,19 +254,12 @@ async def get_job_mission(
     """
     logger.debug(f"User {current_user.username} getting mission for job {job_id}")
 
-    # Get mission via OrchestrationService
+    # Service raises ResourceNotFoundError (404) or DatabaseError (500)
+    # Caught by global exception handler
     result = await orchestration_service.get_agent_mission(
         job_id=job_id,
         tenant_key=current_user.tenant_key
     )
-
-    # Check for errors
-    if "error" in result:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
-        else:
-            raise HTTPException(status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
 
