@@ -27,19 +27,21 @@ async def db_manager(test_database_url):
     """Create async database manager for tests."""
     db = DatabaseManager(database_url=test_database_url, is_async=True)
     yield db
-    await db.close()
+    await db.close_async()
 
 
 @pytest.fixture
 async def test_user(db_manager: DatabaseManager, tenant_key: str, user_id: str):
     """Create test user for depth configuration."""
     async with db_manager.get_session_async() as session:
+        # Generate unique username and email to avoid constraint violations
+        unique_suffix = str(uuid4())[:8]
         user = User(
             id=user_id,
             tenant_key=tenant_key,
-            email="test@example.com",
-            username="testuser",
-            hashed_password="fakehash",
+            email=f"test-{unique_suffix}@example.com",
+            username=f"testuser-{unique_suffix}",
+            password_hash="fakehash",
             is_active=True,
             depth_config=None,  # Will be set in individual tests
             field_priority_config=None,
@@ -60,7 +62,7 @@ async def sample_agent_templates(db_manager: DatabaseManager, tenant_key: str):
                 name="backend-integration-tester",
                 role="Backend Integration Tester",
                 description="Specialist in backend integration testing with focus on API contracts and data flow validation",
-                content="""# Backend Integration Tester Agent
+                template_content="""# Backend Integration Tester Agent
 
 You are a specialist backend integration tester focused on API contracts and data flow validation.
 
@@ -92,7 +94,7 @@ You are a specialist backend integration tester focused on API contracts and dat
                 name="tdd-implementor",
                 role="TDD Implementor",
                 description="Master developer following strict test-driven development principles with production-grade code quality",
-                content="""# TDD Implementor Agent
+                template_content="""# TDD Implementor Agent
 
 You are a master developer who follows strict test-driven development principles.
 
@@ -134,7 +136,7 @@ You are a master developer who follows strict test-driven development principles
                 name="system-architect",
                 role="System Architect",
                 description="Expert in software architecture design, system patterns, and technical decision-making for scalable solutions",
-                content="""# System Architect Agent
+                template_content="""# System Architect Agent
 
 You are an expert system architect responsible for high-level design decisions.
 
@@ -167,7 +169,7 @@ You are an expert system architect responsible for high-level design decisions.
                 name="documentation-manager",
                 role="Documentation Manager",
                 description="Technical writer creating clear, comprehensive documentation for APIs, user guides, and architecture decisions",
-                content="""# Documentation Manager Agent
+                template_content="""# Documentation Manager Agent
 
 You are a technical writer specialized in developer documentation.
 
@@ -201,7 +203,7 @@ You are a technical writer specialized in developer documentation.
                 name="orchestrator-coordinator",
                 role="Orchestrator Coordinator",
                 description="Master coordinator managing agent workflows, dependencies, and project execution with context awareness",
-                content="""# Orchestrator Coordinator Agent
+                template_content="""# Orchestrator Coordinator Agent
 
 You are the master coordinator responsible for managing all agent activities.
 
@@ -358,21 +360,31 @@ class TestAgentTemplateDepthIntegration:
 
     @pytest.mark.asyncio
     async def test_type_only_mode_returns_minimal_agent_data(
-        self, db_manager, tenant_key, user_id, sample_product_and_project, sample_agent_templates
+        self, db_manager, tenant_key, user_id, test_user, sample_product_and_project, sample_agent_templates
     ):
         """Test that type_only depth mode returns minimal agent template data (~50 tokens/agent)."""
         product, project = sample_product_and_project
 
-        # Create orchestrator job
+        # Create orchestrator job and execution
+        from src.giljo_mcp.models.agent_identity import AgentJob
         async with db_manager.get_session_async() as session:
+            job_id = str(uuid4())
+            job = AgentJob(
+                job_id=job_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                job_type="orchestrator",
+                mission="Test mission for agent templates depth toggle",
+                status="active",
+            )
+            session.add(job)
+            await session.flush()
+
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
-                job_id=str(uuid4()),
+                job_id=job_id,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                project_id=project.id,
-                mission="Test mission",
-                status="pending",
+                status="waiting",
                 context_budget=150000,
             )
             session.add(orchestrator)
@@ -392,7 +404,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Fetch orchestrator instructions
         instructions = await get_orchestrator_instructions(
-            orchestrator_id=str(orchestrator.job_id),
+            agent_id=str(orchestrator.agent_id),
             tenant_key=tenant_key,
             user_id=user_id,
             db_manager=db_manager,
@@ -400,7 +412,13 @@ class TestAgentTemplateDepthIntegration:
 
         # Verify mission is JSON format (Handover 0347b)
         assert instructions["mission_format"] == "json"
-        mission = instructions["mission"]
+        mission_text = instructions["mission"]
+
+        # Parse JSON portion from mission string (format: "text\n\n---\n\n{json}")
+        import json
+        json_start = mission_text.find("---") + 3
+        mission_json = mission_text[json_start:].strip()
+        mission = json.loads(mission_json)
 
         # Check that agent templates are in "important" tier with minimal data
         assert "important" in mission
@@ -437,21 +455,31 @@ class TestAgentTemplateDepthIntegration:
 
     @pytest.mark.asyncio
     async def test_full_mode_returns_complete_agent_prompts(
-        self, db_manager, tenant_key, user_id, sample_product_and_project, sample_agent_templates
+        self, db_manager, tenant_key, user_id, test_user, sample_product_and_project, sample_agent_templates
     ):
         """Test that full depth mode returns complete agent prompts (~2500 tokens/agent)."""
         product, project = sample_product_and_project
 
-        # Create orchestrator job
+        # Create orchestrator job and execution
+        from src.giljo_mcp.models.agent_identity import AgentJob
         async with db_manager.get_session_async() as session:
+            job_id = str(uuid4())
+            job = AgentJob(
+                job_id=job_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                job_type="orchestrator",
+                mission="Test mission",
+                status="active",
+            )
+            session.add(job)
+            await session.flush()
+
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
-                job_id=str(uuid4()),
+                job_id=job_id,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                project_id=project.id,
-                mission="Test mission",
-                status="pending",
+                status="waiting",
                 context_budget=150000,
             )
             session.add(orchestrator)
@@ -471,7 +499,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Fetch orchestrator instructions
         instructions = await get_orchestrator_instructions(
-            orchestrator_id=str(orchestrator.job_id),
+            agent_id=str(orchestrator.agent_id),
             tenant_key=tenant_key,
             user_id=user_id,
             db_manager=db_manager,
@@ -479,7 +507,13 @@ class TestAgentTemplateDepthIntegration:
 
         # Verify mission is JSON format
         assert instructions["mission_format"] == "json"
-        mission = instructions["mission"]
+        mission_text = instructions["mission"]
+
+        # Parse JSON portion from mission string (format: "text\n\n---\n\n{json}")
+        import json
+        json_start = mission_text.find("---") + 3
+        mission_json = mission_text[json_start:].strip()
+        mission = json.loads(mission_json)
 
         # Check that agent templates are in "important" tier with full data
         assert "important" in mission
@@ -515,21 +549,31 @@ class TestAgentTemplateDepthIntegration:
 
     @pytest.mark.asyncio
     async def test_invalid_depth_defaults_to_type_only(
-        self, db_manager, tenant_key, user_id, sample_product_and_project, sample_agent_templates
+        self, db_manager, tenant_key, user_id, test_user, sample_product_and_project, sample_agent_templates
     ):
         """Test that invalid depth values gracefully default to type_only."""
         product, project = sample_product_and_project
 
-        # Create orchestrator job
+        # Create orchestrator job and execution
+        from src.giljo_mcp.models.agent_identity import AgentJob
         async with db_manager.get_session_async() as session:
+            job_id = str(uuid4())
+            job = AgentJob(
+                job_id=job_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                job_type="orchestrator",
+                mission="Test mission",
+                status="active",
+            )
+            session.add(job)
+            await session.flush()
+
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
-                job_id=str(uuid4()),
+                job_id=job_id,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                project_id=project.id,
-                mission="Test mission",
-                status="pending",
+                status="waiting",
                 context_budget=150000,
             )
             session.add(orchestrator)
@@ -549,7 +593,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Fetch orchestrator instructions
         instructions = await get_orchestrator_instructions(
-            orchestrator_id=str(orchestrator.job_id),
+            agent_id=str(orchestrator.agent_id),
             tenant_key=tenant_key,
             user_id=user_id,
             db_manager=db_manager,
@@ -558,35 +602,50 @@ class TestAgentTemplateDepthIntegration:
         # Should not error - gracefully defaults to type_only
         assert "error" not in instructions
         assert instructions["mission_format"] == "json"
-        mission = instructions["mission"]
+        mission_text = instructions["mission"]
+
+        # Parse JSON portion from mission string
+        import json
+        json_start = mission_text.find("---") + 3
+        mission_json = mission_text[json_start:].strip()
+        mission = json.loads(mission_json)
 
         # Check agent templates are present (minimal format as fallback)
         assert "important" in mission
         assert "agent_templates" in mission["important"]
 
         # Verify token count is low (type_only fallback)
-        import json
         agent_section_json = json.dumps(mission["important"]["agent_templates"])
         agent_section_tokens = len(agent_section_json) // 4
         assert agent_section_tokens < 500, "Invalid depth should default to type_only (low token count)"
 
     @pytest.mark.asyncio
     async def test_backwards_compatibility_missing_config(
-        self, db_manager, tenant_key, user_id, sample_product_and_project, sample_agent_templates
+        self, db_manager, tenant_key, user_id, test_user, sample_product_and_project, sample_agent_templates
     ):
         """Test backwards compatibility when depth_config is missing."""
         product, project = sample_product_and_project
 
-        # Create orchestrator job
+        # Create orchestrator job and execution
+        from src.giljo_mcp.models.agent_identity import AgentJob
         async with db_manager.get_session_async() as session:
+            job_id = str(uuid4())
+            job = AgentJob(
+                job_id=job_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                job_type="orchestrator",
+                mission="Test mission",
+                status="active",
+            )
+            session.add(job)
+            await session.flush()
+
             orchestrator = AgentExecution(
                 tenant_key=tenant_key,
-                job_id=str(uuid4()),
+                job_id=job_id,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                project_id=project.id,
-                mission="Test mission",
-                status="pending",
+                status="waiting",
                 context_budget=150000,
             )
             session.add(orchestrator)
@@ -601,7 +660,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Fetch orchestrator instructions
         instructions = await get_orchestrator_instructions(
-            orchestrator_id=str(orchestrator.job_id),
+            agent_id=str(orchestrator.agent_id),
             tenant_key=tenant_key,
             user_id=user_id,
             db_manager=db_manager,
@@ -610,14 +669,19 @@ class TestAgentTemplateDepthIntegration:
         # Should not error - use defaults
         assert "error" not in instructions
         assert instructions["mission_format"] == "json"
-        mission = instructions["mission"]
+        mission_text = instructions["mission"]
+
+        # Parse JSON portion from mission string
+        import json
+        json_start = mission_text.find("---") + 3
+        mission_json = mission_text[json_start:].strip()
+        mission = json.loads(mission_json)
 
         # Check agent templates are present with default behavior
         assert "important" in mission
         assert "agent_templates" in mission["important"]
 
         # Default should be type_only (token efficient)
-        import json
         agent_section_json = json.dumps(mission["important"]["agent_templates"])
         agent_section_tokens = len(agent_section_json) // 4
         assert agent_section_tokens < 500, "Missing config should default to type_only"
