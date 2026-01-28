@@ -44,6 +44,26 @@
 
             <!-- Form -->
             <v-form ref="firstLoginForm" @submit.prevent="handleSubmit">
+              <!-- Current Password -->
+              <v-text-field
+                v-model="currentPassword"
+                label="Current Password"
+                prepend-inner-icon="mdi-lock-outline"
+                :append-inner-icon="showCurrentPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                :type="showCurrentPassword ? 'text' : 'password'"
+                variant="outlined"
+                :rules="[(v) => !!v || 'Current password is required']"
+                :disabled="loading"
+                autocomplete="current-password"
+                class="mb-4"
+                @click:append-inner="showCurrentPassword = !showCurrentPassword"
+                @input="error = ''"
+                aria-label="Enter your current password"
+                aria-required="true"
+                hint="Enter the temporary password you used to log in"
+                persistent-hint
+              />
+
               <!-- New Password -->
               <v-text-field
                 v-model="newPassword"
@@ -129,13 +149,11 @@
                 variant="outlined"
                 type="text"
                 inputmode="numeric"
-                pattern="[0-9]{4}"
                 maxlength="4"
                 :rules="pinRules"
                 :disabled="loading"
                 autocomplete="off"
                 class="mb-4"
-                @input="handlePinInput"
                 @keypress="onlyNumbers"
                 aria-label="Enter your 4-digit recovery PIN"
                 aria-required="true"
@@ -151,13 +169,11 @@
                 variant="outlined"
                 type="text"
                 inputmode="numeric"
-                pattern="[0-9]{4}"
                 maxlength="4"
                 :rules="confirmPinRules"
                 :disabled="loading"
                 autocomplete="off"
                 class="mb-4"
-                @input="handleConfirmPinInput"
                 @keypress="onlyNumbers"
                 aria-label="Confirm your 4-digit recovery PIN"
                 aria-required="true"
@@ -203,10 +219,12 @@ const router = useRouter()
 const theme = useTheme()
 
 // State
+const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const recoveryPin = ref('')
 const confirmPin = ref('')
+const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 const loading = ref(false)
@@ -271,6 +289,7 @@ const passwordStrengthText = computed(() => {
 
 const isFormValid = computed(() => {
   return (
+    currentPassword.value &&
     newPassword.value &&
     confirmPassword.value &&
     newPassword.value === confirmPassword.value &&
@@ -284,14 +303,6 @@ const isFormValid = computed(() => {
 })
 
 // Methods
-function handlePinInput(value) {
-  recoveryPin.value = value.replace(/\D/g, '').slice(0, 4)
-}
-
-function handleConfirmPinInput(value) {
-  confirmPin.value = value.replace(/\D/g, '').slice(0, 4)
-}
-
 function onlyNumbers(event) {
   const charCode = event.which ? event.which : event.keyCode
   if (charCode < 48 || charCode > 57) {
@@ -311,6 +322,7 @@ async function handleSubmit() {
 
   try {
     await api.auth.completeFirstLogin({
+      current_password: currentPassword.value,
       new_password: newPassword.value,
       confirm_password: confirmPassword.value,
       recovery_pin: recoveryPin.value,
