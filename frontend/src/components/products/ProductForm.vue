@@ -1130,18 +1130,9 @@ watch(
 
 <style scoped>
 /* Card uses darker background color for layered effect */
+/* Header and footer inherit this dark background, content area is lighter */
 .product-form-card {
   background: rgb(var(--v-theme-background)) !important;
-}
-
-/* Card title keeps surface color for visual hierarchy */
-.product-form-card :deep(.v-card-title) {
-  background: rgb(var(--v-theme-surface));
-}
-
-/* Card actions keeps surface color */
-.product-form-card :deep(.v-card-actions) {
-  background: rgb(var(--v-theme-surface));
 }
 
 /* Button toggle tabs styling - matches Settings page pattern */
