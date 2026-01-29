@@ -21,7 +21,8 @@ from pathlib import Path
 @pytest.fixture
 async def db_connection():
     """Create a database connection for testing."""
-    conn = await asyncpg.connect("postgresql://postgres:***@localhost/giljo_mcp")
+    # CRITICAL: Always use test database, NEVER production
+    conn = await asyncpg.connect("postgresql://postgres:***@localhost/giljo_mcp_test")
     yield conn
     await conn.close()
 
