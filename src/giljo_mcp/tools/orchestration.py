@@ -971,8 +971,8 @@ async def get_orchestrator_instructions(
     Returns:
         Orchestrator instructions dict with both agent_id and job_id
     """
-    from giljo_mcp.config_manager import get_config
-    from giljo_mcp.database import DatabaseManager
+    from src.giljo_mcp.config_manager import get_config
+    from src.giljo_mcp.database import DatabaseManager
 
     if db_manager is None:
         # Get database URL from config for test environments
@@ -983,9 +983,9 @@ async def get_orchestrator_instructions(
         from sqlalchemy import and_, select
         from sqlalchemy.orm import joinedload
 
-        from giljo_mcp.mission_planner import MissionPlanner
-        from giljo_mcp.models import AgentTemplate, Product, Project
-        from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.mission_planner import MissionPlanner
+        from src.giljo_mcp.models import AgentTemplate, Product, Project
+        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
         try:
             # Validate inputs

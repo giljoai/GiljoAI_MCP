@@ -110,7 +110,7 @@ async def get_active_agent_jobs(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
-            jobs = job_repo.get_active_jobs(db, tenant_key, agent_display_name)
+            jobs = await job_repo.get_active_jobs(db, tenant_key, agent_display_name)
 
             # Note: AgentJobResponse expects messages field, but we're migrating to counters (0387f)
             # This endpoint uses AgentJobRepository which returns AgentJob, not AgentExecution
@@ -207,14 +207,14 @@ async def update_agent_job_status(
 
         async with state.db_manager.get_session_async() as db:
             # Get current job to capture old status
-            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
+            job = await job_repo.get_job_by_job_id(db, tenant_key, job_id)
             if not job:
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
             old_status = job.status
 
             # Update status
-            success = job_repo.update_status(db, tenant_key, job_id, status_update.status)
+            success = await job_repo.update_status(db, tenant_key, job_id, status_update.status)
 
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
@@ -244,56 +244,13 @@ async def update_agent_job_status(
 
             return {"message": f"Job status updated to {status_update.status}"}
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/agent-jobs/{job_id}/acknowledge", response_model=dict)
-async def acknowledge_job_message(job_id: str, tenant_key: str = Depends(get_tenant_key)):
-    """Acknowledge receipt of a job message."""
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        job_repo = AgentJobRepository(state.db_manager)
-
-        async with state.db_manager.get_session_async() as db:
-            # Get job before acknowledgment
-            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
-            if not job:
-                raise HTTPException(status_code=404, detail="Agent job not found")
-
-            old_status = job.status
-
-            success = job_repo.acknowledge_job(db, tenant_key, job_id)
-
-            if not success:
-                raise HTTPException(status_code=404, detail="Agent job not found")
-
-            await db.commit()
-
-            # Broadcast acknowledgment via WebSocket (transitions to 'active')
-            # Handover 0463: Include project_id for frontend project-aware filtering
-            if state.websocket_manager and old_status == "pending":
-                await state.websocket_manager.broadcast_job_status_update(
-                    job_id=job_id,
-                    agent_display_name=job.job_type,
-                    tenant_key=tenant_key,
-                    old_status=old_status,
-                    new_status="active",  # Acknowledgment implies active status
-                    project_id=job.project_id,
-                )
-
-            return {"message": "Job acknowledged successfully"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# REMOVED: Duplicate acknowledge endpoint - use /api/agent-jobs/{job_id}/acknowledge from lifecycle.py instead
+# This legacy endpoint was superseded by Handover 0124 (api/endpoints/agent_jobs/lifecycle.py)
+# which returns proper JobAcknowledgeResponse with job_id, status, started_at, message fields.
 
 
 @router.post("/agent-jobs/{job_id}/messages", response_model=dict)
@@ -341,8 +298,6 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
 
             return {"message": "Message added to job successfully"}
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -385,8 +340,6 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
                 for chunk in chunks
             ]
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -427,8 +380,6 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
                 for chunk in chunks
             ]
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -458,8 +409,6 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
 
             return TokenReductionStats(**stats)
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -479,7 +428,7 @@ async def get_agent_job_statistics(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
-            stats = job_repo.get_job_statistics(db, tenant_key, agent_display_name)
+            stats = await job_repo.get_job_statistics(db, tenant_key, agent_display_name)
             return stats
 
     except Exception as e:

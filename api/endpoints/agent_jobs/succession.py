@@ -240,9 +240,6 @@ async def trigger_succession(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
     except Exception as e:
         logger.exception(f"Failed to trigger succession for job {job_id}: {e}")
         raise HTTPException(
@@ -345,9 +342,6 @@ async def check_succession_status(
             instance_number=execution.instance_number
         )
 
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
     except Exception as e:
         logger.exception(f"Failed to check succession status for job {job_id}: {e}")
         raise HTTPException(
@@ -546,8 +540,6 @@ mcp__giljo-mcp__complete_job(
             instance_number=instance
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.exception(f"Failed to initiate handover for job {job_id}: {e}")
         raise HTTPException(

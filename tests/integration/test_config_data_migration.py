@@ -7,28 +7,51 @@ Tests:
 3. Existing products get empty config_data
 4. Migration can be rolled back cleanly
 5. Data integrity is maintained
+
+SAFETY: Uses test database fixtures from conftest.py, NEVER production.
 """
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import inspect, text
 
-from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
-@pytest.fixture
-def db_session():
-    """Get database session"""
-    db = get_db_manager()
-    with db.get_session() as session:
-        yield session
-
+# CRITICAL: These fixtures use the TEST database, not production
+# They override the base conftest fixtures to use synchronous connections
+# for these specific migration tests.
 
 @pytest.fixture
 def db_engine():
-    """Get database engine"""
-    db = get_db_manager()
-    return db.engine
+    """
+    Get database engine for TEST database only.
+
+    SAFETY: Uses PostgreSQLTestHelper which enforces test database usage.
+    """
+    from sqlalchemy import create_engine
+
+    # CRITICAL: Use test database URL, never production
+    test_url = PostgreSQLTestHelper.get_test_db_url(async_driver=False)
+    engine = create_engine(test_url)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def db_session(db_engine):
+    """
+    Get database session for TEST database only.
+
+    SAFETY: Uses engine from db_engine fixture which is test-only.
+    """
+    from sqlalchemy.orm import sessionmaker
+
+    Session = sessionmaker(bind=db_engine)
+    session = Session()
+    yield session
+    session.close()
 
 
 class TestMigrationStructure:
@@ -128,8 +151,13 @@ class TestDataIntegrity:
         # Close session and reopen to ensure data was persisted
         db_session.close()
 
-        db = get_db_manager()
-        with db.get_session() as new_session:
+        # SAFETY: Use test database helper, never get_db_manager() which could hit production
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        test_url = PostgreSQLTestHelper.get_test_db_url(async_driver=False)
+        test_engine = create_engine(test_url)
+        TestSession = sessionmaker(bind=test_engine)
+        with TestSession() as new_session:
             # Reload product
             reloaded_product = new_session.query(Product).filter(Product.id == product_id).first()
 
@@ -344,7 +372,7 @@ class TestIndexPerformance:
 class TestMigrationRollback:
     """Test migration can be rolled back safely"""
 
-    def test_rollback_removes_column(self):
+    def test_rollback_removes_column(self, db_engine):
         """Test rollback would remove config_data column"""
         # This is a conceptual test - we don't actually rollback
         # In practice, alembic downgrade would:
@@ -352,8 +380,8 @@ class TestMigrationRollback:
         # 2. Drop config_data column
 
         # We verify the column exists (so rollback would have something to remove)
-        db = get_db_manager()
-        inspector = inspect(db.engine)
+        # SAFETY: Uses db_engine fixture which is test-only
+        inspector = inspect(db_engine)
         columns = [col["name"] for col in inspector.get_columns("products")]
 
         assert "config_data" in columns

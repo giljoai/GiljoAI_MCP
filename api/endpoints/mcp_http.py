@@ -745,9 +745,18 @@ async def handle_tools_call(
         return {"content": [{"type": "text", "text": result_text}], "isError": False}
 
     except Exception as e:
-        logger.error(f"Tool execution error: {tool_name} - {e}", exc_info=True)
+        # Suppress expected validation errors from console logs (they're returned to agent)
+        from src.giljo_mcp.exceptions import ValidationError
 
-        # Return error in MCP format
+        if isinstance(e, ValidationError) and "COMPLETION_BLOCKED" in str(e):
+            # This is expected behavior - agent tried to complete without finishing TODOs
+            # Log at DEBUG level instead of ERROR to avoid console pollution
+            logger.debug(f"Agent validation: {tool_name} - {e}")
+        else:
+            # Log all other errors at ERROR level with traceback
+            logger.error(f"Tool execution error: {tool_name} - {e}", exc_info=True)
+
+        # Return error in MCP format (agent still receives the message)
         return {"content": [{"type": "text", "text": f"Error executing {tool_name}: {e!s}"}], "isError": True}
 
 

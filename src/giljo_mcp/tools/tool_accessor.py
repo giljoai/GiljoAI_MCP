@@ -5,7 +5,7 @@ Provides direct access to MCP tool functions for API endpoints
 
 import logging
 from pathlib import Path
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, List, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 if TYPE_CHECKING:
@@ -177,7 +177,7 @@ class ToolAccessor:
             context_budget=context_budget,
         )
 
-    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> List[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
         return await self._project_service.list_projects(
             status=status,
