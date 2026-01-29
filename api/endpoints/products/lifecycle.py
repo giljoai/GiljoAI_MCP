@@ -10,19 +10,23 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.dependencies import get_tenant_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
 from .dependencies import get_product_service
-from api.dependencies import get_tenant_key
 from .models import (
+    ActiveProductRefreshResponse,
+    CascadeImpact,
     ProductActivationResponse,
     ProductDeleteResponse,
     ProductResponse,
-    CascadeImpact,
-    ActiveProductRefreshResponse,
-    TokenEstimateResponse,
     VisionDocumentStatsResponse,
 )
 
@@ -100,13 +104,19 @@ async def activate_product(
             deactivated_projects=deactivated_projects
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to activate product: {e}")
+        logger.error(f"Unexpected error activating product: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to activate product: {str(e)}"
+            detail="Internal server error"
         )
     finally:
         # Publish WS event via EventBus (tenant-scoped)
@@ -174,13 +184,19 @@ async def deactivate_product(
             product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to deactivate product: {e}")
+        logger.error(f"Unexpected error deactivating product: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to deactivate product: {str(e)}"
+            detail="Internal server error"
         )
     finally:
         # Publish WS event via EventBus (tenant-scoped)
@@ -237,13 +253,19 @@ async def delete_product(
             new_active_product=None  # Could auto-activate another product if needed
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to delete product: {e}")
+        logger.error(f"Unexpected error deleting product: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete product: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -296,13 +318,19 @@ async def restore_product(
             product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to restore product: {e}")
+        logger.error(f"Unexpected error restoring product: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to restore product: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -338,13 +366,19 @@ async def get_cascade_impact(
             warning=impact_data["warning"]
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get cascade impact: {e}")
+        logger.error(f"Unexpected error getting cascade impact: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get cascade impact: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -396,78 +430,19 @@ async def refresh_active_product(
             )
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to refresh active product: {e}")
+        logger.error(f"Unexpected error refreshing active product: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to refresh active product: {str(e)}"
-        )
-
-
-@router.get("/active/token-estimate", response_model=TokenEstimateResponse)
-async def get_token_estimate(
-    current_user: User = Depends(get_current_active_user),
-    service: ProductService = Depends(get_product_service),
-) -> TokenEstimateResponse:
-    """
-    Get token estimate for active product.
-
-    Uses ProductService.get_active_product() and calculates token estimate
-    based on project statistics.
-    """
-    logger.debug(f"User {current_user.username} requesting token estimate for active product")
-
-    try:
-        result = await service.get_active_product()
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
-
-        product_data = result.get("product")
-
-        if not product_data:
-            raise HTTPException(
-                status_code=404,
-                detail="No active product found"
-            )
-
-        # Calculate token estimate (simplified - can be enhanced)
-        # Base tokens for product metadata
-        token_estimate = 500
-
-        # Add tokens for projects (estimate ~1000 tokens per project)
-        project_count = product_data.get("project_count", 0)
-        token_estimate += project_count * 1000
-
-        # Add tokens for vision documents (estimate ~2000 tokens per doc)
-        vision_count = product_data.get("vision_documents_count", 0)
-        token_estimate += vision_count * 2000
-
-        # Add tokens for config data
-        if product_data.get("has_config_data"):
-            token_estimate += 500
-
-        return TokenEstimateResponse(
-            product_id=product_data["id"],
-            product_name=product_data["name"],
-            estimated_tokens=token_estimate,
-            breakdown={
-                "base": 500,
-                "projects": project_count * 1000,
-                "vision_documents": vision_count * 2000,
-                "config_data": 500 if product_data.get("has_config_data") else 0
-            }
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get token estimate: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get token estimate: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -507,14 +482,15 @@ async def get_vision_document_stats(
         product_name = product_data["name"]
 
         # Query for active vision documents
-        from sqlalchemy import select, and_
+        from sqlalchemy import and_, select
+
         from src.giljo_mcp.models import VisionDocument
 
         stmt = select(VisionDocument).where(
             and_(
                 VisionDocument.tenant_key == tenant_key,
                 VisionDocument.product_id == product_id,
-                VisionDocument.is_active == True
+                VisionDocument.is_active == True  # noqa: E712
             )
         ).order_by(VisionDocument.created_at.desc())
 
@@ -545,11 +521,17 @@ async def get_vision_document_stats(
             summary_tokens=meta_data.get("summary_tokens", 0)
         )
 
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get vision document stats: {e}")
+        logger.error(f"Unexpected error getting vision document stats: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get vision document stats: {str(e)}"
+            detail="Internal server error"
         )

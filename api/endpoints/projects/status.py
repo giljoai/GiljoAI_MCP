@@ -52,21 +52,11 @@ async def get_project_summary(
     """
     logger.debug(f"User {current_user.username} getting summary for project {project_id}")
 
-    # Get summary via ProjectService
-    result = await project_service.get_project_summary(project_id=project_id)
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Project not found")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+    # Get summary via ProjectService (raises exceptions on error)
+    summary_data = await project_service.get_project_summary(project_id=project_id)
 
     logger.info(f"Retrieved summary for project {project_id}")
 
-    # Return data as ProjectSummaryResponse
-    summary_data = result.get("data", {})
     return ProjectSummaryResponse(**summary_data)
 
 

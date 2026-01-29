@@ -96,8 +96,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
 
         return MCPToolResponse(success=True, result=result, timestamp=datetime.now(timezone.utc))
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.exception(f"Error executing MCP tool '{request.tool}'")
         return MCPToolResponse(success=False, error=str(e), timestamp=datetime.now(timezone.utc))

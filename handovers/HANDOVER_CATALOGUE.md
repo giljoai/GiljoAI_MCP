@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-26 (0480 Exception Handling Remediation Series added to catalogue)
+**Last Updated:** 2026-01-27 (0700 Code Cleanup Series added to catalogue)
 
 ---
 
@@ -17,6 +17,7 @@
 | 0401-0500 | Agent Monitoring & Ghost Fixes | 0480 Ready (Exception Handling), 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
+| **0700-0750** | **Code Cleanup Series** | **Ready** (0700-0711 documented) |
 
 ---
 
@@ -173,6 +174,26 @@
 | 0332 | Agent Staging and Execution Prompting Overview | Architecture | Reference |
 | 0337 | E2E Test Report | Test Report | Reference |
 | 0337 | Next Agent Summary | Session Doc | Reference |
+
+### Code Cleanup Series (0700) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0700** | **Cleanup Index Creation** | **Ready** | **HIGH** | 4-6h |
+| **0701** | **Dependency Visualization** | **Ready** | **MEDIUM** | 2-3h |
+| **0702** | **Utils & Config Cleanup** | **Ready** | **MEDIUM** | 2-3h |
+| **0703** | **Auth & Logging Cleanup** | **Ready** | **MEDIUM** | 2-3h |
+| **0704** | **Models Base Cleanup** | **Ready** | **HIGH** | 3-4h |
+| **0705** | **Models Core Cleanup** | **Ready** | **HIGH** | 3-4h |
+| **0706** | **Models Agents Cleanup (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
+| **0707** | **Services Leaf Cleanup** | **Ready** | **MEDIUM** | 3-4h |
+| **0708** | **Services Core Cleanup** | **Ready** | **HIGH** | 4-6h |
+| **0711** | **API MCP Cleanup (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
+
+> **Purpose**: Systematic cleanup of ~560 source files and ~665 test files
+> **Strategy**: Database-indexed, dependency-aware approach with incremental validation
+> **Metrics**: 45 DEPRECATED markers, 43 TODO markers, 168 skip/xfail test markers
+> **Docs**: [docs/cleanup/CLEANUP_STRATEGY.md](../docs/cleanup/CLEANUP_STRATEGY.md)
+> **Estimated Total**: 45-65h across 15-20 handovers
 
 ### Deferred / Low Priority
 | ID | Title | Status | Priority | Notes |
@@ -534,6 +555,7 @@ completed/reference/
 **0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready), 0424-0425 (ready), 0440a (ready), 0480 (ready), 0460-0463, 0500 (complete)
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
+**0700-0750** (Code Cleanup): 0700-0708, 0711
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Current Gaps Available
