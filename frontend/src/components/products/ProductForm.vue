@@ -1,6 +1,6 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="700" persistent retain-focus>
-    <v-card>
+  <v-dialog v-model="isOpen" max-width="950" persistent retain-focus>
+    <v-card class="product-form-card">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
         <span>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>
@@ -61,26 +61,45 @@
       <v-divider></v-divider>
 
       <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
-        <!-- Tabbed interface for product configuration -->
-        <v-tabs
+        <!-- Tabbed interface for product configuration (button-toggle style like Settings) -->
+        <v-btn-toggle
           v-model="dialogTab"
-          class="mb-4 tabs-with-arrows global-tabs"
-          show-arrows
-          prev-icon="mdi-chevron-left"
-          next-icon="mdi-chevron-right"
+          mandatory
+          variant="outlined"
+          divided
+          rounded="t-lg"
+          color="primary"
+          class="mb-0"
         >
-          <v-tab value="basic">Basic Info</v-tab>
-          <v-tab value="vision">Vision Docs</v-tab>
-          <v-tab value="tech">Tech Stack</v-tab>
-          <v-tab value="arch">Architecture</v-tab>
-          <v-tab value="features">Testing</v-tab>
-        </v-tabs>
+          <v-btn value="basic">
+            <v-icon start size="small">mdi-information-outline</v-icon>
+            Basic Info
+          </v-btn>
+          <v-btn value="vision">
+            <v-icon start size="small">mdi-file-document-outline</v-icon>
+            Vision Docs
+          </v-btn>
+          <v-btn value="tech">
+            <v-icon start size="small">mdi-code-braces</v-icon>
+            Tech Stack
+          </v-btn>
+          <v-btn value="arch">
+            <v-icon start size="small">mdi-sitemap</v-icon>
+            Architecture
+          </v-btn>
+          <v-btn value="features">
+            <v-icon start size="small">mdi-test-tube</v-icon>
+            Testing
+          </v-btn>
+        </v-btn-toggle>
 
-        <v-form ref="formRef" v-model="formValid">
-          <v-tabs-window v-model="dialogTab" class="global-tabs-window">
+        <div class="bordered-tabs-content">
+          <v-form ref="formRef" v-model="formValid">
+            <v-window v-model="dialogTab" class="global-tabs-window">
             <!-- Basic Info Tab -->
-            <v-tabs-window-item value="basic">
-              <div class="text-subtitle-1 mb-4">Product Information</div>
+            <v-window-item value="basic">
+              <div class="text-subtitle-1 mb-1">Product Information</div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <!-- Product Name -->
               <v-text-field
@@ -93,15 +112,15 @@
                 class="mb-4 mt-2"
               ></v-text-field>
 
-              <!-- Project Path -->
+              <!-- Codebase Folder -->
               <v-text-field
                 v-model="productForm.projectPath"
-                label="Project Path (optional)"
+                label="Codebase Folder (optional)"
                 variant="outlined"
                 density="comfortable"
-                placeholder="F:/Projects/MyProduct"
-                prepend-inner-icon="mdi-folder-outline"
-                hint="File system path to your product folder. Required for exporting agents."
+                placeholder="e.g., F:\Projects\MyApp or /home/user/myapp"
+                prepend-icon="mdi-folder-outline"
+                hint="Your local codebase path"
                 persistent-hint
                 class="mb-4"
               ></v-text-field>
@@ -109,12 +128,12 @@
               <!-- Description -->
               <v-textarea
                 v-model="productForm.description"
-                label="Description (Context for Orchestrator)"
+                label="Product Description"
                 variant="outlined"
                 density="comfortable"
                 rows="6"
                 auto-grow
-                hint="This description will be used by the orchestrator for mission generation"
+                hint="Describe what this product does and its purpose"
                 persistent-hint
                 class="mb-4"
               ></v-textarea>
@@ -131,7 +150,7 @@
                 class="mb-4"
               >
                 <template #label>
-                  <span>Core Features</span>
+                  <span>Core Product Features</span>
                   <v-chip
                     v-if="hasFieldPriority('features.core')"
                     :color="getPriorityColor(getPriorityForField('features.core'))"
@@ -142,11 +161,12 @@
                   </v-chip>
                 </template>
               </v-textarea>
-            </v-tabs-window-item>
+            </v-window-item>
 
             <!-- Vision Documents Tab -->
-            <v-tabs-window-item value="vision">
-              <div class="text-subtitle-1 mb-4">Vision Documents</div>
+            <v-window-item value="vision">
+              <div class="text-subtitle-1 mb-1">Vision Documents</div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <!-- Project path hint for file navigation -->
               <v-alert
@@ -299,11 +319,12 @@
                   Files will be auto-chunked for context (25K token limit)
                 </v-alert>
               </div>
-            </v-tabs-window-item>
+            </v-window-item>
 
             <!-- Tech Stack Tab -->
-            <v-tabs-window-item value="tech">
-              <div class="text-subtitle-1 mb-4">Technology Stack Configuration</div>
+            <v-window-item value="tech">
+              <div class="text-subtitle-1 mb-1">Technology Stack Configuration</div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <v-textarea
                 v-model="productForm.configData.tech_stack.languages"
@@ -475,11 +496,12 @@
                   {{ platformValidationError }}
                 </div>
               </div>
-            </v-tabs-window-item>
+            </v-window-item>
 
             <!-- Architecture Tab -->
-            <v-tabs-window-item value="arch">
-              <div class="text-subtitle-1 mb-4">Architecture & Design Patterns</div>
+            <v-window-item value="arch">
+              <div class="text-subtitle-1 mb-1">Architecture & Design Patterns</div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <v-textarea
                 v-model="productForm.configData.architecture.pattern"
@@ -575,11 +597,12 @@
                   </v-chip>
                 </template>
               </v-textarea>
-            </v-tabs-window-item>
+            </v-window-item>
 
             <!-- Testing Tab -->
-            <v-tabs-window-item value="features">
-              <div class="text-subtitle-1 mb-4">Quality Standards & Testing Configuration</div>
+            <v-window-item value="features">
+              <div class="text-subtitle-1 mb-1">Quality Standards & Testing Configuration</div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <!-- Quality Standards -->
               <v-textarea
@@ -697,9 +720,10 @@
                   </v-chip>
                 </template>
               </v-textarea>
-            </v-tabs-window-item>
-          </v-tabs-window>
-        </v-form>
+            </v-window-item>
+            </v-window>
+          </v-form>
+        </div>
       </v-card-text>
 
       <v-divider></v-divider>
@@ -1105,8 +1129,41 @@ watch(
 </script>
 
 <style scoped>
-.tabs-with-arrows :deep(.v-slide-group__prev),
-.tabs-with-arrows :deep(.v-slide-group__next) {
-  min-width: 32px;
+/* Card uses darker background color for layered effect */
+/* Header and footer inherit this dark background, content area is lighter */
+.product-form-card {
+  background: rgb(var(--v-theme-background)) !important;
+}
+
+/* Button toggle tabs styling - matches Settings page pattern */
+.bordered-tabs-content {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: none;
+  border-radius: 0 8px 8px 8px;
+  padding: 16px;
+  background: rgb(var(--v-theme-surface));
+}
+
+/* All tabs - transparent background by default, remove bottom border */
+:deep(.v-btn-toggle > .v-btn) {
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+/* Inactive tabs - faded text, transparent background (shows darker card bg) */
+:deep(.v-btn-toggle > .v-btn:not(.v-btn--active)) {
+  color: rgba(255, 255, 255, 0.5) !important;
+  background: transparent !important;
+}
+
+/* Active tab - lighter surface background that matches content area */
+:deep(.v-btn-toggle > .v-btn.v-btn--active) {
+  background: rgb(var(--v-theme-surface)) !important;
+  color: white !important;
+}
+
+/* Override Vuetify overlay on active button */
+:deep(.v-btn-toggle > .v-btn.v-btn--active > .v-btn__overlay) {
+  opacity: 0 !important;
 }
 </style>

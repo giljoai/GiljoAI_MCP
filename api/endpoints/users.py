@@ -415,7 +415,8 @@ async def get_user(
     """
     Get user details by ID.
 
-    Admin can view any user in their tenant. Non-admin can only view themselves.
+    Admin can view any user across all tenants (per-user tenancy design).
+    Non-admin can only view themselves.
 
     Args:
         user_id: UUID of user to retrieve
@@ -427,20 +428,22 @@ async def get_user(
 
     Raises:
         HTTPException: 403 if non-admin tries to view other users
-        HTTPException: 404 if user not found or in different tenant
+        HTTPException: 404 if user not found
     """
     logger.debug(f"User {current_user.username} retrieving user {user_id}")
 
-    result = await user_service.get_user(str(user_id))
+    # Admin can access users across all tenants for user management
+    is_admin = current_user.role == "admin"
+    result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
     if not result["success"]:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
+        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
     user = result["user"]
 
     # Authorization: admin can view any user, non-admin can only view self
-    if current_user.role != "admin" and user["id"] != str(current_user.id):
+    if not is_admin and user["id"] != str(current_user.id):
         logger.warning(f"Non-admin {current_user.username} tried to view user {user['username']}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot view other users' profiles")
 

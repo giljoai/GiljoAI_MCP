@@ -8,7 +8,7 @@ database access. Future work: Create ProductService and refactor endpoints.
 
 Module Structure:
 - crud.py: CRUD operations (create, list, get, update, list deleted)
-- lifecycle.py: Lifecycle management (activate, deactivate, delete, restore, cascade impact, token estimate)
+- lifecycle.py: Lifecycle management (activate, deactivate, delete, restore, cascade impact)
 - vision.py: Vision document operations (upload, get chunks)
 - git_integration.py: Simplified Git integration (Handover 013B - ACTIVE)
 
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 # IMPORTANT: Order matters! Routes with specific paths must come BEFORE
 # routes with path parameters like /{product_id} to avoid incorrect matching.
 # e.g., /refresh-active must match before /{product_id} treats it as a product ID.
-router.include_router(lifecycle.router)  # Has /refresh-active, /deleted, /active/token-estimate
+router.include_router(lifecycle.router)  # Has /refresh-active, /deleted
 router.include_router(crud.router)  # Has /{product_id} - must come after specific routes
 router.include_router(vision.router)
 router.include_router(git_integration.router)  # NEW - Handover 013B

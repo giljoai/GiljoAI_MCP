@@ -942,7 +942,8 @@ class TestTaskConversion:
         )
 
         assert response.status_code == 400
-        assert "No active product" in response.json()["detail"]
+        # Exception handler returns 'message' not 'detail' (Handover 0480)
+        assert "No active product" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_convert_task_not_found(

@@ -29,9 +29,12 @@ class ConfigManager:
         self.settings = settings
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Allow override of file paths for testing
-        self.config_file = Path("config.yaml")
-        self.env_file = Path(".env")
+        # FIX: Use install_dir from settings for test isolation (prevents tests from overwriting production files)
+        # Tests pass install_dir in mock_settings pointing to temp directory
+        # Production uses current working directory as default
+        install_dir = Path(settings.get("install_dir", Path.cwd()))
+        self.config_file = install_dir / "config.yaml"
+        self.env_file = install_dir / ".env"
 
     def generate_all(self) -> Dict[str, Any]:
         """

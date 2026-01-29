@@ -117,7 +117,6 @@ class WebSocketEventListener:
                 - project_id: Project UUID
                 - mission: Updated mission text
                 - user_config_applied: Boolean flag
-                - token_estimate: Estimated token count
         """
         try:
             tenant_key = data.get("tenant_key")
@@ -134,7 +133,6 @@ class WebSocketEventListener:
                 project_id=project_id,
                 tenant_key=tenant_key,
                 mission=data.get("mission", ""),
-                token_estimate=data.get("token_estimate", 0),
                 user_config_applied=data.get("user_config_applied", False),
             )
 

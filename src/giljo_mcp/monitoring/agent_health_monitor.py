@@ -163,10 +163,31 @@ class AgentHealthMonitor:
 
         # Filter out jobs from deleted projects and inactive projects using LEFT JOIN
         # Handover 0424: Only monitor jobs from active projects
+        # Only check latest instance per job to avoid alerts on old succession instances
+        from sqlalchemy import func
+
+        # Subquery to get latest instance_number per job_id
+        latest_instance_subq = (
+            select(
+                AgentExecution.job_id,
+                func.max(AgentExecution.instance_number).label('max_instance')
+            )
+            .where(AgentExecution.tenant_key == tenant_key)
+            .group_by(AgentExecution.job_id)
+            .subquery()
+        )
+
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .join(
+                latest_instance_subq,
+                and_(
+                    AgentExecution.job_id == latest_instance_subq.c.job_id,
+                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
+                )
+            )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
@@ -228,10 +249,31 @@ class AgentHealthMonitor:
 
         # Query active jobs, filtering out jobs from deleted projects and inactive projects
         # Handover 0424: Only monitor jobs from active projects
+        # Only check latest instance per job to avoid alerts on old succession instances
+        from sqlalchemy import func
+
+        # Subquery to get latest instance_number per job_id
+        latest_instance_subq = (
+            select(
+                AgentExecution.job_id,
+                func.max(AgentExecution.instance_number).label('max_instance')
+            )
+            .where(AgentExecution.tenant_key == tenant_key)
+            .group_by(AgentExecution.job_id)
+            .subquery()
+        )
+
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .join(
+                latest_instance_subq,
+                and_(
+                    AgentExecution.job_id == latest_instance_subq.c.job_id,
+                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
+                )
+            )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
@@ -297,10 +339,31 @@ class AgentHealthMonitor:
         """
         # Query waiting and active jobs, filtering out jobs from deleted projects and inactive projects
         # Handover 0424: Only monitor jobs from active projects
+        # Only check latest instance per job to avoid alerts on old succession instances
+        from sqlalchemy import func
+
+        # Subquery to get latest instance_number per job_id
+        latest_instance_subq = (
+            select(
+                AgentExecution.job_id,
+                func.max(AgentExecution.instance_number).label('max_instance')
+            )
+            .where(AgentExecution.tenant_key == tenant_key)
+            .group_by(AgentExecution.job_id)
+            .subquery()
+        )
+
         query = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .join(
+                latest_instance_subq,
+                and_(
+                    AgentExecution.job_id == latest_instance_subq.c.job_id,
+                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
+                )
+            )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
                 and_(
