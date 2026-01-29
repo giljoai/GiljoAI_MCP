@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.giljo_mcp.exceptions import ConfigurationError, FileSystemError
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class ClaudeConfigManager:
         self.claude_config_path = Path.home() / ".claude.json"
         self.backup_dir = Path.home() / ".claude_backups"
 
-    def inject_serena(self, project_root: Path) -> dict[str, Any]:
+    def inject_serena(self, project_root: Path) -> dict[str, str]:
         """
         Inject Serena MCP configuration into ~/.claude.json.
 
@@ -49,11 +50,12 @@ class ClaudeConfigManager:
 
         Returns:
             Dictionary containing:
-                - success (bool): True if injection succeeded
-                - backup_path (str | None): Path to backup file
-                - error (str | None): Error message if failed
+                - backup_path (str | None): Path to backup file if created
+
+        Raises:
+            ConfigurationError: If validation fails or unexpected error occurs
+            FileSystemError: If file I/O operations fail
         """
-        result = {"success": False, "backup_path": None, "error": None}
         backup_path = None
 
         try:
@@ -63,43 +65,54 @@ class ClaudeConfigManager:
             # Step 2: Create backup before modifications
             if self.claude_config_path.exists():
                 backup_path = self._backup_claude_config()
-                result["backup_path"] = str(backup_path)
 
             # Step 3: Add/update Serena configuration
             config = self._add_serena_config(config, project_root)
 
             # Step 4: Validate the modified config
             if not self._validate_serena_config(config):
-                result["error"] = "Invalid Serena configuration generated"
                 if backup_path:
                     self._restore_backup(backup_path)
-                return result
+                raise ConfigurationError(
+                    message="Invalid Serena configuration generated",
+                    context={"operation": "inject_serena", "project_root": str(project_root)}
+                )
 
             # Step 5: Write atomically
             self._atomic_write(config)
 
-            result["success"] = True
             logger.info(f"Successfully injected Serena MCP config into {self.claude_config_path}")
+            return {"backup_path": str(backup_path) if backup_path else None}
 
         except json.JSONDecodeError as e:
-            result["error"] = f"Invalid JSON in config file: {e}"
             logger.error(f"JSON decode error: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
+            raise ConfigurationError(
+                message=f"Invalid JSON in config file: {e}",
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
+            )
         except OSError as e:
-            result["error"] = f"IO error: {e}"
             logger.error(f"IO error during injection: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
+            raise FileSystemError(
+                message=f"IO error: {e}",
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
+            )
+        except (ConfigurationError, FileSystemError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            result["error"] = f"Unexpected error: {e}"
             logger.error(f"Unexpected error during injection: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
+            raise ConfigurationError(
+                message=f"Unexpected error: {e}",
+                context={"operation": "inject_serena", "error_type": type(e).__name__}
+            )
 
-        return result
-
-    def remove_serena(self) -> dict[str, Any]:
+    def remove_serena(self) -> dict[str, str]:
         """
         Remove Serena MCP configuration from ~/.claude.json.
 
@@ -107,19 +120,18 @@ class ClaudeConfigManager:
 
         Returns:
             Dictionary containing:
-                - success (bool): True if removal succeeded
-                - message (str | None): Informational message
-                - error (str | None): Error message if failed
+                - message (str): Informational message about the operation
+
+        Raises:
+            FileSystemError: If file I/O operations fail
+            ConfigurationError: If unexpected error occurs during removal
         """
-        result = {"success": False, "message": None, "error": None}
         backup_path = None
 
         try:
             # If config doesn't exist, nothing to remove
             if not self.claude_config_path.exists():
-                result["success"] = True
-                result["message"] = "Config file not found, nothing to remove"
-                return result
+                return {"message": "Config file not found, nothing to remove"}
 
             # Load existing config
             config = self._load_config()
@@ -132,24 +144,30 @@ class ClaudeConfigManager:
                 del config["mcpServers"]["serena"]
                 logger.info("Removed Serena MCP from config")
             else:
-                result["success"] = True
-                result["message"] = "Serena not found in config"
-                return result
+                return {"message": "Serena not found in config"}
 
             # Write atomically
             self._atomic_write(config)
 
-            result["success"] = True
-            result["message"] = "Serena MCP removed successfully"
             logger.info(f"Successfully removed Serena MCP from {self.claude_config_path}")
+            return {"message": "Serena MCP removed successfully"}
 
+        except OSError as e:
+            logger.error(f"IO error during removal: {e}")
+            if backup_path:
+                self._restore_backup(backup_path)
+            raise FileSystemError(
+                message=f"IO error during Serena removal: {e}",
+                context={"operation": "remove_serena", "config_path": str(self.claude_config_path)}
+            )
         except Exception as e:
-            result["error"] = f"Error removing Serena: {e}"
             logger.error(f"Error during removal: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
-
-        return result
+            raise ConfigurationError(
+                message=f"Error removing Serena: {e}",
+                context={"operation": "remove_serena", "error_type": type(e).__name__}
+            )
 
     def _load_config(self) -> dict[str, Any]:
         """

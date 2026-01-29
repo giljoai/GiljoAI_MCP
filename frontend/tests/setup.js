@@ -135,7 +135,6 @@ document.execCommand = vi.fn(() => true)
 vi.mock('@/services/api', () => ({
   api: {
     prompts: {
-      estimateTokens: vi.fn(() => Promise.resolve({ data: { tokens: 1000 } })),
       staging: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock staging prompt' } })),
       execution: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock orchestrator prompt' } })),
       agentPrompt: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock agent prompt' } })),

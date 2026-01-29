@@ -30,38 +30,61 @@ from uuid import uuid4
 @pytest.fixture
 async def api_client(db_manager):
     """
-    Create AsyncClient for API testing with authentication mocking.
-    This is a simplified version - real implementation in conftest.py
+    Create AsyncClient for API testing with proper app state setup.
+
+    Sets up db_manager in app.state for endpoints that need it (like auth/login).
     """
     from httpx import AsyncClient as HTTPXAsyncClient, ASGITransport
+    from unittest.mock import MagicMock
 
     try:
-        from api.app import app
+        from api.app import app, state
         from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-        from src.giljo_mcp.models import User
-        from datetime import datetime, timezone
-
-        async def mock_get_current_user():
-            return User(
-                id=str(uuid4()),
-                username="test_user",
-                email="test@example.com",
-                tenant_key="test_tenant",
-                is_active=True,
-                role="developer",
-                created_at=datetime.now(timezone.utc),
-                password_hash="hashed",
-            )
+        from src.giljo_mcp.auth import AuthManager
+        from src.giljo_mcp.tenant import TenantManager
 
         async def mock_get_db_session():
             async with db_manager.get_session_async() as session:
                 yield session
 
-        app.dependency_overrides[get_current_active_user] = mock_get_current_user
+        # Override database session dependency
         app.dependency_overrides[get_db_session] = mock_get_db_session
 
-        async with HTTPXAsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Set up global state with db_manager for services that need it
+        state.db_manager = db_manager
+        app.state.db_manager = db_manager
+        if state.tenant_manager is None:
+            state.tenant_manager = TenantManager()
+
+        # Set up tool_accessor for endpoints that need it
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+        state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
+        app.state.tool_accessor = state.tool_accessor
+
+        # Create mock config for AuthManager
+        mock_config = MagicMock()
+        mock_config.jwt.secret_key = "test_secret_key"
+        mock_config.jwt.algorithm = "HS256"
+        mock_config.jwt.expiration_minutes = 30
+        mock_config.get = MagicMock(side_effect=lambda key, default=None: {
+            "security.auth_enabled": True,
+            "security.api_keys_required": False,
+        }.get(key, default))
+
+        state.config = mock_config
+        app.state.config = mock_config
+        app.state.auth = AuthManager(mock_config, db=None)
+        state.auth = app.state.auth
+
+        async with HTTPXAsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            cookies=None,
+            follow_redirects=True
+        ) as client:
+            client.cookies.clear()
             yield client
+            client.cookies.clear()
 
         app.dependency_overrides.clear()
 
@@ -234,7 +257,7 @@ class TestProjectCreateWithExecutionMode:
 
             # When validation is implemented, error should mention execution_mode
             if response.status_code == 400:
-                error_detail = response.json().get("detail", "")
+                error_detail = response.json().get("message", "")
                 assert "execution_mode" in str(error_detail).lower(), \
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
 
@@ -440,7 +463,7 @@ class TestProjectUpdateExecutionMode:
 
             # Error should mention execution_mode
             if patch_response.status_code == 400:
-                error_detail = patch_response.json().get("detail", "")
+                error_detail = patch_response.json().get("message", "")
                 assert "execution_mode" in str(error_detail).lower(), \
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
 

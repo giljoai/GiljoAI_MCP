@@ -2,6 +2,7 @@
 AuthService - Authentication and authorization service layer.
 
 Handover 0322 Phase 2: Service Layer Compliance
+Handover 0480b: Exception-based error handling (migrated from dict returns)
 Implements production-grade authentication operations following TDD discipline.
 
 Responsibilities:
@@ -15,7 +16,7 @@ Design Principles:
 - NO tenant_key in constructor (auth operates across tenants for login)
 - Dependency Injection: Accepts DatabaseManager
 - Async/Await: Full SQLAlchemy 2.0 async support
-- Error Handling: Consistent dict responses with success/error
+- Error Handling: Raises typed exceptions (AuthenticationError, ValidationError, etc.)
 - Testability: Can be unit tested independently
 """
 
@@ -36,6 +37,13 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.config import SetupState
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+    BaseGiljoException
+)
 
 
 logger = logging.getLogger(__name__)
@@ -89,19 +97,20 @@ class AuthService:
             password: Plaintext password to verify
 
         Returns:
-            Dict with success status and user/token data or error
+            Dict with user data and JWT token
             {
-                "success": True,
-                "data": {
-                    "user": {...},  # User dict
-                    "token": "eyJ..."  # JWT access token
-                }
+                "user": {...},  # User dict
+                "token": "eyJ..."  # JWT access token
             }
+
+        Raises:
+            AuthenticationError: If credentials are invalid
+            AuthorizationError: If user account is inactive
+            BaseGiljoException: For other errors
 
         Example:
             >>> result = await service.authenticate_user("admin", "Password123!")
-            >>> if result["success"]:
-            ...     token = result["data"]["token"]
+            >>> token = result["token"]
         """
         try:
             # Use provided session if available (test mode)
@@ -112,9 +121,15 @@ class AuthService:
             async with self.db_manager.get_session_async() as session:
                 return await self._authenticate_user_impl(session, username, password)
 
+        except (AuthenticationError, AuthorizationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to authenticate user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Authentication failed: {str(e)}",
+                context={"username": username}
+            )
 
     async def _authenticate_user_impl(
         self, session: AsyncSession, username: str, password: str
@@ -131,7 +146,10 @@ class AuthService:
                 f"Authentication failed for username: {username}",
                 extra={"username": username, "reason": "invalid_credentials"}
             )
-            return {"success": False, "error": "Invalid credentials"}
+            raise AuthenticationError(
+                message="Invalid credentials",
+                context={"username": username}
+            )
 
         # Check if user account is active
         if not user.is_active:
@@ -139,7 +157,10 @@ class AuthService:
                 f"Authentication failed for username: {username} (inactive account)",
                 extra={"username": username, "user_id": user.id, "reason": "inactive_account"}
             )
-            return {"success": False, "error": "User account is inactive"}
+            raise AuthorizationError(
+                message="User account is inactive",
+                context={"username": username, "user_id": user.id}
+            )
 
         # Generate JWT token
         token = JWTManager.create_access_token(
@@ -168,14 +189,11 @@ class AuthService:
         }
 
         return {
-            "success": True,
-            "data": {
-                "user": user_dict,
-                "token": token
-            }
+            "user": user_dict,
+            "token": token
         }
 
-    async def update_last_login(self, user_id: str, timestamp: datetime) -> Dict[str, Any]:
+    async def update_last_login(self, user_id: str, timestamp: datetime) -> None:
         """
         Update user's last login timestamp.
 
@@ -183,35 +201,44 @@ class AuthService:
             user_id: User UUID
             timestamp: Login timestamp (UTC)
 
-        Returns:
-            Dict with success status or error
+        Raises:
+            ResourceNotFoundError: If user not found
+            BaseGiljoException: For other errors
 
         Example:
-            >>> result = await service.update_last_login(user_id, datetime.now(timezone.utc))
+            >>> await service.update_last_login(user_id, datetime.now(timezone.utc))
         """
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._update_last_login_impl(self._session, user_id, timestamp)
+                await self._update_last_login_impl(self._session, user_id, timestamp)
+            else:
+                # Otherwise create new session (production mode)
+                async with self.db_manager.get_session_async() as session:
+                    await self._update_last_login_impl(session, user_id, timestamp)
 
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
-                return await self._update_last_login_impl(session, user_id, timestamp)
-
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update last login: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to update last login: {str(e)}",
+                context={"user_id": user_id}
+            )
 
     async def _update_last_login_impl(
         self, session: AsyncSession, user_id: str, timestamp: datetime
-    ) -> Dict[str, Any]:
+    ) -> None:
         """Implementation that uses provided session"""
         stmt = select(User).where(User.id == user_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            return {"success": False, "error": "User not found"}
+            raise ResourceNotFoundError(
+                message="User not found",
+                context={"user_id": user_id}
+            )
 
         user.last_login = timestamp
         await session.commit()
@@ -221,13 +248,11 @@ class AuthService:
             extra={"user_id": user_id, "timestamp": timestamp.isoformat()}
         )
 
-        return {"success": True}
-
     # ============================================================================
     # Setup State Methods
     # ============================================================================
 
-    async def check_setup_state(self, tenant_key: str) -> Dict[str, Any]:
+    async def check_setup_state(self, tenant_key: str) -> Optional[Dict[str, Any]]:
         """
         Check setup state for tenant.
 
@@ -235,18 +260,18 @@ class AuthService:
             tenant_key: Tenant key
 
         Returns:
-            Dict with success status and setup state data or None
+            Setup state data or None if not found
             {
-                "success": True,
-                "data": {
-                    "first_admin_created": bool,
-                    "database_initialized": bool,
-                    ...
-                } or None
+                "first_admin_created": bool,
+                "database_initialized": bool,
+                ...
             }
 
+        Raises:
+            BaseGiljoException: For errors
+
         Example:
-            >>> result = await service.check_setup_state("test_tenant")
+            >>> state = await service.check_setup_state("test_tenant")
         """
         try:
             # Use provided session if available (test mode)
@@ -259,33 +284,33 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to check setup state: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to check setup state: {str(e)}",
+                context={"tenant_key": tenant_key}
+            )
 
     async def _check_setup_state_impl(
         self, session: AsyncSession, tenant_key: str
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Implementation that uses provided session"""
         stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         result = await session.execute(stmt)
         setup_state = result.scalar_one_or_none()
 
         if not setup_state:
-            return {"success": True, "data": None}
+            return None
 
         return {
-            "success": True,
-            "data": {
-                "first_admin_created": setup_state.first_admin_created,
-                "database_initialized": setup_state.database_initialized,
-                "tenant_key": setup_state.tenant_key,
-            }
+            "first_admin_created": setup_state.first_admin_created,
+            "database_initialized": setup_state.database_initialized,
+            "tenant_key": setup_state.tenant_key,
         }
 
     # ============================================================================
     # API Key Methods
     # ============================================================================
 
-    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> Dict[str, Any]:
+    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> List[Dict[str, Any]]:
         """
         List API keys for user.
 
@@ -294,17 +319,17 @@ class AuthService:
             include_revoked: Include revoked keys in results (default: False)
 
         Returns:
-            Dict with success status and list of API keys
-            {
-                "success": True,
-                "data": [
-                    {"id": "...", "name": "...", "is_active": True, ...},
-                    ...
-                ]
-            }
+            List of API keys
+            [
+                {"id": "...", "name": "...", "is_active": True, ...},
+                ...
+            ]
+
+        Raises:
+            BaseGiljoException: For errors
 
         Example:
-            >>> result = await service.list_api_keys(user_id, include_revoked=True)
+            >>> keys = await service.list_api_keys(user_id, include_revoked=True)
         """
         try:
             # Use provided session if available (test mode)
@@ -317,11 +342,14 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list API keys: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to list API keys: {str(e)}",
+                context={"user_id": user_id}
+            )
 
     async def _list_api_keys_impl(
         self, session: AsyncSession, user_id: str, include_revoked: bool
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """Implementation that uses provided session"""
         if include_revoked:
             stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
@@ -349,7 +377,7 @@ class AuthService:
             for key in api_keys
         ]
 
-        return {"success": True, "data": keys_list}
+        return keys_list
 
     async def create_api_key(
         self, user_id: str, tenant_key: str, name: str, permissions: List[str]
@@ -364,21 +392,21 @@ class AuthService:
             permissions: List of permissions (e.g., ["*"] for all)
 
         Returns:
-            Dict with success status and API key data (includes raw key ONCE)
+            API key data (includes raw key ONCE)
             {
-                "success": True,
-                "data": {
-                    "id": "...",
-                    "name": "...",
-                    "api_key": "gk_...",  # RAW KEY - only shown once!
-                    "key_prefix": "gk_abc...",
-                    "key_hash": "$2b$..."  # Hashed version for storage
-                }
+                "id": "...",
+                "name": "...",
+                "api_key": "gk_...",  # RAW KEY - only shown once!
+                "key_prefix": "gk_abc...",
+                "key_hash": "$2b$..."  # Hashed version for storage
             }
+
+        Raises:
+            BaseGiljoException: For errors
 
         Example:
             >>> result = await service.create_api_key(user_id, tenant_key, "My Key", ["*"])
-            >>> print("Store this key:", result["data"]["api_key"])
+            >>> print("Store this key:", result["api_key"])
         """
         try:
             # Use provided session if available (test mode)
@@ -393,7 +421,10 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to create API key: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to create API key: {str(e)}",
+                context={"user_id": user_id, "name": name}
+            )
 
     async def _create_api_key_impl(
         self,
@@ -432,18 +463,15 @@ class AuthService:
         )
 
         return {
-            "success": True,
-            "data": {
-                "id": str(new_key.id),
-                "name": new_key.name,
-                "api_key": api_key,  # RAW KEY - only shown once!
-                "key_prefix": key_prefix,
-                "key_hash": key_hash,
-                "permissions": new_key.permissions,
-            }
+            "id": str(new_key.id),
+            "name": new_key.name,
+            "api_key": api_key,  # RAW KEY - only shown once!
+            "key_prefix": key_prefix,
+            "key_hash": key_hash,
+            "permissions": new_key.permissions,
         }
 
-    async def revoke_api_key(self, key_id: str, user_id: str) -> Dict[str, Any]:
+    async def revoke_api_key(self, key_id: str, user_id: str) -> None:
         """
         Revoke (deactivate) an API key.
 
@@ -451,35 +479,44 @@ class AuthService:
             key_id: API key UUID
             user_id: User UUID (for ownership verification)
 
-        Returns:
-            Dict with success status or error
+        Raises:
+            ResourceNotFoundError: If API key not found or access denied
+            BaseGiljoException: For other errors
 
         Example:
-            >>> result = await service.revoke_api_key(key_id, user_id)
+            >>> await service.revoke_api_key(key_id, user_id)
         """
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._revoke_api_key_impl(self._session, key_id, user_id)
+                await self._revoke_api_key_impl(self._session, key_id, user_id)
+            else:
+                # Otherwise create new session (production mode)
+                async with self.db_manager.get_session_async() as session:
+                    await self._revoke_api_key_impl(session, key_id, user_id)
 
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
-                return await self._revoke_api_key_impl(session, key_id, user_id)
-
+        except ResourceNotFoundError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to revoke API key: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to revoke API key: {str(e)}",
+                context={"key_id": key_id, "user_id": user_id}
+            )
 
     async def _revoke_api_key_impl(
         self, session: AsyncSession, key_id: str, user_id: str
-    ) -> Dict[str, Any]:
+    ) -> None:
         """Implementation that uses provided session"""
         stmt = select(APIKey).where(APIKey.id == key_id, APIKey.user_id == user_id)
         result = await session.execute(stmt)
         api_key = result.scalar_one_or_none()
 
         if not api_key:
-            return {"success": False, "error": "API key not found or access denied"}
+            raise ResourceNotFoundError(
+                message="API key not found or access denied",
+                context={"key_id": key_id, "user_id": user_id}
+            )
 
         # Revoke key
         api_key.is_active = False
@@ -490,8 +527,6 @@ class AuthService:
             f"API key revoked: {api_key.name} (user: {user_id})",
             extra={"user_id": user_id, "key_id": key_id, "key_name": api_key.name}
         )
-
-        return {"success": True}
 
     # ============================================================================
     # User Registration Methods
@@ -516,20 +551,21 @@ class AuthService:
             requesting_admin_id: Admin user ID creating this user
 
         Returns:
-            Dict with success status and new user data
+            New user data
             {
-                "success": True,
-                "data": {
-                    "id": "...",
-                    "username": "...",
-                    "email": "...",
-                    "role": "...",
-                    "tenant_key": "..."  # Auto-generated per-user tenant
-                }
+                "id": "...",
+                "username": "...",
+                "email": "...",
+                "role": "...",
+                "tenant_key": "..."  # Auto-generated per-user tenant
             }
 
+        Raises:
+            ValidationError: If username/email already exists
+            BaseGiljoException: For other errors
+
         Example:
-            >>> result = await service.register_user(
+            >>> user = await service.register_user(
             ...     "newuser", "new@example.com", "Password123!", "developer", admin_id
             ... )
         """
@@ -546,9 +582,14 @@ class AuthService:
                     session, username, email, password, role, requesting_admin_id
                 )
 
+        except ValidationError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to register user: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to register user: {str(e)}",
+                context={"username": username}
+            )
 
     async def _register_user_impl(
         self,
@@ -564,14 +605,20 @@ class AuthService:
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
         if result.scalar_one_or_none():
-            return {"success": False, "error": f"Username '{username}' already exists"}
+            raise ValidationError(
+                message=f"Username '{username}' already exists",
+                context={"username": username, "field": "username"}
+            )
 
         # Check for duplicate email if provided
         if email:
             stmt = select(User).where(User.email == email)
             result = await session.execute(stmt)
             if result.scalar_one_or_none():
-                return {"success": False, "error": f"Email '{email}' already exists"}
+                raise ValidationError(
+                    message=f"Email '{email}' already exists",
+                    context={"email": email, "field": "email"}
+                )
 
         # Hash password
         password_hash = bcrypt.hash(password)
@@ -601,14 +648,11 @@ class AuthService:
         )
 
         return {
-            "success": True,
-            "data": {
-                "id": str(new_user.id),
-                "username": new_user.username,
-                "email": new_user.email,
-                "role": new_user.role,
-                "tenant_key": new_user.tenant_key,
-            }
+            "id": str(new_user.id),
+            "username": new_user.username,
+            "email": new_user.email,
+            "role": new_user.role,
+            "tenant_key": new_user.tenant_key,
         }
 
     async def create_first_admin(
@@ -624,22 +668,23 @@ class AuthService:
             full_name: Admin full name (optional)
 
         Returns:
-            Dict with success status, user data, and JWT token for immediate login
+            User data and JWT token for immediate login
             {
-                "success": True,
-                "data": {
-                    "id": "...",
-                    "username": "...",
-                    "email": "...",
-                    "role": "admin",
-                    "tenant_key": "...",
-                    "is_active": True,
-                    "token": "eyJ..."  # JWT for immediate login
-                }
+                "id": "...",
+                "username": "...",
+                "email": "...",
+                "role": "admin",
+                "tenant_key": "...",
+                "is_active": True,
+                "token": "eyJ..."  # JWT for immediate login
             }
 
+        Raises:
+            ValidationError: If admin already exists or password too weak
+            BaseGiljoException: For other errors
+
         Example:
-            >>> result = await service.create_first_admin(
+            >>> admin = await service.create_first_admin(
             ...     "admin", "admin@example.com", "SecureAdmin123!@#", "Administrator"
             ... )
         """
@@ -654,9 +699,14 @@ class AuthService:
             async with self.db_manager.get_session_async() as session:
                 return await self._create_first_admin_impl(session, username, email, password, full_name)
 
+        except ValidationError:
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to create first admin: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to create first admin: {str(e)}",
+                context={"username": username}
+            )
 
     async def _create_first_admin_impl(
         self,
@@ -673,11 +723,17 @@ class AuthService:
         total_users = result.scalar()
 
         if total_users > 0:
-            return {"success": False, "error": "Administrator account already exists"}
+            raise ValidationError(
+                message="Administrator account already exists",
+                context={"reason": "users_exist", "count": total_users}
+            )
 
         # Validate password strength (12+ chars, complexity)
         if len(password) < 12:
-            return {"success": False, "error": "Password must be at least 12 characters"}
+            raise ValidationError(
+                message="Password must be at least 12 characters",
+                context={"password_length": len(password), "required": 12}
+            )
 
         has_upper = any(c.isupper() for c in password)
         has_lower = any(c.islower() for c in password)
@@ -685,10 +741,15 @@ class AuthService:
         has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
 
         if not (has_upper and has_lower and has_digit and has_special):
-            return {
-                "success": False,
-                "error": "Password must contain uppercase, lowercase, digit, and special character"
-            }
+            raise ValidationError(
+                message="Password must contain uppercase, lowercase, digit, and special character",
+                context={
+                    "has_uppercase": has_upper,
+                    "has_lowercase": has_lower,
+                    "has_digit": has_digit,
+                    "has_special": has_special
+                }
+            )
 
         # Hash password
         password_hash = bcrypt.hash(password)
@@ -748,15 +809,12 @@ class AuthService:
         )
 
         return {
-            "success": True,
-            "data": {
-                "id": str(admin_user.id),
-                "username": admin_user.username,
-                "email": admin_user.email,
-                "full_name": admin_user.full_name,
-                "role": admin_user.role,
-                "tenant_key": admin_user.tenant_key,
-                "is_active": admin_user.is_active,
-                "token": token,  # JWT for immediate login
-            }
+            "id": str(admin_user.id),
+            "username": admin_user.username,
+            "email": admin_user.email,
+            "full_name": admin_user.full_name,
+            "role": admin_user.role,
+            "tenant_key": admin_user.tenant_key,
+            "is_active": admin_user.is_active,
+            "token": token,  # JWT for immediate login
         }
