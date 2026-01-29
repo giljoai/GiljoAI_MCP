@@ -3,9 +3,13 @@ PostgreSQL Test Database Helper
 
 Provides utilities for managing PostgreSQL test databases with proper isolation.
 Each test gets a clean database state through transaction rollback.
+
+CRITICAL SAFETY: This module includes guards to prevent accidental production database access.
 """
 
 import asyncio
+import os
+import re
 from typing import Optional
 
 from sqlalchemy import text
@@ -13,6 +17,67 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Base
+
+
+# =============================================================================
+# PRODUCTION DATABASE SAFETY GUARD
+# =============================================================================
+# CRITICAL: These checks prevent tests from ever connecting to production.
+# DO NOT REMOVE OR BYPASS THESE CHECKS.
+
+PRODUCTION_DB_NAME = "giljo_mcp"
+TEST_DB_SUFFIX = "_test"
+ALLOWED_TEST_DBS = {"giljo_mcp_test", "postgres"}  # postgres needed for admin operations
+
+
+def validate_database_name(database: str) -> None:
+    """
+    Validate that a database name is safe for testing.
+
+    RAISES RuntimeError if database name matches production.
+    This is a CRITICAL safety guard.
+
+    Args:
+        database: Database name to validate
+
+    Raises:
+        RuntimeError: If database name appears to be production
+    """
+    if database == PRODUCTION_DB_NAME:
+        raise RuntimeError(
+            f"SAFETY GUARD TRIGGERED: Attempted to connect to production database '{database}'!\n"
+            f"Tests must ONLY use '{PRODUCTION_DB_NAME}{TEST_DB_SUFFIX}' or other test databases.\n"
+            f"This check exists to prevent accidental data loss."
+        )
+
+    # Also check connection strings
+    if f"/{PRODUCTION_DB_NAME}" in database and TEST_DB_SUFFIX not in database:
+        raise RuntimeError(
+            f"SAFETY GUARD TRIGGERED: Connection string appears to target production!\n"
+            f"Found: '{database}'\n"
+            f"Tests must ONLY connect to databases ending with '{TEST_DB_SUFFIX}'."
+        )
+
+
+def validate_connection_string(url: str) -> None:
+    """
+    Validate that a connection string targets a test database.
+
+    RAISES RuntimeError if connection string targets production.
+
+    Args:
+        url: Database connection URL
+
+    Raises:
+        RuntimeError: If URL targets production database
+    """
+    # Extract database name from URL patterns like:
+    # postgresql://user:pass@host:port/dbname
+    # postgresql+asyncpg://user:pass@host:port/dbname
+    match = re.search(r'/([^/?]+)(?:\?|$)', url)
+    if match:
+        db_name = match.group(1)
+        validate_database_name(db_name)
 
 
 class PostgreSQLTestHelper:
@@ -40,25 +105,34 @@ class PostgreSQLTestHelper:
         """
         Build PostgreSQL test database URL.
 
+        SAFETY: Validates database name to prevent production access.
+
         Args:
             database: Database name (default: giljo_mcp_test)
             async_driver: Use async driver (asyncpg) vs sync (psycopg2)
 
         Returns:
             PostgreSQL connection URL
+
+        Raises:
+            RuntimeError: If database name matches production
         """
+        # CRITICAL SAFETY CHECK - prevent production database access
+        if database not in ALLOWED_TEST_DBS:
+            validate_database_name(database)
+
         config = PostgreSQLTestHelper.DEFAULT_CONFIG.copy()
         config["database"] = database
 
-        if async_driver:
-            return (
-                f"postgresql+asyncpg://{config['username']}:{config['password']}"
-                f"@{config['host']}:{config['port']}/{config['database']}"
-            )
-        return (
+        url = (
+            f"postgresql+asyncpg://{config['username']}:{config['password']}"
+            f"@{config['host']}:{config['port']}/{config['database']}"
+        ) if async_driver else (
             f"postgresql://{config['username']}:{config['password']}"
             f"@{config['host']}:{config['port']}/{config['database']}"
         )
+
+        return url
 
     @staticmethod
     async def ensure_test_database_exists():
@@ -199,17 +273,33 @@ class TransactionalTestContext:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Rollback transaction and close connection."""
-        try:
-            if self.session:
-                await self.session.close()
-        finally:
+        # Close session first
+        if self.session:
             try:
-                if self.transaction:
-                    # Always rollback - this ensures clean state
-                    await self.transaction.rollback()
+                await self.session.close()
+            except Exception:
+                pass  # Ignore session close errors
             finally:
-                if self.connection:
-                    await self.connection.close()
+                self.session = None
+
+        # Then rollback transaction
+        if self.transaction:
+            try:
+                # Always rollback - this ensures clean state
+                await self.transaction.rollback()
+            except Exception:
+                pass  # Ignore rollback errors
+            finally:
+                self.transaction = None
+
+        # Finally close connection
+        if self.connection:
+            try:
+                await self.connection.close()
+            except Exception:
+                pass  # Ignore connection close errors
+            finally:
+                self.connection = None
 
 
 async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) -> bool:

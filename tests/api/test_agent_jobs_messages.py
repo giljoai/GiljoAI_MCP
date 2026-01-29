@@ -91,30 +91,32 @@ async def tenant_b_admin(db_manager):
 async def auth_headers_a(api_client: AsyncClient, tenant_a_admin):
     """Get authentication headers for Tenant A."""
     response = await api_client.post(
-        "/api/auth/token",
+        "/api/auth/login",
         json={
             "username": tenant_a_admin._test_username,
             "password": tenant_a_admin._test_password,
         },
     )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    assert response.status_code == 200, f"Login failed: {response.json()}"
+    access_token = response.cookies.get("access_token")
+    assert access_token is not None
+    return {"Authorization": f"Bearer {access_token}"}
 
 
 @pytest.fixture
 async def auth_headers_b(api_client: AsyncClient, tenant_b_admin):
     """Get authentication headers for Tenant B."""
     response = await api_client.post(
-        "/api/auth/token",
+        "/api/auth/login",
         json={
             "username": tenant_b_admin._test_username,
             "password": tenant_b_admin._test_password,
         },
     )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    assert response.status_code == 200, f"Login failed: {response.json()}"
+    access_token = response.cookies.get("access_token")
+    assert access_token is not None
+    return {"Authorization": f"Bearer {access_token}"}
 
 
 # ============================================================================
@@ -124,67 +126,85 @@ async def auth_headers_b(api_client: AsyncClient, tenant_b_admin):
 @pytest.fixture
 async def agent_job_with_messages(db_manager, tenant_a_admin):
     """Create an agent job with test messages."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
-    job_id = f"job_{uuid4()}"
+    job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     other_agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     async with db_manager.get_session_async() as session:
-        # Create agent job
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Test Project {uuid4().hex[:8]}",
+            description="Test project for agent job with messages",
+            mission="Test mission for message testing",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
+        # Create agent job (work order - minimal fields)
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
-            agent_display_name="Test Agent",
-            agent_name="test-agent",
             mission="Test mission",
-            status="active",
+            job_type="test-agent",  # Required field
             tenant_key=tenant_a_admin.tenant_key,
         )
         session.add(agent_job)
 
-        # Create agent execution
+        # Create agent execution (execution details with agent info)
         execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
-            project_id=project_id,
             agent_display_name="Test Agent",
-            agent_name="test-agent",
-            mission="Test mission",
-            status="active",
             tenant_key=tenant_a_admin.tenant_key,
+            status="working",
         )
         session.add(execution)
 
-        # Create outbound message (agent is sender)
+        # Create outbound message (sent by agent)
         msg_outbound = Message(
-            from_agent=agent_id,
+            project_id=project_id,
             to_agents=[other_agent_id],
             content="Outbound message from test agent",
-            status="sent",
+            status="pending",
             tenant_key=tenant_a_admin.tenant_key,
+            meta_data={"_from_agent": agent_id},  # Track sender in metadata (underscore prefix)
         )
         session.add(msg_outbound)
 
-        # Create inbound message (agent is recipient)
+        # Create inbound message (received by agent)
         msg_inbound = Message(
-            from_agent=other_agent_id,
+            project_id=project_id,
             to_agents=[agent_id],
             content="Inbound message to test agent",
-            status="delivered",
+            status="pending",
             tenant_key=tenant_a_admin.tenant_key,
+            meta_data={"_from_agent": other_agent_id},
         )
         session.add(msg_inbound)
 
         # Create broadcast message (agent is one of many recipients)
         msg_broadcast = Message(
-            from_agent=other_agent_id,
+            project_id=project_id,
             to_agents=[agent_id, str(uuid4()), str(uuid4())],
             content="Broadcast message to multiple agents",
-            status="delivered",
+            status="pending",
             tenant_key=tenant_a_admin.tenant_key,
+            meta_data={"_from_agent": other_agent_id},
         )
         session.add(msg_broadcast)
 
@@ -201,46 +221,62 @@ async def agent_job_with_messages(db_manager, tenant_a_admin):
 @pytest.fixture
 async def agent_job_cross_tenant(db_manager, tenant_b_admin):
     """Create an agent job in Tenant B for cross-tenant testing."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
-    job_id = f"job_{uuid4()}"
+    job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     async with db_manager.get_session_async() as session:
-        # Create agent job for Tenant B
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Test Product B {uuid4().hex[:8]}",
+            tenant_key=tenant_b_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Test Project B {uuid4().hex[:8]}",
+            description="Test project for Tenant B agent job",
+            mission="Test mission for Tenant B",
+            tenant_key=tenant_b_admin.tenant_key,
+        )
+        session.add(project)
+
+        # Create agent job for Tenant B (work order - minimal fields)
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
-            agent_display_name="Tenant B Agent",
-            agent_name="tenant-b-agent",
             mission="Tenant B mission",
-            status="active",
+            job_type="tenant-b-agent",  # Required field
             tenant_key=tenant_b_admin.tenant_key,
         )
         session.add(agent_job)
 
-        # Create agent execution for Tenant B
+        # Create agent execution for Tenant B (execution details with agent info)
         execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
-            project_id=project_id,
             agent_display_name="Tenant B Agent",
-            agent_name="tenant-b-agent",
-            mission="Tenant B mission",
-            status="active",
             tenant_key=tenant_b_admin.tenant_key,
+            status="working",
         )
         session.add(execution)
 
         # Create message for Tenant B
         msg = Message(
-            from_agent=agent_id,
+            project_id=project_id,
             to_agents=[str(uuid4())],
             content="Tenant B message - should not be visible to Tenant A",
-            status="sent",
+            status="pending",
             tenant_key=tenant_b_admin.tenant_key,
+            meta_data={"_from_agent": agent_id},
         )
         session.add(msg)
 
@@ -348,22 +384,40 @@ async def test_get_job_messages_empty_result(
     tenant_a_admin,
 ):
     """Test retrieving messages for a job with no messages."""
-    from src.giljo_mcp.models import AgentJob
+    from src.giljo_mcp.models import AgentJob, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
-    job_id = f"job_{uuid4()}"
+    job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     # Create job without messages
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Empty Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Empty Test Project {uuid4().hex[:8]}",
+            description="Test project for empty messages test",
+            mission="Test mission for empty messages test",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
-            agent_display_name="Empty Agent",
-            agent_name="empty-agent",
             mission="Empty mission",
-            status="active",
+            job_type="empty-agent",  # Required field
             tenant_key=tenant_a_admin.tenant_key,
         )
         session.add(agent_job)
@@ -371,12 +425,9 @@ async def test_get_job_messages_empty_result(
         execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
-            project_id=project_id,
             agent_display_name="Empty Agent",
-            agent_name="empty-agent",
-            mission="Empty mission",
-            status="active",
             tenant_key=tenant_a_admin.tenant_key,
+            status="working",
         )
         session.add(execution)
         await session.commit()
@@ -412,7 +463,7 @@ async def test_get_job_messages_cross_tenant_isolation(
 
     # Should return 404 (job not found for this tenant)
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert "not found" in response.json()["message"].lower()
 
 
 # ============================================================================
@@ -443,7 +494,7 @@ async def test_get_job_messages_not_found(
     auth_headers_a,
 ):
     """Test retrieving messages for non-existent job."""
-    fake_job_id = f"job_{uuid4()}"
+    fake_job_id = str(uuid4())
 
     response = await api_client.get(
         f"/api/agent-jobs/{fake_job_id}/messages",
@@ -452,7 +503,7 @@ async def test_get_job_messages_not_found(
 
     # Should return 404
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert "not found" in response.json()["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -499,24 +550,42 @@ async def test_get_job_messages_truncation(
     tenant_a_admin,
 ):
     """Test that message content is truncated to 500 characters."""
-    from src.giljo_mcp.models import AgentJob, Message
+    from src.giljo_mcp.models import AgentJob, Message, Product, Project
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
-    job_id = f"job_{uuid4()}"
+    job_id = str(uuid4())  # Just use UUID, not "job_" prefix (DB varchar(36) limit)
     agent_id = str(uuid4())
     project_id = str(uuid4())
+    product_id = str(uuid4())
 
     # Create job with long message
     long_content = "A" * 1000  # 1000 character message
 
     async with db_manager.get_session_async() as session:
+        # Create product first (required for project FK)
+        product = Product(
+            id=product_id,
+            name=f"Truncation Test Product {uuid4().hex[:8]}",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(product)
+
+        # Create project (required for agent_job FK)
+        project = Project(
+            id=project_id,
+            product_id=product_id,
+            name=f"Truncation Test Project {uuid4().hex[:8]}",
+            description="Test project for message truncation test",
+            mission="Test mission for truncation test",
+            tenant_key=tenant_a_admin.tenant_key,
+        )
+        session.add(project)
+
         agent_job = AgentJob(
             job_id=job_id,
             project_id=project_id,
-            agent_display_name="Test Agent",
-            agent_name="test-agent",
             mission="Test mission",
-            status="active",
+            job_type="test-agent",  # Required field
             tenant_key=tenant_a_admin.tenant_key,
         )
         session.add(agent_job)
@@ -524,21 +593,19 @@ async def test_get_job_messages_truncation(
         execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
-            project_id=project_id,
             agent_display_name="Test Agent",
-            agent_name="test-agent",
-            mission="Test mission",
-            status="active",
             tenant_key=tenant_a_admin.tenant_key,
+            status="working",
         )
         session.add(execution)
 
         msg = Message(
-            from_agent=agent_id,
+            project_id=project_id,
             to_agents=[str(uuid4())],
             content=long_content,
-            status="sent",
+            status="pending",
             tenant_key=tenant_a_admin.tenant_key,
+            meta_data={"_from_agent": agent_id},
         )
         session.add(msg)
         await session.commit()

@@ -31,6 +31,13 @@ from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.exceptions import (
+    TemplateNotFoundError,
+    TemplateValidationError,
+    TemplateRenderError,
+    ValidationError,
+    BaseGiljoException,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +86,11 @@ class TemplateService:
             tenant_key: Tenant key for filtering (uses current tenant if not provided)
 
         Returns:
-            Dict with success status and list of templates or error
+            Dict with template list and count
+
+        Raises:
+            ValidationError: When no tenant context is available
+            BaseGiljoException: When operation fails
 
         Example:
             >>> result = await service.list_templates()
@@ -92,10 +103,10 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "list_templates"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # TENANT ISOLATION: Only return templates for the specified tenant
@@ -124,9 +135,15 @@ class TemplateService:
                     "count": len(template_list)
                 }
 
+        except ValidationError:
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to list templates: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to list templates: {str(e)}",
+                context={"tenant_key": tenant_key}
+            ) from e
 
     async def get_template(
         self,
@@ -143,29 +160,33 @@ class TemplateService:
             tenant_key: Tenant key for filtering (uses current tenant if not provided)
 
         Returns:
-            Dict with success status and template details or error
+            Dict with template details
+
+        Raises:
+            ValidationError: When neither template_id nor template_name provided, or no tenant context
+            TemplateNotFoundError: When template not found
+            BaseGiljoException: When operation fails
 
         Example:
             >>> result = await service.get_template(template_name="orchestrator")
-            >>> if result["success"]:
-            ...     print(result["template"]["content"])
+            >>> print(result["template"]["content"])
         """
         try:
             if not template_id and not template_name:
-                return {
-                    "success": False,
-                    "error": "Either template_id or template_name must be provided"
-                }
+                raise ValidationError(
+                    message="Either template_id or template_name must be provided",
+                    context={"operation": "get_template"}
+                )
 
             # Use provided tenant_key or get from context
             if not tenant_key:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "get_template"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # Build query based on provided identifier
@@ -185,10 +206,14 @@ class TemplateService:
 
                 if not template:
                     identifier = template_id if template_id else template_name
-                    return {
-                        "success": False,
-                        "error": f"Template '{identifier}' not found"
-                    }
+                    raise TemplateNotFoundError(
+                        message=f"Template '{identifier}' not found",
+                        context={
+                            "template_id": template_id,
+                            "template_name": template_name,
+                            "tenant_key": tenant_key,
+                        }
+                    )
 
                 return {
                     "success": True,
@@ -205,9 +230,19 @@ class TemplateService:
                     },
                 }
 
+        except (ValidationError, TemplateNotFoundError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to get template: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to get template: {str(e)}",
+                context={
+                    "template_id": template_id,
+                    "template_name": template_name,
+                    "tenant_key": tenant_key,
+                }
+            ) from e
 
     async def create_template(
         self,
@@ -235,7 +270,11 @@ class TemplateService:
             tenant_key: Tenant key for multi-tenancy (auto-determined if not provided)
 
         Returns:
-            Dict with success status and template details or error
+            Dict with template details
+
+        Raises:
+            ValidationError: When no tenant context is available
+            BaseGiljoException: When operation fails
 
         Example:
             >>> result = await service.create_template(
@@ -251,10 +290,10 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "create_template"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # Create template entity
@@ -287,9 +326,18 @@ class TemplateService:
                     "tenant_key": tenant_key,
                 }
 
+        except ValidationError:
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to create template: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to create template: {str(e)}",
+                context={
+                    "name": name,
+                    "tenant_key": tenant_key,
+                }
+            ) from e
 
     async def update_template(
         self,
@@ -317,7 +365,12 @@ class TemplateService:
             tenant_key: Tenant key for validation (uses current tenant if not provided)
 
         Returns:
-            Dict with success status or error
+            Dict with success status
+
+        Raises:
+            ValidationError: When no tenant context is available
+            TemplateNotFoundError: When template not found
+            BaseGiljoException: When operation fails
 
         Example:
             >>> result = await service.update_template(
@@ -331,10 +384,10 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                return {
-                    "success": False,
-                    "error": "No tenant context available"
-                }
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "update_template"}
+                )
 
             async with self.db_manager.get_session_async() as session:
                 # Get template with tenant isolation
@@ -347,10 +400,13 @@ class TemplateService:
                 template = result.scalar_one_or_none()
 
                 if not template:
-                    return {
-                        "success": False,
-                        "error": f"Template '{template_id}' not found"
-                    }
+                    raise TemplateNotFoundError(
+                        message=f"Template '{template_id}' not found",
+                        context={
+                            "template_id": template_id,
+                            "tenant_key": tenant_key,
+                        }
+                    )
 
                 # Update fields if provided
                 if name is not None:
@@ -376,9 +432,18 @@ class TemplateService:
                     "updated": True,
                 }
 
+        except (ValidationError, TemplateNotFoundError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             self._logger.exception(f"Failed to update template: {e}")
-            return {"success": False, "error": str(e)}
+            raise BaseGiljoException(
+                message=f"Failed to update template: {str(e)}",
+                context={
+                    "template_id": template_id,
+                    "tenant_key": tenant_key,
+                }
+            ) from e
 
     # ============================================================================
     # Validation Methods

@@ -19,6 +19,7 @@ Test Coverage:
 - Install scripts have correct URL templating
 """
 import io
+import os
 import subprocess
 import sys
 import zipfile
@@ -43,10 +44,9 @@ from src.giljo_mcp.models import AgentTemplate, Base
 @pytest_asyncio.fixture
 async def fresh_db_engine(test_db):
     """Create fresh database engine for migration testing."""
-    # Use test_db fixture which provides clean database
-    from src.giljo_mcp.database import DatabaseManager
+    # Use test_db fixture which provides configured database manager
+    manager = test_db  # test_db is actually db_manager from conftest
 
-    manager = DatabaseManager()
     async with manager.get_session_async() as session:
         # Drop all tables to simulate fresh install
         async with session.begin():
@@ -56,10 +56,9 @@ async def fresh_db_engine(test_db):
             await session.execute(text("GRANT ALL ON SCHEMA public TO public"))
         await session.commit()
 
-    yield manager.engine
+    yield manager.async_engine
 
-    # Cleanup
-    await manager.close()
+    # Note: Don't close manager as it's shared from test_db fixture
 
 
 @pytest_asyncio.fixture
@@ -70,13 +69,12 @@ async def auth_headers_fixture(async_client: AsyncClient, test_db):
     Creates admin user and API key for authenticated endpoints.
     """
     from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
-    from src.giljo_mcp.database import DatabaseManager
     from src.giljo_mcp.models import APIKey, User
     from passlib.hash import bcrypt
     import uuid
     from datetime import datetime, timezone
 
-    manager = DatabaseManager()
+    manager = test_db  # test_db is db_manager from conftest
 
     async with manager.get_session_async() as session:
         # Create admin user
@@ -143,12 +141,19 @@ class TestFreshInstallFlow:
             assert 'agent_templates' in tables
 
         # Step 2: Run migrations (what install.py now does at line 1770)
-        # NOTE: This test assumes DATABASE_URL is set in environment
+        # Set DATABASE_URL for Alembic subprocess
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
+        test_db_url = PostgreSQLTestHelper.get_test_db_url(async_driver=False)
+
+        env = os.environ.copy()
+        env["DATABASE_URL"] = test_db_url
+
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            env=env
         )
 
         assert result.returncode == 0, f"Migration failed: {result.stderr}"
@@ -179,10 +184,9 @@ class TestFreshInstallFlow:
 
         Tests that seeded templates have correct values for new columns.
         """
-        from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.template_seeder import seed_tenant_templates
 
-        manager = DatabaseManager()
+        manager = test_db  # Use provided db_manager fixture
 
         async with manager.get_session_async() as session:
             # Seed templates (what install.py does after migrations)
@@ -208,7 +212,7 @@ class TestFreshInstallFlow:
                 assert background_color.startswith('#'), f"Invalid color format for {name}"
                 assert len(background_color) == 7, f"Invalid color length for {name}"
 
-        await manager.close()
+        # Note: Don't close manager as it's shared from test_db fixture
 
 
 # ========================================
@@ -226,9 +230,7 @@ class TestExistingInstallUpgrade:
 
         Tests that WHERE background_color IS NULL makes backfill idempotent.
         """
-        from src.giljo_mcp.database import DatabaseManager
-
-        manager = DatabaseManager()
+        manager = test_db  # Use provided db_manager fixture
 
         # Run migration once
         result1 = subprocess.run(
@@ -257,7 +259,7 @@ class TestExistingInstallUpgrade:
             # Count might be 0 or more, just verify query works
             assert count >= 0
 
-        await manager.close()
+        # Note: Don't close manager as it's shared from test_db fixture
 
 
     @pytest.mark.asyncio
@@ -267,10 +269,9 @@ class TestExistingInstallUpgrade:
 
         Tests that existing templates get backfilled correctly.
         """
-        from src.giljo_mcp.database import DatabaseManager
         import uuid
 
-        manager = DatabaseManager()
+        manager = test_db  # Use provided db_manager fixture
 
         async with manager.get_session_async() as session:
             # Create test template before migration (if columns don't exist yet, skip this part)
@@ -309,7 +310,7 @@ class TestExistingInstallUpgrade:
             assert cli_tool == "claude"
             assert background_color == "#D4A574"
 
-        await manager.close()
+        # Note: Don't close manager as it's shared from test_db fixture
 
 
 # ========================================
@@ -345,14 +346,13 @@ class TestDownloadTokenSystem:
         Tests complete flow: generate token → download ZIP → verify contents.
         """
         from src.giljo_mcp.template_seeder import seed_tenant_templates
-        from src.giljo_mcp.database import DatabaseManager
 
         # Seed some templates first
-        manager = DatabaseManager()
+        manager = test_db  # Use provided db_manager fixture
         async with manager.get_session_async() as session:
             await seed_tenant_templates(session, tenant_key="test-tenant")
             await session.commit()
-        await manager.close()
+        # Note: Don't close manager as it's shared from test_db fixture
 
         # Generate token
         token_response = await async_client.post(

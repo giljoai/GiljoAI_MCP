@@ -125,8 +125,13 @@ async def db_manager():
 
     yield db_mgr
 
-    # Cleanup
-    await db_mgr.close_async()
+    # Cleanup - ensure proper async disposal
+    try:
+        if db_mgr and db_mgr.async_engine:
+            await db_mgr.close_async()
+    except Exception:
+        # Ignore cleanup errors - test is done
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")

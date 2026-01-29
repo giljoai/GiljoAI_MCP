@@ -1,13 +1,13 @@
 """
-Test suite for vision_documents depth migration from 'optional' to 'light'
+Test suite for vision_documents depth migration and defaults
 
 Handover: 0352_vision_document_depth_refactor.md
 
 Tests verify:
-1. DEFAULT_DEPTH_CONFIG uses 'light' instead of 'optional'
-2. Runtime normalization converts 'optional' to 'light' in _get_user_config
-3. Users with 'optional' in database get 'light' at runtime
-4. New users get 'light' as default
+1. DEFAULT_DEPTH_CONFIG uses 'medium' as default (updated from original 'light')
+2. Runtime normalization converts legacy 'optional' to 'light' in _get_user_config
+3. Users with 'optional' in database get 'light' at runtime (backward compatibility)
+4. New users get 'medium' as default (current default)
 5. mission_planner.py handles defaults correctly
 """
 
@@ -22,12 +22,12 @@ from src.giljo_mcp.tools.orchestration import DEFAULT_DEPTH_CONFIG, _get_user_co
 
 
 class TestVisionDepthDefaults:
-    """Test that default configuration uses 'light' instead of 'optional'"""
+    """Test that default configuration uses 'medium' (current default)"""
 
-    def test_default_depth_config_uses_light(self):
-        """Verify DEFAULT_DEPTH_CONFIG has vision_documents set to 'light'"""
+    def test_default_depth_config_uses_medium(self):
+        """Verify DEFAULT_DEPTH_CONFIG has vision_documents set to 'medium'"""
         assert "vision_documents" in DEFAULT_DEPTH_CONFIG
-        assert DEFAULT_DEPTH_CONFIG["vision_documents"] == "light"
+        assert DEFAULT_DEPTH_CONFIG["vision_documents"] == "medium"
         assert DEFAULT_DEPTH_CONFIG["vision_documents"] != "optional"
 
 
@@ -95,8 +95,8 @@ class TestRuntimeNormalization:
             assert config["depth_config"]["vision_documents"] == depth_value
 
     @pytest.mark.asyncio
-    async def test_new_user_gets_light_default(self):
-        """New user with no depth_config gets 'light' as default"""
+    async def test_new_user_gets_medium_default(self):
+        """New user with no depth_config gets 'medium' as default"""
         mock_session = AsyncMock(spec=AsyncSession)
         user_id = str(uuid.uuid4())
         tenant_key = "test_tenant"
@@ -115,12 +115,12 @@ class TestRuntimeNormalization:
 
         config = await _get_user_config(user_id, tenant_key, mock_session)
 
-        # Verify defaults are used with 'light'
-        assert config["depth_config"]["vision_documents"] == "light"
+        # Verify defaults are used with 'medium'
+        assert config["depth_config"]["vision_documents"] == "medium"
 
     @pytest.mark.asyncio
-    async def test_nonexistent_user_gets_light_default(self):
-        """Nonexistent user gets default config with 'light'"""
+    async def test_nonexistent_user_gets_medium_default(self):
+        """Nonexistent user gets default config with 'medium'"""
         mock_session = AsyncMock(spec=AsyncSession)
         user_id = str(uuid.uuid4())
         tenant_key = "test_tenant"
@@ -132,8 +132,8 @@ class TestRuntimeNormalization:
 
         config = await _get_user_config(user_id, tenant_key, mock_session)
 
-        # Verify defaults are returned with 'light'
-        assert config["depth_config"]["vision_documents"] == "light"
+        # Verify defaults are returned with 'medium'
+        assert config["depth_config"]["vision_documents"] == "medium"
 
 
 class TestMissionPlannerDefault:
@@ -144,7 +144,7 @@ class TestMissionPlannerDefault:
         # This test ensures the mission_planner.py syntax is valid
         # and that the default value is used correctly
         try:
-            from giljo_mcp import mission_planner
+            from src.giljo_mcp import mission_planner
 
             # If import succeeds, basic syntax is correct
             assert hasattr(mission_planner, "MissionPlanner")

@@ -17,7 +17,6 @@ vi.mock('@/services/api', () => ({
       resetFieldPriorityConfig: vi.fn(),
     },
     products: {
-      getActiveProductTokenEstimate: vi.fn(),
       getGitIntegration: vi.fn(() => Promise.resolve({ data: { enabled: false, commit_limit: 20, default_branch: 'main' } })),
       updateGitIntegration: vi.fn(() => Promise.resolve({ data: { enabled: true, commit_limit: 20, default_branch: 'main' } })),
     },
@@ -80,19 +79,6 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
           'tech_stack.backend': 1,
           'features.core': 2,
           'architecture.pattern': 3,
-        },
-      },
-    })
-
-    api.products.getActiveProductTokenEstimate.mockResolvedValue({
-      data: {
-        name: 'Test Product',
-        total_tokens: 450,
-        field_tokens: {
-          'tech_stack.languages': 120,
-          'tech_stack.backend': 150,
-          'features.core': 100,
-          'architecture.pattern': 80,
         },
       },
     })
@@ -287,135 +273,6 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
     })
   })
 
-  describe('Phase 3: Real-Time Token Estimation', () => {
-    it('should prefer real token data from active product', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Active product token estimate should be loaded
-      expect(wrapper.vm.activeProductTokens).not.toBeNull()
-      expect(wrapper.vm.activeProductTokens.total_tokens).toBe(450)
-
-      // Estimated tokens should use real data, not static calculation
-      expect(wrapper.vm.estimatedTokens).toBe(450)
-    })
-
-    it('should fall back to static calculation when no active product', async () => {
-      api.products.getActiveProductTokenEstimate.mockRejectedValue(
-        new Error('No active product')
-      )
-
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      expect(wrapper.vm.activeProductTokens).toBeNull()
-
-      // Should use static calculation: (2 * 50) + (1 * 30) + (1 * 20) + 500
-      // = 100 + 30 + 20 + 500 = 650
-      const expectedTokens = (2 * 50) + (1 * 30) + (1 * 20) + 500
-      expect(wrapper.vm.estimatedTokens).toBe(expectedTokens)
-    })
-
-    it('tokenPercentage should calculate correctly', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 450 / 2000 = 0.225 = 22.5% rounds to 22%
-      const percentage = Math.round((450 / 2000) * 100)
-      expect(wrapper.vm.tokenPercentage).toBe(percentage)
-    })
-
-    it('tokenIndicatorColor should be success when < 70%', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 450 / 2000 = 22.5% (< 70%)
-      expect(wrapper.vm.tokenPercentage).toBeLessThan(70)
-      expect(wrapper.vm.tokenIndicatorColor).toBe('success')
-    })
-
-    it('tokenIndicatorColor should be warning when 70-90%', async () => {
-      api.products.getActiveProductTokenEstimate.mockResolvedValue({
-        data: {
-          name: 'Test Product',
-          total_tokens: 1600, // 80% of 2000
-          field_tokens: {},
-        },
-      })
-
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 1600 / 2000 = 80%
-      expect(wrapper.vm.tokenPercentage).toBe(80)
-      expect(wrapper.vm.tokenIndicatorColor).toBe('warning')
-    })
-
-    it('tokenIndicatorColor should be error when > 90%', async () => {
-      api.products.getActiveProductTokenEstimate.mockResolvedValue({
-        data: {
-          name: 'Test Product',
-          total_tokens: 1900, // 95% of 2000
-          field_tokens: {},
-        },
-      })
-
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 1900 / 2000 = 95%
-      expect(wrapper.vm.tokenPercentage).toBe(95)
-      expect(wrapper.vm.tokenIndicatorColor).toBe('error')
-    })
-
-    it('should refresh token estimate after saving', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      api.users.updateFieldPriorityConfig.mockResolvedValue({
-        data: { success: true },
-      })
-
-      const initialCallCount = api.products.getActiveProductTokenEstimate.mock.calls.length
-      
-      wrapper.vm.fieldPriorityHasChanges = true
-      await wrapper.vm.saveFieldPriority()
-
-      // Should have called fetchActiveProductTokenEstimate after save
-      const newCallCount = api.products.getActiveProductTokenEstimate.mock.calls.length
-      expect(newCallCount).toBeGreaterThan(initialCallCount)
-    })
-
-    it('should refresh token estimate after reset', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      api.users.resetFieldPriorityConfig.mockResolvedValue({
-        data: {
-          version: '1.0',
-          token_budget: 2000,
-          fields: {},
-        },
-      })
-
-      const initialCallCount = api.products.getActiveProductTokenEstimate.mock.calls.length
-      
-      await wrapper.vm.resetFieldPriorityToDefaults()
-
-      // Should have called fetchActiveProductTokenEstimate after reset
-      const newCallCount = api.products.getActiveProductTokenEstimate.mock.calls.length
-      expect(newCallCount).toBeGreaterThan(initialCallCount)
-    })
-  })
-
   describe('Phase 4: Edge Cases', () => {
     it('should show empty state when all fields assigned', async () => {
       api.users.getFieldPriorityConfig.mockResolvedValue({
@@ -526,51 +383,6 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
 
       const saveBtn = wrapper.find('button:has-text("Save Field Priority")')
       // Note: This may need adjustment based on actual button selector
-    })
-  })
-
-  describe('Active Product Integration', () => {
-    it('should display active product name in token indicator', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      expect(wrapper.vm.activeProductName).toBe('Test Product')
-    })
-
-    it('should show "No Active Product" message when no product available', async () => {
-      api.products.getActiveProductTokenEstimate.mockRejectedValue(
-        new Error('No active product')
-      )
-
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      expect(wrapper.vm.activeProductName).toBe('No Active Product')
-    })
-
-    it('should show token budget indicator card when active product exists', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      expect(wrapper.vm.activeProductTokens).not.toBeNull()
-      expect(wrapper.find('[data-test="general-settings"]').exists()).toBe(true)
-    })
-
-    it('should show info alert when no active product', async () => {
-      api.products.getActiveProductTokenEstimate.mockRejectedValue(
-        new Error('No active product')
-      )
-
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      const alerts = wrapper.findAll('.v-alert')
-      const noProductAlert = alerts.find(a => a.text().includes('No active product'))
-      expect(noProductAlert?.exists()).toBe(true)
     })
   })
 

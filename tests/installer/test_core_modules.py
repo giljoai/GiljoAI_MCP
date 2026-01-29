@@ -247,6 +247,10 @@ class TestConfigManager:
         # Verify returned path is pathlib.Path compatible
         assert isinstance(Path(yaml_path), Path), "Should return Path-compatible string"
 
+        # CRITICAL: Verify config files are created in install_dir (not cwd) for test isolation
+        assert str(temp_install_dir) in str(yaml_path), "Config MUST be in install_dir for test isolation"
+        assert (temp_install_dir / "config.yaml").exists(), "config.yaml MUST exist in install_dir"
+
 
 class TestPostgreSQLDiscovery:
     """Test cross-platform PostgreSQL discovery."""

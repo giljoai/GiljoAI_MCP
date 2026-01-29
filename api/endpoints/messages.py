@@ -60,49 +60,47 @@ async def send_message(
     """Send a message to agents"""
     from api.app import state
 
-    try:
-        result = await message_service.send_message(
-            to_agents=message.to_agents,
-            content=message.content,
+    # Service raises exceptions on error
+    result = await message_service.send_message(
+        to_agents=message.to_agents,
+        content=message.content,
+        project_id=message.project_id,
+        message_type=message.message_type,
+        priority=message.priority,
+        from_agent=message.from_agent,
+    )
+
+    # Extract from nested data structure (Handover 0405 consistency)
+    data = result.get("data", {})
+    message_id = data.get("message_id")
+
+    response = MessageResponse(
+        id=message_id,
+        from_agent=message.from_agent or "orchestrator",
+        to_agents=message.to_agents,
+        content=message.content,
+        message_type=message.message_type,
+        priority=message.priority,
+        status="pending",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    # Broadcast new message
+    if state.websocket_manager:
+        await state.websocket_manager.broadcast_message_update(
+            message_id=message_id,
             project_id=message.project_id,
-            message_type=message.message_type,
-            priority=message.priority,
-            from_agent=message.from_agent,
+            update_type="new",
+            message_data={
+                "from_agent": message.from_agent or "orchestrator",
+                "to_agents": message.to_agents,
+                "content": message.content,
+                "priority": message.priority,
+                "status": "pending",
+            },
         )
 
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
-
-        response = MessageResponse(
-            id=result["message_id"],
-            from_agent=message.from_agent or "orchestrator",
-            to_agents=message.to_agents,
-            content=message.content,
-            message_type=message.message_type,
-            priority=message.priority,
-            status="pending",
-            created_at=datetime.now(timezone.utc),
-        )
-
-        # Broadcast new message
-        if state.websocket_manager:
-            await state.websocket_manager.broadcast_message_update(
-                message_id=result["message_id"],
-                project_id=message.project_id,
-                update_type="new",
-                message_data={
-                    "from_agent": message.from_agent or "orchestrator",
-                    "to_agents": message.to_agents,
-                    "content": message.content,
-                    "priority": message.priority,
-                    "status": "pending",
-                },
-            )
-
-        return response
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return response
 
 
 @router.post("/send", response_model=dict)
@@ -120,32 +118,24 @@ async def send_message_from_ui(
     Returns:
         dict with success, message_id, and to_agents fields
     """
-    try:
-        result = await message_service.send_message(
-            to_agents=payload.to_agents,
-            content=payload.content,
-            project_id=payload.project_id,
-            message_type=payload.message_type,
-            priority=payload.priority,
-            from_agent="user",  # UI messages always come from "user"
-            tenant_key=current_user.tenant_key,  # Handover 0405: Required for broadcast fan-out
-        )
+    # Service raises exceptions on error
+    result = await message_service.send_message(
+        to_agents=payload.to_agents,
+        content=payload.content,
+        project_id=payload.project_id,
+        message_type=payload.message_type,
+        priority=payload.priority,
+        from_agent="user",  # UI messages always come from "user"
+        tenant_key=current_user.tenant_key,  # Handover 0405: Required for broadcast fan-out
+    )
 
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
-
-        # Handover 0405: Extract from nested data structure
-        data = result.get("data", {})
-        return {
-            "success": True,
-            "message_id": data.get("message_id"),
-            "to_agents": data.get("to_agents", payload.to_agents),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Handover 0405: Extract from nested data structure
+    data = result.get("data", {})
+    return {
+        "success": True,
+        "message_id": data.get("message_id"),
+        "to_agents": data.get("to_agents", payload.to_agents),
+    }
 
 
 @router.get("/", response_model=list[MessageResponse])
@@ -168,21 +158,16 @@ async def list_messages(
         # In setup mode, return empty list
         return []
 
-    try:
-        # Use MessageService to list messages
-        result = await message_service.list_messages(
-            project_id=project_id,
-            status=status,
-            tenant_key=current_user.tenant_key,
-        )
+    # Use MessageService to list messages (raises exceptions on error)
+    messages_data = await message_service.list_messages(
+        project_id=project_id,
+        status=status,
+        tenant_key=current_user.tenant_key,
+    )
 
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list messages"))
+    messages = []
 
-        messages_data = result.get("messages", [])
-        messages = []
-
-        for msg in messages_data:
+    for msg in messages_data.get("messages", []):
             # Apply agent_name filter if provided
             if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
                 continue
@@ -212,15 +197,9 @@ async def list_messages(
                 )
             )
 
-        # Sort by timestamp (newest first)
-        messages.sort(key=lambda m: m.created_at, reverse=True)
-        return messages
-
-    except HTTPException:
-        # Re-raise HTTP exceptions with their original status codes (Handover 0464)
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Sort by timestamp (newest first)
+    messages.sort(key=lambda m: m.created_at, reverse=True)
+    return messages
 
 
 @router.get("/agent/{agent_name}", response_model=list[MessageResponse])
@@ -231,41 +210,35 @@ async def get_messages(
     message_service: MessageService = Depends(get_message_service),
 ):
     """Get pending messages for an agent"""
-    try:
-        result = await message_service.get_messages(agent_name=agent_name, project_id=project_id, status="pending")
+    # Service raises exceptions on error
+    result = await message_service.get_messages(agent_name=agent_name, project_id=project_id, status="pending")
 
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))
-
-        messages = []
-        for msg in result.get("messages", []):
-            # Parse created timestamp
-            created_str = msg.get("created")
-            if created_str:
-                try:
-                    created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-                except (ValueError, AttributeError):
-                    created_at = datetime.now(timezone.utc)
-            else:
+    messages = []
+    for msg in result.get("messages", []):
+        # Parse created timestamp
+        created_str = msg.get("created")
+        if created_str:
+            try:
+                created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
                 created_at = datetime.now(timezone.utc)
+        else:
+            created_at = datetime.now(timezone.utc)
 
-            messages.append(
-                MessageResponse(
-                    id=msg["id"],
-                    from_agent=msg.get("from", "orchestrator"),
-                    to_agents=[agent_name],
-                    content=msg["content"],
-                    message_type=msg.get("type", "direct"),
-                    priority=msg.get("priority", "normal"),
-                    status="pending",
-                    created_at=created_at,
-                )
+        messages.append(
+            MessageResponse(
+                id=msg["id"],
+                from_agent=msg.get("from", "orchestrator"),
+                to_agents=[agent_name],
+                content=msg["content"],
+                message_type=msg.get("type", "direct"),
+                priority=msg.get("priority", "normal"),
+                status="pending",
+                created_at=created_at,
             )
+        )
 
-        return messages
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return messages
 
 
 @router.post("/{message_id}/complete")
@@ -279,27 +252,21 @@ async def complete_message(
     """Mark message as completed"""
     from api.app import state
 
-    try:
-        complete_result = await message_service.complete_message(
-            message_id=message_id, agent_name=agent_name, result=result
+    # Service raises exceptions on error
+    complete_result = await message_service.complete_message(
+        message_id=message_id, agent_name=agent_name, result=result
+    )
+
+    # Broadcast message completion
+    if state.websocket_manager:
+        await state.websocket_manager.broadcast_message_update(
+            message_id=message_id,
+            project_id="",  # Could be enhanced to fetch from message
+            update_type="completed",
+            message_data={"completed_by": agent_name, "result": result, "status": "completed"},
         )
 
-        if not complete_result.get("success"):
-            raise HTTPException(status_code=400, detail=complete_result.get("error", "Failed to complete message"))
-
-        # Broadcast message completion
-        if state.websocket_manager:
-            await state.websocket_manager.broadcast_message_update(
-                message_id=message_id,
-                project_id="",  # Could be enhanced to fetch from message
-                update_type="completed",
-                message_data={"completed_by": agent_name, "result": result, "status": "completed"},
-            )
-
-        return {"success": True, "message": "Message completed", "result": result}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"success": True, "message": "Message completed", "result": result}
 
 
 class BroadcastMessage(BaseModel):
@@ -322,49 +289,39 @@ async def broadcast_message(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        # Use MessageService to broadcast (it handles finding active agents)
-        message_result = await message_service.broadcast(
-            content=broadcast.content,
+    # Use MessageService to broadcast (it handles finding active agents, raises exceptions on error)
+    message_result = await message_service.broadcast(
+        content=broadcast.content,
+        project_id=broadcast.project_id,
+        priority=broadcast.priority,
+        from_agent=broadcast.from_agent or "user",
+    )
+
+    # Extract from nested data structure (Handover 0405 consistency)
+    data = message_result.get("data", {})
+    message_id = data.get("message_id")
+    agent_names = data.get("to_agents", [])
+
+    # Broadcast WebSocket notification
+    if state.websocket_manager:
+        await state.websocket_manager.broadcast_message_update(
+            message_id=message_id,
             project_id=broadcast.project_id,
-            priority=broadcast.priority,
-            from_agent=broadcast.from_agent or "user",
+            update_type="broadcast",
+            message_data={
+                "from_agent": broadcast.from_agent or "user",
+                "to_agents": agent_names,
+                "content": broadcast.content,
+                "priority": broadcast.priority,
+                "status": "pending",
+                "recipient_count": len(agent_names),
+            },
         )
 
-        if not message_result.get("success"):
-            error_msg = message_result.get("error", "Failed to send broadcast")
-            if "not found" in error_msg.lower():
-                raise HTTPException(status_code=404, detail=error_msg)
-            raise HTTPException(status_code=400, detail=error_msg)
-
-        # Get agent names from the result
-        agent_names = message_result.get("to_agents", [])
-
-        # Broadcast WebSocket notification
-        if state.websocket_manager:
-            await state.websocket_manager.broadcast_message_update(
-                message_id=message_result["message_id"],
-                project_id=broadcast.project_id,
-                update_type="broadcast",
-                message_data={
-                    "from_agent": broadcast.from_agent or "user",
-                    "to_agents": agent_names,
-                    "content": broadcast.content,
-                    "priority": broadcast.priority,
-                    "status": "pending",
-                    "recipient_count": len(agent_names),
-                },
-            )
-
-        return {
-            "success": True,
-            "message_id": message_result["message_id"],
-            "recipient_count": len(agent_names),
-            "recipients": agent_names,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "success": True,
+        "message_id": message_id,
+        "recipient_count": len(agent_names),
+        "recipients": agent_names,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
