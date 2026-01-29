@@ -33,8 +33,8 @@ health_monitoring:
 """
 
     with patch('api.startup.health_monitor.open', mock_open(read_data=health_config_yaml)), \
-         patch('api.startup.health_monitor.AgentHealthMonitor') as mock_health_monitor, \
-         patch('api.startup.health_monitor.HealthCheckConfig'):
+         patch('src.giljo_mcp.monitoring.agent_health_monitor.AgentHealthMonitor') as mock_health_monitor, \
+         patch('src.giljo_mcp.monitoring.health_config.HealthCheckConfig'):
 
         mock_monitor_instance = MagicMock()
         mock_monitor_instance.start = AsyncMock()
@@ -65,7 +65,7 @@ health_monitoring:
 """
 
     with patch('api.startup.health_monitor.open', mock_open(read_data=health_config_yaml)), \
-         patch('api.startup.health_monitor.AgentHealthMonitor') as mock_health_monitor:
+         patch('src.giljo_mcp.monitoring.agent_health_monitor.AgentHealthMonitor') as mock_health_monitor:
 
         await init_health_monitor(state)
 
@@ -104,8 +104,8 @@ health_monitoring:
 """
 
     with patch('api.startup.health_monitor.open', mock_open(read_data=health_config_yaml)), \
-         patch('api.startup.health_monitor.AgentHealthMonitor'), \
-         patch('api.startup.health_monitor.HealthCheckConfig') as mock_config:
+         patch('src.giljo_mcp.monitoring.agent_health_monitor.AgentHealthMonitor'), \
+         patch('src.giljo_mcp.monitoring.health_config.HealthCheckConfig') as mock_config:
 
         await init_health_monitor(state)
 
@@ -140,8 +140,8 @@ server:
 """
 
     with patch('api.startup.health_monitor.open', mock_open(read_data=minimal_config_yaml)), \
-         patch('api.startup.health_monitor.AgentHealthMonitor') as mock_health_monitor, \
-         patch('api.startup.health_monitor.HealthCheckConfig'):
+         patch('src.giljo_mcp.monitoring.agent_health_monitor.AgentHealthMonitor') as mock_health_monitor, \
+         patch('src.giljo_mcp.monitoring.health_config.HealthCheckConfig'):
 
         mock_monitor_instance = MagicMock()
         mock_monitor_instance.start = AsyncMock()
@@ -192,8 +192,8 @@ health_monitoring:
 """
 
     with patch('api.startup.health_monitor.open', mock_open(read_data=health_config_yaml)), \
-         patch('api.startup.health_monitor.AgentHealthMonitor') as mock_health_monitor, \
-         patch('api.startup.health_monitor.HealthCheckConfig') as mock_config:
+         patch('src.giljo_mcp.monitoring.agent_health_monitor.AgentHealthMonitor') as mock_health_monitor, \
+         patch('src.giljo_mcp.monitoring.health_config.HealthCheckConfig') as mock_config:
 
         mock_config_instance = MagicMock()
         mock_config.return_value = mock_config_instance

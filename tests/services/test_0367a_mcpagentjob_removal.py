@@ -119,12 +119,13 @@ class TestOrchestrationServiceNoFallback:
         self, db_session, db_manager, test_tenant_0367a
     ):
         """
-        complete_job() should return error when AgentExecution not found.
+        complete_job() should raise exception when AgentExecution not found.
 
         It should NOT fallback to MCPAgentJob table.
         """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant_manager = TenantManager()
         service = OrchestrationService(
@@ -133,17 +134,17 @@ class TestOrchestrationServiceNoFallback:
             test_session=db_session
         )
 
-        # Try to complete a non-existent job
+        # Try to complete a non-existent job - should raise exception
         fake_job_id = str(uuid.uuid4())
-        result = await service.complete_job(
-            job_id=fake_job_id,
-            result={"output": "test"},  # Required parameter
-            tenant_key=test_tenant_0367a,
-        )
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.complete_job(
+                job_id=fake_job_id,
+                result={"output": "test"},  # Required parameter
+                tenant_key=test_tenant_0367a,
+            )
 
-        # Should return error, NOT fallback to MCPAgentJob
-        assert result["status"] == "error"
-        assert "not found" in result["error"].lower() or "no active execution" in result["error"].lower()
+        # Verify exception message contains expected text
+        assert "not found" in str(exc_info.value).lower() or "no active execution" in str(exc_info.value).lower()
 
     async def test_complete_job_uses_only_agent_execution(
         self, db_session, db_manager, test_agent_execution_0367a, test_agent_job_0367a, test_tenant_0367a
@@ -170,8 +171,8 @@ class TestOrchestrationServiceNoFallback:
             tenant_key=test_tenant_0367a,
         )
 
-        # Verify success
-        assert result["status"] == "success" or result.get("success") is True
+        # Verify success (supports both old and new result formats)
+        assert result.get("success") is True or result.get("status") == "success"
 
         # Verify AgentExecution was updated
         await db_session.refresh(test_agent_execution_0367a)

@@ -1,15 +1,15 @@
 {
-  "timestamp": "2025-09-16T21:11:28.838210",
+  "timestamp": "2026-01-27T22:41:59.536444",
   "platform": {
     "system": "Windows",
-    "release": "10",
-    "python": "3.11.9"
+    "release": "11",
+    "python": "3.14.2"
   },
   "summary": {
-    "total": 27,
-    "passed": 8,
-    "failed": 19,
-    "success_rate": "29.6%"
+    "total": 13,
+    "passed": 0,
+    "failed": 13,
+    "success_rate": "0.0%"
   },
   "tests": [
     {
@@ -39,78 +39,28 @@
     },
     {
       "name": "Import setup_gui",
-      "passed": true,
-      "message": ""
+      "passed": false,
+      "message": "No module named 'setup_gui'"
     },
     {
       "name": "Import setup_platform",
-      "passed": true,
-      "message": ""
+      "passed": false,
+      "message": "No module named 'setup_platform'"
     },
     {
       "name": "Import setup_migration",
-      "passed": true,
-      "message": ""
+      "passed": false,
+      "message": "No module named 'setup_migration'"
     },
     {
       "name": "Import setup_dependencies",
-      "passed": true,
-      "message": ""
+      "passed": false,
+      "message": "No module named 'setup_dependencies'"
     },
     {
       "name": "Import setup_config",
-      "passed": true,
-      "message": ""
-    },
-    {
-      "name": "Platform system",
-      "passed": true,
-      "message": "Windows"
-    },
-    {
-      "name": "Platform architecture",
-      "passed": true,
-      "message": "('64bit', 'WindowsPE')"
-    },
-    {
-      "name": "Platform python_version",
       "passed": false,
-      "message": "Not detected"
-    },
-    {
-      "name": "Platform detection",
-      "passed": false,
-      "message": "unhashable type: 'slice'"
-    },
-    {
-      "name": "GUI has SetupWizard",
-      "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "GUI has GUISetupManager",
-      "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "Dependency manager",
-      "passed": false,
-      "message": "'DependencyManager' object has no attribute 'get_installed_packages'"
-    },
-    {
-      "name": "AKE-MCP detected",
-      "passed": true,
-      "message": "F:\\AKE-MCP"
-    },
-    {
-      "name": "Migration tool",
-      "passed": false,
-      "message": "'AKEMCPMigrator' object has no attribute 'validate_data'"
-    },
-    {
-      "name": "Config manager",
-      "passed": false,
-      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpjkwoo26f.json"
+      "message": "No module named 'setup_config'"
     },
     {
       "name": "setup.py has --gui flag",
@@ -118,34 +68,14 @@
       "message": "Not found in help"
     },
     {
-      "name": "Legacy method detect_platform",
+      "name": "Backward compatibility",
       "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "Legacy method setup_database",
-      "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "Legacy method create_directories",
-      "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "Legacy method check_dependencies",
-      "passed": false,
-      "message": "Not found"
-    },
-    {
-      "name": "Legacy method generate_env_file",
-      "passed": false,
-      "message": "Not found"
+      "message": "No module named 'setup'"
     },
     {
       "name": "Performance test",
       "passed": false,
-      "message": "'GiljoSetup' object has no attribute 'detect_platform'"
+      "message": "psutil not installed"
     }
   ],
   "errors": [
@@ -154,19 +84,13 @@
     "setup_migration exists: File not found",
     "setup_dependencies exists: File not found",
     "setup_config exists: File not found",
-    "Platform python_version: Not detected",
-    "Platform detection: unhashable type: 'slice'",
-    "GUI has SetupWizard: Not found",
-    "GUI has GUISetupManager: Not found",
-    "Dependency manager: 'DependencyManager' object has no attribute 'get_installed_packages'",
-    "Migration tool: 'AKEMCPMigrator' object has no attribute 'validate_data'",
-    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpjkwoo26f.json",
+    "Import setup_gui: No module named 'setup_gui'",
+    "Import setup_platform: No module named 'setup_platform'",
+    "Import setup_migration: No module named 'setup_migration'",
+    "Import setup_dependencies: No module named 'setup_dependencies'",
+    "Import setup_config: No module named 'setup_config'",
     "setup.py has --gui flag: Not found in help",
-    "Legacy method detect_platform: Not found",
-    "Legacy method setup_database: Not found",
-    "Legacy method create_directories: Not found",
-    "Legacy method check_dependencies: Not found",
-    "Legacy method generate_env_file: Not found",
-    "Performance test: 'GiljoSetup' object has no attribute 'detect_platform'"
+    "Backward compatibility: No module named 'setup'",
+    "Performance test: psutil not installed"
   ]
 }

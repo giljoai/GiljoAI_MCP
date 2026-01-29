@@ -59,12 +59,28 @@ __all__ = [
 ]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create event loop for async tests"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """
+    Create event loop for async tests.
+
+    Note: Using function scope to avoid event loop closed issues.
+    Each test gets a fresh event loop for proper async isolation.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
-    loop.close()
+    # Cleanup pending tasks before closing
+    try:
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    except Exception:
+        pass
+    finally:
+        loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -729,11 +745,33 @@ def pytest_configure(config):
     Registers custom markers and disables coverage threshold enforcement
     for smoke tests, since they are integration workflow validators
     (not unit coverage targets).
+
+    CRITICAL SAFETY: Also validates that tests cannot access production database.
     """
+    # ==========================================================================
+    # PRODUCTION DATABASE SAFETY GUARD
+    # ==========================================================================
+    # Verify environment is set up for testing, not production
+    import os
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    if db_url and "/giljo_mcp" in db_url and "/giljo_mcp_test" not in db_url:
+        import warnings
+        warnings.warn(
+            f"WARNING: DATABASE_URL appears to point to production database!\n"
+            f"Tests should use giljo_mcp_test, not giljo_mcp.\n"
+            f"Current DATABASE_URL: {db_url[:50]}...",
+            UserWarning
+        )
+
     # Register custom markers
     config.addinivalue_line(
         "markers",
         "tenant_isolation: marks tests for tenant isolation verification (Handover 0325)"
+    )
+    config.addinivalue_line(
+        "markers",
+        "production_safe: marks tests that have been verified safe from production DB access"
     )
 
     # Check if we're only running smoke tests

@@ -53,7 +53,7 @@ async def create_project(
     """
     logger.debug(f"User {current_user.username} creating project: {project.name}")
 
-    # Create project via ProjectService
+    # Create project via ProjectService (raises exceptions on error)
     result = await project_service.create_project(
         name=project.name,
         mission=project.mission,
@@ -63,12 +63,6 @@ async def create_project(
         status=project.status,
         context_budget=project.context_budget,
     )
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to create project")
-        logger.error(f"Project creation failed: {error_msg}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Created project {result['project_id']} for tenant {current_user.tenant_key}")
 
@@ -113,19 +107,12 @@ async def list_projects(
     """
     logger.debug(f"User {current_user.username} listing projects (status={status_filter})")
 
-    # List projects via ProjectService
-    result = await project_service.list_projects(
+    # List projects via ProjectService (raises exceptions on error)
+    projects = await project_service.list_projects(
         status=status_filter,
         tenant_key=current_user.tenant_key
     )
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to list projects")
-        logger.error(f"Project listing failed: {error_msg}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-
-    projects = result.get("projects", [])
     logger.info(f"Found {len(projects)} projects for tenant {current_user.tenant_key}")
 
     # Convert to response models
@@ -177,16 +164,9 @@ async def get_deleted_projects(
     """
     logger.debug(f"User {current_user.username} listing deleted projects")
 
-    # List deleted projects via ProjectService
-    result = await project_service.list_projects(status="deleted")
+    # List deleted projects via ProjectService (raises exceptions on error)
+    projects = await project_service.list_projects(status="deleted")
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to list deleted projects")
-        logger.error(f"Deleted project listing failed: {error_msg}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-
-    projects = result.get("projects", [])
     logger.info(f"Found {len(projects)} deleted projects for tenant {current_user.tenant_key}")
 
     # Convert to response models
@@ -238,15 +218,8 @@ async def get_active_project(
     """
     logger.debug(f"User {current_user.username} fetching active project")
 
-    # Get active project via ProjectService
-    result = await project_service.get_active_project()
-
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Failed to get active project")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-
-    proj = result.get("project")
+    # Get active project via ProjectService (raises exceptions on error, returns None if no active project)
+    proj = await project_service.get_active_project()
 
     # No active project is OK - return None
     if not proj:
@@ -298,18 +271,9 @@ async def get_project(
     """
     logger.debug(f"User {current_user.username} getting project {project_id}")
 
-    # Get project via ProjectService (Handover 0424 Phase 0: tenant_key now required)
-    result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    # Get project via ProjectService (raises exceptions on error)
+    proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    # Check for errors
-    if not result.get("success"):
-        error_msg = result.get("error", "Project not found")
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-
-    proj = result.get("project", {})
     logger.info(f"Retrieved project {project_id} for tenant {current_user.tenant_key}")
 
     # Production-grade: Use agents from service response (not hardcoded empty array)
@@ -368,26 +332,14 @@ async def update_project(
     update_dict = updates.dict(exclude_unset=True)
 
     if not update_dict:
-        # No fields to update, just return current project (Handover 0424 Phase 0)
-        result = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-        if not result.get("success"):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-        proj = result.get("project", {})
+        # No fields to update, just return current project (raises exceptions on error)
+        proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     else:
-        # Update via ProjectService
-        result = await project_service.update_project(
+        # Update via ProjectService (raises exceptions on error)
+        proj = await project_service.update_project(
             project_id=project_id,
             updates=update_dict
         )
-
-        if not result.get("success"):
-            error_msg = result.get("error", "Failed to update project")
-            if "not found" in error_msg.lower():
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-            else:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-        proj = result.get("data", {})
 
     logger.info(f"Updated project {project_id}")
 

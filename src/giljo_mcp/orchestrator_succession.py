@@ -146,7 +146,7 @@ class OrchestratorSuccessionManager:
                 "to_agents": msg.to_agents,
                 "content": msg.content,
                 "status": msg.status,
-                "created_at": msg.created_at,
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
             }
             for msg in message_objects
         ]
