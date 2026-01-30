@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-27 (0700 Code Cleanup Series added to catalogue)
+**Last Updated:** 2026-01-29 (Reconciled with completed/ folder and git commits)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
-| 0401-0500 | Agent Monitoring & Ghost Fixes | 0480 Ready (Exception Handling), 0460-0463, 0500 Complete (Agent ID Swap + Ghost Agent + Display Name Resolution) |
+| 0401-0500 | Agent Monitoring & Ghost Fixes | 0414-0432 COMPLETE, 0460-0463 COMPLETE, 0480 REVISED Complete, 0500-0501 COMPLETE |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | **0700-0750** | **Code Cleanup Series** | **Ready** (0700-0711 documented) |
@@ -32,12 +32,12 @@
 | 0359 | Steps/Progress Tracking Fix | **COMPLETE** | HIGH | - |
 | 0360 | Medium Priority Tool Enhancements | **COMPLETE** | MEDIUM | - |
 | 0361 | Documentation Updates | **COMPLETE** | LOW | - |
-| 0362 | WebSocket Message Counter Fixes | Ready | HIGH | 3-4h |
+| 0362 | WebSocket Message Counter Fixes | **COMPLETE** | HIGH | - |
 | 0364 | Protocol Message Handling Fix | **COMPLETE** | HIGH | - |
 | 0365 | Orchestrator Handover Behavior Injection | Ready | MEDIUM | TBD |
 | 0366 | Agent Identity Refactor (a/b/c/d) | **COMPLETE** | HIGH | - |
 
-> **Status**: 8/10 COMPLETE. Remaining: 0362 (WebSocket counters), 0365 (handover behavior)
+> **Status**: 9/10 COMPLETE. Remaining: 0365 (handover behavior)
 > See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
 
 ### Organization Hierarchy Series (0424) - NEW
@@ -71,26 +71,20 @@
 > **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
 > **Follow-up**: 0440b (Frontend UI), 0440c (Documentation)
 
-### Exception Handling Remediation Series (0480) - NEW
-| ID | Title | Status | Priority | Est. Hours |
-|----|-------|--------|----------|------------|
-| **0480a** | **Exception-to-HTTP Mapping Framework** | **Ready** | **HIGH** | 4h |
-| **0480b** | **Service Base Class & Migration Pattern** | **Ready** | **HIGH** | 3h |
-| **0480c** | **Test Infrastructure for Exception Flows** | **Ready** | **HIGH** | 2h |
-| **0480d** | **High-Value Service Migration** | **Ready** | **CRITICAL** | 6h wall (18h seq) |
-| **0480e** | **Core Services Migration** | **Ready** | **HIGH** | 5h wall (15h seq) |
-| **0480f** | **Low-Priority Services Migration** | **Ready** | **MEDIUM** | 3h wall (9h seq) |
-| **0480g** | **Endpoint Migration (205 endpoints)** | **Ready** | **HIGH** | 5h wall (20h seq) |
-| **0480h** | **Frontend Error Discrimination** | **Ready** | **MEDIUM** | 4h |
-| **0480i** | **Integration Testing (54+ scenarios)** | **Ready** | **HIGH** | 8h |
-| **0480j** | **Cleanup & Documentation** | **Ready** | **LOW** | 4h |
+### Exception Handling Remediation Series (0480) - COMPLETE (REVISED)
+| ID | Title | Status | Priority | Notes |
+|----|-------|--------|----------|-------|
+| **0480** | **Exception Handling Remediation (REVISED)** | **COMPLETE** | HIGH | Master plan revised |
+| **0480a** | **Foundation (REVISED)** | **COMPLETE** | HIGH | - |
+| **0480b** | **Services Auth/Product (REVISED)** | **COMPLETE** | HIGH | - |
+| **0480c** | **Services Core (REVISED)** | **COMPLETE** | HIGH | - |
+| **0480d** | **Services Remaining (REVISED)** | **COMPLETE** | HIGH | - |
+| **0480e** | **Endpoints (REVISED)** | **COMPLETE** | HIGH | - |
+| **0480f** | **Frontend Error Handling (REVISED)** | **COMPLETE** | MEDIUM | Includes testing |
 
-> **Purpose**: Fix 500 errors on fresh install, establish production-grade exception handling
-> **Root Cause**: Services return dicts `{"success": False}`, endpoints use catch-all `except Exception` → 500
-> **Solution**: Wire existing exception infrastructure (35+ exceptions, 45+ error codes, structlog)
-> **Impact**: Zero dict returns, zero catch-all handlers, proper HTTP status codes (404 not 500)
-> **Parallelization**: 0480d-0480f (9 services in 3 parallel batches), 0480g (47 modules in batches)
-> **Total Effort**: 44h wall time (87h sequential) over 5.5 days
+> **Status**: 100% COMPLETE (2026-01-28). Original 0480a-j plan revised and consolidated into 0480a-f REVISED series.
+> **Location**: `completed/0480_exception_handling_remediation_REVISED-C.md` and sub-handovers
+> **Original Planning**: Archived to `completed/reference/0480_original_planning/`
 
 ### Agent ID Swap & Ghost Agent Series (0460-0463) - COMPLETE
 | ID | Title | Status | Priority | Est. Hours |
@@ -112,27 +106,26 @@
 ### Ready for Implementation
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| **0391** | **Task Tool Parameter Terminology Fix** | **COMPLETE** | **MEDIUM** | Fixed `subagent_display_name` → `subagent_type` (8 files, 27 changes) - moved to completed/ |
-| **0423** | **Session & TemplateAugmentation Dead Code Cleanup** | **COMPLETE** | **MEDIUM** | Removed dead tables, ~290 lines (2026-01-19) |
-| **0422** | **TODO Tab Relocation to Assigned Job Modal** | **Ready** | **MEDIUM** | Move TODOs from MessageAuditModal to AgentJobModal (5-8h) |
-| 0246b | Vision Document Storage Simplification | **SUPERSEDED** | - | Superseded by 0352 (moved to superseded/) |
-| 0348 | Product Context Gap Analysis | **SUPERSEDED** | - | Superseded by 0350 series (moved to completed/) |
-| 0349 | Agent Execution Context Refactor | **COMPLETE** | - | Moved to completed/ (2025-12-21) |
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
 | **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
-| **0383** | **MCP Tool Surface Audit + Legacy Download Tool Removal** | **COMPLETE** | **MEDIUM** | Removed `gil_fetch`/`gil_import_*`; catalog + decommission candidates |
-| **0384** | **Slash Command Copy Button Fix** | **COMPLETE** | **MEDIUM** | Fixed missing `generateSlashCommandsInstructions()` API method (2026-01-26) |
-| **0387** | **Broadcast Fan-out + JSONB Cleanup** | **Ready** | **HIGH** | Fan-out at write + Phase 4 JSONB normalization (12-19h) |
-| **0400** | **Alpha Test Findings - Claude Code CLI** | **COMPLETE** | - | Reference doc, moved to completed/ (2026-01-03) |
-| **0401** | **Unified WebSocket Platform Refactor** | **COMPLETE** | **HIGH** | agent_id/job_id resolution, moved to completed/ (2026-01-03) |
-| **0402** | **Agent TODO Items Table** | **COMPLETE** | **HIGH** | Plan/TODOs tab, moved to completed/ (2026-01-03) |
-| **0403** | **JSONB Normalization - Messages** | **SUPERSEDED** | - | Merged into 0387 Phase 4, moved to superseded/ |
-| **0404** | **Play Button Visibility Fix** | **COMPLETE** | **MEDIUM** | execution_mode sync, moved to completed/ (2026-01-03) |
-| **0405** | **Message Counter Fallback + TodoWrite Enforcement** | **COMPLETE** | **HIGH** | Frontend counter sync, moved to completed/ (2026-01-03) |
-| **0406** | **Reactive Feedback for TodoWrite Compliance** | **COMPLETE** | **MEDIUM** | Response warnings + throttle, moved to completed/ (2026-01-03) |
-| **0407** | **Message Acknowledged Counter Sync** | **COMPLETE** | **HIGH** | Frontend job_id resolution, moved to completed/ (2026-01-03) |
-| **0500** | **Agent ID Lookup Display Name Resolution** | **COMPLETE** | **MEDIUM** | MCP schema docs fix - send_message already supports display names (2026-01-25) |
-| **0501** | **Remove file_exists MCP Tool** | **COMPLETE** | **MEDIUM** | Removed - architectural mismatch, server can't access user's file system (2026-01-25) |
+| ~~0396~~ | ~~Frontend API Pattern Fixes~~ | **COMPLETE** | ~~HIGH~~ | Moved to completed/0396_frontend_api_pattern_fixes-C.md (2026-01-29) |
+| 0373 | Template Adapter Migration | Ready | Medium | - |
+| 0374 | Vision Summary Field Migration | Ready | Medium | - |
+| 0382 | Orchestrator Prompt Improvements | Ready | Medium | - |
+| 0408 | Serena Toggle Injection | Ready | Medium | - |
+| 0409 | Unified Client Quick Setup | Ready | Medium | - |
+| 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
+| 0419 | Long Polling Orchestrator Monitoring | Ready | Medium | - |
+| 0464 | Empty State API Resilience | Ready | Medium | - |
+
+### Superseded/Moved to Completed (Cleanup)
+| ID | Title | Status | Notes |
+|----|-------|--------|-------|
+| 0246b | Vision Document Storage Simplification | **SUPERSEDED** | By 0352 |
+| 0348 | Product Context Gap Analysis | **SUPERSEDED** | By 0350 series |
+| 0403 | JSONB Normalization - Messages | **SUPERSEDED** | Merged into 0387 |
+| 0349-0407 | Various | **COMPLETE** | All moved to completed/ |
+| 0500-0501 | Agent ID + file_exists Removal | **COMPLETE** | (2026-01-25) |
 
 ### In Progress / Partial
 | ID | Title | Status | Priority | Notes |
@@ -195,11 +188,19 @@
 > **Docs**: [docs/cleanup/CLEANUP_STRATEGY.md](../docs/cleanup/CLEANUP_STRATEGY.md)
 > **Estimated Total**: 45-65h across 15-20 handovers
 
+### Test Suite & Remediation (0481-0484) - In Progress
+| ID | Title | Status | Priority | Notes |
+|----|-------|--------|----------|-------|
+| 0481 | Test Remediation Session Summary | In Progress | Medium | 2 files with same number |
+| 0483 | Service Layer Bug Fixes | Ready | Medium | - |
+| 0484 | API Test Fixture Remediation | Ready | Medium | - |
+
 ### Deferred / Low Priority
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0083 | Harmonize Slash Commands | Deferred | Low | Future enhancement |
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
+| 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done |
 | 0284 | Address get_available_agents | Not Started | Medium | Enhancement |
 | 0298 | Legacy Messaging Queue Cleanup | Not Started | Medium | Cleanup task |
 | 9999 | One-Liner Installation System | Deferred | Low | Explicitly deferred |
@@ -211,6 +212,31 @@
 ### Recently Completed (December 2025 - January 2026)
 | ID | Title | Status |
 |----|-------|--------|
+| 0480f | Frontend Error Handling REVISED | **COMPLETE** (2026-01-28) |
+| 0480e | Endpoints REVISED | **COMPLETE** (2026-01-28) |
+| 0480d | Services Remaining REVISED | **COMPLETE** (2026-01-28) |
+| 0480c | Services Core REVISED | **COMPLETE** (2026-01-28) |
+| 0480b | Services Auth/Product REVISED | **COMPLETE** (2026-01-28) |
+| 0480a | Foundation REVISED | **COMPLETE** (2026-01-28) |
+| 0480 | Exception Handling Remediation REVISED | **COMPLETE** (2026-01-28) |
+| 0470 | Deprecate orchestrate_project_tool | **COMPLETE** (2026-01-27) |
+| 0432 | Orchestrator Agent Template Harmonization | **COMPLETE** (2026-01-26) |
+| 0431 | Orchestrator Closeout Verification Protocol | **COMPLETE** (2026-01-26) |
+| 0430 | Self Identity Category fetch_context | **COMPLETE** (2026-01-26) |
+| 0429 | Orchestrator Succession Same Agent ID | **COMPLETE** (2026-01-26) |
+| 0428 | Project Tabs Sticky Header | **COMPLETE** (2026-01-26) |
+| 0427 | Integration Status Icons | **COMPLETE** (2026-01-26) |
+| 0425 | Platform Detection Injection | **COMPLETE** (2026-01-26) |
+| 0423 | Session & Template Dead Code Cleanup | **COMPLETE** (2026-01-26) |
+| 0422 | Dead Token Budget Cleanup | **COMPLETE** (2026-01-26) |
+| 0421 | Agent Template Staleness Detection | **COMPLETE** (2026-01-25) |
+| 0420 | Legacy Agent Coordination Removal (a-d) | **COMPLETE** (2026-01-25) |
+| 0417 | Multi-Terminal Template Injection | **COMPLETE** (2026-01-25) |
+| 0416 | Agent Status State Machine | **COMPLETE** (2026-01-25) |
+| 0415 | Thin Client Chapter Protocol | **COMPLETE** (2026-01-25) |
+| 0414 | Agent Display Name Migration (a-e) | **COMPLETE** (2026-01-25) |
+| 0412 | 360 Memory Closeout Redesign | **COMPLETE** (2026-01-25) |
+| 0411 | Jobs Tab Duration & UX Improvements | **COMPLETE** (2026-01-25) |
 | 0395 | Explicit FAILED Status Protocol Documentation | **COMPLETE** (2026-01-25) |
 | 0394 | Python Dependency Cleanup | **COMPLETE** (2026-01-25) |
 | 0393 | Context Variable Framing Protocol Update | **COMPLETE** (2026-01-25) |
@@ -282,6 +308,7 @@
 | 0352 | Vision Document Depth Refactor | **COMPLETE** |
 | 0354 | Agent Behavior Enforcement Fix | **COMPLETE** (renumbered from 0359) |
 | 0355 | MCP Tool Template Fixes & Slash Command | **COMPLETE** |
+| 0362 | WebSocket Message Counter Fixes | **COMPLETE** |
 | 0363 | Session: Agent Instruction Slimming | **COMPLETE** (renumbered from 0353 session doc) |
 | 0346 | Depth Config Field Standardization | **COMPLETE** |
 | 0347 | Mission Response JSON Restructuring (10 files) | **COMPLETE** |
@@ -368,8 +395,35 @@ Located in `handovers/cancelled/`:
 - Commits: 53d9b236, a7ed01f8, 24b40b56, bf77e6e6
 - Cleanup: 42ae55cf (removed 8 dead agent_communication:* handlers)
 
-### Alpha Trial Remediation Series (0356-0361, 0364, 0366)
-**Status:** 80% Complete (8/10 handovers, December 2025)
+### Agent Lifecycle & Template Series (0411-0432)
+**Status:** 100% Complete (January 2026)
+- 0411: Jobs Tab Duration & UX Improvements
+- 0412: 360 Memory Closeout Redesign
+- 0414-0414e: Agent Display Name Migration (5 phases)
+- 0415: Thin Client Chapter Protocol
+- 0416: Agent Status State Machine
+- 0417: Multi-Terminal Template Injection
+- 0420-0420d: Legacy Agent Coordination Removal (4 phases)
+- 0421: Agent Template Staleness Detection
+- 0422: Dead Token Budget Cleanup
+- 0423: Session & Template Dead Code Cleanup
+- 0425: Platform Detection Injection
+- 0427-0432: Integration fixes and orchestrator harmonization
+- **Result**: Clean agent lifecycle, proper state machine, template system modernized
+- See: `completed/` folder for all -C.md files
+
+### Exception Handling REVISED Series (0480)
+**Status:** 100% Complete (January 2026)
+- 0480: Master plan (REVISED)
+- 0480a: Foundation (REVISED)
+- 0480b-d: Services migration (REVISED)
+- 0480e: Endpoints (REVISED)
+- 0480f: Frontend error handling (REVISED)
+- **Result**: Production-grade exception handling, proper HTTP status codes
+- **Original Planning**: Archived to `completed/reference/0480_original_planning/`
+
+### Alpha Trial Remediation Series (0356-0362, 0364, 0366)
+**Status:** 90% Complete (9/10 handovers, December 2025 - January 2026)
 - 0356: MCP Tool Parameter Consistency (tenant_key, agent_id fixes)
 - 0357: Agent Template Context Loading (user settings)
 - 0358: WebSocket & UI State Overhaul (+ a/b/c/d sub-handovers)
@@ -551,17 +605,23 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387, 0388-0395 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0407 (all complete/superseded), 0408-0423 (active/ready), 0424-0425 (ready), 0440a (ready), 0480 (ready), 0460-0463, 0500 (complete)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0396 (includes Alpha Trial 0356-0362, 0364-0365)
+**0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0484 (0480 REVISED complete, 0481-0484 in progress)
+**0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **0700-0750** (Code Cleanup): 0700-0708, 0711
 **1000-1014** (Greptile Security): 1000-1014
 
+### Known Duplicate Numbers in Root Folder (Needs Cleanup)
+- **0411**: "Jobs Tab Duration UX" (completed) vs "Windows Terminal Agent Spawning" (pending) - CONFLICT
+- **0424**: 5+ files share this number (org hierarchy series) - should use 0424a-f suffixes
+- **0481**: 2 files with same number - consolidate
+- **1000**: Main roadmap + status report - acceptable (one is reference)
+
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0385-0386**: Gaps in 0301-0400 range (between 0384 and 0387)
-- **0396-0399**: Gaps in 0301-0400 range (0388-0395 now used)
+- **0397-0399**: Gaps in 0301-0400 range (0385-0386 used in git, 0396 now used)
 - **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
@@ -580,6 +640,18 @@ completed/reference/
 ## History
 
 ### January 2026
+- **Catalogue Reconciliation (2026-01-29)**: Full reconciliation with completed/ folder and git commits
+  - Added 25+ missing completed handovers (0411-0432, 0470, 0480 REVISED series)
+  - Fixed 0362 status (marked COMPLETE, moved to completed/)
+  - Updated 0480 series to reflect REVISED completion
+  - Identified duplicate numbers needing cleanup (0411, 0424, 0481)
+  - Updated Quick Reference status for all ranges
+
+- **0480 Exception Handling REVISED Series (2026-01-28)**: Complete remediation
+  - Original 0480a-j plan consolidated into 0480a-f REVISED series
+  - Original planning docs archived to `reference/0480_original_planning/`
+  - Full exception infrastructure wired with proper HTTP status codes
+
 - **0460-0463 Series: Agent ID Swap & Ghost Agent Fixes (2026-01-23 to 2026-01-25)**: Complete lifecycle from complexity to simplification
   - 0460: Agent ID Swap Succession Implementation (introduced complexity)
   - 0461: Simplify Handover - Agent ID Swap to 360 Memory (backend simplification)

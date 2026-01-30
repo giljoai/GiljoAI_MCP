@@ -73,7 +73,8 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { api } from '@/services/api'
+// Handover 0396: Fixed import - api is default export, not named export
+import api from '@/services/api'
 
 /**
  * AgentExecutionModal Component - Handover 0366d-1
@@ -105,7 +106,8 @@ const job = ref(null)
 watch(() => props.execution, async (newExecution) => {
   if (newExecution?.job_id) {
     try {
-      const response = await api.get(`/jobs/${newExecution.job_id}`)
+      // Handover 0396: Use structured api.agentJobs.get() method
+      const response = await api.agentJobs.get(newExecution.job_id)
       job.value = response.data
     } catch (error) {
       console.error('[AgentExecutionModal] Failed to fetch job:', error)
