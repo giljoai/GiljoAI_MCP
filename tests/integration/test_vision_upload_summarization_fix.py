@@ -59,22 +59,24 @@ class TestVisionDocumentSummarizationFix:
         db_session: AsyncSession,
     ):
         """
-        Test that uploading a large vision document (>5K tokens) generates summaries
+        Test that uploading a vision document (>100 tokens) generates summaries
         and stores them using the correct database field names.
 
         This test verifies the fix for Handover 0352 bug where ProductService was
         accessing summaries["moderate"] and summaries["heavy"] instead of
         summaries["light"] and summaries["medium"].
+
+        Updated threshold: ALL documents >100 tokens are now summarized (was 5K).
         """
-        # Create content > 5000 tokens to trigger summarization
-        # 1 token ≈ 4 chars, so 5000 tokens ≈ 20,000 chars
-        content = "This is test content. " * 1000  # ~22,000 chars ≈ 5,500 tokens
+        # Create content > 100 tokens to trigger summarization
+        # 1 token ≈ 4 chars, so 100 tokens ≈ 400 chars
+        content = "This is test content. " * 30  # ~660 chars ≈ 165 tokens
 
         # Upload vision document (should trigger summarization)
         result = await product_service.upload_vision_document(
             product_id=test_product.id,
             content=content,
-            filename="test_large_vision.md",
+            filename="test_vision_with_summary.md",
             auto_chunk=False,  # Disable chunking to focus on summarization
         )
 
@@ -92,12 +94,12 @@ class TestVisionDocumentSummarizationFix:
 
         # Verify document exists and has correct properties
         assert doc is not None
-        assert doc.document_name == "test_large_vision.md"
+        assert doc.document_name == "test_vision_with_summary.md"
         assert doc.product_id == test_product.id
 
         # CRITICAL: Verify summarization fields are populated correctly
         assert doc.is_summarized is True
-        assert doc.original_token_count > 5000
+        assert doc.original_token_count > 100
 
         # Verify CORRECT fields are populated (light, medium)
         assert doc.summary_light is not None
@@ -118,25 +120,26 @@ class TestVisionDocumentSummarizationFix:
         assert doc.summary_text is not None  # Should be set to medium summary for compat
 
     @pytest.mark.asyncio
-    async def test_upload_small_document_skips_summarization(
+    async def test_upload_tiny_document_under_100_tokens_skips_summarization(
         self,
         product_service: ProductService,
         test_product: Product,
         db_session: AsyncSession,
     ):
         """
-        Test that small documents (<5K tokens) skip summarization.
+        Test that tiny documents (<100 tokens) skip summarization.
 
-        This ensures the 5K token threshold works correctly.
+        Updated threshold: Only documents >100 tokens are summarized.
+        This test verifies tiny documents are NOT summarized.
         """
-        # Create content < 5000 tokens
-        # 1 token ≈ 4 chars, so 5000 tokens ≈ 20,000 chars
-        content = "Small content. " * 100  # ~1,500 chars ≈ 375 tokens
+        # Create content < 100 tokens
+        # 1 token ≈ 4 chars, so 100 tokens ≈ 400 chars
+        content = "Tiny document. " * 5  # ~75 chars ≈ 19 tokens
 
         result = await product_service.upload_vision_document(
             product_id=test_product.id,
             content=content,
-            filename="small_vision.md",
+            filename="tiny_vision.md",
             auto_chunk=False,
         )
 
@@ -150,12 +153,54 @@ class TestVisionDocumentSummarizationFix:
         db_result = await db_session.execute(stmt)
         doc = db_result.scalar_one()
 
-        # Verify summarization was NOT triggered
+        # Verify summarization was NOT triggered (document too small)
         assert doc.is_summarized is False
         assert doc.summary_light is None
         assert doc.summary_medium is None
         assert doc.summary_light_tokens is None
         assert doc.summary_medium_tokens is None
+
+    @pytest.mark.asyncio
+    async def test_upload_document_above_100_tokens_is_summarized(
+        self,
+        product_service: ProductService,
+        test_product: Product,
+        db_session: AsyncSession,
+    ):
+        """
+        Test that documents above 100 tokens ARE summarized.
+
+        Updated threshold: ALL documents >100 tokens are now summarized (was 5K).
+        This test verifies the new 100-token threshold works correctly.
+        """
+        # Create content > 100 tokens
+        # 1 token ≈ 4 chars, so 100 tokens ≈ 400 chars
+        content = "Document content for testing. " * 20  # ~600 chars ≈ 150 tokens
+
+        result = await product_service.upload_vision_document(
+            product_id=test_product.id,
+            content=content,
+            filename="medium_vision.md",
+            auto_chunk=False,
+        )
+
+        assert result["success"] is True
+        doc_id = result["document_id"]
+
+        # Verify document in database
+        from sqlalchemy import select
+
+        stmt = select(VisionDocument).where(VisionDocument.id == doc_id)
+        db_result = await db_session.execute(stmt)
+        doc = db_result.scalar_one()
+
+        # Verify summarization WAS triggered (new behavior)
+        assert doc.is_summarized is True
+        assert doc.summary_light is not None
+        assert doc.summary_medium is not None
+        assert doc.summary_light_tokens is not None
+        assert doc.summary_medium_tokens is not None
+        assert doc.original_token_count > 100
 
     @pytest.mark.asyncio
     async def test_summarization_failure_does_not_block_upload(

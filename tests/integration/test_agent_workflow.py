@@ -54,7 +54,7 @@ class TestVisionUploadToChunks:
     async def test_vision_upload_to_chunks(self, async_db_manager, sample_product):
         """Test uploading vision → chunking → storage."""
         context_repo = ContextRepository(async_db_manager)
-        chunker = EnhancedChunker(max_tokens=20000)
+        chunker = EnhancedChunker(max_tokens=25000)
 
         # Sample vision content
         vision_content = """

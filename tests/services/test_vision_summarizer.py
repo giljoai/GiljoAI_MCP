@@ -273,15 +273,16 @@ async def test_summarization_only_when_enabled():
 @pytest.mark.asyncio
 async def test_summarization_only_above_threshold():
     """
-    Documents under 30K tokens should skip summarization.
+    Documents under 100 tokens should skip summarization.
 
-    Preserves full context for smaller documents.
+    Preserves full context for tiny documents.
 
     NOTE: This is a placeholder until ProductService integration is complete.
+    Updated threshold: 100 tokens (was 30K).
     """
     # TODO: After ProductService integration:
     # 1. Mock settings: vision_summarization_enabled=True
-    # 2. Upload 20K token document (below 30K threshold)
+    # 2. Upload 50 token document (below 100 threshold)
     # 3. Verify vision_doc.is_summarized == False
     # 4. Verify no summarization occurred
 
