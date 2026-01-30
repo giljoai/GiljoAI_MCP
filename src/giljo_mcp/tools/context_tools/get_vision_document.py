@@ -86,63 +86,84 @@ def get_max_chunks(chunking: str) -> int:
 
 
 async def _get_summary_response(
-    active_docs: list,
+    product: Product,
     depth: str,
-    summary_field: str,
-    token_field: str,
-    compression: str,
     product_id: str,
     tenant_key: str,  # noqa: ARG001
 ) -> dict[str, Any]:
     """
-    Helper function to retrieve summary-based response (Handover 0352).
+    Helper function to retrieve CONSOLIDATED summary response (Handover 0377).
 
     Args:
-        active_docs: List of active VisionDocument instances
+        product: Product instance with consolidated vision columns
         depth: Depth level ("light" or "medium")
-        summary_field: Database field name for summary ("summary_light" or "summary_medium")
-        token_field: Database field name for token count
-        compression: Compression ratio label ("33%" or "66%")
         product_id: Product UUID
         tenant_key: Tenant key
 
     Returns:
-        Dict with summary content (no pagination)
+        Dict with consolidated summary content (no pagination)
     """
-    # Get first active document with the requested summary field
-    summary_text = None
-    token_count = None
-
-    for doc in active_docs:
-        summary_value = getattr(doc, summary_field, None)
-        if summary_value:
-            summary_text = summary_value
-            token_count = getattr(doc, token_field, None)
-            break
-
-    if not summary_text:
+    # Handover 0377: Use Product's consolidated columns
+    if depth == "light":
+        summary_text = product.consolidated_vision_light
+        token_count = product.consolidated_vision_light_tokens
+        compression = "33%"
+    elif depth == "medium":
+        summary_text = product.consolidated_vision_medium
+        token_count = product.consolidated_vision_medium_tokens
+        compression = "66%"
+    else:
         logger.warning(
-            "summary_not_available",
+            "invalid_depth_for_summary",
             product_id=product_id,
             depth=depth,
-            summary_field=summary_field,
             operation="get_vision_document",
         )
         return {
             "source": "vision_documents",
             "depth": depth,
-            "data": {"error": "summary_not_available", "message": f"No {summary_field} available for this product"},
+            "data": {"error": "invalid_depth", "message": f"Invalid depth '{depth}' for summary response"},
+            "pagination": None,
+        }
+
+    if not summary_text:
+        logger.warning(
+            "consolidated_summary_not_available",
+            product_id=product_id,
+            depth=depth,
+            consolidated_at=product.consolidated_at,
+            operation="get_vision_document",
+        )
+        return {
+            "source": "vision_documents",
+            "depth": depth,
+            "data": {
+                "error": "summary_not_available",
+                "message": f"No consolidated {depth} summary available. Run consolidation first.",
+            },
             "pagination": None,
         }
 
     logger.info(
-        "vision_summary_fetched", product_id=product_id, depth=depth, tokens=token_count, compression=compression
+        "consolidated_vision_summary_fetched",
+        product_id=product_id,
+        depth=depth,
+        tokens=token_count,
+        compression=compression,
+        consolidated_at=str(product.consolidated_at) if product.consolidated_at else None,
+        consolidated_hash=product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
     )
 
     return {
         "source": "vision_documents",
         "depth": depth,
-        "data": {"summary": summary_text, "tokens": token_count, "compression": compression},
+        "data": {
+            "summary": summary_text,
+            "tokens": token_count,
+            "compression": compression,
+            "consolidated_at": str(product.consolidated_at) if product.consolidated_at else None,
+            "source_hash": product.consolidated_vision_hash,
+        },
         "pagination": None,
     }
 
@@ -323,26 +344,19 @@ async def get_vision_document(
                 },
             }
 
-        # Handover 0352: Depth-based source selection
-        # For "light" and "medium" depths, use summary fields (no pagination)
+        # Handover 0377: Use Product's consolidated vision columns for light/medium depths
         if chunking == "light":
-            return await _get_summary_response(  # nosec B106
-                active_docs=active_docs,
+            return await _get_summary_response(
+                product=product,
                 depth="light",
-                summary_field="summary_light",
-                token_field="summary_light_tokens",
-                compression="33%",
                 product_id=product_id,
                 tenant_key=tenant_key,
             )
 
         if chunking == "medium":
-            return await _get_summary_response(  # nosec B106
-                active_docs=active_docs,
+            return await _get_summary_response(
+                product=product,
                 depth="medium",
-                summary_field="summary_medium",
-                token_field="summary_medium_tokens",
-                compression="66%",
                 product_id=product_id,
                 tenant_key=tenant_key,
             )

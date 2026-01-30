@@ -26,7 +26,7 @@ class TestActualChunking:
 
     def setup_method(self):
         """Set up test environment"""
-        self.chunker = EnhancedChunker(max_tokens=20000)
+        self.chunker = EnhancedChunker(max_tokens=25000)
         self.generator = TestDocumentGenerator()
         self.tracker = PerformanceTracker()
         self.fixtures = TestFixtures()
@@ -72,7 +72,7 @@ class TestActualChunking:
             assert chunk["total_chunks"] == len(chunks)
             assert "boundary_type" in chunk
             assert "tokens" in chunk
-            assert chunk["tokens"] <= 20000
+            assert chunk["tokens"] <= 25000
 
         self.tracker.get_stats("chunk_50k")
 
@@ -323,7 +323,7 @@ class TestIntegrationWithContext:
             # Verify metadata
             for chunk in chunks:
                 assert chunk["chunk_number"] <= chunk["total_chunks"]
-                assert chunk["tokens"] <= 20000
+                assert chunk["tokens"] <= 25000
 
             # Verify chunk retrieval (simulating get_vision(part=N))
             for i in range(1, len(chunks) + 1):
