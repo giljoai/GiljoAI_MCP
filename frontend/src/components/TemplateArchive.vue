@@ -245,7 +245,8 @@ const restoreReason = ref('')
 const loadVersionHistory = async () => {
   loading.value = true
   try {
-    const response = await api.get(`/api/templates/${props.template.id}/history`)
+    // Handover 0396: Use structured api.templates.history() method
+    const response = await api.templates.history(props.template.id)
     versions.value = response.data.versions || []
 
     // Set current version as the first one
@@ -309,10 +310,12 @@ const restoreVersion = (version) => {
 const confirmRestore = async () => {
   restoring.value = true
   try {
-    await api.post(`/api/templates/${props.template.id}/restore`, {
-      version_id: restoringVersion.value.id,
-      reason: restoreReason.value,
-    })
+    // Handover 0396: Use structured api.templates.restore() method
+    await api.templates.restore(
+      props.template.id,
+      restoringVersion.value.id,
+      restoreReason.value || null
+    )
 
     emit('restore', restoringVersion.value)
     restoreDialog.value = false
