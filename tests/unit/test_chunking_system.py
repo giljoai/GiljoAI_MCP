@@ -189,7 +189,7 @@ class TestChunkingPerformance:
         # Create 100K token document (400K chars)
         content = "This is a test sentence with various words. " * 8888
 
-        chunker = EnhancedChunker(max_tokens=20000)
+        chunker = EnhancedChunker(max_tokens=25000)
 
         start = time.time()
         chunks = chunker.chunk_content(content, "massive_doc")
@@ -198,13 +198,13 @@ class TestChunkingPerformance:
         # Should complete in under 2 seconds
         assert duration < 2.0
 
-        # Should create ~5 chunks
-        assert 4 <= len(chunks) <= 6
+        # Should create ~4 chunks (was ~5 with 20K limit)
+        assert 3 <= len(chunks) <= 5
 
         # Verify all chunks have proper metadata
         for chunk in chunks:
             assert chunk["tokens"] > 0
-            assert chunk["tokens"] <= 20000
+            assert chunk["tokens"] <= 25000
             assert chunk["boundary_type"] is not None
             assert chunk["char_start"] >= 0
             assert chunk["char_end"] > chunk["char_start"]
