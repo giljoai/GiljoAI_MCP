@@ -903,7 +903,24 @@ def run_startup(
         print_info("Please install manually: pip install -r requirements.txt")
         return 1
 
-    # Step 2.5: Run database migrations
+    # Step 2.5: Download NLTK data for vision document summarization
+    print_header("Downloading NLTK Data")
+    try:
+        import nltk
+        # Check if punkt_tab is already downloaded
+        try:
+            nltk.data.find('tokenizers/punkt_tab')
+            print_success("NLTK punkt tokenizer already downloaded")
+        except LookupError:
+            print_info("Downloading NLTK punkt tokenizer...")
+            nltk.download('punkt', quiet=True)
+            nltk.download('punkt_tab', quiet=True)
+            print_success("NLTK data downloaded successfully")
+    except Exception as e:
+        print_warning(f"Failed to download NLTK data: {e}")
+        print_info("Vision document summarization may not work properly")
+
+    # Step 3: Run database migrations
     if not no_migrations:
         if not run_database_migrations():
             print_error("Database migrations failed")
@@ -911,7 +928,7 @@ def run_startup(
     else:
         print_info("Skipping database migrations as requested")
 
-    # Step 3: Check database connectivity
+    # Step 4: Check database connectivity
     print_header("Database Connectivity")
     print_info("Checking database connection...")
     db_success, db_error = check_database_connectivity()
@@ -921,15 +938,15 @@ def run_startup(
         print_info("Please ensure PostgreSQL is running and configured correctly")
         return 1
 
-    # Step 4: Check first-run status
+    # Step 5: Check first-run status
     print_header("Setup Status")
     print_info("Checking setup completion status...")
     is_first_run, state = check_first_run()
 
-    # Step 5: Get ports from config
+    # Step 6: Get ports from config
     api_port, frontend_port = get_config_ports()
 
-    # Step 6: Check port availability
+    # Step 7: Check port availability
     print_header("Port Availability")
     print_info(f"Checking API port {api_port}...")
     if not is_port_available(api_port):
@@ -952,7 +969,7 @@ def run_startup(
         else:
             print_warning("Could not find available port for frontend")
 
-    # Step 7: Start services
+    # Step 8: Start services
     print_header("Starting Services")
 
     if verbose:
@@ -968,7 +985,7 @@ def run_startup(
     print_info("Starting frontend server...")
     frontend_process = start_frontend_server(verbose=verbose)
 
-    # Step 7.5: Wait for API to be ready before opening browser
+    # Step 8.5: Wait for API to be ready before opening browser
     print_header("Waiting for Services")
     api_ready = wait_for_api_ready(api_port, max_attempts=60, interval=0.5)
 
@@ -976,7 +993,7 @@ def run_startup(
         print_warning("API did not respond to health check, but continuing anyway")
         print_warning("You may see connection errors in the browser initially")
 
-    # Step 8: Open browser
+    # Step 9: Open browser
     print_header("Opening Browser")
 
     if no_browser:
@@ -1014,7 +1031,7 @@ def run_startup(
             print_info("Opening dashboard...")
             open_browser(dashboard_url, delay=2)
 
-    # Step 9: Display status
+    # Step 10: Display status
     print_header("Services Running")
     print_success(f"API Server: http://localhost:{api_port}")
     print_success(f"API Docs: http://localhost:{api_port}/docs")
