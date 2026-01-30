@@ -67,43 +67,42 @@
                     size="small"
                     variant="tonal"
                     color="success"
-                    :disabled="!doc.summary_light"
+                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
                     @click="showSummary(doc, 'light')"
                     class="cursor-pointer"
                   >
                     Light
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens (33%)` : 'Not available' }}
+                      {{ doc.summary_light_tokens ? `~${formatTokens(doc.summary_light_tokens)} tokens (33%)` : 'Click to load' }}
                     </v-tooltip>
                   </v-chip>
                   <v-chip
                     size="small"
                     variant="tonal"
                     color="warning"
-                    :disabled="!doc.summary_medium"
+                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
                     @click="showSummary(doc, 'medium')"
                     class="cursor-pointer"
                   >
                     Medium
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.summary_medium_tokens ? `~${formatTokens(doc.summary_medium_tokens)} tokens (66%)` : 'Not available' }}
+                      {{ doc.summary_medium_tokens ? `~${formatTokens(doc.summary_medium_tokens)} tokens (66%)` : 'Click to load' }}
                     </v-tooltip>
                   </v-chip>
                   <v-chip
                     size="small"
                     variant="tonal"
                     color="primary-lighten-1"
-                    :disabled="!doc.original_token_count"
-                    :loading="loadingFullDoc === doc.id"
-                    @click="showFullDocument(doc)"
+                    :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
+                    @click="showSummary(doc, 'full')"
                     class="cursor-pointer"
                   >
                     Full
                     <v-icon end size="14">mdi-eye</v-icon>
                     <v-tooltip activator="parent" location="bottom">
-                      {{ doc.original_token_count ? `~${formatTokens(doc.original_token_count)} tokens (100%)` : 'Full document' }}
+                      {{ doc.original_token_count ? `~${formatTokens(doc.original_token_count)} tokens (100%)` : 'Click to load' }}
                     </v-tooltip>
                   </v-chip>
                 </div>
@@ -411,7 +410,6 @@ const summaryContent = ref('')
 const summaryTitle = ref('')
 const summaryLevel = ref('')
 const summaryTokens = ref(0)
-const loadingFullDoc = ref(null)  // Track which doc is loading full content
 
 // Consolidated summary dialog state (Handover 0377)
 const consolidatedSummaryDialog = ref(false)
@@ -441,7 +439,14 @@ const consolidatedSummaryColor = computed(() => {
   }
 })
 
-function showSummary(doc, level) {
+// Track which doc/level is loading
+const loadingSummary = ref({ docId: null, level: null })
+
+/**
+ * Show document summary (light, medium, or full)
+ * Fetches from API if not cached in doc object
+ */
+async function showSummary(doc, level) {
   // Handover 0246b: Updated to light/medium/full
   const levelMap = {
     light: { field: 'summary_light', tokens: 'summary_light_tokens', label: 'Light' },
@@ -450,55 +455,59 @@ function showSummary(doc, level) {
   }
 
   const config = levelMap[level]
-  if (!config || !doc[config.field]) return
+  if (!config) return
 
-  summaryContent.value = doc[config.field]
-  summaryTitle.value = `${doc.document_name || doc.filename} - ${level === 'full' ? 'Full Document' : 'Summary'}`
-  summaryLevel.value = config.label
-  summaryTokens.value = doc[config.tokens] || 0
-  summaryDialog.value = true
-}
-
-/**
- * Fetch and show full document content (Handover 0246b)
- * Full document is not included in list response to save bandwidth
- */
-async function showFullDocument(doc) {
-  // If we already have the content cached, show it
-  if (doc.vision_document) {
-    summaryContent.value = doc.vision_document
-    summaryTitle.value = `${doc.document_name || doc.filename} - Full Document`
-    summaryLevel.value = 'Full'
-    summaryTokens.value = doc.original_token_count || 0
+  // If data is already cached, show it immediately
+  if (doc[config.field]) {
+    summaryContent.value = doc[config.field]
+    summaryTitle.value = `${doc.document_name || doc.filename} - ${level === 'full' ? 'Full Document' : 'Summary'}`
+    summaryLevel.value = config.label
+    summaryTokens.value = doc[config.tokens] || 0
     summaryDialog.value = true
     return
   }
 
-  // Fetch full document from API
+  // Fetch from API (like showFullDocument does)
   try {
-    loadingFullDoc.value = doc.id
+    loadingSummary.value = { docId: doc.id, level }
     const response = await api.visionDocuments.get(doc.id)
     const fullDoc = response.data
 
-    // Cache the content on the doc object
+    // Cache all fields on the doc object for future use
     doc.vision_document = fullDoc.vision_document
+    doc.summary_light = fullDoc.summary_light
+    doc.summary_medium = fullDoc.summary_medium
+    doc.summary_light_tokens = fullDoc.summary_light_tokens
+    doc.summary_medium_tokens = fullDoc.summary_medium_tokens
+    doc.original_token_count = fullDoc.original_token_count
 
-    summaryContent.value = fullDoc.vision_document || 'No content available'
-    summaryTitle.value = `${doc.document_name || doc.filename} - Full Document`
-    summaryLevel.value = 'Full'
-    summaryTokens.value = fullDoc.original_token_count || doc.original_token_count || 0
+    const content = fullDoc[config.field]
+    if (!content) {
+      summaryContent.value = `No ${config.label.toLowerCase()} summary available for this document.`
+      summaryTitle.value = `${doc.document_name || doc.filename} - Not Available`
+      summaryLevel.value = config.label
+      summaryTokens.value = 0
+      summaryDialog.value = true
+      return
+    }
+
+    summaryContent.value = content
+    summaryTitle.value = `${doc.document_name || doc.filename} - ${level === 'full' ? 'Full Document' : 'Summary'}`
+    summaryLevel.value = config.label
+    summaryTokens.value = fullDoc[config.tokens] || 0
     summaryDialog.value = true
   } catch (error) {
-    console.error('Failed to fetch full document:', error)
-    summaryContent.value = 'Error: Could not load full document'
+    console.error('Failed to fetch document:', error)
+    summaryContent.value = 'Error: Could not load document content'
     summaryTitle.value = `${doc.document_name || doc.filename} - Error`
-    summaryLevel.value = 'Full'
+    summaryLevel.value = config.label
     summaryTokens.value = 0
     summaryDialog.value = true
   } finally {
-    loadingFullDoc.value = null
+    loadingSummary.value = { docId: null, level: null }
   }
 }
+
 
 function formatTokens(tokens) {
   if (!tokens) return '0'
