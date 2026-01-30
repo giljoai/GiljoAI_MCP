@@ -136,6 +136,63 @@
               </div>
             </v-card-text>
           </v-card>
+
+        <!-- Consolidated Vision Summaries (Handover 0377) -->
+        <div v-if="product?.consolidated_vision_light" class="mt-4">
+          <div class="text-subtitle-2 mb-2">
+            <v-icon start size="20">mdi-database-merge</v-icon>
+            Consolidated Vision Summaries
+          </div>
+          <div class="d-flex flex-wrap ga-2 mb-3">
+            <v-chip
+              size="small"
+              variant="tonal"
+              color="success"
+              @click="showConsolidatedSummary('light')"
+              class="cursor-pointer"
+            >
+              Light (33%)
+              <v-tooltip activator="parent" location="bottom">
+                ~{{ formatTokens(product.consolidated_vision_light_tokens) }} tokens
+              </v-tooltip>
+            </v-chip>
+
+            <v-chip
+              v-if="product?.consolidated_vision_medium"
+              size="small"
+              variant="tonal"
+              color="info"
+              @click="showConsolidatedSummary('medium')"
+              class="cursor-pointer"
+            >
+              Medium (66%)
+              <v-tooltip activator="parent" location="bottom">
+                ~{{ formatTokens(product.consolidated_vision_medium_tokens) }} tokens
+              </v-tooltip>
+            </v-chip>
+          </div>
+
+          <div class="text-caption text-medium-emphasis mb-3" v-if="product?.consolidated_at">
+            <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+            Last consolidated: {{ formatDate(product.consolidated_at) }}
+            <span v-if="product?.consolidated_vision_hash" class="ml-2">
+              Hash: {{ product.consolidated_vision_hash.substring(0, 8) }}...
+            </span>
+          </div>
+
+          <v-btn
+            size="small"
+            variant="outlined"
+            color="info"
+            @click="regenerateConsolidation"
+            :loading="regeneratingConsolidation"
+            :disabled="!visionDocuments?.length"
+            class="mb-2"
+          >
+            <v-icon start>mdi-refresh</v-icon>
+            Regenerate
+          </v-btn>
+        </div>
         </div>
 
         <!-- Configuration Data Display -->
@@ -275,6 +332,43 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Consolidated Summary Viewer Dialog (Handover 0377) -->
+  <v-dialog v-model="consolidatedSummaryDialog" max-width="800" scrollable>
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <v-icon start color="teal">mdi-database-merge</v-icon>
+        {{ consolidatedSummaryTitle }}
+        <v-spacer></v-spacer>
+        <v-chip size="small" :color="consolidatedSummaryColor" variant="tonal" class="mr-2">
+          {{ consolidatedSummaryLevel }}
+        </v-chip>
+        <v-btn icon variant="text" @click="consolidatedSummaryDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-divider></v-divider>
+
+      <v-card-text class="summary-content" style="max-height: 60vh; overflow-y: auto;">
+        <div class="text-caption text-medium-emphasis mb-2">
+          <v-icon size="14" class="mr-1">mdi-counter</v-icon>
+          ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
+          <span class="ml-2" v-if="consolidatedSummaryHash">
+            Hash: {{ consolidatedSummaryHash.substring(0, 12) }}...
+          </span>
+        </div>
+        <div class="text-body-2" style="white-space: pre-wrap;">{{ consolidatedSummaryContent }}</div>
+      </v-card-text>
+
+      <v-divider></v-divider>
+
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="consolidatedSummaryDialog = false">Close</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
@@ -300,7 +394,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'refresh-product'])
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -319,6 +413,15 @@ const summaryLevel = ref('')
 const summaryTokens = ref(0)
 const loadingFullDoc = ref(null)  // Track which doc is loading full content
 
+// Consolidated summary dialog state (Handover 0377)
+const consolidatedSummaryDialog = ref(false)
+const consolidatedSummaryContent = ref('')
+const consolidatedSummaryTitle = ref('')
+const consolidatedSummaryLevel = ref('')
+const consolidatedSummaryTokens = ref(0)
+const consolidatedSummaryHash = ref('')
+const regeneratingConsolidation = ref(false)
+
 const summaryLevelColor = computed(() => {
   // Handover 0246b: Updated to Light/Medium/Full
   switch (summaryLevel.value) {
@@ -326,6 +429,15 @@ const summaryLevelColor = computed(() => {
     case 'Medium': return 'warning'
     case 'Full': return 'primary-lighten-1'  // Project's lightest blue
     default: return 'primary-lighten-1'
+  }
+})
+
+const consolidatedSummaryColor = computed(() => {
+  // Handover 0377: Consolidated vision summaries
+  switch (consolidatedSummaryLevel.value) {
+    case 'Light': return 'success'
+    case 'Medium': return 'info'
+    default: return 'teal'
   }
 })
 
@@ -439,5 +551,60 @@ function formatPlatform(platform) {
     all: 'All (Cross-platform)'
   }
   return labels[platform] || platform
+}
+
+/**
+ * Show consolidated vision summary (Handover 0377)
+ * Displays light or medium consolidated vision summaries
+ */
+function showConsolidatedSummary(depth) {
+  const depthMap = {
+    light: {
+      field: 'consolidated_vision_light',
+      tokens: 'consolidated_vision_light_tokens',
+      label: 'Light (33%)',
+    },
+    medium: {
+      field: 'consolidated_vision_medium',
+      tokens: 'consolidated_vision_medium_tokens',
+      label: 'Medium (66%)',
+    },
+  }
+
+  const config = depthMap[depth]
+  if (!config || !props.product[config.field]) return
+
+  consolidatedSummaryContent.value = props.product[config.field]
+  consolidatedSummaryTitle.value = 'Consolidated Vision Summary'
+  consolidatedSummaryLevel.value = config.label
+  consolidatedSummaryTokens.value = props.product[config.tokens] || 0
+  consolidatedSummaryHash.value = props.product.consolidated_vision_hash || ''
+  consolidatedSummaryDialog.value = true
+}
+
+/**
+ * Regenerate consolidated vision summaries (Handover 0377)
+ * Calls API to trigger manual consolidation
+ */
+async function regenerateConsolidation() {
+  if (!props.product?.id) return
+
+  regeneratingConsolidation.value = true
+  try {
+    await api.products.regenerateConsolidated(props.product.id, true)
+
+    // Refresh product data to get updated consolidated fields
+    // Parent component should handle the refresh via event or refetch
+    emit('refresh-product')
+
+    // Show success notification (parent component should implement this)
+    console.log('Consolidated summaries regenerated successfully')
+  } catch (error) {
+    console.error('Failed to regenerate summaries:', error)
+    const message = error.response?.data?.detail || 'Failed to regenerate summaries'
+    console.error(message)
+  } finally {
+    regeneratingConsolidation.value = false
+  }
 }
 </script>

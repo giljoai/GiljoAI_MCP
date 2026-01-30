@@ -119,6 +119,39 @@ class Product(Base):
             "WILL BE MODIFIED in v4.0 to remove sequential_history.",
     )
 
+    # Consolidated vision summaries (Handover 0377)
+    # These store pre-computed summaries aggregated from ALL active vision documents
+    consolidated_vision_light = Column(
+        Text,
+        nullable=True,
+        comment="33% summary of all active vision documents (consolidated)"
+    )
+    consolidated_vision_light_tokens = Column(
+        Integer,
+        nullable=True,
+        comment="Token count of consolidated light summary"
+    )
+    consolidated_vision_medium = Column(
+        Text,
+        nullable=True,
+        comment="66% summary of all active vision documents (consolidated)"
+    )
+    consolidated_vision_medium_tokens = Column(
+        Integer,
+        nullable=True,
+        comment="Token count of consolidated medium summary"
+    )
+    consolidated_vision_hash = Column(
+        String(64),
+        nullable=True,
+        comment="SHA-256 hash of aggregated vision documents (for change detection)"
+    )
+    consolidated_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when consolidated summaries were last generated"
+    )
+
     # Relationships
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
@@ -142,6 +175,7 @@ class Product(Base):
         Index(
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
+        Index("idx_products_consolidated_at", "consolidated_at"),  # Handover 0377: Consolidated vision index
         # Handover 0128e: Removed CheckConstraint for deprecated vision_type field
         # Handover 0425: Validate target_platforms field
         CheckConstraint(

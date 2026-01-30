@@ -1315,11 +1315,12 @@ class ProductService:
 
                 # Multi-level summarization (Handover 0345e)
                 # Always generate summaries for large documents (no toggle check)
-                # Threshold: 5K tokens (smallest summary level)
+                # Handover 0377: Summarize all documents (100 token minimum to skip empty/trivial files)
+                # Light=33%, Medium=66%, Full=100% (original)
                 total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
 
                 # Generate multi-level summaries if document exceeds threshold
-                if total_tokens > 5000:
+                if total_tokens > 100:  # Summarize all non-trivial documents
                     try:
                         from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 

@@ -149,7 +149,7 @@ class TestVisionChunkingLoad:
 
         chunks = await chunking_tools.chunk_document(
             content=doc["content"],
-            max_tokens=20000,  # Production chunk size
+            max_tokens=25000,  # Production chunk size
         )
 
         chunking_time = (time.perf_counter() - start_time) * 1000

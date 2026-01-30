@@ -47,9 +47,9 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
         if document_id:
             stmt = stmt.where(VisionDocument.id == document_id)
         else:
-            # Find documents >20K tokens without chunks
+            # Find documents >25K tokens without chunks (Handover 0377: updated threshold)
             stmt = stmt.where(
-                VisionDocument.original_token_count > 20000,
+                VisionDocument.original_token_count > 25000,
                 (VisionDocument.chunk_count == 0) | (VisionDocument.chunk_count == None)
             )
 
@@ -64,7 +64,8 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
         for doc in documents:
             print(f"  - {doc.id}: {doc.document_name or 'Unnamed'} ({doc.original_token_count or 0:,} tokens)")
 
-        chunker = VisionDocumentChunker(target_chunk_size=20000)
+        # Handover 0377: Updated to 25K to match Claude Code limit
+        chunker = VisionDocumentChunker(target_chunk_size=25000)
 
         for doc in documents:
             print(f"\nProcessing: {doc.id}")
