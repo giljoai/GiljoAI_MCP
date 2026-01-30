@@ -181,6 +181,11 @@ export const api = {
     listVision: (id) => apiClient.get(`/api/v1/products/${id}/vision`),
     deleteVision: (id, docId) => apiClient.delete(`/api/v1/products/${id}/vision/${docId}`),
     getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks`),
+    // Consolidated vision regeneration endpoint (Handover 0377)
+    regenerateConsolidated: (id, force = true) =>
+      apiClient.post(`/api/v1/products/${id}/vision/regenerate-consolidated`, null, {
+        params: { force },
+      }),
     // Product activation endpoints (Handover 0049)
     activate: (id) => apiClient.post(`/api/v1/products/${id}/activate`),
     deactivate: (id) => apiClient.post(`/api/v1/products/${id}/deactivate`),

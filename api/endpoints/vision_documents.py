@@ -31,11 +31,53 @@ from api.schemas.vision_document import (
 )
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Vision Documents"])
+
+
+async def trigger_consolidation(product_id: str, tenant_key: str, db_session: AsyncSession) -> None:
+    """
+    Queue consolidation job for product after vision document changes.
+
+    Runs synchronously since consolidation is relatively fast (~1-2 seconds).
+    Does not block main operation - logs warning if consolidation fails but
+    still returns success for the vision document operation.
+
+    Handover 0377 Phase 4: Automatic consolidation trigger.
+
+    Args:
+        product_id: Product UUID
+        tenant_key: Tenant isolation key
+        db_session: Database session (reuses endpoint's session)
+    """
+    try:
+        consolidation_service = ConsolidatedVisionService()
+        result = await consolidation_service.consolidate_vision_documents(
+            product_id=product_id,
+            session=db_session,
+            tenant_key=tenant_key,
+            force=False
+        )
+
+        if result["success"]:
+            logger.info(
+                f"vision_documents_consolidated: product_id={product_id}, "
+                f"light_tokens={result['light']['tokens']}, medium_tokens={result['medium']['tokens']}"
+            )
+        else:
+            # Not an error - could be "no_changes" which is expected
+            logger.debug(
+                f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}"
+            )
+    except Exception as e:
+        # Don't fail the main operation if consolidation fails
+        logger.error(
+            f"consolidation_failed: product_id={product_id}, error={str(e)}"
+        )
 
 
 async def get_db():
@@ -196,9 +238,10 @@ async def create_vision_document(
         await db.commit()
 
         # Generate multi-level summaries (Sumy LSA compression)
-        # Threshold: 5K tokens (smallest summary level)
+        # Handover 0377: Summarize all documents (100 token minimum to skip empty/trivial files)
+        # Light=33%, Medium=66%, Full=100% (original)
         total_tokens = len(document_content) // 4  # Rough estimate: 1 token ≈ 4 chars
-        if total_tokens > 5000:
+        if total_tokens > 100:  # Summarize all non-trivial documents
             try:
                 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
@@ -229,15 +272,15 @@ async def create_vision_document(
                 # Summarization failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
-        # Auto-chunk large documents (>20K tokens) for pagination support
+        # Auto-chunk large documents (>25K tokens) for pagination support
         # Handover 0347: Restore chunking removed in 0246b (Claude Code 25K limit)
-        if total_tokens > 20000:
+        if total_tokens > 25000:
             try:
                 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
-                logger.info(f"Chunking document {doc.id}: {total_tokens} tokens exceeds 20K threshold")
+                logger.info(f"Chunking document {doc.id}: {total_tokens} tokens exceeds 25K threshold")
 
-                chunker = VisionDocumentChunker(target_chunk_size=20000)
+                chunker = VisionDocumentChunker(target_chunk_size=25000)
                 chunk_result = await chunker.chunk_vision_document(
                     session=db,
                     tenant_key=tenant_key,
@@ -255,6 +298,9 @@ async def create_vision_document(
             except Exception as e:
                 # Chunking failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but chunking failed: {e}")
+
+        # Handover 0377 Phase 4: Trigger consolidation after document upload
+        await trigger_consolidation(product_id, tenant_key, db)
 
         await db.refresh(doc)
 
@@ -394,8 +440,10 @@ async def update_vision_document(
         await db.commit()
 
         # Regenerate summaries for large documents
+        # Handover 0377: Summarize all documents (100 token minimum to skip empty/trivial files)
+        # Light=33%, Medium=66%, Full=100% (original)
         total_tokens = len(content) // 4  # Rough estimate: 1 token ≈ 4 chars
-        if total_tokens > 5000:
+        if total_tokens > 100:  # Summarize all non-trivial documents
             try:
                 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
@@ -423,6 +471,10 @@ async def update_vision_document(
             except Exception as e:
                 # Summarization failed but content updated - log warning and continue
                 logger.warning(f"Document {document_id} updated but summarization failed: {e}")
+
+        # Handover 0377 Phase 4: Trigger consolidation after document update
+        # Get product_id from the updated document
+        await trigger_consolidation(doc.product_id, tenant_key, db)
 
         await db.refresh(doc)
 
@@ -463,20 +515,131 @@ async def delete_vision_document(
         HTTPException 500: If deletion fails
     """
     try:
-        result = await vision_repo.delete(session=db, tenant_key=tenant_key, document_id=document_id)
+        # Get document before deletion to retrieve product_id for consolidation
+        from src.giljo_mcp.models import VisionDocument
 
-        if not result["success"]:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["message"])
+        result = await db.execute(
+            select(VisionDocument).where(
+                VisionDocument.id == document_id,
+                VisionDocument.tenant_key == tenant_key,
+            )
+        )
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Vision document {document_id} not found"
+            )
+
+        product_id = doc.product_id  # Store before deletion
+
+        # Delete the document
+        delete_result = await vision_repo.delete(session=db, tenant_key=tenant_key, document_id=document_id)
+
+        if not delete_result["success"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=delete_result["message"])
 
         await db.commit()
 
-        return DeleteResponse(**result)
+        # Handover 0377 Phase 4: Trigger consolidation after document deletion
+        await trigger_consolidation(product_id, tenant_key, db)
+
+        return DeleteResponse(**delete_result)
 
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
+        )
+
+
+@router.post("/products/{product_id}/regenerate-consolidated", response_model=dict)
+async def regenerate_consolidated_vision(
+    product_id: str,
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Manually regenerate consolidated vision summaries for a product.
+
+    **Handover 0377 Phase 4**: Admin endpoint for forcing regeneration.
+
+    **Use Cases**:
+    - Consolidation algorithm changed (want to regenerate with new logic)
+    - Manual refresh after bulk vision document updates
+    - Testing/debugging consolidation behavior
+
+    **Force Parameter**:
+    - `force=False` (default): Only regenerate if content hash changed
+    - `force=True`: Always regenerate even if content unchanged
+
+    Args:
+        product_id: Product ID to regenerate consolidated vision for
+        force: Force regeneration even if no changes detected
+
+    Returns:
+        {
+            "success": bool,
+            "light_tokens": int,
+            "medium_tokens": int,
+            "source_docs": ["doc_id1", ...],
+            "hash": "sha256_hash"
+        }
+
+    Raises:
+        HTTPException 400: If consolidation fails or skipped
+        HTTPException 404: If product not found
+    """
+    try:
+        # Verify product exists and belongs to tenant
+        result = await db.execute(
+            select(Product).filter(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+        )
+        product = result.scalar_one_or_none()
+
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Product {product_id} not found"
+            )
+
+        # Run consolidation service
+        consolidation_service = ConsolidatedVisionService()
+        consolidation_result = await consolidation_service.consolidate_vision_documents(
+            product_id=product_id,
+            session=db,
+            tenant_key=tenant_key,
+            force=force
+        )
+
+        if not consolidation_result["success"]:
+            # Return error details for debugging
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=consolidation_result.get("error", "Consolidation failed")
+            )
+
+        return {
+            "success": True,
+            "light_tokens": consolidation_result["light"]["tokens"],
+            "medium_tokens": consolidation_result["medium"]["tokens"],
+            "source_docs": consolidation_result["source_docs"],
+            "hash": consolidation_result["hash"]
+        }
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate consolidated vision: {e!s}"
         )
 
 
