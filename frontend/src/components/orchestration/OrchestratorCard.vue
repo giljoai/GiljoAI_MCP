@@ -151,9 +151,8 @@ const handleCopyPrompt = async (tool) => {
 
   try {
     // Fetch prompt from API
-    const response = await api.get(`/api/v1/prompts/orchestrator/${tool}`, {
-      params: { project_id: props.project.id },
-    })
+    // Handover 0396: Use structured api.prompts.orchestrator() method
+    const response = await api.prompts.orchestrator(tool, props.project.id)
     const promptText = response.data.prompt || 'Prompt not available'
 
     // Copy to clipboard

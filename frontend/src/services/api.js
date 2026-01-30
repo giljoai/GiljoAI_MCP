@@ -460,8 +460,11 @@ export const api = {
     delete: (id) => apiClient.delete(`/api/v1/templates/${id}`),
     history: (id, limit = 10) =>
       apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
-    restore: (templateId, archiveId) =>
-      apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
+    // Handover 0396: Added optional reason parameter for restore operation
+    restore: (templateId, archiveId, reason = null) => {
+      const payload = reason ? { reason } : {}
+      return apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`, payload)
+    },
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
@@ -604,6 +607,11 @@ export const api = {
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
     // Handover 0344: CLI mode implementation prompt for orchestrator play button
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
+    // Handover 0396: Orchestrator prompt for copy-to-clipboard (Claude Code or Codex/Gemini)
+    orchestrator: (tool, projectId) =>
+      apiClient.get(`/api/v1/prompts/orchestrator/${tool}`, {
+        params: { project_id: projectId },
+      }),
   },
 
   // Downloads

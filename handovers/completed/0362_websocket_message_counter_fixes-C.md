@@ -131,3 +131,45 @@ Frontend receives events IN ORDER:
 - **Messages Sent**: Outbound messages from this agent
 - **Messages Waiting**: Inbound messages pending acknowledgment
 - **Messages Read**: Acknowledged/completed messages
+
+---
+
+## Completion Summary
+
+**Status**: Completed
+**Date**: 2026-01-29
+**Closed By**: Documentation Manager Agent
+
+### Evidence of Completion
+
+1. **Counter Columns Implemented** (`src/giljo_mcp/models/agent_identity.py:304-316`):
+   - `messages_sent_count` - Tracks outbound messages
+   - `messages_waiting_count` - Tracks pending inbound messages
+   - `messages_read_count` - Tracks acknowledged messages
+
+2. **WebSocket Broadcasting Methods** (`api/websocket.py:934-1005`):
+   - `broadcast_message_received()` - Emits real-time message events
+   - `broadcast_message_acknowledged()` - Emits acknowledgment events
+   - Events properly scoped to tenant and project
+
+3. **Frontend Handlers** (`frontend/src/stores/agentJobsStore.js:358-445`):
+   - Real-time counter updates on `message:received` events
+   - Real-time counter updates on `message:acknowledged` events
+   - No page refresh required for counter synchronization
+
+4. **JSONB Column Deprecated** (`agent_identity.py:290-302`):
+   - Legacy `AgentExecution.messages` JSONB marked DEPRECATED
+   - Migration path established via Handover 0387 series
+   - Counter-based architecture fully operational
+
+### Migration Context
+
+This handover established the foundation for counter-based message tracking. The full migration from JSONB to counter columns was completed through:
+- **Handover 0387a-j**: Message counter migration series
+- **Handover 0390**: Product memory table normalization (similar pattern)
+
+The counter-based architecture eliminates race conditions and provides reliable real-time updates without page refreshes.
+
+### Verification Status
+
+All fixes verified and committed (1a8f7fb4). Test suite passing (18 passed, 3 skipped). WebSocket event flow corrected with proper ordering and sender exclusion.
