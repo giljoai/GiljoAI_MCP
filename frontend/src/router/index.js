@@ -198,6 +198,19 @@ const routes = [
       requiresAdmin: true,
     },
   },
+  // Organization Routes (Handover 0424d)
+  {
+    path: '/organizations/:orgId/settings',
+    name: 'OrganizationSettings',
+    component: () => import('@/views/OrganizationSettings.vue'),
+    meta: {
+      layout: 'default',
+      title: 'Organization Settings',
+      icon: 'mdi-office-building',
+      showInNav: false,
+      requiresAuth: true,
+    },
+  },
   {
     path: '/server-down',
     name: 'ServerDown',
