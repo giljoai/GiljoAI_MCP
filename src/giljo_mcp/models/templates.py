@@ -36,6 +36,13 @@ class AgentTemplate(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
+    org_id = Column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Organization for org-level templates (Handover 0424)",
+    )
     product_id = Column(String(36), nullable=True)  # Product-level scope
 
     # Template identification
@@ -103,12 +110,14 @@ class AgentTemplate(Base):
     created_by = Column(String(100), nullable=True)
 
     # Relationships
+    organization = relationship("Organization", back_populates="templates")
     archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
     usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
         Index("idx_template_tenant", "tenant_key"),
+        Index("idx_agent_templates_org", "org_id"),
         Index("idx_template_product", "product_id"),
         Index("idx_template_category", "category"),
         Index("idx_template_role", "role"),

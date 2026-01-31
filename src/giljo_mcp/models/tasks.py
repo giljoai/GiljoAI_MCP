@@ -43,6 +43,13 @@ class Task(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
+    org_id = Column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Organization for org-level tasks (Handover 0424)",
+    )
     product_id = Column(
         String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
     )  # Product-level scope for task isolation
@@ -87,6 +94,7 @@ class Task(Base):
 
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
+        Index("idx_tasks_org", "org_id"),
         Index("idx_task_product", "product_id"),
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
