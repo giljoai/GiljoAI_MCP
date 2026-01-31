@@ -48,6 +48,175 @@ powershell.exe -Command "Start-Process wt -ArgumentList '--title \"TITLE\" --tab
 
 ---
 
+## Chain Log Pattern (Context Forward Communication)
+
+The chain log is a JSON file that enables agents to communicate context forward to subsequent sessions. Each agent reads the log to understand what was done, then updates it before spawning the next terminal.
+
+### Why Chain Log?
+
+Each terminal session runs with fresh context. Without the chain log:
+- Next agent doesn't know what was completed
+- No record of deviations or blockers
+- No notes passed between sessions
+
+### Chain Log Location
+
+Store at: `prompts/{project}_chain/chain_log.json`
+
+### Chain Log Schema
+
+```json
+{
+  "chain_id": "0424",
+  "chain_name": "Organization Hierarchy Series",
+  "created_at": "2026-01-30",
+  "total_sessions": 5,
+  "sessions": [
+    {
+      "session_id": "0424a",
+      "title": "Database Schema",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": ["Task 1", "Task 2"],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "in_progress"
+}
+```
+
+### Session Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Not started yet |
+| `in_progress` | Currently executing |
+| `complete` | Successfully finished |
+| `blocked` | Stopped due to blocker |
+| `failed` | Could not complete |
+
+### Chain Log Workflow
+
+**First Handover (e.g., 0424a)**:
+1. CREATE the chain_log.json file with all sessions pre-defined
+2. Set own session status to `in_progress`
+3. Do the work
+4. Update own session with results
+5. Set status to `complete`
+6. Spawn next terminal
+
+**Subsequent Handovers (e.g., 0424b-e)**:
+1. READ chain_log.json
+2. Check previous session completed successfully
+3. Set own session status to `in_progress`
+4. Do the work
+5. Update own session with results
+6. Set status to `complete`
+7. Spawn next terminal (or mark chain complete if last)
+
+---
+
+## Handover Document Structure (Chain-Aware)
+
+**CRITICAL**: The chain instructions belong IN THE HANDOVER DOCUMENT, not just the launch prompt.
+
+Launch prompts should be SLIM - just launch Claude and point to the handover.
+The handover document contains ALL instructions including chain log management.
+
+### Handover Template for FIRST in Chain
+
+```markdown
+# Handover 0XXXa: [Title]
+
+[... standard handover content ...]
+
+---
+
+## Chain Execution Instructions
+
+### Step 1: Create Chain Log
+Create `prompts/0XXX_chain/chain_log.json` with this structure:
+[JSON template here]
+
+### Step 2: Mark Session Started
+Update your session entry: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+[Standard implementation work]
+
+### Step 4: Update Chain Log
+Before spawning next terminal, update your session:
+- `tasks_completed`: List what you actually did
+- `deviations`: Any changes from plan
+- `blockers_encountered`: Issues hit
+- `notes_for_next`: Critical info for next agent
+- `summary`: 2-3 sentence summary
+- `status`: "complete"
+- `completed_at`: "<timestamp>"
+
+### Step 5: Spawn Next Terminal
+**Use Bash tool to EXECUTE (don't just print!):**
+```powershell
+[spawn command]
+```
+```
+
+### Handover Template for SUBSEQUENT in Chain
+
+```markdown
+# Handover 0XXXb: [Title]
+
+[... standard handover content ...]
+
+---
+
+## Chain Execution Instructions
+
+### Step 1: Read Chain Log
+Read `prompts/0XXX_chain/chain_log.json`
+- Review previous session's `notes_for_next`
+- Verify previous session status is `complete`
+- If previous blocked/failed, STOP and report to user
+
+### Step 2: Mark Session Started
+Update your session entry: `"status": "in_progress", "started_at": "<timestamp>"`
+
+### Step 3: Execute Handover Tasks
+[Standard implementation work]
+
+### Step 4: Update Chain Log
+[Same as first handover]
+
+### Step 5: Spawn Next Terminal (or Complete Chain)
+[spawn command or "CHAIN COMPLETE" instructions]
+```
+
+---
+
+## Slim Launch Prompts
+
+Launch prompts should be minimal - just enough to start Claude and point to the handover:
+
+```powershell
+powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0424a - Database Schema\" --tabColor \"#4CAF50\" -d \"F:\GiljoAI_MCP\" cmd /k claude --dangerously-skip-permissions \"Execute handover 0424a. READ: F:\GiljoAI_MCP\handovers\0424a_database_schema.md\"' -Verb RunAs"
+```
+
+The handover document contains:
+- Full task details
+- Chain log instructions
+- Subagent recommendations
+- Success criteria
+- Next terminal spawn command
+
+---
+
 ## Prompt File Structure
 
 Each terminal session needs a prompt file that instructs the agent. Store in: `prompts/{project}_chain/`
@@ -120,6 +289,10 @@ Verify previous handover complete: {criteria}
 
 ### Problem: Terminal Doesn't Have Admin Rights
 **Solution**: Add `-Verb RunAs` to PowerShell command
+
+### Problem: Duplicate Terminals Spawned
+**Cause**: Both the subagent AND the main agent execute the spawn command
+**Solution**: Add explicit instruction: "CRITICAL: DO NOT SPAWN DUPLICATE TERMINALS! Only ONE agent should spawn the next terminal. If your subagent already spawned it, DO NOT spawn again."
 
 ---
 
@@ -227,6 +400,7 @@ powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0387e - Count
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-18
+**Document Version**: 2.0
+**Last Updated**: 2026-01-30
 **Author**: Claude Opus 4.5 (Orchestrator Session)
+**Changes v2.0**: Added Chain Log Pattern section, Handover Document Structure, Slim Launch Prompts

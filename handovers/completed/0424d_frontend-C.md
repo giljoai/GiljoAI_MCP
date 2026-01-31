@@ -741,3 +741,81 @@ Find the current location of the Test Connection button and move it above any `<
 - [ ] Test Connection button moved (UI tweak)
 - [ ] No regressions in other components
 - [ ] Manual testing complete
+
+---
+
+## Chain Execution Instructions
+
+**This handover is part of a multi-terminal chain. Follow these instructions EXACTLY.**
+
+### Step 1: Read Chain Log
+
+Read `prompts/0424_chain/chain_log.json`:
+- Review `0424c` session's `notes_for_next` for critical context
+- Verify `0424c` status is `complete`
+- If previous session is `blocked` or `failed`, STOP and report to user
+
+### Step 2: Mark Session Started
+
+Update chain_log.json session `0424d`:
+```json
+"status": "in_progress",
+"started_at": "<current ISO timestamp>"
+```
+
+### Step 3: Execute Handover Tasks
+
+**CRITICAL: Use Task tool subagents for ALL implementation work. Do NOT do work directly.**
+
+Example:
+```
+Task(subagent_type="frontend-tester", prompt="Read handover 0424d at F:\GiljoAI_MCP\handovers\0424d_frontend.md. Implement Organization frontend components - OrgSettings.vue, MemberManagement.vue, OrgSwitcher.vue, and orgStore.js.")
+```
+
+**Required subagents:**
+- `frontend-tester` - For Vue component implementation and testing
+- `ux-designer` - For UI/UX design decisions
+
+### Step 4: Update Chain Log Before Spawning Next
+
+Update chain_log.json session `0424d`:
+```json
+{
+  "status": "complete",
+  "completed_at": "<current ISO timestamp>",
+  "tasks_completed": ["<list what you actually did>"],
+  "deviations": ["<any changes from plan, or empty>"],
+  "blockers_encountered": ["<any issues, or empty>"],
+  "notes_for_next": "<critical info for 0424e migration/testing>",
+  "summary": "<2-3 sentence summary>"
+}
+```
+
+### Step 5: Commit Your Work
+
+**Before spawning next terminal, commit all changes:**
+```bash
+git add .
+git commit -m "feat(0424d): Add Organization frontend components
+
+- Create OrgSettings.vue page
+- Create MemberManagement.vue component
+- Create OrgSwitcher.vue component
+- Add orgStore.js Pinia store
+- Move Test Connection button (UI tweak)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+### Step 6: Spawn Next Terminal
+
+**CRITICAL: DO NOT SPAWN DUPLICATE TERMINALS!**
+- Only ONE agent should spawn the next terminal
+- If your subagent already spawned it, DO NOT spawn again
+- Check if terminal 0424e is already running before executing this command
+
+**Use Bash tool to EXECUTE this command (don't just print it!):**
+
+```powershell
+powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0424e - Migration & Testing\" --tabColor \"#F44336\" -d \"F:\GiljoAI_MCP\" cmd /k claude --dangerously-skip-permissions \"Execute handover 0424e. READ: F:\GiljoAI_MCP\handovers\0424e_migration_testing.md\"' -Verb RunAs"
+```
