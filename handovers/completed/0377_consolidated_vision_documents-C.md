@@ -448,10 +448,10 @@ Same interface, different implementation. No architectural changes needed.
 
 ---
 
-## Completion Summary (2026-01-29)
+## Completion Summary (2026-01-30)
 
 **Status**: COMPLETED
-**Actual Effort**: ~4 hours (coordinated via subagents)
+**Actual Effort**: ~5 hours (coordinated via subagents)
 **Implemented By**: Claude Opus 4.5 with TDD methodology
 
 ### Rollout Checklist - Completed
@@ -464,9 +464,10 @@ Same interface, different implementation. No architectural changes needed.
 - [x] Update ProductDetailsDialog UI component (chips, viewer dialog, regenerate button)
 - [x] Add unit tests (8 tests, all passing)
 - [x] Add integration tests (3 tests created)
-- [ ] Manual testing - Awaiting user verification
+- [x] Manual testing - User verified 2026-01-30
+- [x] NLTK data download added to startup.py (critical fix for summarization)
 - [ ] Update CLAUDE.md - Deferred to next handover
-- [ ] Backfill existing products - Optional future work
+- [x] Backfill existing products - Regenerated via Python script
 
 ### Files Created
 
@@ -515,8 +516,25 @@ Consolidation Service Tests: 8/8 passed
 Integration Tests: 3/3 passed
 ```
 
+### Follow-up Fixes (2026-01-30)
+
+**Issue 1: Empty Summaries (NLTK Missing)**
+- Root cause: NLTK punkt tokenizer data not downloaded, causing sumy to fail silently
+- Fix: Added NLTK data download to `startup.py` (Step 2.5)
+- Commits: `dab21ed6`
+
+**Issue 2: Light/Medium Not Viewable in UI**
+- Root cause: Chips were disabled when summary data wasn't in list response
+- Fix: Updated `showSummary()` to fetch from API on demand (like Full does)
+- Commits: `f4c3889e`
+
+### Additional Files Modified
+
+| File | Change |
+|------|--------|
+| `startup.py` | Added NLTK punkt tokenizer download (lines 906-922) |
+| `frontend/src/components/products/ProductDetailsDialog.vue` | `showSummary()` now fetches from API, unified loading states |
+
 ### Known Limitations
 
-1. **Existing products need consolidation**: Products created before this handover have NULL consolidated columns. Run `POST /products/{id}/vision/regenerate-consolidated?force=true` to populate.
-
-2. **Test coverage warning**: pytest-cov reports 0% due to module path mismatch (`giljo_mcp` vs `src.giljo_mcp`). Actual coverage is ~100% for new code.
+1. **Test coverage warning**: pytest-cov reports 0% due to module path mismatch (`giljo_mcp` vs `src.giljo_mcp`). Actual coverage is ~100% for new code.
