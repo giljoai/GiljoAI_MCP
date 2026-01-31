@@ -668,3 +668,94 @@ After successful migration and testing:
 3. **Check for existing orgs** - Don't duplicate if already migrated
 4. **Handle slug collisions** - Add suffix if username-workspace exists
 5. **Comprehensive verification** - SQL queries + integration tests
+
+---
+
+## Chain Execution Instructions
+
+**This is the FINAL handover in the chain. Follow these instructions EXACTLY.**
+
+### Step 1: Read Chain Log
+
+Read `prompts/0424_chain/chain_log.json`:
+- Review `0424d` session's `notes_for_next` for critical context
+- Verify `0424d` status is `complete`
+- If previous session is `blocked` or `failed`, STOP and report to user
+
+### Step 2: Mark Session Started
+
+Update chain_log.json session `0424e`:
+```json
+"status": "in_progress",
+"started_at": "<current ISO timestamp>"
+```
+
+### Step 3: Execute Handover Tasks
+
+**CRITICAL: Use Task tool subagents for ALL implementation work. Do NOT do work directly.**
+
+Example:
+```
+Task(subagent_type="backend-tester", prompt="Read handover 0424e at F:\GiljoAI_MCP\handovers\0424e_migration_testing.md. Run E2E integration tests for the complete Organization Hierarchy feature.")
+```
+
+**Required subagents:**
+- `backend-tester` - For E2E integration testing
+- `database-expert` - For migration scripts and verification
+
+### Step 4: Update Chain Log - FINAL SESSION
+
+Update chain_log.json session `0424e`:
+```json
+{
+  "status": "complete",
+  "completed_at": "<current ISO timestamp>",
+  "tasks_completed": ["<list what you actually did>"],
+  "deviations": ["<any changes from plan, or empty>"],
+  "blockers_encountered": ["<any issues, or empty>"],
+  "notes_for_next": null,
+  "summary": "<2-3 sentence summary>"
+}
+```
+
+Also update the chain-level fields:
+```json
+{
+  "chain_summary": "<summary of entire 0424 series accomplishments>",
+  "final_status": "complete"
+}
+```
+
+### Step 5: CHAIN COMPLETE - No Terminal to Spawn
+
+**CRITICAL: DO NOT SPAWN ANY TERMINALS!**
+- This is the FINAL handover in the chain
+- Neither you NOR your subagents should spawn any new terminals
+- Just commit, report completion, and archive handovers
+
+This is the FINAL handover. Instead of spawning a new terminal:
+
+1. **Commit all changes:**
+   ```bash
+   git add .
+   git commit -m "feat(0424): Complete Organization Hierarchy series
+
+   - 0424a: Database schema (organizations, org_memberships)
+   - 0424b: Service layer (OrgService, OrgRepository)
+   - 0424c: API endpoints (CRUD, membership)
+   - 0424d: Frontend (settings page, member UI, org switcher)
+   - 0424e: Migration and E2E testing
+
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+
+2. **Report completion to user** with summary of all 5 handovers
+
+3. **Move handovers to completed:**
+   ```bash
+   mv handovers/0424a_database_schema.md handovers/completed/0424a_database_schema-C.md
+   mv handovers/0424b_service_layer.md handovers/completed/0424b_service_layer-C.md
+   mv handovers/0424c_api_endpoints.md handovers/completed/0424c_api_endpoints-C.md
+   mv handovers/0424d_frontend.md handovers/completed/0424d_frontend-C.md
+   mv handovers/0424e_migration_testing.md handovers/completed/0424e_migration_testing-C.md
+   ```
