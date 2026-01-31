@@ -13,7 +13,7 @@
 | 0001-0100 | Foundation & Installation | Mostly Complete |
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
-| 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 Ready) |
+| 0301-0400 | Context Management & Services | Active Development (0371 IN PROGRESS, 0377 COMPLETE) |
 | 0401-0500 | Agent Monitoring & Ghost Fixes | 0414-0432 COMPLETE, 0460-0463 COMPLETE, 0480 REVISED Complete, 0500-0501 COMPLETE |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
@@ -107,7 +107,7 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0353 | Agent Team Awareness & Mission Context | Ready | Medium | Adds team info to missions |
-| **0377** | **Consolidated Vision Documents** | **Ready** | **HIGH** | Multi-chapter context aggregation for orchestrator |
+| ~~0377~~ | ~~Consolidated Vision Documents~~ | **COMPLETE** | ~~HIGH~~ | Moved to completed/0377_consolidated_vision_documents-C.md (2026-01-30) |
 | ~~0396~~ | ~~Frontend API Pattern Fixes~~ | **COMPLETE** | ~~HIGH~~ | Moved to completed/0396_frontend_api_pattern_fixes-C.md (2026-01-29) |
 | 0373 | Template Adapter Migration | Ready | Medium | - |
 | 0374 | Vision Summary Field Migration | Ready | Medium | - |
