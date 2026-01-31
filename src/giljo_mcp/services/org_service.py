@@ -111,10 +111,11 @@ class OrgService:
             return {"success": False, "error": str(e)}
 
     async def get_organization(self, org_id: str) -> dict[str, Any]:
-        """Get organization by ID."""
+        """Get organization by ID (only active orgs)."""
         try:
             stmt = select(Organization).where(
-                Organization.id == org_id
+                Organization.id == org_id,
+                Organization.is_active == True  # noqa: E712
             ).options(selectinload(Organization.members))
 
             result = await self.session.execute(stmt)
@@ -174,7 +175,8 @@ class OrgService:
                 extra={"org_id": org_id}
             )
 
-            return {"success": True, "data": org}
+            # Re-query with members to ensure relationships are loaded
+            return await self.get_organization(org_id)
 
         except Exception as e:
             logger.error(f"Failed to update organization: {e}")
