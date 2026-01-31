@@ -50,6 +50,13 @@ class Product(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
+    org_id = Column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Organization that owns this product (Handover 0424)",
+    )
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
@@ -153,6 +160,7 @@ class Product(Base):
     )
 
     # Relationships
+    organization = relationship("Organization", back_populates="products")
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
 
@@ -169,6 +177,7 @@ class Product(Base):
 
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
+        Index("idx_products_org", "org_id"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
         Index("idx_product_memory_gin", "product_memory", postgresql_using="gin"),  # Handover 0135: GIN index for product_memory
