@@ -92,6 +92,23 @@
         </v-col>
       </v-row>
 
+      <!-- Test Connection Button (moved above divider - Handover 0424d UI tweak) -->
+      <div v-if="showTestButton" class="mt-4 mb-4">
+        <v-btn
+          variant="flat"
+          color="primary"
+          size="large"
+          :loading="testing"
+          :disabled="testing"
+          @click="testConnection"
+          aria-label="Test database connection"
+          data-test="test-connection-btn"
+        >
+          <v-icon start>mdi-database-check</v-icon>
+          {{ testButtonText }}
+        </v-btn>
+      </div>
+
       <!-- Divider -->
       <v-divider class="my-6" />
 
@@ -109,24 +126,8 @@
       </v-alert>
     </v-card-text>
 
-    <!-- Action Buttons -->
-    <v-card-actions :class="{ 'justify-center': centerButton }">
-      <!-- Test Connection Button -->
-      <v-btn
-        v-if="showTestButton"
-        variant="flat"
-        color="primary"
-        size="large"
-        :loading="testing"
-        :disabled="testing"
-        @click="testConnection"
-        aria-label="Test database connection"
-        data-test="test-connection-btn"
-      >
-        <v-icon start>mdi-database-check</v-icon>
-        {{ testButtonText }}
-      </v-btn>
-
+    <!-- Action Buttons (Test Connection moved above divider - Handover 0424d) -->
+    <v-card-actions v-if="$slots.actions" :class="{ 'justify-center': centerButton }">
       <v-spacer v-if="!centerButton" />
 
       <!-- Actions Slot (for custom buttons like "Reload from Config") -->
