@@ -64,6 +64,13 @@ class Organization(Base):
         back_populates="organization",
         order_by="AgentTemplate.name",
     )
+    # Direct User relationship (Handover 0424f)
+    users = relationship(
+        "User",
+        back_populates="organization",
+        foreign_keys="User.org_id",
+        order_by="User.created_at.desc()",
+    )
 
     __table_args__ = (
         Index("idx_organizations_slug", "slug"),
