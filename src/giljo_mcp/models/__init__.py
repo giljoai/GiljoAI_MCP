@@ -86,6 +86,12 @@ from .product_memory_entry import (
     ProductMemoryEntry,
 )
 
+# Organization models (Handover 0424a)
+from .organizations import (
+    Organization,
+    OrgMembership,
+)
+
 # Project models
 from .projects import (
     Project,
@@ -157,6 +163,9 @@ __all__ = [
     "Vision",
     # Product Memory (Handover 0390a)
     "ProductMemoryEntry",
+    # Organizations (Handover 0424a)
+    "Organization",
+    "OrgMembership",
     # Projects
     "Project",
     # Agents
