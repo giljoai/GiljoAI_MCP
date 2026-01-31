@@ -45,12 +45,25 @@ class User(Base):
     - must_set_pin: Force recovery PIN setup on next login
 
     Multi-tenant isolation: Users belong to a tenant_key namespace.
+
+    Handover 0424f: User.org_id schema
+    - org_id: Direct foreign key to organizations table (nullable for migration)
+    - organization: Direct relationship to Organization model
     """
 
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
+
+    # Organization relationship (Handover 0424f)
+    org_id = Column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Direct foreign key to organization (Handover 0424f)"
+    )
 
     # Credentials
     username = Column(String(64), unique=True, nullable=False, index=True)
@@ -120,6 +133,9 @@ class User(Base):
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
 
+    # Organization relationship (Handover 0424f)
+    organization = relationship("Organization", back_populates="users", foreign_keys="User.org_id")
+
     # Phase 4: Task relationships (Handover 0076: removed assigned_tasks)
     created_tasks = relationship("Task", foreign_keys="Task.created_by_user_id", back_populates="created_by_user")
 
@@ -130,6 +146,7 @@ class User(Base):
         Index("idx_user_active", "is_active"),
         Index("idx_user_system", "is_system_user"),  # Index for system user queries
         Index("idx_user_pin_lockout", "pin_lockout_until"),  # Index for lockout queries (Handover 0023)
+        Index("idx_user_org_id", "org_id"),  # Index for organization queries (Handover 0424f)
         CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
         CheckConstraint("failed_pin_attempts >= 0", name="ck_user_pin_attempts_positive"),  # Handover 0023
     )
