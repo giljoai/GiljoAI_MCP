@@ -941,3 +941,80 @@ pytest tests/ -v
 - [ ] Permission levels enforced correctly
 - [ ] Manual testing via curl/Postman works
 - [ ] No regressions in other endpoints
+
+---
+
+## Chain Execution Instructions
+
+**This handover is part of a multi-terminal chain. Follow these instructions EXACTLY.**
+
+### Step 1: Read Chain Log
+
+Read `prompts/0424_chain/chain_log.json`:
+- Review `0424b` session's `notes_for_next` for critical context
+- Verify `0424b` status is `complete`
+- If previous session is `blocked` or `failed`, STOP and report to user
+
+### Step 2: Mark Session Started
+
+Update chain_log.json session `0424c`:
+```json
+"status": "in_progress",
+"started_at": "<current ISO timestamp>"
+```
+
+### Step 3: Execute Handover Tasks
+
+**CRITICAL: Use Task tool subagents for ALL implementation work. Do NOT do work directly.**
+
+Example:
+```
+Task(subagent_type="tdd-implementor", prompt="Read handover 0424c at F:\GiljoAI_MCP\handovers\0424c_api_endpoints.md. Implement Organization API endpoints with TDD - write tests first, then endpoint code.")
+```
+
+**Required subagents:**
+- `tdd-implementor` - For test-first API implementation
+- `backend-tester` - For integration testing
+
+### Step 4: Update Chain Log Before Spawning Next
+
+Update chain_log.json session `0424c`:
+```json
+{
+  "status": "complete",
+  "completed_at": "<current ISO timestamp>",
+  "tasks_completed": ["<list what you actually did>"],
+  "deviations": ["<any changes from plan, or empty>"],
+  "blockers_encountered": ["<any issues, or empty>"],
+  "notes_for_next": "<critical info for 0424d frontend>",
+  "summary": "<2-3 sentence summary>"
+}
+```
+
+### Step 5: Commit Your Work
+
+**Before spawning next terminal, commit all changes:**
+```bash
+git add .
+git commit -m "feat(0424c): Add Organization API endpoints
+
+- Create /api/organizations CRUD endpoints
+- Create /api/organizations/{id}/members endpoints
+- Add permission middleware for org access
+- Add 15+ API tests (all passing)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+### Step 6: Spawn Next Terminal
+
+**CRITICAL: DO NOT SPAWN DUPLICATE TERMINALS!**
+- Only ONE agent should spawn the next terminal
+- If your subagent already spawned it, DO NOT spawn again
+- Check if terminal 0424d is already running before executing this command
+
+**Use Bash tool to EXECUTE this command (don't just print it!):**
+
+```powershell
+powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0424d - Frontend\" --tabColor \"#FF9800\" -d \"F:\GiljoAI_MCP\" cmd /k claude --dangerously-skip-permissions \"Execute handover 0424d. READ: F:\GiljoAI_MCP\handovers\0424d_frontend.md\"' -Verb RunAs"
+```
