@@ -642,6 +642,9 @@ class AuthService:
         await session.commit()
         await session.refresh(new_user)
 
+        # Create default organization (Handover 0424b)
+        await self._create_default_organization(session, str(new_user.id), username)
+
         self._logger.info(
             f"User registered: {username} (role: {role}, by admin: {requesting_admin_id})",
             extra={"username": username, "role": role, "admin_id": requesting_admin_id}
@@ -774,6 +777,9 @@ class AuthService:
         await session.commit()
         await session.refresh(admin_user)
 
+        # Create default organization (Handover 0424b)
+        await self._create_default_organization(session, str(admin_user.id), username)
+
         # Mark first admin created in SetupState
         setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         setup_result = await session.execute(setup_state_stmt)
@@ -818,3 +824,59 @@ class AuthService:
             "is_active": admin_user.is_active,
             "token": token,  # JWT for immediate login
         }
+
+    # ============================================================================
+    # Organization Helper Methods (Handover 0424b)
+    # ============================================================================
+
+    async def _create_default_organization(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        username: str
+    ) -> None:
+        """
+        Create default personal organization for new user (Handover 0424b).
+
+        Note: This method adds org and membership to session without committing.
+        Parent methods (_register_user_impl, _create_first_admin_impl) handle commit.
+        """
+        from src.giljo_mcp.models.organizations import Organization, OrgMembership
+
+        # Generate slug from username
+        slug = f"{username.lower()}-workspace"
+
+        # Check if org with this slug already exists
+        stmt = select(Organization).where(Organization.slug == slug)
+        result = await session.execute(stmt)
+        existing_org = result.scalar_one_or_none()
+
+        if existing_org:
+            self._logger.warning(
+                f"Organization with slug '{slug}' already exists",
+                extra={"user_id": user_id, "username": username, "slug": slug}
+            )
+            return
+
+        # Create organization
+        org = Organization(
+            name=f"{username}'s Workspace",
+            slug=slug,
+            settings={}
+        )
+        session.add(org)
+        await session.flush()  # Get org.id for membership
+
+        # Create owner membership
+        owner_membership = OrgMembership(
+            org_id=org.id,
+            user_id=user_id,
+            role="owner"
+        )
+        session.add(owner_membership)
+
+        # No commit here - parent method handles it
+        self._logger.info(
+            f"Default organization created for user {user_id}",
+            extra={"user_id": user_id, "username": username, "org_id": org.id, "slug": slug}
+        )
