@@ -104,6 +104,7 @@ try:
         vision_documents,
         websocket_bridge,
     )
+    from .endpoints.organizations import crud as org_crud, members as org_members
     from .middleware import (
         APIMetricsMiddleware,
         AuthMiddleware,
@@ -463,6 +464,11 @@ def create_app() -> FastAPI:
 
     # AI Tools configuration generator endpoints
     app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
+
+    # Organization endpoints (Handover 0424c)
+    app.include_router(org_crud.router, prefix="/api/organizations", tags=["organizations"])
+    app.include_router(org_members.router, prefix="/api/organizations", tags=["organization-members"])
+    app.include_router(org_members.transfer_router, prefix="/api/organizations", tags=["organization-transfer"])
 
     @app.get("/")
     async def root():
