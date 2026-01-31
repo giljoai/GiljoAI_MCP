@@ -1,5 +1,5 @@
 """
-Test suite for team-aware missions (Handover 0353).
+Test suite for team-aware missions (Handover 0353, updated 0453).
 
 Tests cover:
 - Mission text includes team context headers when multiple agents exist
@@ -13,480 +13,421 @@ TDD Approach:
 - GREEN: Implement minimal code to pass
 - REFACTOR: Clean up while keeping tests green
 
-SKIP REASON (Handover 0453):
-These tests use pre-dual-model fixtures (AgentExecution objects named as jobs).
-After Handover 0358b dual-model migration (AgentJob + AgentExecution), these
-mocks are incompatible with get_agent_mission() which expects AgentJob objects.
-Proper fix requires creating both AgentJob and AgentExecution in fixtures.
-Skipping until team-awareness features are re-prioritized.
+This test file directly unit tests _generate_team_context_header() as a pure function.
+No mocking of database queries needed - we just create mock AgentExecution objects
+and test the function output.
 """
 
 import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="Pre-dual-model fixtures incompatible after Handover 0358b. "
-           "Requires AgentJob + AgentExecution setup. Skip until team-awareness re-prioritized."
-)
-
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.services.orchestration_service import _generate_team_context_header
 
 
-@pytest.fixture
-def mock_db_manager():
-    """Mock database manager with async session support."""
-    db_manager = MagicMock()
-    session = AsyncMock()
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=False)
-    session.execute = AsyncMock()
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.add = MagicMock()
-    db_manager.get_session_async = MagicMock(return_value=session)
-    return db_manager, session
-
-
-@pytest.fixture
-def mock_tenant_manager():
-    """Mock tenant manager."""
-    tenant_manager = MagicMock()
-    return tenant_manager
-
-
-@pytest.fixture
-def orchestration_service(mock_db_manager, mock_tenant_manager):
-    """Create OrchestrationService with mocked dependencies."""
-    db_manager, _ = mock_db_manager
-    service = OrchestrationService(
-        db_manager=db_manager,
-        tenant_manager=mock_tenant_manager
-    )
-    return service
-
-
-@pytest.fixture
-def multi_agent_project_jobs():
+def create_mock_agent_execution(
+    agent_display_name: str,
+    agent_name: str | None = None,
+    agent_id: str | None = None,
+    job_id: str | None = None,
+    status: str = "waiting",
+    mission: str | None = None,
+) -> MagicMock:
     """
-    Create a list of agent jobs representing a multi-agent project.
+    Create a mock AgentExecution object for testing.
 
-    This simulates a staged project with:
-    - analyzer: Responsible for folder structure design
-    - documenter: Responsible for documentation
+    Args:
+        agent_display_name: Display name like "analyzer", "implementer"
+        agent_name: Template name (defaults to agent_display_name)
+        agent_id: Unique agent ID (defaults to new UUID)
+        job_id: Job ID (defaults to new UUID)
+        status: Job status (defaults to "waiting")
+        mission: Mission text (optional)
 
-    Analyzer should list documenter as a downstream dependency.
-    Documenter should list analyzer as an upstream dependency.
+    Returns:
+        MagicMock configured with required attributes
     """
-    project_id = str(uuid4())
-    tenant_key = "tenant-test"
-
-    analyzer_job = AgentExecution(
-        job_id=str(uuid4()),
-        tenant_key=tenant_key,
-        agent_display_name="analyzer",
-        agent_name="analyzer",
-        status="waiting",
-        mission_acknowledged_at=None,
-        started_at=None,
-    )
-
-    documenter_job = AgentExecution(
-        job_id=str(uuid4()),
-        tenant_key=tenant_key,
-        agent_display_name="documenter",
-        agent_name="documenter",
-        status="waiting",
-        mission_acknowledged_at=None,
-        started_at=None,
-    )
-
-    return {
-        "project_id": project_id,
-        "tenant_key": tenant_key,
-        "analyzer": analyzer_job,
-        "documenter": documenter_job,
-        "all_jobs": [analyzer_job, documenter_job],
-    }
+    mock_execution = MagicMock()
+    mock_execution.agent_display_name = agent_display_name
+    mock_execution.agent_name = agent_name or agent_display_name
+    mock_execution.agent_id = agent_id or str(uuid4())
+    mock_execution.job_id = job_id or str(uuid4())
+    mock_execution.status = status
+    mock_execution.mission = mission
+    return mock_execution
 
 
-class TestTeamAwareMissions:
-    """Test suite for team-aware mission content (Handover 0353)."""
+class TestTeamContextHeader:
+    """Test suite for _generate_team_context_header() function."""
 
-    @pytest.mark.asyncio
-    async def test_get_agent_mission_includes_your_identity_header(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
+    def test_your_identity_section_contains_role_and_ids(self):
         """
-        Test that get_agent_mission returns mission with YOUR IDENTITY header.
+        Test that YOUR IDENTITY section contains agent role, agent_id, and job_id.
 
-        The YOUR IDENTITY section should contain:
-        - Role name (e.g., "ANALYZER")
-        - Job ID for MCP tool calls
+        The YOUR IDENTITY section should clearly state the agent's role
+        and provide both agent_id and job_id for MCP tool calls.
         """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
+        agent_id = str(uuid4())
+        job_id = str(uuid4())
+        current_agent = create_mock_agent_execution(
+            agent_display_name="analyzer",
+            agent_name="analyzer",
+            agent_id=agent_id,
+            job_id=job_id,
+        )
 
-        # Mock database queries
-        # First query returns the specific agent job
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
-
-        # Second query returns all jobs for the project (for team context)
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
-
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
-
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
-
-        assert response.get("success") is True
-        mission = response.get("mission", "")
+        header = _generate_team_context_header(
+            current_job=current_agent,
+            all_project_jobs=[current_agent],
+            mission_lookup=None,
+        )
 
         # Verify YOUR IDENTITY section exists
-        assert "## YOUR IDENTITY" in mission, "Mission must include YOUR IDENTITY header"
-        assert "analyzer" in mission.lower(), "YOUR IDENTITY must mention role"
-        assert analyzer_job.job_id in mission, "YOUR IDENTITY must include job_id"
+        assert "## YOUR IDENTITY" in header, "Header must include YOUR IDENTITY section"
 
-    @pytest.mark.asyncio
-    async def test_get_agent_mission_includes_your_team_header(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
+        # Verify role is capitalized and prominent
+        assert "ANALYZER" in header, "YOUR IDENTITY must include capitalized role name"
+
+        # Verify agent_id is present
+        assert agent_id in header, "YOUR IDENTITY must include agent_id"
+
+        # Verify job_id is present
+        assert job_id in header, "YOUR IDENTITY must include job_id"
+
+        # Verify agent_display_name is mentioned
+        assert "analyzer" in header.lower(), "YOUR IDENTITY must mention agent_display_name"
+
+    def test_your_team_section_lists_all_agents(self):
         """
-        Test that get_agent_mission returns mission with YOUR TEAM header.
+        Test that YOUR TEAM section lists all agents on the project.
 
         The YOUR TEAM section should contain:
         - Count of agents on the project
-        - Table/list of all agents with roles and deliverables
+        - Table with all agents and their roles
+        - Deliverables preview for each agent
         """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
-
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
-
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
-
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
-
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
-
-        assert response.get("success") is True
-        mission = response.get("mission", "")
-
-        # Verify YOUR TEAM section exists
-        assert "## YOUR TEAM" in mission, "Mission must include YOUR TEAM header"
-        # Should mention both agents
-        assert "analyzer" in mission.lower(), "YOUR TEAM must list analyzer"
-        assert "documenter" in mission.lower(), "YOUR TEAM must list documenter"
-
-    @pytest.mark.asyncio
-    async def test_get_agent_mission_includes_your_dependencies_header(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
-        """
-        Test that get_agent_mission returns mission with YOUR DEPENDENCIES header.
-
-        The YOUR DEPENDENCIES section should describe:
-        - Upstream dependencies (what this agent depends on)
-        - Downstream dependencies (who depends on this agent)
-        """
-        db_manager, session = mock_db_manager
-        documenter_job = multi_agent_project_jobs["documenter"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
-
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=documenter_job)
-
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
-
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
-
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(
-                job_id=documenter_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
-
-        assert response.get("success") is True
-        mission = response.get("mission", "")
-
-        # Verify YOUR DEPENDENCIES section exists
-        assert "## YOUR DEPENDENCIES" in mission, "Mission must include YOUR DEPENDENCIES header"
-
-    @pytest.mark.asyncio
-    async def test_get_agent_mission_includes_coordination_header(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
-        """
-        Test that get_agent_mission returns mission with COORDINATION header.
-
-        The COORDINATION section should include:
-        - Guidance on when/who to message
-        - Reference to MCP messaging tools
-        """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
-
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
-
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
-
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
-
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
-
-        assert response.get("success") is True
-        mission = response.get("mission", "")
-
-        # Verify COORDINATION section exists
-        assert "## COORDINATION" in mission, "Mission must include COORDINATION header"
-        # Should reference messaging tools
-        assert "send_message" in mission.lower() or "receive_messages" in mission.lower(), \
-            "COORDINATION must reference MCP messaging tools"
-
-    @pytest.mark.asyncio
-    async def test_get_agent_mission_team_header_lists_all_project_agents(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
-        """
-        Test that YOUR TEAM lists all agents on the project with their roles.
-        """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
-
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
-
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
-
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
-
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
-
-        assert response.get("success") is True
-        mission = response.get("mission", "")
-
-        # Count agents mentioned
-        team_section_start = mission.find("## YOUR TEAM")
-        assert team_section_start != -1, "YOUR TEAM section must exist"
-
-        # Both agent types should appear in the mission
-        assert "analyzer" in mission.lower()
-        assert "documenter" in mission.lower()
-
-    @pytest.mark.asyncio
-    async def test_single_agent_project_still_gets_team_context(
-        self, orchestration_service, mock_db_manager
-    ):
-        """
-        Test that even a single-agent project gets team context headers.
-
-        The headers should still exist, with the team section indicating
-        this is the only agent on the project.
-        """
-        db_manager, session = mock_db_manager
-        project_id = str(uuid4())
-        tenant_key = "tenant-solo"
-
-        solo_job = AgentExecution(
-            job_id=str(uuid4()),
-            tenant_key=tenant_key,
+        analyzer = create_mock_agent_execution(
+            agent_display_name="analyzer",
+            mission="Analyze folder structure and design architecture"
+        )
+        implementer = create_mock_agent_execution(
             agent_display_name="implementer",
-            agent_name="implementer",
-            status="waiting",
-            mission_acknowledged_at=None,
-            started_at=None,
+            mission="Implement backend API endpoints based on architecture"
         )
 
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=solo_job)
+        all_agents = [analyzer, implementer]
 
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[solo_job])))
+        header = _generate_team_context_header(
+            current_job=analyzer,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
 
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
+        # Verify YOUR TEAM section exists
+        assert "## YOUR TEAM" in header, "Header must include YOUR TEAM section"
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
+        # Verify agent count
+        assert "2 agent(s)" in header, "YOUR TEAM must show correct agent count"
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=solo_job.job_id,
-                tenant_key=tenant_key
-            )
+        # Verify table exists
+        assert "| Agent |" in header, "YOUR TEAM must include table header"
+        assert "| agent_id |" in header, "YOUR TEAM table must have agent_id column"
+        assert "| Role |" in header, "YOUR TEAM table must have Role column"
+        assert "| Deliverables |" in header, "YOUR TEAM table must have Deliverables column"
 
-        assert response.get("success") is True
-        mission = response.get("mission", "")
+        # Verify both agents are listed
+        assert "analyzer" in header.lower(), "YOUR TEAM must list analyzer"
+        assert "implementer" in header.lower(), "YOUR TEAM must list implementer"
 
-        # All headers should still exist
-        assert "## YOUR IDENTITY" in mission
-        assert "## YOUR TEAM" in mission
-        # For single agent, team section might indicate "1 agent" or similar
-        assert "1 agent" in mission.lower() or "only agent" in mission.lower() or "implementer" in mission.lower()
+        # Verify deliverable previews appear
+        assert "Analyze folder structure" in header or "architecture" in header.lower(), \
+            "YOUR TEAM should show deliverable preview"
 
-
-class TestTeamContextIdClarification:
-    """Test ID usage clarification per Handover 0353."""
-
-    @pytest.mark.asyncio
-    async def test_mission_uses_job_id_for_mcp_tools(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
+    def test_your_dependencies_section_analyzer_has_downstream(self):
         """
-        Test that mission/protocol uses job_id (UUID) for MCP tool calls.
+        Test that YOUR DEPENDENCIES section correctly identifies downstream dependencies.
 
-        Per 0353: Clarify that job_id / job_id = UUID for MCP tools.
+        Analyzer should have downstream dependencies on implementer and documenter
+        when they are present in the team.
         """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
+        analyzer = create_mock_agent_execution(agent_display_name="analyzer")
+        implementer = create_mock_agent_execution(agent_display_name="implementer")
+        documenter = create_mock_agent_execution(agent_display_name="documenter")
 
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
+        all_agents = [analyzer, implementer, documenter]
 
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
+        header = _generate_team_context_header(
+            current_job=analyzer,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
 
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
+        # Verify YOUR DEPENDENCIES section exists
+        assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
+        # Analyzer has no upstream dependencies
+        assert "You depend on: None" in header, \
+            "Analyzer should have no upstream dependencies"
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
+        # Analyzer has downstream dependencies
+        assert "Others depend on you:" in header, \
+            "YOUR DEPENDENCIES must list downstream dependencies"
+        assert "implementer" in header.lower(), \
+            "Analyzer should list implementer as downstream"
+        assert "documenter" in header.lower(), \
+            "Analyzer should list documenter as downstream"
 
-        assert response.get("success") is True
-
-        # Check that the actual job_id (UUID) appears in mission or protocol
-        mission = response.get("mission", "")
-        protocol = response.get("full_protocol", "")
-        combined = mission + protocol
-
-        # The job_id UUID should appear (for MCP tool calls)
-        assert analyzer_job.job_id in combined, \
-            "Mission/protocol must include job_id UUID for MCP tool calls"
-
-    @pytest.mark.asyncio
-    async def test_mission_uses_agent_name_for_display(
-        self, orchestration_service, mock_db_manager, multi_agent_project_jobs
-    ):
+    def test_your_dependencies_section_documenter_has_upstream(self):
         """
-        Test that mission uses agent_name for display/identity.
+        Test that YOUR DEPENDENCIES section correctly identifies upstream dependencies.
 
-        Per 0353: agent_name = template role (implementer/tester/etc.)
+        Documenter should have upstream dependencies on analyzer and implementer
+        when they are present in the team.
         """
-        db_manager, session = mock_db_manager
-        analyzer_job = multi_agent_project_jobs["analyzer"]
-        all_jobs = multi_agent_project_jobs["all_jobs"]
+        analyzer = create_mock_agent_execution(agent_display_name="analyzer")
+        implementer = create_mock_agent_execution(agent_display_name="implementer")
+        documenter = create_mock_agent_execution(agent_display_name="documenter")
 
-        result_job = MagicMock()
-        result_job.scalar_one_or_none = MagicMock(return_value=analyzer_job)
+        all_agents = [analyzer, implementer, documenter]
 
-        result_all_jobs = MagicMock()
-        result_all_jobs.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=all_jobs)))
+        header = _generate_team_context_header(
+            current_job=documenter,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
 
-        session.execute = AsyncMock(side_effect=[result_job, result_all_jobs])
+        # Verify YOUR DEPENDENCIES section exists
+        assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
+        # Documenter has upstream dependencies
+        assert "You depend on:" in header, \
+            "YOUR DEPENDENCIES must list upstream dependencies"
+        assert "analyzer" in header.lower(), \
+            "Documenter should list analyzer as upstream"
+        assert "implementer" in header.lower(), \
+            "Documenter should list implementer as upstream"
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=analyzer_job.job_id,
-                tenant_key=multi_agent_project_jobs["tenant_key"]
-            )
+        # Documenter has no downstream dependencies
+        assert "Others depend on you: None" in header, \
+            "Documenter should have no downstream dependencies"
 
-        assert response.get("success") is True
-        mission = response.get("mission", "")
+    def test_your_dependencies_section_implementer_has_both(self):
+        """
+        Test that YOUR DEPENDENCIES section handles both upstream and downstream.
 
-        # Identity section should show the role name prominently
-        assert "analyzer" in mission.lower(), \
-            "YOUR IDENTITY must include the agent_name/role for display"
+        Implementer should have:
+        - Upstream: analyzer
+        - Downstream: tester, documenter
+        """
+        analyzer = create_mock_agent_execution(agent_display_name="analyzer")
+        implementer = create_mock_agent_execution(agent_display_name="implementer")
+        tester = create_mock_agent_execution(agent_display_name="tester")
+        documenter = create_mock_agent_execution(agent_display_name="documenter")
+
+        all_agents = [analyzer, implementer, tester, documenter]
+
+        header = _generate_team_context_header(
+            current_job=implementer,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
+
+        # Verify YOUR DEPENDENCIES section exists
+        assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
+
+        # Implementer has upstream dependency on analyzer
+        assert "You depend on:" in header and "analyzer" in header.lower(), \
+            "Implementer should list analyzer as upstream"
+
+        # Implementer has downstream dependencies on tester and documenter
+        assert "Others depend on you:" in header, \
+            "Implementer should have downstream dependencies"
+        assert "tester" in header.lower(), \
+            "Implementer should list tester as downstream"
+        assert "documenter" in header.lower(), \
+            "Implementer should list documenter as downstream"
+
+    def test_coordination_section_mentions_messaging_tools(self):
+        """
+        Test that COORDINATION section provides messaging guidance.
+
+        The COORDINATION section should:
+        - Reference send_message and receive_messages tools
+        - Provide guidance on when to message teammates
+        - Reference full_protocol for detailed instructions
+        """
+        current_agent = create_mock_agent_execution(agent_display_name="analyzer")
+
+        header = _generate_team_context_header(
+            current_job=current_agent,
+            all_project_jobs=[current_agent],
+            mission_lookup=None,
+        )
+
+        # Verify COORDINATION section exists
+        assert "## COORDINATION" in header, "Header must include COORDINATION section"
+
+        # Verify messaging tools are mentioned
+        assert "send_message" in header, \
+            "COORDINATION must reference send_message tool"
+        assert "receive_messages" in header, \
+            "COORDINATION must reference receive_messages tool"
+
+        # Verify guidance is provided
+        assert "notify teammates" in header.lower() or "status message" in header.lower(), \
+            "COORDINATION must provide messaging guidance"
+
+        # Verify reference to full_protocol
+        assert "full_protocol" in header, \
+            "COORDINATION must reference full_protocol for detailed instructions"
+
+    def test_single_agent_project_still_gets_all_sections(self):
+        """
+        Test that single-agent project still gets all team context sections.
+
+        Even with only one agent, the header should include all sections
+        with appropriate messaging (e.g., "1 agent(s)", "None" dependencies).
+        """
+        solo_agent = create_mock_agent_execution(agent_display_name="implementer")
+
+        header = _generate_team_context_header(
+            current_job=solo_agent,
+            all_project_jobs=[solo_agent],
+            mission_lookup=None,
+        )
+
+        # All sections should exist
+        assert "## YOUR IDENTITY" in header, "Single-agent must have YOUR IDENTITY"
+        assert "## YOUR TEAM" in header, "Single-agent must have YOUR TEAM"
+        assert "## YOUR DEPENDENCIES" in header, "Single-agent must have YOUR DEPENDENCIES"
+        assert "## COORDINATION" in header, "Single-agent must have COORDINATION"
+
+        # Team section should show 1 agent
+        assert "1 agent(s)" in header, "YOUR TEAM should show '1 agent(s)'"
+
+        # Dependencies should be None
+        assert "None" in header, "Single-agent should have None dependencies"
+
+    def test_mission_lookup_dict_used_when_provided(self):
+        """
+        Test that mission_lookup dict is used instead of mission attribute.
+
+        When mission_lookup is provided, it should be used to get mission text
+        for the deliverables preview instead of accessing the mission attribute
+        (which could cause SQLAlchemy lazy load errors).
+        """
+        job_id_1 = str(uuid4())
+        job_id_2 = str(uuid4())
+
+        agent_1 = create_mock_agent_execution(
+            agent_display_name="analyzer",
+            job_id=job_id_1,
+            mission="Should not appear"  # This should be ignored
+        )
+        agent_2 = create_mock_agent_execution(
+            agent_display_name="implementer",
+            job_id=job_id_2,
+            mission="Should not appear"  # This should be ignored
+        )
+
+        mission_lookup = {
+            job_id_1: "Analyze architecture using mission_lookup dict",
+            job_id_2: "Implement features using mission_lookup dict",
+        }
+
+        all_agents = [agent_1, agent_2]
+
+        header = _generate_team_context_header(
+            current_job=agent_1,
+            all_project_jobs=all_agents,
+            mission_lookup=mission_lookup,
+        )
+
+        # Verify mission_lookup text appears in deliverables
+        assert "mission_lookup dict" in header, \
+            "Deliverables should use mission_lookup text when provided"
+
+        # Verify original mission attribute text does NOT appear
+        assert "Should not appear" not in header, \
+            "Deliverables should NOT use mission attribute when mission_lookup provided"
+
+    def test_multi_agent_team_roster_completeness(self):
+        """
+        Test that YOUR TEAM section includes all agents in a large team.
+
+        Verify that a 5-agent team has all agents listed with their IDs.
+        """
+        agents = [
+            create_mock_agent_execution(agent_display_name="analyzer"),
+            create_mock_agent_execution(agent_display_name="implementer"),
+            create_mock_agent_execution(agent_display_name="tester"),
+            create_mock_agent_execution(agent_display_name="reviewer"),
+            create_mock_agent_execution(agent_display_name="documenter"),
+        ]
+
+        header = _generate_team_context_header(
+            current_job=agents[0],
+            all_project_jobs=agents,
+            mission_lookup=None,
+        )
+
+        # Verify team count
+        assert "5 agent(s)" in header, "YOUR TEAM must show '5 agent(s)'"
+
+        # Verify all agents are listed
+        assert "analyzer" in header.lower()
+        assert "implementer" in header.lower()
+        assert "tester" in header.lower()
+        assert "reviewer" in header.lower()
+        assert "documenter" in header.lower()
+
+        # Verify all agent_ids appear
+        for agent in agents:
+            assert agent.agent_id in header, \
+                f"YOUR TEAM must include agent_id for {agent.agent_display_name}"
+
+    def test_dependency_inference_tester_depends_on_implementer(self):
+        """
+        Test that tester has upstream dependency on implementer.
+
+        When both implementer and tester are present, tester should
+        list implementer as an upstream dependency.
+        """
+        implementer = create_mock_agent_execution(agent_display_name="implementer")
+        tester = create_mock_agent_execution(agent_display_name="tester")
+
+        all_agents = [implementer, tester]
+
+        header = _generate_team_context_header(
+            current_job=tester,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
+
+        # Tester depends on implementer
+        assert "You depend on:" in header and "implementer" in header.lower(), \
+            "Tester should list implementer as upstream dependency"
+
+    def test_unknown_role_has_no_dependencies(self):
+        """
+        Test that unknown/custom roles have no inferred dependencies.
+
+        Roles not in the dependency_rules dict should have no
+        upstream or downstream dependencies inferred.
+        """
+        custom_agent = create_mock_agent_execution(agent_display_name="custom-role")
+        implementer = create_mock_agent_execution(agent_display_name="implementer")
+
+        all_agents = [custom_agent, implementer]
+
+        header = _generate_team_context_header(
+            current_job=custom_agent,
+            all_project_jobs=all_agents,
+            mission_lookup=None,
+        )
+
+        # Custom role should have no dependencies
+        assert "You depend on: None" in header, \
+            "Unknown roles should have no upstream dependencies"
+        assert "Others depend on you: None" in header, \
+            "Unknown roles should have no downstream dependencies"
