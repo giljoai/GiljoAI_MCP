@@ -56,13 +56,13 @@ class User(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
 
-    # Organization relationship (Handover 0424f, 0424j - NOT NULL enforced)
+    # Organization relationship (Handover 0424f, 0424m - nullable for SET NULL)
     org_id = Column(
         String(36),
         ForeignKey("organizations.id", ondelete="SET NULL"),
-        nullable=False,
+        nullable=True,  # FIXED: Must be True for ondelete="SET NULL" to work (0424m)
         index=True,
-        comment="Direct foreign key to organization (Handover 0424j - NOT NULL enforced)"
+        comment="Direct foreign key to organization (Handover 0424m - nullable for SET NULL)"
     )
 
     # Credentials

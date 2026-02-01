@@ -124,7 +124,8 @@ async def invite_member(
             org_id=org_id,
             user_id=invite_data.user_id,
             role=invite_data.role,
-            invited_by=current_user.id
+            invited_by=current_user.id,
+            tenant_key=current_user.tenant_key
         )
 
         if not result["success"]:

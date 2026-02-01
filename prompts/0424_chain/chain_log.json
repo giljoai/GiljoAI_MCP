@@ -387,7 +387,8 @@
       "session_id": "0424m",
       "title": "Model-Migration Alignment",
       "color": "#E91E63",
-      "status": "ready",
+      "status": "in_progress",
+      "started_at": "2026-02-01T10:00:00Z",
       "planned_tasks": [
         "Add tenant_key to Organization model",
         "Add tenant_key to OrgMembership model",
