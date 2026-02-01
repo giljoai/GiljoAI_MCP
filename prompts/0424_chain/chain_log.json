@@ -207,8 +207,8 @@
       "session_id": "0424h",
       "title": "API + Welcome Screen",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-01-31T14:00:00Z",
       "completed_at": null,
       "planned_tasks": [
         "Update /auth/first-login to accept workspace_name",
