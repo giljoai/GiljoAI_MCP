@@ -47,11 +47,13 @@ async def test_user(db_session: AsyncSession):
     from src.giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
+    tenant_key = TenantManager.generate_tenant_key()  # 0424m: Generate before org creation
 
-    # Create org first (0424j: org_id is NOT NULL)
+    # Create org first (0424m: org_id is NOT NULL, tenant_key required)
     org = Organization(
         name=f"Test User Org {unique_suffix}",
         slug=f"test-user-org-{unique_suffix}",
+        tenant_key=tenant_key,  # 0424m: Required NOT NULL
         is_active=True
     )
     db_session.add(org)
@@ -60,7 +62,7 @@ async def test_user(db_session: AsyncSession):
     user = User(
         username=f"testuser_{unique_suffix}",
         email=f"test_{uuid4().hex[:8]}@example.com",
-        tenant_key=TenantManager.generate_tenant_key(),
+        tenant_key=tenant_key,  # 0424m: Use same tenant_key
         role="developer",
         password_hash="hashed_password",
         org_id=org.id,  # Required after 0424j
@@ -84,11 +86,13 @@ async def test_user_2(db_session: AsyncSession):
     from src.giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
+    tenant_key = TenantManager.generate_tenant_key()  # 0424m: Generate before org creation
 
-    # Create org first (0424j: org_id is NOT NULL)
+    # Create org first (0424m: org_id is NOT NULL, tenant_key required)
     org = Organization(
         name=f"Test User 2 Org {unique_suffix}",
         slug=f"test-user-2-org-{unique_suffix}",
+        tenant_key=tenant_key,  # 0424m: Required NOT NULL
         is_active=True
     )
     db_session.add(org)
@@ -97,7 +101,7 @@ async def test_user_2(db_session: AsyncSession):
     user = User(
         username=f"testuser2_{unique_suffix}",
         email=f"test2_{uuid4().hex[:8]}@example.com",
-        tenant_key=TenantManager.generate_tenant_key(),
+        tenant_key=tenant_key,  # 0424m: Use same tenant_key as org
         role="developer",
         password_hash="hashed_password",
         org_id=org.id,  # Required after 0424j

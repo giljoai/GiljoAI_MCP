@@ -50,6 +50,7 @@ async def test_org(db_session):
         id="test-org-001",
         name="Test Organization",
         slug="test-organization",
+        tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
         is_active=True,
         settings={}
     )
@@ -78,11 +79,12 @@ async def test_admin_user(db_session, test_org):
     db_session.add(admin)
     await db_session.flush()
 
-    # Create owner membership
+    # Create owner membership (0424m: tenant_key required)
     owner_membership = OrgMembership(
         org_id=test_org.id,
         user_id=admin.id,
         role="owner",
+        tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
         is_active=True
     )
     db_session.add(owner_membership)
@@ -110,11 +112,12 @@ async def test_member_user(db_session, test_org):
     db_session.add(member)
     await db_session.flush()
 
-    # Create member membership
+    # Create member membership (0424m: tenant_key required)
     member_membership = OrgMembership(
         org_id=test_org.id,
         user_id=member.id,
         role="member",
+        tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
         is_active=True
     )
     db_session.add(member_membership)

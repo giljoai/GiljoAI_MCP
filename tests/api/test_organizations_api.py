@@ -36,10 +36,11 @@ async def other_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Other User Org {unique_suffix}",
             slug=f"other-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -105,10 +106,11 @@ async def third_user_id(db_manager) -> str:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Third User Org {unique_suffix}",
             slug=f"third-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -139,10 +141,11 @@ async def member_user_headers(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Member User Org {unique_suffix}",
             slug=f"member-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)

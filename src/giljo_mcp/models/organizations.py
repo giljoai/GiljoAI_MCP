@@ -38,12 +38,13 @@ class Organization(Base):
     __tablename__ = "organizations"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)  # ADDED: Multi-tenant isolation (0424m)
     name = Column(String(255), nullable=False)
-    slug = Column(String(100), nullable=False, unique=True, index=True)
+    slug = Column(String(255), nullable=False, unique=True, index=True)  # FIXED: 100 -> 255 (0424m)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), nullable=True  # FIXED: Remove server_default and onupdate (0424m)
     )
     settings = Column(JSONB, default=dict, nullable=False)
 
@@ -73,8 +74,9 @@ class Organization(Base):
     )
 
     __table_args__ = (
-        Index("idx_organizations_slug", "slug"),
-        Index("idx_organizations_active", "is_active"),
+        Index("idx_org_tenant", "tenant_key"),  # Match migration name (0424m)
+        Index("idx_org_slug", "slug", unique=True),  # Match migration name (0424m)
+        Index("idx_org_active", "is_active"),  # Match migration name (0424m)
     )
 
 
@@ -106,8 +108,9 @@ class OrgMembership(Base):
         nullable=False,
         index=True,
     )
+    tenant_key = Column(String(36), nullable=False, index=True)  # ADDED: Multi-tenant isolation (0424m)
     role = Column(
-        String(20), nullable=False, default="member"
+        String(32), nullable=False, default="member"  # FIXED: 20 -> 32 (0424m)
     )  # owner, admin, member, viewer
     is_active = Column(Boolean, default=True, nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -121,13 +124,12 @@ class OrgMembership(Base):
     inviter = relationship("User", foreign_keys=[invited_by])
 
     __table_args__ = (
-        UniqueConstraint("org_id", "user_id", name="uq_org_membership_user"),
+        UniqueConstraint("org_id", "user_id", name="uq_org_user"),  # FIXED: Match migration (0424m)
         CheckConstraint(
             "role IN ('owner', 'admin', 'member', 'viewer')",
-            name="ck_org_membership_role",
+            name="ck_membership_role",  # FIXED: Match migration (0424m)
         ),
-        Index("idx_org_memberships_org", "org_id"),
-        Index("idx_org_memberships_user", "user_id"),
-        Index("idx_org_memberships_role", "role"),
-        Index("idx_org_memberships_active", "is_active"),
+        Index("idx_membership_org", "org_id"),  # FIXED: Match migration (0424m)
+        Index("idx_membership_user", "user_id"),  # FIXED: Match migration (0424m)
+        Index("idx_membership_tenant", "tenant_key"),  # ADDED: Match migration (0424m)
     )

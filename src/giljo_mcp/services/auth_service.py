@@ -650,6 +650,7 @@ class AuthService:
             membership = OrgMembership(
                 org_id=org_id,
                 user_id=str(new_user.id),
+                tenant_key=tenant_key,
                 role=org_role,
                 is_active=True
             )
@@ -667,6 +668,7 @@ class AuthService:
             membership = OrgMembership(
                 org_id=created_org_id,
                 user_id=str(new_user.id),
+                tenant_key=tenant_key,
                 role="owner",
                 is_active=True
             )
@@ -908,6 +910,7 @@ class AuthService:
         owner_membership = OrgMembership(
             org_id=org_id,
             user_id=str(admin_user.id),
+            tenant_key=tenant_key,
             role="owner",
             is_active=True
         )
@@ -998,6 +1001,7 @@ class AuthService:
         # Create organization
         org = Organization(
             name=org_name,
+            tenant_key=tenant_key,
             slug=slug,
             settings={}
         )
