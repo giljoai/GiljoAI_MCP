@@ -2,7 +2,7 @@
   "chain_id": "0424",
   "chain_name": "Organization Hierarchy Series",
   "created_at": "2026-01-30",
-  "total_sessions": 12,
+  "total_sessions": 14,
   "sessions": [
     {
       "session_id": "0424a",
@@ -382,8 +382,51 @@
       ],
       "notes_for_next": "Fresh install path verified and working. Upgrade path from pre-0424 requires manual migration or new backup. Test fixtures need org_id updates for full test suite passing.",
       "summary": "Fixed critical migration order bug. Fresh install verified working. Backup restore has backward compatibility limitation (pre-0424 backups). 8/12 tests pass."
+    },
+    {
+      "session_id": "0424m",
+      "title": "Model-Migration Alignment",
+      "color": "#E91E63",
+      "status": "ready",
+      "planned_tasks": [
+        "Add tenant_key to Organization model",
+        "Add tenant_key to OrgMembership model",
+        "Fix User.org_id nullable (False -> True)",
+        "Fix Organization.slug length (100 -> 255)",
+        "Fix OrgMembership.role length (20 -> 32)",
+        "Update index/constraint names to match migration",
+        "Update OrgService for tenant_key",
+        "Update AuthService for tenant_key",
+        "Update API endpoints for tenant_key",
+        "Fix 3 test fixtures (create org before user)",
+        "Update 15 service test calls with tenant_key"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "After 0424m completes, run comprehensive test suite to verify all org functionality. Consider 0424n for final verification if needed.",
+      "summary": "Pending - Comprehensive model-migration alignment to fix 10 identified mismatches and 19 failing tests."
+    },
+    {
+      "session_id": "0424n",
+      "title": "Comprehensive Testing",
+      "color": "#00BCD4",
+      "status": "ready",
+      "planned_tasks": [
+        "Run all 48+ org-related tests",
+        "Verify fresh install creates correct schema",
+        "Test tenant_key in organizations table",
+        "Test tenant_key in org_memberships table",
+        "Test org deletion SET NULL behavior",
+        "Document chain completion"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "FINAL handover - no further handovers in 0424 chain.",
+      "summary": "Pending - Final verification and chain completion."
     }
   ],
-  "chain_summary": "Organization Hierarchy Series (0424a-l) COMPLETE. Phase 1 (a-e): Core org infrastructure. Phase 2 (f-j): User.org_id integration with NOT NULL enforcement. Phase 3 (k-l): Migration fixes and verification. Fresh install works. Pre-0424 backup restore requires migration tooling.",
-  "final_status": "complete"
+  "chain_summary": "Organization Hierarchy Series (0424a-n) IN PROGRESS. Phase 1 (a-e): Core org infrastructure. Phase 2 (f-j): User.org_id integration. Phase 3 (k-l): Migration fixes and verification. Phase 4 (m-n): Model-migration alignment and comprehensive testing.",
+  "final_status": "in_progress"
 }
