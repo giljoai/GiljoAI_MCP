@@ -198,6 +198,28 @@ async def assign_tasks_to_org(
     return count
 
 
+async def populate_user_org_id(
+    session: AsyncSession,
+    user,
+    org
+) -> bool:
+    """Populate User.org_id from OrgMembership (Handover 0424j - GREEN phase)."""
+    from src.giljo_mcp.models.auth import User
+
+    if user.org_id is not None:
+        logger.info(f"User '{user.username}' already has org_id set - skipping")
+        return False
+
+    stmt = update(User).where(
+        User.id == user.id
+    ).values(org_id=org.id)
+
+    await session.execute(stmt)
+    logger.info(f"Set org_id={org.id} for user '{user.username}'")
+
+    return True
+
+
 async def run_migration():
     """Run full migration for all users."""
     from src.giljo_mcp.models.auth import User
@@ -218,14 +240,15 @@ async def run_migration():
 
         if len(users) == 0:
             logger.warning("No users found - nothing to migrate")
-            return {"users_processed": 0, "orgs_created": 0, "products_assigned": 0, "templates_assigned": 0, "tasks_assigned": 0}
+            return {"users_processed": 0, "orgs_created": 0, "products_assigned": 0, "templates_assigned": 0, "tasks_assigned": 0, "user_org_ids_set": 0}
 
         stats = {
             "users_processed": 0,
             "orgs_created": 0,
             "products_assigned": 0,
             "templates_assigned": 0,
-            "tasks_assigned": 0
+            "tasks_assigned": 0,
+            "user_org_ids_set": 0
         }
 
         for user in users:
@@ -243,6 +266,10 @@ async def run_migration():
 
             # Assign tasks
             stats["tasks_assigned"] += await assign_tasks_to_org(session, user, org)
+
+            # Populate User.org_id (Handover 0424j - GREEN phase)
+            if await populate_user_org_id(session, user, org):
+                stats["user_org_ids_set"] += 1
 
             stats["users_processed"] += 1
 
@@ -279,6 +306,12 @@ async def verify_migration():
         )
         orphan_users = users_without_orgs.scalars().all()
 
+        # Check users with NULL org_id (Handover 0424j verification)
+        users_with_null_org_id = await session.execute(
+            select(User).where(User.org_id.is_(None))
+        )
+        null_org_id_users = users_with_null_org_id.scalars().all()
+
         # Check products without org_id
         orphan_products = await session.execute(
             select(Product).where(Product.org_id.is_(None))
@@ -305,11 +338,12 @@ async def verify_migration():
         print(f"Organizations created: {len(org_count.scalars().all())}")
         print(f"Memberships created: {len(membership_count.scalars().all())}")
         print(f"Users without orgs: {len(orphan_users)}")
+        print(f"Users with NULL org_id: {len(null_org_id_users)}")
         print(f"Products without org_id: {orphan_products_count}")
         print(f"Templates without org_id: {orphan_templates_count}")
         print(f"Tasks without org_id: {orphan_tasks_count}")
 
-        if len(orphan_users) == 0 and orphan_products_count == 0 and orphan_templates_count == 0 and orphan_tasks_count == 0:
+        if len(orphan_users) == 0 and len(null_org_id_users) == 0 and orphan_products_count == 0 and orphan_templates_count == 0 and orphan_tasks_count == 0:
             print("\nMIGRATION SUCCESSFUL - All data assigned to organizations!")
             return True
         else:

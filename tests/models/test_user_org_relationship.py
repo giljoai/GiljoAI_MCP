@@ -1,12 +1,12 @@
 """
 Tests for User.org_id direct relationship to Organization.
-Handover 0424f - RED phase (TDD)
+Handover 0424f (schema) + 0424j (NOT NULL constraint)
 
 These tests verify:
 - User model has org_id column
-- org_id is nullable (for migration compatibility)
+- org_id is NOT NULL (0424j migration complete)
 - User.organization relationship loads Organization
-- Users can exist without org_id
+- Users MUST have org_id (NOT NULL enforced)
 - Organization.users backref returns users
 - org_id FK constraint enforces referential integrity
 """
@@ -46,14 +46,14 @@ async def test_user_org_id_column_exists(db_session):
 
 
 @pytest.mark.asyncio
-async def test_user_org_id_nullable(db_session):
-    """Test User.org_id is nullable (for migration compatibility)."""
+async def test_user_org_id_not_null(db_session):
+    """Test User.org_id is NOT NULL (0424j migration complete)."""
     from sqlalchemy import inspect
 
     inspector = inspect(User)
     org_id_col = [c for c in inspector.columns if c.name == "org_id"][0]
 
-    assert org_id_col.nullable is True, "org_id should be nullable for gradual migration"
+    assert org_id_col.nullable is False, "org_id should be NOT NULL after 0424j migration"
 
 
 @pytest.mark.asyncio
@@ -85,8 +85,8 @@ async def test_user_organization_relationship(db_session, test_org, test_tenant_
 
 
 @pytest.mark.asyncio
-async def test_user_without_org(db_session, test_tenant_key):
-    """Test User can exist without org_id (nullable)."""
+async def test_user_requires_org_id(db_session, test_tenant_key):
+    """Test User cannot be created without org_id (NOT NULL constraint)."""
     user = User(
         id=generate_uuid(),
         username=f"orphan_user_{generate_uuid()[:8]}",
@@ -95,19 +95,12 @@ async def test_user_without_org(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         role="developer",
         is_active=True
-        # No org_id
+        # No org_id - should fail NOT NULL constraint
     )
     db_session.add(user)
-    await db_session.commit()
 
-    # Load user with relationship
-    stmt = select(User).options(selectinload(User.organization)).where(User.id == user.id)
-    result = await db_session.execute(stmt)
-    loaded_user = result.scalar_one()
-
-    # Assert org_id is None and relationship is None
-    assert loaded_user.org_id is None, "User without org should have None org_id"
-    assert loaded_user.organization is None, "User.organization should be None when no org"
+    with pytest.raises(IntegrityError, match="null value"):
+        await db_session.commit()
 
 
 @pytest.mark.asyncio

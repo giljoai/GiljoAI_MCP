@@ -706,7 +706,7 @@ async def async_client(db_manager):
 
             from src.giljo_mcp.models import User
 
-            # Return mock authenticated user
+            # Return mock authenticated user (org_id required post-0424j)
             return User(
                 id=str(uuid4()),
                 username="test_user",
@@ -716,6 +716,7 @@ async def async_client(db_manager):
                 role="developer",
                 created_at=datetime.now(timezone.utc),
                 password_hash="hashed",
+                org_id="00000000-0000-0000-0000-000000000001",  # Mock org_id (0424j)
             )
 
         async def mock_get_db_session():

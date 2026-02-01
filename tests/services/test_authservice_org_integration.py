@@ -203,7 +203,7 @@ async def test_create_first_admin_sets_org_id(auth_service, db_session):
     org = org_result.scalar_one()
 
     assert org is not None
-    assert org.name == "firstadmin's Workspace"  # Default workspace name
+    assert org.name == "My Organization"  # Default workspace name per implementation
 
     # Verify owner membership created
     membership_stmt = (

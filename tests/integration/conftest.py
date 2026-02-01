@@ -44,12 +44,26 @@ def mock_db_manager():
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession):
     """Create test user with tenant"""
+    from src.giljo_mcp.models.organizations import Organization
+
+    unique_suffix = uuid4().hex[:8]
+
+    # Create org first (0424j: org_id is NOT NULL)
+    org = Organization(
+        name=f"Test User Org {unique_suffix}",
+        slug=f"test-user-org-{unique_suffix}",
+        is_active=True
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
-        username=f"testuser_{uuid4().hex[:8]}",
+        username=f"testuser_{unique_suffix}",
         email=f"test_{uuid4().hex[:8]}@example.com",
         tenant_key=TenantManager.generate_tenant_key(),
         role="developer",
         password_hash="hashed_password",
+        org_id=org.id,  # Required after 0424j
     )
     db_session.add(user)
     await db_session.commit()
@@ -67,12 +81,26 @@ def set_tenant_context(test_user: User):
 @pytest_asyncio.fixture
 async def test_user_2(db_session: AsyncSession):
     """Create second test user (different tenant for isolation tests)"""
+    from src.giljo_mcp.models.organizations import Organization
+
+    unique_suffix = uuid4().hex[:8]
+
+    # Create org first (0424j: org_id is NOT NULL)
+    org = Organization(
+        name=f"Test User 2 Org {unique_suffix}",
+        slug=f"test-user-2-org-{unique_suffix}",
+        is_active=True
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
-        username=f"testuser2_{uuid4().hex[:8]}",
+        username=f"testuser2_{unique_suffix}",
         email=f"test2_{uuid4().hex[:8]}@example.com",
         tenant_key=TenantManager.generate_tenant_key(),
         role="developer",
         password_hash="hashed_password",
+        org_id=org.id,  # Required after 0424j
     )
     db_session.add(user)
     await db_session.commit()
