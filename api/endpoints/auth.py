@@ -80,6 +80,9 @@ class UserProfileResponse(BaseModel):
     created_at: str
     last_login: Optional[str]
     password_change_required: Optional[bool] = None  # v3.0 Unified: Indicates default password must be changed
+    org_id: Optional[str] = None  # Handover 0424h: User's organization ID
+    org_name: Optional[str] = None  # Handover 0424h: User's organization name
+    org_role: Optional[str] = None  # Handover 0424h: User's role in organization
 
 
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
@@ -134,6 +137,10 @@ class RegisterUserRequest(BaseModel):
     tenant_key: str = Field(
         default="tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd",
         description="Tenant key for multi-tenant isolation (must start with 'tk_')",
+    )
+    workspace_name: Optional[str] = Field(
+        default="My Organization",
+        description="Organization name for first admin user (Handover 0424h)"
     )
 
     @field_validator("role")
@@ -454,6 +461,8 @@ async def get_me(
     """
     # Try to get current user (optional - doesn't raise exceptions)
     from src.giljo_mcp.auth.dependencies import get_current_user_optional
+    from sqlalchemy.orm import selectinload
+    from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
     current_user = await get_current_user_optional(
         request=request,
@@ -469,6 +478,32 @@ async def get_me(
             status_code=401, content={"detail": "Not authenticated. Please login or provide a valid API key."}
         )
 
+    # Handover 0424h: Load organization data if user has org_id
+    org_name = None
+    org_role = None
+
+    if current_user.org_id:
+        # Load organization
+        from sqlalchemy import select
+        org_stmt = select(Organization).where(Organization.id == current_user.org_id)
+        org_result = await db.execute(org_stmt)
+        org = org_result.scalar_one_or_none()
+
+        if org:
+            org_name = org.name
+
+            # Load membership to get org_role
+            membership_stmt = select(OrgMembership).where(
+                OrgMembership.org_id == current_user.org_id,
+                OrgMembership.user_id == str(current_user.id),
+                OrgMembership.is_active == True
+            )
+            membership_result = await db.execute(membership_stmt)
+            membership = membership_result.scalar_one_or_none()
+
+            if membership:
+                org_role = membership.role
+
     # Check if password change is required (for admin user with default password)
 
     # v3.0 Unified (Handover 0034): No more default admin/admin password
@@ -476,7 +511,7 @@ async def get_me(
     # This check removed in Handover 0035 (field no longer exists in SetupState model)
     password_change_required = None
 
-    # Return authenticated user profile
+    # Return authenticated user profile with org data (Handover 0424h)
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,
@@ -488,6 +523,9 @@ async def get_me(
         created_at=current_user.created_at.isoformat(),
         last_login=current_user.last_login.isoformat() if current_user.last_login else None,
         password_change_required=password_change_required,
+        org_id=str(current_user.org_id) if current_user.org_id else None,
+        org_name=org_name,
+        org_role=org_role,
     )
 
 
@@ -713,6 +751,7 @@ async def create_first_admin_user(
             email=request_body.email,
             password=request_body.password,
             full_name=request_body.full_name,
+            org_name=request_body.workspace_name,  # Handover 0424h
         )
 
         token = admin_data["token"]
