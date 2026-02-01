@@ -38,6 +38,7 @@ class OrgService:
         self,
         name: str,
         owner_id: str,
+        tenant_key: str,
         slug: Optional[str] = None,
         settings: Optional[dict] = None
     ) -> dict[str, Any]:
@@ -47,6 +48,7 @@ class OrgService:
         Args:
             name: Organization display name
             owner_id: User ID who will be owner
+            tenant_key: Tenant isolation key
             slug: URL-friendly identifier (auto-generated if not provided)
             settings: Optional org-level settings
 
@@ -69,6 +71,7 @@ class OrgService:
             # Create organization
             org = Organization(
                 name=name,
+                tenant_key=tenant_key,
                 slug=slug,
                 settings=settings or {}
             )
@@ -79,6 +82,7 @@ class OrgService:
             owner_membership = OrgMembership(
                 org_id=org.id,
                 user_id=owner_id,
+                tenant_key=tenant_key,
                 role="owner"
             )
             self.session.add(owner_membership)
@@ -216,7 +220,8 @@ class OrgService:
         org_id: str,
         user_id: str,
         role: str,
-        invited_by: str
+        invited_by: str,
+        tenant_key: str
     ) -> dict[str, Any]:
         """
         Invite user to organization.
@@ -226,6 +231,7 @@ class OrgService:
             user_id: User ID to invite
             role: Role to assign (admin, member, viewer)
             invited_by: User ID of inviter
+            tenant_key: Tenant isolation key
 
         Returns:
             dict with 'success' bool and 'data' or 'error'
@@ -250,7 +256,8 @@ class OrgService:
                 org_id=org_id,
                 user_id=user_id,
                 role=role,
-                invited_by=invited_by
+                invited_by=invited_by,
+                tenant_key=tenant_key
             )
             self.session.add(membership)
             await self.session.commit()

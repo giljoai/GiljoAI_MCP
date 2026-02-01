@@ -34,14 +34,28 @@ from src.giljo_mcp.models.auth import User
 @pytest_asyncio.fixture
 async def test_user(db_session):
     """Create test user for organization testing"""
+    from src.giljo_mcp.models.organizations import Organization
+
+    # Create org first (0424m: tenant_key required)
+    tenant_key = f"tenant_{uuid4().hex[:8]}"
+    org = Organization(
+        name=f"Test Org {uuid4().hex[:8]}",
+        slug=f"test-org-{uuid4().hex[:8]}",
+        tenant_key=tenant_key,
+        is_active=True
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
         id=str(uuid4()),
         username=f"testuser_{uuid4().hex[:8]}",
         email=f"test_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant_{uuid4().hex[:8]}",
+        tenant_key=tenant_key,
         role="developer",
         password_hash="hashed_password",
-        is_active=True
+        is_active=True,
+        org_id=org.id,
     )
     db_session.add(user)
     await db_session.commit()
@@ -52,14 +66,28 @@ async def test_user(db_session):
 @pytest_asyncio.fixture
 async def test_user_2(db_session):
     """Create second test user for membership testing"""
+    from src.giljo_mcp.models.organizations import Organization
+
+    # Create org first (0424m: tenant_key required)
+    tenant_key = f"tenant2_{uuid4().hex[:8]}"
+    org = Organization(
+        name=f"Test Org 2 {uuid4().hex[:8]}",
+        slug=f"test-org-2-{uuid4().hex[:8]}",
+        tenant_key=tenant_key,
+        is_active=True
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
         id=str(uuid4()),
         username=f"testuser2_{uuid4().hex[:8]}",
         email=f"test2_{uuid4().hex[:8]}@example.com",
-        tenant_key=f"tenant_{uuid4().hex[:8]}",
+        tenant_key=tenant_key,
         role="developer",
         password_hash="hashed_password",
-        is_active=True
+        is_active=True,
+        org_id=org.id,
     )
     db_session.add(user)
     await db_session.commit()
@@ -78,7 +106,8 @@ class TestOrgServiceCreation:
         result = await service.create_organization(
             name="Test Company",
             slug="test-company",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         assert result["success"] is True
@@ -96,7 +125,8 @@ class TestOrgServiceCreation:
 
         result = await service.create_organization(
             name="My Awesome Company!",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         assert result["success"] is True
@@ -110,13 +140,15 @@ class TestOrgServiceCreation:
         await service.create_organization(
             name="First Org",
             slug="same-slug",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         result = await service.create_organization(
             name="Second Org",
             slug="same-slug",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         assert result["success"] is False
@@ -135,7 +167,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-invite",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -144,7 +177,8 @@ class TestOrgServiceMembership:
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         assert result["success"] is True
@@ -162,7 +196,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-dup",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -171,7 +206,8 @@ class TestOrgServiceMembership:
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         # Second invite (same user)
@@ -179,7 +215,8 @@ class TestOrgServiceMembership:
             org_id=org.id,
             user_id=test_user_2.id,
             role="admin",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         assert result["success"] is False
@@ -193,7 +230,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-role-change",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -201,7 +239,8 @@ class TestOrgServiceMembership:
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         result = await service.change_member_role(
@@ -221,7 +260,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-owner-role",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -242,7 +282,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-remove",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -250,7 +291,8 @@ class TestOrgServiceMembership:
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         result = await service.remove_member(
@@ -272,7 +314,8 @@ class TestOrgServiceMembership:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-remove-owner",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -296,12 +339,14 @@ class TestOrgServiceQuery:
         await service.create_organization(
             name="Org 1",
             slug="user-org-1",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         await service.create_organization(
             name="Org 2",
             slug="user-org-2",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         result = await service.get_user_organizations(test_user.id)
@@ -317,7 +362,8 @@ class TestOrgServiceQuery:
         await service.create_organization(
             name="Test Org",
             slug="find-by-slug",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         result = await service.get_organization_by_slug("find-by-slug")
@@ -333,7 +379,8 @@ class TestOrgServiceQuery:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-role-query",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -341,7 +388,8 @@ class TestOrgServiceQuery:
             org_id=org.id,
             user_id=test_user_2.id,
             role="admin",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         owner_role = await service.get_user_role(org.id, test_user.id)
@@ -362,7 +410,8 @@ class TestOrgServicePermissions:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-perm-owner",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -377,7 +426,8 @@ class TestOrgServicePermissions:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-perm-admin",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -385,7 +435,8 @@ class TestOrgServicePermissions:
             org_id=org.id,
             user_id=test_user_2.id,
             role="admin",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         can_manage = await service.can_manage_members(org.id, test_user_2.id)
@@ -399,7 +450,8 @@ class TestOrgServicePermissions:
         org_result = await service.create_organization(
             name="Test Org",
             slug="test-perm-member",
-            owner_id=test_user.id
+            owner_id=test_user.id,
+            tenant_key=test_user.tenant_key
         )
         org = org_result["data"]
 
@@ -407,7 +459,8 @@ class TestOrgServicePermissions:
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
-            invited_by=test_user.id
+            invited_by=test_user.id,
+            tenant_key=test_user.tenant_key
         )
 
         can_manage = await service.can_manage_members(org.id, test_user_2.id)
