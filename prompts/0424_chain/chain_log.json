@@ -179,9 +179,9 @@
       "session_id": "0424g",
       "title": "AuthService Update",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-01-31T13:00:00Z",
+      "completed_at": "2026-01-31T13:45:00Z",
       "planned_tasks": [
         "Modify _create_default_organization() to RETURN org.id",
         "Modify _create_first_admin_impl() for org-first flow",
@@ -189,11 +189,19 @@
         "Add create_user_in_org() method",
         "Write 7 service/integration tests"
       ],
-      "tasks_completed": [],
+      "tasks_completed": [
+        "Modified _create_default_organization: now accepts (session, tenant_key, org_name) and returns org.id",
+        "Updated _create_first_admin_impl: org-first flow - creates org FIRST, then user WITH org_id set",
+        "Updated _register_user_impl: accepts org_id and org_role params, sets user.org_id if provided",
+        "Added create_user_in_org method for admin creating users in their org",
+        "Created 5 service tests in tests/services/test_authservice_org_integration.py - all passing",
+        "Created 2 integration tests in tests/integration/test_auth_org_flow.py - all passing",
+        "Total: 7/7 tests passing"
+      ],
       "deviations": [],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "AuthService now sets org_id during user creation. API endpoints need to pass workspace_name to first-login (0424h). Welcome screen needs 'Workspace Name' field. User creation endpoint should use create_user_in_org().",
+      "summary": "Successfully implemented org-first auth flow. Fresh install creates org before user, new users get org_id at creation. Admin can create users in their org. All 7 tests passing (5 service + 2 integration)."
     },
     {
       "session_id": "0424h",
