@@ -182,18 +182,8 @@ vi.mock('@/composables/useWebSocket', () => ({
   })
 }))
 
-// Mock useUserStore
-vi.mock('@/stores/user', () => ({
-  useUserStore: () => ({
-    currentUser: {
-      tenant_key: 'test-tenant',
-      id: 'test-user-id'
-    },
-    user: null,
-    setUser: vi.fn(),
-    logout: vi.fn()
-  })
-}))
+// Do NOT mock useUserStore globally - tests need the real store
+// Individual tests can mock the API service instead
 
 // Reset mocks before each test
 beforeEach(() => {
