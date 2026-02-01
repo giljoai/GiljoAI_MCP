@@ -125,6 +125,7 @@ async def auth_headers(db_manager, api_client) -> dict:
 
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
 
     # Create a unique test user for each test run (prevents fixture collisions)
     from uuid import uuid4
@@ -141,12 +142,22 @@ async def auth_headers(db_manager, api_client) -> dict:
         # Create test user with password hash (models.User uses password_hash + role)
         password_hash = bcrypt.hash("test_password")
 
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Test Org {unique_suffix}",
+            slug=f"test-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=username,
             email=f"test_{unique_suffix}@example.com",
             password_hash=password_hash,
             tenant_key=tenant_key,
             role="developer",
+            org_id=org.id
         )
         session.add(user)
         await session.commit()
@@ -191,6 +202,7 @@ async def admin_user(db_manager):
     from uuid import uuid4
 
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
 
     unique_id = uuid4().hex[:8]
@@ -198,13 +210,23 @@ async def admin_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Admin Org {unique_id}",
+            slug=f"admin-org-{unique_id}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"admin_{unique_id}",
             password_hash=bcrypt.hash("admin_password"),
             email=f"admin_{unique_id}@test.com",
             tenant_key=tenant_key,
             role="admin",  # ADMIN ROLE for admin-only endpoints
-            is_active=True
+            is_active=True,
+            org_id=org.id
         )
         session.add(user)
         await session.commit()
@@ -252,6 +274,7 @@ async def test_user(db_manager):
     """
     from uuid import uuid4
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
 
     unique_suffix = uuid4().hex[:8]
@@ -259,13 +282,23 @@ async def test_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Test Org {unique_suffix}",
+            slug=f"test-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"test_user_{unique_suffix}",
             email=f"test_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id
         )
         session.add(user)
         await session.commit()
@@ -280,32 +313,43 @@ async def auth_headers_tenant_a(db_manager):
     """
     from uuid import uuid4
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.tenant import TenantManager
 
     unique_suffix = uuid4().hex[:8]
     # Generate valid tenant key (tk_ + 32 chars)
     tenant_key = TenantManager.generate_tenant_key()
-    
+
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Tenant A Org {unique_suffix}",
+            slug=f"tenant-a-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"tenant_a_user_{unique_suffix}",
             email=f"tenant_a_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id
         )
         session.add(user)
         await session.commit()
-        
+
         token = JWTManager.create_access_token(
             user_id=user.id,
             username=user.username,
             role=user.role,
             tenant_key=user.tenant_key
         )
-        
+
         return {"Cookie": f"access_token={token}"}
 
 
@@ -316,32 +360,43 @@ async def auth_headers_tenant_b(db_manager):
     """
     from uuid import uuid4
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.tenant import TenantManager
 
     unique_suffix = uuid4().hex[:8]
     # Generate valid tenant key (tk_ + 32 chars)
     tenant_key = TenantManager.generate_tenant_key()
-    
+
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Tenant B Org {unique_suffix}",
+            slug=f"tenant-b-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"tenant_b_user_{unique_suffix}",
             email=f"tenant_b_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id
         )
         session.add(user)
         await session.commit()
-        
+
         token = JWTManager.create_access_token(
             user_id=user.id,
             username=user.username,
             role=user.role,
             tenant_key=user.tenant_key
         )
-        
+
         return {"Cookie": f"access_token={token}"}
 
 
