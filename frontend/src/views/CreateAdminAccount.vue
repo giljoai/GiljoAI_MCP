@@ -13,6 +13,20 @@
 
           <v-card-text class="pa-6">
             <v-form ref="adminForm" v-model="formValid" @submit.prevent="createAdmin">
+              <!-- Workspace Name (Handover 0424h) -->
+              <v-text-field
+                v-model="workspaceName"
+                label="Workspace Name"
+                :rules="workspaceNameRules"
+                variant="outlined"
+                density="comfortable"
+                class="mb-4"
+                hint="Name for your organization (e.g., 'Acme Corp', 'My Team')"
+                persistent-hint
+                prepend-inner-icon="mdi-domain"
+                required
+              />
+
               <!-- Username -->
               <v-text-field
                 v-model="username"
@@ -174,6 +188,7 @@ import api from '@/services/api'
 const router = useRouter()
 
 // Form data
+const workspaceName = ref('')
 const username = ref('')
 const email = ref('')
 const fullName = ref('')
@@ -188,6 +203,12 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 // Validation rules
+const workspaceNameRules = [
+  (v) => !!v || 'Workspace name is required',
+  (v) => v.length >= 1 || 'Workspace name is required',
+  (v) => v.length <= 255 || 'Workspace name must be less than 255 characters',
+]
+
 const usernameRules = [
   (v) => !!v || 'Username is required',
   (v) => v.length >= 3 || 'Username must be at least 3 characters',
@@ -278,7 +299,7 @@ function onlyNumbers(event) {
 }
 
 // Clear error on input
-watch([username, email, password, confirmPassword, recoveryPin, confirmPin], () => {
+watch([workspaceName, username, email, password, confirmPassword, recoveryPin, confirmPin], () => {
   errorMessage.value = ''
 })
 
@@ -290,8 +311,9 @@ const createAdmin = async () => {
   errorMessage.value = ''
 
   try {
-    // Call new API endpoint
+    // Call new API endpoint with workspace_name (Handover 0424h)
     await api.auth.createFirstAdmin({
+      workspace_name: workspaceName.value,
       username: username.value,
       email: email.value || null,
       full_name: fullName.value || null,
