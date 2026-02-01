@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -84,12 +85,22 @@ async def auth_headers(db_manager, api_client) -> dict:
         unique_suffix = uuid4().hex[:8]
         tenant_key = TenantManager.generate_tenant_key()
 
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Test User Org {unique_suffix}",
+            slug=f"test-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"test_user_{unique_suffix}",
             email=f"test_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -115,13 +126,23 @@ async def lifecycle_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Owner User Org {unique_suffix}",
+            slug=f"owner-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"owner_user_{unique_suffix}",
             email=f"owner_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -148,13 +169,23 @@ async def invited_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Invited User Org {unique_suffix}",
+            slug=f"invited-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"invited_user_{unique_suffix}",
             email=f"invited_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -181,13 +212,23 @@ async def viewer_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Viewer User Org {unique_suffix}",
+            slug=f"viewer-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"viewer_user_{unique_suffix}",
             email=f"viewer_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -214,13 +255,23 @@ async def member_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Member User Org {unique_suffix}",
+            slug=f"member-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"member_user_{unique_suffix}",
             email=f"member_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -247,13 +298,23 @@ async def admin_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Admin User Org {unique_suffix}",
+            slug=f"admin-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"admin_user_{unique_suffix}",
             email=f"admin_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
