@@ -30,18 +30,29 @@ from passlib.hash import bcrypt
 async def other_user_data(db_manager) -> dict:
     """Create a second user for tests, return both ID and headers."""
     from uuid import uuid4
+    from src.giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Other User Org {unique_suffix}",
+            slug=f"other-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"other_user_{unique_suffix}",
             email=f"other_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -88,18 +99,29 @@ async def test_user_id(db_manager, auth_headers) -> str:
 async def third_user_id(db_manager) -> str:
     """Create a third user for complex permission tests."""
     from uuid import uuid4
+    from src.giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Third User Org {unique_suffix}",
+            slug=f"third-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"third_user_{unique_suffix}",
             email=f"third_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
@@ -111,18 +133,29 @@ async def third_user_id(db_manager) -> str:
 async def member_user_headers(db_manager) -> dict:
     """Auth headers for a member-role user (for permission tests)."""
     from uuid import uuid4
+    from src.giljo_mcp.models.organizations import Organization
 
     unique_suffix = uuid4().hex[:8]
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
+        # Create org first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Member User Org {unique_suffix}",
+            slug=f"member-user-org-{unique_suffix}",
+            is_active=True
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=f"member_user_{unique_suffix}",
             email=f"member_{unique_suffix}@example.com",
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
+            org_id=org.id  # Required after 0424j
         )
         session.add(user)
         await session.commit()
