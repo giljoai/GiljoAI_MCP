@@ -86,6 +86,7 @@ async def create_organization(
             name=org_data.name,
             slug=org_data.slug,
             owner_id=current_user.id,
+            tenant_key=current_user.tenant_key,
             settings=org_data.settings
         )
 

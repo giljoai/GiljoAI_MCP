@@ -142,10 +142,11 @@ async def auth_headers(db_manager, api_client) -> dict:
         # Create test user with password hash (models.User uses password_hash + role)
         password_hash = bcrypt.hash("test_password")
 
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Test Org {unique_suffix}",
             slug=f"test-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -210,10 +211,11 @@ async def admin_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Admin Org {unique_id}",
             slug=f"admin-org-{unique_id}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -282,10 +284,11 @@ async def test_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Test Org {unique_suffix}",
             slug=f"test-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -322,10 +325,11 @@ async def auth_headers_tenant_a(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Tenant A Org {unique_suffix}",
             slug=f"tenant-a-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -369,10 +373,11 @@ async def auth_headers_tenant_b(db_manager):
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Tenant B Org {unique_suffix}",
             slug=f"tenant-b-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
