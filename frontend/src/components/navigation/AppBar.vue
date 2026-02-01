@@ -37,7 +37,7 @@
             </v-btn>
           </template>
 
-          <v-list density="compact" min-width="200">
+          <v-list density="compact" min-width="220">
             <v-list-item
               v-if="currentUser"
               prepend-icon="mdi-account"
@@ -47,7 +47,12 @@
               <v-list-item-title class="font-weight-medium">
                 {{ currentUser.username }}
               </v-list-item-title>
-              <v-list-item-subtitle v-if="currentUser.role" class="d-flex align-center mt-1">
+              <!-- Workspace subtitle (Handover 0424i) -->
+              <v-list-item-subtitle v-if="userStore.currentOrg" class="text-caption mt-1">
+                {{ userStore.currentOrg.name }}
+              </v-list-item-subtitle>
+              <!-- System role chip -->
+              <v-list-item-subtitle v-if="currentUser.role" class="d-flex align-center mt-2 gap-2">
                 <v-chip
                   :color="getRoleColor(currentUser.role)"
                   size="small"
@@ -56,10 +61,27 @@
                 >
                   {{ currentUser.role }}
                 </v-chip>
+                <!-- Workspace role badge (Handover 0424i) -->
+                <RoleBadge
+                  v-if="userStore.orgRole"
+                  :role="userStore.orgRole"
+                  size="small"
+                />
               </v-list-item-subtitle>
             </v-list-item>
 
             <v-divider v-if="currentUser" />
+
+            <!-- My Workspace link (Handover 0424i) -->
+            <v-list-item
+              v-if="userStore.currentOrg"
+              prepend-icon="mdi-office-building"
+              @click="router.push(`/organizations/${userStore.currentOrg.id}/settings`)"
+            >
+              <v-list-item-title>My Workspace</v-list-item-title>
+            </v-list-item>
+
+            <v-divider v-if="userStore.currentOrg" />
 
             <v-list-item :to="{ name: 'UserSettings' }">
               <template v-slot:prepend>
@@ -113,6 +135,7 @@ import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import UserProfileDialog from '@/components/UserProfileDialog.vue'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
+import RoleBadge from '@/components/common/RoleBadge.vue'
 import api from '@/services/api'
 
 const props = defineProps({

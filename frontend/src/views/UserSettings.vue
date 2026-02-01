@@ -30,6 +30,10 @@
           <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
         </v-btn>
       </v-btn>
+      <v-btn value="workspace" data-testid="workspace-settings-tab">
+        <v-icon start>mdi-office-building</v-icon>
+        Workspace
+      </v-btn>
       <v-btn value="appearance">
         <v-icon start>mdi-palette</v-icon>
         Appearance
@@ -68,6 +72,80 @@
     <!-- Tab Content -->
     <div class="bordered-tabs-content">
       <v-window v-model="activeTab" :touch="false" :reverse="false" class="global-tabs-window">
+      <!-- Workspace Settings (Handover 0424i) -->
+      <v-window-item value="workspace">
+        <v-card data-testid="workspace-settings">
+          <v-card-title>Workspace</v-card-title>
+          <v-card-text>
+            <!-- No workspace alert -->
+            <v-alert
+              v-if="!userStore.currentOrg"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+            >
+              You are not part of any workspace.
+            </v-alert>
+
+            <!-- Workspace info section -->
+            <v-container v-if="userStore.currentOrg" fluid>
+              <!-- Workspace name field -->
+              <v-row class="mb-4">
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Workspace Name"
+                    :value="userStore.currentOrg.name"
+                    :readonly="!userStore.isOrgAdmin"
+                    variant="outlined"
+                    density="compact"
+                    data-testid="workspace-name-field"
+                  />
+                </v-col>
+              </v-row>
+
+              <!-- Your Role -->
+              <v-row class="mb-4">
+                <v-col cols="12" md="6">
+                  <div class="d-flex align-center gap-2">
+                    <span class="text-subtitle-2">Your Role:</span>
+                    <RoleBadge
+                      v-if="userStore.orgRole"
+                      :role="userStore.orgRole"
+                      size="small"
+                    />
+                  </div>
+                </v-col>
+              </v-row>
+
+              <!-- Members count -->
+              <v-row class="mb-4">
+                <v-col cols="12" md="6">
+                  <div class="text-subtitle-2">
+                    Members: <span class="font-weight-bold">{{ memberCount }}</span>
+                  </div>
+                </v-col>
+              </v-row>
+
+              <!-- Manage Workspace button -->
+              <v-row v-if="userStore.isOrgAdmin" class="mb-4">
+                <v-col cols="12" md="6">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    prepend-icon="mdi-office-building-cog"
+                    @click="navigateToWorkspaceSettings"
+                    data-testid="manage-workspace-btn"
+                  >
+                    Manage Workspace
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-card-text>
+        </v-card>
+      </v-window-item>
+
       <!-- Context Settings -->
       <v-window-item value="context">
         <ContextPriorityConfig :git-integration-enabled="gitEnabled" />
@@ -430,6 +508,7 @@
 <script setup>
 import { ref, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useUserStore } from '@/stores/user'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
@@ -439,6 +518,7 @@ import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import CodexCliIntegration from '@/components/CodexCliIntegration.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
+import RoleBadge from '@/components/common/RoleBadge.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
 import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
@@ -450,6 +530,7 @@ import api from '@/services/api'
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
+const userStore = useUserStore()
 const theme = useTheme()
 const router = useRouter()
 
@@ -462,6 +543,7 @@ const serenaEnabled = ref(false)
 const toggling = ref(false)
 const showIntroTour = ref(false)
 const introTourShownThisSession = ref(false)
+const memberCount = ref(0)
 
 // Git Integration state (system-level like Serena)
 // This state is shared with ContextPriorityConfig via props
@@ -592,6 +674,29 @@ async function toggleSerena(enabled) {
   }
 }
 
+// Workspace settings methods (Handover 0424i)
+async function loadMemberCount() {
+  if (!userStore.currentOrg) {
+    memberCount.value = 0
+    return
+  }
+
+  try {
+    const response = await api.organizations.getMembers(userStore.currentOrg.id)
+    memberCount.value = response.data?.length || 0
+    console.log('[USER SETTINGS] Loaded member count:', memberCount.value)
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to load member count:', error)
+    memberCount.value = 0
+  }
+}
+
+function navigateToWorkspaceSettings() {
+  if (userStore.currentOrg) {
+    router.push(`/organizations/${userStore.currentOrg.id}/settings`)
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   // Check for tab parameter in query string
@@ -616,6 +721,9 @@ onMounted(async () => {
 
   // Load git integration settings (system-level)
   await loadGitSettings()
+
+  // Load workspace member count (Handover 0424i)
+  await loadMemberCount()
 
   // Listen for real-time Git integration changes via WebSocket
   // This listener is at parent level to ensure it captures events even when
