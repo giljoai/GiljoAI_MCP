@@ -773,7 +773,8 @@ class AuthService:
         )
 
     async def create_first_admin(
-        self, username: str, email: Optional[str], password: str, full_name: Optional[str]
+        self, username: str, email: Optional[str], password: str, full_name: Optional[str],
+        org_name: Optional[str] = "My Organization"
     ) -> Dict[str, Any]:
         """
         Create first administrator account (fresh install only).
@@ -783,6 +784,7 @@ class AuthService:
             email: Admin email (optional)
             password: Admin password (must meet complexity requirements)
             full_name: Admin full name (optional)
+            org_name: Organization name (default: "My Organization") - Handover 0424h
 
         Returns:
             User data and JWT token for immediate login
@@ -802,19 +804,20 @@ class AuthService:
 
         Example:
             >>> admin = await service.create_first_admin(
-            ...     "admin", "admin@example.com", "SecureAdmin123!@#", "Administrator"
+            ...     "admin", "admin@example.com", "SecureAdmin123!@#", "Administrator",
+            ...     org_name="Acme Corporation"
             ... )
         """
         try:
             # Use provided session if available (test mode)
             if self._session:
                 return await self._create_first_admin_impl(
-                    self._session, username, email, password, full_name
+                    self._session, username, email, password, full_name, org_name
                 )
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._create_first_admin_impl(session, username, email, password, full_name)
+                return await self._create_first_admin_impl(session, username, email, password, full_name, org_name)
 
         except ValidationError:
             raise
@@ -831,9 +834,10 @@ class AuthService:
         username: str,
         email: Optional[str],
         password: str,
-        full_name: Optional[str]
+        full_name: Optional[str],
+        org_name: Optional[str] = "My Organization"
     ) -> Dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session (Handover 0424h: accepts org_name)"""
         # Check if users already exist (must be fresh install)
         user_count_stmt = select(func.count(User.id))
         result = await session.execute(user_count_stmt)
@@ -875,10 +879,11 @@ class AuthService:
         tenant_key = TenantManager.generate_tenant_key(username)
 
         # Create organization FIRST (Handover 0424g: org-first pattern)
+        # Handover 0424h: Use provided org_name instead of username-based default
         org_id = await self._create_default_organization(
             session=session,
             tenant_key=tenant_key,
-            org_name=f"{username}'s Workspace"
+            org_name=org_name or "My Organization"
         )
 
         # Create first admin user WITH org_id set
