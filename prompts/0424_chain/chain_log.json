@@ -387,8 +387,9 @@
       "session_id": "0424m",
       "title": "Model-Migration Alignment",
       "color": "#E91E63",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-02-01T10:00:00Z",
+      "completed_at": "2026-02-01T10:45:00Z",
       "planned_tasks": [
         "Add tenant_key to Organization model",
         "Add tenant_key to OrgMembership model",
@@ -402,11 +403,31 @@
         "Fix 3 test fixtures (create org before user)",
         "Update 15 service test calls with tenant_key"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added tenant_key column to Organization model (String(36), nullable=False, indexed)",
+        "Added tenant_key column to OrgMembership model (String(36), nullable=False, indexed)",
+        "Changed User.org_id to nullable=True (required for ondelete=SET NULL)",
+        "Updated Organization.slug length from 100 to 255",
+        "Updated OrgMembership.role length from 20 to 32",
+        "Updated all index/constraint names to match migration: idx_org_*, idx_membership_*, uq_org_user, ck_membership_role",
+        "Updated OrgService.create_organization to accept and set tenant_key",
+        "Updated OrgService.invite_member to accept and set tenant_key",
+        "Updated AuthService._create_default_organization to use tenant_key",
+        "Updated API endpoints to pass current_user.tenant_key to services",
+        "Fixed 15+ test fixtures to create Organization with tenant_key before User",
+        "Updated 20+ service tests with tenant_key parameter",
+        "Fixed OrganizationResponse model to allow nullable updated_at",
+        "Updated 2 tests expecting NOT NULL constraint to verify nullable=True behavior",
+        "All 61 org tests passing"
+      ],
+      "deviations": [
+        "Fixed more test fixtures than planned (15+ vs 3 fixtures) - API and integration test fixtures also needed tenant_key",
+        "Response model OrganizationResponse needed update for nullable updated_at",
+        "Tests expecting IntegrityError for NULL org_id needed update for new nullable behavior"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": "After 0424m completes, run comprehensive test suite to verify all org functionality. Consider 0424n for final verification if needed.",
-      "summary": "Pending - Comprehensive model-migration alignment to fix 10 identified mismatches and 19 failing tests."
+      "notes_for_next": "0424m complete. All 61 org tests passing. Ready for 0424n comprehensive testing. tenant_key is now required on Organization and OrgMembership. User.org_id is nullable to support ondelete=SET NULL cascade.",
+      "summary": "Successfully aligned SQLAlchemy models with Alembic migration. All 10 identified mismatches resolved. Fixed 17 files. All 61 organization tests passing. Multi-tenant isolation restored with tenant_key on Organization and OrgMembership."
     },
     {
       "session_id": "0424n",
