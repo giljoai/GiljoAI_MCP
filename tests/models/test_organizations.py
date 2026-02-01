@@ -22,6 +22,18 @@ from src.giljo_mcp.models.base import generate_uuid
 @pytest_asyncio.fixture(scope="function")
 async def test_user(db_session, test_tenant_key):
     """Create a test user for organization membership tests."""
+    from src.giljo_mcp.models.organizations import Organization
+
+    # Create org first (0424m: tenant_key required)
+    org = Organization(
+        name=f"Test Org {generate_uuid()[:8]}",
+        slug=f"test-org-{generate_uuid()[:8]}",
+        tenant_key=test_tenant_key,
+        is_active=True
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
         id=generate_uuid(),
         tenant_key=test_tenant_key,
@@ -30,6 +42,7 @@ async def test_user(db_session, test_tenant_key):
         password_hash="hashed_password",
         role="developer",
         is_active=True,
+        org_id=org.id,
     )
     db_session.add(user)
     await db_session.commit()
@@ -38,13 +51,14 @@ async def test_user(db_session, test_tenant_key):
 
 
 @pytest.mark.asyncio
-async def test_organization_creation(db_session):
+async def test_organization_creation(db_session, test_tenant_key):
     """Test Organization can be created with required fields."""
     from src.giljo_mcp.models.organizations import Organization
 
     org = Organization(
         name="Test Organization",
-        slug="test-org"
+        slug="test-org",
+        tenant_key=test_tenant_key
     )
     db_session.add(org)
     await db_session.commit()
@@ -56,12 +70,12 @@ async def test_organization_creation(db_session):
 
 
 @pytest.mark.asyncio
-async def test_organization_slug_unique(db_session):
+async def test_organization_slug_unique(db_session, test_tenant_key):
     """Test Organization slug must be unique."""
     from src.giljo_mcp.models.organizations import Organization
 
-    org1 = Organization(name="Org 1", slug="same-slug")
-    org2 = Organization(name="Org 2", slug="same-slug")
+    org1 = Organization(name="Org 1", slug="same-slug", tenant_key=test_tenant_key)
+    org2 = Organization(name="Org 2", slug="same-slug", tenant_key=test_tenant_key)
 
     db_session.add(org1)
     await db_session.commit()
@@ -72,18 +86,19 @@ async def test_organization_slug_unique(db_session):
 
 
 @pytest.mark.asyncio
-async def test_org_membership_creation(db_session, test_user):
+async def test_org_membership_creation(db_session, test_user, test_tenant_key):
     """Test OrgMembership links user to organization with role."""
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
-    org = Organization(name="Test Org", slug="test-membership")
+    org = Organization(name="Test Org", slug="test-membership", tenant_key=test_tenant_key)
     db_session.add(org)
     await db_session.commit()
 
     membership = OrgMembership(
         org_id=org.id,
         user_id=test_user.id,
-        role="owner"
+        role="owner",
+        tenant_key=test_tenant_key
     )
     db_session.add(membership)
     await db_session.commit()
@@ -96,18 +111,19 @@ async def test_org_membership_creation(db_session, test_user):
 
 
 @pytest.mark.asyncio
-async def test_org_membership_role_constraint(db_session, test_user):
+async def test_org_membership_role_constraint(db_session, test_user, test_tenant_key):
     """Test OrgMembership role must be valid."""
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
-    org = Organization(name="Test Org", slug="test-role")
+    org = Organization(name="Test Org", slug="test-role", tenant_key=test_tenant_key)
     db_session.add(org)
     await db_session.commit()
 
     membership = OrgMembership(
         org_id=org.id,
         user_id=test_user.id,
-        role="invalid_role"  # Not in allowed roles
+        role="invalid_role",  # Not in allowed roles
+        tenant_key=test_tenant_key
     )
     db_session.add(membership)
 
@@ -116,20 +132,21 @@ async def test_org_membership_role_constraint(db_session, test_user):
 
 
 @pytest.mark.asyncio
-async def test_org_members_relationship(db_session, test_user):
+async def test_org_members_relationship(db_session, test_user, test_tenant_key):
     """Test Organization.members relationship returns memberships."""
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
-    org = Organization(name="Test Org", slug="test-rel")
+    org = Organization(name="Test Org", slug="test-rel", tenant_key=test_tenant_key)
     db_session.add(org)
     await db_session.commit()
 
     membership = OrgMembership(
         org_id=org.id,
         user_id=test_user.id,
-        role="admin"
+        role="admin",
+        tenant_key=test_tenant_key
     )
     db_session.add(membership)
     await db_session.commit()
@@ -144,18 +161,19 @@ async def test_org_members_relationship(db_session, test_user):
 
 
 @pytest.mark.asyncio
-async def test_user_unique_per_org(db_session, test_user):
+async def test_user_unique_per_org(db_session, test_user, test_tenant_key):
     """Test user can only have one membership per org."""
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
-    org = Organization(name="Test Org", slug="test-unique")
+    org = Organization(name="Test Org", slug="test-unique", tenant_key=test_tenant_key)
     db_session.add(org)
     await db_session.commit()
 
     membership1 = OrgMembership(
         org_id=org.id,
         user_id=test_user.id,
-        role="owner"
+        role="owner",
+        tenant_key=test_tenant_key
     )
     db_session.add(membership1)
     await db_session.commit()
@@ -163,7 +181,8 @@ async def test_user_unique_per_org(db_session, test_user):
     membership2 = OrgMembership(
         org_id=org.id,
         user_id=test_user.id,
-        role="admin"  # Same user, same org, different role
+        role="admin",  # Same user, same org, different role
+        tenant_key=test_tenant_key
     )
     db_session.add(membership2)
 

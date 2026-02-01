@@ -22,11 +22,12 @@ from src.giljo_mcp.models.organizations import Organization
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_org(db_session):
+async def test_org(db_session, test_tenant_key):
     """Create a test organization for relationship tests."""
     org = Organization(
         name="Test Organization",
-        slug=f"test-org-{generate_uuid()[:8]}"  # Unique slug
+        slug=f"test-org-{generate_uuid()[:8]}",  # Unique slug
+        tenant_key=test_tenant_key  # 0424m: Required NOT NULL
     )
     db_session.add(org)
     await db_session.commit()
@@ -46,14 +47,15 @@ async def test_user_org_id_column_exists(db_session):
 
 
 @pytest.mark.asyncio
-async def test_user_org_id_not_null(db_session):
-    """Test User.org_id is NOT NULL (0424j migration complete)."""
+async def test_user_org_id_nullable(db_session):
+    """Test User.org_id is nullable (0424m - required for ondelete=SET NULL)."""
     from sqlalchemy import inspect
 
     inspector = inspect(User)
     org_id_col = [c for c in inspector.columns if c.name == "org_id"][0]
 
-    assert org_id_col.nullable is False, "org_id should be NOT NULL after 0424j migration"
+    # 0424m: Changed to nullable=True to support ondelete="SET NULL"
+    assert org_id_col.nullable is True, "org_id should be nullable after 0424m (ondelete=SET NULL)"
 
 
 @pytest.mark.asyncio
@@ -85,8 +87,9 @@ async def test_user_organization_relationship(db_session, test_org, test_tenant_
 
 
 @pytest.mark.asyncio
-async def test_user_requires_org_id(db_session, test_tenant_key):
-    """Test User cannot be created without org_id (NOT NULL constraint)."""
+async def test_user_allows_null_org_id(db_session, test_tenant_key):
+    """Test User can be created without org_id (0424m - nullable for ondelete=SET NULL)."""
+    # 0424m: org_id is nullable to support ondelete="SET NULL"
     user = User(
         id=generate_uuid(),
         username=f"orphan_user_{generate_uuid()[:8]}",
@@ -95,12 +98,13 @@ async def test_user_requires_org_id(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         role="developer",
         is_active=True
-        # No org_id - should fail NOT NULL constraint
+        # No org_id - allowed after 0424m
     )
     db_session.add(user)
+    await db_session.commit()  # Should NOT raise
 
-    with pytest.raises(IntegrityError, match="null value"):
-        await db_session.commit()
+    # User created successfully with NULL org_id
+    assert user.org_id is None
 
 
 @pytest.mark.asyncio

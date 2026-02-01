@@ -53,7 +53,7 @@ class OrganizationResponse(BaseModel):
     slug: str = Field(..., description="URL-friendly identifier")
     is_active: bool = Field(..., description="Whether organization is active")
     created_at: datetime = Field(..., description="Organization creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")  # 0424m: nullable
     settings: dict = Field(..., description="Organization-level settings")
     members: List[MemberResponse] = Field(default_factory=list, description="Organization members")
 
