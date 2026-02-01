@@ -311,9 +311,9 @@
       "session_id": "0424k",
       "title": "Baseline Migration Update",
       "color": "#4CAF50",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-01-31T17:30:00Z",
-      "completed_at": null,
+      "completed_at": "2026-01-31T17:45:00Z",
       "planned_tasks": [
         "Add organizations table to baseline migration",
         "Add org_memberships table to baseline migration",
@@ -324,11 +324,22 @@
         "Update downgrade() function",
         "Verify migration compiles without errors"
       ],
-      "tasks_completed": [],
+      "tasks_completed": [
+        "Added organizations table with id, tenant_key, name, slug, settings (JSONB), is_active, created_at, updated_at",
+        "Created indexes: idx_org_tenant, idx_org_slug (unique), idx_org_active",
+        "Added org_id column to users table (nullable=True) with FK and idx_user_org_id index",
+        "Added org_memberships table with FK constraints to organizations and users",
+        "Added unique constraint uq_org_user (org_id, user_id) and role check constraint",
+        "Added org_id column to products table with FK and idx_product_org_id index",
+        "Added org_id column to agent_templates table with FK and idx_template_org_id index",
+        "Added org_id column to tasks table with FK and idx_task_org_id index",
+        "Updated downgrade() function with proper reverse-dependency drop order",
+        "Verified migration compiles without errors (python -m py_compile)"
+      ],
       "deviations": [],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "Baseline migration now includes complete org schema. 0424l should test fresh install and backup restore to verify migration works correctly.",
+      "summary": "Successfully updated baseline migration with organization tables. Added organizations and org_memberships tables, added org_id FK columns to users/products/agent_templates/tasks. All columns nullable=True for backup restore compatibility. Migration compiles successfully."
     },
     {
       "session_id": "0424l",
