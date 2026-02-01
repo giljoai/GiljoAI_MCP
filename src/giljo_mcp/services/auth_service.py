@@ -598,7 +598,9 @@ class AuthService:
         email: Optional[str],
         password: str,
         role: str,
-        requesting_admin_id: str
+        requesting_admin_id: str,
+        org_id: Optional[str] = None,
+        org_role: str = "member"
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Check for duplicate username
@@ -626,7 +628,7 @@ class AuthService:
         # Generate per-user tenant key
         tenant_key = TenantManager.generate_tenant_key(username)
 
-        # Create user
+        # Create user with optional org_id (Handover 0424g)
         new_user = User(
             id=str(uuid4()),
             username=username,
@@ -634,20 +636,48 @@ class AuthService:
             password_hash=password_hash,
             role=role,
             tenant_key=tenant_key,
+            org_id=org_id,  # Set org_id if provided (Handover 0424g)
             is_active=True,
             created_at=datetime.now(timezone.utc),
         )
 
         session.add(new_user)
+        await session.flush()  # Get user.id for membership
+
+        # Create organization membership if org_id provided (Handover 0424g)
+        if org_id:
+            from src.giljo_mcp.models.organizations import OrgMembership
+            membership = OrgMembership(
+                org_id=org_id,
+                user_id=str(new_user.id),
+                role=org_role,
+                is_active=True
+            )
+            session.add(membership)
+        else:
+            # Create default organization for user without org_id (backward compatibility)
+            created_org_id = await self._create_default_organization(
+                session=session,
+                tenant_key=tenant_key,
+                org_name=f"{username}'s Workspace"
+            )
+            new_user.org_id = created_org_id
+            # Create owner membership for their own org
+            from src.giljo_mcp.models.organizations import OrgMembership
+            membership = OrgMembership(
+                org_id=created_org_id,
+                user_id=str(new_user.id),
+                role="owner",
+                is_active=True
+            )
+            session.add(membership)
+
         await session.commit()
         await session.refresh(new_user)
 
-        # Create default organization (Handover 0424b)
-        await self._create_default_organization(session, str(new_user.id), username)
-
         self._logger.info(
-            f"User registered: {username} (role: {role}, by admin: {requesting_admin_id})",
-            extra={"username": username, "role": role, "admin_id": requesting_admin_id}
+            f"User registered: {username} (role: {role}, org_role: {org_role}, by admin: {requesting_admin_id})",
+            extra={"username": username, "role": role, "org_role": org_role, "admin_id": requesting_admin_id}
         )
 
         return {
@@ -657,6 +687,90 @@ class AuthService:
             "role": new_user.role,
             "tenant_key": new_user.tenant_key,
         }
+
+    async def create_user_in_org(
+        self,
+        session: AsyncSession,
+        admin_user_id: str,
+        username: str,
+        email: str,
+        role: str,
+        initial_password: str
+    ) -> Dict[str, Any]:
+        """
+        Create user within admin's organization (Handover 0424g).
+
+        Admin/owner creates new user in their organization. New user inherits
+        admin's org_id and receives specified membership role.
+
+        Args:
+            session: Database session
+            admin_user_id: Admin user ID (must have owner/admin role in org)
+            username: Username for new user
+            email: Email address
+            role: Organization membership role (owner/admin/member/viewer)
+            initial_password: Initial password for new user
+
+        Returns:
+            New user data with org_id set
+
+        Raises:
+            AuthorizationError: If admin doesn't have owner/admin role
+            ValidationError: If username/email already exists
+
+        Example:
+            >>> user = await service.create_user_in_org(
+            ...     session, admin_id, "newuser", "new@example.com", "member", "TempPass123!"
+            ... )
+        """
+        from src.giljo_mcp.models.organizations import OrgMembership
+        from sqlalchemy.orm import selectinload
+
+        # Verify admin has owner/admin role in their organization
+        admin_stmt = (
+            select(User)
+            .where(User.id == admin_user_id)
+            .options(selectinload(User.organization))
+        )
+        admin_result = await session.execute(admin_stmt)
+        admin = admin_result.scalar_one_or_none()
+
+        if not admin or not admin.org_id:
+            raise AuthorizationError(
+                message="Admin user not found or not member of any organization",
+                context={"admin_user_id": admin_user_id}
+            )
+
+        # Check admin's membership role (must be owner or admin)
+        membership_stmt = (
+            select(OrgMembership)
+            .where(OrgMembership.org_id == admin.org_id)
+            .where(OrgMembership.user_id == admin_user_id)
+        )
+        membership_result = await session.execute(membership_stmt)
+        membership = membership_result.scalar_one_or_none()
+
+        if not membership or membership.role not in ("owner", "admin"):
+            raise AuthorizationError(
+                message="Only organization owners and admins can create users",
+                context={
+                    "admin_user_id": admin_user_id,
+                    "org_id": admin.org_id,
+                    "current_role": membership.role if membership else None
+                }
+            )
+
+        # Create user in admin's organization
+        return await self._register_user_impl(
+            session=session,
+            username=username,
+            email=email,
+            password=initial_password,
+            role="developer",  # User.role (system role, not org role)
+            requesting_admin_id=admin_user_id,
+            org_id=admin.org_id,  # Inherit admin's org_id
+            org_role=role  # OrgMembership.role (owner/admin/member/viewer)
+        )
 
     async def create_first_admin(
         self, username: str, email: Optional[str], password: str, full_name: Optional[str]
@@ -760,7 +874,14 @@ class AuthService:
         # Generate secure tenant key
         tenant_key = TenantManager.generate_tenant_key(username)
 
-        # Create first admin user
+        # Create organization FIRST (Handover 0424g: org-first pattern)
+        org_id = await self._create_default_organization(
+            session=session,
+            tenant_key=tenant_key,
+            org_name=f"{username}'s Workspace"
+        )
+
+        # Create first admin user WITH org_id set
         admin_user = User(
             id=str(uuid4()),
             username=username,
@@ -769,16 +890,25 @@ class AuthService:
             password_hash=password_hash,
             role="admin",  # Force admin role
             tenant_key=tenant_key,
+            org_id=org_id,  # Direct FK to organization (Handover 0424g)
             is_active=True,
             created_at=datetime.now(timezone.utc),
         )
 
         session.add(admin_user)
+        await session.flush()  # Get user.id for membership
+
+        # Create owner membership (Handover 0424g)
+        from src.giljo_mcp.models.organizations import OrgMembership
+        owner_membership = OrgMembership(
+            org_id=org_id,
+            user_id=str(admin_user.id),
+            role="owner",
+            is_active=True
+        )
+        session.add(owner_membership)
         await session.commit()
         await session.refresh(admin_user)
-
-        # Create default organization (Handover 0424b)
-        await self._create_default_organization(session, str(admin_user.id), username)
 
         # Mark first admin created in SetupState
         setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
@@ -832,51 +962,47 @@ class AuthService:
     async def _create_default_organization(
         self,
         session: AsyncSession,
-        user_id: str,
-        username: str
-    ) -> None:
+        tenant_key: str,
+        org_name: str = "My Workspace"
+    ) -> str:
         """
-        Create default personal organization for new user (Handover 0424b).
+        Create default organization (Handover 0424g: org-first pattern).
 
-        Note: This method adds org and membership to session without committing.
+        This method creates an organization WITHOUT creating membership.
+        Caller is responsible for creating user and membership.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant isolation key
+            org_name: Custom organization name (default: "My Workspace")
+
+        Returns:
+            org.id as UUID string
+
+        Note: This method adds org to session without committing.
         Parent methods (_register_user_impl, _create_first_admin_impl) handle commit.
         """
-        from src.giljo_mcp.models.organizations import Organization, OrgMembership
+        from src.giljo_mcp.models.organizations import Organization
+        from uuid import uuid4
+        import re
 
-        # Generate slug from username
-        slug = f"{username.lower()}-workspace"
-
-        # Check if org with this slug already exists
-        stmt = select(Organization).where(Organization.slug == slug)
-        result = await session.execute(stmt)
-        existing_org = result.scalar_one_or_none()
-
-        if existing_org:
-            self._logger.warning(
-                f"Organization with slug '{slug}' already exists",
-                extra={"user_id": user_id, "username": username, "slug": slug}
-            )
-            return
+        # Generate slug from org_name (sanitize and make URL-friendly)
+        slug_base = re.sub(r'[^a-z0-9]+', '-', org_name.lower()).strip('-')
+        slug = f"{slug_base}-{str(uuid4())[:8]}"  # Add UUID suffix for uniqueness
 
         # Create organization
         org = Organization(
-            name=f"{username}'s Workspace",
+            name=org_name,
             slug=slug,
             settings={}
         )
         session.add(org)
-        await session.flush()  # Get org.id for membership
-
-        # Create owner membership
-        owner_membership = OrgMembership(
-            org_id=org.id,
-            user_id=user_id,
-            role="owner"
-        )
-        session.add(owner_membership)
+        await session.flush()  # Get org.id
 
         # No commit here - parent method handles it
         self._logger.info(
-            f"Default organization created for user {user_id}",
-            extra={"user_id": user_id, "username": username, "org_id": org.id, "slug": slug}
+            f"Organization created: {org_name}",
+            extra={"tenant_key": tenant_key, "org_id": org.id, "slug": slug}
         )
+
+        return str(org.id)
