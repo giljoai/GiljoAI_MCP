@@ -17,6 +17,7 @@ vi.mock('@/services/api', () => ({
       logout: vi.fn(),
     },
   },
+  setTenantKey: vi.fn(),
 }))
 
 describe('User Store', () => {
@@ -197,6 +198,257 @@ describe('User Store', () => {
 
       expect(store.isAdmin).toBe(false)
       expect(store.isAuthenticated).toBe(true)
+    })
+  })
+
+  describe('Organization Integration (Handover 0424h)', () => {
+    it('should initialize with null org state', () => {
+      const store = useUserStore()
+
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should store org data from API response', async () => {
+      const store = useUserStore()
+      const mockUser = {
+        id: 'user-1',
+        username: 'testuser',
+        email: 'test@example.com',
+        tenant_key: 'tk-123',
+        role: 'member',
+        org_id: 'org-123',
+        org_name: 'Test Organization',
+        org_role: 'admin'
+      }
+
+      api.auth.me.mockResolvedValue({ data: mockUser })
+
+      await store.fetchCurrentUser()
+
+      expect(store.orgId).toBe('org-123')
+      expect(store.orgName).toBe('Test Organization')
+      expect(store.orgRole).toBe('admin')
+    })
+
+    it('should provide currentOrg computed property', async () => {
+      const store = useUserStore()
+      const mockUser = {
+        id: 'user-1',
+        username: 'testuser',
+        org_id: 'org-123',
+        org_name: 'Test Org',
+        org_role: 'member'
+      }
+
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+
+      const currentOrg = store.currentOrg
+      expect(currentOrg).toEqual({
+        id: 'org-123',
+        name: 'Test Org',
+        role: 'member'
+      })
+    })
+
+    it('should return null for currentOrg when no org data', () => {
+      const store = useUserStore()
+
+      expect(store.currentOrg).toBeNull()
+    })
+
+    it('should provide isOrgAdmin computed property', async () => {
+      const store = useUserStore()
+
+      // Test with admin role
+      let mockUser = {
+        id: 'user-1',
+        org_role: 'admin'
+      }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgAdmin).toBe(true)
+
+      // Test with owner role
+      mockUser = { id: 'user-1', org_role: 'owner' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgAdmin).toBe(true)
+
+      // Test with member role
+      mockUser = { id: 'user-1', org_role: 'member' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgAdmin).toBe(false)
+
+      // Test with viewer role
+      mockUser = { id: 'user-1', org_role: 'viewer' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgAdmin).toBe(false)
+    })
+
+    it('should provide isOrgOwner computed property', async () => {
+      const store = useUserStore()
+
+      // Test with owner role
+      let mockUser = { id: 'user-1', org_role: 'owner' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgOwner).toBe(true)
+
+      // Test with admin role
+      mockUser = { id: 'user-1', org_role: 'admin' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgOwner).toBe(false)
+
+      // Test with member role
+      mockUser = { id: 'user-1', org_role: 'member' }
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+      expect(store.isOrgOwner).toBe(false)
+    })
+
+    it('should handle missing org data gracefully', async () => {
+      const store = useUserStore()
+      const mockUser = {
+        id: 'user-1',
+        username: 'testuser',
+        role: 'member'
+        // No org_id, org_name, org_role
+      }
+
+      api.auth.me.mockResolvedValue({ data: mockUser })
+      await store.fetchCurrentUser()
+
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+      expect(store.currentOrg).toBeNull()
+      expect(store.isOrgAdmin).toBe(false)
+      expect(store.isOrgOwner).toBe(false)
+    })
+
+    it('should clear org fields on logout', async () => {
+      const store = useUserStore()
+
+      // First set org data
+      store.orgId = 'org-123'
+      store.orgName = 'Test Org'
+      store.orgRole = 'admin'
+      store.currentUser = { id: 'user-1', username: 'testuser' }
+
+      api.auth.logout.mockResolvedValue({ data: { success: true } })
+
+      await store.logout()
+
+      expect(store.currentUser).toBeNull()
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should clear org fields on login failure', async () => {
+      const store = useUserStore()
+
+      // Set initial org state
+      store.orgId = 'org-123'
+      store.orgName = 'Test Org'
+      store.orgRole = 'admin'
+
+      api.auth.login.mockRejectedValue(new Error('Invalid credentials'))
+
+      const result = await store.login('user', 'wrong')
+
+      expect(result).toBe(false)
+      expect(store.currentUser).toBeNull()
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should clear org fields on fetchCurrentUser failure', async () => {
+      const store = useUserStore()
+
+      // Set initial org state
+      store.orgId = 'org-123'
+      store.orgName = 'Test Org'
+      store.orgRole = 'admin'
+
+      api.auth.me.mockRejectedValue(new Error('Unauthorized'))
+
+      const result = await store.fetchCurrentUser()
+
+      expect(result).toBe(false)
+      expect(store.currentUser).toBeNull()
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should clear org fields on checkAuth failure', async () => {
+      const store = useUserStore()
+
+      // Set initial org state
+      store.orgId = 'org-123'
+      store.orgName = 'Test Org'
+      store.orgRole = 'admin'
+
+      api.auth.me.mockRejectedValue(new Error('Session expired'))
+
+      const result = await store.checkAuth()
+
+      expect(result).toBe(false)
+      expect(store.currentUser).toBeNull()
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should provide clearUser() method', () => {
+      const store = useUserStore()
+
+      // Set user and org data
+      store.currentUser = { id: 'user-1', username: 'testuser' }
+      store.isLoading = true
+      store.orgId = 'org-123'
+      store.orgName = 'Test Org'
+      store.orgRole = 'admin'
+
+      // Call clearUser
+      store.clearUser()
+
+      expect(store.currentUser).toBeNull()
+      expect(store.isLoading).toBe(false)
+      expect(store.orgId).toBeNull()
+      expect(store.orgName).toBeNull()
+      expect(store.orgRole).toBeNull()
+    })
+
+    it('should update org fields on checkAuth success', async () => {
+      const store = useUserStore()
+      const mockUser = {
+        id: 'user-1',
+        username: 'testuser',
+        tenant_key: 'tk-123',
+        role: 'member',
+        org_id: 'org-456',
+        org_name: 'New Organization',
+        org_role: 'owner'
+      }
+
+      api.auth.me.mockResolvedValue({ data: mockUser })
+
+      const result = await store.checkAuth()
+
+      expect(result).toBe(true)
+      expect(store.orgId).toBe('org-456')
+      expect(store.orgName).toBe('New Organization')
+      expect(store.orgRole).toBe('owner')
+      expect(store.isOrgOwner).toBe(true)
     })
   })
 })
