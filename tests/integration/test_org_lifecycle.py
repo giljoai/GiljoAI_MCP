@@ -85,10 +85,11 @@ async def auth_headers(db_manager, api_client) -> dict:
         unique_suffix = uuid4().hex[:8]
         tenant_key = TenantManager.generate_tenant_key()
 
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Test User Org {unique_suffix}",
             slug=f"test-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -126,10 +127,11 @@ async def lifecycle_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Owner User Org {unique_suffix}",
             slug=f"owner-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -169,10 +171,11 @@ async def invited_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Invited User Org {unique_suffix}",
             slug=f"invited-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -212,10 +215,11 @@ async def viewer_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Viewer User Org {unique_suffix}",
             slug=f"viewer-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -255,10 +259,11 @@ async def member_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Member User Org {unique_suffix}",
             slug=f"member-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
@@ -298,10 +303,11 @@ async def admin_user_data(db_manager) -> dict:
     tenant_key = TenantManager.generate_tenant_key()
 
     async with db_manager.get_session_async() as session:
-        # Create org first (0424j: org_id is NOT NULL)
+        # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(
             name=f"Admin User Org {unique_suffix}",
             slug=f"admin-user-org-{unique_suffix}",
+            tenant_key=tenant_key,  # 0424m: Required NOT NULL
             is_active=True
         )
         session.add(org)
