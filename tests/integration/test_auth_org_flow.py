@@ -90,7 +90,7 @@ async def test_fresh_install_creates_org_first(db_session, auth_service):
     org = org_result.scalar_one_or_none()
 
     assert org is not None, "Organization must exist in database"
-    assert org.name == "firstadmin's Workspace", "Organization name should follow username's Workspace pattern"
+    assert org.name == "My Organization", "Organization name should be the default 'My Organization'"
     assert org.is_active is True, "Organization must be active"
 
     # Verify owner membership exists
