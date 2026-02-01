@@ -2,7 +2,7 @@
   "chain_id": "0424",
   "chain_name": "Organization Hierarchy Series",
   "created_at": "2026-01-30",
-  "total_sessions": 10,
+  "total_sessions": 12,
   "sessions": [
     {
       "session_id": "0424a",
@@ -306,8 +306,55 @@
       "blockers_encountered": [],
       "notes_for_next": "0424 chain COMPLETE. User.org_id is now NOT NULL - all users MUST belong to an organization. OrgMembership tracks role data. UI displays workspace throughout app.",
       "summary": "Successfully completed User.org_id migration and enforced NOT NULL constraint. Updated migration script, verified 0 NULL org_ids, changed model to NOT NULL, updated 15+ test fixtures. All 44 0424-chain tests passing. Chain COMPLETE."
+    },
+    {
+      "session_id": "0424k",
+      "title": "Baseline Migration Update",
+      "color": "#4CAF50",
+      "status": "in_progress",
+      "started_at": "2026-01-31T17:30:00Z",
+      "completed_at": null,
+      "planned_tasks": [
+        "Add organizations table to baseline migration",
+        "Add org_memberships table to baseline migration",
+        "Add org_id column to users table in migration",
+        "Add org_id column to products table in migration",
+        "Add org_id column to agent_templates table in migration",
+        "Add org_id column to tasks table in migration",
+        "Update downgrade() function",
+        "Verify migration compiles without errors"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0424l",
+      "title": "Fresh Install Verification",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Create fresh test database",
+        "Run alembic migrations",
+        "Verify all org tables created",
+        "Verify org_id columns exist",
+        "Restore backup to fresh database",
+        "Verify data integrity post-restore",
+        "Run organization tests",
+        "Cleanup test database",
+        "Mark chain COMPLETE"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
     }
   ],
-  "chain_summary": "Organization Hierarchy Series (0424a-j) COMPLETE. Phase 1 (a-e): Database schema, OrgService, API endpoints, frontend components, data migration. Phase 2 (f-j): User.org_id direct FK - schema, AuthService org-first flow, API/welcome screen updates, AppBar/UserSettings workspace integration, migration finalization with NOT NULL constraint. Total: 44 tests passing across 10 handovers.",
-  "final_status": "complete"
+  "chain_summary": "Organization Hierarchy Series (0424a-l). Phase 1 (a-e): Database schema, OrgService, API endpoints, frontend components, data migration. Phase 2 (f-j): User.org_id direct FK. Phase 3 (k-l): Migration fix and fresh install verification.",
+  "final_status": "in_progress"
 }
