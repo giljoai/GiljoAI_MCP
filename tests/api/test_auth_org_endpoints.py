@@ -186,55 +186,36 @@ async def test_auth_me_returns_org_data(api_client, db_manager):
 
 
 @pytest.mark.asyncio
-async def test_auth_me_without_org(api_client, db_manager):
+async def test_auth_me_returns_org_fields(api_client, db_manager):
     """
-    Test that GET /auth/me returns null org fields for user without organization.
+    Test that GET /auth/me always returns org fields (post-0424j).
 
-    Expected behavior:
-    - Return org_id = null
-    - Return org_name = null
-    - Return org_role = null
+    After 0424j migration:
+    - All users MUST have org_id (NOT NULL)
+    - org_name and org_role should always be present
+    - No null org scenarios possible
 
-    This test creates a user directly in the database without org association.
+    This test verifies the API returns org fields for authenticated user.
     """
-    # Arrange - Create user without org (bypass normal registration flow)
+    # Arrange - Clear all users to simulate fresh install
     from src.giljo_mcp.models.auth import User
-    from src.giljo_mcp.tenant import TenantManager
-    from passlib.hash import bcrypt
-    from datetime import datetime, timezone
-    from uuid import uuid4
-
-    tenant_key = TenantManager.generate_tenant_key("testuser")
-    user_id = str(uuid4())
+    from sqlalchemy import delete
 
     async with db_manager.get_session_async() as session:
-        # Create user WITHOUT org_id
-        user = User(
-            id=user_id,
-            username="testuser",
-            email="test@example.com",
-            full_name="Test User",
-            password_hash=bcrypt.hash("TestPassword123!@#"),
-            role="developer",
-            tenant_key=tenant_key,
-            org_id=None,  # Explicitly no org
-            is_active=True,
-            created_at=datetime.now(timezone.utc)
-        )
-        session.add(user)
+        await session.execute(delete(User))
         await session.commit()
 
-    # Generate token for login
-    from src.giljo_mcp.auth.jwt_manager import JWTManager
-    token = JWTManager.create_access_token(
-        user_id=user_id,
-        username="testuser",
-        role="developer",
-        tenant_key=tenant_key
+    # Create admin user with organization
+    create_response = await api_client.post(
+        "/api/auth/create-first-admin",
+        json={
+            "username": "testuser",
+            "password": "SecureAdmin123!@#",
+            "email": "test@example.com",
+            "workspace_name": "User Workspace"
+        }
     )
-
-    # Set auth cookie
-    api_client.cookies.set("access_token", token)
+    assert create_response.status_code == 201
 
     # Act
     response = await api_client.get("/api/auth/me")
@@ -247,6 +228,7 @@ async def test_auth_me_without_org(api_client, db_manager):
     assert "org_name" in data, "Response should include org_name field"
     assert "org_role" in data, "Response should include org_role field"
 
-    assert data["org_id"] is None, f"Expected null org_id, got {data['org_id']}"
-    assert data["org_name"] is None, f"Expected null org_name, got {data['org_name']}"
-    assert data["org_role"] is None, f"Expected null org_role, got {data['org_role']}"
+    # Post-0424j: All users MUST have org
+    assert data["org_id"] is not None, "org_id should never be null after 0424j migration"
+    assert data["org_name"] == "User Workspace", f"Expected 'User Workspace', got '{data['org_name']}'"
+    assert data["org_role"] is not None, "org_role should never be null after 0424j migration"
