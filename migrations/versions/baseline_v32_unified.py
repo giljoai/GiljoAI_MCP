@@ -38,6 +38,7 @@ def upgrade() -> None:
     op.create_table('agent_templates',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('org_id', sa.String(length=36), nullable=True),
     sa.Column('product_id', sa.String(length=36), nullable=True),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('category', sa.String(length=50), server_default='role', nullable=False),
@@ -67,11 +68,13 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_by', sa.String(length=100), nullable=True),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('product_id', 'name', 'version', name='uq_template_product_name_version')
     )
     op.create_index('idx_template_active', 'agent_templates', ['is_active'], unique=False)
     op.create_index('idx_template_category', 'agent_templates', ['category'], unique=False)
+    op.create_index('idx_template_org_id', 'agent_templates', ['org_id'], unique=False)
     op.create_index('idx_template_product', 'agent_templates', ['product_id'], unique=False)
     op.create_index('idx_template_role', 'agent_templates', ['role'], unique=False)
     op.create_index('idx_template_tenant', 'agent_templates', ['tenant_key'], unique=False)
@@ -207,6 +210,7 @@ def upgrade() -> None:
     op.create_table('products',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('org_id', sa.String(length=36), nullable=True),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('project_path', sa.String(length=500), nullable=True, comment='File system path to product folder (required for agent export)'),
@@ -219,11 +223,13 @@ def upgrade() -> None:
     sa.Column('config_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Rich project configuration: architecture, tech_stack, features, etc.'),
     sa.Column('product_memory', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text('\'{"github": {}, "sequential_history": [], "context": {}}\'::jsonb'), nullable=False, comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED as of v3.3 (Handover 0390). Use product_memory_entries table instead. Only 'git_integration' config remains in use. WILL BE MODIFIED in v4.0 to remove sequential_history."),
     sa.Column('target_platforms', sa.ARRAY(sa.String()), server_default=sa.text("'{all}'::text[]"), nullable=False, comment='Target platforms: windows, linux, macos, or all'),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_product_config_data_gin', 'products', ['config_data'], unique=False, postgresql_using='gin')
     op.create_index('idx_product_memory_gin', 'products', ['product_memory'], unique=False, postgresql_using='gin')
     op.create_index('idx_product_name', 'products', ['name'], unique=False)
+    op.create_index('idx_product_org_id', 'products', ['org_id'], unique=False)
     op.create_index('idx_product_single_active_per_tenant', 'products', ['tenant_key'], unique=True, postgresql_where=sa.text('is_active = true'))
     op.create_index('idx_product_tenant', 'products', ['tenant_key'], unique=False)
     op.create_index('idx_products_deleted_at', 'products', ['deleted_at'], unique=False, postgresql_where=sa.text('deleted_at IS NOT NULL'))
@@ -282,9 +288,25 @@ def upgrade() -> None:
     op.create_index(op.f('ix_setup_state_database_initialized'), 'setup_state', ['database_initialized'], unique=False)
     op.create_index(op.f('ix_setup_state_first_admin_created'), 'setup_state', ['first_admin_created'], unique=False)
     op.create_index(op.f('ix_setup_state_tenant_key'), 'setup_state', ['tenant_key'], unique=True)
+    # Organization Hierarchy (Handover 0424k)
+    op.create_table('organizations',
+    sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=False),
+    sa.Column('slug', sa.String(length=255), nullable=False),
+    sa.Column('settings', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_org_tenant', 'organizations', ['tenant_key'], unique=False)
+    op.create_index('idx_org_slug', 'organizations', ['slug'], unique=True)
+    op.create_index('idx_org_active', 'organizations', ['is_active'], unique=False)
     op.create_table('users',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('org_id', sa.String(length=36), nullable=True),
     sa.Column('username', sa.String(length=64), nullable=False),
     sa.Column('email', sa.String(length=255), nullable=True),
     sa.Column('password_hash', sa.String(length=255), nullable=True),
@@ -301,12 +323,14 @@ def upgrade() -> None:
     sa.Column('last_login', sa.DateTime(timezone=True), nullable=True),
     sa.Column('field_priority_config', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='User-customizable field priority for agent mission generation'),
     sa.Column('depth_config', postgresql.JSONB(astext_type=sa.Text()), nullable=False, comment='User depth configuration for context granularity (Handover 0314)'),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.CheckConstraint("role IN ('admin', 'developer', 'viewer')", name='ck_user_role'),
     sa.CheckConstraint('failed_pin_attempts >= 0', name='ck_user_pin_attempts_positive'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_user_active', 'users', ['is_active'], unique=False)
     op.create_index('idx_user_email', 'users', ['email'], unique=False)
+    op.create_index('idx_user_org_id', 'users', ['org_id'], unique=False)
     op.create_index('idx_user_pin_lockout', 'users', ['pin_lockout_until'], unique=False)
     op.create_index('idx_user_system', 'users', ['is_system_user'], unique=False)
     op.create_index('idx_user_tenant', 'users', ['tenant_key'], unique=False)
@@ -314,6 +338,26 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_tenant_key'), 'users', ['tenant_key'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
+    # Organization Memberships (Handover 0424k)
+    op.create_table('org_memberships',
+    sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('org_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('role', sa.String(length=32), nullable=False),
+    sa.Column('invited_by', sa.String(length=36), nullable=True),
+    sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+    sa.Column('joined_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['invited_by'], ['users.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('org_id', 'user_id', name='uq_org_user'),
+    sa.CheckConstraint("role IN ('owner', 'admin', 'member', 'viewer')", name='ck_membership_role')
+    )
+    op.create_index('idx_membership_org', 'org_memberships', ['org_id'], unique=False)
+    op.create_index('idx_membership_user', 'org_memberships', ['user_id'], unique=False)
+    op.create_index('idx_membership_tenant', 'org_memberships', ['tenant_key'], unique=False)
     op.create_table('api_keys',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -920,6 +964,7 @@ def upgrade() -> None:
     op.create_table('tasks',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
+    sa.Column('org_id', sa.String(length=36), nullable=True),
     sa.Column('product_id', sa.String(length=36), nullable=True),
     sa.Column('project_id', sa.String(length=36), nullable=True),
     sa.Column('parent_task_id', sa.String(length=36), nullable=True),
@@ -941,6 +986,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['job_id'], ['mcp_agent_jobs.job_id'], name='fk_task_job'),
     sa.ForeignKeyConstraint(['converted_to_project_id'], ['projects.id'], ),
     sa.ForeignKeyConstraint(['created_by_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['parent_task_id'], ['tasks.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
@@ -949,6 +995,7 @@ def upgrade() -> None:
     op.create_index('idx_task_job', 'tasks', ['job_id'], unique=False)
     op.create_index('idx_task_converted_to_project', 'tasks', ['converted_to_project_id'], unique=False)
     op.create_index('idx_task_created_by_user', 'tasks', ['created_by_user_id'], unique=False)
+    op.create_index('idx_task_org_id', 'tasks', ['org_id'], unique=False)
     op.create_index('idx_task_priority', 'tasks', ['priority'], unique=False)
     op.create_index('idx_task_product', 'tasks', ['product_id'], unique=False)
     op.create_index('idx_task_project', 'tasks', ['project_id'], unique=False)
@@ -962,6 +1009,37 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    # Drop org_id indexes and columns (Handover 0424k) - Must be BEFORE table drops
+    op.drop_index('idx_task_org_id', table_name='tasks')
+    op.drop_constraint('tasks_org_id_fkey', 'tasks', type_='foreignkey')
+    op.drop_column('tasks', 'org_id')
+
+    op.drop_index('idx_template_org_id', table_name='agent_templates')
+    op.drop_constraint('agent_templates_org_id_fkey', 'agent_templates', type_='foreignkey')
+    op.drop_column('agent_templates', 'org_id')
+
+    op.drop_index('idx_product_org_id', table_name='products')
+    op.drop_constraint('products_org_id_fkey', 'products', type_='foreignkey')
+    op.drop_column('products', 'org_id')
+
+    # Drop org_memberships table (depends on organizations and users)
+    op.drop_index('idx_membership_tenant', table_name='org_memberships')
+    op.drop_index('idx_membership_user', table_name='org_memberships')
+    op.drop_index('idx_membership_org', table_name='org_memberships')
+    op.drop_table('org_memberships')
+
+    # Drop users.org_id column
+    op.drop_index('idx_user_org_id', table_name='users')
+    op.drop_constraint('users_org_id_fkey', 'users', type_='foreignkey')
+    op.drop_column('users', 'org_id')
+
+    # Drop organizations table
+    op.drop_index('idx_org_active', table_name='organizations')
+    op.drop_index('idx_org_slug', table_name='organizations')
+    op.drop_index('idx_org_tenant', table_name='organizations')
+    op.drop_table('organizations')
+
+    # Continue with regular table drops
     op.drop_index('idx_task_tenant_created_user', table_name='tasks')
     op.drop_index('idx_task_tenant_job', table_name='tasks')
     op.drop_index('idx_task_tenant', table_name='tasks')
