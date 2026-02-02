@@ -2404,6 +2404,8 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 1.5: Delete Python cache files (CRITICAL for fresh install)
         try:
+            import shutil  # Local import for this scope
+
             self.update_status_message("Step 1.5/7: Cleaning Python cache files...")
 
             cache_targets = [
