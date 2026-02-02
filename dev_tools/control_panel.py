@@ -1499,66 +1499,102 @@ class GiljoDevControlPanel:
             conn.autocommit = True
 
             with conn.cursor() as cur:
-                # Step 1: Terminate all connections to giljo_mcp
-                self.update_status_message("Terminating active connections...")
-                cur.execute(
-                    """
-                    SELECT pg_terminate_backend(pg_stat_activity.pid)
-                    FROM pg_stat_activity
-                    WHERE pg_stat_activity.datname = 'giljo_mcp'
-                      AND pid <> pg_backend_pid()
-                """
-                )
+                # Step 1: Find ALL giljo-related databases (not just giljo_mcp)
+                self.update_status_message("Finding all giljo databases...")
+                cur.execute("""
+                    SELECT datname FROM pg_database
+                    WHERE datname LIKE 'giljo%'
+                    AND datname != 'postgres'
+                """)
+                giljo_databases = [row[0] for row in cur.fetchall()]
+                self.logger.info(f"Found giljo databases: {giljo_databases}")
 
-                # Step 2: Reassign owned objects to postgres superuser (fixes ownership issues)
+                # Step 2: Terminate connections to ALL giljo databases
+                self.update_status_message("Terminating active connections...")
+                for db_name in giljo_databases:
+                    try:
+                        cur.execute(
+                            """
+                            SELECT pg_terminate_backend(pg_stat_activity.pid)
+                            FROM pg_stat_activity
+                            WHERE pg_stat_activity.datname = %s
+                              AND pid <> pg_backend_pid()
+                            """,
+                            (db_name,)
+                        )
+                    except Exception as e:
+                        self.logger.warning(f"Could not terminate connections to {db_name}: {e}")
+
+                # Step 3: Drop ALL giljo databases first (before handling roles)
+                self.update_status_message("Dropping all giljo databases...")
+                dropped_dbs = []
+                for db_name in giljo_databases:
+                    try:
+                        cur.execute(f"DROP DATABASE IF EXISTS {db_name}")
+                        dropped_dbs.append(db_name)
+                        self.logger.info(f"Dropped database: {db_name}")
+                    except Exception as e:
+                        self.logger.warning(f"Could not drop database {db_name}: {e}")
+
+                # Step 4: Now handle roles - REASSIGN and DROP OWNED in postgres context
                 self.update_status_message("Resolving ownership conflicts...")
                 for role in ["giljo_user", "giljo_owner"]:
                     try:
-                        # Check if role exists first
                         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
                         if cur.fetchone():
+                            # REASSIGN OWNED moves ownership to postgres
                             cur.execute(f"REASSIGN OWNED BY {role} TO postgres")
-                    except Exception:
-                        pass  # Role doesn't exist or already handled
+                            self.logger.info(f"Reassigned owned objects from {role}")
+                    except Exception as e:
+                        self.logger.warning(f"Could not reassign from {role}: {e}")
 
-                # Step 3: Drop owned objects (CASCADE to handle dependencies)
+                # Step 5: Drop owned objects (CASCADE to handle dependencies)
                 self.update_status_message("Dropping owned objects...")
                 for role in ["giljo_user", "giljo_owner"]:
                     try:
                         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
                         if cur.fetchone():
                             cur.execute(f"DROP OWNED BY {role} CASCADE")
-                    except Exception:
-                        pass  # Role doesn't exist or already handled
+                            self.logger.info(f"Dropped owned objects for {role}")
+                    except Exception as e:
+                        self.logger.warning(f"Could not drop owned for {role}: {e}")
 
-                # Step 4: Drop roles if they exist
+                # Step 6: Finally drop roles
                 self.update_status_message("Dropping database roles...")
+                dropped_roles = []
                 for role in ["giljo_user", "giljo_owner"]:
                     try:
                         cur.execute(f"DROP ROLE IF EXISTS {role}")
-                    except Exception:
-                        pass  # Role in use or other issue
-
-                # Step 5: Finally drop the database
-                self.update_status_message("Dropping database...")
-                cur.execute("DROP DATABASE IF EXISTS giljo_mcp")
+                        # Verify it's actually gone
+                        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
+                        if not cur.fetchone():
+                            dropped_roles.append(role)
+                            self.logger.info(f"Successfully dropped role: {role}")
+                        else:
+                            self.logger.warning(f"Role {role} still exists after DROP")
+                    except Exception as e:
+                        self.logger.warning(f"Could not drop role {role}: {e}")
 
             conn.close()
 
             self.db_exists_indicator.config(foreground="red")
             self.db_exists_label.config(text="Deleted")
             self.db_exists_status.set(False)
-            self.update_status_message("giljo_mcp database deleted successfully")
+            self.update_status_message("Database cleanup completed successfully")
+
+            # Build detailed success message
+            db_list = "\n".join(f"- {db}" for db in dropped_dbs) if dropped_dbs else "- (none found)"
+            role_list = "\n".join(f"- {r}" for r in dropped_roles) if dropped_roles else "- (none found or could not drop)"
+
             messagebox.showinfo(
                 "Success",
-                "Database deletion complete!\n\n"
-                "Removed:\n"
-                f"- giljo_mcp database\n"
+                f"Database cleanup complete!\n\n"
+                f"Databases removed ({len(dropped_dbs)}):\n{db_list}\n\n"
+                f"Roles removed ({len(dropped_roles)}):\n{role_list}\n\n"
+                f"Data removed:\n"
                 f"- {user_count} users\n"
                 f"- {apikey_count} API keys\n"
-                "- giljo_user role\n"
-                "- giljo_owner role\n"
-                "- All projects, agents, tasks, and data",
+                f"- All projects, agents, tasks, and data",
             )
             return True
 
