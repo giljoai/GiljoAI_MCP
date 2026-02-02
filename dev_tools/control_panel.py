@@ -21,6 +21,7 @@ import ctypes
 import logging
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -2129,6 +2130,35 @@ pg_restore -l {backup_file.name} | head -20
             checks["database"] = None
             checks["roles"] = None
 
+        # Check Python cache deleted
+        cache_clean = True
+        cache_dirs = [".pytest_cache", ".ruff_cache", ".mypy_cache", "htmlcov",
+                      ".hypothesis", ".tox", ".nox"]
+        for cache_dir in cache_dirs:
+            if (self.project_root / cache_dir).exists():
+                cache_clean = False
+                break
+
+        # Check for any __pycache__ directories
+        pycache_exists = any(self.project_root.rglob("__pycache__"))
+
+        checks["python_cache"] = cache_clean and not pycache_exists
+
+        # Check frontend test cache deleted
+        frontend_cache_clean = True
+        frontend_caches = [
+            self.project_root / "frontend" / ".vitest",
+            self.project_root / "frontend" / "coverage",
+            self.project_root / "frontend" / "playwright-report",
+            self.project_root / "frontend" / "test-results",
+        ]
+        for cache_path in frontend_caches:
+            if cache_path.exists():
+                frontend_cache_clean = False
+                break
+
+        checks["frontend_cache"] = frontend_cache_clean
+
         return checks
 
     def display_fresh_state_report(self):
@@ -2306,6 +2336,10 @@ pg_restore -l {backup_file.name} | head -20
             "- Virtual environment (.venv/ or venv/)\n"
             "- Configuration files (config.yaml, .env)\n"
             "- Installer config (install_config.yaml)\n\n"
+            "Python & Test Caches:\n"
+            "- Python bytecode cache (__pycache__/)\n"
+            "- Pytest, Ruff, MyPy, Coverage caches\n"
+            "- All test cache directories\n\n"
             "Database & Data:\n"
             "- Database (giljo_mcp) and all tables\n"
             "- PostgreSQL roles (giljo_user, giljo_owner)\n"
@@ -2316,7 +2350,8 @@ pg_restore -l {backup_file.name} | head -20
             "- Session memories (docs/sessions/)\n\n"
             "Frontend Artifacts:\n"
             "- Build output (frontend/dist/)\n"
-            "- All npm dependencies (frontend/node_modules/)\n\n"
+            "- All npm dependencies (frontend/node_modules/)\n"
+            "- Frontend test caches (Vitest, Playwright)\n\n"
             "⚠ This action CANNOT be undone!\n\n"
             "Continue?",
             icon="warning",
@@ -2367,9 +2402,69 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Configuration cleanup: {e}")
 
-        # Step 2: Delete database (with fallback)
+        # Step 1.5: Delete Python cache files (CRITICAL for fresh install)
         try:
-            self.update_status_message("Step 2/6: Deleting database...")
+            self.update_status_message("Step 1.5/7: Cleaning Python cache files...")
+
+            cache_targets = [
+                (self.project_root / ".pytest_cache", "Pytest cache"),
+                (self.project_root / ".ruff_cache", "Ruff linter cache"),
+                (self.project_root / ".mypy_cache", "MyPy cache"),
+                (self.project_root / "htmlcov", "Coverage HTML reports"),
+                (self.project_root / ".hypothesis", "Hypothesis cache"),
+                (self.project_root / ".tox", "Tox cache"),
+                (self.project_root / ".nox", "Nox cache"),
+            ]
+
+            for target, desc in cache_targets:
+                if target.exists():
+                    try:
+                        if target.is_dir():
+                            shutil.rmtree(target, ignore_errors=True)
+                        else:
+                            target.unlink()
+                        deleted.append(desc)
+                    except Exception as e:
+                        errors.append(f"{desc}: {e}")
+
+            # Recursively delete all __pycache__ directories
+            pycache_count = 0
+            for pycache in self.project_root.rglob("__pycache__"):
+                try:
+                    shutil.rmtree(pycache, ignore_errors=True)
+                    pycache_count += 1
+                except Exception:
+                    pass
+
+            if pycache_count > 0:
+                deleted.append(f"Python bytecode cache ({pycache_count} directories)")
+
+            # Delete .coverage and .coverage.* files
+            coverage_file = self.project_root / ".coverage"
+            if coverage_file.exists():
+                try:
+                    coverage_file.unlink()
+                    deleted.append("Coverage data file")
+                except Exception:
+                    pass
+
+            coverage_count = 0
+            for cov_file in self.project_root.glob(".coverage.*"):
+                try:
+                    cov_file.unlink()
+                    coverage_count += 1
+                except Exception:
+                    pass
+
+            if coverage_count > 0:
+                deleted.append(f"Coverage parallel files ({coverage_count} files)")
+
+        except Exception as e:
+            errors.append(f"Python cache cleanup: {e}")
+
+        # Step 3: Delete database (with fallback)
+        try:
+            self.update_status_message("Step 3/7: Deleting database...")
 
             db_deleted = False
 
@@ -2392,9 +2487,9 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Database deletion: {e}")
 
-        # Step 3: Delete logs directory
+        # Step 4: Delete logs directory
         try:
-            self.update_status_message("Step 3/6: Cleaning logs directory...")
+            self.update_status_message("Step 4/7: Cleaning logs directory...")
 
             logs_dir = self.project_root / "logs"
             if logs_dir.exists():
@@ -2406,9 +2501,9 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Logs cleanup: {e}")
 
-        # Step 4: Delete data directory
+        # Step 5: Delete data directory
         try:
-            self.update_status_message("Step 4/6: Cleaning data directory...")
+            self.update_status_message("Step 5/7: Cleaning data directory...")
 
             data_dir = self.project_root / "data"
             if data_dir.exists():
@@ -2420,9 +2515,9 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Data cleanup: {e}")
 
-        # Step 5: Delete session memories
+        # Step 6: Delete session memories
         try:
-            self.update_status_message("Step 5/6: Cleaning session memories...")
+            self.update_status_message("Step 6/7: Cleaning session memories...")
 
             sessions_dir = self.project_root / "docs" / "sessions"
             if sessions_dir.exists():
@@ -2434,13 +2529,17 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Session cleanup: {e}")
 
-        # Step 6: Delete frontend build artifacts and dependencies
+        # Step 7: Delete frontend build artifacts and dependencies
         try:
-            self.update_status_message("Step 6/6: Cleaning frontend artifacts and dependencies...")
+            self.update_status_message("Step 7/7: Cleaning frontend artifacts and dependencies...")
 
             frontend_targets = [
                 (self.project_root / "frontend" / "dist", "Frontend build output"),
                 (self.project_root / "frontend" / "node_modules", "Node.js dependencies (complete)"),
+                (self.project_root / "frontend" / ".vitest", "Vitest cache"),
+                (self.project_root / "frontend" / "coverage", "Frontend coverage"),
+                (self.project_root / "frontend" / "playwright-report", "Playwright reports"),
+                (self.project_root / "frontend" / "test-results", "Playwright test results"),
             ]
 
             for target, desc in frontend_targets:
