@@ -173,7 +173,7 @@ async def get_organization(
     """
     Get organization by ID.
 
-    Requires user to be a member of the organization.
+    Requires user's org_id to match OR to be a member of the organization.
 
     Args:
         org_id: Organization ID
@@ -184,16 +184,29 @@ async def get_organization(
         Organization details with members
 
     Raises:
-        403: User is not a member of organization
+        403: User is not a member of organization and org_id doesn't match
         404: Organization not found
     """
     try:
-        # Check membership
-        if not await org_service.can_view_org(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
-            )
+        # Log permission check for debugging
+        logger.debug(
+            "Organization access check",
+            extra={
+                "org_id": org_id,
+                "user_id": current_user.id,
+                "user_org_id": str(current_user.org_id),
+                "org_id_match": str(current_user.org_id) == str(org_id)
+            }
+        )
+
+        # Allow access if user's org_id matches OR has membership
+        # This handles cases where user has org_id but no membership record
+        if str(current_user.org_id) != str(org_id):
+            if not await org_service.can_view_org(org_id, current_user.id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not a member of this organization"
+                )
 
         result = await org_service.get_organization(org_id)
 
