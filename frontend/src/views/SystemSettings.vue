@@ -14,6 +14,10 @@
       color="primary"
       class="mb-0"
     >
+      <v-btn value="identity" min-width="120" data-test="identity-tab">
+        <v-icon start>mdi-account-group</v-icon>
+        Identity
+      </v-btn>
       <v-btn value="network" min-width="120">
         <v-icon start>mdi-network-outline</v-icon>
         Network
@@ -30,15 +34,20 @@
         <v-icon start>mdi-shield-lock</v-icon>
         Security
       </v-btn>
-      <v-btn value="system" min-width="110">
-        <v-icon start>mdi-cog</v-icon>
-        System
+      <v-btn value="prompts" min-width="110">
+        <v-icon start>mdi-file-document-edit</v-icon>
+        Prompts
       </v-btn>
     </v-btn-toggle>
 
     <!-- Tab Content -->
     <div class="bordered-tabs-content">
       <v-window v-model="activeTab" class="global-tabs-window">
+      <!-- Identity (Workspace + Members) - Handover 0434 -->
+      <v-window-item value="identity">
+        <IdentityTab />
+      </v-window-item>
+
       <!-- Network Settings -->
       <v-window-item value="network">
         <NetworkSettingsTab
@@ -90,8 +99,8 @@
         />
       </v-window-item>
 
-      <!-- System Prompt -->
-      <v-window-item value="system">
+      <!-- Prompts (Orchestrator System Prompt) - Renamed from "System" in Handover 0434 -->
+      <v-window-item value="prompts">
         <SystemPromptTab />
       </v-window-item>
     </v-window>
@@ -111,6 +120,7 @@ import api from '@/services/api'
 
 // Components
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import IdentityTab from '@/components/settings/tabs/IdentityTab.vue'
 import NetworkSettingsTab from '@/components/settings/tabs/NetworkSettingsTab.vue'
 import AdminIntegrationsTab from '@/components/settings/tabs/AdminIntegrationsTab.vue'
 import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.vue'
@@ -120,7 +130,7 @@ import CodexConfigModal from '@/components/settings/modals/CodexConfigModal.vue'
 import GeminiConfigModal from '@/components/settings/modals/GeminiConfigModal.vue'
 
 // State
-const activeTab = ref('network')
+const activeTab = ref('identity')
 
 // Loading states
 const loading = ref({
