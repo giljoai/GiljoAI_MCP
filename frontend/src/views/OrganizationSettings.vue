@@ -105,8 +105,9 @@
 
     <!-- Invite Dialog -->
     <InviteMemberDialog
+      v-if="currentOrg"
       v-model="showInviteDialog"
-      :org-id="currentOrg?.id"
+      :org-id="currentOrg.id"
       @invited="handleMemberInvited"
     />
 
