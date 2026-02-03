@@ -42,7 +42,7 @@ export const useOrgStore = defineStore('org', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get('/organizations')
+      const response = await api.organizations.list()
       organizations.value = response.data
       return { success: true, data: organizations.value }
     } catch (err) {
@@ -57,7 +57,7 @@ export const useOrgStore = defineStore('org', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get(`/organizations/${orgId}`)
+      const response = await api.organizations.get(orgId)
       currentOrg.value = response.data
       members.value = response.data.members || []
       return { success: true, data: currentOrg.value }
@@ -72,7 +72,7 @@ export const useOrgStore = defineStore('org', () => {
   async function createOrganization(orgData) {
     loading.value = true
     try {
-      const response = await api.post('/organizations', orgData)
+      const response = await api.organizations.create(orgData)
       organizations.value.push(response.data)
       return { success: true, data: response.data }
     } catch (err) {
@@ -85,7 +85,7 @@ export const useOrgStore = defineStore('org', () => {
   async function updateOrganization(orgId, orgData) {
     loading.value = true
     try {
-      const response = await api.put(`/organizations/${orgId}`, orgData)
+      const response = await api.organizations.update(orgId, orgData)
       currentOrg.value = response.data
       // Update in list
       const index = organizations.value.findIndex((o) => o.id === orgId)
@@ -103,7 +103,7 @@ export const useOrgStore = defineStore('org', () => {
   async function deleteOrganization(orgId) {
     loading.value = true
     try {
-      await api.delete(`/organizations/${orgId}`)
+      await api.organizations.delete(orgId)
       organizations.value = organizations.value.filter((o) => o.id !== orgId)
       if (currentOrg.value?.id === orgId) {
         currentOrg.value = null
@@ -118,7 +118,7 @@ export const useOrgStore = defineStore('org', () => {
 
   async function fetchMembers(orgId) {
     try {
-      const response = await api.get(`/organizations/${orgId}/members`)
+      const response = await api.organizations.listMembers(orgId)
       members.value = response.data
       return { success: true, data: members.value }
     } catch (err) {
@@ -128,7 +128,7 @@ export const useOrgStore = defineStore('org', () => {
 
   async function inviteMember(orgId, userId, role) {
     try {
-      const response = await api.post(`/organizations/${orgId}/members`, {
+      const response = await api.organizations.inviteMember(orgId, {
         user_id: userId,
         role: role,
       })
@@ -141,7 +141,7 @@ export const useOrgStore = defineStore('org', () => {
 
   async function changeMemberRole(orgId, userId, newRole) {
     try {
-      const response = await api.put(`/organizations/${orgId}/members/${userId}`, { role: newRole })
+      const response = await api.organizations.changeMemberRole(orgId, userId, { role: newRole })
       const index = members.value.findIndex((m) => m.user_id === userId)
       if (index >= 0) {
         members.value[index] = response.data
@@ -154,7 +154,7 @@ export const useOrgStore = defineStore('org', () => {
 
   async function removeMember(orgId, userId) {
     try {
-      await api.delete(`/organizations/${orgId}/members/${userId}`)
+      await api.organizations.removeMember(orgId, userId)
       members.value = members.value.filter((m) => m.user_id !== userId)
       return { success: true }
     } catch (err) {
@@ -164,7 +164,7 @@ export const useOrgStore = defineStore('org', () => {
 
   async function transferOwnership(orgId, newOwnerId) {
     try {
-      await api.post(`/organizations/${orgId}/transfer`, {
+      await api.organizations.transferOwnership(orgId, {
         new_owner_id: newOwnerId,
       })
       // Refresh members to get updated roles

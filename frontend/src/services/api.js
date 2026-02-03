@@ -589,6 +589,21 @@ export const api = {
     getStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
   },
 
+  // Organizations (Handover 0424 - gap fix)
+  organizations: {
+    list: () => apiClient.get('/api/organizations'),
+    get: (orgId) => apiClient.get(`/api/organizations/${orgId}`),
+    create: (data) => apiClient.post('/api/organizations', data),
+    update: (orgId, data) => apiClient.put(`/api/organizations/${orgId}`, data),
+    delete: (orgId) => apiClient.delete(`/api/organizations/${orgId}`),
+    // Member operations
+    listMembers: (orgId) => apiClient.get(`/api/organizations/${orgId}/members`),
+    inviteMember: (orgId, data) => apiClient.post(`/api/organizations/${orgId}/members`, data),
+    changeMemberRole: (orgId, userId, data) => apiClient.put(`/api/organizations/${orgId}/members/${userId}`, data),
+    removeMember: (orgId, userId) => apiClient.delete(`/api/organizations/${orgId}/members/${userId}`),
+    transferOwnership: (orgId, data) => apiClient.post(`/api/organizations/${orgId}/transfer`, data),
+  },
+
   // Orchestrator (Multi-Agent Workflow Coordination)
   orchestrator: {
     launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
