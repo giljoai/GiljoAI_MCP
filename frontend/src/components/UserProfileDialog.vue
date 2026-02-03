@@ -18,6 +18,17 @@
             disabled
             class="mb-3"
           />
+
+          <!-- Workspace/Organization (read-only) - Handover 0424o -->
+          <div v-if="userStore.currentOrg" class="mb-4 pa-3 bg-surface-variant rounded">
+            <div class="text-caption text-medium-emphasis mb-1">Workspace</div>
+            <div class="d-flex align-center gap-2">
+              <v-icon size="small" color="primary">mdi-office-building</v-icon>
+              <span class="font-weight-medium">{{ userStore.currentOrg.name }}</span>
+              <RoleBadge v-if="userStore.orgRole" :role="userStore.orgRole" size="small" />
+            </div>
+          </div>
+
           <v-text-field
             v-model="form.full_name"
             label="Full Name"
@@ -95,6 +106,7 @@
 import { ref, watch, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
+import RoleBadge from '@/components/common/RoleBadge.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
