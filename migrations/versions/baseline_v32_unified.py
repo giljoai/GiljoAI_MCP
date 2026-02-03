@@ -240,6 +240,13 @@ def upgrade() -> None:
     sa.Column('config_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Rich project configuration: architecture, tech_stack, features, etc.'),
     sa.Column('product_memory', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text('\'{"github": {}, "sequential_history": [], "context": {}}\'::jsonb'), nullable=False, comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED as of v3.3 (Handover 0390). Use product_memory_entries table instead. Only 'git_integration' config remains in use. WILL BE MODIFIED in v4.0 to remove sequential_history."),
     sa.Column('target_platforms', sa.ARRAY(sa.String()), server_default=sa.text("'{all}'::text[]"), nullable=False, comment='Target platforms: windows, linux, macos, or all'),
+    # Consolidated vision summaries (Handover 0377)
+    sa.Column('consolidated_vision_light', sa.Text(), nullable=True, comment='33% summary of all active vision documents (consolidated)'),
+    sa.Column('consolidated_vision_light_tokens', sa.Integer(), nullable=True, comment='Token count of consolidated light summary'),
+    sa.Column('consolidated_vision_medium', sa.Text(), nullable=True, comment='66% summary of all active vision documents (consolidated)'),
+    sa.Column('consolidated_vision_medium_tokens', sa.Integer(), nullable=True, comment='Token count of consolidated medium summary'),
+    sa.Column('consolidated_vision_hash', sa.String(length=64), nullable=True, comment='SHA-256 hash of aggregated vision documents (for change detection)'),
+    sa.Column('consolidated_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when consolidated summaries were last generated'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -250,6 +257,7 @@ def upgrade() -> None:
     op.create_index('idx_product_single_active_per_tenant', 'products', ['tenant_key'], unique=True, postgresql_where=sa.text('is_active = true'))
     op.create_index('idx_product_tenant', 'products', ['tenant_key'], unique=False)
     op.create_index('idx_products_deleted_at', 'products', ['deleted_at'], unique=False, postgresql_where=sa.text('deleted_at IS NOT NULL'))
+    op.create_index('idx_products_consolidated_at', 'products', ['consolidated_at'], unique=False)
     op.create_index(op.f('ix_products_tenant_key'), 'products', ['tenant_key'], unique=False)
     op.create_table('settings',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -1214,6 +1222,7 @@ def downgrade() -> None:
     op.drop_index('idx_product_name', table_name='products')
     op.drop_index('idx_product_memory_gin', table_name='products', postgresql_using='gin')
     op.drop_index('idx_product_config_data_gin', table_name='products', postgresql_using='gin')
+    op.drop_index('idx_products_consolidated_at', table_name='products')
     op.drop_table('products')
     op.drop_index(op.f('ix_optimization_rules_tenant_key'), table_name='optimization_rules')
     op.drop_index('idx_optimization_rule_type', table_name='optimization_rules')
