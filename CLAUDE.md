@@ -28,7 +28,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.2+)**: Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.3+)**: Organization Hierarchy (0424a-n) • Exception Handling Remediation (0480 series) • Consolidated Vision Documents (0377) • Agent Team Awareness (0353) • Frontend API Pattern Fixes (0396) • WebSocket Improvements (0464) • Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Orchestrator Workflow Series (Nov 2025)** - Handovers 0246a-0246c:
 - 0246a: 7-Task Staging Workflow (931 tokens, 22% under budget)
@@ -47,6 +47,28 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 - **Total Impact**: Pixel-perfect Nicepage design match, 27+ E2E tests
 - **Timeline**: 8 hours actual vs 44-59 hour estimate (TDD with specialized subagents)
 - **Note**: Superseded 0240-0242 series (wrong template → emergency fix → refinement → final conversion)
+
+**Organization Hierarchy (Jan-Feb 2026)** - Handovers 0424a-n (14-handover chain):
+- 0424a-b: Organization/OrgMembership models + OrgService with TDD
+- 0424c-d: API endpoints + frontend components (OrgSelector, OrgSettings)
+- 0424e-f: E2E migration + User.org_id direct FK to Organization
+- 0424g-i: AuthService org-first pattern + Welcome screen + AppBar integration
+- 0424j-l: User.org_id NOT NULL enforcement + baseline migration updates
+- 0424m-n: Model-migration alignment + comprehensive testing
+- **Impact**: Multi-user workspaces with org-based isolation (complements per-user tenancy)
+- **Architecture**: Organization → OrgMembership ← User (with direct User.org_id FK)
+
+**Exception Handling Remediation (Jan 2026)** - Handovers 0480 series:
+- Complete migration from dict success wrappers to exception-based error handling
+- Services migrated: AuthService, AgentJobManager, TaskService, OrchestrationService
+- Frontend: Structured exception handling for API responses
+- API endpoints: Proper HTTPException usage throughout
+- **Impact**: Consistent error handling patterns across entire codebase
+
+**Consolidated Vision Documents (Jan 2026)** - Handover 0377:
+- Universal summarization with NLTK integration
+- Light/Medium/Full vision summary levels viewable in frontend
+- Auto-downloads NLTK data on startup for summarization
 
 Per-User Tenancy Policy (Nov 2025)
 - Each user is isolated in their own tenant (unique tenant_key assigned at registration)
