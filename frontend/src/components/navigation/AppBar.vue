@@ -72,17 +72,6 @@
 
             <v-divider v-if="currentUser" />
 
-            <!-- My Workspace link (Handover 0424i) -->
-            <v-list-item
-              v-if="userStore.currentOrg"
-              prepend-icon="mdi-office-building"
-              @click="router.push(`/organizations/${userStore.currentOrg.id}/settings`)"
-            >
-              <v-list-item-title>My Workspace</v-list-item-title>
-            </v-list-item>
-
-            <v-divider v-if="userStore.currentOrg" />
-
             <v-list-item :to="{ name: 'UserSettings' }">
               <template v-slot:prepend>
                 <v-icon>mdi-cog</v-icon>
@@ -91,6 +80,8 @@
             </v-list-item>
 
             <!-- Admin Settings - Only visible to admin users -->
+            <v-divider v-if="currentUser && currentUser.role === 'admin'" />
+
             <v-list-item
               v-if="currentUser && currentUser.role === 'admin'"
               :to="{ name: 'SystemSettings' }"
@@ -99,14 +90,6 @@
                 <v-icon color="error">mdi-cog</v-icon>
               </template>
               <v-list-item-title>Admin Settings</v-list-item-title>
-            </v-list-item>
-
-            <!-- Users Management - Only visible to admin users -->
-            <v-list-item v-if="currentUser && currentUser.role === 'admin'" :to="{ name: 'Users' }">
-              <template v-slot:prepend>
-                <v-icon color="error">mdi-account-multiple</v-icon>
-              </template>
-              <v-list-item-title>Users</v-list-item-title>
             </v-list-item>
 
             <v-divider />
