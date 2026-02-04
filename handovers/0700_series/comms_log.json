@@ -41,6 +41,111 @@
           "frontend/public/icons/Giljo_Dark_Face.svg"
         ]
       }
+    },
+    {
+      "id": "0700-001",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0701"],
+      "type": "dependency",
+      "subject": "Cleanup index ready for visualization",
+      "message": "Created cleanup_index.json with 75 entries categorized by type, urgency, component, and risk. Visualization targets: (1) Component distribution chart - 15 tests, 14 api, 13 models, 13 services, 12 frontend, 5 mcp_tools. (2) Dependency graph between deprecated items using related_to field. (3) Urgency heatmap - 3 critical, 7 high, 29 medium, 36 low. Recommended starting point: visualize the v4.0 removal targets (45 entries) and their cross-references.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": false,
+      "context": {
+        "total_entries": 75,
+        "index_location": "handovers/0700_series/cleanup_index.json",
+        "schema_version": "1.0"
+      }
+    },
+    {
+      "id": "0700-002",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0702", "0703", "0704", "0705", "0707", "0708", "0711"],
+      "type": "info",
+      "subject": "Cleanup index baseline established",
+      "message": "Comprehensive cleanup index created with 75 entries: 46 deprecated markers, 8 actionable TODOs, 18 representative skipped tests (188 total in codebase), 3 dead code items. Key findings: (1) 3 CRITICAL production bugs blocking tests in project_service.py. (2) AgentExecution.messages JSONB and Product.product_memory.sequential_history are HIGH priority removals. (3) Succession module (api/endpoints/agent_jobs/succession.py) can be deleted entirely - simple_handover is authoritative. Use cleanup_index.json to find entries relevant to your component.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": false,
+      "context": {
+        "by_component": {
+          "models": 13,
+          "services": 13,
+          "api": 14,
+          "mcp_tools": 5,
+          "frontend": 12,
+          "tests": 15
+        },
+        "critical_items": 3,
+        "high_items": 7
+      }
+    },
+    {
+      "id": "0700-003",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0373"],
+      "type": "dependency",
+      "subject": "Template adapter findings",
+      "message": "Found TemplateManager alias (dep-014) at src/giljo_mcp/template_manager.py:1048 - this is the primary target for 0373. Related entries: (1) template_content field in seeder (dep-015). (2) AgentTemplate.template_content model field (dep-012). (3) TemplateUpdate.template_content API schema (dep-039). All marked for v4.0 removal. Recommend removing TemplateManager alias first, then cleaning up template_content references in dependent handovers.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": false,
+      "context": {
+        "related_entry_ids": ["dep-014", "dep-015", "dep-012", "dep-039"],
+        "primary_file": "src/giljo_mcp/template_manager.py",
+        "line_number": 1048
+      }
+    },
+    {
+      "id": "0700-004",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0706"],
+      "type": "warning",
+      "subject": "AgentExecution.messages deprecation details",
+      "message": "CRITICAL for 0706: AgentExecution.messages JSONB column (dep-007) at src/giljo_mcp/models/agent_identity.py:301 is HIGH urgency. Counter-based system (messages_sent_count, messages_waiting_count, messages_read_count) is authoritative. Before removal: (1) Verify MessageRepository uses only counter columns. (2) Check API responses in agent_management.py:118 returns empty list. (3) Ensure no frontend code reads the messages array. Related: JSONB persistence methods already removed (dep-020). Also review 5 other AgentExecution deprecated fields (dep-002 through dep-006) for handover simplification cleanup.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": true,
+      "context": {
+        "primary_entry_id": "dep-007",
+        "file_path": "src/giljo_mcp/models/agent_identity.py",
+        "line_number": 301,
+        "related_entries": ["dep-002", "dep-003", "dep-004", "dep-005", "dep-006", "dep-020", "dep-033"],
+        "migration_verification_needed": true
+      }
+    },
+    {
+      "id": "0700-005",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0705"],
+      "type": "warning",
+      "subject": "Product memory and project model deprecations",
+      "message": "Found HIGH urgency item for 0705: Product.product_memory.sequential_history (dep-011) at src/giljo_mcp/models/products.py:123. The normalized product_memory_entries table is authoritative. Also: (1) Project.context_budget soft deprecated (dep-010). (2) Related service methods _validate_history_entry (dep-023) and add_learning_to_product_memory (dep-024) should be removed after model cleanup. (3) CRITICAL BUG: test_complete_project_happy_path blocked by validation bug (skip-bug-003) - fix this endpoint.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": true,
+      "context": {
+        "primary_entry_id": "dep-011",
+        "related_entries": ["dep-010", "dep-023", "dep-024", "skip-bug-003"],
+        "critical_bug": "skip-bug-003"
+      }
+    },
+    {
+      "id": "0700-006",
+      "timestamp": "2026-02-04T07:15:00Z",
+      "from_handover": "0700",
+      "to_handovers": ["0708"],
+      "type": "warning",
+      "subject": "Service layer deprecations and critical bugs",
+      "message": "CRITICAL for 0708: Two production bugs in project_service.py blocking tests. (1) UnboundLocalError for 'total_jobs' at line 1545 - blocks skip-bug-001 and skip-bug-002. (2) Service fallback methods without tenant filtering (dep-019, dep-025, dep-026) are security concerns. Also found: OrchestrationService.trigger_succession (dep-022) delegates to simple_handover - consider removing entirely. ContextService (dep-018) may be fully deprecated.",
+      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "action_required": true,
+      "context": {
+        "critical_bugs": ["skip-bug-001", "skip-bug-002"],
+        "security_concerns": ["dep-019", "dep-025", "dep-026"],
+        "bug_location": "src/giljo_mcp/services/project_service.py:1545"
+      }
     }
   ],
   "schema": {
