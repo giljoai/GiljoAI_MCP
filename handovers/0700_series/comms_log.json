@@ -1,0 +1,20 @@
+{
+  "series_id": "0700_code_cleanup",
+  "created_at": "2026-02-03T00:00:00Z",
+  "entries": [],
+  "schema": {
+    "entry_format": {
+      "id": "UUID - unique entry ID",
+      "timestamp": "ISO 8601 timestamp",
+      "from_handover": "Handover ID that wrote this entry (e.g., '0700')",
+      "to_handovers": "Array of handover IDs this note is relevant to (e.g., ['0706', '0708'])",
+      "type": "One of: 'info', 'warning', 'blocker', 'dependency', 'suggestion'",
+      "subject": "Short subject line",
+      "message": "Detailed message for the receiving agent",
+      "files_affected": "Array of file paths that were changed",
+      "action_required": "Boolean - does receiving agent need to take action?",
+      "context": "Optional object with additional structured data"
+    }
+  },
+  "instructions": "Agents: Append entries to the 'entries' array. Read entries where to_handovers includes your handover ID. Use type='blocker' for critical issues that must be addressed."
+}
