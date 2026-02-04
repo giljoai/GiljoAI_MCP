@@ -29,7 +29,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const theme = useTheme()
 
   // Getters
-  const isDarkTheme = computed(() => settings.value.theme === 'dark')
+  const isDarkTheme = computed(() => true)
   const notificationsEnabled = computed(() => settings.value.notifications)
 
   // Actions
@@ -133,11 +133,6 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  function toggleTheme() {
-    settings.value.theme = settings.value.theme === 'dark' ? 'light' : 'dark'
-    applyTheme()
-    saveToLocalStorage()
-  }
 
   function applyTheme() {
     theme.change(settings.value.theme)
@@ -241,7 +236,6 @@ export const useSettingsStore = defineStore('settings', () => {
     loadProductInfo,
     loadSessionInfo,
     updateSetting,
-    toggleTheme,
     resetSettings,
     clearError,
     fetchFieldPriorityConfig,

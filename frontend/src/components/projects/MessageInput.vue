@@ -385,19 +385,6 @@ function handleSubmit() {
   }
 }
 
-/* Light theme optimization */
-.v-theme--light {
-  .message-input {
-    background: var(--color-bg-primary);
-    border-top-color: var(--color-border);
-
-    &__textarea:deep(.v-field),
-    &__recipient:deep(.v-field) {
-      background: #f8f9fa;
-    }
-  }
-}
-
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .message-input__submit {

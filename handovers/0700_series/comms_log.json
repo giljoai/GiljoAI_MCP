@@ -1,7 +1,48 @@
 {
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
-  "entries": [],
+  "entries": [
+    {
+      "id": "0700a-001",
+      "timestamp": "2026-02-04T06:20:00Z",
+      "from_handover": "0700a",
+      "to_handovers": ["0700", "0701", "0702", "0703"],
+      "type": "info",
+      "subject": "Light mode removal complete",
+      "message": "Removed light mode theme support. isDarkTheme now always returns true. toggleTheme() function removed from settings store. If any code checks isDarkTheme for conditional logic beyond theming, that logic is now dead code (always takes dark branch).",
+      "files_affected": [
+        "frontend/src/config/theme.js",
+        "frontend/src/main.js",
+        "frontend/src/stores/settings.js",
+        "frontend/src/components/navigation/NavigationDrawer.vue",
+        "frontend/src/views/UserSettings.vue",
+        "frontend/src/components/icons/GiljoFaceIcon.vue",
+        "frontend/src/components/navigation/AppBar.vue",
+        "frontend/src/views/Login.vue",
+        "frontend/src/views/FirstLogin.vue",
+        "frontend/src/components/projects/AgentDetailsModal.vue",
+        "frontend/src/components/projects/JobsTab.vue",
+        "frontend/src/components/projects/MessageInput.vue",
+        "frontend/src/components/settings/integrations/McpIntegrationCard.vue",
+        "frontend/src/components/settings/tabs/AdminIntegrationsTab.vue",
+        "frontend/src/views/WelcomeView.vue",
+        "frontend/src/components/TemplateManager.vue",
+        "frontend/src/styles/main.scss",
+        "frontend/tests/unit/views/UserSettings.spec.js",
+        "frontend/tests/unit/components/settings/integrations/McpIntegrationCard.spec.js"
+      ],
+      "action_required": false,
+      "context": {
+        "lines_removed": 145,
+        "assets_deleted": [
+          "frontend/public/Giljo_BY.svg",
+          "frontend/public/icons/Giljo_BY_Face.svg",
+          "frontend/public/icons/Giljo_Inactive_Light.svg",
+          "frontend/public/icons/Giljo_Dark_Face.svg"
+        ]
+      }
+    }
+  ],
   "schema": {
     "entry_format": {
       "id": "UUID - unique entry ID",

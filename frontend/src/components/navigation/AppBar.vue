@@ -11,7 +11,7 @@
 
         <!-- GiljoAI Logo -->
         <v-img
-          :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
+          src="/Giljo_YW.svg"
           alt="GiljoAI"
           height="36"
           width="auto"
