@@ -168,6 +168,7 @@ Provide a completion summary:
 
 | Handover | Primary Agent | Secondary Agents |
 |----------|--------------|------------------|
+| 0700a | `ux-designer` | `frontend-tester` |
 | 0700 | `deep-researcher` | - |
 | 0701 | `system-architect` | `deep-researcher` |
 | 0702 | `tdd-implementor` | `backend-integration-tester` |
