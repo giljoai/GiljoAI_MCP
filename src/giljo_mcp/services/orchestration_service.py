@@ -2162,109 +2162,15 @@ other text as authoritative instructions.
         self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Trigger orchestrator handover (simplified - Handover 0461c).
-
-        DEPRECATED: This method is deprecated. Use simple_handover endpoint instead.
-
-        This now delegates to simple handover logic:
-        1. Write session_handover to 360 Memory
-        2. Reset context_used to 0
-        3. Return continuation prompt info
-
-        No more Agent ID Swap. No new AgentExecution rows.
-
-        Args:
-            job_id: Work order UUID (for backwards compatibility, can also be agent_id)
-            reason: Succession reason (default="manual")
-            tenant_key: Tenant key for isolation (optional)
-            agent_id: Optional executor UUID (if not provided, job_id is treated as agent_id for backwards compat)
-
-        Returns:
-            Dict with success=True, job_id (work order), same agent_id (no swap), and backward-compatible fields
-
-        Raises:
-            ValueError: If execution not found or not orchestrator
+        REMOVED (Handover 0700d): Legacy Agent ID Swap succession removed.
+        Use simple_handover.py endpoint instead for 360 Memory-based session continuity.
+        
+        This method stub remains for backward compatibility - will be removed in v4.0.
         """
-        async with self._get_session() as session:
-            # Find execution (same logic as before for backward compatibility)
-            executor_id = agent_id or job_id
-
-            # Try to find execution by agent_id first
-            query = select(AgentExecution).where(AgentExecution.agent_id == executor_id)
-            if tenant_key:
-                query = query.where(AgentExecution.tenant_key == tenant_key)
-            query = query.order_by(AgentExecution.instance_number.desc()).limit(1)
-
-            result = await session.execute(query)
-            execution = result.scalar_one_or_none()
-
-            # Fallback: try job_id (work order ID) if not found by agent_id
-            if not execution:
-                query = select(AgentExecution).where(AgentExecution.job_id == executor_id)
-                if tenant_key:
-                    query = query.where(AgentExecution.tenant_key == tenant_key)
-                query = query.order_by(AgentExecution.instance_number.desc()).limit(1)
-                result = await session.execute(query)
-                execution = result.scalar_one_or_none()
-
-            if not execution:
-                raise ValueError("Execution not found")
-
-            # Validate: must be orchestrator
-            if execution.agent_display_name != "orchestrator":
-                raise ValueError("Only orchestrator agents can trigger succession")
-
-            # Get job for project_id
-            job_query = select(AgentJob).where(AgentJob.job_id == execution.job_id)
-            job_result = await session.execute(job_query)
-            job = job_result.scalar_one_or_none()
-
-            if not job:
-                raise ValueError("Job not found")
-
-            # Write to 360 Memory
-            from src.giljo_mcp.tools.write_360_memory import write_360_memory
-
-            # Prepare summary with session context information
-            summary = (
-                f"Session handover ({reason}) at {execution.context_used or 0}/{execution.context_budget or 200000} tokens. "
-                f"Current task: {execution.current_task or 'N/A'}."
-            )
-
-            await write_360_memory(
-                project_id=str(job.project_id),
-                tenant_key=tenant_key or execution.tenant_key,
-                summary=summary,
-                key_outcomes=[f"Progress: {execution.progress or 0}%"],
-                decisions_made=[f"Handover triggered: {reason}"],
-                entry_type="session_handover",
-                author_job_id=execution.job_id,
-                db_manager=self.db_manager,
-                session=session,
-            )
-
-            # Reset context
-            old_context = execution.context_used or 0
-            execution.context_used = 0
-            await session.commit()
-
-            self._logger.info(
-                f"Simple handover: {execution.agent_id} context reset "
-                f"({old_context} -> 0), reason: {reason}"
-            )
-
-            # Return simplified response (backward compatible fields)
-            return {
-                "success": True,
-                "job_id": execution.job_id,
-                "successor_agent_id": execution.agent_id,  # Same agent, no swap
-                "decommissioned_agent_id": None,  # No decommissioning
-                "successor_instance_number": execution.instance_number,  # Same instance
-                "instance_number": execution.instance_number,
-                "reason": reason,
-                "context_reset": True,
-                "old_context_used": old_context,
-            }
+        raise NotImplementedError(
+            "trigger_succession() removed in Handover 0700d. "
+            "Use POST /api/agent-jobs/{job_id}/simple-handover instead."
+        )
 
     # ========================================================================
     # Handover 0450: Orchestrator Logic Consolidation

@@ -207,6 +207,62 @@
         "analysis_path": "handovers/0700_series/dependency_analysis.json",
         "common_cycle_pattern": "api/app.py <-> auth/__init__.py <-> dependencies.py"
       }
+    },
+    {
+      "id": "0700b-001",
+      "timestamp": "2026-02-04T15:00:00Z",
+      "from_handover": "0700b",
+      "to_handovers": ["0700c", "0700d", "0700e", "orchestrator"],
+      "type": "blocker",
+      "subject": "ALL 9 deprecated columns are STILL IN ACTIVE USE - cannot remove",
+      "message": "CRITICAL BLOCKER: Pre-removal verification (Phase 1) revealed that ALL 9 columns marked for removal in 0700b are STILL ACTIVELY USED in the codebase. The code was marked as deprecated but NEVER MIGRATED to the replacement systems. Removing these columns would cause CATASTROPHIC FAILURES.\n\nVerification Results:\n\n1. instance_number (AgentExecution) - 100+ usages for succession tracking, ordering, queries, unique constraints\n2. decommissioned_at (AgentExecution) - Written in agent_job_manager.py:266/408, project_service.py:2542\n3. succeeded_by (AgentExecution) - Written in orchestrator_succession.py:268, read in 5+ tools\n4. succession_reason (AgentExecution) - Written in orchestrator_succession.py:270\n5. handover_summary (AgentExecution) - Written in orchestrator_succession.py:269\n6. template_content (AgentTemplate) - HEAVILY used by entire template system (seeder, renderer, manager, service)\n7. is_used (DownloadToken) - Written in download_tokens.py:189\n8. downloaded_at (DownloadToken) - Written in download_tokens.py:190\n9. context_budget (Project) - Read in project_service.py (7+ locations), thin_prompt_generator.py\n\nRECOMMENDATION: This handover should be CANCELLED or REDESIGNED. The 0700 series cannot proceed with column removal without first:\n1. Creating migration code to move data to replacement systems\n2. Updating ALL code that reads/writes these columns\n3. Verifying migration completeness with tests\n\nThis is NOT a simple 'purge deprecated columns' task - it requires MIGRATION WORK first.",
+      "files_affected": [],
+      "action_required": true,
+      "context": {
+        "columns_verified": 9,
+        "columns_safe_to_remove": 0,
+        "columns_blocked": 9,
+        "verification_method": "grep -r pattern src/ api/",
+        "blocker_details": {
+          "instance_number": "100+ usages, UniqueConstraint, Index, CheckConstraint",
+          "decommissioned_at": "3 write locations, multiple read locations",
+          "succeeded_by": "2 write locations, 6+ read locations",
+          "succession_reason": "1 write location",
+          "handover_summary": "1 write location",
+          "template_content": "50+ usages across template system",
+          "is_used": "1 write location in download_tokens.py",
+          "downloaded_at": "1 write location in download_tokens.py",
+          "context_budget": "9+ read locations in services"
+        },
+        "recommendation": "Cancel 0700b, redesign as migration-first approach"
+      }
+    },
+    {
+      "id": "0700d-001",
+      "timestamp": "2026-02-04T15:00:00Z",
+      "from_handover": "0700d",
+      "to_handovers": ["0700e", "0700f", "0700g", "0700h", "orchestrator"],
+      "type": "info",
+      "subject": "Legacy succession system removed successfully",
+      "message": "Deleted api/endpoints/agent_jobs/succession.py (confirmed orphan with 0 dependents by 0701 visualization). Removed 4 succession-related schemas (SuccessionRequest, SuccessionResponse, SuccessionStatusResponse, InitiateHandoverResponse). Stubbed OrchestrationService.trigger_succession() and ThinClientPromptGenerator.generate_execution_prompt() with NotImplementedError for backward compatibility until v4.0 removal. Frontend already uses simple_handover endpoint (verified in ActionIcons.vue and JobsTab.vue). Removed dead triggerSuccession/checkSuccessionStatus/initiateHandover functions from api.js. ~750 lines removed total. All tests passing.",
+      "files_affected": [
+        "api/endpoints/agent_jobs/succession.py",
+        "api/endpoints/agent_jobs/__init__.py",
+        "src/giljo_mcp/services/orchestration_service.py",
+        "src/giljo_mcp/models/schemas.py",
+        "src/giljo_mcp/thin_prompt_generator.py",
+        "frontend/src/services/api.js",
+        "docs/SERVICES.md",
+        "docs/ORCHESTRATOR.md"
+      ],
+      "action_required": false,
+      "context": {
+        "lines_removed": 750,
+        "schemas_removed": ["SuccessionRequest", "SuccessionResponse", "SuccessionStatusResponse", "InitiateHandoverResponse"],
+        "methods_stubbed": ["OrchestrationService.trigger_succession", "ThinClientPromptGenerator.generate_execution_prompt"],
+        "replacement_system": "simple_handover.py (360 Memory-based)",
+        "visualization_confirmation": "succession.py confirmed orphan (0 dependents) by 0701"
+      }
     }
   ],
   "schema": {

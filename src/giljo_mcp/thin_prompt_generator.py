@@ -961,26 +961,13 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         self, orchestrator_job_id: str, project_id: str, claude_code_mode: bool = False
     ) -> str:
         """
-        DEPRECATED: Use generate_staging_prompt() instead (universal Scenario B).
-
-        This method is kept for backward compatibility only.
-        Will be removed in v4.0.
+        REMOVED (Handover 0700d): Use generate_staging_prompt() instead.
+        
+        This method stub remains for backward compatibility - will be removed in v4.0.
         """
-        logger.warning(
-            "[ThinPromptGenerator] generate_execution_prompt() is deprecated. "
-            "Use generate_staging_prompt() for universal prompt generation.",
-            extra={
-                "method_called": "generate_execution_prompt",
-                "recommended_method": "generate_staging_prompt",
-                "orchestrator_job_id": orchestrator_job_id,
-                "project_id": project_id,
-                "tenant_key": self.tenant_key,
-            },
-        )
-
-        # Redirect to universal prompt generator
-        return await self.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id, project_id=project_id
+        raise NotImplementedError(
+            "generate_execution_prompt() removed in Handover 0700d. "
+            "Use generate_staging_prompt() instead."
         )
 
     def _get_external_host(self) -> str:
