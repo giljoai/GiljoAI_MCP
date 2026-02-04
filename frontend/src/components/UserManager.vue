@@ -135,7 +135,6 @@
               variant="outlined"
               :rules="[rules.required]"
               :disabled="isEditMode"
-              prepend-inner-icon="mdi-account"
               required
               class="mb-3"
             />
@@ -146,7 +145,6 @@
               variant="outlined"
               type="email"
               :rules="[rules.email]"
-              prepend-inner-icon="mdi-email"
               class="mb-3"
             />
 
@@ -157,7 +155,6 @@
               variant="outlined"
               type="password"
               :rules="[rules.required, rules.minLength]"
-              prepend-inner-icon="mdi-lock"
               hint="Min 8 characters"
               persistent-hint
               required
@@ -172,7 +169,6 @@
               item-value="value"
               item-title="title"
               :rules="[rules.required]"
-              prepend-inner-icon="mdi-shield-account"
               required
               class="mb-3"
             >
@@ -230,7 +226,6 @@
             variant="outlined"
             type="password"
             :rules="[rules.required, rules.minLength]"
-            prepend-inner-icon="mdi-lock"
             required
           />
         </v-card-text>
