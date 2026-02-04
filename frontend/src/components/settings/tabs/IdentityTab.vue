@@ -62,8 +62,8 @@
       </v-card>
     </v-col>
 
-    <!-- Users Section -->
-    <v-col cols="12" md="6">
+    <!-- Users Section - Full Width -->
+    <v-col cols="12">
       <v-card data-test="users-card">
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-account-group</v-icon>
