@@ -551,13 +551,9 @@ export const api = {
     // Mission update endpoint (Handover 0244b)
     updateMission: (jobId, data) => apiClient.patch(`/api/agent-jobs/${jobId}/mission`, data),
 
-    // Orchestrator succession endpoints (Handover 0507)
-    triggerSuccession: (jobId, reason = 'manual', notes = null) =>
-      apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
-    checkSuccessionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
-    // Handover 0506: Initiate handover - returns prompt for retiring orchestrator
-    initiateHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/initiate-handover`),
     // Handover 0461d: Simple handover - reset context and get continuation prompt
+    // NOTE: Legacy succession endpoints (triggerSuccession, checkSuccessionStatus, initiateHandover)
+    // removed in Handover 0700d. Use simpleHandover instead.
     simpleHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/simple-handover`),
     // Get all executions for a job (succession history)
     getExecutions: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/executions`),
