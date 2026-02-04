@@ -21,15 +21,15 @@
   --theme-transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-// Light theme override
+// Light theme override (darkened for better yellow contrast)
 [data-theme="light"],
 .v-theme--light {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f5f5f5;
-  --color-bg-elevated: #ffffff;
-  --color-border: #e0e0e0;
-  --color-text-primary: #363636;
-  --color-text-secondary: #606060;
+  --color-bg-primary: #e8e8e8;
+  --color-bg-secondary: #dedede;
+  --color-bg-elevated: #e8e8e8;
+  --color-border: #c0c0c0;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #444444;
 }
 
 
@@ -191,6 +191,7 @@ body {
 .v-btn {
   min-height: 44px !important;
   min-width: 44px !important;
+  font-weight: 600 !important; // Bold text for all buttons
 
   &.v-btn--size-small {
     min-height: 36px !important;
