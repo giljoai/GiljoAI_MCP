@@ -134,7 +134,6 @@
               label="Username"
               variant="outlined"
               :rules="[rules.required]"
-              :disabled="isEditMode"
               required
               class="mb-3"
             />
@@ -523,6 +522,7 @@ async function saveUser() {
     if (isEditMode.value) {
       // Update existing user
       await api.auth.updateUser(userForm.value.id, {
+        username: userForm.value.username,
         email: userForm.value.email,
         role: userForm.value.role,
         is_active: userForm.value.is_active,
