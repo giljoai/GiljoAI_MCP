@@ -187,27 +187,6 @@ body {
   }
 }
 
-// =========================================================================
-// Button Text Contrast Fix - Ensure text is always readable
-// =========================================================================
-.v-btn {
-  // Primary colored buttons: ensure text contrast
-  &.bg-primary,
-  &.v-btn--variant-flat.text-primary {
-    color: #000000 !important; // Pure black text on yellow background
-  }
-
-  // Disabled buttons: keep text more visible
-  &:disabled,
-  &.v-btn--disabled {
-    opacity: 0.6 !important; // Higher opacity than Vuetify default (0.38)
-
-    .v-btn__content {
-      opacity: 1 !important; // Ensure text content is fully opaque
-    }
-  }
-}
-
 // Touch target minimum size for mobile
 .v-btn {
   min-height: 44px !important;
