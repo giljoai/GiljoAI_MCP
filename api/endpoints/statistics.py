@@ -297,9 +297,10 @@ async def get_project_statistics(
                 end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
                 duration = (end_time - project.created_at).total_seconds()
 
-                # Calculate context usage
+                # Calculate context usage (hardcoded default budget)
+                context_budget = 150000  # Hardcoded default (Project.context_budget removed)
                 context_percent = (
-                    (project.context_used / project.context_budget * 100) if project.context_budget > 0 else 0
+                    (project.context_used / context_budget * 100) if context_budget > 0 else 0
                 )
 
                 stats.append(
@@ -313,7 +314,7 @@ async def get_project_statistics(
                         task_count=task_count,
                         completed_tasks=completed_task_count,
                         context_used=project.context_used,
-                        context_budget=project.context_budget,
+                        context_budget=context_budget,
                         context_usage_percent=context_percent,
                         last_activity=last_message or project.updated_at,
                     )

@@ -263,6 +263,72 @@
         "replacement_system": "simple_handover.py (360 Memory-based)",
         "visualization_confirmation": "succession.py confirmed orphan (0 dependents) by 0701"
       }
+    },
+    {
+      "id": "orchestrator-002",
+      "timestamp": "2026-02-04T15:30:00Z",
+      "from_handover": "orchestrator",
+      "to_handovers": ["0700b"],
+      "type": "decision",
+      "subject": "SCOPE CHANGE: 0700b reframed from migration to purge",
+      "message": "STRATEGIC DECISION: Responding to blocker 0700b-001. The 0700b agent correctly identified that all 9 deprecated columns are still actively used. However, the agent misunderstood the mission.\n\nORIGINAL ASSUMPTION (WRONG): 'Columns marked for v4.0 removal need migration work first'\n\nCORRECT UNDERSTANDING: 'There is no v4.0. We ARE v1.0. No external users exist. Delete the columns AND all code that uses them.'\n\nThis is a PURGE, not a MIGRATION. The 0700d handover demonstrated the correct approach - it deleted succession.py AND all related schemas, service methods, and frontend code (~750 lines).\n\nNEW SCOPE FOR 0700b: For each deprecated column:\n1. Delete the column from the model\n2. Delete ALL code that reads/writes to that column\n3. Delete related schemas, endpoints, API responses\n4. Delete related frontend code\n5. Update tests to not use the column\n\nRISK ACKNOWLEDGMENT: This is destructive. If we break something, we can git revert. Fresh install will work because baseline migration won't include these columns.\n\nAUTHORIZATION: The orchestrator (human) has explicitly authorized this purge approach.",
+      "files_affected": [],
+      "action_required": true,
+      "context": {
+        "responding_to": "0700b-001",
+        "decision_type": "scope_change",
+        "original_scope": "Remove deprecated columns (assumes code was migrated)",
+        "new_scope": "Purge deprecated columns AND all code that uses them",
+        "rationale": "No external users, no v4.0, shipping clean v1.0",
+        "risk_level": "HIGH",
+        "rollback_plan": "git revert",
+        "authorization": "human orchestrator"
+      }
+    },
+    {
+      "id": "0700b-complete-001",
+      "timestamp": "2026-02-04T16:00:00Z",
+      "from_handover": "0700b",
+      "to_handovers": ["0700c", "0700e", "orchestrator"],
+      "type": "info",
+      "subject": "0700b COMPLETE: 7 columns purged, 2 deferred",
+      "message": "Handover 0700b Database Schema Purge COMPLETED with amended scope (purge + code removal).\n\nCOLUMNS REMOVED (7):\n1. is_used (DownloadToken) - 68 lines deleted\n2. downloaded_at (DownloadToken) - included in above\n3. succession_reason (AgentExecution) - 580 lines deleted with module\n4. handover_summary (AgentExecution) - included in above\n5. decommissioned_at (AgentExecution) - included in above\n6. succeeded_by (AgentExecution) - included in above\n7. context_budget (Project) - 36 lines modified\n\nDEAD MODULE DELETED:\n- src/giljo_mcp/orchestrator_succession.py (378 lines) - Zero production imports, only test usage\n\nDEFERRED COLUMNS (2):\n1. instance_number (AgentExecution) - 161 usages across 30 files, needs dedicated handover\n2. template_content (AgentTemplate) - Deferred to 0700e (Template System Cleanup)\n\nTOTAL IMPACT:\n- Lines deleted: ~1,000 (model columns + dead module + service code + tests)\n- Files modified: 30+\n- Files deleted: 3 (orchestrator_succession.py + 2 test files)\n- Tests updated: 10+\n\nVERIFICATION:\n- All models load successfully\n- Baseline migration updated\n- Zero grep matches for removed columns (excluding AgentExecution.context_budget which is KEPT)",
+      "files_affected": [
+        "src/giljo_mcp/models/config.py",
+        "src/giljo_mcp/models/agent_identity.py",
+        "src/giljo_mcp/models/projects.py",
+        "src/giljo_mcp/orchestrator_succession.py (DELETED)",
+        "src/giljo_mcp/download_tokens.py",
+        "src/giljo_mcp/thin_prompt_generator.py",
+        "src/giljo_mcp/services/agent_job_manager.py",
+        "src/giljo_mcp/services/project_service.py",
+        "src/giljo_mcp/services/orchestration_service.py",
+        "src/giljo_mcp/tools/agent_status.py",
+        "src/giljo_mcp/tools/agent_job_status.py",
+        "src/giljo_mcp/tools/agent_coordination.py",
+        "src/giljo_mcp/tools/context.py",
+        "api/endpoints/agent_jobs/models.py",
+        "api/endpoints/agent_jobs/executions.py",
+        "api/endpoints/projects/models.py",
+        "api/endpoints/projects/crud.py",
+        "api/endpoints/projects/lifecycle.py",
+        "api/websocket.py",
+        "migrations/versions/baseline_v32_unified.py"
+      ],
+      "action_required": true,
+      "context": {
+        "columns_removed": 7,
+        "columns_deferred": 2,
+        "lines_deleted": 1000,
+        "dead_module_deleted": "orchestrator_succession.py",
+        "deferred_items": {
+          "instance_number": "161 usages across 30 files - needs dedicated handover",
+          "template_content": "Deferred to 0700e (Template System Cleanup)"
+        },
+        "recommendation": "Create dedicated handover 0700i for instance_number removal",
+        "blocking_0700c": false,
+        "blocking_0700e": false
+      }
     }
   ],
   "schema": {

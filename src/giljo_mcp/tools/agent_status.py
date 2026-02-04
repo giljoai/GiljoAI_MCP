@@ -151,17 +151,6 @@ async def set_agent_status(
 
             # Validate state machine - cannot transition from terminal states
             if old_status in TERMINAL_STATES:
-                # Handover 0113: Special message for decommissioned agents
-                if old_status == "decommissioned":
-                    return {
-                        "success": False,
-                        "error": "AGENT_DECOMMISSIONED",
-                        "agent_id": agent_id,
-                        "job_id": execution.job_id,
-                        "old_status": old_status,
-                        "message": f"Agent {agent_id} has been decommissioned (project closeout complete). Spawn a new agent if needed.",
-                        "decommissioned_at": execution.decommissioned_at.isoformat() if execution.decommissioned_at else None,
-                    }
                 raise ValueError(
                     f"Cannot transition from terminal state '{old_status}'. Execution is already in final state."
                 )

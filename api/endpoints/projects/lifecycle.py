@@ -90,7 +90,7 @@ async def activate_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
@@ -147,7 +147,7 @@ async def deactivate_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
@@ -202,7 +202,7 @@ async def cancel_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
@@ -252,7 +252,7 @@ async def restore_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
@@ -307,7 +307,7 @@ async def cancel_project_staging(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
@@ -430,7 +430,7 @@ async def archive_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
