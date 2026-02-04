@@ -141,7 +141,6 @@ async def test_get_project_description_basic():
     mock_project.status = "active"
     mock_project.staging_status = "staged"
     mock_project.context_used = 50000
-    mock_project.context_budget = 150000  # Should be EXCLUDED
     mock_project.orchestrator_summary = None
 
     mock_session = AsyncMock()

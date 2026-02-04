@@ -43,7 +43,6 @@ class Product(Base):
     - chunked: Has vision been chunked into mcp_context_index
 
     Handover 0316: Added quality_standards field for testing expectations.
-    Note: Project.context_budget is soft deprecated (kept for backward compatibility).
     """
 
     __tablename__ = "products"

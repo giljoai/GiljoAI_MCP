@@ -456,7 +456,6 @@ async def get_succession_context(
                     "context_used": execution.context_used,
                     "context_budget": execution.context_budget,
                     "spawned_by": execution.spawned_by,
-                    "succeeded_by": execution.succeeded_by,
                 })
 
             return {

@@ -128,7 +128,7 @@ class TestTokenManager:
         assert db_token.token == token
         assert db_token.tenant_key == tenant_key
         assert db_token.download_type == "agent_templates"
-        assert db_token.is_used is False
+        assert db_token.download_count == 0
         assert db_token.metadata == metadata
         assert db_token.expires_at > datetime.now(timezone.utc)
 
@@ -215,27 +215,18 @@ class TestTokenManager:
         assert is_valid is False
 
     @pytest.mark.asyncio
-    async def test_mark_as_used_updates_database(self, db_session):
-        """Test marking token as used persists to database"""
+    async def test_mark_as_used_deprecated(self, db_session):
+        """Test marking token as used (DEPRECATED - no-op for compatibility)"""
         from src.giljo_mcp.download_tokens import TokenManager
-        from src.giljo_mcp.models import DownloadToken
 
         manager = TokenManager(db_session)
         tenant_key = TokenTestData.generate_tenant_key()
 
         token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
 
-        # Mark as used
-        await manager.mark_as_used(token)
-
-        # Verify database update
-        stmt = select(DownloadToken).where(DownloadToken.token == token)
-        result = await db_session.execute(stmt)
-        db_token = result.scalar_one()
-
-        assert db_token.is_used is True
-        assert db_token.downloaded_at is not None
-        assert db_token.downloaded_at <= datetime.now(timezone.utc)
+        # Mark as used (deprecated method, returns True for compatibility)
+        result = await manager.mark_as_used(token)
+        assert result is True
 
     @pytest.mark.asyncio
     async def test_cleanup_expired_tokens(self, db_session):

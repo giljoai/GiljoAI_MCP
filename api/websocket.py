@@ -650,7 +650,6 @@ class WebSocketManager:
         progress_percentage: Optional[int] = None,
         meta_data: Optional[dict] = None,
         failure_reason: Optional[str] = None,  # Handover 0113
-        decommissioned_at: Optional[str] = None,  # Handover 0113
     ):
         """Broadcast real-time status updates during agent execution."""
         data: dict[str, Any] = {
@@ -669,9 +668,6 @@ class WebSocketManager:
 
         if status == "failed" and failure_reason:
             data["failure_reason"] = failure_reason
-
-        if status == "decommissioned" and decommissioned_at:
-            data["decommissioned_at"] = decommissioned_at
 
         event = EventFactory.tenant_envelope(
             event_type="agent:update",
