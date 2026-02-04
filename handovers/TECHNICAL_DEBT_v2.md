@@ -2467,4 +2467,251 @@ const response = await api.agentJobs.simpleHandover(props.job.job_id)
 
 ---
 
+## 🚨 PROTOCOL ENFORCEMENT: Implementation Phase Gate
+
+**Status**: NOT IMPLEMENTED
+**Impact**: HIGH - Orchestrators can accidentally bypass staging protocol
+**Complexity**: LOW
+**Effort**: 4-6 hours
+**Date Identified**: 2026-02-04
+**Priority**: HIGH - Protocol discipline enforcement
+
+### Problem Statement
+
+During alpha testing, an orchestrator did NOT follow the staging protocol correctly - it launched Task() agents during staging phase when it should have STOPPED after sending the STAGING_COMPLETE broadcast. Nothing currently blocks agents from acknowledging jobs before the user clicks the "Implement" button in the UI.
+
+### Root Cause
+
+The gate should be on **user action** (clicking "Implement" button), not orchestrator behavior. Even if the orchestrator follows the protocol framing, there's no server-side enforcement to prevent premature agent activation.
+
+### Current Broken Flow
+
+```
+STAGING SESSION:
+  Orchestrator spawns agents → Creates DB records (job_id, agent_id)
+  Orchestrator sends STAGING_COMPLETE broadcast
+  ❌ Orchestrator launches Task() agents (WRONG - but nothing stopped it)
+  ❌ Agents call acknowledge_job() → Status changes to WORKING
+```
+
+### Proposed Solution
+
+**Add `implementation_launched_at` field to Project model** with acknowledge_job() gate:
+
+```python
+# Project model
+implementation_launched_at: datetime | None = None  # Set by UI "Implement" button
+
+# acknowledge_job() endpoint
+def acknowledge_job(job_id, agent_id):
+    job = get_job(job_id)
+    project = get_project(job.project_id)
+
+    if project.implementation_launched_at is None:
+        return {
+            "success": False,
+            "error": "BLOCKED: Implementation not launched by user",
+            "action_required": "User must click 'Implement' button in dashboard",
+            "message_to_orchestrator": "Stop work. Instruct user to launch implementation from UI."
+        }
+
+    # Normal acknowledge flow...
+```
+
+### Implementation Steps
+
+1. **Database Migration** (30 min)
+   - Add `implementation_launched_at: DateTime | None` to Project model
+   - Create migration
+
+2. **API Endpoint Modification** (1-2 hours)
+   - Gate `acknowledge_job()` endpoint on `project.implementation_launched_at`
+   - Return clear error message when blocked
+   - Add endpoint: `PATCH /projects/{id}/launch-implementation` that sets the timestamp
+
+3. **Frontend UI Integration** (1-2 hours)
+   - "Implement" button in JobsTab.vue calls `PATCH /projects/{id}/launch-implementation`
+   - Button returns the orchestrator implementation prompt for user to paste
+   - Only after this can agents acknowledge their jobs
+
+4. **Testing** (1 hour)
+   - Test that agents cannot acknowledge before implementation launch
+   - Test that agents CAN acknowledge after implementation launch
+   - Test error message clarity
+
+### Files to Modify
+
+- `src/giljo_mcp/models.py` - Add `Project.implementation_launched_at`
+- `api/endpoints/orchestration.py` or relevant acknowledge endpoint - Add gate check
+- `frontend/src/components/projects/JobsTab.vue` - Implement button handler
+- Database migration file
+
+### Benefit
+
+Even if the orchestrator mistakenly launches Task() agents during staging:
+- Agents self-block at `acknowledge_job()` because the flag isn't set
+- No dashboard status changes occur
+- Clear error message tells orchestrator to stop
+- User controls phase transition via UI button
+
+### Success Criteria
+
+- ✅ Agents cannot acknowledge jobs until user clicks "Implement"
+- ✅ Clear error message returned when blocked
+- ✅ Orchestrator receives feedback to stop work
+- ✅ UI "Implement" button sets the unlock timestamp
+- ✅ Multi-tenant isolation preserved
+
+### Related
+
+- Staging workflow (Handover 0246a)
+- Orchestrator protocol
+- STAGING_COMPLETE broadcast pattern
+
+---
+
+### 🐛 BUG: Orchestrator Self-Counting in Active Agent Check
+
+**Status**: Not Started
+**Complexity**: LOW
+**Effort**: 2-4 hours
+**Date Identified**: 2026-02-04
+**Priority**: MEDIUM - Causes orchestrator to wait on itself
+
+### Problem Statement
+
+When the orchestrator uses MCP tools to check what agents are currently working, it receives a count of active agents but **cannot identify itself** in the list. As a result, it counts itself as one of the working agents and waits "on itself to finish" indefinitely.
+
+### Root Cause
+
+The `get_active_agents()` or similar MCP tool returns a count or list without including the orchestrator's own `agent_id` or `job_id` as context. The orchestrator has no way to filter itself out of the results.
+
+### Example Scenario
+
+```
+Orchestrator checks: "How many agents are working?"
+MCP returns: 1 agent working
+Reality: The 1 agent IS the orchestrator itself
+Orchestrator thinks: "I need to wait for 1 agent to finish"
+Result: Orchestrator sits idle waiting on itself forever
+```
+
+### Proposed Solution
+
+Add an identifier parameter to the MCP tool so the orchestrator can exclude itself:
+
+```python
+# Option A: Pass caller's agent_id as parameter
+get_active_agents(exclude_agent_id="orchestrator-uuid-123")
+
+# Option B: Return full agent details so orchestrator can filter
+{
+  "active_agents": [
+    {"agent_id": "abc", "agent_display_name": "orchestrator", "job_id": "xyz"},
+    {"agent_id": "def", "agent_display_name": "implementer", "job_id": "uvw"}
+  ],
+  "caller_agent_id": "abc"  # Include in response so caller knows who they are
+}
+```
+
+### Implementation Steps
+
+1. Identify which MCP tool(s) are used for checking active agents
+2. Add `caller_agent_id` or `exclude_self` parameter
+3. Return agent identifiers (not just counts) so orchestrator can reason about them
+4. Update orchestrator staging workflow to pass its own ID
+
+### Files to Investigate
+
+- `src/giljo_mcp/tools/` - MCP tool definitions
+- Orchestrator staging workflow documentation
+
+### Success Criteria
+
+- ✅ Orchestrator can identify itself in active agent lists
+- ✅ Orchestrator correctly excludes itself when counting "agents to wait for"
+- ✅ No infinite waiting loops
+
+---
+
+### 🐛 BUG: Duplicate Orchestrator Creation via Project Activation
+
+**Status**: Not Started
+**Complexity**: MEDIUM
+**Effort**: 4-8 hours
+**Date Identified**: 2026-02-04
+**Priority**: HIGH - Creates phantom orchestrators that block closeout
+
+### Problem Statement
+
+When viewing the projects list during implementation phase, clicking the "Launch Job" or interacting with the project can trigger `activate_project()` which creates a **new orchestrator** via `_ensure_orchestrator_fixture()`, even though an orchestrator already exists and is running.
+
+### Root Cause Analysis
+
+1. **Project listing shows "Launch Job" button during implementation** - This button should be hidden when implementation is already running.
+
+2. **`_ensure_orchestrator_fixture()` has incomplete status check** - The function only checks for orchestrators with status `"waiting"` or `"working"` (line 1156 in `project_service.py`). If the existing orchestrator has any other status, a new one is created.
+
+3. **Project activation can be triggered multiple times** - No guard prevents re-activation of an already-active project with running agents.
+
+### Evidence
+
+Database query showed a second orchestrator created with metadata:
+```json
+{"created_via": "project_activation_fixture"}
+```
+
+Timeline:
+- 16:28:33 - Original orchestrator created (staging) - via thin_client_generator
+- 16:55:58 - Second orchestrator created - via project_activation_fixture (DUPLICATE!)
+
+### Two-Part Fix Required
+
+#### Part 1: Hide navigation buttons during implementation
+
+In `ProjectsView.vue` or project listing, hide "Launch Job" / "Implement" buttons when:
+- Project is in implementation phase (`staging_status === "launching"`)
+- Active agents exist for the project
+
+**CRITICAL**: The "Implement" button is NAVIGATIONAL only - it should NEVER spawn orchestrators. If pressed repeatedly, it should just navigate to the existing implementation view.
+
+#### Part 2: Strengthen `_ensure_orchestrator_fixture()` guard
+
+Current check (incomplete):
+```python
+AgentExecution.status.in_(["waiting", "working"])
+```
+
+Should also check for:
+- `"blocked"` - Orchestrator might be blocked but still active
+- Any non-terminal status
+
+Or better: Check if ANY orchestrator exists for this project that is NOT in terminal states (`complete`, `failed`, `cancelled`, `decommissioned`).
+
+### Files to Modify
+
+**Frontend**:
+- `frontend/src/views/ProjectsView.vue` - Hide buttons during implementation
+- `frontend/src/components/projects/ProjectTabs.vue` - Ensure Implement button is navigation-only
+
+**Backend**:
+- `src/giljo_mcp/services/project_service.py` - `_ensure_orchestrator_fixture()` method (lines ~1148-1167)
+  - Expand status check to all non-terminal statuses
+  - Or add a `skip_if_implementation_active` flag
+
+### Success Criteria
+
+- ✅ "Launch Job" / "Implement" buttons hidden from project listing during implementation phase
+- ✅ "Implement" button NEVER creates new orchestrators - navigation only
+- ✅ `_ensure_orchestrator_fixture()` does not create duplicates for active projects
+- ✅ No phantom orchestrators blocking closeout
+
+### Related
+
+- Handover 0431: Orchestrator fixture on activation
+- `_ensure_orchestrator_fixture()` in `project_service.py`
+- Project listing UI components
+
+---
+
 **End of Technical Debt v2.0**
