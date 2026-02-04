@@ -20,7 +20,7 @@ const darkTheme = {
     warning: '#ffc300', // Yellow
     'on-background': '#e1e1e1', // White gray
     'on-surface': '#e1e1e1',
-    'on-primary': '#0e1c2d',
+    'on-primary': '#000000', // Pure black for max contrast on yellow
     'on-secondary': '#e1e1e1',
     'on-accent': '#0e1c2d',
     'on-error': '#e1e1e1',
