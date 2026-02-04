@@ -565,7 +565,7 @@ const selectedStepId = ref(steps.value[0]?.id ?? 'tools')
 
 const selectedStep = computed(() => steps.value.find((s) => s.id === selectedStepId.value) ?? steps.value[0])
 
-const accentColor = computed(() => (theme.global.current.value.dark ? 'secondary' : 'primary'))
+const accentColor = computed(() => 'primary') // primary is yellow (brand color) in both themes
 
 const setupSteps = computed(() =>
   steps.value.filter((s) => ['tools', 'connect', 'slash', 'templates', 'context', 'integrations'].includes(s.id)),
