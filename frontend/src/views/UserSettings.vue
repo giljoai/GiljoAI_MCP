@@ -40,11 +40,7 @@
       </v-btn>
       <v-btn value="agents" data-testid="agent-templates-settings-tab">
         <v-img
-          :src="
-            theme.global.current.value.dark
-              ? '/icons/Giljo_White_Face.svg'
-              : '/icons/Giljo_Dark_Face.svg'
-          "
+          src="/icons/Giljo_White_Face.svg"
           width="20"
           height="20"
           class="mr-1"
@@ -95,15 +91,6 @@
           <v-card-title>Appearance Settings</v-card-title>
           <v-card-text>
             <v-row>
-              <v-col cols="12" md="6">
-                <h3 class="text-h6 mb-4">Theme</h3>
-                <v-radio-group v-model="settings.appearance.theme" data-test="theme-selector">
-                  <v-radio label="Dark Theme" value="dark" />
-                  <v-radio label="Light Theme" value="light" />
-                  <v-radio label="System Default" value="system" />
-                </v-radio-group>
-              </v-col>
-
               <v-col cols="12" md="6">
                 <h3 class="text-h6 mb-4">Mascot Preferences</h3>
                 <v-switch
