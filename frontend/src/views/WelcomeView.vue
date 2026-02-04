@@ -5,7 +5,7 @@
         <v-card elevation="0" class="text-center pa-8">
           <!-- Gil mascot (blinking) on top -->
           <div class="mascot-wrapper mb-4">
-            <GilMascot :size="150" :dark-eyes="!theme.global.current.value.dark" />
+            <GilMascot :size="150" :dark-eyes="false" />
           </div>
 
           <!-- Friendly greeting with user's first name -->

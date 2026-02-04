@@ -289,11 +289,9 @@ const emit = defineEmits(['update:modelValue'])
 const instance = getCurrentInstance()
 const apiClient = instance?.appContext.config.globalProperties.$api || api
 
-// Theme-aware giljo face icon (Handover 0358)
-const theme = useTheme()
+// Giljo face icon (dark theme only)
 const giljoFaceIcon = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+  return '/giljo_YW_Face.svg'
 })
 
 // State
