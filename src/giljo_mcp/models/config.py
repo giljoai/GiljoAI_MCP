@@ -616,14 +616,6 @@ class DownloadToken(Base):
         JSONB, default=dict, nullable=False, comment="Additional metadata (filename, file_count, file_size, etc.)"
     )
 
-    # Historical compatibility (kept for backward compatibility only)
-    is_used = Column(
-        Boolean, default=False, nullable=False, comment="Deprecated: legacy one-time download flag (not enforced)"
-    )
-    downloaded_at = Column(
-        DateTime(timezone=True), nullable=True, comment="Deprecated: legacy single-use timestamp (not enforced)"
-    )
-
     # Staging lifecycle and metrics (Handover 0102)
     staging_status = Column(
         String(20), default="pending", nullable=False, comment="Staging lifecycle status: pending|ready|failed"
@@ -650,7 +642,7 @@ class DownloadToken(Base):
     )
 
     def __repr__(self):
-        return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, used={self.is_used})>"
+        return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, downloads={self.download_count})>"
 
     @property
     def is_expired(self) -> bool:

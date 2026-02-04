@@ -56,7 +56,6 @@ def mock_project(project_id, tenant_key):
     project.tenant_key = tenant_key
     project.mission = "Build an authentication system"
     project.description = "User requirements for auth"
-    project.context_budget = 150000
     project.status = "active"
     return project
 

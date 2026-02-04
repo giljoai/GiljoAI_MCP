@@ -113,7 +113,6 @@ class TestProjectServiceCRUD:
         mock_project.staging_status = None
         mock_project.product_id = None
         mock_project.tenant_key = "test-tenant"
-        mock_project.context_budget = 150000
         mock_project.context_used = 0
         mock_project.created_at = datetime.now()
         mock_project.updated_at = None
@@ -179,7 +178,6 @@ class TestProjectServiceCRUD:
         mock_project1.staging_status = None
         mock_project1.tenant_key = "tenant1"
         mock_project1.product_id = None
-        mock_project1.context_budget = 150000
         mock_project1.context_used = 1000
         mock_project1.created_at = datetime.now()
         mock_project1.updated_at = None
@@ -553,7 +551,6 @@ class TestProjectServiceLifecycle:
         mock_project.name = "Test Project"
         mock_project.mission = "Test Mission"
         mock_project.config_data = {}
-        mock_project.context_budget = 150000
 
         # Track created jobs
         created_jobs = []
@@ -617,7 +614,6 @@ class TestProjectServiceSwitchProject:
         mock_project.mission = "Mission"
         mock_project.tenant_key = "tenant2"
         mock_project.context_used = 1000
-        mock_project.context_budget = 150000
 
         # NOTE: Session tracking removed (Handover 0423 - Session model deleted)
         # Mock only the project query

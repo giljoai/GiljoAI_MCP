@@ -115,7 +115,6 @@ class ProjectService:
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
         status: str = "inactive",
-        context_budget: int = 150000,
     ) -> dict[str, Any]:
         """
         Create a new project.
@@ -127,7 +126,6 @@ class ProjectService:
             product_id: Parent product ID if project belongs to a product
             tenant_key: Tenant key for multi-tenancy (auto-generated if not provided)
             status: Initial project status (default: "inactive")
-            context_budget: Token budget for context usage (default: 150000)
 
         Returns:
             Dict with project details
@@ -158,7 +156,6 @@ class ProjectService:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     status=status,
-                    context_budget=context_budget,
                     context_used=0,
                     updated_at=now,  # Explicitly set since DB schema may not have DEFAULT
                 )
@@ -271,7 +268,7 @@ class ProjectService:
                     "staging_status": project.staging_status,
                     "product_id": project.product_id,
                     "tenant_key": project.tenant_key,
-                    "context_budget": project.context_budget,
+                    "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
                     "context_used": project.context_used,
                     "execution_mode": project.execution_mode,  # Handover 0260
                     "created_at": project.created_at.isoformat() if project.created_at else None,
@@ -364,7 +361,7 @@ class ProjectService:
                     "updated_at": project.updated_at.isoformat() if project.updated_at else None,
                     "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                     "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                    "context_budget": project.context_budget or 150000,
+                    "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
                     "context_used": project.context_used or 0,
                     "agent_count": agent_count,
                     "message_count": message_count,
@@ -445,7 +442,7 @@ class ProjectService:
                             "updated_at": (
                                 project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
                             ),
-                            "context_budget": project.context_budget,
+                            "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
                             "context_used": project.context_used,
                         }
                     )
@@ -1211,7 +1208,6 @@ class ProjectService:
             instance_number=instance_number,
             status="waiting",
             progress=0,
-            context_budget=project.context_budget or 150000,
             context_used=0,
             health_status="unknown",
         )
@@ -2050,7 +2046,6 @@ class ProjectService:
                 agent_name="orchestrator",  # Type key for color lookup
                 instance_number=instance_number,
                 status="waiting",
-                context_budget=project.context_budget or 150000,
                 context_used=0,
                 progress=0,
                 health_status="unknown",
@@ -2201,7 +2196,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 "name": project.name,
                 "mission": project.mission,
                 "tenant_key": project.tenant_key,
-                "context_usage": f"{project.context_used}/{project.context_budget}",
+                "context_usage": f"{project.context_used}/150000",  # Hardcoded default (Project.context_budget removed)
             }
 
     # ============================================================================
@@ -2539,7 +2534,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             cancelled_jobs_count = 0
             for execution in executions:
                 execution.status = "cancelled"
-                execution.decommissioned_at = now
                 execution.completed_at = now
                 cancelled_jobs_count += 1
 

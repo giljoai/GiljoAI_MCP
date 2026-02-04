@@ -60,7 +60,6 @@ async def get_job_executions(
             status=exec.status,
             progress=exec.progress,
             spawned_by=str(exec.spawned_by) if exec.spawned_by else None,
-            succeeded_by=str(exec.succeeded_by) if exec.succeeded_by else None,
             created_at=exec.created_at,
             updated_at=exec.updated_at
         )

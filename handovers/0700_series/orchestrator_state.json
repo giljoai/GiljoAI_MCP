@@ -42,17 +42,21 @@
     {
       "id": "0700b",
       "title": "Database Schema Purge",
-      "status": "blocked",
-      "effort_hours": "2-3",
+      "status": "complete",
+      "effort_hours": "4-6",
       "priority": "HIGH",
       "dependencies": ["0701"],
-      "scope": "Remove deprecated columns from AgentExecution, templates, download_tokens, projects",
+      "scope": "AMENDED: Purge deprecated columns AND all code that uses them (not just column removal)",
+      "scope_amended": true,
+      "amendment_ref": "orchestrator-002",
       "started_at": "2026-02-04T15:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-02-04T16:00:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "blocker_reason": "ALL 9 columns are still actively used. Code was marked deprecated but never migrated. See comms_log entry 0700b-001.",
-      "recommended_action": "Cancel or redesign as migration-first approach"
+      "columns_removed": ["is_used", "downloaded_at", "succession_reason", "handover_summary", "decommissioned_at", "succeeded_by", "context_budget"],
+      "columns_deferred": ["instance_number (161 usages - dedicated handover)", "template_content (deferred to 0700e)"],
+      "lines_deleted": 1000,
+      "files_deleted": ["src/giljo_mcp/orchestrator_succession.py", "tests/integration/test_0387f_phase3_counter_reads.py", "tests/unit/test_handover_0247_gaps.py"]
     },
     {
       "id": "0700c",
@@ -295,5 +299,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "0700a + 0700 complete. Merged cleanup approach: 0701 (visualization) → 0700b-h (deprecated purge ~1050 lines) → modified 0704-0706 (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). Dead code audit revealed 5000 estimate was inflated - actual dead code ~400 lines, deprecated code ~1500 lines. Total addressable: ~2000 lines. Execution order: 0701 → 0700b → 0700d → 0700c → 0700e → 0700f → 0700g → 0700h → 0702 → 0703 → 0704 → 0705 → 0706 → 0707 → 0708 → 0711 → 0373."
+  "notes": "0700a + 0700 complete. Merged cleanup approach: 0701 (visualization) → 0700b-h (deprecated purge ~1050 lines) → modified 0704-0706 (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). Dead code audit revealed 5000 estimate was inflated - actual dead code ~400 lines, deprecated code ~1500 lines. Total addressable: ~2000 lines. Execution order: 0701 → 0700b → 0700d → 0700c → 0700e → 0700f → 0700g → 0700h → 0702 → 0703 → 0704 → 0705 → 0706 → 0707 → 0708 → 0711 → 0373. SCOPE AMENDMENT: 0700b scope amended via orchestrator-002 (2026-02-04T15:30:00Z) - Changed from 'remove columns' to 'purge columns AND code'. Human authorized destructive purge approach for v1.0 release. No external users, no v4.0 migration path needed."
 }
