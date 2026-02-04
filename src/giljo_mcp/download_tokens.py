@@ -145,11 +145,6 @@ class TokenManager:
                 logger.debug(f"Token not found or tenant mismatch: {token}")
                 return False
 
-            # Check if already used
-            if token_record.is_used:
-                logger.debug(f"Token already used: {token}")
-                return False
-
             # Check if expired
             if token_record.is_expired:
                 logger.debug(f"Token expired: {token}")
@@ -164,40 +159,20 @@ class TokenManager:
 
     async def mark_as_used(self, token: str) -> bool:
         """
-        Mark a token as used (one-time use enforcement).
+        DEPRECATED: No longer marks tokens as used (soft delete).
 
-        Updates the token record to set is_used=True and records
-        the download timestamp. Token cannot be used again.
+        This method is kept for backward compatibility but does nothing.
+        Token usage is now tracked via download_count and last_downloaded_at
+        in record_download() method.
 
         Args:
             token: UUID token string
 
         Returns:
-            bool: True if successfully marked, False otherwise
+            bool: Always returns True for compatibility
         """
-        try:
-            # Query token
-            stmt = select(DownloadToken).where(DownloadToken.token == token)
-            result = await self.db_session.execute(stmt)
-            token_record = result.scalar_one_or_none()
-
-            if not token_record:
-                logger.warning(f"Cannot mark non-existent token as used: {token}")
-                return False
-
-            # Mark as used
-            token_record.is_used = True
-            token_record.downloaded_at = datetime.now(timezone.utc)
-
-            await self.db_session.commit()
-
-            logger.info(f"Token marked as used: {token}")
-            return True
-
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"Error marking token as used: {e}")
-            return False
+        logger.debug(f"mark_as_used() called for token {token} - DEPRECATED, no action taken")
+        return True
 
     async def cleanup_expired_tokens(self) -> int:
         """
@@ -253,14 +228,12 @@ class TokenManager:
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
                 "metadata": token_record.meta_data,
-                "is_used": token_record.is_used,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
                 "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
             }
 
@@ -292,14 +265,12 @@ class TokenManager:
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
                 "metadata": token_record.meta_data,
-                "is_used": token_record.is_used,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
                 "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
             }
 

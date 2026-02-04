@@ -267,7 +267,6 @@ class AgentExecutionResponse(BaseModel):
     status: str
     progress: int = 0
     spawned_by: Optional[str] = None
-    succeeded_by: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

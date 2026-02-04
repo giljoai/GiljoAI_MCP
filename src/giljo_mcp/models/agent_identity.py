@@ -143,10 +143,6 @@ class AgentExecution(Base):
     Handover 0461b DEPRECATION NOTICE:
     The following columns are deprecated and will be removed in v4.0:
     - instance_number: Use single instance per agent
-    - decommissioned_at: Agents no longer decommissioned
-    - succeeded_by: Use 360 Memory for handover tracking
-    - succession_reason: Use 360 Memory session_handover entry
-    - handover_summary: Use 360 Memory session_handover entry
 
     NOTE: The `messages` JSONB column is also DEPRECATED (Handover 0387i).
     Use `messages_sent_count`, `messages_waiting_count`, `messages_read_count` instead.
@@ -193,26 +189,16 @@ class AgentExecution(Base):
         String(50),
         default="waiting",
         nullable=False,
-        comment="Execution status: waiting, working, blocked, complete, failed, cancelled, decommissioned",
+        comment="Execution status: waiting, working, blocked, complete, failed, cancelled",
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    decommissioned_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Agents no longer decommissioned.",
-    )
 
     # Succession tracking (points to OTHER executions via agent_id)
     spawned_by = Column(
         String(36),
         nullable=True,
         comment="Agent ID of parent executor (clear: agent, not job)",
-    )
-    succeeded_by = Column(
-        String(36),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory for handover tracking.",
     )
 
     # Progress tracking
@@ -276,18 +262,6 @@ class AgentExecution(Base):
         default=150000,
         nullable=False,
         comment="Maximum context window budget in tokens",
-    )
-
-    # Succession metadata (for orchestrator executions)
-    succession_reason = Column(
-        String(100),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
-    )
-    handover_summary = Column(
-        JSONB,
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
     )
 
     # DEPRECATED (Handover 0387i): This column is no longer used.
