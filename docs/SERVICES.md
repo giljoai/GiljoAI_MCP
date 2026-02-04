@@ -184,9 +184,10 @@ Created → Active → Paused → Active → Completed
 **Core Methods**:
 - `create_orchestrator_job(project_id, mission, context_budget)` - Create orchestrator with context tracking
 - `update_context_usage(job_id, additional_tokens)` - Track context consumption
-- `trigger_succession(job_id, reason)` - Spawn successor orchestrator
 - `get_context_status(job_id)` - Check context usage vs budget
 - `generate_handover_summary(job_id)` - Generate condensed context (<10K tokens)
+
+**Note**: `trigger_succession()` removed in Handover 0700d. Use `POST /api/agent-jobs/{job_id}/simple-handover` endpoint for 360 Memory-based session continuity instead.
 
 **Orchestrator Instructions** (moved from orchestrator.py):
 - `get_orchestrator_instructions(job_id, tenant_key)` - Fetch orchestrator context and mission
@@ -222,14 +223,12 @@ job = await service.create_orchestrator_job(
 # Update context usage on message sends
 await service.update_context_usage(job.id, additional_tokens=1500)
 
-# Check if succession needed
+# Check if succession needed (use simple-handover API endpoint)
 status = await service.get_context_status(job.id)
 if status['percentage_used'] >= 0.9:
-    successor = await service.trigger_succession(
-        job_id=job.id,
-        reason="context_limit"
-    )
-    # successor.handover_summary contains condensed context (<10K tokens)
+    # Use POST /api/agent-jobs/{job_id}/simple-handover endpoint
+    # This resets context and returns continuation prompt via 360 Memory
+    pass
 ```
 
 **Manual Succession Flow**:
