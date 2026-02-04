@@ -146,6 +146,67 @@
         "security_concerns": ["dep-019", "dep-025", "dep-026"],
         "bug_location": "src/giljo_mcp/services/project_service.py:1545"
       }
+    },
+    {
+      "id": "orchestrator-001",
+      "timestamp": "2026-02-04T12:00:00Z",
+      "from_handover": "orchestrator",
+      "to_handovers": ["0701", "0700b", "0700c", "0700d", "0700e", "0700f", "0700g", "0700h", "0704", "0705", "0706"],
+      "type": "info",
+      "subject": "Merged cleanup approach decided",
+      "message": "After deep-researcher audit (dead_code_audit.md), we decided on merged approach: (1) 0701 Visualization first to understand codebase, (2) 0700b-h for deprecated purge (~1050 lines), (3) Modified 0704-0706 for comprehensive cleanup (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). The 5000 dead code estimate was inflated - actual dead code is ~300-400 lines. Deprecated code (still wired up but marked for removal) is ~1500 lines. Total addressable: ~2000 lines.",
+      "files_affected": ["handovers/0700_series/orchestrator_state.json", "handovers/0700_series/dead_code_audit.md"],
+      "action_required": false,
+      "context": {
+        "audit_report": "handovers/0700_series/dead_code_audit.md",
+        "dead_code_actual": 400,
+        "deprecated_code": 1500,
+        "execution_order": ["0701", "0700b", "0700d", "0700c", "0700e", "0700f", "0700g", "0700h", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0711", "0373"]
+      }
+    },
+    {
+      "id": "0701-001",
+      "timestamp": "2026-02-04T14:30:00Z",
+      "from_handover": "0701",
+      "to_handovers": ["0700b", "0700c", "0700d", "0700e", "0700f", "0700g", "0700h"],
+      "type": "dependency",
+      "subject": "High-risk files identified for careful removal",
+      "message": "Dependency analysis complete. 8 HIGH-RISK files with 20+ dependents require careful handling during cleanup: (1) src/giljo_mcp/models/__init__.py - 105 dependents (CRITICAL HUB, never delete), (2) api/app.py - 73 dependents, (3) src/giljo_mcp/database.py - 58 dependents, (4) src/giljo_mcp/auth/dependencies.py - 48 dependents, (5) src/giljo_mcp/models/agent_identity.py - 32 dependents, (6) src/giljo_mcp/tenant.py - 29 dependents, (7) src/giljo_mcp/exceptions.py - 28 dependents, (8) api/dependencies.py - 27 dependents. RECOMMEND removing deprecated code in REVERSE order of dependent count (leaf nodes first). See dependency_analysis.json for full cleanup ordering and dependency_graph.html for interactive exploration.",
+      "files_affected": ["docs/cleanup/dependency_graph.html", "handovers/0700_series/dependency_analysis.json", "handovers/0700_series/dependency_graph_data.json"],
+      "action_required": true,
+      "context": {
+        "total_files_scanned": 458,
+        "total_import_edges": 763,
+        "high_risk_files": [
+          {"path": "src/giljo_mcp/models/__init__.py", "dependents": 105},
+          {"path": "api/app.py", "dependents": 73},
+          {"path": "src/giljo_mcp/database.py", "dependents": 58},
+          {"path": "src/giljo_mcp/auth/dependencies.py", "dependents": 48},
+          {"path": "src/giljo_mcp/models/agent_identity.py", "dependents": 32},
+          {"path": "src/giljo_mcp/tenant.py", "dependents": 29},
+          {"path": "src/giljo_mcp/exceptions.py", "dependents": 28},
+          {"path": "api/dependencies.py", "dependents": 27}
+        ],
+        "cleanup_ordering_available": true
+      }
+    },
+    {
+      "id": "0701-002",
+      "timestamp": "2026-02-04T14:30:00Z",
+      "from_handover": "0701",
+      "to_handovers": ["0702", "0703", "0704", "0705", "0706", "0707", "0708", "0711"],
+      "type": "info",
+      "subject": "Orphan modules and circular dependencies detected",
+      "message": "Found 271 orphan modules (zero dependents) - these are SAFE to delete first without breaking other code. Includes most API endpoint modules (dynamically loaded via FastAPI router), frontend components, and legacy utilities. Also detected 49 circular dependency cycles - most involve api/app.py <-> auth/__init__.py <-> dependencies.py coupling. These indicate tight coupling that may complicate refactoring. See dependency_graph.html for interactive visualization - use search and filters to explore specific areas. Orphans listed in dependency_analysis.json are prioritized removal candidates.",
+      "files_affected": ["docs/cleanup/dependency_graph.html", "handovers/0700_series/dependency_analysis.json"],
+      "action_required": false,
+      "context": {
+        "orphan_modules_count": 271,
+        "circular_dependencies_count": 49,
+        "visualization_path": "docs/cleanup/dependency_graph.html",
+        "analysis_path": "handovers/0700_series/dependency_analysis.json",
+        "common_cycle_pattern": "api/app.py <-> auth/__init__.py <-> dependencies.py"
+      }
     }
   ],
   "schema": {
