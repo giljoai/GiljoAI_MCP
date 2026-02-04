@@ -61,7 +61,6 @@ async def create_project(
         product_id=project.product_id,
         tenant_key=current_user.tenant_key,
         status=project.status,
-        context_budget=project.context_budget,
     )
 
     logger.info(f"Created project {result['project_id']} for tenant {current_user.tenant_key}")
@@ -79,7 +78,7 @@ async def create_project(
         created_at=result.get("created_at"),
         updated_at=result.get("updated_at"),
         completed_at=None,
-        context_budget=project.context_budget,
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=0,
         agent_count=0,
         message_count=0,

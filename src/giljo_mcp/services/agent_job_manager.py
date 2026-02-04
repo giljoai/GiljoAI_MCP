@@ -262,8 +262,6 @@ class AgentJobManager:
                     execution.started_at = datetime.now(timezone.utc)
                 elif status in ["complete", "failed", "cancelled"]:
                     execution.completed_at = datetime.now(timezone.utc)
-                elif status == "decommissioned":
-                    execution.decommissioned_at = datetime.now(timezone.utc)
 
                 await session.commit()
                 await session.refresh(execution)
@@ -404,8 +402,7 @@ class AgentJobManager:
                 executions = executions_result.scalars().all()
 
                 for execution in executions:
-                    execution.status = "decommissioned"
-                    execution.decommissioned_at = datetime.now(timezone.utc)
+                    execution.status = "complete"
 
                 await session.commit()
                 await session.refresh(job)
@@ -413,7 +410,7 @@ class AgentJobManager:
                     await session.refresh(execution)
 
                 self._logger.info(
-                    f"Completed job {job_id} and decommissioned {len(executions)} execution(s)"
+                    f"Completed job {job_id} and marked {len(executions)} execution(s) as complete"
                 )
 
                 return {

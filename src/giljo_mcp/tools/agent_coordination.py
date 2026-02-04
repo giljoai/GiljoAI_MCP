@@ -361,7 +361,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                 "started_at": execution.started_at.isoformat() if execution.started_at else None,
                 "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                 "spawned_by": execution.spawned_by,
-                "succeeded_by": execution.succeeded_by,
             }
         else:
             # Production path: create new session
@@ -399,7 +398,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                     "started_at": execution.started_at.isoformat() if execution.started_at else None,
                     "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                     "spawned_by": execution.spawned_by,
-                    "succeeded_by": execution.succeeded_by,
                 }
 
     except Exception as e:

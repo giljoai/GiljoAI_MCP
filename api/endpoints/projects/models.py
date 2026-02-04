@@ -23,7 +23,6 @@ class ProjectCreate(BaseModel):
     )
     product_id: Optional[str] = Field(None, description="Product ID to associate with")
     status: str = Field(default="inactive", description="Project status (Handover 0050b: defaults to inactive)")
-    context_budget: int = Field(default=150000, description="Token budget for the project")
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = Field(
         default="multi_terminal",
@@ -67,7 +66,7 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
-    context_budget: Optional[int] = 150000  # Nullable after project reset
+    context_budget: int = 150000  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
     context_used: Optional[int] = 0  # Nullable after project reset
     agent_count: int
     message_count: int

@@ -443,9 +443,8 @@ async def _handoff_agent_work_with_session(
     if not to_execution:
         return {"success": False, "error": f"To agent '{to_agent}' not found"}
 
-    # Update execution statuses and track succession
+    # Update execution statuses
     from_execution.status = "complete"
-    from_execution.succeeded_by = to_execution.agent_id
     from_execution.completed_at = datetime.now(timezone.utc)
 
     to_execution.status = "working"
