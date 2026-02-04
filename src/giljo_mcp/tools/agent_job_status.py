@@ -207,20 +207,14 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
                 "completed_at": exec.completed_at.isoformat()
                 if exec.completed_at
                 else None,
-                "decommissioned_at": exec.decommissioned_at.isoformat()
-                if exec.decommissioned_at
-                else None,
             }
             for exec in executions
         ]
 
-        # Find current agent (non-decommissioned with highest instance number)
-        active_execs = [
-            e for e in executions if e.decommissioned_at is None
-        ]
-        if active_execs:
+        # Find current agent (highest instance number)
+        if executions:
             current_exec = max(
-                active_execs, key=lambda e: e.instance_number
+                executions, key=lambda e: e.instance_number
             )
             response["current_agent_id"] = current_exec.agent_id
             response["current_instance"] = current_exec.instance_number
@@ -260,7 +254,6 @@ async def get_agent_status(
         - progress: Completion progress (0-100%)
         - current_task: Description of current task
         - spawned_by: Parent agent_id (succession chain)
-        - decommissioned_at: Timestamp when agent was decommissioned
 
     Example:
         # Query agent status
@@ -359,17 +352,11 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
     if execution.spawned_by:
         response["spawned_by"] = execution.spawned_by
 
-    if execution.succeeded_by:
-        response["succeeded_by"] = execution.succeeded_by
-
     if execution.started_at:
         response["started_at"] = execution.started_at.isoformat()
 
     if execution.completed_at:
         response["completed_at"] = execution.completed_at.isoformat()
-
-    if execution.decommissioned_at:
-        response["decommissioned_at"] = execution.decommissioned_at.isoformat()
 
     if execution.block_reason:
         response["block_reason"] = execution.block_reason

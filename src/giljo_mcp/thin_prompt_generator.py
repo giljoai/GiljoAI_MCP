@@ -124,8 +124,8 @@ class ThinClientPromptGenerator:
         """
         Generate a thin orchestrator prompt for a specified project.
 
-        Handover 0088: Now uses metadata JSONB column instead of handover_summary
-        for storing field_priorities, user_id, tool, and other thin client data.
+        Handover 0088: Uses metadata JSONB column for storing field_priorities,
+        user_id, tool, and other thin client data.
 
         Handover 0315: Generates thin prompts (~600 tokens) that reference MCP tools
         for on-demand context fetching, replacing fat prompts (~3500 tokens) with
@@ -297,7 +297,6 @@ class ThinClientPromptGenerator:
                 status="waiting",
                 progress=0,
                 tool_type=tool,
-                context_budget=project.context_budget,
                 context_used=0,
                 messages=[],
             )
@@ -386,7 +385,7 @@ class ThinClientPromptGenerator:
             "execution_id": execution_id,  # UNIQUE row ID - for frontend Map key (prevents duplicates)
             "thin_prompt": thin_prompt,
             "instance_number": instance_number,
-            "context_budget": project.context_budget,
+            "context_budget": 150000,  # Hardcoded default (AgentExecution.context_budget has same default)
             "estimated_prompt_tokens": estimated_tokens,
             # Handover 0276: Include regenerated mission in response
             "mission": regenerated_mission,

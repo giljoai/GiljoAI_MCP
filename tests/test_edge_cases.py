@@ -329,12 +329,13 @@ class TestEdgeCases:
         db_session.commit()
 
         # Simulate context usage
+        context_budget = 150000  # Hardcoded default (Project.context_budget removed)
         for _i in range(5):
             project.context_used += 200
             db_session.commit()
 
             # Check if over budget
-            if project.context_used >= project.context_budget:
+            if project.context_used >= context_budget:
                 project.status = "inactive"
                 db_session.commit()
                 break

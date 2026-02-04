@@ -575,14 +575,14 @@ class TestStagingRollbackEdgeCases:
         assert result["agents_protected"] == 0
         assert result["orchestrator_updated"] is True
 
-    async def test_orchestrator_succession_multiple_instances(
+    async def test_orchestrator_chain_multiple_instances(
         self,
         db_manager: DatabaseManager,
         tenant_key: str,
         test_project: Project,
     ):
         """
-        Test 10: Rollback with orchestrator succession (multiple instances)
+        Test 10: Rollback with orchestrator chain (multiple instances via spawned_by)
         """
         # Arrange: Create orchestrator chain (instance 1 → instance 2)
         async with db_manager.get_session_async() as session:
