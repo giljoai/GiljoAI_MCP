@@ -162,27 +162,29 @@ Each worker session follows this protocol:
 ## Dependency Chain
 
 ```
-0700 (Index Creation)
+0700a (Remove Light Mode) ◄── START HERE
   │
-  ├─► 0701 (Dependency Visualization)
-  ├─► 0702 (Utils & Config)
-  ├─► 0703 (Auth & Logging)
-  └─► 0704 (Models Base)
+  └─► 0700 (Index Creation)
          │
-         └─► 0705 (Models Core)
+         ├─► 0701 (Dependency Visualization)
+         ├─► 0702 (Utils & Config)
+         ├─► 0703 (Auth & Logging)
+         └─► 0704 (Models Base)
                 │
-                └─► 0706 (Models Agents) ◄── CRITICAL
+                └─► 0705 (Models Core)
                        │
-                       └─► 0707 (Services Leaf)
+                       └─► 0706 (Models Agents) ◄── CRITICAL
                               │
-                              └─► 0708 (Services Core)
+                              └─► 0707 (Services Leaf)
                                      │
-                                     └─► 0711 (API MCP) ◄── CRITICAL
+                                     └─► 0708 (Services Core)
                                             │
-                                            └─► 0373 (Template Adapter Removal)
+                                            └─► 0711 (API MCP) ◄── CRITICAL
+                                                   │
+                                                   └─► 0373 (Template Adapter Removal)
 ```
 
-**Critical Path**: 0700 → 0704 → 0705 → 0706 → 0707 → 0708 → 0711 → 0373
+**Critical Path**: 0700a → 0700 → 0704 → 0705 → 0706 → 0707 → 0708 → 0711 → 0373
 
 ---
 

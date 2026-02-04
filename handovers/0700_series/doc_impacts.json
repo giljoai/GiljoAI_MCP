@@ -50,7 +50,7 @@
     {
       "path": "docs/TESTING.md",
       "description": "Testing strategy and patterns",
-      "likely_impacts": ["0700", "0706", "0708"],
+      "likely_impacts": ["0700a", "0700", "0706", "0708"],
       "sections_to_review": ["Skipped Tests", "Coverage Targets"],
       "status": "pending_review",
       "updated_by": null,
@@ -70,6 +70,15 @@
       "description": "Primary project guidance",
       "likely_impacts": ["all"],
       "sections_to_review": ["Important Coding Guidelines", "Service Layer", "Message System"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "frontend/README.md",
+      "description": "Frontend architecture and setup",
+      "likely_impacts": ["0700a"],
+      "sections_to_review": ["Theme Configuration", "Vuetify Setup"],
       "status": "pending_review",
       "updated_by": null,
       "last_reviewed": null
