@@ -1741,13 +1741,4 @@ watch(
     filter: brightness(0) invert(1); // White in dark mode
   }
 }
-
-// Light theme override
-:deep(.v-theme--light) {
-  .codex-icon {
-    :deep(img) {
-      filter: brightness(0); // Black in light mode
-    }
-  }
-}
 </style>

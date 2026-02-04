@@ -228,22 +228,6 @@ describe('McpIntegrationCard.vue', () => {
     })
   })
 
-  describe('Theme Support', () => {
-    it('uses theme-aware logo path', () => {
-      // Component uses theme.global.current.value.dark for logo path
-      const html = wrapper.html()
-      // Check that logo path is present
-      expect(html).toContain('giljo_YW_Face.svg')
-    })
-
-    it('component has theme-dependent logo source in template', () => {
-      // Component template has conditional logo source based on theme
-      // In dark theme (default), uses giljo_YW_Face.svg
-      const html = wrapper.html()
-      expect(html).toContain('src="/giljo_YW_Face.svg"')
-    })
-  })
-
   describe('Content Accuracy', () => {
     it('matches content from UserSettings.vue MCP integration section', () => {
       const text = wrapper.text()

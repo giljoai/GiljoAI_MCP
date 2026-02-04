@@ -440,19 +440,17 @@ const theme = useTheme()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
 
 /**
- * GiljoAI face icon - theme-aware (Handover 0358)
+ * GiljoAI face icon (dark theme only)
  */
 const giljoFaceIcon = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+  return '/giljo_YW_Face.svg'
 })
 
 /**
- * Action icon color - theme-aware (yellow in dark, blue in light)
+ * Action icon color (dark theme only)
  */
 const actionIconColor = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? 'warning' : 'primary'
+  return 'warning'
 })
 
 function isOrchestrator(agent) {
