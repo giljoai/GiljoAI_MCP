@@ -42,15 +42,17 @@
     {
       "id": "0700b",
       "title": "Database Schema Purge",
-      "status": "pending",
+      "status": "blocked",
       "effort_hours": "2-3",
       "priority": "HIGH",
       "dependencies": ["0701"],
       "scope": "Remove deprecated columns from AgentExecution, templates, download_tokens, projects",
-      "started_at": null,
+      "started_at": "2026-02-04T15:00:00Z",
       "completed_at": null,
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "blocker_reason": "ALL 9 columns are still actively used. Code was marked deprecated but never migrated. See comms_log entry 0700b-001.",
+      "recommended_action": "Cancel or redesign as migration-first approach"
     },
     {
       "id": "0700c",
@@ -68,15 +70,19 @@
     {
       "id": "0700d",
       "title": "Legacy Succession Cleanup",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "2-3",
       "priority": "MEDIUM",
       "dependencies": ["0701"],
       "scope": "Remove succession.py module, ManualSuccessionResponse schema, trigger_succession method",
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-02-04T14:45:00Z",
+      "completed_at": "2026-02-04T15:00:00Z",
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": ["docs/SERVICES.md", "docs/ORCHESTRATOR.md"],
+      "lines_removed": 750,
+      "files_deleted": ["api/endpoints/agent_jobs/succession.py"],
+      "schemas_removed": ["SuccessionRequest", "SuccessionResponse", "SuccessionStatusResponse", "InitiateHandoverResponse"],
+      "methods_stubbed": ["OrchestrationService.trigger_succession", "ThinClientPromptGenerator.generate_execution_prompt"]
     },
     {
       "id": "0700e",

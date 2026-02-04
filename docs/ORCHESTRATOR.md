@@ -944,20 +944,20 @@ status = await service.get_context_status(job.id)
 
 ### **Manual Succession Trigger**
 
-```python
-# User-triggered succession via UI or slash command
-# When orchestrator context is high, user can manually trigger succession
-successor = await service.trigger_succession(
-    job_id=job.id,
-    reason="manual"
-)
+**Note**: As of Handover 0700d, use the simple-handover API endpoint instead of the deprecated `trigger_succession()` method.
 
-# Successor details:
-# successor.instance_number = 2  (parent was 1)
-# successor.spawned_by = job.id  (lineage preserved)
-# successor.handover_summary = "<10K tokens condensed context>"
-# successor.context_used = 0  (fresh start)
-# successor.context_budget = 200000  (same as parent)
+```python
+# User-triggered succession via UI "Hand Over" button or slash command
+# Calls POST /api/agent-jobs/{job_id}/simple-handover
+# This endpoint:
+# 1. Writes session_handover to 360 Memory
+# 2. Resets context_used to 0
+# 3. Returns continuation prompt info
+
+# Result:
+# - Same agent_id (no agent swap)
+# - Context reset to 0 (fresh start)
+# - 360 Memory entry with handover reason
 ```
 
 ---
@@ -1167,14 +1167,10 @@ async def test_manual_succession_trigger(db_session, test_tenant):
     status = await service.get_context_status(job.id)
     assert status['percentage_used'] >= 0.9
 
-    # Manually trigger succession (user action)
-    successor = await service.trigger_succession(job.id, "manual")
-
-    # Verify successor
-    assert successor.instance_number == 2
-    assert successor.spawned_by == job.id
-    assert successor.handover_summary is not None
-    assert len(successor.handover_summary) < 10000  # <10K tokens
+    # Manually trigger handover via API endpoint (user action)
+    # POST /api/agent-jobs/{job.id}/simple-handover
+    # This resets context and writes to 360 Memory
+    # Note: trigger_succession() removed in Handover 0700d
 ```
 
 ### **Integration Test Example**
@@ -1194,19 +1190,13 @@ async def test_full_succession_workflow(db_session, test_tenant):
     # Simulate work (context usage)
     await service.update_context_usage(job1.id, 180000)  # 90% used
 
-    # Trigger succession
-    job2 = await service.trigger_succession(job1.id, "context_limit")
+    # Trigger handover via API endpoint
+    # POST /api/agent-jobs/{job1.id}/simple-handover
+    # Note: trigger_succession() method removed in Handover 0700d
+    # Simple handover resets context and writes to 360 Memory
 
-    # Verify lineage
-    assert job2.spawned_by == job1.id
-    assert job2.instance_number == job1.instance_number + 1
-
-    # Verify handover summary
-    assert job2.handover_summary is not None
-    assert "Build authentication system" in job2.handover_summary
-
-    # Original job marked as succeeded
-    await db_session.refresh(job1)
+    # Verify 360 Memory entry created
+    # Verify context_used reset to 0
     assert job1.handover_to == job2.id
     assert job1.status == "succeeded"
 ```
@@ -1234,31 +1224,25 @@ Response:
 }
 ```
 
-### **POST /api/orchestrator/trigger-succession**
+### **POST /api/agent-jobs/{job_id}/simple-handover**
 
-Manually trigger succession:
+Simple handover (360 Memory-based session continuity):
 
 ```bash
-curl -X POST http://localhost:7272/api/orchestrator/trigger-succession \
-  -H "Content-Type: application/json" \
-  -d '{
-    "job_id": 123,
-    "reason": "manual"
-  }'
+curl -X POST http://localhost:7272/api/agent-jobs/123/simple-handover \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Response:
 ```json
 {
-  "successor": {
-    "id": 124,
-    "instance_number": 2,
-    "spawned_by": 123,
-    "handover_summary": "...",
-    "launch_prompt": "Continue project with successor orchestrator..."
-  }
+  "success": true,
+  "message": "Context reset and handover recorded",
+  "continuation_prompt": "Continue from where you left off..."
 }
 ```
+
+**Note**: Legacy `POST /api/orchestrator/trigger-succession` endpoint removed in Handover 0700d.
 
 ---
 
@@ -1304,22 +1288,18 @@ handover_context_refs = {
     }
 }
 
-await service.trigger_succession(
-    job_id=job.id,
-    reason="context_limit",
-    context_refs=handover_context_refs
-)
+# Use POST /api/agent-jobs/{job.id}/simple-handover
+# Note: trigger_succession() removed in Handover 0700d
 ```
 
-### **4. Test Succession Locally**
+### **4. Test Handover Locally**
 
-Simulate succession before production:
+Test the simple-handover endpoint:
 ```bash
-# Create orchestrator with small budget
-pytest tests/integration/test_succession.py::test_small_budget_succession -v
+# Test simple handover (360 Memory-based)
+pytest tests/api/test_agent_jobs.py -k "simple_handover" -v
 
-# Verify handover summary quality
-pytest tests/integration/test_succession.py::test_handover_summary_completeness -v
+# Note: Legacy succession tests removed in Handover 0700d
 ```
 
 ---
