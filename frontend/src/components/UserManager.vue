@@ -171,21 +171,7 @@
               :rules="[rules.required]"
               required
               class="mb-3"
-            >
-              <template v-slot:item="{ item, props }">
-                <v-list-item v-bind="props">
-                  <template v-slot:prepend>
-                    <v-icon :color="item.raw.color">{{ item.raw.icon }}</v-icon>
-                  </template>
-                </v-list-item>
-              </template>
-              <template v-slot:selection="{ item }">
-                <v-chip :color="item.raw.color" size="small" label>
-                  <v-icon start size="small">{{ item.raw.icon }}</v-icon>
-                  {{ item.raw.title }}
-                </v-chip>
-              </template>
-            </v-select>
+            />
 
             <v-switch
               v-if="isEditMode"
