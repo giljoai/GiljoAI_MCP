@@ -20,6 +20,7 @@
         <div class="text-caption text-medium-emphasis">
           <div><strong>Agent ID:</strong> {{ agent.agent_id }}</div>
           <div><strong>Job ID:</strong> {{ agent.job_id }}</div>
+          <div v-if="formattedCreatedAt"><strong>Created:</strong> {{ formattedCreatedAt }}</div>
         </div>
       </v-card-text>
 
@@ -124,6 +125,12 @@ const todoItems = computed(() =>
     ? props.agent.todo_items
     : [],
 )
+
+const formattedCreatedAt = computed(() => {
+  if (!props.agent?.created_at) return null
+  const date = new Date(props.agent.created_at)
+  return date.toLocaleString()
+})
 
 const todoItemsCount = computed(() => todoItems.value.length)
 
