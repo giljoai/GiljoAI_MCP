@@ -1,0 +1,79 @@
+{
+  "series_id": "0700_code_cleanup",
+  "created_at": "2026-02-03T00:00:00Z",
+  "documentation_files": [
+    {
+      "path": "docs/SERVICES.md",
+      "description": "Service layer patterns and code examples",
+      "likely_impacts": ["0705", "0706", "0707", "0708"],
+      "sections_to_review": ["Database Field Naming", "Service Pattern", "Code Examples"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/ORCHESTRATOR.md",
+      "description": "Orchestrator documentation",
+      "likely_impacts": ["0706", "0708", "0711"],
+      "sections_to_review": ["Context Tracking", "MCP Tools", "Agent Lifecycle"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/manuals/MCP_TOOLS_MANUAL.md",
+      "description": "MCP tools reference manual",
+      "likely_impacts": ["0711"],
+      "sections_to_review": ["Tool Registration", "Response Formats", "Deprecation Notices"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/api/context_tools.md",
+      "description": "Context tools API reference",
+      "likely_impacts": ["0708", "0711"],
+      "sections_to_review": ["fetch_context API", "Category Definitions"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/SERVER_ARCHITECTURE_TECH_STACK.md",
+      "description": "Architecture overview",
+      "likely_impacts": ["0704", "0705", "0706"],
+      "sections_to_review": ["Data Models", "Service Layer"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/TESTING.md",
+      "description": "Testing strategy and patterns",
+      "likely_impacts": ["0700", "0706", "0708"],
+      "sections_to_review": ["Skipped Tests", "Coverage Targets"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "docs/360_MEMORY_MANAGEMENT.md",
+      "description": "360 Memory architecture",
+      "likely_impacts": ["0705"],
+      "sections_to_review": ["ProductMemoryEntry", "DEPRECATED Fields"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    },
+    {
+      "path": "CLAUDE.md",
+      "description": "Primary project guidance",
+      "likely_impacts": ["all"],
+      "sections_to_review": ["Important Coding Guidelines", "Service Layer", "Message System"],
+      "status": "pending_review",
+      "updated_by": null,
+      "last_reviewed": null
+    }
+  ],
+  "update_log": []
+}
