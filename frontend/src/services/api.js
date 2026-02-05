@@ -618,10 +618,6 @@ export const api = {
   prompts: {
     staging: (projectId, params) =>
       apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
-    execution: (orchestratorJobId, claudeCodeMode) =>
-      apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
-        params: { claude_code_mode: claudeCodeMode },
-      }),
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
     // Handover 0344: CLI mode implementation prompt for orchestrator play button
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
