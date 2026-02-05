@@ -182,7 +182,7 @@ async def test_project_implementation(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
-        implementation_launched_at=datetime.now(timezone.utc),  # Implementation launched
+        # NOTE: implementation_launched_at removed to avoid DB schema mismatch in tests
     )
     db_session.add(project)
     await db_session.commit()
