@@ -966,7 +966,7 @@ class ToolAccessor:
         """
         Write a 360 memory entry for project completion or handover (Handover 0412).
 
-        This method allows agents to append entries to Product.product_memory.sequential_history
+        This method allows agents to create entries in the product_memory_entries table
         during handovers or at project completion.
 
         Args:
