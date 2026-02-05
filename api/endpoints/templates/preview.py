@@ -164,6 +164,5 @@ async def preview_template(
         template_id=str(template.id),
         cli_tool=cli_tool,
         preview=preview_text,
-        mission=None,
         variables_used=list({v for v in variables_used}),
     )

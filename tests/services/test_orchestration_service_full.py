@@ -254,16 +254,6 @@ class TestSuccession:
             assert executions[1].status == "waiting"
             assert executions[1].spawned_by == executions[0].agent_id
 
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
-    async def test_check_succession_status_at_threshold(
-        self,
-        orchestration_service: OrchestrationService,
-        test_project: dict,
-        db_manager: DatabaseManager,
-    ):
-        """DEPRECATED: check_succession_status() removed in Handover 0461a."""
-        pass
 
 
 class TestMultiTenantIsolation:

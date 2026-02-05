@@ -161,5 +161,4 @@ class TemplatePreviewResponse(BaseModel):
     template_id: str
     cli_tool: str = Field(..., description="CLI tool type")
     preview: str = Field(..., description="Rendered template content")
-    mission: Optional[str] = Field(None, description="Rendered mission content (deprecated)")
     variables_used: list[str] = Field(default_factory=list, description="Variables found in template")

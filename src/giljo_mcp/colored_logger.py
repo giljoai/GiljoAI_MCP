@@ -17,7 +17,7 @@ from typing import Optional
 
 
 try:
-    from colorama import Back, Fore, Style
+    from colorama import Fore, Style
     from colorama import init as colorama_init
 
     # Initialize colorama for Windows support
@@ -31,7 +31,7 @@ except ImportError:
         def __getattr__(self, name):
             return ""
 
-    Fore = Back = Style = _DummyColor()
+    Fore = Style = _DummyColor()
 
 
 class ColoredFormatter(logging.Formatter):

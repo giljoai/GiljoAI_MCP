@@ -266,7 +266,6 @@ class TestTemplateSeederDualField:
             description="Test template",
             system_instructions="Test system instructions",
             user_instructions=None,  # NULL allowed
-            system_instructions="Test content",
             model="sonnet",
             version="1.0.0",
             is_active=True,
