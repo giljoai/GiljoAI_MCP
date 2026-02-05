@@ -13,7 +13,7 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.enums import AgentRole, AugmentationType, ProjectType
+from src.giljo_mcp.enums import AgentRole, ProjectType
 # NOTE: TemplateAugmentation removed (Handover 0423 - model deleted, using dicts only)
 from src.giljo_mcp.template_manager import apply_augmentation, extract_variables, process_template
 
@@ -213,13 +213,6 @@ class TestEnumConsolidation:
         types = [t.value for t in ProjectType]
         assert len(types) > 0  # Should have project types
 
-    def test_augmentation_type_enum(self):
-        """Test AugmentationType enum exists"""
-        types = [t.value for t in AugmentationType]
-        assert "append" in types
-        assert "prepend" in types
-        assert "replace" in types
-        assert "inject" in types
 
 
 class TestBackwardCompatibility:
