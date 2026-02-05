@@ -79,7 +79,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.1.0",
-            template_content="Implementation template"
+            system_instructions="Implementation template"
         ),
         AgentTemplate(
             name="tester",
@@ -88,7 +88,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Testing template"
+            system_instructions="Testing template"
         ),
         AgentTemplate(
             name="reviewer",
@@ -97,7 +97,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Review template"
+            system_instructions="Review template"
         ),
         AgentTemplate(
             name="documenter",
@@ -106,7 +106,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Documentation template"
+            system_instructions="Documentation template"
         ),
         AgentTemplate(
             name="architect",
@@ -115,7 +115,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Architecture template"
+            system_instructions="Architecture template"
         )
     ]
 
@@ -382,7 +382,7 @@ class TestTokenReductionInRealPrompts:
                 tenant_key=test_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                template_content="Scale test"
+                system_instructions="Scale test"
             )
             db_session.add(agent)
 

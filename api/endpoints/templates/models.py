@@ -25,7 +25,7 @@ class TemplateCreate(BaseModel):
     custom_suffix: Optional[str] = Field(None, description="Custom suffix for name generation")
     background_color: Optional[str] = Field(None, description="Background color (hex)")
     description: Optional[str] = Field(None, description="Template description")
-    template_content: str = Field(..., description="System prompt content")
+    system_instructions: str = Field(..., description="System prompt content")
     model: Optional[str] = Field("sonnet", description="Model: sonnet, opus, haiku, inherit")
     tools: Optional[str] = Field(None, description="Tool selection (null = inherit all)")
     behavioral_rules: Optional[list[str]] = Field(default_factory=list)
@@ -38,7 +38,7 @@ class TemplateCreate(BaseModel):
     project_type: Optional[str] = Field(None, description="Project type (deprecated)")
     preferred_tool: Optional[str] = Field(None, description="Preferred AI tool (deprecated)")
 
-    @field_validator("template_content")
+    @field_validator("system_instructions")
     @classmethod
     def validate_template_size(cls, v: str) -> str:
         """Validate template content size (max 100KB)"""
@@ -67,7 +67,6 @@ class TemplateUpdate(BaseModel):
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
     # Legacy support
-    template_content: Optional[str] = Field(None, deprecated=True, description="Legacy field")
     preferred_tool: Optional[str] = None
 
     @field_validator("user_instructions")
@@ -76,14 +75,6 @@ class TemplateUpdate(BaseModel):
         """Validate user instructions size (max 50KB)"""
         if v and len(v.encode("utf-8")) > MAX_USER_INSTRUCTIONS_SIZE:
             raise ValueError("User instructions exceed 50KB limit")
-        return v
-
-    @field_validator("template_content")
-    @classmethod
-    def validate_template_content_size(cls, v: Optional[str]) -> Optional[str]:
-        """Validate template content size (max 100KB)"""
-        if v and len(v.encode("utf-8")) > MAX_TEMPLATE_SIZE:
-            raise ValueError(f"Template content exceeds maximum size of {MAX_TEMPLATE_SIZE / 1024}KB")
         return v
 
 
@@ -101,7 +92,6 @@ class TemplateResponse(BaseModel):
     # Dual fields (v3.1+)
     system_instructions: str = Field(..., description="Read-only MCP coordination instructions")
     user_instructions: Optional[str] = Field(None, description="User-customizable instructions")
-    template_content: str = Field(..., description="Merged view (system + user)")
     model: Optional[str]
     tools: Optional[str]
     behavioral_rules: list[str]
@@ -133,7 +123,8 @@ class TemplateHistoryResponse(BaseModel):
     template_id: str
     name: str
     version: str
-    template_content: str
+    system_instructions: Optional[str] = None
+    user_instructions: Optional[str] = None
     archive_reason: Optional[str]
     archive_type: str
     archived_by: Optional[str]

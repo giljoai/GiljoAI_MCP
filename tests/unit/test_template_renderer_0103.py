@@ -31,7 +31,7 @@ class TestRenderClaudeAgent:
             role="orchestrator",
             cli_tool="claude",
             description="Test orchestrator agent",
-            template_content="You are an orchestrator managing complex projects.",
+            system_instructions="You are an orchestrator managing complex projects.",
             model="sonnet",
             behavioral_rules=["Rule 1: Plan first", "Rule 2: Communicate clearly"],
             success_criteria=["Criterion 1: All tests pass", "Criterion 2: Code is clean"],
@@ -68,7 +68,7 @@ class TestRenderClaudeAgent:
             role="tester",
             cli_tool="claude",
             description=None,  # Should default
-            template_content="Test all code thoroughly.",
+            system_instructions="Test all code thoroughly.",
             model="sonnet",
         )
 
@@ -86,7 +86,7 @@ class TestRenderClaudeAgent:
             role="reviewer",
             cli_tool="claude",
             description="",  # Empty string should default
-            template_content="Review code for quality.",
+            system_instructions="Review code for quality.",
             model="sonnet",
         )
 
@@ -104,7 +104,7 @@ class TestRenderClaudeAgent:
             role="implementer",
             cli_tool="claude",
             description="Implementer agent",
-            template_content="Implement features following TDD.",
+            system_instructions="Implement features following TDD.",
             model=None,  # Should default to sonnet
         )
 
@@ -122,7 +122,7 @@ class TestRenderClaudeAgent:
             role="analyzer",
             cli_tool="claude",
             description="Analyzer agent",
-            template_content="Analyze code for issues.",
+            system_instructions="Analyze code for issues.",
             model="",  # Empty string should default
         )
 
@@ -140,7 +140,7 @@ class TestRenderClaudeAgent:
             role="analyzer",
             cli_tool="claude",
             description="Complex analysis agent",
-            template_content="Perform deep analysis.",
+            system_instructions="Perform deep analysis.",
             model="opus",
         )
 
@@ -158,7 +158,7 @@ class TestRenderClaudeAgent:
             role="checker",
             cli_tool="claude",
             description="Quick checker agent",
-            template_content="Perform quick checks.",
+            system_instructions="Perform quick checks.",
             model="haiku",
         )
 
@@ -176,7 +176,7 @@ class TestRenderClaudeAgent:
             role="analyzer",
             cli_tool="claude",
             description="Analyzer agent",
-            template_content="Analyze code patterns.",
+            system_instructions="Analyze code patterns.",
             model="opus",
             behavioral_rules=[],  # Empty list
             success_criteria=["Criterion 1: Report generated"],
@@ -195,7 +195,7 @@ class TestRenderClaudeAgent:
             role="simple",
             cli_tool="claude",
             description="Simple agent",
-            template_content="Perform simple tasks.",
+            system_instructions="Perform simple tasks.",
             model="sonnet",
             behavioral_rules=None,  # None instead of empty list
             success_criteria=["Done"],
@@ -213,7 +213,7 @@ class TestRenderClaudeAgent:
             role="builder",
             cli_tool="claude",
             description="Builder agent",
-            template_content="Build components.",
+            system_instructions="Build components.",
             model="sonnet",
             behavioral_rules=["Rule 1: Follow standards"],
             success_criteria=[],  # Empty list
@@ -232,7 +232,7 @@ class TestRenderClaudeAgent:
             role="worker",
             cli_tool="claude",
             description="Worker agent",
-            template_content="Do work.",
+            system_instructions="Do work.",
             model="sonnet",
             behavioral_rules=["Work hard"],
             success_criteria=None,  # None instead of empty list
@@ -250,7 +250,7 @@ class TestRenderClaudeAgent:
             role="minimal",
             cli_tool="claude",
             description="Minimal agent",
-            template_content="Minimal prompt content.",
+            system_instructions="Minimal prompt content.",
             model="sonnet",
             behavioral_rules=[],
             success_criteria=[],
@@ -271,7 +271,7 @@ class TestRenderClaudeAgent:
             role="test",
             cli_tool="claude",
             description="Test",
-            template_content="Content",
+            system_instructions="Content",
             model="sonnet",
         )
 
@@ -295,7 +295,7 @@ class TestRenderClaudeAgent:
             role="test",
             cli_tool="claude",
             description="Test",
-            template_content="Content",
+            system_instructions="Content",
             model="sonnet",
         )
 
@@ -309,14 +309,14 @@ class TestRenderClaudeAgent:
         assert "tools" not in frontmatter
         assert "tools" not in yaml_section  # Not even in raw text
 
-    def test_empty_template_content(self):
-        """Test template with empty template_content."""
+    def test_empty_system_instructions(self):
+        """Test template with empty system_instructions."""
         template = AgentTemplate(
             name="empty-content",
             role="empty",
             cli_tool="claude",
             description="Empty content test",
-            template_content="",  # Empty string
+            system_instructions="",  # Empty string
             model="sonnet",
         )
 
@@ -328,14 +328,14 @@ class TestRenderClaudeAgent:
         body_section = result.split("---\n\n")[1]
         assert body_section.strip() == ""
 
-    def test_none_template_content(self):
-        """Test template with None template_content."""
+    def test_none_system_instructions(self):
+        """Test template with None system_instructions."""
         template = AgentTemplate(
             name="none-content",
             role="none",
             cli_tool="claude",
             description="None content test",
-            template_content=None,  # None
+            system_instructions=None,  # None
             model="sonnet",
         )
 
@@ -354,7 +354,7 @@ class TestRenderClaudeAgent:
             role=None,  # No role
             cli_tool="claude",
             description=None,  # Should default
-            template_content="Content",
+            system_instructions="Content",
             model="sonnet",
         )
 
@@ -377,7 +377,7 @@ class TestRenderGenericAgent:
             role="implementer",
             cli_tool="codex",
             description="Codex implementer agent",
-            template_content="Implement features with TDD approach.",
+            system_instructions="Implement features with TDD approach.",
             behavioral_rules=["Rule 1: Write tests first", "Rule 2: Keep code clean"],
             success_criteria=["Criterion 1: All tests pass"],
         )
@@ -401,7 +401,7 @@ class TestRenderGenericAgent:
             name="gemini-tester",
             role="tester",
             cli_tool="gemini",
-            template_content="Write comprehensive tests.",
+            system_instructions="Write comprehensive tests.",
             behavioral_rules=[],
             success_criteria=["Tests cover edge cases"],
         )
@@ -420,7 +420,7 @@ class TestRenderGenericAgent:
             name="generic-analyzer",
             role="analyzer",
             cli_tool="generic",
-            template_content="Analyze code quality.",
+            system_instructions="Analyze code quality.",
             behavioral_rules=["Follow coding standards"],
             success_criteria=[],
         )
@@ -438,7 +438,7 @@ class TestRenderGenericAgent:
             name="simple",
             role="simple",
             cli_tool="codex",
-            template_content="Simple content.",
+            system_instructions="Simple content.",
             behavioral_rules=None,
             success_criteria=None,
         )
@@ -457,7 +457,7 @@ class TestRenderGenericAgent:
             name="test-agent",
             role="test",
             cli_tool="generic",
-            template_content="Test content",
+            system_instructions="Test content",
         )
 
         result = render_generic_agent(template)
@@ -481,7 +481,7 @@ class TestRenderTemplate:
             role="orchestrator",
             cli_tool="claude",
             description="Test",
-            template_content="Orchestrate projects.",
+            system_instructions="Orchestrate projects.",
             model="sonnet",
         )
 
@@ -500,7 +500,7 @@ class TestRenderTemplate:
             name="implementer",
             role="implementer",
             cli_tool="codex",
-            template_content="Implement features.",
+            system_instructions="Implement features.",
         )
 
         result = render_template(template)
@@ -516,7 +516,7 @@ class TestRenderTemplate:
             name="tester",
             role="tester",
             cli_tool="gemini",
-            template_content="Write tests.",
+            system_instructions="Write tests.",
         )
 
         result = render_template(template)
@@ -532,7 +532,7 @@ class TestRenderTemplate:
             name="analyzer",
             role="analyzer",
             cli_tool="generic",
-            template_content="Analyze code.",
+            system_instructions="Analyze code.",
         )
 
         result = render_template(template)
@@ -549,7 +549,7 @@ class TestRenderTemplate:
             role="fallback",
             cli_tool=None,  # No CLI tool specified
             description="Fallback test",
-            template_content="Fallback content.",
+            system_instructions="Fallback content.",
             model="sonnet",
         )
 
@@ -568,7 +568,7 @@ class TestRenderTemplate:
             role="unknown",
             cli_tool="unknown-tool",  # Unknown tool
             description="Unknown test",
-            template_content="Unknown content.",
+            system_instructions="Unknown content.",
             model="sonnet",
         )
 
@@ -587,7 +587,7 @@ class TestRenderTemplate:
             role="empty",
             cli_tool="",  # Empty string
             description="Empty test",
-            template_content="Empty content.",
+            system_instructions="Empty content.",
             model="sonnet",
         )
 

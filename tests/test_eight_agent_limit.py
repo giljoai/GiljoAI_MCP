@@ -47,7 +47,7 @@ async def create_template(db_session: AsyncSession):
             name=name,
             category="role",
             role=role,
-            template_content=f"Template for {name}",
+            system_instructions=f"Template for {name}",
             variables=[],
             behavioral_rules=[],
             success_criteria=[],

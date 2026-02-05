@@ -51,7 +51,7 @@ async def test_e2e_multi_terminal_spawn_with_template_injection(
         session.add(project)
 
         # Create agent template
-        template_content = """# Integration Tester Agent
+        content = """# Integration Tester Agent
 
 You are a specialist in integration testing.
 
@@ -77,9 +77,8 @@ You are a specialist in integration testing.
             category="tester",
             role="Integration Tester",
             description="Test agent for integration testing",
-            system_instructions=template_content,
+            system_instructions=content,
             user_instructions="",
-            template_content=template_content,  # Required NOT NULL column
             cli_tool="claude-code",
             is_active=True,
         )
@@ -184,7 +183,7 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
             description="Test agent for CLI mode",
             system_instructions="# CLI Tester\n\nThis should NOT be injected.",
             user_instructions="",
-            template_content="# CLI Tester\n\nThis should NOT be injected.",  # Required NOT NULL column
+            system_instructions="# CLI Tester\n\nThis should NOT be injected.",  # Required NOT NULL column
             cli_tool="claude-code",
             is_active=True,
         )

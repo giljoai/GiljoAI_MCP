@@ -43,7 +43,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Frontend Implementer\n\nBuilds frontend."
+        system_instructions="# Frontend Implementer\n\nBuilds frontend."
     )
     db_session.add(template)
     await db_session.commit()
@@ -99,7 +99,7 @@ async def test_spawn_response_warning_when_names_differ(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Frontend Implementer\n\nBuilds frontend."
+        system_instructions="# Frontend Implementer\n\nBuilds frontend."
     )
     db_session.add(template)
     await db_session.commit()
@@ -156,7 +156,7 @@ async def test_spawn_response_no_warning_when_names_match(db_session, db_manager
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Analyzer\n\nAnalyzes code."
+        system_instructions="# Analyzer\n\nAnalyzes code."
     )
     db_session.add(template)
     await db_session.commit()
@@ -212,7 +212,7 @@ async def test_spawn_response_preserves_existing_fields(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Backend Tester\n\nTests backend."
+        system_instructions="# Backend Tester\n\nTests backend."
     )
     db_session.add(template)
     await db_session.commit()
@@ -276,7 +276,7 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
             product_id=None,
             is_active=True,
             version="1.0.0",
-            template_content=f"# {agent_name}\n\nTest template."
+            system_instructions=f"# {agent_name}\n\nTest template."
         )
         db_session.add(template)
         await db_session.commit()

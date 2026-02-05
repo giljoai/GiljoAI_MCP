@@ -68,7 +68,6 @@ All critical tables and columns are present in the database and match the ORM mo
 - name (varchar(100), NOT NULL)
 - category (varchar(50), NOT NULL)
 - role (varchar(50), nullable)
-- template_content (text, NOT NULL) - Legacy content field
 - **system_instructions (text, nullable)** - PRESENT (Handover 0103)
 - **user_instructions (text, nullable)** - PRESENT (Handover 0103)
 - variables (json, nullable)
@@ -277,7 +276,6 @@ All critical tables and columns are present in the database and match the ORM mo
 **Instruction Fields (Handover 0103):**
 - **system_instructions (text, NOT NULL)** - PRESENT - Protected MCP coordination (non-editable)
 - **user_instructions (text, nullable)** - PRESENT - User-customizable role guidance (editable)
-- template_content (text, NOT NULL) - DEPRECATED (v3.1) - Kept for backward compatibility
 
 **Template Configuration:**
 - variables (json, nullable)

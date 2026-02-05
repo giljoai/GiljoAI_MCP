@@ -746,9 +746,6 @@ class OrchestrationService:
                             template_expertise = template.system_instructions
                             if template.user_instructions:
                                 template_expertise += "\n\n" + template.user_instructions
-                        elif template.template_content:
-                            # Fallback for v3.0 compatibility
-                            template_expertise = template.template_content
 
                         if template_expertise:
                             # Inject template into mission with tidy framing (Handover 0417)

@@ -49,7 +49,7 @@ async def populate_agents(db_session, test_user):
                 tenant_key=test_user.tenant_key,
                 is_active=True,
                 version=f"1.{i}.0",
-                template_content="Test content"
+                system_instructions="Test content"
             )
             agents.append(agent)
             db_session.add(agent)

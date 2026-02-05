@@ -122,7 +122,7 @@ You implement features following TDD workflow:
 - Implementation complete
 """,
         user_instructions="",
-        template_content=None,  # Using system_instructions instead
+        # Using system_instructions field
         cli_tool="claude-code",
         is_active=True,
         created_at=datetime.now(timezone.utc),

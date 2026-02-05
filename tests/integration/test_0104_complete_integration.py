@@ -282,7 +282,7 @@ class TestExistingInstallUpgrade:
             await session.execute(
                 text("""
                     INSERT INTO agent_templates
-                    (id, tenant_key, name, role, template_content, cli_tool, background_color)
+                    (id, tenant_key, name, role, system_instructions, cli_tool, background_color)
                     VALUES (:id, :tk, :name, :role, :content, :cli, :color)
                 """),
                 {

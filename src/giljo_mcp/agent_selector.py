@@ -125,7 +125,6 @@ class AgentSelector:
             agent_config = AgentConfig(
                 role=agent_display_name,
                 template_id=template.id,
-                template_content=template.template_content,
                 priority=priority,
                 mission_scope=mission_scope,
             )

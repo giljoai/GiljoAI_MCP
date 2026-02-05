@@ -1741,7 +1741,7 @@ Partial reading defeats the purpose of this configuration."""
                 "name": template.name,
                 "role": template.role,
                 "description": template.description or "",
-                "content": template.template_content or "",  # Full prompt content
+                "content": template.system_instructions or "",  # Full prompt content
                 "cli_tool": template.cli_tool or "claude-code",
                 "background_color": template.background_color or "#808080",
                 "category": template.category or "general",

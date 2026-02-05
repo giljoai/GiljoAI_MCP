@@ -64,7 +64,7 @@ def create_test_template(
         name=name,
         role=role,
         category="role",
-        template_content=system_prompt,
+        system_instructions=system_prompt,
         is_active=is_active,
         variables=[],
         behavioral_rules=[],

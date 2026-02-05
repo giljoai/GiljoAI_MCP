@@ -190,7 +190,7 @@ class SystemPromptService:
         base_template = ""
         for template_def in _get_default_templates_v103():
             if template_def.get("role") == "orchestrator":
-                base_template = template_def["template_content"].strip()
+                base_template = template_def["user_instructions"].strip()
                 break
 
         if not base_template:
