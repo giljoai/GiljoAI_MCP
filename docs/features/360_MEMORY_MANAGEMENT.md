@@ -16,8 +16,8 @@
 
 **Architecture**: Normalized `product_memory_entries` table (v3.3+, Handover 0390)
 
-**DEPRECATED**: `Product.product_memory.sequential_history` JSONB array is deprecated.
-Do not read from or write to this field. Use the `product_memory_entries` table via `ProductMemoryRepository`.
+**REMOVED** (Handover 0700c): The `Product.product_memory.sequential_history` JSONB field has been removed.
+All sequential history is stored in the `product_memory_entries` table via `ProductMemoryRepository`.
 
 ```python
 class ProductMemoryEntry(Base):
@@ -93,16 +93,17 @@ Memory entries are stored as normalized table rows in `product_memory_entries`:
 }
 ```
 
-**DEPRECATED Structure** (JSONB, pre-v3.3):
+**REMOVED Structure** (JSONB, pre-v3.3, removed in Handover 0700c):
 ```json
 {
   "product_memory": {
-    "sequential_history": [...]  # DEPRECATED - Do not use
+    "sequential_history": [...]  # REMOVED in 0700c
   }
 }
 ```
 
 **Note**: Git integration settings remain in `Product.product_memory.git_integration` JSONB field.
+The `sequential_history` field has been completely removed from the database schema.
 
 ---
 
@@ -292,9 +293,11 @@ When memory is updated, a WebSocket event is emitted:
 - `get_next_sequence()` - Gets next sequence number for product
 - `delete_entries_for_product()` - Removes all entries (cascade on product delete)
 
-**Deprecated** (JSONB approach, pre-v3.3):
-- ~~`update_product_memory()`~~ - Deprecated, use `ProductMemoryRepository.create_entry()`
-- ~~`get_product_memory()`~~ - Deprecated, use `ProductMemoryRepository.get_entries()`
+**Removed** (JSONB approach, removed in Handover 0700c):
+- ~~`update_product_memory()`~~ - Removed, use `ProductMemoryRepository.create_entry()`
+- ~~`get_product_memory()`~~ - Removed, use `ProductMemoryRepository.get_entries()`
+- ~~`_validate_history_entry()`~~ - Removed, no longer needed for table-based storage
+- ~~`add_learning_to_product_memory()`~~ - Removed, replaced by repository pattern
 
 ### API Endpoints
 
@@ -317,7 +320,13 @@ The 0390 handover series migrated 360 memory from JSONB arrays to a normalized `
 1. **0390a**: Added `product_memory_entries` table with proper foreign keys
 2. **0390b**: Updated all read operations to use the table
 3. **0390c**: Stopped all writes to JSONB `sequential_history` array
-4. **0390d**: Marked JSONB column as deprecated (scheduled for removal in v4.0)
+4. **0390d**: Marked JSONB column as deprecated (scheduled for removal)
+
+**0700c Series** (February 2026): Removed deprecated JSONB fields entirely:
+- Deleted `Product.product_memory.sequential_history` from model and migration
+- Removed deprecated service methods (`_validate_history_entry`, `add_learning_to_product_memory`)
+- Updated all documentation to reflect table-based architecture
+- Removed ~130 lines of deprecated JSONB handling code
 
 ### Why the Change
 
@@ -330,9 +339,9 @@ The normalized architecture provides:
 ### For Developers
 
 - **Use**: `ProductMemoryRepository` for all memory operations
-- **Avoid**: Reading or writing `Product.product_memory.sequential_history`
-- **Migration**: Existing JSONB data remains but is not read; table is source of truth
-- **Removal**: JSONB column will be dropped in v4.0
+- **Removed**: `Product.product_memory.sequential_history` field (Handover 0700c)
+- **Source of Truth**: `product_memory_entries` table is the only storage mechanism
+- **No Migration Needed**: Table has been authoritative since 0390 series
 
 ---
 

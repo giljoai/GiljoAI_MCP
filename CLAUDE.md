@@ -316,15 +316,15 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Serena MCP**: Use Serena's symbolic tools for code navigation (find_symbol, get_symbols_overview, find_referencing_symbols) - REQUIRED for exploring codebase efficiently and avoiding full file reads
 - **Subagents**: Built-in agents BLOCKED by hook - see **CRITICAL: Agent Routing Rules** at top of file. Use ONLY custom agents from `.claude/agents/`
 
-## Message System (Updated 0387i)
+## Message System (Updated 0700c)
 
 **Counter-Based Architecture**: Message counts are stored as counter columns on `AgentExecution`:
 - `messages_sent_count` - Outbound messages sent
 - `messages_waiting_count` - Inbound messages pending read
 - `messages_read_count` - Inbound messages acknowledged
 
-**DEPRECATED**: The `AgentExecution.messages` JSONB column is deprecated.
-Do not read from or write to this column. It will be removed in v4.0.
+**REMOVED** (Handover 0700c): The `AgentExecution.messages` JSONB column has been removed.
+Counter columns are now the only source of truth for message counts.
 
 ## Service Layer Architecture & Patterns
 
@@ -358,14 +358,14 @@ Do not read from or write to this column. It will be removed in v4.0.
 
 ## 360 Memory Management
 
-**See [docs/360_MEMORY_MANAGEMENT.md](docs/360_MEMORY_MANAGEMENT.md)** for complete documentation.
+**See [docs/features/360_MEMORY_MANAGEMENT.md](docs/features/360_MEMORY_MANAGEMENT.md)** for complete documentation.
 
 **Purpose**: Provide orchestrators with cumulative product knowledge and project history.
 
 **Architecture**: Normalized `product_memory_entries` table (v3.3+, Handover 0390)
 
-**DEPRECATED**: `Product.product_memory.sequential_history` JSONB array is deprecated.
-Do not read from or write to this field. Use the table via `ProductMemoryRepository`.
+**REMOVED** (Handover 0700c): The `Product.product_memory.sequential_history` JSONB field has been removed.
+All sequential history is now stored in the `product_memory_entries` table.
 
 **Key Features**:
 - Memory entries stored in `product_memory_entries` table
@@ -382,7 +382,7 @@ Do not read from or write to this field. Use the table via `ProductMemoryReposit
 - `product_memory_entries` table with FK to products and projects
 - Each entry contains: sequence, type, project_id, summary, git_commits, timestamp
 - Repository pattern via `ProductMemoryRepository` for all operations
-- No JSONB arrays - fully normalized relational data
+- Fully normalized relational data - no JSONB arrays
 
 **MCP Tools**:
 - `close_project_and_update_memory()` - Creates entry in table
