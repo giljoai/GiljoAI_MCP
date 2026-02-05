@@ -181,6 +181,7 @@
 | **0707** | **Services Leaf Cleanup** | **Ready** | **MEDIUM** | 3-4h |
 | **0708** | **Services Core Cleanup** | **Ready** | **HIGH** | 4-6h |
 | **0709** | **Implementation Phase Gate** | **COMPLETE** | **HIGH** | 4-6h |
+| **0709b** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | 3-4h |
 | **0711** | **API MCP Cleanup (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
 
 > **Purpose**: Systematic cleanup of ~560 source files and ~665 test files
