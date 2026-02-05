@@ -330,29 +330,6 @@ class DatabaseManager:
                 session.info["tenant_key"] = tenant_key
                 yield session
 
-    def query_with_tenant(self, session: Session, model: Any, tenant_key: Optional[str] = None):
-        """
-        Create a select statement with automatic tenant filtering.
-
-        DEPRECATED: Use select(model).where() directly with async sessions.
-        This method is kept for backward compatibility with sync sessions.
-
-        Args:
-            session: Database session
-            model: Model to query
-            tenant_key: Tenant key (uses current context if None)
-
-        Returns:
-            Select statement with tenant filter pre-applied
-        """
-        # For SQLAlchemy 2.0 compatibility, return select statement
-        stmt = select(model)
-        if hasattr(model, "tenant_key"):
-            if tenant_key is None:
-                tenant_key = TenantManager.get_current_tenant()
-            if tenant_key:
-                stmt = stmt.where(model.tenant_key == tenant_key)
-        return stmt
 
     def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
         """
