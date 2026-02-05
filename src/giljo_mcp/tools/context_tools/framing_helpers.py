@@ -51,7 +51,7 @@ def format_list_safely(items: Any) -> str:
 
 def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
     """
-    Apply priority framing to a rich sequential_history entry.
+    Apply priority framing to a rich product_memory_entries entry.
 
     Raises:
         ValueError: if required fields are missing
@@ -59,7 +59,7 @@ def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
     required_fields = ["sequence", "project_name", "summary"]
     for field in required_fields:
         if field not in entry:
-            logger.error("Invalid sequential_history entry", extra={"missing_field": field, "entry_keys": list(entry)})
+            logger.error("Invalid memory entry", extra={"missing_field": field, "entry_keys": list(entry)})
             raise ValueError(f"Invalid entry: missing {field}")
 
     sequence = entry.get("sequence", 0)
