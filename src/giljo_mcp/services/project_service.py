@@ -1146,6 +1146,10 @@ class ProjectService:
         tenant_key = self.tenant_manager.get_current_tenant()
 
         # Check if orchestrator already exists for this project
+        # FIX 1 (Handover 0485): Use exclusion-based filter instead of inclusion-based
+        # OLD: AgentExecution.status.in_(["waiting", "working"])
+        # NEW: ~AgentExecution.status.in_(["failed", "cancelled"])
+        # This finds orchestrators in: waiting, working, complete, blocked
         existing_stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -1153,7 +1157,7 @@ class ProjectService:
                 AgentJob.project_id == project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status.in_(["waiting", "working"]),
+                ~AgentExecution.status.in_(["failed", "cancelled"]),  # FIX 1
             )
         )
         existing_result = await session.execute(existing_stmt)
@@ -2001,8 +2005,49 @@ class ProjectService:
                     "architecture_depth": "overview",
                 }
 
-            # Calculate next instance number for orchestrator (migrated to AgentExecution - Handover 0367a)
+            # FIX 3 (Handover 0485): Check for existing orchestrator BEFORE creating new one
+            # This prevents duplicate orchestrators when launch_project() is called multiple times
             tenant_key = self.tenant_manager.get_current_tenant()
+
+            existing_orch_stmt = (
+                select(AgentExecution)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
+                    AgentJob.project_id == project_id,
+                    AgentExecution.agent_display_name == "orchestrator",
+                    AgentExecution.tenant_key == tenant_key,
+                    ~AgentExecution.status.in_(["failed", "cancelled"]),  # Same filter as Fix 1 & 2
+                )
+                .order_by(AgentExecution.instance_number.desc())
+            )
+            existing_orch_result = await session.execute(existing_orch_stmt)
+            existing_orchestrator = existing_orch_result.scalars().first()
+
+            if existing_orchestrator:
+                # Reuse existing orchestrator instead of creating new one
+                self._logger.info(
+                    f"[LAUNCH] Reusing existing orchestrator {existing_orchestrator.job_id} "
+                    f"for project {project_id} (status={existing_orchestrator.status})"
+                )
+
+                # Return existing orchestrator info (do NOT create new one)
+                return {
+                    "project_id": project.id,
+                    "orchestrator_job_id": existing_orchestrator.job_id,
+                    "launch_prompt": f"""Launch orchestrator for project: {project.name}
+
+Project ID: {project.id}
+Mission: {project.mission}
+Orchestrator Job ID: {existing_orchestrator.job_id}
+
+This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
+""",
+                    "status": project.status,
+                    "staging_status": project.staging_status,
+                }
+
+            # No existing orchestrator found - create new one
+            # Calculate next instance number for orchestrator (migrated to AgentExecution - Handover 0367a)
 
             instance_stmt = (
                 select(func.coalesce(func.max(AgentExecution.instance_number), 0))
