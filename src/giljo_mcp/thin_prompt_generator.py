@@ -190,6 +190,10 @@ class ThinClientPromptGenerator:
         # Handover 0367c-2: Use AgentExecution only (no fallback to MCPAgentJob)
 
         # Check for existing active orchestrator (AgentExecution)
+        # FIX 2 (Handover 0485): Use exclusion-based filter instead of inclusion-based
+        # OLD: AgentExecution.status.in_(["waiting", "working"])
+        # NEW: ~AgentExecution.status.in_(["failed", "cancelled"])
+        # This finds orchestrators in: waiting, working, complete, blocked
         existing_exec_stmt = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))  # Eager load for job_metadata access
@@ -198,7 +202,7 @@ class ThinClientPromptGenerator:
                 AgentJob.project_id == project_id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == self.tenant_key,
-                AgentExecution.status.in_(["waiting", "working"]),
+                ~AgentExecution.status.in_(["failed", "cancelled"]),  # FIX 2
             )
             .order_by(AgentExecution.instance_number.desc())
         )

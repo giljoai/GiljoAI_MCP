@@ -358,4 +358,82 @@ describe('Products Store - Authentication Gated Initialization', () => {
       expect(store.loading).toBe(false)
     })
   })
+
+  describe('Product Creation - Bug A Fix (Handover 0485)', () => {
+    it('should NOT auto-switch currentProductId after creating a product', async () => {
+      const store = useProductStore()
+
+      // Mock initial state: user has product ID 1 selected
+      store.currentProductId = 1
+      store.currentProduct = { id: 1, name: 'Existing Product' }
+
+      // Mock API response for product creation
+      const newProduct = { id: 2, name: 'New Product' }
+      api.products = {
+        ...api.products,
+        create: vi.fn().mockResolvedValue({ data: newProduct }),
+        get: vi.fn().mockResolvedValue({ data: newProduct }),
+        list: vi.fn().mockResolvedValue({ data: [
+          { id: 1, name: 'Existing Product' },
+          newProduct
+        ]}),
+        metrics: vi.fn().mockResolvedValue({ data: {
+          totalTasks: 0,
+          completedTasks: 0,
+          activeAgents: 0,
+          totalProjects: 0
+        }})
+      }
+
+      // Spy on setCurrentProduct to track calls
+      const setCurrentProductSpy = vi.spyOn(store, 'setCurrentProduct')
+
+      // Create new product
+      const result = await store.createProduct({ name: 'New Product' })
+
+      // BEHAVIOR TEST: currentProductId should REMAIN at 1 (not switch to 2)
+      expect(store.currentProductId).toBe(1)
+      expect(store.currentProduct.id).toBe(1)
+
+      // BEHAVIOR TEST: setCurrentProduct should NOT be called
+      expect(setCurrentProductSpy).not.toHaveBeenCalled()
+
+      // BEHAVIOR TEST: new product should appear in products array
+      expect(store.products).toContainEqual(newProduct)
+      expect(result).toEqual(newProduct)
+    })
+
+    it('should add new product to products array without changing selection', async () => {
+      const store = useProductStore()
+
+      // Set up initial products
+      store.products = [
+        { id: 1, name: 'Product A' },
+        { id: 2, name: 'Product B' }
+      ]
+      store.currentProductId = 1
+
+      // Mock API response
+      const newProduct = { id: 3, name: 'Product C' }
+      api.products = {
+        ...api.products,
+        create: vi.fn().mockResolvedValue({ data: newProduct })
+      }
+
+      // Spy on setCurrentProduct
+      const setCurrentProductSpy = vi.spyOn(store, 'setCurrentProduct')
+
+      await store.createProduct({ name: 'Product C' })
+
+      // BEHAVIOR: currentProductId unchanged
+      expect(store.currentProductId).toBe(1)
+
+      // BEHAVIOR: products array grows by 1
+      expect(store.products).toHaveLength(3)
+      expect(store.products[2]).toEqual(newProduct)
+
+      // BEHAVIOR: setCurrentProduct never called
+      expect(setCurrentProductSpy).not.toHaveBeenCalled()
+    })
+  })
 })
