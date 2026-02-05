@@ -172,7 +172,7 @@ class TestMCPCoordinationSection:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # Check for MCP coordination section header
             assert "MCP COMMUNICATION PROTOCOL" in content or "MCP Communication Protocol" in content, (
@@ -210,7 +210,7 @@ class TestMCPCoordinationSection:
         ]
 
         for template in templates:
-            content = template.template_content.lower()
+            content = template.system_instructions.lower()
 
             # Check for key MCP tools mentioned
             assert "get_pending_jobs" in content or "acknowledge_job" in content, (
@@ -230,7 +230,7 @@ class TestMCPCoordinationSection:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # Check for placeholder format (orchestrator will fill these in)
             # Placeholders should be in angle brackets: <AGENT_TYPE>, <TENANT_KEY>
@@ -259,7 +259,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should have coordination-specific instructions
@@ -278,7 +278,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention file modifications and token tracking
@@ -295,7 +295,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
         criteria_text = " ".join(template.success_criteria).lower()
 
@@ -316,7 +316,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention review findings
@@ -335,7 +335,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention analysis and findings
@@ -352,7 +352,7 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
         # Should mention documentation files
@@ -436,7 +436,7 @@ class TestOrchestratorRouting:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # Templates should be tool-agnostic (no Claude-specific language)
             # MCP instructions should work with any tool
@@ -460,7 +460,7 @@ class TestProductionQuality:
 
         for template in templates:
             # Templates should have substantial content
-            assert len(template.template_content) > 500, (
+            assert len(template.system_instructions) > 500, (
                 f"{template.role} template should have substantial content (>500 chars)"
             )
 
@@ -474,13 +474,13 @@ class TestProductionQuality:
                 "documenter": "document",  # "Documentation Agent" contains "document"
             }
             expected_keyword = role_keywords.get(template.role, template.role)
-            assert expected_keyword in template.template_content.lower(), (
+            assert expected_keyword in template.system_instructions.lower(), (
                 f"{template.role} should define its role (expected '{expected_keyword}')"
             )
 
             # Should have actionable instructions (imperative verbs)
             action_verbs = ["analyze", "implement", "test", "review", "document", "coordinate", "create", "write"]
-            content_lower = template.template_content.lower()
+            content_lower = template.system_instructions.lower()
             assert any(verb in content_lower for verb in action_verbs), (
                 f"{template.role} should have actionable instructions"
             )
@@ -495,7 +495,7 @@ class TestProductionQuality:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # Should not contain emojis (professional)
             import re
@@ -553,7 +553,7 @@ class TestMCPInstructionQuality:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # MCP section should have numbered phases
             if "MCP COMMUNICATION PROTOCOL" in content:
@@ -574,7 +574,7 @@ class TestMCPInstructionQuality:
         templates = result.scalars().all()
 
         for template in templates:
-            content = template.template_content
+            content = template.system_instructions
 
             # Should have explicit error handling section
             assert "Error Handling" in content or "error" in content.lower(), (
@@ -606,7 +606,7 @@ class TestMCPInstructionQuality:
         ]
 
         for template in templates:
-            content = template.template_content.lower()
+            content = template.system_instructions.lower()
 
             for tool in required_tools:
                 assert tool in content, f"{template.role} should mention {tool} in MCP instructions"

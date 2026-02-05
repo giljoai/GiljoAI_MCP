@@ -5,7 +5,7 @@ Implements 0102a/0103 rules for Claude Code agent templates:
 - YAML frontmatter with: name, description, model, color (optional)
 - Color field maps GiljoAI app colors to Claude Code named colors
 - Omit tools to inherit all by default
-- Body: template_content + optional Behavioral Rules / Success Criteria sections
+- Body: system_instructions + optional Behavioral Rules / Success Criteria sections
 - Packaging cap: max 8 distinct active roles with precedence
   1) is_default first
   2) updated_at descending
@@ -86,7 +86,7 @@ def render_claude_agent(template: AgentTemplate) -> str:
     - Frontmatter includes name, description, model (omit tools to inherit all)
     - Description fallback: "Subagent for <role>"
     - Model default: 'sonnet' if blank; allow 'inherit' if explicitly set
-    - Body: template_content; optionally append sections for rules/criteria
+    - Body: system_instructions; optionally append sections for rules/criteria
     """
     description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
     # Respect explicit 'inherit'; otherwise default to sonnet when blank
@@ -117,7 +117,7 @@ def render_claude_agent(template: AgentTemplate) -> str:
 
     parts: list[str] = []
     # Main system prompt/body
-    body = (template.template_content or "").strip()
+    body = (template.system_instructions or "").strip()
     if body:
         parts.append(body)
 
@@ -180,7 +180,7 @@ def render_generic_agent(template: AgentTemplate) -> str:
     parts = [
         f"# {template.name}",
         f"\nRole: {template.role}",
-        f"\n{template.template_content or ''}",
+        f"\n{template.system_instructions or ''}",
     ]
 
     # Add behavioral rules section if present

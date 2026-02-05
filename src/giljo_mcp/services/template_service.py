@@ -121,7 +121,7 @@ class TemplateService:
                         "id": str(t.id),
                         "name": t.name,
                         "role": t.role,
-                        "content": t.template_content,
+                        "content": t.system_instructions,
                         "cli_tool": t.cli_tool,
                         "background_color": t.background_color,
                         "category": t.category,
@@ -221,7 +221,7 @@ class TemplateService:
                         "id": str(template.id),
                         "name": template.name,
                         "role": template.role,
-                        "content": template.template_content,
+                        "content": template.system_instructions,
                         "cli_tool": template.cli_tool,
                         "background_color": template.background_color,
                         "category": template.category,
@@ -302,7 +302,6 @@ class TemplateService:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     name=name,
-                    template_content=content,
                     role=role or name,  # Default role to name if not provided
                     category=category,
                     cli_tool=cli_tool,
@@ -411,8 +410,6 @@ class TemplateService:
                 # Update fields if provided
                 if name is not None:
                     template.name = name
-                if content is not None:
-                    template.template_content = content
                 if role is not None:
                     template.role = role
                 if category is not None:
@@ -889,7 +886,6 @@ class TemplateService:
             role=template.role,
             system_instructions=template.system_instructions,
             user_instructions=template.user_instructions,
-            template_content=template.template_content,
             variables=template.variables,
             behavioral_rules=template.behavioral_rules,
             success_criteria=template.success_criteria,
@@ -921,7 +917,6 @@ class TemplateService:
             >>> await service.restore_template_from_archive(session, template, archive)
         """
         # ORIGINAL QUERY: history.py line 135-139 (restore_template endpoint)
-        template.template_content = archive.template_content
         template.variables = archive.variables
         template.behavioral_rules = archive.behavioral_rules
         template.success_criteria = archive.success_criteria
@@ -1059,7 +1054,7 @@ class TemplateService:
         Example:
             >>> template = await service.get_template_by_role(session, "tenant-1", "backend developer")
             >>> if template:
-            ...     print(template.template_content)
+            ...     print(template.system_instructions)
         """
         # ORIGINAL QUERY: agent_templates.py lines 218-226 (download_agent_template endpoint)
         stmt = (

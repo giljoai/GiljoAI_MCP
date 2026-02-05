@@ -130,7 +130,7 @@ async def tenant_a_template(api_client: AsyncClient, tenant_a_token: str):
             "role": "orchestrator",
             "cli_tool": "claude",
             "description": "Test orchestrator template",
-            "template_content": "You are a test orchestrator agent for coordinating development.",
+            "system_instructions": "You are a test orchestrator agent for coordinating development.",
             "model": "sonnet",
             "is_active": True
         },
@@ -151,7 +151,7 @@ async def tenant_b_template(api_client: AsyncClient, tenant_b_token: str):
             "role": "developer",
             "cli_tool": "codex",
             "description": "Test developer template",
-            "template_content": "You are a test developer agent for implementing features.",
+            "system_instructions": "You are a test developer agent for implementing features.",
             "model": "gpt-4",
             "is_active": True
         },
@@ -181,7 +181,7 @@ class TestTemplateCRUD:
                 "role": "architect",
                 "cli_tool": "claude",
                 "description": "Test architect template",
-                "template_content": "You are an architect agent responsible for system design and architecture decisions.",
+                "system_instructions": "You are an architect agent responsible for system design and architecture decisions.",
                 "model": "sonnet",
                 "behavioral_rules": ["Design before coding", "Document architecture decisions"],
                 "success_criteria": ["Architecture is scalable", "Design is well-documented"],
@@ -218,7 +218,7 @@ class TestTemplateCRUD:
                 "name": f"tester-{unique_id}",
                 "role": "tester",
                 "cli_tool": "gemini",
-                "template_content": "You are a test agent for writing and executing tests.",
+                "system_instructions": "You are a test agent for writing and executing tests.",
                 "model": "gemini-pro"
             },
             cookies={"access_token": tenant_a_token}
@@ -239,7 +239,7 @@ class TestTemplateCRUD:
                 "name": "test-template",
                 "role": "developer",
                 "cli_tool": "claude",
-                "template_content": "Test content",
+                "system_instructions": "Test content",
                 "model": "sonnet"
             }
         )
@@ -256,7 +256,7 @@ class TestTemplateCRUD:
                 "name": tenant_a_template["name"],
                 "role": "developer",
                 "cli_tool": "claude",
-                "template_content": "Test content",
+                "system_instructions": "Test content",
                 "model": "sonnet"
             },
             cookies={"access_token": tenant_a_token}
@@ -337,7 +337,7 @@ class TestTemplateCRUD:
         data = response.json()
         assert data["id"] == tenant_a_template["id"]
         assert data["name"] == tenant_a_template["name"]
-        assert "template_content" in data
+        assert "system_instructions" in data
         assert "system_instructions" in data
         assert "user_instructions" in data
 

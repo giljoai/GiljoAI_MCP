@@ -68,7 +68,8 @@ async def get_template_history(
             template_id=archive.template_id,
             name=archive.name,
             version=archive.version,
-            template_content=archive.template_content,
+            system_instructions=archive.system_instructions,
+            user_instructions=archive.user_instructions,
             archive_reason=archive.archive_reason,
             archive_type=archive.archive_type,
             archived_by=archive.archived_by,
@@ -143,7 +144,7 @@ async def restore_template(
     )
 
     # ORIGINAL QUERY: history.py line 135-139 (replaced with service call)
-    # template.template_content = archive.template_content
+    # template.system_instructions = archive.system_instructions
     # template.variables = archive.variables
     # template.behavioral_rules = archive.behavioral_rules
     # template.success_criteria = archive.success_criteria

@@ -109,7 +109,7 @@ async def preview_template(
     name = template.name
     description = template.description or ""
     model = template.model or "sonnet"
-    system_text = template.system_instructions or template.template_content or ""
+    system_text = template.system_instructions or ""
     user_text = template.user_instructions or ""
 
     # Apply variable substitutions for preview

@@ -90,7 +90,7 @@ async def seed_agent_templates(db_session, test_user_a: User, test_product: Prod
                 tenant_key=test_user_a.tenant_key,
                 product_id=test_product.id,
                 name=name,
-                template_content=f"Template for {name}",
+                system_instructions=f"Template for {name}",
                 system_instructions="",
                 user_instructions="",
                 is_active=True,

@@ -105,8 +105,8 @@ class TestTemplateSeededWithContextRequest:
             sys_inst = template.system_instructions
             assert "REQUESTING BROADER CONTEXT" in sys_inst
 
-    async def test_legacy_template_content_includes_new_sections(self, db_session: AsyncSession):
-        """Verify legacy template_content field includes context request sections."""
+    async def test_legacy_template_includes_new_sections(self, db_session: AsyncSession):
+        """Verify legacy template includes context request sections."""
         tenant_key = "integration_test_legacy"
 
         await seed_tenant_templates(db_session, tenant_key)
@@ -119,10 +119,10 @@ class TestTemplateSeededWithContextRequest:
 
         for template in templates:
             # Legacy field should have context request section
-            legacy = template.template_content
+            legacy = template.system_instructions
             assert "REQUESTING BROADER CONTEXT" in legacy
 
-            # Verify composition: template_content = user + system
+            # Verify composition: system_instructions = user + system
             expected = f"{template.user_instructions}\n\n{template.system_instructions}"
             assert legacy.strip() == expected.strip()
 

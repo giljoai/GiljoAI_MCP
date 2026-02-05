@@ -189,7 +189,7 @@
             </v-expansion-panel>
 
             <!-- Template Content (for backward compatibility) -->
-            <v-expansion-panel v-if="templateData.template_content">
+            <v-expansion-panel v-if="templateData.system_instructions">
               <v-expansion-panel-title>
                 <div class="d-flex align-center">
                   <v-icon start size="small">mdi-file-document</v-icon>
@@ -202,13 +202,13 @@
                     size="small"
                     variant="tonal"
                     prepend-icon="mdi-content-copy"
-                    @click="copyToClipboard(templateData.template_content)"
+                    @click="copyToClipboard(templateData.system_instructions)"
                   >
                     Copy
                   </v-btn>
                 </div>
                 <v-card variant="outlined" class="template-content-card">
-                  <pre class="template-content">{{ templateData.template_content }}</pre>
+                  <pre class="template-content">{{ templateData.system_instructions }}</pre>
                 </v-card>
               </v-expansion-panel-text>
             </v-expansion-panel>

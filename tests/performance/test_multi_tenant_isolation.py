@@ -154,7 +154,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Tenant A"
+            system_instructions="Tenant A"
         )
         agent_a2 = AgentTemplate(
             name="tenant_a_tester",
@@ -163,7 +163,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Tenant A"
+            system_instructions="Tenant A"
         )
 
         # Create agents for Tenant B
@@ -174,7 +174,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Tenant B"
+            system_instructions="Tenant B"
         )
         agent_b2 = AgentTemplate(
             name="tenant_b_tester",
@@ -183,7 +183,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Tenant B"
+            system_instructions="Tenant B"
         )
 
         db_session.add_all([agent_a1, agent_a2, agent_b1, agent_b2])
@@ -244,7 +244,7 @@ class TestMultiTenantIsolation:
                 tenant_key=tenant_a_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                template_content="Test"
+                system_instructions="Test"
             )
             agent_b = AgentTemplate(
                 name=f"tenant_b_agent_{i}",
@@ -252,7 +252,7 @@ class TestMultiTenantIsolation:
                 tenant_key=tenant_b_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                template_content="Test"
+                system_instructions="Test"
             )
             db_session.add(agent_a)
             db_session.add(agent_b)
@@ -316,7 +316,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="A"
+            system_instructions="A"
         )
         orchestrator_a = AgentExecution(
             project_id=None,  # Will be set after project creation
@@ -342,7 +342,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="B"
+            system_instructions="B"
         )
 
         db_session.add_all([project_a, project_b, agent_a, agent_b])
