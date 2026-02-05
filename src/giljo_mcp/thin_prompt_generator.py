@@ -1166,7 +1166,256 @@ When ready, coordinate agents based on current status.
 
         return prompt
 
+    def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
+        """
+        Build Claude Code subagent mode execution prompt.
 
+        Orchestrator spawns sub-agents using Task tool.
+        Sub-agents receive identity via instructions string.
+
+        Used by GET /api/prompts/implementation/{project_id} endpoint.
+        """
+        # SECTION 1: Context Recap
+        context_recap = [
+            "# GiljoAI Implementation Phase - Claude Code CLI Mode",
+            "",
+            "## FIRST ACTION (MANDATORY)",
+            "Before anything else, verify MCP connection:",
+            "```python",
+            "mcp__giljo-mcp__health_check()",
+            "```",
+            "Expected: `{\"status\": \"healthy\"}` - If failed, STOP and report error",
+            "",
+            "## Who You Are",
+            f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
+            f"Project ID: {project.id}",
+            f"Product ID: {project.product_id}",
+            "",
+            "## Your Execution Plan (from Staging)",
+            "",
+            "Fetch your stored execution plan from staging:",
+            "```python",
+            f'get_agent_mission(job_id="{orchestrator_id}")',
+            "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
+            "",
+            "This returns your plan with:",
+            "- Agent execution order (sequential/parallel/hybrid)",
+            "- Dependency graph between agents",
+            "- Coordination checkpoints",
+            "- Success criteria for each phase",
+            "",
+            "Follow this plan to coordinate agents. If no plan was written during staging, proceed with best judgment.",
+            "",
+            "## What You've Already Done",
+            "In a PREVIOUS session, you completed staging:",
+            "- Analyzed project requirements",
+            "- Created mission plan",
+            f"- Spawned {len(agent_jobs) if agent_jobs else 0} specialist agents",
+            "",
+            "## Current State",
+            "All agent jobs are in waiting status, ready for execution.",
+            "Your job now: Spawn and coordinate these agents to complete the project.",
+            "---",
+            "",
+        ]
+
+        # SECTION 2: Agent Jobs List
+        agent_spawn_lines = []
+        if agent_jobs:
+            for idx, agent in enumerate(agent_jobs, 1):
+                mission = getattr(agent.job, 'mission', None) or "(No mission assigned)"
+                mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
+
+                agent_spawn_lines.extend(
+                    [
+                        f"**{idx}. {agent.agent_name}**",
+                        f"   - Agent Name: `{agent.agent_name}` (matches .claude/agents/{agent.agent_name}.md)",
+                        f"   - Agent Type: `{agent.agent_display_name}` (display category)",
+                        f"   - Job ID: `{agent.job_id}`",
+                        f"   - Status: {agent.status}",
+                        f"   - Mission Summary: {mission_summary}",
+                        "",
+                    ]
+                )
+        else:
+            agent_spawn_lines.append("(No agents spawned yet - use spawn_agent_job() first)")
+
+        agent_list_section = [
+            "## Agent Jobs to Execute",
+            "",
+            "Below are the specialist agents spawned during staging.",
+            "Each has a unique job_id and agent_display_name.",
+            "",
+        ] + agent_spawn_lines
+
+        # SECTION 3: Task Tool Spawning Template
+        spawning_section = [
+            "## How to Spawn Agents via Task Tool",
+            "",
+            "### Spawning Template",
+            "Use this exact syntax to spawn each agent in parallel:",
+            "",
+            "```python",
+            "Task(",
+            '    subagent_type="{agent_name}",  # CRITICAL: Use agent_name (template filename)',
+            '    instructions="""',
+            "    You are {agent_name} (job_id: {job_id})",
+            "    ",
+            '    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")',
+            "    Note: tenant_key is auto-injected by server from your API key session",
+            "    This returns your `mission` and `full_protocol`.",
+            "    Follow `full_protocol` for all lifecycle behavior",
+            "    (startup, planning, progress, messaging, completion, error handling).",
+            '    """',
+            ")",
+            "```",
+            "",
+        ]
+
+        # Add concrete example if agents exist
+        if agent_jobs:
+            first = agent_jobs[0]
+            spawning_section.extend(
+                [
+                    "### Example: First Agent",
+                    "```python",
+                    "Task(",
+                    f'    subagent_type="{first.agent_name}",',
+                    '    instructions="""',
+                    f"    You are {first.agent_name} (job_id: {first.job_id})",
+                    "    ",
+                    f'    First action: Call mcp__giljo-mcp__get_agent_mission(job_id="{first.job_id}")',
+                    "    Note: tenant_key is auto-injected by server from your API key session",
+                    "    This returns your `mission` and `full_protocol`.",
+                    "    Follow `full_protocol` for all lifecycle behavior",
+                    "    (startup, planning, progress, messaging, completion, error handling).",
+                    '    """',
+                    ")",
+                    "```",
+                    "",
+                    "**Task Tool Parameter Naming**:",
+                    "- Task(subagent_type=X) uses agent_name value",
+                    "- agent_name: Template filename (e.g., 'tdd-implementor')",
+                    "- Do NOT use agent_display_name (e.g., 'implementer') - it will fail",
+                    "",
+                    "### Spawning Strategy",
+                    "**CRITICAL**: NEVER use `run_in_background=true` - agents must run in foreground for observability.",
+                    "",
+                    "Choose spawning approach based on job requirements:",
+                    "- **Sequential**: Spawn one agent, wait for completion, then next (best for dependent tasks)",
+                    "- **Parallel**: Multiple Task() calls in single message (best for independent tasks)",
+                    "",
+                    "Each agent runs independently and coordinates via MCP server.",
+                    "",
+                ]
+            )
+
+        # SECTION 4: Monitoring Instructions
+        monitoring_section = [
+            "## Monitoring Agent Progress",
+            "",
+            "### get_workflow_status()",
+            "Check all agent statuses:",
+            "```python",
+            f'get_workflow_status(project_id="{project.id}")',
+            "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
+            "",
+            "Returns:",
+            "```json",
+            "{",
+            '  "agents": [',
+            '    {"job_id": "...", "status": "working", "progress": 45},',
+            '    {"job_id": "...", "status": "blocked", "block_reason": "..."}',
+            "  ]",
+            "}",
+            "```",
+            "",
+            "### Handle Blockers",
+            "- When agent status is 'blocked', read their messages",
+            "- Respond via send_message() with instructions",
+            "- Update their next_instruction field if needed",
+            "",
+            "### Message Handling",
+            "- Agents report progress via report_progress() and send_message()",
+            "- Monitor messages for questions or blockers",
+            "- Respond promptly to keep workflow moving",
+            "",
+        ]
+
+        # SECTION 5: Context Refresh Capability
+        context_refresh_section = [
+            "## Refreshing Your Context",
+            "",
+            "If you need to re-read your orchestrator mission:",
+            "```python",
+            f'get_orchestrator_instructions(job_id="{orchestrator_id}")',
+            "```",
+            "Note: tenant_key is auto-injected by server from your API key session",
+            "",
+            "This MCP tool fetches your original staging mission and context.",
+            "Use this if you lose track of project objectives or need to verify requirements.",
+            "",
+        ]
+
+        # SECTION 6: CLI Mode Constraints
+        cli_constraints_section = [
+            "## CLI Mode Constraints",
+            "",
+            "**WARNING: Agent Template Files Required**",
+            "- Each agent_name needs a file: `.claude/agents/{agent_name}.md`",
+            '- If file is missing: "Subagent type not found" error',
+            '- Example: agent_name="<agent_name>" requires `.claude/agents/<agent_name>.md`',
+            "",
+            "**WARNING: Exact Naming Required**",
+            "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_display_name`",
+            '- agent_name: Template filename (see allowed_agent_names in instructions)',
+            '- agent_display_name: Display category (e.g., "implementer")',
+            '- Using agent_display_name will fail with "Subagent type not found"',
+            "",
+            "**WARNING: MCP Communication Only**",
+            "- All agents run in THIS terminal (Claude Code CLI mode)",
+            "- Coordination happens via MCP server (not direct communication)",
+            "- All MCP tools have tenant_key auto-injected by server from API key session",
+            "",
+        ]
+
+        # SECTION 7: Completion Instructions
+        completion_section = [
+            "## When You're Done",
+            "",
+            "### Verify Sub-Agents Completed",
+            "1. Check all agents via get_workflow_status()",
+            "2. Ensure all have status='complete' (no failures or blockers)",
+            "3. Review final deliverables",
+            "",
+            "### Complete Your Orchestrator Job",
+            "When all sub-agents are done and project is complete:",
+            "```python",
+            f'complete_job(job_id="{orchestrator_id}")',
+            "```",
+            "",
+            "### Handover (if needed)",
+            "If you reach context limits before completion:",
+            "- Use /gil_handover slash command to reset your context",
+            "- Your session context will be saved to 360 Memory",
+            "- You'll receive a continuation prompt to continue work",
+            "",
+        ]
+
+        # Combine all sections
+        all_sections = (
+            context_recap
+            + agent_list_section
+            + spawning_section
+            + monitoring_section
+            + context_refresh_section
+            + cli_constraints_section
+            + completion_section
+        )
+
+        return "\n".join(all_sections)
 
     def _get_field_priority(self, field_name: str, user_priorities: Optional[dict]) -> Optional[int]:
         """
