@@ -329,6 +329,31 @@
         "blocking_0700c": false,
         "blocking_0700e": false
       }
+    },
+    {
+      "id": "0700c-001",
+      "timestamp": "2026-02-04T17:00:00Z",
+      "from_handover": "0700c",
+      "to_handovers": ["0700e", "0700f", "orchestrator"],
+      "type": "info",
+      "subject": "JSONB field cleanup complete - messages and sequential_history removed",
+      "message": "Removed AgentExecution.messages JSONB column entirely and Product.product_memory.sequential_history field. Counter columns and ProductMemoryRepository are now authoritative. Verified with grep and model loading. All tests passing.",
+      "files_affected": [
+        "src/giljo_mcp/models/agent_identity.py",
+        "src/giljo_mcp/models/products.py",
+        "src/giljo_mcp/services/message_service.py",
+        "src/giljo_mcp/services/product_service.py",
+        "migrations/versions/baseline_v32_unified.py",
+        "CLAUDE.md",
+        "docs/features/360_MEMORY_MANAGEMENT.md"
+      ],
+      "action_required": false,
+      "context": {
+        "lines_removed": 150,
+        "columns_removed": ["AgentExecution.messages", "MCPAgentJob.messages"],
+        "fields_removed": ["Product.product_memory.sequential_history"],
+        "replacement_systems": ["Counter columns", "product_memory_entries table"]
+      }
     }
   ],
   "schema": {

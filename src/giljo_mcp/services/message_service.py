@@ -1279,8 +1279,3 @@ class MessageService:
                 context={"operation": "acknowledge_message", "message_id": message_id}
             ) from e
 
-    # ============================================================================
-    # DEPRECATED: JSONB Persistence Methods (Handover 0387f)
-    # ============================================================================
-    # All JSONB persistence methods have been removed in favor of counter-based
-    # message tracking. See MessageRepository for the new implementation.
