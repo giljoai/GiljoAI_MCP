@@ -424,6 +424,7 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('activated_at', sa.DateTime(timezone=True), nullable=True, comment='First activation timestamp (only set once on first activation)'),
+    sa.Column('implementation_launched_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when user clicked Implement button. NULL = staging only.'),
     sa.Column('paused_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when project was last paused/deactivated'),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when project was soft deleted (NULL for active projects)'),
     sa.Column('meta_data', sa.JSON(), nullable=True),

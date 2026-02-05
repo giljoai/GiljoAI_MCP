@@ -75,6 +75,12 @@ class Project(Base):
         nullable=True,
         comment="First activation timestamp (only set once on first activation)"
     )
+    implementation_launched_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        comment="Timestamp when user clicked Implement button. NULL = staging only."
+    )
     paused_at = Column(
         DateTime(timezone=True),
         nullable=True,

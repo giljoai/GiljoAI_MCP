@@ -389,3 +389,72 @@ async def launch_project(
         agents=agent_info_list,
         message=f"Project launched successfully with {len(agents)} agents"
     )
+
+
+# ============================================================================
+# Implementation Phase Gate (Handover 0709)
+# ============================================================================
+
+class LaunchImplementationResponse(BaseModel):
+    """Response model for launch implementation."""
+    success: bool = True
+    implementation_launched_at: Optional[str] = None
+    already_launched: Optional[bool] = None
+    launched_at: Optional[str] = None
+
+
+@router.patch("/projects/{project_id}/launch-implementation", response_model=LaunchImplementationResponse)
+async def launch_implementation(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> LaunchImplementationResponse:
+    """
+    Set implementation_launched_at timestamp (phase gate release).
+
+    Called when user clicks 'Implement' button in the dashboard.
+    Allows agents to receive their missions via get_agent_mission().
+
+    Handover 0709: Implementation phase gate
+
+    Args:
+        project_id: Project ID to launch implementation for
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        LaunchImplementationResponse with timestamp
+
+    Raises:
+        HTTPException 404: Project not found or tenant isolation violation
+    """
+    logger.info(f"Launch implementation requested for project {project_id} by {current_user.username}")
+
+    # Get project with tenant isolation
+    project = await db.get(Project, project_id)
+
+    if not project or project.tenant_key != current_user.tenant_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    # Check if already launched (idempotent)
+    if project.implementation_launched_at is not None:
+        logger.info(f"Project {project_id} already launched at {project.implementation_launched_at}")
+        return LaunchImplementationResponse(
+            already_launched=True,
+            launched_at=project.implementation_launched_at.isoformat()
+        )
+
+    # Set timestamp
+    project.implementation_launched_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(project)
+
+    logger.info(f"Implementation launched for project {project_id} at {project.implementation_launched_at}")
+
+    return LaunchImplementationResponse(
+        success=True,
+        implementation_launched_at=project.implementation_launched_at.isoformat()
+    )
