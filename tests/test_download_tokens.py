@@ -182,23 +182,6 @@ class TestTokenManager:
         assert is_valid is False
 
     @pytest.mark.asyncio
-    async def test_validate_token_already_used(self, db_session):
-        """Test validation fails for already downloaded token (one-time use)"""
-        from src.giljo_mcp.download_tokens import TokenManager
-
-        manager = TokenManager(db_session)
-        tenant_key = TokenTestData.generate_tenant_key()
-
-        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
-
-        # Mark as used
-        await manager.mark_as_used(token)
-
-        # Validate used token
-        is_valid = await manager.validate_token(token, tenant_key)
-        assert is_valid is False
-
-    @pytest.mark.asyncio
     async def test_validate_token_cross_tenant_access_denied(self, db_session):
         """Test multi-tenant isolation: Token cannot be validated by different tenant"""
         from src.giljo_mcp.download_tokens import TokenManager
@@ -213,20 +196,6 @@ class TestTokenManager:
         # Tenant B tries to validate
         is_valid = await manager.validate_token(token, tenant_b)
         assert is_valid is False
-
-    @pytest.mark.asyncio
-    async def test_mark_as_used_deprecated(self, db_session):
-        """Test marking token as used (DEPRECATED - no-op for compatibility)"""
-        from src.giljo_mcp.download_tokens import TokenManager
-
-        manager = TokenManager(db_session)
-        tenant_key = TokenTestData.generate_tenant_key()
-
-        token = await manager.generate_token(tenant_key=tenant_key, download_type="slash_commands", metadata={})
-
-        # Mark as used (deprecated method, returns True for compatibility)
-        result = await manager.mark_as_used(token)
-        assert result is True
 
     @pytest.mark.asyncio
     async def test_cleanup_expired_tokens(self, db_session):
@@ -297,17 +266,15 @@ class TestTokenManager:
         # Simulate concurrent downloads
         async def attempt_download():
             is_valid = await manager.validate_token(token, tenant_key)
-            if is_valid:
-                await manager.mark_as_used(token)
             return is_valid
 
         # 10 concurrent download attempts
         tasks = [attempt_download() for _ in range(10)]
         results = await asyncio.gather(*tasks)
 
-        # Only one should succeed (one-time use)
+        # All should succeed (validation only, no use tracking)
         successful = sum(results)
-        assert successful == 1
+        assert successful == 10
 
 
 # ============================================================================

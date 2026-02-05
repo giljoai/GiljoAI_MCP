@@ -74,7 +74,6 @@ class TestAgentJobTemplateTracking:
             role="implementer",
             cli_tool="claude",
             description="Test implementation agent",
-            system_instructions="Test template content",
             system_instructions="System instructions",
             user_instructions="User instructions",
             model="sonnet",

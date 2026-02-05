@@ -69,7 +69,6 @@ class AgentJobResponse(BaseModel):
     spawned_by: Optional[str]
     template_id: Optional[str] = None  # Handover 0244a: Link to source template
     context_chunks: List[str]
-    messages: List[Dict[str, Any]]
     created_at: datetime
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
@@ -112,10 +111,8 @@ async def get_active_agent_jobs(
         async with state.db_manager.get_session_async() as db:
             jobs = await job_repo.get_active_jobs(db, tenant_key, agent_display_name)
 
-            # Note: AgentJobResponse expects messages field, but we're migrating to counters (0387f)
-            # This endpoint uses AgentJobRepository which returns AgentJob, not AgentExecution
-            # AgentJob doesn't have counter fields - need to query AgentExecution for counters
-            # For now, return empty list as messages field will be deprecated
+            # AgentJobRepository returns AgentJob, not AgentExecution
+            # Message counters are tracked on AgentExecution (Handover 0387f)
             return [
                 AgentJobResponse(
                     job_id=job.job_id,
@@ -125,7 +122,6 @@ async def get_active_agent_jobs(
                     spawned_by=job.spawned_by,
                     template_id=job.template_id,  # Handover 0244a
                     context_chunks=job.context_chunks or [],
-                    messages=[],  # Handover 0387f: JSONB messages deprecated, use counter fields
                     created_at=job.created_at,
                     started_at=job.started_at,
                     completed_at=job.completed_at,
@@ -182,7 +178,6 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
                 spawned_by=job.spawned_by,
                 template_id=job.template_id,  # Handover 0244a
                 context_chunks=job.context_chunks or [],
-                messages=[],  # Handover 0387f: JSONB messages deprecated, use counter fields
                 created_at=job.created_at,
                 started_at=job.started_at,
                 completed_at=job.completed_at,

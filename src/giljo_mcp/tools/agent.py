@@ -14,7 +14,6 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentInteraction, Job, Message, Project, Task
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.websocket_client import broadcast_sub_agent_event
 
 
 logger = logging.getLogger(__name__)

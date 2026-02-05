@@ -108,7 +108,6 @@ class JobResponse(BaseModel):
     spawned_by: Optional[str] = None
     tool_type: str = "universal"
     context_chunks: list[str] = Field(default_factory=list)
-    messages: list[dict[str, Any]] = Field(default_factory=list)
     # Handover 0407: Counter fields for message tracking (used by frontend store)
     messages_sent_count: int = 0
     messages_waiting_count: int = 0

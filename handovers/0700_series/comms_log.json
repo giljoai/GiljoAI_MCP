@@ -6,7 +6,12 @@
       "id": "0700a-001",
       "timestamp": "2026-02-04T06:20:00Z",
       "from_handover": "0700a",
-      "to_handovers": ["0700", "0701", "0702", "0703"],
+      "to_handovers": [
+        "0700",
+        "0701",
+        "0702",
+        "0703"
+      ],
       "type": "info",
       "subject": "Light mode removal complete",
       "message": "Removed light mode theme support. isDarkTheme now always returns true. toggleTheme() function removed from settings store. If any code checks isDarkTheme for conditional logic beyond theming, that logic is now dead code (always takes dark branch).",
@@ -46,11 +51,15 @@
       "id": "0700-001",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0701"],
+      "to_handovers": [
+        "0701"
+      ],
       "type": "dependency",
       "subject": "Cleanup index ready for visualization",
       "message": "Created cleanup_index.json with 75 entries categorized by type, urgency, component, and risk. Visualization targets: (1) Component distribution chart - 15 tests, 14 api, 13 models, 13 services, 12 frontend, 5 mcp_tools. (2) Dependency graph between deprecated items using related_to field. (3) Urgency heatmap - 3 critical, 7 high, 29 medium, 36 low. Recommended starting point: visualize the v4.0 removal targets (45 entries) and their cross-references.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": false,
       "context": {
         "total_entries": 75,
@@ -62,11 +71,21 @@
       "id": "0700-002",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0702", "0703", "0704", "0705", "0707", "0708", "0711"],
+      "to_handovers": [
+        "0702",
+        "0703",
+        "0704",
+        "0705",
+        "0707",
+        "0708",
+        "0711"
+      ],
       "type": "info",
       "subject": "Cleanup index baseline established",
       "message": "Comprehensive cleanup index created with 75 entries: 46 deprecated markers, 8 actionable TODOs, 18 representative skipped tests (188 total in codebase), 3 dead code items. Key findings: (1) 3 CRITICAL production bugs blocking tests in project_service.py. (2) AgentExecution.messages JSONB and Product.product_memory.sequential_history are HIGH priority removals. (3) Succession module (api/endpoints/agent_jobs/succession.py) can be deleted entirely - simple_handover is authoritative. Use cleanup_index.json to find entries relevant to your component.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": false,
       "context": {
         "by_component": {
@@ -85,14 +104,23 @@
       "id": "0700-003",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0373"],
+      "to_handovers": [
+        "0373"
+      ],
       "type": "dependency",
       "subject": "Template adapter findings",
       "message": "Found TemplateManager alias (dep-014) at src/giljo_mcp/template_manager.py:1048 - this is the primary target for 0373. Related entries: (1) template_content field in seeder (dep-015). (2) AgentTemplate.template_content model field (dep-012). (3) TemplateUpdate.template_content API schema (dep-039). All marked for v4.0 removal. Recommend removing TemplateManager alias first, then cleaning up template_content references in dependent handovers.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": false,
       "context": {
-        "related_entry_ids": ["dep-014", "dep-015", "dep-012", "dep-039"],
+        "related_entry_ids": [
+          "dep-014",
+          "dep-015",
+          "dep-012",
+          "dep-039"
+        ],
         "primary_file": "src/giljo_mcp/template_manager.py",
         "line_number": 1048
       }
@@ -101,17 +129,29 @@
       "id": "0700-004",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0706"],
+      "to_handovers": [
+        "0706"
+      ],
       "type": "warning",
       "subject": "AgentExecution.messages deprecation details",
       "message": "CRITICAL for 0706: AgentExecution.messages JSONB column (dep-007) at src/giljo_mcp/models/agent_identity.py:301 is HIGH urgency. Counter-based system (messages_sent_count, messages_waiting_count, messages_read_count) is authoritative. Before removal: (1) Verify MessageRepository uses only counter columns. (2) Check API responses in agent_management.py:118 returns empty list. (3) Ensure no frontend code reads the messages array. Related: JSONB persistence methods already removed (dep-020). Also review 5 other AgentExecution deprecated fields (dep-002 through dep-006) for handover simplification cleanup.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": true,
       "context": {
         "primary_entry_id": "dep-007",
         "file_path": "src/giljo_mcp/models/agent_identity.py",
         "line_number": 301,
-        "related_entries": ["dep-002", "dep-003", "dep-004", "dep-005", "dep-006", "dep-020", "dep-033"],
+        "related_entries": [
+          "dep-002",
+          "dep-003",
+          "dep-004",
+          "dep-005",
+          "dep-006",
+          "dep-020",
+          "dep-033"
+        ],
         "migration_verification_needed": true
       }
     },
@@ -119,15 +159,24 @@
       "id": "0700-005",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0705"],
+      "to_handovers": [
+        "0705"
+      ],
       "type": "warning",
       "subject": "Product memory and project model deprecations",
       "message": "Found HIGH urgency item for 0705: Product.product_memory.sequential_history (dep-011) at src/giljo_mcp/models/products.py:123. The normalized product_memory_entries table is authoritative. Also: (1) Project.context_budget soft deprecated (dep-010). (2) Related service methods _validate_history_entry (dep-023) and add_learning_to_product_memory (dep-024) should be removed after model cleanup. (3) CRITICAL BUG: test_complete_project_happy_path blocked by validation bug (skip-bug-003) - fix this endpoint.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": true,
       "context": {
         "primary_entry_id": "dep-011",
-        "related_entries": ["dep-010", "dep-023", "dep-024", "skip-bug-003"],
+        "related_entries": [
+          "dep-010",
+          "dep-023",
+          "dep-024",
+          "skip-bug-003"
+        ],
         "critical_bug": "skip-bug-003"
       }
     },
@@ -135,15 +184,26 @@
       "id": "0700-006",
       "timestamp": "2026-02-04T07:15:00Z",
       "from_handover": "0700",
-      "to_handovers": ["0708"],
+      "to_handovers": [
+        "0708"
+      ],
       "type": "warning",
       "subject": "Service layer deprecations and critical bugs",
       "message": "CRITICAL for 0708: Two production bugs in project_service.py blocking tests. (1) UnboundLocalError for 'total_jobs' at line 1545 - blocks skip-bug-001 and skip-bug-002. (2) Service fallback methods without tenant filtering (dep-019, dep-025, dep-026) are security concerns. Also found: OrchestrationService.trigger_succession (dep-022) delegates to simple_handover - consider removing entirely. ContextService (dep-018) may be fully deprecated.",
-      "files_affected": ["handovers/0700_series/cleanup_index.json"],
+      "files_affected": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "action_required": true,
       "context": {
-        "critical_bugs": ["skip-bug-001", "skip-bug-002"],
-        "security_concerns": ["dep-019", "dep-025", "dep-026"],
+        "critical_bugs": [
+          "skip-bug-001",
+          "skip-bug-002"
+        ],
+        "security_concerns": [
+          "dep-019",
+          "dep-025",
+          "dep-026"
+        ],
         "bug_location": "src/giljo_mcp/services/project_service.py:1545"
       }
     },
@@ -151,41 +211,110 @@
       "id": "orchestrator-001",
       "timestamp": "2026-02-04T12:00:00Z",
       "from_handover": "orchestrator",
-      "to_handovers": ["0701", "0700b", "0700c", "0700d", "0700e", "0700f", "0700g", "0700h", "0704", "0705", "0706"],
+      "to_handovers": [
+        "0701",
+        "0700b",
+        "0700c",
+        "0700d",
+        "0700e",
+        "0700f",
+        "0700g",
+        "0700h",
+        "0704",
+        "0705",
+        "0706"
+      ],
       "type": "info",
       "subject": "Merged cleanup approach decided",
       "message": "After deep-researcher audit (dead_code_audit.md), we decided on merged approach: (1) 0701 Visualization first to understand codebase, (2) 0700b-h for deprecated purge (~1050 lines), (3) Modified 0704-0706 for comprehensive cleanup (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). The 5000 dead code estimate was inflated - actual dead code is ~300-400 lines. Deprecated code (still wired up but marked for removal) is ~1500 lines. Total addressable: ~2000 lines.",
-      "files_affected": ["handovers/0700_series/orchestrator_state.json", "handovers/0700_series/dead_code_audit.md"],
+      "files_affected": [
+        "handovers/0700_series/orchestrator_state.json",
+        "handovers/0700_series/dead_code_audit.md"
+      ],
       "action_required": false,
       "context": {
         "audit_report": "handovers/0700_series/dead_code_audit.md",
         "dead_code_actual": 400,
         "deprecated_code": 1500,
-        "execution_order": ["0701", "0700b", "0700d", "0700c", "0700e", "0700f", "0700g", "0700h", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0711", "0373"]
+        "execution_order": [
+          "0701",
+          "0700b",
+          "0700d",
+          "0700c",
+          "0700e",
+          "0700f",
+          "0700g",
+          "0700h",
+          "0702",
+          "0703",
+          "0704",
+          "0705",
+          "0706",
+          "0707",
+          "0708",
+          "0711",
+          "0373"
+        ]
       }
     },
     {
       "id": "0701-001",
       "timestamp": "2026-02-04T14:30:00Z",
       "from_handover": "0701",
-      "to_handovers": ["0700b", "0700c", "0700d", "0700e", "0700f", "0700g", "0700h"],
+      "to_handovers": [
+        "0700b",
+        "0700c",
+        "0700d",
+        "0700e",
+        "0700f",
+        "0700g",
+        "0700h"
+      ],
       "type": "dependency",
       "subject": "High-risk files identified for careful removal",
       "message": "Dependency analysis complete. 8 HIGH-RISK files with 20+ dependents require careful handling during cleanup: (1) src/giljo_mcp/models/__init__.py - 105 dependents (CRITICAL HUB, never delete), (2) api/app.py - 73 dependents, (3) src/giljo_mcp/database.py - 58 dependents, (4) src/giljo_mcp/auth/dependencies.py - 48 dependents, (5) src/giljo_mcp/models/agent_identity.py - 32 dependents, (6) src/giljo_mcp/tenant.py - 29 dependents, (7) src/giljo_mcp/exceptions.py - 28 dependents, (8) api/dependencies.py - 27 dependents. RECOMMEND removing deprecated code in REVERSE order of dependent count (leaf nodes first). See dependency_analysis.json for full cleanup ordering and dependency_graph.html for interactive exploration.",
-      "files_affected": ["docs/cleanup/dependency_graph.html", "handovers/0700_series/dependency_analysis.json", "handovers/0700_series/dependency_graph_data.json"],
+      "files_affected": [
+        "docs/cleanup/dependency_graph.html",
+        "handovers/0700_series/dependency_analysis.json",
+        "handovers/0700_series/dependency_graph_data.json"
+      ],
       "action_required": true,
       "context": {
         "total_files_scanned": 458,
         "total_import_edges": 763,
         "high_risk_files": [
-          {"path": "src/giljo_mcp/models/__init__.py", "dependents": 105},
-          {"path": "api/app.py", "dependents": 73},
-          {"path": "src/giljo_mcp/database.py", "dependents": 58},
-          {"path": "src/giljo_mcp/auth/dependencies.py", "dependents": 48},
-          {"path": "src/giljo_mcp/models/agent_identity.py", "dependents": 32},
-          {"path": "src/giljo_mcp/tenant.py", "dependents": 29},
-          {"path": "src/giljo_mcp/exceptions.py", "dependents": 28},
-          {"path": "api/dependencies.py", "dependents": 27}
+          {
+            "path": "src/giljo_mcp/models/__init__.py",
+            "dependents": 105
+          },
+          {
+            "path": "api/app.py",
+            "dependents": 73
+          },
+          {
+            "path": "src/giljo_mcp/database.py",
+            "dependents": 58
+          },
+          {
+            "path": "src/giljo_mcp/auth/dependencies.py",
+            "dependents": 48
+          },
+          {
+            "path": "src/giljo_mcp/models/agent_identity.py",
+            "dependents": 32
+          },
+          {
+            "path": "src/giljo_mcp/tenant.py",
+            "dependents": 29
+          },
+          {
+            "path": "src/giljo_mcp/exceptions.py",
+            "dependents": 28
+          },
+          {
+            "path": "api/dependencies.py",
+            "dependents": 27
+          }
         ],
         "cleanup_ordering_available": true
       }
@@ -194,11 +323,23 @@
       "id": "0701-002",
       "timestamp": "2026-02-04T14:30:00Z",
       "from_handover": "0701",
-      "to_handovers": ["0702", "0703", "0704", "0705", "0706", "0707", "0708", "0711"],
+      "to_handovers": [
+        "0702",
+        "0703",
+        "0704",
+        "0705",
+        "0706",
+        "0707",
+        "0708",
+        "0711"
+      ],
       "type": "info",
       "subject": "Orphan modules and circular dependencies detected",
       "message": "Found 271 orphan modules (zero dependents) - these are SAFE to delete first without breaking other code. Includes most API endpoint modules (dynamically loaded via FastAPI router), frontend components, and legacy utilities. Also detected 49 circular dependency cycles - most involve api/app.py <-> auth/__init__.py <-> dependencies.py coupling. These indicate tight coupling that may complicate refactoring. See dependency_graph.html for interactive visualization - use search and filters to explore specific areas. Orphans listed in dependency_analysis.json are prioritized removal candidates.",
-      "files_affected": ["docs/cleanup/dependency_graph.html", "handovers/0700_series/dependency_analysis.json"],
+      "files_affected": [
+        "docs/cleanup/dependency_graph.html",
+        "handovers/0700_series/dependency_analysis.json"
+      ],
       "action_required": false,
       "context": {
         "orphan_modules_count": 271,
@@ -212,7 +353,12 @@
       "id": "0700b-001",
       "timestamp": "2026-02-04T15:00:00Z",
       "from_handover": "0700b",
-      "to_handovers": ["0700c", "0700d", "0700e", "orchestrator"],
+      "to_handovers": [
+        "0700c",
+        "0700d",
+        "0700e",
+        "orchestrator"
+      ],
       "type": "blocker",
       "subject": "ALL 9 deprecated columns are STILL IN ACTIVE USE - cannot remove",
       "message": "CRITICAL BLOCKER: Pre-removal verification (Phase 1) revealed that ALL 9 columns marked for removal in 0700b are STILL ACTIVELY USED in the codebase. The code was marked as deprecated but NEVER MIGRATED to the replacement systems. Removing these columns would cause CATASTROPHIC FAILURES.\n\nVerification Results:\n\n1. instance_number (AgentExecution) - 100+ usages for succession tracking, ordering, queries, unique constraints\n2. decommissioned_at (AgentExecution) - Written in agent_job_manager.py:266/408, project_service.py:2542\n3. succeeded_by (AgentExecution) - Written in orchestrator_succession.py:268, read in 5+ tools\n4. succession_reason (AgentExecution) - Written in orchestrator_succession.py:270\n5. handover_summary (AgentExecution) - Written in orchestrator_succession.py:269\n6. template_content (AgentTemplate) - HEAVILY used by entire template system (seeder, renderer, manager, service)\n7. is_used (DownloadToken) - Written in download_tokens.py:189\n8. downloaded_at (DownloadToken) - Written in download_tokens.py:190\n9. context_budget (Project) - Read in project_service.py (7+ locations), thin_prompt_generator.py\n\nRECOMMENDATION: This handover should be CANCELLED or REDESIGNED. The 0700 series cannot proceed with column removal without first:\n1. Creating migration code to move data to replacement systems\n2. Updating ALL code that reads/writes these columns\n3. Verifying migration completeness with tests\n\nThis is NOT a simple 'purge deprecated columns' task - it requires MIGRATION WORK first.",
@@ -241,7 +387,13 @@
       "id": "0700d-001",
       "timestamp": "2026-02-04T15:00:00Z",
       "from_handover": "0700d",
-      "to_handovers": ["0700e", "0700f", "0700g", "0700h", "orchestrator"],
+      "to_handovers": [
+        "0700e",
+        "0700f",
+        "0700g",
+        "0700h",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "Legacy succession system removed successfully",
       "message": "Deleted api/endpoints/agent_jobs/succession.py (confirmed orphan with 0 dependents by 0701 visualization). Removed 4 succession-related schemas (SuccessionRequest, SuccessionResponse, SuccessionStatusResponse, InitiateHandoverResponse). Stubbed OrchestrationService.trigger_succession() and ThinClientPromptGenerator.generate_execution_prompt() with NotImplementedError for backward compatibility until v4.0 removal. Frontend already uses simple_handover endpoint (verified in ActionIcons.vue and JobsTab.vue). Removed dead triggerSuccession/checkSuccessionStatus/initiateHandover functions from api.js. ~750 lines removed total. All tests passing.",
@@ -258,8 +410,16 @@
       "action_required": false,
       "context": {
         "lines_removed": 750,
-        "schemas_removed": ["SuccessionRequest", "SuccessionResponse", "SuccessionStatusResponse", "InitiateHandoverResponse"],
-        "methods_stubbed": ["OrchestrationService.trigger_succession", "ThinClientPromptGenerator.generate_execution_prompt"],
+        "schemas_removed": [
+          "SuccessionRequest",
+          "SuccessionResponse",
+          "SuccessionStatusResponse",
+          "InitiateHandoverResponse"
+        ],
+        "methods_stubbed": [
+          "OrchestrationService.trigger_succession",
+          "ThinClientPromptGenerator.generate_execution_prompt"
+        ],
         "replacement_system": "simple_handover.py (360 Memory-based)",
         "visualization_confirmation": "succession.py confirmed orphan (0 dependents) by 0701"
       }
@@ -268,7 +428,9 @@
       "id": "orchestrator-002",
       "timestamp": "2026-02-04T15:30:00Z",
       "from_handover": "orchestrator",
-      "to_handovers": ["0700b"],
+      "to_handovers": [
+        "0700b"
+      ],
       "type": "decision",
       "subject": "SCOPE CHANGE: 0700b reframed from migration to purge",
       "message": "STRATEGIC DECISION: Responding to blocker 0700b-001. The 0700b agent correctly identified that all 9 deprecated columns are still actively used. However, the agent misunderstood the mission.\n\nORIGINAL ASSUMPTION (WRONG): 'Columns marked for v4.0 removal need migration work first'\n\nCORRECT UNDERSTANDING: 'There is no v4.0. We ARE v1.0. No external users exist. Delete the columns AND all code that uses them.'\n\nThis is a PURGE, not a MIGRATION. The 0700d handover demonstrated the correct approach - it deleted succession.py AND all related schemas, service methods, and frontend code (~750 lines).\n\nNEW SCOPE FOR 0700b: For each deprecated column:\n1. Delete the column from the model\n2. Delete ALL code that reads/writes to that column\n3. Delete related schemas, endpoints, API responses\n4. Delete related frontend code\n5. Update tests to not use the column\n\nRISK ACKNOWLEDGMENT: This is destructive. If we break something, we can git revert. Fresh install will work because baseline migration won't include these columns.\n\nAUTHORIZATION: The orchestrator (human) has explicitly authorized this purge approach.",
@@ -289,7 +451,11 @@
       "id": "0700b-complete-001",
       "timestamp": "2026-02-04T16:00:00Z",
       "from_handover": "0700b",
-      "to_handovers": ["0700c", "0700e", "orchestrator"],
+      "to_handovers": [
+        "0700c",
+        "0700e",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "0700b COMPLETE: 7 columns purged, 2 deferred",
       "message": "Handover 0700b Database Schema Purge COMPLETED with amended scope (purge + code removal).\n\nCOLUMNS REMOVED (7):\n1. is_used (DownloadToken) - 68 lines deleted\n2. downloaded_at (DownloadToken) - included in above\n3. succession_reason (AgentExecution) - 580 lines deleted with module\n4. handover_summary (AgentExecution) - included in above\n5. decommissioned_at (AgentExecution) - included in above\n6. succeeded_by (AgentExecution) - included in above\n7. context_budget (Project) - 36 lines modified\n\nDEAD MODULE DELETED:\n- src/giljo_mcp/orchestrator_succession.py (378 lines) - Zero production imports, only test usage\n\nDEFERRED COLUMNS (2):\n1. instance_number (AgentExecution) - 161 usages across 30 files, needs dedicated handover\n2. template_content (AgentTemplate) - Deferred to 0700e (Template System Cleanup)\n\nTOTAL IMPACT:\n- Lines deleted: ~1,000 (model columns + dead module + service code + tests)\n- Files modified: 30+\n- Files deleted: 3 (orchestrator_succession.py + 2 test files)\n- Tests updated: 10+\n\nVERIFICATION:\n- All models load successfully\n- Baseline migration updated\n- Zero grep matches for removed columns (excluding AgentExecution.context_budget which is KEPT)",
@@ -334,7 +500,11 @@
       "id": "0700c-001",
       "timestamp": "2026-02-04T17:00:00Z",
       "from_handover": "0700c",
-      "to_handovers": ["0700e", "0700f", "orchestrator"],
+      "to_handovers": [
+        "0700e",
+        "0700f",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "JSONB field cleanup complete - messages and sequential_history removed",
       "message": "Removed AgentExecution.messages JSONB column entirely and Product.product_memory.sequential_history field. Counter columns and ProductMemoryRepository are now authoritative. Verified with grep and model loading. All tests passing.",
@@ -350,16 +520,27 @@
       "action_required": false,
       "context": {
         "lines_removed": 150,
-        "columns_removed": ["AgentExecution.messages", "MCPAgentJob.messages"],
-        "fields_removed": ["Product.product_memory.sequential_history"],
-        "replacement_systems": ["Counter columns", "product_memory_entries table"]
+        "columns_removed": [
+          "AgentExecution.messages",
+          "MCPAgentJob.messages"
+        ],
+        "fields_removed": [
+          "Product.product_memory.sequential_history"
+        ],
+        "replacement_systems": [
+          "Counter columns",
+          "product_memory_entries table"
+        ]
       }
     },
     {
       "id": "0700f-complete-001",
       "timestamp": "2026-02-04T23:50:00Z",
       "from_handover": "0700f",
-      "to_handovers": ["0700g", "orchestrator"],
+      "to_handovers": [
+        "0700g",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "API endpoint deprecation purge complete",
       "message": "Removed deprecated API endpoints and all supporting code. Deleted GET /api/prompts/execution/{orchestrator_job_id} endpoint (184 lines). Removed progress field from MCP report_progress schema (4 lines). Removed deprecated database helper query_with_tenant() (23 lines, 0 production callers, 28 test callers migrated to select().where()). Removed commented endpoint registration from app.py. Also purged supporting code: generate_execution_prompt() stub, _build_multi_terminal_execution_prompt(), _build_claude_code_execution_prompt() from thin_prompt_generator.py (~320 lines). Deleted 4 test files, modified 4 test files. Total ~2,800 lines removed. API imports successfully, zero remaining references to deleted code.",
@@ -385,10 +566,20 @@
       "action_required": false,
       "context": {
         "lines_removed": 2800,
-        "endpoints_removed": ["GET /api/prompts/execution/{orchestrator_job_id}"],
-        "response_fields_removed": ["progress (MCP report_progress schema)"],
-        "database_helpers_removed": ["DatabaseManager.query_with_tenant()"],
-        "methods_removed": ["ThinClientPromptGenerator.generate_execution_prompt()", "ThinClientPromptGenerator._build_multi_terminal_execution_prompt()", "ThinClientPromptGenerator._build_claude_code_execution_prompt()"],
+        "endpoints_removed": [
+          "GET /api/prompts/execution/{orchestrator_job_id}"
+        ],
+        "response_fields_removed": [
+          "progress (MCP report_progress schema)"
+        ],
+        "database_helpers_removed": [
+          "DatabaseManager.query_with_tenant()"
+        ],
+        "methods_removed": [
+          "ThinClientPromptGenerator.generate_execution_prompt()",
+          "ThinClientPromptGenerator._build_multi_terminal_execution_prompt()",
+          "ThinClientPromptGenerator._build_claude_code_execution_prompt()"
+        ],
         "test_files_deleted": 4,
         "test_files_modified": 4,
         "replacement_endpoint": "/api/prompts/staging/{project_id}",
@@ -399,7 +590,10 @@
       "id": "0700e-complete-001",
       "timestamp": "2026-02-05T01:00:00Z",
       "from_handover": "0700e",
-      "to_handovers": ["0700g", "orchestrator"],
+      "to_handovers": [
+        "0700g",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "Template system cleanup complete - template_content purged",
       "message": "Handover 0700e COMPLETE. Purged template_content column from AgentTemplate and TemplateArchive models, removed TemplateManager alias, updated all code across src/, api/, frontend/, migrations/, and tests/.\n\nCOLUMNS REMOVED (2):\n1. AgentTemplate.template_content - Removed from model, all services, API schemas, frontend, seeder, renderer, adapter, validation\n2. TemplateArchive.template_content - Removed from model and archive response schemas\n\nALIAS REMOVED:\n- TemplateManager = UnifiedTemplateManager (template_manager.py:1048-1051)\n\nVERIFICATION:\n- src/: ZERO grep matches\n- api/: ZERO matches (except downloads.py and mcp_installer.py - false positives using local variable)\n- frontend/: ZERO matches\n- migrations/versions/: ZERO matches (archive/ untouched - historical)\n- Models load successfully with correct columns\n- TemplateManager alias confirmed absent\n\nFILES MODIFIED: ~70 across all layers\n- 13 src/ files (template system, services, tools, validation)\n- 5 api/ endpoint files (crud, history, preview, agent_templates, claude_export)\n- 7 frontend/ files (components + test specs)\n- 1 migration file (baseline)\n- ~50 test files (unit, integration, services, tools, performance)\n\nFALSE POSITIVES PRESERVED:\n- api/endpoints/downloads.py - 'template_content' is a local variable for file reading\n- api/endpoints/mcp_installer.py - same pattern\n- tests/test_setup_unit.py, tests/unit/test_mcp_installer_api.py - same pattern\n\nREMAINING ACCEPTABLE REFERENCES:\n- tests/migrations/test_0106_migration_simple.py - Tests historical migration that split template_content\n- tests/IMPLEMENTATION_GUIDE_DOWNLOAD_TOKENS.md - Historical documentation\n- tests/tools/test_agent_discovery_0366c_README.md - Historical documentation\n- migrations/archive/* - Archived historical migrations",
@@ -442,7 +636,10 @@
       "id": "0700g-001",
       "timestamp": "2026-02-05T08:00:00Z",
       "from_handover": "0700g",
-      "to_handovers": ["0700h", "orchestrator"],
+      "to_handovers": [
+        "0700h",
+        "orchestrator"
+      ],
       "type": "info",
       "subject": "Enums and exceptions cleanup complete",
       "message": "Removed 3 unused enum classes (AugmentationType, ArchiveType, InteractionType) and 5 unused exception classes (TemplateValidationError, TemplateRenderError, GitOperationError, GitAuthenticationError, GitRepositoryError). Deleted 5 orphaned frontend files (LaunchSuccessorDialog.vue, SuccessionTimeline.vue, 3 test files). Cleaned up dead tombstone comments in users.py. Cleaned unused imports in template_service.py and test_consolidated_system.py. Cleaned LaunchSuccessorDialog stubs in AgentDisplayName.spec.js.\n\nKEPT: AgentStatus.DECOMMISSIONED - the raw string 'decommissioned' is deeply embedded in 30+ locations including DB constraints, frontend config, services. The enum member itself is not directly referenced via the enum class (code uses raw strings), but removing it would be misleading since it's a valid agent status. This is a larger cleanup if desired (requires migrating all raw strings to use the enum).\n\nKEPT: TemplateError base class (still used as parent of TemplateNotFoundError which IS actively used).",
@@ -467,6 +664,68 @@
         "frontend_tests_deleted": 3,
         "lines_removed": 95,
         "items_kept": "AgentStatus.DECOMMISSIONED (30+ raw string usages), TemplateError base class (parent of TemplateNotFoundError)"
+      }
+    },
+    {
+      "id": "0700h-001",
+      "timestamp": "2026-02-05T07:20:23Z",
+      "from_handover": "0700h",
+      "to_handovers": [
+        "orchestrator"
+      ],
+      "type": "info",
+      "subject": "Final polish complete - 0700 deprecated purge series finished",
+      "message": "Completed final cleanup: 8 vulture findings fixed (unused imports, redundant condition, unreachable code bug in project_service.py), 3 deprecated methods removed (close_project, gil_handover, gil_activate), 5 deprecated schema fields removed (OrchestratorJobResponse.id, retired_agents, TemplatePreviewResponse.mission, messages fields), 3 frontend legacy blocks removed (agents stub, vision API, agentJobs aliases), 6 skipped tests deleted, DEPRECATED marker sweep cleaned all v4.0 references and stale comments, 11 pre-existing duplicate keyword syntax errors fixed in tests. Models load OK, 40 tests pass.",
+      "files_affected": [
+        "api/endpoints/agent_jobs/operations.py",
+        "api/endpoints/agent_jobs/models.py",
+        "api/endpoints/agent_jobs/status.py",
+        "api/endpoints/projects/lifecycle.py",
+        "api/endpoints/projects/models.py",
+        "api/endpoints/projects/status.py",
+        "api/endpoints/prompts.py",
+        "api/endpoints/agent_management.py",
+        "api/endpoints/mcp_tools.py",
+        "api/endpoints/templates/models.py",
+        "api/endpoints/templates/preview.py",
+        "api/schemas/prompt.py",
+        "api/startup/database.py",
+        "frontend/src/services/api.js",
+        "src/giljo_mcp/colored_logger.py",
+        "src/giljo_mcp/download_tokens.py",
+        "src/giljo_mcp/mission_planner.py",
+        "src/giljo_mcp/models/agent_identity.py",
+        "src/giljo_mcp/services/context_service.py",
+        "src/giljo_mcp/services/orchestration_service.py",
+        "src/giljo_mcp/services/project_service.py",
+        "src/giljo_mcp/tools/agent.py",
+        "src/giljo_mcp/tools/template.py",
+        "src/giljo_mcp/tools/tool_accessor.py",
+        "tests/api/test_agent_jobs_api.py",
+        "tests/services/test_orchestration_service_full.py",
+        "tests/services/test_orchestration_service_instructions.py",
+        "tests/test_download_tokens.py",
+        "tests/tools/test_tool_accessor_0358c.py"
+      ],
+      "action_required": false,
+      "context": {
+        "vulture_findings_fixed": 8,
+        "deprecated_markers_remaining": "4 (all instance_number related - dep-016 deferred)",
+        "deprecated_methods_removed": 3,
+        "deprecated_schema_fields_removed": 5,
+        "skipped_tests_deleted": 6,
+        "frontend_legacy_blocks_removed": 3,
+        "syntax_errors_fixed": 11,
+        "lines_removed": 536,
+        "series_total_lines_removed": "~6,100+ (0700a:145, 0700b:1000, 0700c:~150, 0700d:750, 0700e:500, 0700f:2800, 0700g:95, 0700h:536)",
+        "deferred_items": [
+          "dep-016 (instance_number, 161 usages)",
+          "dep-038 (TemplateCreate fields, tied to DB columns)"
+        ],
+        "bugs_fixed": [
+          "project_service.py unreachable code after raise in get_project_summary()"
+        ],
+        "series_complete": true
       }
     }
   ],

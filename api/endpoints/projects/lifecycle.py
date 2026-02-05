@@ -26,7 +26,6 @@ from src.giljo_mcp.services.project_service import ProjectService
 from .dependencies import get_project_service
 from .models import (
     ProjectResponse,
-    StagingCancellationResponse,
     ProjectDeleteResponse,
     ProjectPurgeResponse,
     PurgedProject,
