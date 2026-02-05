@@ -411,7 +411,8 @@ class MessageService:
                         f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
                     )
 
-                return {
+                # Build base response
+                response = {
                     "success": True,
                     "data": {
                         "message_id": message_id,
@@ -419,6 +420,62 @@ class MessageService:
                         "type": message_type,
                     }
                 }
+
+                # Handover 0709b: Detect staging orchestrator broadcast and enrich response
+                # Defense-in-depth Layer 5.5: Reinforced advisory STOP signal for staging completion
+                # Conditions:
+                # 1. Sender is an orchestrator (agent_name == "orchestrator")
+                # 2. Job is in staging phase (status == "waiting")
+                # 3. Message is a broadcast (to_agents resolved to multiple agents or was ['all'])
+                is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == 'all')
+
+                if is_broadcast and from_agent:
+                    # Look up sender's execution to check if this is a staging orchestrator
+                    sender_result = await session.execute(
+                        select(AgentExecution).where(
+                            and_(
+                                AgentExecution.agent_id == from_agent,
+                                AgentExecution.tenant_key == tenant_key
+                            )
+                        ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    )
+                    sender_execution = sender_result.scalar_one_or_none()
+
+                    if sender_execution:
+                        # Look up the job to check agent_name and status
+                        sender_job_result = await session.execute(
+                            select(AgentJob).where(AgentJob.job_id == sender_execution.job_id)
+                        )
+                        sender_job = sender_job_result.scalar_one_or_none()
+
+                        if sender_job:
+                            # Check if this is a staging orchestrator:
+                            # - agent_name is "orchestrator" (on AgentExecution)
+                            # - status is "waiting" (staging phase, not yet acknowledged)
+                            is_orchestrator = sender_execution.agent_name == "orchestrator"
+                            is_staging = sender_execution.status == "waiting"
+
+                            if is_orchestrator and is_staging:
+                                # Enrich response with staging directive
+                                response["staging_directive"] = {
+                                    "status": "STAGING_SESSION_COMPLETE",
+                                    "action": "STOP",
+                                    "message": (
+                                        "STAGING IS COMPLETE. Your session must end NOW. "
+                                        "Do NOT proceed to implementation. Do NOT call Task(). "
+                                        "Do NOT call complete_job() or write_360_memory(). "
+                                        "The user will click 'Implement' in the dashboard to start "
+                                        "a new implementation session with a fresh orchestrator."
+                                    ),
+                                    "implementation_gate": "LOCKED",
+                                    "next_step": "Report staging complete to user and stop."
+                                }
+                                self._logger.info(
+                                    f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
+                                    f"(agent_id={from_agent}, status=waiting)"
+                                )
+
+                return response
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping

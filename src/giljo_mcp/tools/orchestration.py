@@ -439,10 +439,12 @@ def _get_post_staging_behavior(cli_mode: bool) -> dict:
 
     Returns:
         Dict with mode-specific behavior guidance
+
+    Handover 0709b: Mention staging_directive in broadcast response
     """
     return {
-        "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). Implementation happens in separate execution.",
-        "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
+        "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). Implementation happens in separate execution.",
+        "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
     }
 
 
@@ -452,6 +454,8 @@ def _get_required_final_action() -> dict:
 
     Returns:
         Dict with required broadcast action for enabling Implement button
+
+    Handover 0709b: Broadcast response enriched with staging_directive
     """
     return {
         "action": "send_message",
@@ -461,6 +465,7 @@ def _get_required_final_action() -> dict:
             "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned",
         },
         "why": "Enables Implement button in UI - REQUIRED",
+        "response_note": "Server returns staging_directive field with STOP action when this broadcast succeeds",
     }
 
 
@@ -678,6 +683,10 @@ Call: send_message(
 Note: tenant_key auto-injected by server from API key session
 
 This broadcast enables the "Implement" button in UI (REQUIRED)
+
+The server will confirm staging completion in the response with a
+`staging_directive` field containing status: "STAGING_SESSION_COMPLETE".
+When you receive this directive, your session is DONE. Stop immediately.
 
 ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
    Your session is done. Implementation happens in a new session.
