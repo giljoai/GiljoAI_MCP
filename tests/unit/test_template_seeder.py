@@ -125,8 +125,8 @@ class TestTemplateSeederDualField:
         assert "reviewer" in user_instructions_by_role["reviewer"].lower() or "review" in user_instructions_by_role["reviewer"].lower()
         assert "documenter" in user_instructions_by_role["documenter"].lower() or "documentation" in user_instructions_by_role["documenter"].lower()
 
-    async def test_legacy_template_content_preserved(self, db_session: AsyncSession):
-        """Verify template_content = system + user for backward compatibility."""
+    async def test_system_instructions_populated(self, db_session: AsyncSession):
+        """Verify system_instructions populated correctly."""
         tenant_key = "test_tenant_legacy"
 
         # Seed templates
@@ -138,17 +138,17 @@ class TestTemplateSeederDualField:
         )
         templates = result.scalars().all()
 
-        # Verify legacy field preserved for backward compatibility
+        # Verify system_instructions field populated
         for template in templates:
-            # template_content should be user_instructions + system_instructions
-            expected_content = f"{template.user_instructions}\n\n{template.system_instructions}"
+            # system_instructions should be populated
+            assert template.system_instructions, f"Template {template.role} should have system_instructions"
 
-            # Remove extra whitespace for comparison
-            actual = template.template_content.strip()
-            expected = expected_content.strip()
+            # Check content is reasonable
+            actual = template.system_instructions.strip()
+            assert len(actual) > 0, f"Template {template.role} system_instructions should not be empty"
 
             assert actual == expected, (
-                f"{template.role} template_content doesn't match system + user\n"
+                f"{template.role} system_instructions doesn't match system + user\n"
                 f"Expected: {expected[:100]}...\n"
                 f"Actual: {actual[:100]}..."
             )
@@ -266,7 +266,7 @@ class TestTemplateSeederDualField:
             description="Test template",
             system_instructions="Test system instructions",
             user_instructions=None,  # NULL allowed
-            template_content="Test content",
+            system_instructions="Test content",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -392,7 +392,7 @@ class TestDefaultTemplatesV103:
             "cli_tool",
             "background_color",
             "description",
-            "template_content",
+            "system_instructions",
             "model",
             "behavioral_rules",
             "success_criteria",
@@ -407,13 +407,13 @@ class TestDefaultTemplatesV103:
 
             assert not missing_fields, f"{template['role']} missing fields: {missing_fields}"
 
-    def test_template_content_not_empty(self):
-        """Verify template_content is not empty for all roles."""
+    def test_system_instructions_not_empty(self):
+        """Verify system_instructions is not empty for all roles."""
         templates = _get_default_templates_v103()
 
         for template in templates:
-            assert template["template_content"], f"{template['role']} has empty template_content"
-            assert len(template["template_content"]) > 100, f"{template['role']} template_content too short"
+            assert template["system_instructions"], f"{template['role']} has empty system_instructions"
+            assert len(template["system_instructions"]) > 100, f"{template['role']} system_instructions too short"
 
     def test_behavioral_rules_not_empty(self):
         """Verify behavioral_rules is not empty for all roles."""
