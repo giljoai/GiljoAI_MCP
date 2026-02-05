@@ -354,6 +354,46 @@
         "fields_removed": ["Product.product_memory.sequential_history"],
         "replacement_systems": ["Counter columns", "product_memory_entries table"]
       }
+    },
+    {
+      "id": "0700f-complete-001",
+      "timestamp": "2026-02-04T23:50:00Z",
+      "from_handover": "0700f",
+      "to_handovers": ["0700g", "orchestrator"],
+      "type": "info",
+      "subject": "API endpoint deprecation purge complete",
+      "message": "Removed deprecated API endpoints and all supporting code. Deleted GET /api/prompts/execution/{orchestrator_job_id} endpoint (184 lines). Removed progress field from MCP report_progress schema (4 lines). Removed deprecated database helper query_with_tenant() (23 lines, 0 production callers, 28 test callers migrated to select().where()). Removed commented endpoint registration from app.py. Also purged supporting code: generate_execution_prompt() stub, _build_multi_terminal_execution_prompt(), _build_claude_code_execution_prompt() from thin_prompt_generator.py (~320 lines). Deleted 4 test files, modified 4 test files. Total ~2,800 lines removed. API imports successfully, zero remaining references to deleted code.",
+      "files_affected": [
+        "api/endpoints/prompts.py",
+        "api/endpoints/mcp_http.py",
+        "api/app.py",
+        "src/giljo_mcp/database.py",
+        "src/giljo_mcp/thin_prompt_generator.py",
+        "frontend/src/services/api.js",
+        "frontend/src/services/api.spec.js",
+        "tests/services/test_thin_prompt_generator_deprecation.py (DELETED)",
+        "tests/thin_prompt/test_execution_prompt_simple.py (DELETED)",
+        "tests/unit/test_claude_code_execution_prompt.py (DELETED)",
+        "tests/api/test_prompts_execution_mode.py (DELETED)",
+        "tests/integration/test_prompts_api.py",
+        "tests/test_thin_prompt_generator.py",
+        "tests/test_multi_tenant_comprehensive.py",
+        "tests/test_tenant_isolation.py",
+        "tests/test_tenant_isolation_demo.py",
+        "tests/database/test_metadata_migration.py"
+      ],
+      "action_required": false,
+      "context": {
+        "lines_removed": 2800,
+        "endpoints_removed": ["GET /api/prompts/execution/{orchestrator_job_id}"],
+        "response_fields_removed": ["progress (MCP report_progress schema)"],
+        "database_helpers_removed": ["DatabaseManager.query_with_tenant()"],
+        "methods_removed": ["ThinClientPromptGenerator.generate_execution_prompt()", "ThinClientPromptGenerator._build_multi_terminal_execution_prompt()", "ThinClientPromptGenerator._build_claude_code_execution_prompt()"],
+        "test_files_deleted": 4,
+        "test_files_modified": 4,
+        "replacement_endpoint": "/api/prompts/staging/{project_id}",
+        "replacement_progress": "todo_items field"
+      }
     }
   ],
   "schema": {
