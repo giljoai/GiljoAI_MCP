@@ -76,14 +76,6 @@ class TemplateNotFoundError(TemplateError):
     default_status_code: int = 404
 
 
-class TemplateValidationError(TemplateError):
-    """Raised when template validation fails."""
-
-
-class TemplateRenderError(TemplateError):
-    """Raised when template rendering fails."""
-
-
 # Orchestration related exceptions
 class OrchestrationError(BaseGiljoException):
     """Base class for orchestration-related errors."""
@@ -136,19 +128,6 @@ class SchemaValidationError(ValidationError):
 
 class DataValidationError(ValidationError):
     """Raised when data validation fails."""
-
-
-# Git operations exceptions
-class GitOperationError(BaseGiljoException):
-    """Base class for Git operation errors."""
-
-
-class GitAuthenticationError(GitOperationError):
-    """Raised when Git authentication fails."""
-
-
-class GitRepositoryError(GitOperationError):
-    """Raised when Git repository operations fail."""
 
 
 # Queue related exceptions
