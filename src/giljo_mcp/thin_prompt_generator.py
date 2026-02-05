@@ -754,7 +754,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             for obj in objectives[:3]:  # Limit to top 3 objectives
                 memory_lines.append(f"- {obj}")
 
-        memory_lines.append("\nAccess via: product_memory.sequential_history and product_memory.context")
+        memory_lines.append("\nAccess via: fetch_context(categories=['memory_360']) MCP tool")
 
         return "\n".join(memory_lines)
 
