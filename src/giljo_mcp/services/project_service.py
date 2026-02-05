@@ -1471,70 +1471,70 @@ class ProjectService:
                     context={"project_id": project_id}
                 )
 
-                # Get job counts by status (migrated to AgentExecution - Handover 0367a)
-                job_counts_result = await session.execute(
-                    select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
-                        )
-                    )
-                    .group_by(AgentExecution.status)
-                )
-                job_counts_raw = job_counts_result.all()
-
-                # Build job counts dict
-                job_counts = {status: count for status, count in job_counts_raw}
-
-                total_jobs = sum(job_counts.values())
-                completed_jobs = job_counts.get("completed", 0)
-                failed_jobs = job_counts.get("failed", 0)
-                active_jobs = job_counts.get("active", 0)
-                pending_jobs = job_counts.get("pending", 0)
-
-                # Calculate completion percentage
-                completion_percentage = 0.0
-                if total_jobs > 0:
-                    completion_percentage = (completed_jobs / total_jobs) * 100.0
-
-                # Get last activity timestamp (migrated to AgentExecution - Handover 0367a)
-                last_activity_result = await session.execute(
-                    select(
-                        func.greatest(
-                            func.max(AgentExecution.completed_at),
-                            func.max(AgentExecution.started_at),
-                            func.max(AgentExecution.last_progress_at),
-                        )
-                    )
-                    .select_from(AgentExecution)
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        and_(
-                            AgentJob.project_id == project_id,
-                            AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
-                        )
+            # Get job counts by status (migrated to AgentExecution - Handover 0367a)
+            job_counts_result = await session.execute(
+                select(AgentExecution.status, func.count(AgentExecution.agent_id).label("count"))
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
+                    and_(
+                        AgentJob.project_id == project_id,
+                        AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
                     )
                 )
-                last_activity_at = last_activity_result.scalar()
+                .group_by(AgentExecution.status)
+            )
+            job_counts_raw = job_counts_result.all()
 
-                # Get product info
-                product_name = ""
-                if project.product_id:
-                    from giljo_mcp.models.products import Product
+            # Build job counts dict
+            job_counts = {status: count for status, count in job_counts_raw}
 
-                    product_result = await session.execute(
-                        select(Product).where(
-                            and_(
-                                Product.id == project.product_id,
-                                Product.tenant_key == self.tenant_manager.get_current_tenant(),
-                            )
+            total_jobs = sum(job_counts.values())
+            completed_jobs = job_counts.get("completed", 0)
+            failed_jobs = job_counts.get("failed", 0)
+            active_jobs = job_counts.get("active", 0)
+            pending_jobs = job_counts.get("pending", 0)
+
+            # Calculate completion percentage
+            completion_percentage = 0.0
+            if total_jobs > 0:
+                completion_percentage = (completed_jobs / total_jobs) * 100.0
+
+            # Get last activity timestamp (migrated to AgentExecution - Handover 0367a)
+            last_activity_result = await session.execute(
+                select(
+                    func.greatest(
+                        func.max(AgentExecution.completed_at),
+                        func.max(AgentExecution.started_at),
+                        func.max(AgentExecution.last_progress_at),
+                    )
+                )
+                .select_from(AgentExecution)
+                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .where(
+                    and_(
+                        AgentJob.project_id == project_id,
+                        AgentJob.tenant_key == self.tenant_manager.get_current_tenant(),
+                    )
+                )
+            )
+            last_activity_at = last_activity_result.scalar()
+
+            # Get product info
+            product_name = ""
+            if project.product_id:
+                from giljo_mcp.models.products import Product
+
+                product_result = await session.execute(
+                    select(Product).where(
+                        and_(
+                            Product.id == project.product_id,
+                            Product.tenant_key == self.tenant_manager.get_current_tenant(),
                         )
                     )
-                    product = product_result.scalar_one_or_none()
-                    if product:
-                        product_name = product.name
+                )
+                product = product_result.scalar_one_or_none()
+                if product:
+                    product_name = product.name
 
             # Build summary response
             return {

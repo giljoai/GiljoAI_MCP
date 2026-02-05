@@ -141,11 +141,7 @@ class AgentExecution(Base):
     Represents the WHO (which agent instance is executing).
 
     Handover 0461b DEPRECATION NOTICE:
-    The following columns are deprecated and will be removed in v4.0:
-    - instance_number: Use single instance per agent
-
-    NOTE: The `messages` JSONB column is also DEPRECATED (Handover 0387i).
-    Use `messages_sent_count`, `messages_waiting_count`, `messages_read_count` instead.
+    - instance_number: Marked for removal. Use single instance per agent.
 
     Relationships:
     - job: Many executions → One job (work order)
@@ -181,7 +177,7 @@ class AgentExecution(Base):
         Integer,
         default=1,
         nullable=False,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use single instance per agent.",
+        comment="DEPRECATED (Handover 0461b): Marked for removal. Use single instance per agent.",
     )
 
     # Execution lifecycle
@@ -264,7 +260,6 @@ class AgentExecution(Base):
         comment="Maximum context window budget in tokens",
     )
 
-    # DEPRECATED (Handover 0387i): This column is no longer used.
     # Message counter columns (Handover 0387e - AUTHORITATIVE)
     # Note: JSONB messages column removed in Handover 0700c
     messages_sent_count = Column(

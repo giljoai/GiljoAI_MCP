@@ -24,7 +24,6 @@ from api.schemas.prompt import (
     AgentPromptResponse,
     OrchestratorPromptRequest,
     OrchestratorPromptResponse,
-    ThinPromptResponse,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Project, User

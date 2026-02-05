@@ -8,7 +8,7 @@ Responsibilities:
 - Context document indexing (placeholder/stub functionality)
 - Vision document management (placeholder/stub functionality)
 - Product settings retrieval
-- Context discovery (deprecated - returns error messages)
+- Context discovery (stub - returns error messages)
 
 Design Principles:
 - Single Responsibility: Only context domain logic
@@ -17,8 +17,8 @@ Design Principles:
 - Error Handling: Consistent exception handling and logging
 - Testability: Can be unit tested independently
 
-Note: Many methods in this service are currently stubs or deprecated.
-They are kept for backward compatibility and will be removed in v3.2.0.
+Note: Many methods in this service are currently stubs.
+The thin client architecture (Handover 0088) provides context via MCP tools.
 """
 
 import logging
@@ -36,8 +36,8 @@ class ContextService:
     Service for managing context and vision documents.
 
     This service handles context-related operations. Note that many
-    methods are currently stubs or deprecated as the thin client
-    architecture (Handover 0088) provides context via other means.
+    methods are currently stubs as the thin client architecture
+    (Handover 0088) provides context via MCP tools.
 
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """

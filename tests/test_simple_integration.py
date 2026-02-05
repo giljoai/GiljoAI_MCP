@@ -78,7 +78,7 @@ async def simple_test():
             return False
 
         # Clean up
-        await tool_accessor.close_project(project_id, "Test complete")
+        await tool_accessor.complete_project(project_id, "Test complete")
 
         return True
 
