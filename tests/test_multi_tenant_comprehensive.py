@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from sqlalchemy import select
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -114,25 +115,25 @@ class TestMultiTenantIsolation:
         for tenant_key, data in tenant_data.items():
             with db_manager.get_tenant_session(tenant_key) as session:
                 # Check projects
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
                 assert len(projects) == 1
                 assert projects[0].id == data["project_id"]
                 assert projects[0].name == data["project_name"]
 
                 # Check agents
-                agents = db_manager.query_with_tenant(session, Agent, tenant_key).all()
+                agents = session.execute(select(Agent).where(Agent.tenant_key == tenant_key)).scalars().all()
                 assert len(agents) == data["agent_count"]
                 for agent in agents:
                     assert agent.tenant_key == tenant_key
 
                 # Check messages
-                messages = db_manager.query_with_tenant(session, Message, tenant_key).all()
+                messages = session.execute(select(Message).where(Message.tenant_key == tenant_key)).scalars().all()
                 assert len(messages) == data["message_count"]
                 for message in messages:
                     assert message.tenant_key == tenant_key
 
                 # Check tasks
-                tasks = db_manager.query_with_tenant(session, Task, tenant_key).all()
+                tasks = session.execute(select(Task).where(Task.tenant_key == tenant_key)).scalars().all()
                 assert len(tasks) == data["task_count"]
                 for task in tasks:
                     assert task.tenant_key == tenant_key
@@ -208,12 +209,12 @@ class TestMultiTenantIsolation:
         for tenant_key, project_ids in results.items():
             with db_manager.get_tenant_session(tenant_key) as session:
                 # Check projects
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
                 assert len(projects) == projects_per_tenant
                 assert {p.id for p in projects} == set(project_ids)
 
                 # Check agents (2 per project)
-                agents = db_manager.query_with_tenant(session, Agent, tenant_key).all()
+                agents = session.execute(select(Agent).where(Agent.tenant_key == tenant_key)).scalars().all()
                 assert len(agents) == projects_per_tenant * 2
 
                 # Verify all belong to this tenant
@@ -378,7 +379,7 @@ class TestMultiTenantIsolation:
             start_time = time.perf_counter()
 
             with db_manager.get_tenant_session(tenant_key) as session:
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
                 assert len(projects) == 1
 
             query_time = time.perf_counter() - start_time
@@ -407,7 +408,7 @@ class TestMultiTenantIsolation:
             counts = {"agents_created": 0, "messages_sent": 0, "tasks_created": 0, "queries_executed": 0}
 
             with db_manager.get_tenant_session(tenant_key) as session:
-                project = db_manager.query_with_tenant(session, Project, tenant_key).first()
+                project = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().first()
 
                 for i in range(operations_per_tenant):
                     operation = random.choice(["create_agent", "send_message", "create_task", "query"])
@@ -449,7 +450,7 @@ class TestMultiTenantIsolation:
                         counts["tasks_created"] += 1
 
                     else:  # query
-                        db_manager.query_with_tenant(session, Agent, tenant_key).limit(10).all()
+                        session.execute(select(Agent).where(Agent.tenant_key == tenant_key).limit(10)).scalars().all()
                         counts["queries_executed"] += 1
 
                     if i % 10 == 0:
@@ -483,9 +484,9 @@ class TestMultiTenantIsolation:
         for tenant_key in tenant_keys:
             with db_manager.get_tenant_session(tenant_key) as session:
                 # All data should belong to this tenant only
-                agents = db_manager.query_with_tenant(session, Agent, tenant_key).all()
-                messages = db_manager.query_with_tenant(session, Message, tenant_key).all()
-                tasks = db_manager.query_with_tenant(session, Task, tenant_key).all()
+                agents = session.execute(select(Agent).where(Agent.tenant_key == tenant_key)).scalars().all()
+                messages = session.execute(select(Message).where(Message.tenant_key == tenant_key)).scalars().all()
+                tasks = session.execute(select(Task).where(Task.tenant_key == tenant_key)).scalars().all()
 
                 for agent in agents:
                     assert agent.tenant_key == tenant_key
