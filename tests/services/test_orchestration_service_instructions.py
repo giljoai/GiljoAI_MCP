@@ -465,29 +465,6 @@ class TestCreateSuccessorOrchestrator:
         assert "already completed" in result["error"]
 
 
-# ============================================================================
-# TestCheckSuccessionStatus
-# ============================================================================
-
-
-@pytest.mark.skip(reason="Test class removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
-class TestCheckSuccessionStatus:
-    """
-    DEPRECATED: This test class tested check_succession_status() which was removed in Handover 0461a.
-    Succession is now manual-only via UI or /gil_handover command.
-    """
-
-    @pytest.mark.asyncio
-    async def test_placeholder(self):
-        """Placeholder to prevent pytest collection errors."""
-        pass
-
-
-# NOTE: The following tests were removed in Handover 0461a:
-# - test_returns_context_metrics
-# - test_returns_recommendation (healthy, monitor, prepare, trigger scenarios)
-# - test_should_trigger_at_90_percent
-# All tested the deleted check_succession_status() method.
 
 # ============================================================================
 # TestUpdateAgentMission

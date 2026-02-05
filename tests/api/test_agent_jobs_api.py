@@ -681,92 +681,9 @@ class TestAgentJobStatus:
 class TestAgentJobOperations:
     """Test operation controls: cancel, force-fail, health"""
 
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture means agents only see cancellation on next poll")
-    async def test_cancel_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
-        """Test successful job cancellation."""
-        job_id = tenant_a_agent_job["job_id"]
 
-        # Acknowledge job first (can only cancel active jobs)
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
 
-        # Cancel job
-        response = await api_client.post(
-            f"/api/jobs/{job_id}/cancel",
-            json={"reason": "User requested cancellation"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["job_id"] == job_id
-        assert data["status"] in ["cancelling", "cancelled"]
-        assert "cancel" in data["message"].lower()
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture")
-    async def test_cancel_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
-        """Test cancelling non-existent job returns 404."""
-        fake_job_id = str(uuid4())
-
-        response = await api_client.post(
-            f"/api/jobs/{fake_job_id}/cancel",
-            json={"reason": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="force-fail endpoint removed - use project-level cancel or Ctrl+C in terminal")
-    async def test_force_fail_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
-        """Test successful force-fail operation."""
-        job_id = tenant_a_agent_job["job_id"]
-
-        # Acknowledge job first
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        # Force-fail job
-        response = await api_client.post(
-            f"/api/jobs/{job_id}/force-fail",
-            json={"reason": "Job unresponsive"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["job_id"] == job_id
-        assert data["status"] == "failed"
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="force-fail endpoint removed - use project-level cancel or Ctrl+C in terminal")
-    async def test_force_fail_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
-        """Test force-failing non-existent job returns 404."""
-        fake_job_id = str(uuid4())
-
-        response = await api_client.post(
-            f"/api/jobs/{fake_job_id}/force-fail",
-            json={"reason": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_get_job_health_happy_path(

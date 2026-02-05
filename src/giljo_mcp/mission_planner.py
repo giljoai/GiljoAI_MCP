@@ -6,13 +6,9 @@ Achieves context prioritization and orchestration through intelligent context fi
 
 Phase 1 Implementation: Template-based analysis (no LLM calls)
 
-⚠️  IMPORTANT - Product Vision Field Migration (Handover 0128e):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This file has been migrated to use Product.vision_documents relationship.
-DO NOT use deprecated Product fields (vision_path, vision_document, vision_type, chunked).
-✅ Use: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
+Product Vision: Uses Product.vision_documents relationship (Handover 0128e).
+Access via: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
 See: src/giljo_mcp/models/products.py for helper properties
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import logging

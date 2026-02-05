@@ -24,9 +24,6 @@ Usage:
     # Validate token
     is_valid = await manager.validate_token(token, tenant_key)
 
-    # Mark as used
-    await manager.mark_as_used(token)
-
     # Cleanup expired
     deleted_count = await manager.cleanup_expired_tokens()
 """
@@ -156,23 +153,6 @@ class TokenManager:
         except Exception as e:
             logger.error(f"Error validating token: {e}")
             return False
-
-    async def mark_as_used(self, token: str) -> bool:
-        """
-        DEPRECATED: No longer marks tokens as used (soft delete).
-
-        This method is kept for backward compatibility but does nothing.
-        Token usage is now tracked via download_count and last_downloaded_at
-        in record_download() method.
-
-        Args:
-            token: UUID token string
-
-        Returns:
-            bool: Always returns True for compatibility
-        """
-        logger.debug(f"mark_as_used() called for token {token} - DEPRECATED, no action taken")
-        return True
 
     async def cleanup_expired_tokens(self) -> int:
         """

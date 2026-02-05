@@ -113,7 +113,6 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
             role=template_data["role"],
             category="role",
             description=template_data["description"],
-            system_instructions=f"Template for {template_data['name']}",
             system_instructions=f"System instructions for {template_data['name']}",
             meta_data=template_data["meta_data"]
         )
@@ -205,7 +204,6 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
         role="Backend implementation specialist",
         category="role",
         description="Full metadata template",
-        system_instructions="Template content",
         system_instructions="System instructions",
         meta_data={
             "capabilities": ["Python", "FastAPI"],
@@ -339,7 +337,6 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
         role="Backend implementation specialist",
         category="role",
         description="Template for token accounting test",
-        system_instructions="Substantial template content for token counting",
         system_instructions="Detailed system instructions for token accounting",
         meta_data={
             "capabilities": ["Python", "FastAPI", "SQLAlchemy", "PostgreSQL"],
@@ -442,7 +439,6 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         role="Tenant A Specialist",
         category="role",
         description="Tenant A exclusive agent",
-        system_instructions="Tenant A template",
         system_instructions="Tenant A system instructions",
         meta_data={"capabilities": ["Tenant A Skill"]}
     )
@@ -466,7 +462,6 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         role="Tenant B Specialist",
         category="role",
         description="Tenant B exclusive agent",
-        system_instructions="Tenant B template",
         system_instructions="Tenant B system instructions",
         meta_data={"capabilities": ["Tenant B Skill"]}
     )
@@ -546,7 +541,6 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         role="Backend implementation specialist",
         category="role",
         description="Default priority test template",
-        system_instructions="Template content",
         system_instructions="System instructions",
         meta_data={
             "capabilities": ["Python", "FastAPI"],

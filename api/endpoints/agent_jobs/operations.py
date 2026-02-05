@@ -33,8 +33,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .dependencies import get_db_manager, get_tenant_manager
 from .models import (
-    ForceFailJobRequest,
-    ForceFailJobResponse,
     JobHealthResponse,
     UpdateMissionRequest,
     UpdateMissionResponse,

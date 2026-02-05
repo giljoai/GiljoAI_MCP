@@ -129,7 +129,6 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
             role=template_data["role"],
             category="role",
             description=template_data["description"],
-            system_instructions=f"Template content for {template_data['name']}",
             system_instructions=f"System instructions for {template_data['name']}",
             meta_data=template_data["meta_data"],
             is_active=True
