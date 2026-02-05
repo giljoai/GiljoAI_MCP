@@ -189,10 +189,9 @@ class ProductService:
                     )
 
                 # Create product
-                # Handover 0135: Initialize product_memory with default structure
+                # Handover 0135 + 0700c: Initialize product_memory (history in table)
                 default_memory = {
                     "github": {},
-                    "sequential_history": [],
                     "context": {},
                 }
 
@@ -1177,9 +1176,9 @@ class ProductService:
                         context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
-                # Ensure product_memory exists
+                # Ensure product_memory exists (history is in table, not JSONB)
                 if not product.product_memory:
-                    product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
+                    product.product_memory = {"git_integration": {}, "context": {}}
 
                 # Update Git integration settings
                 if enabled:
@@ -1605,12 +1604,11 @@ class ProductService:
 
         Example:
             >>> await self._ensure_product_memory_initialized(session, product)
-            >>> assert product.product_memory == {"github": {}, "sequential_history": [], "context": {}}
+            >>> assert product.product_memory == {"github": {}, "context": {}}
         """
-        # Default structure per Handover 0135
+        # Default structure per Handover 0135 + 0700c (history in table)
         default_structure = {
             "github": {},
-            "sequential_history": [],
             "context": {},
         }
 
@@ -1709,141 +1707,6 @@ class ProductService:
             "vision_documents_count": vision_documents_count,
             "has_vision": vision_documents_count > 0,
         }
-
-    def _validate_history_entry(self, entry: dict[str, Any]) -> None:
-        """
-        Validate sequential_history entry structure.
-
-        DEPRECATED (Handover 0390d): This method validates JSONB entries which are deprecated.
-        Use ProductMemoryRepository for table-based operations instead.
-        This method will be removed in v4.0.
-
-        Args:
-            entry: History entry dict to validate
-
-        Raises:
-            ValueError: If entry structure is invalid
-        """
-        import warnings
-        warnings.warn(
-            "_validate_history_entry is deprecated. Use ProductMemoryRepository instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if not isinstance(entry, dict):
-            raise ValueError("History entry must be a dictionary")
-
-        # Required fields
-        required_fields = {"type", "timestamp"}
-        missing = required_fields - set(entry.keys())
-        if missing:
-            raise ValueError(f"History entry missing required fields: {missing}")
-
-        # Validate type field (warn if unknown type)
-        valid_types = {"project_closeout", "manual_entry", "import"}
-        if entry.get("type") not in valid_types:
-            self._logger.warning(
-                f"Unknown history entry type: {entry.get('type')}",
-                extra={"entry_type": entry.get("type"), "valid_types": list(valid_types)},
-            )
-
-    async def add_learning_to_product_memory(
-        self,
-        session: AsyncSession,
-        product_id: str,
-        learning_entry: dict[str, Any],
-    ) -> Product:
-        """
-        Add history entry to product_memory.sequential_history (Handover 0138+).
-
-        DEPRECATED (Handover 0390d): This method writes to JSONB which is deprecated.
-        Use ProductMemoryRepository.create_entry() for table-based operations instead.
-        This method will be removed in v4.0.
-
-        This helper method provides a clean interface for adding learning entries
-        to product memory. It handles:
-        - Auto-incrementing sequence numbers
-        - SQLAlchemy change detection (creates new dict)
-        - Ensures product_memory is initialized
-
-        Args:
-            session: Async database session
-            product_id: Product UUID
-            learning_entry: History entry dict (without sequence - will be auto-assigned)
-
-        Returns:
-            Updated Product instance
-
-        Raises:
-            ValueError: If product not found or learning_entry invalid
-
-        Example:
-            >>> learning = {
-            ...     "type": "project_closeout",
-            ...     "project_id": "abc-123",
-            ...     "summary": "Implemented auth",
-            ...     "timestamp": "2025-11-16T10:00:00Z"
-            ... }
-            >>> product = await service.add_learning_to_product_memory(
-            ...     session, product_id, learning
-            ... )
-            >>> assert product.product_memory["sequential_history"][-1]["sequence"] == 1
-        """
-        import warnings
-        warnings.warn(
-            "add_learning_to_product_memory is deprecated. Use ProductMemoryRepository.create_entry() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        # Fetch product
-        query = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == self.tenant_key,
-        )
-        result = await session.execute(query)
-        product = result.scalar_one_or_none()
-
-        if not product:
-            raise ValueError(f"Product {product_id} not found")
-
-        # Ensure product_memory initialized
-        await self._ensure_product_memory_initialized(session, product)
-
-        # Calculate next sequence number
-        existing_history = product.product_memory.get("sequential_history", [])
-        next_sequence = 1
-        if existing_history:
-            max_sequence = max(entry.get("sequence", 0) for entry in existing_history)
-            next_sequence = max_sequence + 1
-
-        # Validate entry structure before adding (Handover 0248a Task 2)
-        self._validate_history_entry(learning_entry)
-
-        # Add sequence to learning entry
-        learning_with_sequence = {**learning_entry, "sequence": next_sequence}
-
-        # Append to sequential_history (create new dict for SQLAlchemy change detection)
-        updated_memory = dict(product.product_memory)
-        updated_history = list(updated_memory.get("sequential_history", []))
-        updated_history.append(learning_with_sequence)
-        updated_memory["sequential_history"] = updated_history
-        product.product_memory = updated_memory
-
-        # Update timestamp
-        product.updated_at = datetime.now(timezone.utc)
-
-        # Commit changes to database
-        await session.commit()
-        await session.refresh(product)
-
-        self._logger.info(f"Added learning entry (sequence {next_sequence}) to product {product_id}")
-
-        # Handover 0139a: Emit WebSocket event for history addition
-        await self._emit_websocket_event(
-            event_type="product:history:added", data={"product_id": product_id, "history": learning_with_sequence}
-        )
-
-        return product
 
     async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> dict[str, Any]:
         """

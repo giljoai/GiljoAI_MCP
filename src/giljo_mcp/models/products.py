@@ -114,15 +114,13 @@ class Product(Base):
         comment="Rich project configuration: architecture, tech_stack, features, etc.",
     )
 
-    # 360 Memory Management storage (Handover 0135)
+    # 360 Memory Management storage (Handover 0135, updated 0700c)
+    # Note: sequential_history removed in 0700c - use product_memory_entries table
     product_memory = Column(
         JSONB,
         nullable=False,
-        server_default=text("'{\"github\": {}, \"sequential_history\": [], \"context\": {}}'::jsonb"),
-        comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED "
-            "as of v3.3 (Handover 0390). Use product_memory_entries table instead. "
-            "Only 'git_integration' config remains in use. "
-            "WILL BE MODIFIED in v4.0 to remove sequential_history.",
+        server_default=text("'{\"github\": {}, \"context\": {}}'::jsonb"),
+        comment="Product memory config storage. Contains git_integration settings only.",
     )
 
     # Consolidated vision summaries (Handover 0377)
@@ -237,10 +235,10 @@ class Product(Base):
         if not self.product_memory:
             return False
         # Consider it populated if any top-level key has data beyond empty defaults
+        # Note: sequential_history moved to product_memory_entries table (0700c)
         has_github = bool(self.product_memory.get("github", {}))
-        has_history = len(self.product_memory.get("sequential_history", [])) > 0
         has_context = bool(self.product_memory.get("context", {}))
-        return has_github or has_history or has_context
+        return has_github or has_context
 
     def get_memory_field(self, field_path: str, default: Any = None) -> Any:
         """
@@ -258,8 +256,8 @@ class Product(Base):
             True
             >>> product.get_memory_field('github.repo_url')
             'https://github.com/user/repo'
-            >>> product.get_memory_field('sequential_history')
-            [{"timestamp": "...", "summary": "..."}]
+            >>> product.get_memory_field('context.summary')
+            'A product management system'
         """
         if not self.product_memory:
             return default
