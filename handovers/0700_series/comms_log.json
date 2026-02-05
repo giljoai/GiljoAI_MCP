@@ -394,7 +394,7 @@
         "replacement_endpoint": "/api/prompts/staging/{project_id}",
         "replacement_progress": "todo_items field"
       }
-    }
+    },
     {
       "id": "0700e-complete-001",
       "timestamp": "2026-02-05T01:00:00Z",
@@ -436,6 +436,37 @@
         "lines_removed": 500,
         "false_positives_preserved": 4,
         "blocking_0700g": false
+      }
+    },
+    {
+      "id": "0700g-001",
+      "timestamp": "2026-02-05T08:00:00Z",
+      "from_handover": "0700g",
+      "to_handovers": ["0700h", "orchestrator"],
+      "type": "info",
+      "subject": "Enums and exceptions cleanup complete",
+      "message": "Removed 3 unused enum classes (AugmentationType, ArchiveType, InteractionType) and 5 unused exception classes (TemplateValidationError, TemplateRenderError, GitOperationError, GitAuthenticationError, GitRepositoryError). Deleted 5 orphaned frontend files (LaunchSuccessorDialog.vue, SuccessionTimeline.vue, 3 test files). Cleaned up dead tombstone comments in users.py. Cleaned unused imports in template_service.py and test_consolidated_system.py. Cleaned LaunchSuccessorDialog stubs in AgentDisplayName.spec.js.\n\nKEPT: AgentStatus.DECOMMISSIONED - the raw string 'decommissioned' is deeply embedded in 30+ locations including DB constraints, frontend config, services. The enum member itself is not directly referenced via the enum class (code uses raw strings), but removing it would be misleading since it's a valid agent status. This is a larger cleanup if desired (requires migrating all raw strings to use the enum).\n\nKEPT: TemplateError base class (still used as parent of TemplateNotFoundError which IS actively used).",
+      "files_affected": [
+        "src/giljo_mcp/enums.py",
+        "src/giljo_mcp/exceptions.py",
+        "src/giljo_mcp/services/template_service.py",
+        "tests/test_consolidated_system.py",
+        "api/endpoints/users.py",
+        "frontend/src/components/projects/LaunchSuccessorDialog.vue (DELETED)",
+        "frontend/src/components/projects/SuccessionTimeline.vue (DELETED)",
+        "frontend/src/components/projects/__tests__/LaunchSuccessorDialog.spec.js (DELETED)",
+        "frontend/src/components/projects/__tests__/SuccessionTimeline.spec.js (DELETED)",
+        "frontend/src/components/projects/__tests__/AgentCardEnhanced.succession.spec.js (DELETED)",
+        "frontend/src/components/projects/__tests__/AgentDisplayName.spec.js"
+      ],
+      "action_required": false,
+      "context": {
+        "enums_removed": 3,
+        "exceptions_removed": 5,
+        "frontend_components_deleted": 2,
+        "frontend_tests_deleted": 3,
+        "lines_removed": 95,
+        "items_kept": "AgentStatus.DECOMMISSIONED (30+ raw string usages), TemplateError base class (parent of TemplateNotFoundError)"
       }
     }
   ],

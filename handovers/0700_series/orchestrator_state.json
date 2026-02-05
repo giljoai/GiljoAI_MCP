@@ -134,15 +134,20 @@
     {
       "id": "0700g",
       "title": "Enums and Exceptions Cleanup",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "1-2",
       "priority": "LOW",
       "dependencies": ["0700e", "0700f"],
-      "scope": "Remove unused enums (AugmentationType, ArchiveType) and exceptions (Git*, Template*)",
-      "started_at": null,
-      "completed_at": null,
+      "scope": "Remove unused enums (AugmentationType, ArchiveType, InteractionType) and exceptions (Git*, Template*). Delete orphaned frontend components. Clean dead code comments.",
+      "started_at": "2026-02-05T07:45:00Z",
+      "completed_at": "2026-02-05T08:00:00Z",
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "enums_removed": ["AugmentationType", "ArchiveType", "InteractionType"],
+      "exceptions_removed": ["TemplateValidationError", "TemplateRenderError", "GitOperationError", "GitAuthenticationError", "GitRepositoryError"],
+      "files_deleted": ["frontend/src/components/projects/LaunchSuccessorDialog.vue", "frontend/src/components/projects/SuccessionTimeline.vue", "frontend/src/components/projects/__tests__/LaunchSuccessorDialog.spec.js", "frontend/src/components/projects/__tests__/SuccessionTimeline.spec.js", "frontend/src/components/projects/__tests__/AgentCardEnhanced.succession.spec.js"],
+      "lines_removed": 95,
+      "items_kept": ["AgentStatus.DECOMMISSIONED (30+ raw string usages in production code)"]
     },
     {
       "id": "0700h",

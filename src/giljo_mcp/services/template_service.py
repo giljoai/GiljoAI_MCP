@@ -33,8 +33,6 @@ from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.exceptions import (
     TemplateNotFoundError,
-    TemplateValidationError,
-    TemplateRenderError,
     ValidationError,
     BaseGiljoException,
 )
