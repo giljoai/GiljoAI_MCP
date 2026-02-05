@@ -8,6 +8,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from sqlalchemy import select
+
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -61,9 +63,9 @@ def test_multi_tenant_isolation_demo():
     for tenant_key, data in tenant_data.items():
         with db_manager.get_tenant_session(tenant_key) as session:
             # Count all projects this tenant can see
-            projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
 
-            agents = db_manager.query_with_tenant(session, Agent, tenant_key).all()
+            agents = session.execute(select(Agent).where(Agent.tenant_key == tenant_key)).scalars().all()
 
             # Should only see their own data
             assert len(projects) == 1, f"Tenant {data['id']} sees {len(projects)} projects!"
@@ -75,7 +77,7 @@ def test_multi_tenant_isolation_demo():
     def create_messages(tenant_key, tenant_id):
         """Create messages for a tenant."""
         with db_manager.get_tenant_session(tenant_key) as session:
-            project = db_manager.query_with_tenant(session, Project, tenant_key).first()
+            project = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().first()
 
             for i in range(5):
                 message = Message(
@@ -103,7 +105,7 @@ def test_multi_tenant_isolation_demo():
     # Verify message isolation
     for tenant_key, data in tenant_data.items():
         with db_manager.get_tenant_session(tenant_key) as session:
-            messages = db_manager.query_with_tenant(session, Message, tenant_key).all()
+            messages = session.execute(select(Message).where(Message.tenant_key == tenant_key)).scalars().all()
             assert len(messages) == 5
             for msg in messages:
                 assert str(data["id"]) in msg.content
@@ -116,7 +118,7 @@ def test_multi_tenant_isolation_demo():
     for _ in range(10):
         for tenant_key in tenant_data:
             with db_manager.get_tenant_session(tenant_key) as session:
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
 
     elapsed = time.perf_counter() - start_time
     100 / elapsed

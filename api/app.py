@@ -243,7 +243,7 @@ def create_app() -> FastAPI:
                 "name": "projects",
                 "description": "Project management operations - create, update, and monitor AI development projects",
             },
-            # {"name": "agents", "description": "DEPRECATED - Use agent-jobs instead"},
+
             {
                 "name": "Agent Management",
                 "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",

@@ -6,7 +6,7 @@ including idempotency, data migration, and multi-tenant isolation.
 """
 
 import pytest
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 
 from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
@@ -187,7 +187,7 @@ class TestMultiTenantIsolation:
         assert len(tenant2_result) == 1
         assert tenant2_result[0].job_metadata["secret"] == "tenant-2-secret"
 
-    def test_job_metadata_query_with_tenant_filter(self, db_session):
+    def test_job_metadata_tenant_filtered_query(self, db_session):
         """Test querying job_metadata with mandatory tenant isolation."""
         # Create jobs for multiple tenants
         jobs = [
