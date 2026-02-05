@@ -61,13 +61,13 @@
     {
       "id": "0700c",
       "title": "JSONB Field Cleanup",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "2-3",
       "priority": "HIGH",
       "dependencies": ["0700b", "0700d"],
       "scope": "Remove AgentExecution.messages JSONB, clean Product.product_memory.sequential_history",
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-02-04T16:30:00Z",
+      "completed_at": "2026-02-04T17:00:00Z",
       "worker_session_id": null,
       "docs_updated": []
     },
@@ -104,15 +104,20 @@
     {
       "id": "0700f",
       "title": "Endpoint Deprecation Purge",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "1-2",
       "priority": "MEDIUM",
       "dependencies": ["0700c"],
       "scope": "Remove deprecated API endpoints (execution prompt, legacy agents)",
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-02-04T23:30:00Z",
+      "completed_at": "2026-02-04T23:50:00Z",
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "endpoints_removed": ["GET /api/prompts/execution/{orchestrator_job_id}"],
+      "response_fields_removed": ["progress (MCP schema)"],
+      "database_helpers_removed": ["DatabaseManager.query_with_tenant()"],
+      "lines_removed": 2800,
+      "test_files_deleted": ["tests/services/test_thin_prompt_generator_deprecation.py", "tests/thin_prompt/test_execution_prompt_simple.py", "tests/unit/test_claude_code_execution_prompt.py", "tests/api/test_prompts_execution_mode.py"]
     },
     {
       "id": "0700g",

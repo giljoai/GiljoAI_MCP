@@ -423,10 +423,6 @@ async def handle_tools_list(
                             "required": ["content", "status"],
                         },
                     },
-                    "progress": {
-                        "type": "object",
-                        "description": "DEPRECATED: Use todo_items instead. Legacy progress object.",
-                    },
                 },
                 "required": ["job_id"],
             },

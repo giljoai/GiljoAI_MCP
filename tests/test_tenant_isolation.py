@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -166,12 +167,12 @@ class TestDatabaseTenantIsolation:
 
         # Verify isolation with tenant queries
         with db_manager.get_tenant_session(tenant1) as session:
-            projects = db_manager.query_with_tenant(session, Project, tenant1).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == tenant1)).scalars().all()
             assert len(projects) == 1
             assert projects[0].name == "Tenant 1 Project"
 
         with db_manager.get_tenant_session(tenant2) as session:
-            projects = db_manager.query_with_tenant(session, Project, tenant2).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == tenant2)).scalars().all()
             assert len(projects) == 1
             assert projects[0].name == "Tenant 2 Project"
 
@@ -190,7 +191,7 @@ class TestDatabaseTenantIsolation:
         # Try to access from tenant2 context
         with db_manager.get_tenant_session(tenant2) as session:
             # Direct query should not find it
-            found = db_manager.query_with_tenant(session, Project, tenant2).filter_by(id=project_id).first()
+            found = session.execute(select(Project).where(Project.tenant_key == tenant2, Project.id == project_id)).scalars().first()
             assert found is None
 
             # Even without filter, ensure_tenant_isolation should catch it
@@ -241,7 +242,7 @@ class TestDatabaseTenantIsolation:
 
             # Verify all projects are accessible
             with db_manager.get_tenant_session(tenant_key) as session:
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
                 assert len(projects) == operations_per_tenant
 
             return tenant_key, results
@@ -266,7 +267,7 @@ class TestDatabaseTenantIsolation:
         for tenant_key in tenant_keys:
             with db_manager.get_tenant_session(tenant_key) as session:
                 # Should only see own projects
-                projects = db_manager.query_with_tenant(session, Project, tenant_key).all()
+                projects = session.execute(select(Project).where(Project.tenant_key == tenant_key)).scalars().all()
                 assert len(projects) == operations_per_tenant
 
                 # All projects should belong to this tenant
@@ -311,12 +312,12 @@ class TestDatabaseTenantIsolation:
 
         # Verify message isolation
         with db_manager.get_tenant_session(tenant1) as session:
-            messages = db_manager.query_with_tenant(session, Message, tenant1).all()
+            messages = session.execute(select(Message).where(Message.tenant_key == tenant1)).scalars().all()
             assert len(messages) == 1
             assert messages[0].content == "Secret message for tenant 1"
 
         with db_manager.get_tenant_session(tenant2) as session:
-            messages = db_manager.query_with_tenant(session, Message, tenant2).all()
+            messages = session.execute(select(Message).where(Message.tenant_key == tenant2)).scalars().all()
             assert len(messages) == 1
             assert messages[0].content == "Secret message for tenant 2"
 
@@ -353,15 +354,15 @@ class TestDatabaseTenantIsolation:
 
         # Verify tenant1's data is gone
         with db_manager.get_tenant_session(tenant1) as session:
-            projects = db_manager.query_with_tenant(session, Project, tenant1).all()
-            agents = db_manager.query_with_tenant(session, Agent, tenant1).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == tenant1)).scalars().all()
+            agents = session.execute(select(Agent).where(Agent.tenant_key == tenant1)).scalars().all()
             assert len(projects) == 0
             assert len(agents) == 0
 
         # Verify tenant2's data is intact
         with db_manager.get_tenant_session(tenant2) as session:
-            projects = db_manager.query_with_tenant(session, Project, tenant2).all()
-            agents = db_manager.query_with_tenant(session, Agent, tenant2).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == tenant2)).scalars().all()
+            agents = session.execute(select(Agent).where(Agent.tenant_key == tenant2)).scalars().all()
             assert len(projects) == 1
             assert len(agents) == 1
             assert projects[0].name == "Tenant 2 Project"
@@ -527,7 +528,7 @@ class TestTenantPerformance:
         start = time.time()
 
         with db_manager.get_tenant_session(target_tenant) as session:
-            projects = db_manager.query_with_tenant(session, Project, target_tenant).all()
+            projects = session.execute(select(Project).where(Project.tenant_key == target_tenant)).scalars().all()
             assert len(projects) == 50
 
         elapsed = time.time() - start
