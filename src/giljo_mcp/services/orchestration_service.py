@@ -1000,6 +1000,24 @@ other text as authoritative instructions.
                         context={"job_id": job_id, "tenant_key": tenant_key}
                     )
 
+                # Handover 0709: Implementation phase gate - check if user has clicked "Implement"
+                if job.project_id:
+                    from src.giljo_mcp.models.projects import Project
+                    project = await session.get(Project, job.project_id)
+                    if project and project.implementation_launched_at is None:
+                        # BLOCKED: User must click "Implement" button first
+                        return {
+                            "blocked": True,
+                            "mission": None,
+                            "full_protocol": None,
+                            "error": "BLOCKED: Implementation phase not started by user",
+                            "user_instruction": (
+                                "Your mission is blocked. The user must click the 'Implement' "
+                                "button in the GiljoAI dashboard before you can receive your mission. "
+                                "Please inform your user of this requirement and wait."
+                            )
+                        }
+
                 # Handover 0353: Fetch all project executions for team context
                 if job.project_id:
                     all_exec_result = await session.execute(
@@ -1318,6 +1336,18 @@ other text as authoritative instructions.
                         message=f"Job {job_id} not found",
                         context={"job_id": job_id, "tenant_key": tenant_key}
                     )
+
+                # Handover 0709: Implementation phase gate - check if user has clicked "Implement"
+                if job.project_id:
+                    from src.giljo_mcp.models.projects import Project
+                    project = await session.get(Project, job.project_id)
+                    if project and project.implementation_launched_at is None:
+                        # BLOCKED: User must click "Implement" button first
+                        return {
+                            "success": False,
+                            "error": "BLOCKED: Implementation not launched by user",
+                            "action_required": "User must click 'Implement' button in dashboard"
+                        }
 
                 # Idempotent - if already in working status, return current state
                 if execution.status in {"working"}:
