@@ -39,9 +39,9 @@ async def close_project_and_update_memory(
     session: Optional[AsyncSession] = None,
 ) -> Dict[str, Any]:
     """
-    Close project and update product memory with sequential history entry.
+    Close project and update product memory with history entry.
 
-    Adds a rich entry to product_memory.sequential_history.
+    Adds a rich entry to the product_memory_entries table.
     """
     if not project_id:
         return {"success": False, "error": "project_id is required"}
