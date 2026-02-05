@@ -25,7 +25,7 @@ class TestAgentTemplateExportTracking:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
         )
@@ -44,7 +44,7 @@ class TestAgentTemplateExportTracking:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=export_time,
@@ -68,7 +68,7 @@ class TestMayBeStaleComputation:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=exported_time,
@@ -95,7 +95,7 @@ class TestMayBeStaleComputation:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=exported_time,
@@ -118,7 +118,7 @@ class TestMayBeStaleComputation:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=None,
@@ -142,7 +142,7 @@ class TestMayBeStaleComputation:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=now - timedelta(hours=2),
@@ -182,7 +182,7 @@ class TestExportEndpointTimestampUpdate:
             tenant_key="test_tenant",
             name="test-agent",
             role="developer",
-            template_content="Test content",
+            system_instructions="Test content",
             system_instructions="Test instructions",
             is_active=True,
             last_exported_at=None,
@@ -213,7 +213,7 @@ class TestExportEndpointTimestampUpdate:
         mock_template.role = "developer"
         mock_template.tool = "claude"
         mock_template.description = "Test template"
-        mock_template.template_content = "Test content"
+        mock_template.system_instructions = "Test content"
         mock_template.behavioral_rules = []
         mock_template.success_criteria = []
         mock_template.last_exported_at = old_export_time

@@ -652,7 +652,8 @@ CREATE TABLE agent_templates (
     name VARCHAR(255) NOT NULL,
     category VARCHAR(50) NOT NULL,  -- 'role', 'skill', 'domain'
     role VARCHAR(100),  -- 'orchestrator', 'implementer', etc.
-    template_content TEXT NOT NULL,
+    system_instructions TEXT NOT NULL,
+    user_instructions TEXT,
     variables JSON DEFAULT '[]',
     behavioral_rules JSON DEFAULT '[]',
     success_criteria JSON DEFAULT '[]',
@@ -682,7 +683,8 @@ CREATE TABLE agent_template_history (
     id VARCHAR(36) PRIMARY KEY,
     template_id VARCHAR(36) NOT NULL,
     tenant_key VARCHAR(255) NOT NULL,
-    template_content TEXT NOT NULL,
+    system_instructions TEXT,
+    user_instructions TEXT,
     version VARCHAR(20) NOT NULL,
     archived_reason VARCHAR(50),  -- 'edit', 'reset', 'delete'
     archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

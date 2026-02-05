@@ -68,8 +68,8 @@ class TestTemplateSeedingBasics:
         templates = result.scalars().all()
 
         for template in templates:
-            assert template.template_content, f"Template {template.role} should have content"
-            assert len(template.template_content) > 100, f"Template {template.role} content too short"
+            assert template.system_instructions, f"Template {template.role} should have content"
+            assert len(template.system_instructions) > 100, f"Template {template.role} content too short"
 
 
 @pytest.mark.asyncio
@@ -181,7 +181,7 @@ class TestIdempotency:
             name="custom",
             category="role",
             role="custom",
-            template_content="Custom template content",
+            system_instructions="Custom template content",
             variables=["project_name"],
             behavioral_rules=["Rule 1"],
             success_criteria=["Success 1"],
@@ -309,7 +309,7 @@ class TestTemplateContent:
 
         # Assert - Load from database
         result = await db_session.execute(
-            select(AgentTemplate.template_content).where(
+            select(AgentTemplate.system_instructions).where(
                 AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator"
             )
         )
@@ -338,7 +338,7 @@ class TestTemplateContent:
             # Check that declared variables appear in content as {variable}
             for variable in template.variables:
                 placeholder = f"{{{variable}}}"
-                assert placeholder in template.template_content, (
+                assert placeholder in template.system_instructions, (
                     f"Template {template.role} should contain placeholder {placeholder}"
                 )
 
@@ -359,7 +359,7 @@ class TestTemplateContent:
 
         for role, keywords in role_keywords.items():
             result = await db_session.execute(
-                select(AgentTemplate.template_content).where(
+                select(AgentTemplate.system_instructions).where(
                     AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == role
                 )
             )

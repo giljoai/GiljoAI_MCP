@@ -87,7 +87,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Implementer Agent\n\nImplements code features.",
+                    system_instructions="# Implementer Agent\n\nImplements code features.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -98,7 +98,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Tester Agent\n\nWrites tests.",
+                    system_instructions="# Tester Agent\n\nWrites tests.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -109,7 +109,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Reviewer Agent\n\nReviews code.",
+                    system_instructions="# Reviewer Agent\n\nReviews code.",
                 ),
             ]
             for template in self.agent_templates:
@@ -294,7 +294,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 product_id=self.product.id,
                 is_active=False,  # INACTIVE
                 version="0.5.0",
-                template_content="# Deprecated Agent\n\nOld agent.",
+                system_instructions="# Deprecated Agent\n\nOld agent.",
             )
             session.add(inactive_template)
             await session.commit()
@@ -385,7 +385,7 @@ class TestSpawnAgentJobValidationAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Implementer\n\nImplements code.",
+                    system_instructions="# Implementer\n\nImplements code.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -395,7 +395,7 @@ class TestSpawnAgentJobValidationAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Tester\n\nWrites tests.",
+                    system_instructions="# Tester\n\nWrites tests.",
                 ),
             ]
             for template in self.agent_templates:
@@ -600,7 +600,7 @@ class TestSpawnAgentJobValidationAgentName:
                 tenant_key=self.tenant_key,
                 product_id=self.product.id,
                 is_active=False,  # INACTIVE
-                template_content="# Deprecated\n\nOld agent.",
+                system_instructions="# Deprecated\n\nOld agent.",
             )
             session.add(inactive_template)
             await session.commit()

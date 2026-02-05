@@ -51,7 +51,7 @@ def get_tenant_and_product_from_user(user: User) -> dict:
 def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
     """Convert ORM model to response schema"""
     # Merge system and user instructions for backward compatibility
-    merged_content = template.system_instructions or template.template_content or ""
+    merged_content = template.system_instructions or ""
     if template.user_instructions:
         merged_content = f"{merged_content}\n\n{template.user_instructions}"
 
@@ -71,9 +71,8 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         cli_tool=template.cli_tool or "claude",
         background_color=template.background_color,
         description=template.description,
-        system_instructions=template.system_instructions or template.template_content or "",
+        system_instructions=template.system_instructions or "",
         user_instructions=template.user_instructions,
-        template_content=merged_content,
         model=template.model,
         tools=template.tools,
         behavioral_rules=template.behavioral_rules or [],
@@ -212,7 +211,7 @@ async def create_template(
             raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
 
         # Validate system prompt
-        is_valid, error_msg = validate_system_prompt(template.template_content)
+        is_valid, error_msg = validate_system_prompt(template.system_instructions)
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
 
@@ -229,7 +228,7 @@ async def create_template(
                 description = f"{template.role} agent template" if template.role else "Agent template"
 
         # Extract variables
-        variables = re.findall(r"\{(\w+)\}", template.template_content)
+        variables = re.findall(r"\{(\w+)\}", template.system_instructions)
 
         # ORIGINAL QUERY: crud.py line 229-240 (replaced with service call)
         # Handle default template logic
@@ -262,8 +261,7 @@ async def create_template(
             cli_tool=template.cli_tool,
             background_color=background_color,
             description=description,
-            template_content=template.template_content,
-            system_instructions=template.template_content,  # Store in both fields
+            system_instructions=template.system_instructions,
             model=template.model or "sonnet",
             tools=None,
             variables=variables,
@@ -347,12 +345,6 @@ async def update_template(
                 detail="system_instructions is read-only; use reset-system to restore defaults",
             )
 
-        # Validate system prompt when template_content is updated
-        if "template_content" in update_data and update_data["template_content"]:
-            is_valid, error_msg = validate_system_prompt(update_data["template_content"])
-            if not is_valid:
-                raise HTTPException(status_code=400, detail=error_msg)
-
         # ORIGINAL QUERY: crud.py line 340-360 (replaced with service call)
         # When user_instructions change, create an archive of the previous version
         if "user_instructions" in update_data:
@@ -382,11 +374,7 @@ async def update_template(
                     raise HTTPException(status_code=409, detail=error_msg)
 
         for field, value in update_data.items():
-            if field == "template_content" and value:
-                # Legacy support: update both fields
-                template.template_content = value
-                template.system_instructions = value
-            elif field == "user_instructions" and value:
+            if field == "user_instructions" and value:
                 template.user_instructions = value
             elif hasattr(template, field):
                 setattr(template, field, value)

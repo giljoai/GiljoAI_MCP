@@ -463,7 +463,7 @@ class TestAPIComprehensive:
         template_data = {
             "name": "api_test_template",
             "category": "custom",
-            "template_content": "Test template for {project_name} with {agent_role}",
+            "system_instructions": "Test template for {project_name} with {agent_role}",
             "role": "tester",
             "description": "API testing template",
             "behavioral_rules": ["Always validate inputs", "Provide clear error messages", "Test edge cases"],
@@ -498,7 +498,7 @@ class TestAPIComprehensive:
         """Test updating a template"""
         if test_data["template_id"]:
             update_data = {
-                "template_content": "Updated template for {project_name} with enhanced {agent_role}",
+                "system_instructions": "Updated template for {project_name} with enhanced {agent_role}",
                 "description": "Updated API testing template",
                 "tags": ["testing", "api", "validation", "updated"],
                 "archive_reason": "API test update",
@@ -571,7 +571,7 @@ class TestAPIComprehensive:
             ("/api/v1/agents/", {"agent_name": "test"}),  # Missing project_id
             ("/api/v1/messages/send", {"content": "test"}),  # Missing to_agents and project_id
             ("/api/v1/tasks/", {"description": "test"}),  # Missing title
-            ("/api/v1/templates/", {"category": "test"}),  # Missing name and template_content
+            ("/api/v1/templates/", {"category": "test"}),  # Missing name and system_instructions
         ]
 
         for endpoint, data in test_cases:

@@ -100,7 +100,7 @@ class TemplateValidator:
 
     def validate(
         self,
-        template_content: str,
+        content: str,
         template_id: str,
         agent_display_name: str,
         use_cache: bool = True
@@ -109,7 +109,7 @@ class TemplateValidator:
         Validate template against all registered rules.
 
         Args:
-            template_content: Full template text to validate
+            content: Full template text to validate
             template_id: Unique template identifier
             agent_display_name: Type of agent (orchestrator, implementer, etc.)
             use_cache: Whether to use Redis caching (default: True)
@@ -123,13 +123,13 @@ class TemplateValidator:
         """
         # Check cache first
         if use_cache and self.redis:
-            cached = self._get_cached_result(template_id, template_content)
+            cached = self._get_cached_result(template_id, content)
             if cached:
                 return cached
 
         # Run validation
         start_time = time.time()
-        errors, warnings = self._run_all_rules(template_content, agent_display_name)
+        errors, warnings = self._run_all_rules(content, agent_display_name)
         duration_ms = (time.time() - start_time) * 1000
 
         # Determine if valid (no critical errors)
@@ -147,7 +147,7 @@ class TemplateValidator:
 
         # Cache result
         if use_cache and self.redis:
-            self._cache_result(template_id, template_content, result)
+            self._cache_result(template_id, content, result)
 
         return result
 
@@ -162,14 +162,14 @@ class TemplateValidator:
 
     def _run_all_rules(
         self,
-        template_content: str,
+        content: str,
         agent_display_name: str
     ) -> tuple[List[ValidationError], List[ValidationError]]:
         """
         Execute all validation rules.
 
         Args:
-            template_content: Template text to validate
+            content: Template text to validate
             agent_display_name: Agent type
 
         Returns:
@@ -179,7 +179,7 @@ class TemplateValidator:
         warnings = []
 
         for rule in self.rules:
-            result = rule.validate(template_content, agent_display_name)
+            result = rule.validate(content, agent_display_name)
 
             if result is not None:
                 if result.severity == "critical":

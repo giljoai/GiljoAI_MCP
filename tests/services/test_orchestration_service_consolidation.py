@@ -417,7 +417,7 @@ class TestSpawnAgentLegacy:
             tool="claude",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Test template content",
+            system_instructions="Test template content",
         )
         db_session.add(template)
         await db_session.commit()
@@ -452,7 +452,7 @@ class TestSpawnAgentLegacy:
             tool="codex",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Test template content",
+            system_instructions="Test template content",
         )
         db_session.add(template)
         await db_session.commit()
@@ -487,7 +487,7 @@ class TestSpawnAgentLegacy:
             tool="gemini",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Test template content",
+            system_instructions="Test template content",
         )
         db_session.add(template)
         await db_session.commit()
@@ -532,7 +532,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         # 2. Tenant-specific
         tenant_template = AgentTemplate(
@@ -543,7 +543,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Tenant template",
+            system_instructions="Tenant template",
         )
         # 3. Product-specific
         product_template = AgentTemplate(
@@ -555,7 +555,7 @@ class TestGetAgentTemplateInternal:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             is_default=False,
-            template_content="Product template",
+            system_instructions="Product template",
         )
         db_session.add_all([system_template, tenant_template, product_template])
         await db_session.commit()
@@ -570,7 +570,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should return product-specific template
         assert template is not None
-        assert template.template_content == "Product template"
+        assert template.system_instructions == "Product template"
         assert template.product_id == test_product.id
 
     @pytest.mark.asyncio
@@ -586,7 +586,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         # 2. Tenant-specific
         tenant_template = AgentTemplate(
@@ -597,7 +597,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Tenant template",
+            system_instructions="Tenant template",
         )
         db_session.add_all([system_template, tenant_template])
         await db_session.commit()
@@ -612,7 +612,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should fall back to tenant template
         assert template is not None
-        assert template.template_content == "Tenant template"
+        assert template.system_instructions == "Tenant template"
         assert template.product_id is None
         assert template.tenant_key == test_tenant_key
 
@@ -628,7 +628,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         db_session.add(system_template)
         await db_session.commit()
@@ -643,7 +643,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should fall back to system default
         assert template is not None
-        assert template.template_content == "System template"
+        assert template.system_instructions == "System template"
         assert template.is_default is True
         assert template.tenant_key == "system"
 

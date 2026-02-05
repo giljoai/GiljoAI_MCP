@@ -70,7 +70,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.1.0",
-            template_content="Test mission content",
+            system_instructions="Test mission content",
             updated_at=now,
             last_exported_at=now - timedelta(days=1),  # Stale
         )
@@ -112,7 +112,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Test mission content"
+            system_instructions="Test mission content"
         )
         template_b = AgentTemplate(
             name="implementer",
@@ -121,7 +121,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=other_tenant,
             is_active=True,
             version="1.0.0",
-            template_content="Test mission content"
+            system_instructions="Test mission content"
         )
 
         db_session.add(template_a)
@@ -149,7 +149,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Test mission content"
+            system_instructions="Test mission content"
         )
         db_session.add(template)
         await db_session.commit()
@@ -181,7 +181,7 @@ class TestToolAccessorGetAvailableAgents:
             name="stale-agent",
             role="Stale Role",
             version="1.0.0",
-            template_content="Stale template",
+            system_instructions="Stale template",
             tenant_key=self.tenant_key,
             is_active=True,
             updated_at=now,
@@ -213,7 +213,7 @@ class TestToolAccessorGetAvailableAgents:
             name="fresh-agent",
             role="Fresh Role",
             version="1.0.0",
-            template_content="Fresh template",
+            system_instructions="Fresh template",
             tenant_key=self.tenant_key,
             is_active=True,
             updated_at=now - timedelta(days=1),
@@ -254,7 +254,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            template_content="Test mission content"
+            system_instructions="Test mission content"
         )
         db_session.add(template)
         await db_session.commit()

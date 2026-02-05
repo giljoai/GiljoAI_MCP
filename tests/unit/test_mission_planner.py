@@ -105,21 +105,21 @@ class TestMissionPlanner:
             AgentConfig(
                 role="orchestrator",
                 template_id="template_orch",
-                template_content="You are an orchestrator...",
+                system_instructions="You are an orchestrator...",
                 priority="required",
                 mission_scope="Coordinate all agents",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="template_impl",
-                template_content="You are an implementer...",
+                system_instructions="You are an implementer...",
                 priority="high",
                 mission_scope="Implement backend features",
             ),
             AgentConfig(
                 role="tester",
                 template_id="template_test",
-                template_content="You are a tester...",
+                system_instructions="You are a tester...",
                 priority="high",
                 mission_scope="Create comprehensive tests",
             ),
@@ -485,7 +485,7 @@ class TestMissionPlanner:
         agent_config = AgentConfig(
             role="implementer",
             template_id="template_impl",
-            template_content="You are an implementer...",
+            system_instructions="You are an implementer...",
             priority="high",
             mission_scope="Implement backend API",
         )
@@ -527,7 +527,7 @@ class TestMissionPlanner:
         agent_config = AgentConfig(
             role="tester",
             template_id="template_test",
-            template_content="You are a tester...",
+            system_instructions="You are a tester...",
             priority="high",
             mission_scope="Create test suite",
         )
@@ -675,21 +675,21 @@ class TestMissionPlanner:
             AgentConfig(
                 role="orchestrator",
                 template_id="t1",
-                template_content="Template 1",
+                system_instructions="Template 1",
                 priority="required",
                 mission_scope="Scope 1",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="t2",
-                template_content="Template 2",
+                system_instructions="Template 2",
                 priority="high",
                 mission_scope="Scope 2",
             ),
             AgentConfig(
                 role="documenter",
                 template_id="t3",
-                template_content="Template 3",
+                system_instructions="Template 3",
                 priority="low",
                 mission_scope="Scope 3",
             ),

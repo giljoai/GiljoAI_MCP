@@ -41,12 +41,12 @@ class ValidationRule(ABC):
     severity: str
 
     @abstractmethod
-    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """
         Validate template content.
 
         Args:
-            template_content: Full template text to validate
+            content: Full template text to validate
             agent_display_name: Type of agent (orchestrator, implementer, etc.)
 
         Returns:
@@ -79,12 +79,12 @@ class MCPToolsPresenceRule(ValidationRule):
         "receive_messages"
     ]
 
-    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
         missing_tools = []
 
         for tool in self.REQUIRED_TOOLS:
-            if tool not in template_content:
+            if tool not in content:
                 missing_tools.append(tool)
 
         if missing_tools:
@@ -122,14 +122,14 @@ class PlaceholderVerificationRule(ValidationRule):
         "job_id"
     ]
 
-    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check required placeholders are present and well-formed."""
         missing_placeholders = []
 
         # Check for required placeholders
         for placeholder in self.REQUIRED_PLACEHOLDERS:
             pattern = r"\{" + placeholder + r"\}"
-            if not re.search(pattern, template_content):
+            if not re.search(pattern, content):
                 missing_placeholders.append(f"{{{placeholder}}}")
 
         if missing_placeholders:
@@ -147,7 +147,7 @@ class PlaceholderVerificationRule(ValidationRule):
         ]
 
         for pattern in malformed_patterns:
-            if re.search(pattern, template_content):
+            if re.search(pattern, content):
                 # Note: Not returning error for malformed placeholders in this version
                 # Could be enhanced to detect more edge cases
                 pass
@@ -197,10 +197,10 @@ class InjectionDetectionRule(ValidationRule):
         r"<iframe[^>]*>"
     ]
 
-    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Detect injection patterns in template content."""
         # Remove code blocks to avoid false positives
-        content_without_code_blocks = self._remove_code_blocks(template_content)
+        content_without_code_blocks = self._remove_code_blocks(content)
 
         detected_patterns = []
 
@@ -267,11 +267,11 @@ class ToolUsageBestPracticesRule(ValidationRule):
         "gracefully"
     ]
 
-    def validate(self, template_content: str, agent_display_name: str) -> Optional[ValidationError]:
+    def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check for best practice mentions."""
         # Check if error handling is mentioned
         error_handling_mentioned = any(
-            keyword in template_content.lower()
+            keyword in content.lower()
             for keyword in self.BEST_PRACTICE_KEYWORDS
         )
 

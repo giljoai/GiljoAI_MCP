@@ -24,7 +24,7 @@ async def test_stage_agent_templates_updates_export_timestamp(db_session: AsyncS
         name="agent-one",
         role="Role One",
         version="1.0.0",
-        template_content="Template 1",
+        system_instructions="Template 1",
         is_active=True,
         last_exported_at=None,  # Never exported
     )
@@ -34,7 +34,7 @@ async def test_stage_agent_templates_updates_export_timestamp(db_session: AsyncS
         name="agent-two",
         role="Role Two",
         version="1.0.0",
-        template_content="Template 2",
+        system_instructions="Template 2",
         is_active=True,
         last_exported_at=None,
     )
@@ -81,7 +81,7 @@ async def test_stage_agent_templates_preserves_staleness_after_export(db_session
         name="stale-agent",
         role="Stale Role",
         version="1.0.0",
-        template_content="Stale template",
+        system_instructions="Stale template",
         is_active=True,
         updated_at=now,
         last_exported_at=now - timedelta(days=1),  # Exported 1 day ago
@@ -116,7 +116,7 @@ async def test_stage_agent_templates_timestamp_persists_to_database(db_session: 
         name="test-agent",
         role="Test Role",
         version="1.0.0",
-        template_content="Test template",
+        system_instructions="Test template",
         is_active=True,
         last_exported_at=None,
     )
@@ -158,7 +158,7 @@ async def test_stage_agent_templates_rollback_on_error(db_session: AsyncSession,
         name="test-agent",
         role="Test Role",
         version="1.0.0",
-        template_content="Test template",
+        system_instructions="Test template",
         is_active=True,
         last_exported_at=None,
     )
@@ -193,7 +193,7 @@ async def test_stage_agent_templates_multiple_exports_update_timestamp(db_sessio
         name="test-agent",
         role="Test Role",
         version="1.0.0",
-        template_content="Test template",
+        system_instructions="Test template",
         is_active=True,
         last_exported_at=None,
     )

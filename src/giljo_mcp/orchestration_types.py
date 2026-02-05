@@ -102,7 +102,6 @@ class AgentConfig:
     Attributes:
         role: The agent's role (e.g., 'architect', 'implementor')
         template_id: ID of the template to use
-        template_content: The actual template content
         priority: Priority level for this agent's work
         mission_scope: Brief description of the mission scope
         mission: Optional Mission object with detailed mission information
@@ -111,7 +110,6 @@ class AgentConfig:
 
     role: str
     template_id: str
-    template_content: str
     priority: str
     mission_scope: str
     mission: Optional[Mission] = None
@@ -130,7 +128,6 @@ class AgentConfig:
         params = {
             "agent_role": self.role,
             "template_id": self.template_id,
-            "template_content": self.template_content,
             "priority": self.priority,
             "mission_scope": self.mission_scope,
             "mission": self.mission.to_dict() if self.mission else None,
