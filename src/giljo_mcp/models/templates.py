@@ -70,11 +70,6 @@ class AgentTemplate(Base):
         nullable=True,
         comment="User-customizable role-specific guidance (editable)",
     )
-    template_content = Column(
-        Text,
-        nullable=False,
-        comment="DEPRECATED (v3.1): Use system_instructions + user_instructions. Kept for backward compatibility.",
-    )  # Template with {variable} placeholders
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics
@@ -130,7 +125,7 @@ class AgentTemplate(Base):
         """Get list of variables in template"""
         import re
 
-        return re.findall(r"\{(\w+)\}", self.template_content)
+        return re.findall(r"\{(\w+)\}", self.system_instructions or "")
 
     @property
     def may_be_stale(self) -> bool:
@@ -169,7 +164,6 @@ class TemplateArchive(Base):
     # Full system+user instructions snapshot for v3.1 dual-field support
     system_instructions = Column(Text, nullable=True)
     user_instructions = Column(Text, nullable=True)
-    template_content = Column(Text, nullable=False)
     variables = Column(JSON, default=list)
     behavioral_rules = Column(JSON, default=list)
     success_criteria = Column(JSON, default=list)

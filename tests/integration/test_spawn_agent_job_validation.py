@@ -110,7 +110,7 @@ async def validation_templates(db_session, validation_product, validation_tenant
             product_id=validation_product.id,
             is_active=True,
             version="1.0.0",
-            template_content="# Implementer\n\nImplements code.",
+            system_instructions="# Implementer\n\nImplements code.",
         ),
         AgentTemplate(
             id=str(uuid.uuid4()),
@@ -121,7 +121,7 @@ async def validation_templates(db_session, validation_product, validation_tenant
             product_id=validation_product.id,
             is_active=True,
             version="1.0.0",
-            template_content="# Tester\n\nWrites tests.",
+            system_instructions="# Tester\n\nWrites tests.",
         ),
         AgentTemplate(
             id=str(uuid.uuid4()),
@@ -132,7 +132,7 @@ async def validation_templates(db_session, validation_product, validation_tenant
             product_id=validation_product.id,
             is_active=True,
             version="1.0.0",
-            template_content="# Reviewer\n\nReviews code.",
+            system_instructions="# Reviewer\n\nReviews code.",
         ),
     ]
     for template in templates:
@@ -380,7 +380,7 @@ class TestMultiTenantValidation:
             tenant_key=other_tenant,
             product_id=other_product.id,
             is_active=True,
-            template_content="# Other Agent\n\nFor other tenant.",
+            system_instructions="# Other Agent\n\nFor other tenant.",
         )
         db_session.add(other_template)
         await db_session.flush()
@@ -563,7 +563,7 @@ class TestInactiveTemplateHandling:
             tenant_key=validation_tenant,
             product_id=validation_product.id,
             is_active=False,  # INACTIVE
-            template_content="# Deprecated\n\nOld agent.",
+            system_instructions="# Deprecated\n\nOld agent.",
         )
         db_session.add(inactive_template)
         await db_session.flush()
@@ -603,7 +603,7 @@ class TestInactiveTemplateHandling:
             tenant_key=validation_tenant,
             product_id=validation_product.id,
             is_active=False,
-            template_content="# Old Agent\n\nInactive agent.",
+            system_instructions="# Old Agent\n\nInactive agent.",
         )
         db_session.add(inactive_template)
         await db_session.flush()

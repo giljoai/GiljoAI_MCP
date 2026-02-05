@@ -155,7 +155,7 @@ class TestDefaultTemplatesSlimming:
         implementer = next((t for t in templates if t["role"] == "implementer"), None)
         assert implementer is not None, "Implementer template must exist"
 
-        content = implementer["template_content"]
+        content = implementer["system_instructions"]
         # Should have role-specific text
         assert "implement" in content.lower() or "code" in content.lower()
 
@@ -165,7 +165,7 @@ class TestDefaultTemplatesSlimming:
         tester = next((t for t in templates if t["role"] == "tester"), None)
         assert tester is not None, "Tester template must exist"
 
-        content = tester["template_content"]
+        content = tester["system_instructions"]
         # Should have role-specific text
         assert "test" in content.lower()
 
@@ -175,7 +175,7 @@ class TestDefaultTemplatesSlimming:
         analyzer = next((t for t in templates if t["role"] == "analyzer"), None)
         assert analyzer is not None, "Analyzer template must exist"
 
-        content = analyzer["template_content"]
+        content = analyzer["system_instructions"]
         # Should have role-specific text
         assert "analy" in content.lower()  # analyze, analysis
 
@@ -185,7 +185,7 @@ class TestDefaultTemplatesSlimming:
         documenter = next((t for t in templates if t["role"] == "documenter"), None)
         assert documenter is not None, "Documenter template must exist"
 
-        content = documenter["template_content"]
+        content = documenter["system_instructions"]
         # Should have role-specific text
         assert "document" in content.lower()
 
@@ -201,7 +201,7 @@ class TestDefaultTemplatesSlimming:
             if template["role"] == "orchestrator":
                 continue  # Orchestrator is system-managed, skip
 
-            content = template["template_content"]
+            content = template["system_instructions"]
 
             # Templates should NOT have Phase 1-5 headers
             lifecycle_headers = [

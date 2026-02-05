@@ -285,9 +285,9 @@ class TestOrchestratorTemplateValidation:
         print(f"Category: {template.category}")
         print(f"Is Default: {template.is_default}")
         print(f"Is Active: {template.is_active}")
-        print(f"Content Length: {len(template.template_content)} chars")
+        print(f"Content Length: {len(template.system_instructions)} chars")
 
-    def test_orchestrator_template_content_complete(self, db_session):
+    def test_orchestrator_template_instructions_complete(self, db_session):
         """Test orchestrator template has all required content"""
         template = (
             db_session.query(AgentTemplate)
@@ -298,7 +298,7 @@ class TestOrchestratorTemplateValidation:
         if not template:
             pytest.skip("Orchestrator template not found")
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
 
         # Required sections
         required_content = [
@@ -364,7 +364,7 @@ class TestEndToEndUpgradeValidation:
         print("\n1. ORCHESTRATOR TEMPLATE:")
         if template:
             print("   ✓ Default template exists")
-            print(f"   ✓ Content length: {len(template.template_content)} chars")
+            print(f"   ✓ Content length: {len(template.system_instructions)} chars")
         else:
             print("   ✗ Default template NOT FOUND")
 

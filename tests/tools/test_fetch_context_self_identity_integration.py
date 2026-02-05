@@ -21,7 +21,7 @@ async def test_fetch_context_self_identity_success(db_manager, test_tenant_key):
             description="Coordinates all agents",
             system_instructions="Use MCP tools for coordination",
             user_instructions="Follow the staging workflow",
-            template_content="You are the orchestrator coordinator",
+            system_instructions="You are the orchestrator coordinator",
             behavioral_rules=["Always verify identity", "Report progress"],
             success_criteria=["All agents completed", "No errors"],
             tenant_key=test_tenant_key,
@@ -108,7 +108,7 @@ async def test_fetch_context_self_identity_tenant_isolation(db_manager, test_ten
             name="test-agent",
             role="Tester",
             description="Test role",
-            template_content="You are a test agent",
+            system_instructions="You are a test agent",
             tenant_key=test_tenant_key,
             is_active=True
         )
@@ -138,7 +138,7 @@ async def test_fetch_context_self_identity_flat_format(db_manager, test_tenant_k
             name="implementor-agent",
             role="Implementer",
             description="Implements features",
-            template_content="You are an implementer agent",
+            system_instructions="You are an implementer agent",
             tenant_key=test_tenant_key,
             is_active=True
         )

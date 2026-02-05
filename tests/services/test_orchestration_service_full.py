@@ -78,7 +78,7 @@ async def test_agent_template(db_manager: DatabaseManager, test_product: dict):
             name="implementer",
             role="implementer",
             description="Implementation specialist",
-            template_content="# Implementer\nImplements features according to specifications.",
+            system_instructions="# Implementer\nImplements features according to specifications.",
             is_active=True,
         )
         session.add(template)

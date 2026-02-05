@@ -377,7 +377,7 @@ class TestFileStaging:
             AgentTemplate(
                 name="orchestrator",
                 role="orchestrator",
-                template_content="# Orchestrator",
+                system_instructions="# Orchestrator",
                 tool="claude",
                 tenant_key=tenant_key,
                 is_active=True,
@@ -385,7 +385,7 @@ class TestFileStaging:
             AgentTemplate(
                 name="implementor",
                 role="implementor",
-                template_content="# Implementor",
+                system_instructions="# Implementor",
                 tool="claude",
                 tenant_key=tenant_key,
                 is_active=True,

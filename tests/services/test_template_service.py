@@ -86,7 +86,6 @@ async def sample_template(tenant_key, product_id):
         cli_tool="claude",
         background_color="#FF5733",
         description="Test analyzer agent",
-        template_content="You are an analyzer agent.",
         system_instructions="You are an analyzer agent.",
         is_active=True,
         is_default=False,
@@ -158,7 +157,7 @@ async def test_list_templates_with_filters_role_filter(template_service, tenant_
             name="test-reviewer",
             role="reviewer",
             category="custom",
-            template_content="You are a reviewer.",
+            system_instructions="You are a reviewer.",
         )
         session.add(other_template)
         await session.commit()
@@ -185,7 +184,7 @@ async def test_list_templates_with_filters_is_active_filter(template_service, te
             name="test-inactive",
             role="analyzer",
             category="custom",
-            template_content="Inactive template",
+            system_instructions="Inactive template",
             is_active=False,
         )
         session.add(inactive_template)
@@ -235,7 +234,7 @@ async def test_get_default_templates_by_role(template_service, tenant_key, produ
             name="default-orchestrator",
             role="orchestrator",
             category="system",
-            template_content="Default orchestrator",
+            system_instructions="Default orchestrator",
             is_default=True,
         )
         session.add(default_template)
@@ -276,7 +275,7 @@ async def test_get_active_user_managed_count_excludes_system_roles(template_serv
             name="orchestrator",
             role="orchestrator",  # System-managed role
             category="system",
-            template_content="Orchestrator",
+            system_instructions="Orchestrator",
             is_active=True,
         )
         session.add(orchestrator_template)
@@ -338,7 +337,7 @@ async def test_hard_delete_template_cascades(template_service, tenant_key, sampl
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content=sample_template.template_content,
+            system_instructions=sample_template.system_instructions,
             version="1.0.0",
             archive_reason="Test",
             archive_type="manual",
@@ -407,7 +406,7 @@ async def test_get_template_history(template_service, tenant_key, sample_templat
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Version 1",
+            system_instructions="Version 1",
             version="1.0.0",
             archive_reason="Initial version",
             archive_type="auto",
@@ -422,7 +421,7 @@ async def test_get_template_history(template_service, tenant_key, sample_templat
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Version 2",
+            system_instructions="Version 2",
             version="2.0.0",
             archive_reason="Update",
             archive_type="auto",
@@ -455,7 +454,7 @@ async def test_get_archive_by_id_success(template_service, tenant_key, sample_te
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Archived content",
+            system_instructions="Archived content",
             version="1.0.0",
             archive_reason="Test",
             archive_type="manual",
@@ -470,7 +469,7 @@ async def test_get_archive_by_id_success(template_service, tenant_key, sample_te
 
         assert result is not None
         assert result.id == archive.id
-        assert result.template_content == "Archived content"
+        assert result.system_instructions == "Archived content"
 
 
 @pytest.mark.asyncio
@@ -507,7 +506,7 @@ async def test_restore_template_from_archive(template_service, sample_template):
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Archived content",
+            system_instructions="Archived content",
             variables=["var1", "var2"],
             behavioral_rules=["rule1"],
             success_criteria=["criteria1"],
@@ -523,7 +522,7 @@ async def test_restore_template_from_archive(template_service, sample_template):
             session, sample_template, archive
         )
 
-        assert sample_template.template_content == "Archived content"
+        assert sample_template.system_instructions == "Archived content"
         assert sample_template.variables == ["var1", "var2"]
         assert sample_template.behavioral_rules == ["rule1"]
         assert sample_template.success_criteria == ["criteria1"]
@@ -614,7 +613,7 @@ async def test_tenant_isolation_list_templates(template_service, tenant_key, oth
             name="other-template",
             role="analyzer",
             category="custom",
-            template_content="Other tenant template",
+            system_instructions="Other tenant template",
         )
         session.add(other_template)
         await session.commit()
@@ -642,7 +641,7 @@ async def test_tenant_isolation_get_template_history(template_service, tenant_ke
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Version 1",
+            system_instructions="Version 1",
             version="1.0.0",
             archive_reason="Test",
             archive_type="auto",
@@ -658,7 +657,7 @@ async def test_tenant_isolation_get_template_history(template_service, tenant_ke
             name=sample_template.name,
             category=sample_template.category,
             role=sample_template.role,
-            template_content="Version 2",
+            system_instructions="Version 2",
             version="2.0.0",
             archive_reason="Test",
             archive_type="auto",

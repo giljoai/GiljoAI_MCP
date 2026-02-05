@@ -66,7 +66,7 @@ async def workflow_template(db_session, workflow_product, workflow_tenant):
         product_id=workflow_product.id,
         is_active=True,
         version="1.0.0",
-        template_content="Test template",
+        system_instructions="Test template",
     )
     db_session.add(template)
     await db_session.flush()

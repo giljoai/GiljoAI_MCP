@@ -275,7 +275,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         product_id=None,  # No product link needed for this test
         is_active=True,
         version="1.0.0",
-        template_content="# Implementer\n\nImplements code."
+        system_instructions="# Implementer\n\nImplements code."
     )
     db_session.add(implementer_template)
     await db_session.commit()

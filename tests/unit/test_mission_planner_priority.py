@@ -194,7 +194,7 @@ class TestMissionPlannerPriority:
         return AgentConfig(
             role="implementer",
             template_id="template_impl",
-            template_content="You are an implementer",
+            system_instructions="You are an implementer",
             priority="high",
             mission_scope="Implement features",
         )
@@ -824,7 +824,7 @@ class TestMissionPlannerPriority:
             AgentConfig(
                 role="implementer",
                 template_id="t1",
-                template_content="Template",
+                system_instructions="Template",
                 priority="high",
                 mission_scope="Implement",
             )

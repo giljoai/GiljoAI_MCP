@@ -91,7 +91,7 @@ class TestCLIModeRules:
                 name="implementer",
                 role="implementer",
                 description="Implementation specialist",
-                template_content="# Implementer\nAn implementation specialist agent.",  # Required field
+                system_instructions="# Implementer\nAn implementation specialist agent.",  # Required field
                 is_active=True,
             )
             session.add(template)
@@ -591,7 +591,7 @@ class TestCLIModeRulesBackwardCompatibility:
                 name="analyzer",
                 role="analyzer",
                 description="Analysis specialist",
-                template_content="# Analyzer\nAn analysis specialist agent.",  # Required field
+                system_instructions="# Analyzer\nAn analysis specialist agent.",  # Required field
                 is_active=True,
             )
             session.add(template)
