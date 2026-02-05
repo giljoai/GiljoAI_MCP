@@ -775,7 +775,15 @@ async function handlePlay(agent) {
       // CLI mode: Generate implementation prompt
       if (props.project?.execution_mode === 'claude_code_cli') {
         try {
-          const response = await api.prompts.implementation(props.project.project_id || props.project.id)
+          // Handover 0709: Set implementation phase gate before copying prompt
+          const projectId = props.project.project_id || props.project.id
+          try {
+            await api.projects.launchImplementation(projectId)
+          } catch (gateError) {
+            console.warn('[JobsTab] launch-implementation call failed (non-blocking):', gateError)
+          }
+
+          const response = await api.prompts.implementation(projectId)
           const prompt = response.data.prompt
           await copyToClipboard(prompt)
           showLocalToast({
