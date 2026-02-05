@@ -195,7 +195,6 @@ class ContinueWorkingResponse(BaseModel):
 class OrchestratorJobResponse(BaseModel):
     """Orchestrator job details for project."""
 
-    id: Optional[int] = None  # Deprecated after AgentExecution refactor (Handover 0366a)
     job_id: str
     agent_id: str  # Alias for backward compatibility
     agent_display_name: str

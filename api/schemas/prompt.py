@@ -157,9 +157,6 @@ class ProjectCompleteResponse(BaseModel):
     memory_updated: bool = Field(..., description="Whether 360 Memory was updated")
     sequence_number: int = Field(..., description="Sequential history entry number")
     git_commits_count: int = Field(..., description="Number of commits captured (if GitHub enabled)")
-    retired_agents: int | None = Field(
-        default=None, description="Number of agents retired (deprecated field for legacy callers)"
-    )
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -158,7 +158,6 @@ async def get_project_orchestrator(
     return OrchestratorResponse(
         success=True,
         orchestrator=OrchestratorJobResponse(
-            id=None,  # Deprecated field (Handover 0366a)
             job_id=orchestrator_execution.job_id,  # AgentJob.job_id
             agent_id=orchestrator_execution.agent_id,  # AgentExecution.agent_id (executor UUID)
             agent_display_name=orchestrator_execution.agent_display_name,  # From AgentExecution

@@ -50,7 +50,7 @@ class TestToolAPIIntegration:
 
         # Close project if created
         if self.test_project_id:
-            await self.tool_accessor.close_project(self.test_project_id, "Test completed")
+            await self.tool_accessor.complete_project(self.test_project_id, "Test completed")
 
         # Close database connections
         if self.db_manager:
@@ -284,7 +284,7 @@ class TestToolAPIIntegration:
         # Clean up created projects
         for result in results:
             if isinstance(result, dict) and result.get("success"):
-                await self.tool_accessor.close_project(result["project_id"], "Load test completed")
+                await self.tool_accessor.complete_project(result["project_id"], "Load test completed")
 
     async def test_database_context_management(self):
         """Test that database context is properly maintained"""

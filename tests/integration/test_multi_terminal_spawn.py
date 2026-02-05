@@ -183,7 +183,6 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
             description="Test agent for CLI mode",
             system_instructions="# CLI Tester\n\nThis should NOT be injected.",
             user_instructions="",
-            system_instructions="# CLI Tester\n\nThis should NOT be injected.",  # Required NOT NULL column
             cli_tool="claude-code",
             is_active=True,
         )

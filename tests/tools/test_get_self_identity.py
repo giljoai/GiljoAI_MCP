@@ -40,7 +40,6 @@ class TestGetSelfIdentityBasic:
             user_instructions="Follow 7-task staging workflow.",
             behavioral_rules=["Check-in after completing tasks", "Use thin-client prompts"],
             success_criteria=["All agents complete", "Project closed out"],
-            system_instructions="Full template content here",
             is_active=True,
             meta_data={"capabilities": ["orchestration", "coordination"]}
         )
@@ -114,7 +113,6 @@ class TestGetSelfIdentityBasic:
             name="inactive-agent",
             role="Inactive Agent",
             description="This agent is inactive",
-            system_instructions="Should not be returned",
             system_instructions="Inactive template",
             is_active=False  # INACTIVE
         )
@@ -155,7 +153,6 @@ class TestGetSelfIdentityTenantIsolation:
             name="shared-agent-name",
             role="Agent Role",
             description="Template in tenant_a",
-            system_instructions="Tenant A instructions",
             system_instructions="Tenant A content",
             is_active=True
         )
@@ -193,7 +190,6 @@ class TestGetSelfIdentityTenantIsolation:
             name="orchestrator",
             role="Orchestrator A",
             description="Tenant A orchestrator",
-            system_instructions="Tenant A specific instructions",
             system_instructions="Tenant A content",
             is_active=True
         )
@@ -205,7 +201,6 @@ class TestGetSelfIdentityTenantIsolation:
             name="orchestrator",
             role="Orchestrator B",
             description="Tenant B orchestrator",
-            system_instructions="Tenant B specific instructions",
             system_instructions="Tenant B content",
             is_active=True
         )
@@ -283,7 +278,6 @@ class TestGetSelfIdentityTokenEstimate:
             user_instructions="User instructions " * 20,  # ~60 tokens
             behavioral_rules=["Rule " + str(i) for i in range(10)],  # Multiple rules
             success_criteria=["Criteria " + str(i) for i in range(5)],
-            system_instructions="Template content " * 100,  # ~400 tokens
             is_active=True,
             meta_data={"capabilities": ["cap" + str(i) for i in range(20)]}
         )

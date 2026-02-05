@@ -23,13 +23,17 @@
       "status": "complete",
       "effort_hours": "2-3",
       "priority": "HIGH",
-      "dependencies": ["0700a"],
+      "dependencies": [
+        "0700a"
+      ],
       "scope": "Create automated tracking system for code cleanup - scan DEPRECATED, TODO, skipped tests",
       "started_at": "2026-02-04T06:45:00Z",
       "completed_at": "2026-02-04T07:15:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "deliverables": ["handovers/0700_series/cleanup_index.json"],
+      "deliverables": [
+        "handovers/0700_series/cleanup_index.json"
+      ],
       "findings": {
         "deprecated_markers": 46,
         "todo_markers": 8,
@@ -45,7 +49,9 @@
       "status": "complete",
       "effort_hours": "4-6",
       "priority": "HIGH",
-      "dependencies": ["0701"],
+      "dependencies": [
+        "0701"
+      ],
       "scope": "AMENDED: Purge deprecated columns AND all code that uses them (not just column removal)",
       "scope_amended": true,
       "amendment_ref": "orchestrator-002",
@@ -53,10 +59,25 @@
       "completed_at": "2026-02-04T16:00:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "columns_removed": ["is_used", "downloaded_at", "succession_reason", "handover_summary", "decommissioned_at", "succeeded_by", "context_budget"],
-      "columns_deferred": ["instance_number (161 usages - dedicated handover)", "template_content (deferred to 0700e)"],
+      "columns_removed": [
+        "is_used",
+        "downloaded_at",
+        "succession_reason",
+        "handover_summary",
+        "decommissioned_at",
+        "succeeded_by",
+        "context_budget"
+      ],
+      "columns_deferred": [
+        "instance_number (161 usages - dedicated handover)",
+        "template_content (deferred to 0700e)"
+      ],
       "lines_deleted": 1000,
-      "files_deleted": ["src/giljo_mcp/orchestrator_succession.py", "tests/integration/test_0387f_phase3_counter_reads.py", "tests/unit/test_handover_0247_gaps.py"]
+      "files_deleted": [
+        "src/giljo_mcp/orchestrator_succession.py",
+        "tests/integration/test_0387f_phase3_counter_reads.py",
+        "tests/unit/test_handover_0247_gaps.py"
+      ]
     },
     {
       "id": "0700c",
@@ -64,7 +85,10 @@
       "status": "complete",
       "effort_hours": "2-3",
       "priority": "HIGH",
-      "dependencies": ["0700b", "0700d"],
+      "dependencies": [
+        "0700b",
+        "0700d"
+      ],
       "scope": "Remove AgentExecution.messages JSONB, clean Product.product_memory.sequential_history",
       "started_at": "2026-02-04T16:30:00Z",
       "completed_at": "2026-02-04T17:00:00Z",
@@ -77,16 +101,31 @@
       "status": "complete",
       "effort_hours": "2-3",
       "priority": "MEDIUM",
-      "dependencies": ["0701"],
+      "dependencies": [
+        "0701"
+      ],
       "scope": "Remove succession.py module, ManualSuccessionResponse schema, trigger_succession method",
       "started_at": "2026-02-04T14:45:00Z",
       "completed_at": "2026-02-04T15:00:00Z",
       "worker_session_id": null,
-      "docs_updated": ["docs/SERVICES.md", "docs/ORCHESTRATOR.md"],
+      "docs_updated": [
+        "docs/SERVICES.md",
+        "docs/ORCHESTRATOR.md"
+      ],
       "lines_removed": 750,
-      "files_deleted": ["api/endpoints/agent_jobs/succession.py"],
-      "schemas_removed": ["SuccessionRequest", "SuccessionResponse", "SuccessionStatusResponse", "InitiateHandoverResponse"],
-      "methods_stubbed": ["OrchestrationService.trigger_succession", "ThinClientPromptGenerator.generate_execution_prompt"]
+      "files_deleted": [
+        "api/endpoints/agent_jobs/succession.py"
+      ],
+      "schemas_removed": [
+        "SuccessionRequest",
+        "SuccessionResponse",
+        "SuccessionStatusResponse",
+        "InitiateHandoverResponse"
+      ],
+      "methods_stubbed": [
+        "OrchestrationService.trigger_succession",
+        "ThinClientPromptGenerator.generate_execution_prompt"
+      ]
     },
     {
       "id": "0700e",
@@ -94,13 +133,18 @@
       "status": "complete",
       "effort_hours": "1-2",
       "priority": "LOW",
-      "dependencies": ["0700c"],
+      "dependencies": [
+        "0700c"
+      ],
       "scope": "Purge template_content column from AgentTemplate and TemplateArchive models, remove TemplateManager alias, update all code/tests/migration",
       "started_at": "2026-02-04T23:55:00Z",
       "completed_at": "2026-02-05T01:00:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "columns_removed": ["AgentTemplate.template_content", "TemplateArchive.template_content"],
+      "columns_removed": [
+        "AgentTemplate.template_content",
+        "TemplateArchive.template_content"
+      ],
       "alias_removed": "TemplateManager = UnifiedTemplateManager",
       "files_modified": 70,
       "lines_removed": 500,
@@ -110,7 +154,10 @@
         "frontend_grep_zero": true,
         "migration_updated": true,
         "models_load_ok": true,
-        "false_positives_preserved": ["api/endpoints/downloads.py", "api/endpoints/mcp_installer.py"]
+        "false_positives_preserved": [
+          "api/endpoints/downloads.py",
+          "api/endpoints/mcp_installer.py"
+        ]
       }
     },
     {
@@ -119,17 +166,30 @@
       "status": "complete",
       "effort_hours": "1-2",
       "priority": "MEDIUM",
-      "dependencies": ["0700c"],
+      "dependencies": [
+        "0700c"
+      ],
       "scope": "Remove deprecated API endpoints (execution prompt, legacy agents)",
       "started_at": "2026-02-04T23:30:00Z",
       "completed_at": "2026-02-04T23:50:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "endpoints_removed": ["GET /api/prompts/execution/{orchestrator_job_id}"],
-      "response_fields_removed": ["progress (MCP schema)"],
-      "database_helpers_removed": ["DatabaseManager.query_with_tenant()"],
+      "endpoints_removed": [
+        "GET /api/prompts/execution/{orchestrator_job_id}"
+      ],
+      "response_fields_removed": [
+        "progress (MCP schema)"
+      ],
+      "database_helpers_removed": [
+        "DatabaseManager.query_with_tenant()"
+      ],
       "lines_removed": 2800,
-      "test_files_deleted": ["tests/services/test_thin_prompt_generator_deprecation.py", "tests/thin_prompt/test_execution_prompt_simple.py", "tests/unit/test_claude_code_execution_prompt.py", "tests/api/test_prompts_execution_mode.py"]
+      "test_files_deleted": [
+        "tests/services/test_thin_prompt_generator_deprecation.py",
+        "tests/thin_prompt/test_execution_prompt_simple.py",
+        "tests/unit/test_claude_code_execution_prompt.py",
+        "tests/api/test_prompts_execution_mode.py"
+      ]
     },
     {
       "id": "0700g",
@@ -137,30 +197,59 @@
       "status": "complete",
       "effort_hours": "1-2",
       "priority": "LOW",
-      "dependencies": ["0700e", "0700f"],
+      "dependencies": [
+        "0700e",
+        "0700f"
+      ],
       "scope": "Remove unused enums (AugmentationType, ArchiveType, InteractionType) and exceptions (Git*, Template*). Delete orphaned frontend components. Clean dead code comments.",
       "started_at": "2026-02-05T07:45:00Z",
       "completed_at": "2026-02-05T08:00:00Z",
       "worker_session_id": null,
       "docs_updated": [],
-      "enums_removed": ["AugmentationType", "ArchiveType", "InteractionType"],
-      "exceptions_removed": ["TemplateValidationError", "TemplateRenderError", "GitOperationError", "GitAuthenticationError", "GitRepositoryError"],
-      "files_deleted": ["frontend/src/components/projects/LaunchSuccessorDialog.vue", "frontend/src/components/projects/SuccessionTimeline.vue", "frontend/src/components/projects/__tests__/LaunchSuccessorDialog.spec.js", "frontend/src/components/projects/__tests__/SuccessionTimeline.spec.js", "frontend/src/components/projects/__tests__/AgentCardEnhanced.succession.spec.js"],
+      "enums_removed": [
+        "AugmentationType",
+        "ArchiveType",
+        "InteractionType"
+      ],
+      "exceptions_removed": [
+        "TemplateValidationError",
+        "TemplateRenderError",
+        "GitOperationError",
+        "GitAuthenticationError",
+        "GitRepositoryError"
+      ],
+      "files_deleted": [
+        "frontend/src/components/projects/LaunchSuccessorDialog.vue",
+        "frontend/src/components/projects/SuccessionTimeline.vue",
+        "frontend/src/components/projects/__tests__/LaunchSuccessorDialog.spec.js",
+        "frontend/src/components/projects/__tests__/SuccessionTimeline.spec.js",
+        "frontend/src/components/projects/__tests__/AgentCardEnhanced.succession.spec.js"
+      ],
       "lines_removed": 95,
-      "items_kept": ["AgentStatus.DECOMMISSIONED (30+ raw string usages in production code)"]
+      "items_kept": [
+        "AgentStatus.DECOMMISSIONED (30+ raw string usages in production code)"
+      ]
     },
     {
       "id": "0700h",
       "title": "Imports and Final Polish",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "1-2",
       "priority": "LOW",
-      "dependencies": ["0700g"],
+      "dependencies": [
+        "0700g"
+      ],
       "scope": "Remove unused imports identified by vulture, final code quality pass",
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-02-05T09:00:00Z",
+      "completed_at": "2026-02-05T07:20:23Z",
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "lines_removed": 536,
+      "files_modified": 44,
+      "items_deferred": [
+        "dep-016 (instance_number)",
+        "dep-038 (TemplateCreate fields)"
+      ]
     },
     {
       "id": "0701",
@@ -168,12 +257,18 @@
       "status": "complete",
       "effort_hours": "3-5",
       "priority": "MEDIUM",
-      "dependencies": ["0700a", "0700"],
+      "dependencies": [
+        "0700a",
+        "0700"
+      ],
       "scope": "Create import/dependency graphs, visualize module relationships",
       "started_at": "2026-02-04T14:00:00Z",
       "completed_at": "2026-02-04T14:30:00Z",
       "worker_session_id": "a38fcfc",
-      "docs_updated": ["docs/cleanup/dependency_graph.html", "docs/cleanup/README.md"],
+      "docs_updated": [
+        "docs/cleanup/dependency_graph.html",
+        "docs/cleanup/README.md"
+      ],
       "deliverables": [
         "src/giljo_mcp/cleanup/visualizer.py",
         "docs/cleanup/dependency_graph.html",
@@ -194,7 +289,10 @@
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
-      "dependencies": ["0700a", "0700"],
+      "dependencies": [
+        "0700a",
+        "0700"
+      ],
       "scope": "Clean up utility functions, config handling, remove dead utils",
       "started_at": null,
       "completed_at": null,
@@ -207,7 +305,10 @@
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
-      "dependencies": ["0700a", "0700"],
+      "dependencies": [
+        "0700a",
+        "0700"
+      ],
       "scope": "Clean up auth middleware, logging patterns, remove deprecated auth code",
       "started_at": null,
       "completed_at": null,
@@ -220,7 +321,9 @@
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
-      "dependencies": ["0700h"],
+      "dependencies": [
+        "0700h"
+      ],
       "scope": "Add type hints to base model classes, mixins, shared model utilities - fills gaps not covered by 0700b-h",
       "started_at": null,
       "completed_at": null,
@@ -233,7 +336,9 @@
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
-      "dependencies": ["0704"],
+      "dependencies": [
+        "0704"
+      ],
       "scope": "Type hints and TODO resolution for Product, Project, User models - fills gaps not covered by 0700b-h",
       "started_at": null,
       "completed_at": null,
@@ -246,7 +351,9 @@
       "status": "pending",
       "effort_hours": "6-8",
       "priority": "HIGH",
-      "dependencies": ["0705"],
+      "dependencies": [
+        "0705"
+      ],
       "scope": "Type hints for AgentJob model, cascade verification - fills gaps not covered by 0700b-h",
       "started_at": null,
       "completed_at": null,
@@ -259,7 +366,9 @@
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
-      "dependencies": ["0706"],
+      "dependencies": [
+        "0706"
+      ],
       "scope": "Clean up leaf services (settings, templates) - no upstream dependencies",
       "started_at": null,
       "completed_at": null,
@@ -272,7 +381,9 @@
       "status": "pending",
       "effort_hours": "6-8",
       "priority": "HIGH",
-      "dependencies": ["0707"],
+      "dependencies": [
+        "0707"
+      ],
       "scope": "Clean up core services (OrchestrationService, ProductService)",
       "started_at": null,
       "completed_at": null,
@@ -285,7 +396,9 @@
       "status": "pending",
       "effort_hours": "8-10",
       "priority": "CRITICAL",
-      "dependencies": ["0708"],
+      "dependencies": [
+        "0708"
+      ],
       "scope": "Consolidate MCP tool registration, standardize response formats, add deprecation warnings",
       "started_at": null,
       "completed_at": null,
@@ -298,7 +411,9 @@
       "status": "pending",
       "effort_hours": "2-4",
       "priority": "MEDIUM",
-      "dependencies": ["0711"],
+      "dependencies": [
+        "0711"
+      ],
       "scope": "Delete template_adapter.py (312 lines), update imports to ThinClientPromptGenerator",
       "started_at": null,
       "completed_at": null,
@@ -307,11 +422,25 @@
     }
   ],
   "doc_mapping": {
-    "models": ["docs/SERVICES.md", "docs/architecture/data_model.md"],
-    "services": ["docs/SERVICES.md", "docs/ORCHESTRATOR.md"],
-    "mcp_tools": ["docs/manuals/MCP_TOOLS_MANUAL.md", "docs/api/context_tools.md"],
-    "auth": ["docs/INSTALLATION_FLOW_PROCESS.md"],
-    "agents": ["docs/ORCHESTRATOR.md", "docs/components/STAGING_WORKFLOW.md"]
+    "models": [
+      "docs/SERVICES.md",
+      "docs/architecture/data_model.md"
+    ],
+    "services": [
+      "docs/SERVICES.md",
+      "docs/ORCHESTRATOR.md"
+    ],
+    "mcp_tools": [
+      "docs/manuals/MCP_TOOLS_MANUAL.md",
+      "docs/api/context_tools.md"
+    ],
+    "auth": [
+      "docs/INSTALLATION_FLOW_PROCESS.md"
+    ],
+    "agents": [
+      "docs/ORCHESTRATOR.md",
+      "docs/components/STAGING_WORKFLOW.md"
+    ]
   },
   "technical_debt_baseline": {
     "deprecated_markers": 46,
@@ -321,5 +450,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "0700a + 0700 complete. Merged cleanup approach: 0701 (visualization) → 0700b-h (deprecated purge ~1050 lines) → modified 0704-0706 (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). Dead code audit revealed 5000 estimate was inflated - actual dead code ~400 lines, deprecated code ~1500 lines. Total addressable: ~2000 lines. Execution order: 0701 → 0700b → 0700d → 0700c → 0700e → 0700f → 0700g → 0700h → 0702 → 0703 → 0704 → 0705 → 0706 → 0707 → 0708 → 0711 → 0373. SCOPE AMENDMENT: 0700b scope amended via orchestrator-002 (2026-02-04T15:30:00Z) - Changed from 'remove columns' to 'purge columns AND code'. Human authorized destructive purge approach for v1.0 release. No external users, no v4.0 migration path needed."
+  "notes": "0700a + 0700 complete. Merged cleanup approach: 0701 (visualization) \u00e2\u2020\u2019 0700b-h (deprecated purge ~1050 lines) \u00e2\u2020\u2019 modified 0704-0706 (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). Dead code audit revealed 5000 estimate was inflated - actual dead code ~400 lines, deprecated code ~1500 lines. Total addressable: ~2000 lines. Execution order: 0701 \u00e2\u2020\u2019 0700b \u00e2\u2020\u2019 0700d \u00e2\u2020\u2019 0700c \u00e2\u2020\u2019 0700e \u00e2\u2020\u2019 0700f \u00e2\u2020\u2019 0700g \u00e2\u2020\u2019 0700h \u00e2\u2020\u2019 0702 \u00e2\u2020\u2019 0703 \u00e2\u2020\u2019 0704 \u00e2\u2020\u2019 0705 \u00e2\u2020\u2019 0706 \u00e2\u2020\u2019 0707 \u00e2\u2020\u2019 0708 \u00e2\u2020\u2019 0711 \u00e2\u2020\u2019 0373. SCOPE AMENDMENT: 0700b scope amended via orchestrator-002 (2026-02-04T15:30:00Z) - Changed from 'remove columns' to 'purge columns AND code'. Human authorized destructive purge approach for v1.0 release. No external users, no v4.0 migration path needed."
 }

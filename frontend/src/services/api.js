@@ -236,85 +236,6 @@ export const api = {
     launchImplementation: (id) => apiClient.patch(`/api/agent-jobs/projects/${id}/launch-implementation`),
   },
 
-  // DEPRECATED: Legacy agent endpoints removed in Handover 0116
-  // Migration: Use agentJobs.* methods instead (Handover 0119 Phase 1)
-  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
-  agents: {
-    list: () => {
-      console.error('DEPRECATED: api.agents.list() is removed. Use api.agentJobs.list() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    get: () => {
-      console.error('DEPRECATED: api.agents.get() is removed. Use api.agentJobs.get() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    create: () => {
-      console.error(
-        'DEPRECATED: api.agents.create() is removed. Use api.agentJobs.spawn() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    health: () => {
-      console.error(
-        'DEPRECATED: api.agents.health() is removed. Use api.agentJobs.status() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    assign: () => {
-      console.error('DEPRECATED: api.agents.assign() is removed. Use agentJobs.spawn() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    decommission: () => {
-      console.error(
-        'DEPRECATED: api.agents.decommission() is removed. Use api.agentJobs.terminate() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    tree: () => {
-      console.error(
-        'DEPRECATED: api.agents.tree() is removed. Use api.agentJobs.hierarchy() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    metrics: () => {
-      console.error(
-        'DEPRECATED: api.agents.metrics() is removed. Use api.agentJobs.metrics() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-  },
 
   // Messages
   messages: {
@@ -399,15 +320,6 @@ export const api = {
     getChunks: (documentId) => apiClient.get(`/api/vision-documents/${documentId}/chunks`),
   },
 
-  // Legacy Vision API (Single Document - Deprecated)
-  vision: {
-    get: () => apiClient.get('/api/v1/context/vision/'),
-    getChunk: (part, maxTokens = 20000) =>
-      apiClient.get('/api/v1/context/vision/', {
-        params: { part, max_tokens: maxTokens },
-      }),
-    getIndex: () => apiClient.get('/api/v1/context/vision/index/'),
-  },
 
   // Context & Discovery
   context: {
@@ -580,11 +492,6 @@ export const api = {
         from_agent: data.from_agent || 'user',
       }),
 
-    // Legacy aliases for backward compatibility (deprecated but functional)
-    getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
-    listJobs: (projectId, params = {}) =>
-      apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
-    getStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
   },
 
   // Organizations (Handover 0424 - gap fix)

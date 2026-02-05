@@ -295,73 +295,9 @@ async def test_get_agent_mission_via_agentjob_mission(
 
 
 # ========================================================================
-# Test 5: get_workflow_status() creates both AgentJob and AgentExecution
+# Test 5: REMOVED - test_get_workflow_status_creates_both_models (dep-030)
+# gil_activate() method has been removed as deprecated
 # ========================================================================
-
-
-@pytest.mark.asyncio
-async def test_get_workflow_status_creates_both_models(
-    tool_accessor, tenant_key, test_product, db_session
-):
-    """
-    Test that get_workflow_status() creates BOTH AgentJob and AgentExecution
-    when orchestrator doesn't exist yet.
-
-    Expected behavior:
-    1. Check if orchestrator exists (query AgentJob)
-    2. If not, create AgentJob (work order)
-    3. Also create AgentExecution (executor instance)
-    4. Return both job_id and agent_id
-
-    Will FAIL initially: tool_accessor.py creates only AgentExecution.
-    """
-    # Create inactive project for activation test
-    inactive_project = Project(
-        id=str(uuid4()),
-        tenant_key=tenant_key,
-        product_id=test_product.id,
-        name="Inactive Test Project",
-        description="Project to be activated",
-        mission="Test activation",
-        status="inactive",
-    )
-    db_session.add(inactive_project)
-    await db_session.commit()
-    await db_session.refresh(inactive_project)
-
-    result = await tool_accessor.gil_activate(
-        project_id=inactive_project.id,
-    )
-
-    # Verify success
-    assert result.get("success") is True
-
-    # Verify both models created in the same session (test transaction)
-    from sqlalchemy import select
-
-    # Verify AgentJob created
-    job_result = await db_session.execute(
-        select(AgentJob).where(
-            AgentJob.project_id == inactive_project.id,
-            AgentJob.tenant_key == tenant_key,
-            AgentJob.job_type == "orchestrator",
-        )
-    )
-    job = job_result.scalar_one_or_none()
-    assert job is not None, "AgentJob not created"
-
-    # Verify AgentExecution created
-    exec_result = await db_session.execute(
-        select(AgentExecution).where(
-            AgentExecution.job_id == job.job_id,
-            AgentExecution.tenant_key == tenant_key,
-        )
-    )
-    execution = exec_result.scalar_one_or_none()
-    assert execution is not None, "AgentExecution not created"
-
-    # Verify relationship
-    assert execution.job_id == job.job_id
 
 
 # ========================================================================
