@@ -366,7 +366,7 @@ async def export_templates_to_claude_code(
             
             # Add template content
             content_parts.append("\n")
-            content_parts.append(template.template_content.strip())
+            content_parts.append(template.system_instructions.strip())
             content_parts.append("\n")
             
             # Add behavioral rules if present

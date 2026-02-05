@@ -44,12 +44,12 @@ class TestValidationIntegrationWithThinPrompt:
         return manager
 
     @pytest.mark.asyncio
-    async def test_validation_can_be_used_with_template_content(self, mock_db, mock_redis):
-        """Test validation can validate template content independently."""
+    async def test_validation_can_be_used_with_template_instructions(self, mock_db, mock_redis):
+        """Test validation can validate template instructions independently."""
         validator = TemplateValidator(redis_client=mock_redis)
 
-        # Simulate fetching template content
-        template_content = """
+        # Simulate fetching template instructions
+        content = """
             You are an implementer agent.
 
             Agent ID: {agent_id}
@@ -65,8 +65,8 @@ class TestValidationIntegrationWithThinPrompt:
             - receive_messages(agent_id, tenant_key)
         """
 
-        # Validate template content
-        result = validator.validate(template_content, "template-123", "implementer")
+        # Validate template instructions
+        result = validator.validate(content, "template-123", "implementer")
 
         assert result is not None
         assert result.is_valid
@@ -77,10 +77,10 @@ class TestValidationIntegrationWithThinPrompt:
         validator = TemplateValidator(redis_client=mock_redis)
 
         # Invalid template (missing MCP tools)
-        invalid_template_content = "You are an agent. Do tasks."
+        invalid_content = "You are an agent. Do tasks."
 
         # Validate
-        result = validator.validate(invalid_template_content, "invalid-template", "implementer")
+        result = validator.validate(invalid_content, "invalid-template", "implementer")
 
         # Should be invalid
         assert not result.is_valid

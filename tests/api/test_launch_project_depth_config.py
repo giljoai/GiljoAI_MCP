@@ -79,7 +79,7 @@ class TestLaunchProjectPassesUserIdToService:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Test template content for implementer agent",
+                system_instructions="Test template content for implementer agent",
                 is_active=True,
                 category="role"
             )
@@ -215,7 +215,7 @@ class TestLaunchProjectWithFullAgentTemplates:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist for TDD workflows",
-                template_content="# Test Implementer Agent\n\nYou are a test implementation specialist...",
+                system_instructions="# Test Implementer Agent\n\nYou are a test implementation specialist...",
                 is_active=True,
                 category="role"
             )
@@ -292,7 +292,7 @@ class TestLaunchProjectWithFullAgentTemplates:
                 assert "role" in template
                 assert "description" in template
                 # Should NOT have full content in inline version
-                assert "template_content" not in template
+                assert "system_instructions" not in template
 
             # Assert: context_fetch_instructions should include agent_templates
             fetch_instructions = instructions.get("context_fetch_instructions", {})
@@ -390,7 +390,7 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Full template content here",
+                system_instructions="Full template content here",
                 is_active=True,
                 category="role"
             )
@@ -542,7 +542,7 @@ class TestLaunchProjectRespectsUserDepthConfig:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Full template content for testing",
+                system_instructions="Full template content for testing",
                 is_active=True,
                 category="role"
             )

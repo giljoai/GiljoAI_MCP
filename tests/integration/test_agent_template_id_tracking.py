@@ -55,7 +55,7 @@ async def test_spawn_agent_job_captures_template_id():
             role="implementer",
             cli_tool="claude",
             description="Test implementation agent",
-            template_content="Test template content",
+            system_instructions="Test template content",
             system_instructions="System instructions",
             user_instructions="User instructions",
         )
@@ -201,7 +201,7 @@ async def test_multiple_jobs_same_template():
             role="implementer",
             cli_tool="claude",
             description="Shared template",
-            template_content="Content",
+            system_instructions="Content",
         )
         session.add(template)
         await session.commit()

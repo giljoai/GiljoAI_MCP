@@ -62,7 +62,7 @@ async def sample_agent_templates(db_manager: DatabaseManager, tenant_key: str):
                 name="backend-integration-tester",
                 role="Backend Integration Tester",
                 description="Specialist in backend integration testing with focus on API contracts and data flow validation",
-                template_content="""# Backend Integration Tester Agent
+                system_instructions="""# Backend Integration Tester Agent
 
 You are a specialist backend integration tester focused on API contracts and data flow validation.
 
@@ -94,7 +94,7 @@ You are a specialist backend integration tester focused on API contracts and dat
                 name="tdd-implementor",
                 role="TDD Implementor",
                 description="Master developer following strict test-driven development principles with production-grade code quality",
-                template_content="""# TDD Implementor Agent
+                system_instructions="""# TDD Implementor Agent
 
 You are a master developer who follows strict test-driven development principles.
 
@@ -136,7 +136,7 @@ You are a master developer who follows strict test-driven development principles
                 name="system-architect",
                 role="System Architect",
                 description="Expert in software architecture design, system patterns, and technical decision-making for scalable solutions",
-                template_content="""# System Architect Agent
+                system_instructions="""# System Architect Agent
 
 You are an expert system architect responsible for high-level design decisions.
 
@@ -169,7 +169,7 @@ You are an expert system architect responsible for high-level design decisions.
                 name="documentation-manager",
                 role="Documentation Manager",
                 description="Technical writer creating clear, comprehensive documentation for APIs, user guides, and architecture decisions",
-                template_content="""# Documentation Manager Agent
+                system_instructions="""# Documentation Manager Agent
 
 You are a technical writer specialized in developer documentation.
 
@@ -203,7 +203,7 @@ You are a technical writer specialized in developer documentation.
                 name="orchestrator-coordinator",
                 role="Orchestrator Coordinator",
                 description="Master coordinator managing agent workflows, dependencies, and project execution with context awareness",
-                template_content="""# Orchestrator Coordinator Agent
+                system_instructions="""# Orchestrator Coordinator Agent
 
 You are the master coordinator responsible for managing all agent activities.
 

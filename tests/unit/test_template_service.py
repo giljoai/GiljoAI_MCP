@@ -118,7 +118,7 @@ class TestTemplateServiceCRUD:
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "orchestrator"
-        mock_template.template_content = "You are an orchestrator..."
+        mock_template.system_instructions = "You are an orchestrator..."
         mock_template.role = "orchestrator"
         mock_template.category = "role"
         mock_template.cli_tool = None
@@ -160,7 +160,7 @@ class TestTemplateServiceCRUD:
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "analyzer"
-        mock_template.template_content = "You are an analyzer..."
+        mock_template.system_instructions = "You are an analyzer..."
         mock_template.role = "analyzer"
         mock_template.category = "role"
         mock_template.cli_tool = None
@@ -244,7 +244,7 @@ class TestTemplateServiceCRUD:
         mock_template1 = Mock(spec=AgentTemplate)
         mock_template1.id = "id-1"
         mock_template1.name = "orchestrator"
-        mock_template1.template_content = "Content 1"
+        mock_template1.system_instructions = "Content 1"
         mock_template1.role = "orchestrator"
         mock_template1.category = "role"
         mock_template1.cli_tool = None
@@ -255,7 +255,7 @@ class TestTemplateServiceCRUD:
         mock_template2 = Mock(spec=AgentTemplate)
         mock_template2.id = "id-2"
         mock_template2.name = "analyzer"
-        mock_template2.template_content = "Content 2"
+        mock_template2.system_instructions = "Content 2"
         mock_template2.role = "analyzer"
         mock_template2.category = "role"
         mock_template2.cli_tool = None
@@ -343,7 +343,7 @@ class TestTemplateServiceCRUD:
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "old-name"
-        mock_template.template_content = "old content"
+        mock_template.system_instructions = "old content"
         mock_template.role = "old-role"
         mock_template.category = "old-category"
         mock_template.cli_tool = None
@@ -368,7 +368,7 @@ class TestTemplateServiceCRUD:
         assert result["template_id"] == "test-id"
         assert result["updated"] is True
         assert mock_template.name == "new-name"
-        assert mock_template.template_content == "new content"
+        assert mock_template.system_instructions == "new content"
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -419,7 +419,7 @@ class TestTemplateServiceCRUD:
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "original-name"
-        mock_template.template_content = "original content"
+        mock_template.system_instructions = "original content"
         mock_template.role = "original-role"
 
         mock_result = Mock()
@@ -438,7 +438,7 @@ class TestTemplateServiceCRUD:
         # Assert
         assert result["success"] is True
         assert mock_template.name == "original-name"  # Unchanged
-        assert mock_template.template_content == "new content"  # Changed
+        assert mock_template.system_instructions == "new content"  # Changed
         assert mock_template.role == "original-role"  # Unchanged
 
 

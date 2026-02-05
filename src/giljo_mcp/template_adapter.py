@@ -64,7 +64,7 @@ class TemplateAdapter:
                         template = result.scalar_one_or_none()
 
                     if template:
-                        self._template_cache[cache_key] = template.template_content
+                        self._template_cache[cache_key] = template.system_instructions
 
                         # Update usage stats
                         template.usage_count += 1

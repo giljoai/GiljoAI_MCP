@@ -105,7 +105,7 @@ def build_template_markdown(template: AgentTemplate) -> str:
 """
 
     # Combine header + template content + MCP integration
-    return header + template.template_content + MCP_INTEGRATION_SECTION
+    return header + template.system_instructions + MCP_INTEGRATION_SECTION
 
 
 @router.get("/", response_model=TemplateListResponse)

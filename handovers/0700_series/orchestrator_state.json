@@ -91,15 +91,27 @@
     {
       "id": "0700e",
       "title": "Template System Cleanup",
-      "status": "pending",
+      "status": "complete",
       "effort_hours": "1-2",
       "priority": "LOW",
       "dependencies": ["0700c"],
-      "scope": "Remove TemplateManager alias, template_content field references",
-      "started_at": null,
-      "completed_at": null,
+      "scope": "Purge template_content column from AgentTemplate and TemplateArchive models, remove TemplateManager alias, update all code/tests/migration",
+      "started_at": "2026-02-04T23:55:00Z",
+      "completed_at": "2026-02-05T01:00:00Z",
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "columns_removed": ["AgentTemplate.template_content", "TemplateArchive.template_content"],
+      "alias_removed": "TemplateManager = UnifiedTemplateManager",
+      "files_modified": 70,
+      "lines_removed": 500,
+      "verification": {
+        "src_grep_zero": true,
+        "api_grep_zero": true,
+        "frontend_grep_zero": true,
+        "migration_updated": true,
+        "models_load_ok": true,
+        "false_positives_preserved": ["api/endpoints/downloads.py", "api/endpoints/mcp_installer.py"]
+      }
     },
     {
       "id": "0700f",

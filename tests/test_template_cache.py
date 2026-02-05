@@ -63,7 +63,7 @@ def sample_template():
         name="Orchestrator",
         role="orchestrator",
         category="role",
-        template_content="You are the orchestrator for {project_name}",
+        system_instructions="You are the orchestrator for {project_name}",
         is_active=True,
         is_default=False,
         version="1.0.0",
@@ -146,7 +146,7 @@ async def test_cascade_product_specific_priority(template_cache, mock_db_manager
         tenant_key="tenant-123",
         product_id="prod-456",
         role="orchestrator",
-        template_content="Product-specific template",
+        system_instructions="Product-specific template",
         is_active=True,
         is_default=False,
     )
@@ -165,7 +165,7 @@ async def test_cascade_product_specific_priority(template_cache, mock_db_manager
 
     # Verify product template was returned
     assert result == product_template
-    assert result.template_content == "Product-specific template"
+    assert result.system_instructions == "Product-specific template"
 
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_cascade_tenant_fallback(template_cache, mock_db_manager):
         tenant_key="tenant-123",
         product_id=None,
         role="orchestrator",
-        template_content="Tenant-specific template",
+        system_instructions="Tenant-specific template",
         is_active=True,
         is_default=False,
     )
@@ -199,7 +199,7 @@ async def test_cascade_tenant_fallback(template_cache, mock_db_manager):
 
     # Verify tenant template was returned
     assert result == tenant_template
-    assert result.template_content == "Tenant-specific template"
+    assert result.system_instructions == "Tenant-specific template"
 
 
 @pytest.mark.asyncio
@@ -210,7 +210,7 @@ async def test_cascade_system_default_fallback(template_cache, mock_db_manager):
         tenant_key="system",
         product_id=None,
         role="orchestrator",
-        template_content="System default template",
+        system_instructions="System default template",
         is_active=True,
         is_default=True,
     )
@@ -233,7 +233,7 @@ async def test_cascade_system_default_fallback(template_cache, mock_db_manager):
 
     # Verify system template was returned
     assert result == system_template
-    assert result.template_content == "System default template"
+    assert result.system_instructions == "System default template"
 
 
 @pytest.mark.asyncio
@@ -265,7 +265,7 @@ async def test_multi_tenant_isolation(template_cache, mock_db_manager):
         id="tmpl-tenant1",
         tenant_key="tenant-111",
         role="orchestrator",
-        template_content="Tenant 1 template",
+        system_instructions="Tenant 1 template",
         is_active=True,
         is_default=False,
     )
@@ -274,7 +274,7 @@ async def test_multi_tenant_isolation(template_cache, mock_db_manager):
         id="tmpl-tenant2",
         tenant_key="tenant-222",
         role="orchestrator",
-        template_content="Tenant 2 template",
+        system_instructions="Tenant 2 template",
         is_active=True,
         is_default=False,
     )
@@ -312,7 +312,7 @@ async def test_multi_tenant_isolation(template_cache, mock_db_manager):
     assert result2 == tenant2_template
 
     # Verify templates are different
-    assert result1.template_content != result2.template_content
+    assert result1.system_instructions != result2.system_instructions
 
 
 # Cache invalidation tests
@@ -488,7 +488,7 @@ async def test_lru_cache_limit_enforcement(template_cache, mock_db_manager):
             id="test",
             tenant_key="tenant-123",
             role="test",
-            template_content="test",
+            system_instructions="test",
             is_active=True,
             is_default=False,
         )

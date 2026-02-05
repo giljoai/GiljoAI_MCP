@@ -93,7 +93,7 @@ class TestOrchestratorTemplateExists:
         assert template.role == "orchestrator"
         assert template.is_active is True
         assert template.category in ["core", "orchestration"]
-        assert len(template.template_content) > 100  # Should be substantial
+        assert len(template.system_instructions) > 100  # Should be substantial
 
 
 class TestOrchestratorTemplateContent:
@@ -107,7 +107,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         assert "30-80-10" in content or "30/80/10" in content
 
     def test_template_contains_3_tool_rule(self, db_session):
@@ -118,7 +118,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
         assert "3-tool" in content or "3 tool" in content
 
     def test_template_contains_discovery_workflow(self, db_session):
@@ -129,7 +129,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
 
         # Check for discovery steps
         assert "discovery" in content
@@ -144,7 +144,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
 
         # Check for delegation enforcement
         assert "delegate" in content or "delegation" in content
@@ -158,7 +158,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
 
         # Check for documentation requirements
         closure_keywords = ["completion report", "devlog", "session memory", "after-action"]
@@ -172,7 +172,7 @@ class TestOrchestratorTemplateContent:
             .first()
         )
 
-        content = template.template_content.lower()
+        content = template.system_instructions.lower()
 
         # Should mention product configuration
         config_keywords = ["config", "product settings", "product config", "get_product_settings"]
@@ -406,8 +406,8 @@ class TestTemplateManagerIntegration:
         )
 
         assert template is not None
-        assert template.template_content is not None
-        assert len(template.template_content) > 0
+        assert template.system_instructions is not None
+        assert len(template.system_instructions) > 0
 
     def test_template_variable_substitution(self, db_session, sample_project):
         """Test that template variables can be substituted"""
@@ -417,7 +417,7 @@ class TestTemplateManagerIntegration:
             .first()
         )
 
-        content = template.template_content
+        content = template.system_instructions
 
         # Check for common template variables
         common_vars = ["{project_name}", "{project_mission}", "{product_name}"]

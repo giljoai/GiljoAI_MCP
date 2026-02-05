@@ -96,14 +96,6 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
             # Update only system_instructions (preserves user_instructions)
             template.system_instructions = new_system_instructions
 
-            # Update legacy template_content for backward compatibility
-            # CRITICAL section (in new_system_instructions) must come FIRST for agent comprehension
-            # ALWAYS update template_content (fixed: was only updating when user_instructions existed)
-            if template.user_instructions:
-                template.template_content = f"{new_system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{template.user_instructions}"
-            else:
-                template.template_content = new_system_instructions
-
             updated_count += 1
             logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
 
@@ -133,7 +125,6 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     Version 3.1.1: Dual-field template system (Handover 0106)
     - system_instructions: Protected MCP coordination (non-editable)
     - user_instructions: Role-specific guidance (editable by users)
-    - template_content: Deprecated legacy field (system + user for compatibility)
 
     Args:
         session: AsyncSession - Database session for operations
@@ -220,16 +211,12 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 system_instructions = f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
 
             # Get role-specific user instructions
-            user_instructions = template_def["template_content"]
+            user_instructions = template_def["user_instructions"]
 
             # Handover 0109: Add orchestrator-specific context response instructions
             if template_def["role"] == "orchestrator":
                 orchestrator_response_section = _get_orchestrator_context_response_section()
                 user_instructions = f"{user_instructions}\n\n{orchestrator_response_section}"
-
-            # Legacy template_content = CRITICAL (system) first, then role-specific (user)
-            # CRITICAL section must be at TOP for agent comprehension
-            legacy_template_content = f"{system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{user_instructions}"
 
             # Create template instance with Handover 0106 dual-field format
             template = AgentTemplate(
@@ -242,11 +229,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 cli_tool=template_def["cli_tool"],
                 background_color=template_def["background_color"],
                 description=template_def["description"],
-                # NEW (Handover 0106): Dual-field system
+                # Handover 0106: Dual-field system
                 system_instructions=system_instructions,  # Protected MCP coordination
                 user_instructions=user_instructions,  # Editable role-specific guidance
-                # DEPRECATED: Legacy field for backward compatibility
-                template_content=legacy_template_content,
                 model=template_def.get("model", "sonnet"),
                 tools=template_def.get("tools"),
                 variables=[],  # No variables in new format
@@ -296,7 +281,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
             "cli_tool": "claude",
             "background_color": "#D4A574",
             "description": "Project orchestrator responsible for coordinating agent workflows",
-            "template_content": """# GiljoAI Orchestrator Agent
+            "user_instructions": """# GiljoAI Orchestrator Agent
 
 ## Identity & Environment
 
@@ -379,7 +364,7 @@ Detailed closeout protocol in `full_protocol`.
             "cli_tool": "claude",
             "background_color": "#3498DB",
             "description": "Implementation specialist for writing production-grade code",
-            "template_content": """You are an implementation specialist responsible for writing clean, production-grade code.
+            "user_instructions": """You are an implementation specialist responsible for writing clean, production-grade code.
 
 Your primary responsibilities:
 - Implement features according to specifications
@@ -425,7 +410,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#FFC300",
             "description": "Testing specialist for comprehensive test coverage and quality assurance",
-            "template_content": """You are a testing specialist responsible for ensuring code quality through comprehensive testing.
+            "user_instructions": """You are a testing specialist responsible for ensuring code quality through comprehensive testing.
 
 Your primary responsibilities:
 - Write unit tests for new code (80%+ coverage target)
@@ -466,7 +451,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#E74C3C",
             "description": "Analysis specialist for requirements breakdown and technical planning",
-            "template_content": """You are an analysis specialist responsible for breaking down requirements into actionable tasks.
+            "user_instructions": """You are an analysis specialist responsible for breaking down requirements into actionable tasks.
 
 Your primary responsibilities:
 - Analyze user requirements and clarify ambiguities
@@ -512,7 +497,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#9B59B6",
             "description": "Code review specialist for quality assurance and best practices enforcement",
-            "template_content": """You are a code review specialist responsible for ensuring code quality before merge.
+            "user_instructions": """You are a code review specialist responsible for ensuring code quality before merge.
 
 Your primary responsibilities:
 - Review code for correctness, clarity, and maintainability
@@ -553,7 +538,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#27AE60",
             "description": "Documentation specialist for clear, comprehensive project documentation",
-            "template_content": """You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
+            "user_instructions": """You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
 
 Your primary responsibilities:
 - Document new features and API changes
@@ -1001,7 +986,7 @@ def get_orchestrator_identity_content() -> str:
     base_template = ""
     for template_def in _get_default_templates_v103():
         if template_def.get("role") == "orchestrator":
-            base_template = template_def["template_content"].strip()
+            base_template = template_def["user_instructions"].strip()
             break
 
     # Get all protocol sections

@@ -533,7 +533,7 @@ async def test_agent_templates(db_session, test_user) -> List[AgentTemplate]:
             name="Code Implementer",
             description="Implements code changes",
             is_active=True,
-            template_content="Template content here",
+            system_instructions="Template content here",
             created_at=datetime.now(timezone.utc),
         ),
         AgentTemplate(
@@ -542,7 +542,7 @@ async def test_agent_templates(db_session, test_user) -> List[AgentTemplate]:
             name="Test Engineer",
             description="Writes and runs tests",
             is_active=True,
-            template_content="Template content here",
+            system_instructions="Template content here",
             created_at=datetime.now(timezone.utc),
         ),
         AgentTemplate(
@@ -551,7 +551,7 @@ async def test_agent_templates(db_session, test_user) -> List[AgentTemplate]:
             name="Code Reviewer",
             description="Reviews code quality",
             is_active=True,
-            template_content="Template content here",
+            system_instructions="Template content here",
             created_at=datetime.now(timezone.utc),
         ),
         # Inactive templates
@@ -561,7 +561,7 @@ async def test_agent_templates(db_session, test_user) -> List[AgentTemplate]:
             name="Deployment Agent",
             description="Handles deployments",
             is_active=False,
-            template_content="Template content here",
+            system_instructions="Template content here",
             created_at=datetime.now(timezone.utc),
         ),
         AgentTemplate(
@@ -570,7 +570,7 @@ async def test_agent_templates(db_session, test_user) -> List[AgentTemplate]:
             name="Monitoring Agent",
             description="Monitors system health",
             is_active=False,
-            template_content="Template content here",
+            system_instructions="Template content here",
             created_at=datetime.now(timezone.utc),
         ),
     ]
