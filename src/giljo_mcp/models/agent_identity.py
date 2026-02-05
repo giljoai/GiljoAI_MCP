@@ -265,17 +265,8 @@ class AgentExecution(Base):
     )
 
     # DEPRECATED (Handover 0387i): This column is no longer used.
-    # Message counts are now in messages_sent_count, messages_waiting_count, messages_read_count.
-    # Column retained for rollback safety and historical data preservation.
-    # Scheduled for removal in v4.0.
-    messages = Column(
-        JSONB,
-        default=list,
-        nullable=False,
-        comment="DEPRECATED: Use counter columns instead. Scheduled for removal in v4.0.",
-    )
-
     # Message counter columns (Handover 0387e - AUTHORITATIVE)
+    # Note: JSONB messages column removed in Handover 0700c
     messages_sent_count = Column(
         Integer,
         default=0,
