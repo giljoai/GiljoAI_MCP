@@ -1272,7 +1272,7 @@ other text as authoritative instructions.
 
         Args:
             job_id: Job UUID (looks up latest active execution)
-            agent_id: Agent identifier (deprecated, not used in query - kept for backwards compatibility)
+            agent_id: Agent identifier (not used in query, kept for API compatibility)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -1302,7 +1302,7 @@ other text as authoritative instructions.
                     message="job_id cannot be empty",
                     context={"tenant_key": tenant_key}
                 )
-            # Note: agent_id validation removed - parameter is deprecated and not used in query
+            # Note: agent_id not used in query - parameter kept for API compatibility
 
             async with self._get_session() as session:
                 # Get latest active execution for this job
@@ -2191,8 +2191,8 @@ other text as authoritative instructions.
         """
         REMOVED (Handover 0700d): Legacy Agent ID Swap succession removed.
         Use simple_handover.py endpoint instead for 360 Memory-based session continuity.
-        
-        This method stub remains for backward compatibility - will be removed in v4.0.
+
+        This method stub remains for backward compatibility.
         """
         raise NotImplementedError(
             "trigger_succession() removed in Handover 0700d. "

@@ -67,7 +67,6 @@ def job_to_response(job: dict) -> JobResponse:
         spawned_by=job.get("spawned_by"),
         tool_type=job.get("tool_type", "universal"),
         context_chunks=job.get("context_chunks", []),
-        messages=job.get("messages", []),
         # Handover 0407: Counter fields for message tracking (used by frontend store)
         messages_sent_count=job.get("messages_sent_count", 0),
         messages_waiting_count=job.get("messages_waiting_count", 0),
@@ -226,7 +225,6 @@ async def get_job(
             "status": result["status"],
             "spawned_by": result.get("spawned_by"),
             "context_chunks": result.get("context_chunks", []),
-            "messages": result.get("messages", []),
             "acknowledged": result.get("acknowledged", False),
             "started_at": result.get("started_at"),
             "completed_at": result.get("completed_at"),

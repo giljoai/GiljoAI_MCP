@@ -45,55 +45,54 @@ async def init_database(state: APIState) -> None:
 
     # Initialize database (ALWAYS - install.py creates DB before API starts)
     # v3.0: No "setup mode without database" - database exists from installation
-    if True:  # Database always initialized
-        # Check for DATABASE_URL in environment first
-        logger.info("Initializing database connection...")
-        db_url = os.getenv("DATABASE_URL")
+    # Check for DATABASE_URL in environment first
+    logger.info("Initializing database connection...")
+    db_url = os.getenv("DATABASE_URL")
 
-        if db_url:
-            logger.info("Using DATABASE_URL from environment")
-        elif state.config.database:
-            # Construct database URL using configuration manager (handles env + migrations)
-            try:
-                logger.info("Constructing database URL from configuration manager")
-                db_url = state.config.database.get_connection_string()
-                logger.debug(
-                    f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
-                )
-            except Exception as e:
-                logger.error(
-                    "database_url_build_failed",
-                    error_code=ErrorCode.DB_CONNECTION_FAILED.value,
-                    error_message=str(e),
-                )
-                raise
-
-        if not db_url:
-            logger.error(
-                "database_config_missing",
-                error_code=ErrorCode.DB_CONNECTION_FAILED.value,
-            )
-            raise ValueError("Database URL not configured. PostgreSQL is required.")
-
-        logger.info(
-            f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}"
-        )
-
+    if db_url:
+        logger.info("Using DATABASE_URL from environment")
+    elif state.config.database:
+        # Construct database URL using configuration manager (handles env + migrations)
         try:
-            state.db_manager = DatabaseManager(db_url, is_async=True)
-            logger.info("Database manager created successfully")
-
-            logger.info("Creating database tables...")
-            await state.db_manager.create_tables_async()
-            logger.info("Database tables created/verified successfully")
-
-            state.system_prompt_service = SystemPromptService(state.db_manager)
-            logger.info("System prompt service initialized")
+            logger.info("Constructing database URL from configuration manager")
+            db_url = state.config.database.get_connection_string()
+            logger.debug(
+                f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
+            )
         except Exception as e:
             logger.error(
-                "database_init_failed",
+                "database_url_build_failed",
                 error_code=ErrorCode.DB_CONNECTION_FAILED.value,
                 error_message=str(e),
-                exc_info=True,
             )
             raise
+
+    if not db_url:
+        logger.error(
+            "database_config_missing",
+            error_code=ErrorCode.DB_CONNECTION_FAILED.value,
+        )
+        raise ValueError("Database URL not configured. PostgreSQL is required.")
+
+    logger.info(
+        f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}"
+    )
+
+    try:
+        state.db_manager = DatabaseManager(db_url, is_async=True)
+        logger.info("Database manager created successfully")
+
+        logger.info("Creating database tables...")
+        await state.db_manager.create_tables_async()
+        logger.info("Database tables created/verified successfully")
+
+        state.system_prompt_service = SystemPromptService(state.db_manager)
+        logger.info("System prompt service initialized")
+    except Exception as e:
+        logger.error(
+            "database_init_failed",
+            error_code=ErrorCode.DB_CONNECTION_FAILED.value,
+            error_message=str(e),
+            exc_info=True,
+        )
+        raise
