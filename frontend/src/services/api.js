@@ -232,6 +232,8 @@ export const api = {
     getCloseoutData: (id) => apiClient.get(`/api/v1/projects/${id}/closeout`),
     completeWithData: (id, data) => apiClient.post(`/api/v1/projects/${id}/complete`, data),
     archive: (id) => apiClient.post(`/api/v1/projects/${id}/archive`),  // Handover 0412: Simple archive
+    // Implementation phase gate (Handover 0709)
+    launchImplementation: (id) => apiClient.patch(`/api/agent-jobs/projects/${id}/launch-implementation`),
   },
 
   // DEPRECATED: Legacy agent endpoints removed in Handover 0116
