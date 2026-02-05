@@ -1015,30 +1015,3 @@ async def update_execution_mode(
     return {"execution_mode": result["execution_mode"]}
 
 
-# AI Tools Configurator Endpoint (relocated from /setup/ai-tools)
-
-
-# REMOVED: ai_tools_configurator endpoint
-# This backend approach has been deprecated in favor of Project 0031's
-# frontend-only dynamic mini-wizard that eliminates backend complexity.
-
-
-# REMOVED: detect_ai_tool_from_user_agent function (deprecated)
-
-
-# REMOVED: generate_claude_code_instructions function (deprecated)
-
-
-# REMOVED: generate_codex_instructions function (deprecated)
-
-
-# REMOVED: generate_gemini_instructions function (deprecated)
-
-
-# REMOVED: generate_cursor_instructions function (deprecated)
-
-
-# REMOVED: generate_continue_instructions function (deprecated)
-
-
-# REMOVED: generate_universal_instructions function (deprecated)
