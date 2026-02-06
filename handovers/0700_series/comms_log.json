@@ -848,6 +848,40 @@
           "0708": "blocked by 0707"
         }
       }
+    },
+    {
+      "id": "0703-complete-001",
+      "timestamp": "2026-02-06T00:10:00Z",
+      "from_handover": "0703",
+      "to_handovers": ["orchestrator"],
+      "type": "info",
+      "subject": "Auth & Logging cleanup complete (reduced scope)",
+      "message": "Deleted legacy api/middleware.py (260 lines). CORRECTED SCOPE: The handover spec incorrectly identified api/middleware/rate_limit.py as orphan. Pre-cleanup verification revealed rate_limit.py is ACTIVELY USED by api/endpoints/auth.py and api/endpoints/auth_pin_recovery.py for auth-specific rate limiting. This file was preserved. The two rate limiter files serve different purposes: rate_limit.py (Handover 1009) provides per-endpoint auth rate limiting with get_rate_limiter() singleton, while rate_limiter.py (Handover 0129c) provides global RateLimitMiddleware. Both are required and correctly coexist.",
+      "files_affected": [
+        "api/middleware.py (DELETED)"
+      ],
+      "action_required": false,
+      "context": {
+        "files_deleted": [
+          "api/middleware.py"
+        ],
+        "lines_removed": 260,
+        "expected_lines": 454,
+        "scope_correction": "rate_limit.py (194 lines) was NOT orphan - preserved",
+        "high_risk_files_preserved": [
+          "src/giljo_mcp/auth/dependencies.py",
+          "api/dependencies.py",
+          "api/middleware/rate_limit.py",
+          "api/middleware/rate_limiter.py"
+        ],
+        "verification_passed": [
+          "API imports OK",
+          "Middleware imports OK",
+          "rate_limit.py imports OK",
+          "rate_limiter.py imports OK"
+        ],
+        "spec_error_documented": true
+      }
     }
   ],
   "schema": {
