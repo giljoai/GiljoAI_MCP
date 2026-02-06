@@ -191,7 +191,7 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.job_id == job_id,
         )
-        .order_by(AgentExecution.instance_number)
+        .order_by(AgentExecution.started_at)
     )
     exec_result = await session.execute(exec_stmt)
     executions = exec_result.scalars().all()
@@ -201,7 +201,6 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
             {
                 "agent_id": exec.agent_id,
                 "status": exec.status,
-                "instance_number": exec.instance_number,
                 "progress": exec.progress,
                 "started_at": exec.started_at.isoformat() if exec.started_at else None,
                 "completed_at": exec.completed_at.isoformat()
@@ -211,13 +210,12 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
             for exec in executions
         ]
 
-        # Find current agent (highest instance number)
+        # Find current agent (most recent by started_at)
         if executions:
             current_exec = max(
-                executions, key=lambda e: e.instance_number
+                executions, key=lambda e: e.started_at or datetime.min.replace(tzinfo=timezone.utc)
             )
             response["current_agent_id"] = current_exec.agent_id
-            response["current_instance"] = current_exec.instance_number
 
     logger.info(f"Retrieved status for job {job_id} (tenant: {tenant_key})")
     return response
@@ -250,7 +248,6 @@ async def get_agent_status(
         - job_id: Work order UUID (context - which job is this agent working on)
         - status: Execution status (waiting, working, blocked, complete, etc.)
         - agent_display_name: Type of agent (orchestrator, implementer, etc.)
-        - instance_number: Sequential instance number (1, 2, 3, ...)
         - progress: Completion progress (0-100%)
         - current_task: Description of current task
         - spawned_by: Parent agent_id (succession chain)
@@ -341,7 +338,6 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
         "job_id": execution.job_id,  # Context: which job is this agent working on
         "status": execution.status,
         "agent_display_name": execution.agent_display_name,
-        "instance_number": execution.instance_number,
         "progress": execution.progress,
     }
 

@@ -228,9 +228,7 @@ class TestAgentJobRelationships:
             agent_id="agent-001",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_display_name="orchestrator",
-            instance_number=1,
-            status="complete"
+            agent_display_name="orchestrator",            status="complete"
         )
         db_session.add(exec1)
         await db_session.commit()
@@ -240,9 +238,7 @@ class TestAgentJobRelationships:
             agent_id="agent-002",
             job_id=job.job_id,
             tenant_key="tenant-abc",
-            agent_display_name="orchestrator",
-            instance_number=2,
-            status="working"
+            agent_display_name="orchestrator",            status="working"
         )
         db_session.add(exec2)
         await db_session.commit()

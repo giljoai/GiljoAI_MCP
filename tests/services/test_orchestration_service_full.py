@@ -164,7 +164,6 @@ class TestSpawnAgentJob:
             assert execution is not None
             assert execution.agent_display_name == "implementer"
             assert execution.status == "waiting"
-            assert execution.instance_number == 1
 
     @pytest.mark.asyncio
     async def test_spawn_routes_correctly(
@@ -237,7 +236,7 @@ class TestSuccession:
             exec_query = (
                 select(AgentExecution)
                 .where(AgentExecution.job_id == original_job_id)
-                .order_by(AgentExecution.instance_number)
+                
             )
             exec_result = await session.execute(exec_query)
             executions = exec_result.scalars().all()
@@ -245,12 +244,10 @@ class TestSuccession:
             assert len(executions) == 2, "Should have 2 executions after succession"
 
             # First execution should be decommissioned
-            assert executions[0].instance_number == 1
             assert executions[0].status == "decommissioned"
             assert executions[0].succeeded_by == executions[1].agent_id
 
             # Second execution should be active
-            assert executions[1].instance_number == 2
             assert executions[1].status == "waiting"
             assert executions[1].spawned_by == executions[0].agent_id
 

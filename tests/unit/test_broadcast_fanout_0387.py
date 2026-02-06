@@ -529,8 +529,6 @@ class TestBroadcastFanoutEdgeCases:
         target_execution.agent_id = target_agent_id
         target_execution.agent_display_name = "implementer"
         target_execution.status = "waiting"
-        target_execution.instance_number = 1
-
         added_messages = []
         session.add = Mock(side_effect=lambda msg: added_messages.append(msg))
 

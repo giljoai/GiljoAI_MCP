@@ -79,9 +79,7 @@ class TestCancelJobIntegration:
             job_id=job_id,
             tenant_key=test_tenant_key,
             agent_display_name="Code Reviewer",
-            agent_name="code-reviewer",
-            instance_number=2,
-            status="working",  # Valid status: waiting, working, blocked, complete, failed, cancelled, decommissioned
+            agent_name="code-reviewer",            status="working",  # Valid status: waiting, working, blocked, complete, failed, cancelled, decommissioned
             progress=50,
             messages_sent_count=0,
             messages_waiting_count=0,
@@ -346,9 +344,7 @@ class TestCancelJobIntegration:
                 job_id=job_id,
                 tenant_key=test_tenant_key,
                 agent_display_name="System Architect",
-                agent_name="system-architect",
-                instance_number=i,
-                status=status,
+                agent_name="system-architect",                status=status,
                 progress=i * 20,
                 messages_sent_count=0,
             messages_waiting_count=0,

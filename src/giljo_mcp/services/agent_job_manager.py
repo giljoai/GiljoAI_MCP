@@ -111,7 +111,7 @@ class AgentJobManager:
 
         Creates:
         1. AgentJob - Persistent work order (mission, scope)
-        2. AgentExecution - First executor (instance_number=1)
+        2. AgentExecution - Executor instance
 
         Args:
             project_id: Project ID this agent belongs to
@@ -155,7 +155,6 @@ class AgentJobManager:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name=agent_display_name,
-                    instance_number=1,  # First instance
                     status="waiting",  # Waiting to be launched
                     spawned_by=spawned_by,
                     tool_type=tool_type,
@@ -238,7 +237,7 @@ class AgentJobManager:
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    ).order_by(AgentExecution.started_at.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -315,7 +314,7 @@ class AgentJobManager:
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    ).order_by(AgentExecution.started_at.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -457,7 +456,7 @@ class AgentJobManager:
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    ).order_by(AgentExecution.started_at.desc()).limit(1)
                 )
                 return result.scalar_one_or_none()
 
@@ -509,7 +508,7 @@ class AgentJobManager:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            List of AgentExecution instances (ordered by instance_number)
+            List of AgentExecution instances (ordered by started_at)
         """
         try:
             async with self._get_session() as session:
@@ -519,7 +518,7 @@ class AgentJobManager:
                             AgentExecution.job_id == job_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number)
+                    ).order_by(AgentExecution.started_at)
                 )
                 return list(result.scalars().all())
 
@@ -588,7 +587,6 @@ class AgentJobManager:
                     "job_id": "job-abc",
                     "agent_display_name": "Orchestrator",
                     "status": "working",
-                    "instance_number": 1,
                     "agent_name": "Orchestrator Instance 1",
                     "tenant_key": "tenant-abc"
                 },
@@ -622,7 +620,7 @@ class AgentJobManager:
                     )
 
                 # Execute query
-                result = await session.execute(query.order_by(AgentExecution.instance_number))
+                result = await session.execute(query.order_by(AgentExecution.started_at))
                 executions = result.scalars().all()
 
                 # Convert to dict format
@@ -633,7 +631,6 @@ class AgentJobManager:
                         "job_id": execution.job_id,
                         "agent_display_name": execution.agent_display_name,
                         "status": execution.status,
-                        "instance_number": execution.instance_number,
                         "agent_name": execution.agent_name,
                         "tenant_key": execution.tenant_key,
                     })

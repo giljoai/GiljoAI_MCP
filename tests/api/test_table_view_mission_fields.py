@@ -54,9 +54,7 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 1",
             status="working",
-            mission_acknowledged_at=ack_time,
-            instance_number=1,
-        )
+            mission_acknowledged_at=ack_time,        )
 
         # Job 2: With mission_acknowledged_at set
         job2_id = str(uuid4())
@@ -70,9 +68,7 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 2",
             status="working",
-            mission_acknowledged_at=ack_time2,
-            instance_number=1,
-        )
+            mission_acknowledged_at=ack_time2,        )
 
         # Job 3: With mission_acknowledged_at null
         job3_id = str(uuid4())
@@ -85,9 +81,7 @@ async def test_project_with_jobs(db_manager, admin_user):
             tool_type="claude-code",
             mission="Test mission 3",
             status="waiting",
-            mission_acknowledged_at=None,
-            instance_number=1,
-        )
+            mission_acknowledged_at=None,        )
 
         session.add(job1)
         session.add(job2)

@@ -98,8 +98,7 @@ async def spawn_agent(
         dict: {
             "success": True,
             "job_id": str (work order UUID - persistent),
-            "agent_id": str (executor UUID - NEW instance),
-            "instance_number": int (succession tracking)
+            "agent_id": str (executor UUID - NEW instance)
         }
 
     Security:
@@ -108,7 +107,6 @@ async def spawn_agent(
         - No cross-tenant spawning possible
 
     Succession:
-        - Increments instance_number automatically
         - Links to parent executor via spawned_by_agent_id
         - Enables multi-level succession chains
     """
@@ -158,15 +156,6 @@ async def spawn_agent(
                     "error": f"AgentJob with job_id={job_id} not found for tenant {tenant_key}",
                 }
 
-            # Get next instance number (count existing executions + 1)
-            existing_executions_query = select(AgentExecution).where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == tenant_key,
-            )
-            existing_result = await session.execute(existing_executions_query)
-            existing_executions = existing_result.scalars().all()
-            instance_number = len(existing_executions) + 1
-
             # Create NEW AgentExecution (executor instance)
             new_agent_id = str(uuid4())
 
@@ -175,10 +164,9 @@ async def spawn_agent(
                 job_id=job_id,
                 tenant_key=tenant_key,
                 agent_display_name=agent_display_name,
-                instance_number=instance_number,
                 status="waiting",
                 spawned_by=spawned_by_agent_id,  # Link to parent executor
-                agent_name=f"{agent_display_name.title()} #{instance_number}",
+                agent_name=agent_display_name.title(),
                 context_used=0,
                 context_budget=50000,
                 tool_type="universal",
@@ -190,14 +178,13 @@ async def spawn_agent(
 
             logger.info(
                 f"[spawn_agent] Spawned agent_id={new_agent_id} for job_id={job_id}, "
-                f"instance={instance_number}, tenant={tenant_key}"
+                f"tenant={tenant_key}"
             )
 
             return {
                 "success": True,
                 "job_id": job_id,  # Work order (persistent)
                 "agent_id": new_agent_id,  # Executor (NEW instance)
-                "instance_number": instance_number,
             }
         else:
             # Production path: create new session
@@ -221,9 +208,6 @@ async def spawn_agent(
                     AgentExecution.job_id == job_id,
                     AgentExecution.tenant_key == tenant_key,
                 )
-                existing_result = await session.execute(existing_executions_query)
-                existing_executions = existing_result.scalars().all()
-                instance_number = len(existing_executions) + 1
 
                 # Create NEW AgentExecution (executor instance)
                 new_agent_id = str(uuid4())
@@ -233,10 +217,9 @@ async def spawn_agent(
                     job_id=job_id,
                     tenant_key=tenant_key,
                     agent_display_name=agent_display_name,
-                    instance_number=instance_number,
                     status="waiting",
                     spawned_by=spawned_by_agent_id,  # Link to parent executor
-                    agent_name=f"{agent_display_name.title()} #{instance_number}",
+                    agent_name=agent_display_name.title(),
                     context_used=0,
                     context_budget=50000,
                     tool_type="universal",
@@ -248,14 +231,13 @@ async def spawn_agent(
 
                 logger.info(
                     f"[spawn_agent] Spawned agent_id={new_agent_id} for job_id={job_id}, "
-                    f"instance={instance_number}, tenant={tenant_key}"
+                    f"tenant={tenant_key}"
                 )
 
                 return {
                     "success": True,
                     "job_id": job_id,  # Work order (persistent)
                     "agent_id": new_agent_id,  # Executor (NEW instance)
-                    "instance_number": instance_number,
                 }
 
     except Exception as e:
@@ -289,7 +271,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
             "status": str (execution status),
             "progress": int (0-100%),
             "health_status": str,
-            "instance_number": int,
             "agent_display_name": str,
             "agent_name": str
         }
@@ -354,7 +335,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                 "status": execution.status,
                 "progress": execution.progress,
                 "health_status": execution.health_status,
-                "instance_number": execution.instance_number,
                 "agent_display_name": execution.agent_display_name,
                 "agent_name": execution.agent_name,
                 "current_task": execution.current_task,
@@ -391,7 +371,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
                     "status": execution.status,
                     "progress": execution.progress,
                     "health_status": execution.health_status,
-                    "instance_number": execution.instance_number,
                     "agent_display_name": execution.agent_display_name,
                     "agent_name": execution.agent_name,
                     "current_task": execution.current_task,
@@ -440,7 +419,6 @@ async def get_team_agents(
                     "job_id": str (work order UUID),
                     "agent_display_name": str (agent role),
                     "status": str (execution status),
-                    "instance_number": int (succession tracking),
                     "agent_name": str (display name),
                     "tenant_key": str
                 },

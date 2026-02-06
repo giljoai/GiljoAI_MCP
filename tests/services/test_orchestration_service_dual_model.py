@@ -78,7 +78,6 @@ class TestSpawnAgentJobDualModel:
     - job_id and agent_id are DIFFERENT UUIDs
     - mission stored in AgentJob only (not duplicated)
     - Returns dict with both job_id and agent_id keys
-    - instance_number starts at 1 for first execution
     """
 
     async def test_spawn_creates_both_job_and_execution(self, db_session, db_manager, test_project, test_tenant_key):
@@ -126,7 +125,6 @@ class TestSpawnAgentJobDualModel:
         assert execution.job_id == result["job_id"]
         assert execution.agent_display_name == "implementer"
         assert execution.tenant_key == test_tenant_key
-        assert execution.instance_number == 1
 
     async def test_spawn_stores_mission_in_job_not_execution(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify mission is stored in AgentJob, NOT duplicated in AgentExecution."""
@@ -187,29 +185,6 @@ class TestSpawnAgentJobDualModel:
         except ValueError:
             pytest.fail("job_id or agent_id is not a valid UUID")
 
-    async def test_spawn_sets_instance_number_to_one(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify first execution starts with instance_number = 1."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
-
-        result = await service.spawn_agent_job(
-            agent_display_name="analyzer",
-            agent_name="analyzer-1",
-            mission="Analyze codebase architecture",
-            project_id=test_project.id,
-            tenant_key=test_tenant_key,
-        )
-
-        # Verify instance_number is 1
-        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result["agent_id"])
-        exec_result = await db_session.execute(exec_stmt)
-        execution = exec_result.scalar_one()
-        assert execution.instance_number == 1
-
-
 # ============================================================================
 # Test Class: Succession Creates New Execution, NOT New Job
 # ============================================================================
@@ -225,7 +200,6 @@ class TestSuccessionDualModel:
     - Old execution gets a decommissioned agent_id (decomm-xxx)
     - trigger_succession uses SAME job_id (work order persists)
     - Predecessor's succeeded_by points to the original agent_id (now owned by successor)
-    - New execution's instance_number increments
     - New execution's spawned_by points to predecessor's decommissioned agent_id
     """
 
@@ -327,7 +301,7 @@ class TestSuccessionDualModel:
 
         # Verify predecessor has decommissioned ID and succeeded_by points to original
         predecessor_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == decommissioned_agent_id, AgentExecution.instance_number == 1
+            AgentExecution.agent_id == decommissioned_agent_id
         )
         predecessor_result = await db_session.execute(predecessor_stmt)
         predecessor = predecessor_result.scalar_one()
@@ -369,61 +343,11 @@ class TestSuccessionDualModel:
 
         # Verify new execution's spawned_by points to decommissioned agent_id
         new_exec_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == new_agent_id, AgentExecution.instance_number == 2
+            AgentExecution.agent_id == new_agent_id
         )
         new_exec_result = await db_session.execute(new_exec_stmt)
         new_execution = new_exec_result.scalar_one()
         assert new_execution.spawned_by == decommissioned_agent_id  # Points to decomm ID
-
-    async def test_succession_increments_instance_number(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify new execution's instance_number increments.
-
-        Handover 0429: agent_id preserved, instance_number increments.
-        Query specific instances to verify increment.
-        """
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
-
-        # Spawn initial orchestrator
-        initial = await service.spawn_agent_job(
-            agent_display_name="orchestrator",
-            agent_name="orchestrator-1",
-            mission="Orchestrate project",
-            project_id=test_project.id,
-            tenant_key=test_tenant_key,
-        )
-        initial_agent_id = initial["agent_id"]
-
-        # Verify initial instance is 1
-        initial_exec_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == initial_agent_id, AgentExecution.instance_number == 1
-        )
-        initial_exec_result = await db_session.execute(initial_exec_stmt)
-        initial_execution = initial_exec_result.scalar_one()
-        assert initial_execution.instance_number == 1
-
-        # Trigger succession (job_id treated as agent_id for backwards compat)
-        succession_result = await service.trigger_succession(
-            job_id=initial_agent_id,
-            reason="context_limit",
-            tenant_key=test_tenant_key,
-        )
-        new_agent_id = succession_result["successor_agent_id"]
-
-        # Handover 0429: agent_id preserved
-        assert new_agent_id == initial_agent_id
-
-        # Verify new instance is 2 (query instance 2 specifically)
-        new_exec_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == new_agent_id, AgentExecution.instance_number == 2
-        )
-        new_exec_result = await db_session.execute(new_exec_stmt)
-        new_execution = new_exec_result.scalar_one()
-        assert new_execution.instance_number == 2
-
 
 # ============================================================================
 # Test Class: Query Methods Correctly Join Job + Execution

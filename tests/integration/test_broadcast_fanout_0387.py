@@ -72,9 +72,7 @@ class TestBroadcastFanout:
                 job_id=orch_job.job_id,
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                instance_number=1,
-                status="working",
+                agent_name="Test Orchestrator",                status="working",
                 progress=0,
                 messages_sent_count=0,
                 messages_waiting_count=0,
@@ -100,9 +98,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker Agent {i+1}",
-                    instance_number=1,
-                    status="waiting",
+                    agent_name=f"Worker Agent {i+1}",                    status="waiting",
                     progress=0,
                     messages_sent_count=0,
                 messages_waiting_count=0,
@@ -218,9 +214,7 @@ class TestBroadcastFanout:
                 job_id=orch_job.job_id,
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                instance_number=1,
-                status="working",
+                agent_name="Test Orchestrator",                status="working",
             )
             setup_session.add(orch_execution)
 
@@ -241,9 +235,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker {i+1}",
-                    instance_number=1,
-                    status="waiting",
+                    agent_name=f"Worker {i+1}",                    status="waiting",
                 )
                 setup_session.add(execution)
                 agent_ids.append(execution.agent_id)
@@ -343,9 +335,7 @@ class TestBroadcastFanout:
                 job_id=orch_job.job_id,
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                instance_number=1,
-                status="working",
+                agent_name="Test Orchestrator",                status="working",
             )
             setup_session.add(orch_execution)
 
@@ -366,9 +356,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Agent {chr(65 + i)}",  # Agent A, B, C
-                    instance_number=1,
-                    status="waiting",
+                    agent_name=f"Agent {chr(65 + i)}",  # Agent A, B, C                    status="waiting",
                 )
                 setup_session.add(execution)
                 agent_ids.append(execution.agent_id)
@@ -510,9 +498,7 @@ class TestBroadcastFanout:
                 job_id=orch_job.job_id,
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
-                agent_name="Test Orchestrator",
-                instance_number=1,
-                status="working",
+                agent_name="Test Orchestrator",                status="working",
             )
             setup_session.add(orch_execution)
             orch_agent_id = orch_execution.agent_id
@@ -534,9 +520,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker {i+1}",
-                    instance_number=1,
-                    status="waiting",
+                    agent_name=f"Worker {i+1}",                    status="waiting",
                 )
                 setup_session.add(execution)
 
