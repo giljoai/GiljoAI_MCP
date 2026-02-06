@@ -121,9 +121,7 @@ class TestFullStackModeFlow:
         result_cc = await generator_cc.generate(
             project_id=str(test_project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
-        )
+            tool="claude-code")
         prompt_cc = result_cc["thin_prompt"]
 
         # Note: Task tool is mentioned in execution prompts, not staging prompts
@@ -158,9 +156,7 @@ class TestFullStackModeFlow:
         result_mt = await generator_mt.generate(
             project_id=str(test_project.id),
             user_id=test_user.id,
-            tool="multi-terminal",
-            instance_number=1
-        )
+            tool="multi-terminal")
         prompt_mt = result_mt["thin_prompt"]
 
         # Note: Staging prompts have same structure regardless of execution mode
@@ -222,9 +218,7 @@ class TestFullStackModeFlow:
             result = await generator.generate(
                 project_id=str(test_project.id),
                 user_id=test_user.id,
-                tool=mode,
-                instance_number=1,
-                field_priorities={
+                tool=mode,                field_priorities={
                     "product_core": 1,
                     "agent_templates": 2,
                     "project_description": 1

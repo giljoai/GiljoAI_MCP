@@ -101,9 +101,7 @@ async def orchestrator_job(
             project_id=test_project.id,
             agent_display_name="orchestrator",
             mission="Orchestrate project execution",
-            status="active",
-            instance_number=1,
-        )
+            status="active",        )
         session.add(orchestrator)
         await session.commit()
         await session.refresh(orchestrator)
@@ -591,9 +589,7 @@ class TestStagingRollbackEdgeCases:
                 project_id=test_project.id,
                 agent_display_name="orchestrator",
                 mission="Instance 1 mission",
-                status="complete",
-                instance_number=1,
-            )
+                status="complete",            )
             session.add(orch_1)
             await session.commit()
             await session.refresh(orch_1)
@@ -603,9 +599,7 @@ class TestStagingRollbackEdgeCases:
                 project_id=test_project.id,
                 agent_display_name="orchestrator",
                 mission="Instance 2 mission",
-                status="active",
-                instance_number=2,
-                spawned_by=orch_1.job_id,  # Spawned by instance 1
+                status="active",                spawned_by=orch_1.job_id,  # Spawned by instance 1
             )
             session.add(orch_2)
             await session.commit()

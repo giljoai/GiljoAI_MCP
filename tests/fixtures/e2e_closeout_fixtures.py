@@ -299,7 +299,6 @@ class E2ECloseoutFixtures:
                 started_at=datetime.now(timezone.utc),
                 completed_at=datetime.now(timezone.utc),
                 tool_type="claude-code",
-                instance_number=1,
                 context_budget=150000,
                 context_used=50000,
                 health_status="healthy",

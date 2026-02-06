@@ -65,9 +65,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         job_id=existing_job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator",
-        instance_number=1,
-        status="waiting",  # Staging status
+        agent_name="Orchestrator",        status="waiting",  # Staging status
         context_budget=10000,
         context_used=0
     )
@@ -140,9 +138,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         job_id=existing_job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator",
-        instance_number=1,
-        status="working",  # Already running
+        agent_name="Orchestrator",        status="working",  # Already running
         context_budget=10000,
         context_used=0
     )
@@ -211,9 +207,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         job_id=completed_job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator #1",
-        instance_number=1,
-        status="complete",  # Finished, succession allowed
+        agent_name="Orchestrator #1",        status="complete",  # Finished, succession allowed
         context_budget=10000,
         context_used=0
     )
@@ -297,9 +291,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         job_id=orch_job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator",
-        instance_number=1,
-        status="working",
+        agent_name="Orchestrator",        status="working",
         context_budget=10000,
         context_used=0
     )
@@ -322,9 +314,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         job_id=impl1_job_id,
         tenant_key=tenant_key,
         agent_display_name="worker",  # agent_display_name for categorization
-        agent_name="implementer",  # agent_name matches template (SSOT)
-        instance_number=1,
-        status="working",
+        agent_name="implementer",  # agent_name matches template (SSOT)        status="working",
         context_budget=10000,
         context_used=0
     )
@@ -407,9 +397,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         job_id=orch_a_job_id,
         tenant_key=tenant_a,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator A",
-        instance_number=1,
-        status="working",
+        agent_name="Orchestrator A",        status="working",
         context_budget=10000,
         context_used=0
     )

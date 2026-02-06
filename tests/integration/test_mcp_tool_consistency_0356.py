@@ -86,9 +86,7 @@ async def multi_tenant_setup(db_session, db_manager, tenant_manager):
         agent_id=str(uuid.uuid4()),
         job_id=job_a.job_id,
         tenant_key=tenant_a,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         started_at=datetime.now(timezone.utc),
         progress=50,
     )
@@ -134,9 +132,7 @@ async def multi_tenant_setup(db_session, db_manager, tenant_manager):
         agent_id=str(uuid.uuid4()),
         job_id=job_b.job_id,
         tenant_key=tenant_b,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         started_at=datetime.now(timezone.utc),
         progress=25,
     )

@@ -70,9 +70,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                     {"id": "msg1", "status": "pending", "content": "Update 1"},
                     {"id": "msg2", "status": "acknowledged", "content": "Update 2"},
                     {"id": "msg3", "status": "pending", "content": "Update 3"},
-                ],
-                instance_number=1,
-            ),
+                ],            ),
             # Job 2: Implementer, waiting, warning health, no messages
             AgentExecution(
                 job_id=str(uuid4()),
@@ -87,9 +85,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 health_status="warning",
                 last_progress_at=now - timedelta(minutes=15),
                 created_at=now - timedelta(minutes=30),
-                messages=[],
-                instance_number=1,
-            ),
+                messages=[],            ),
             # Job 3: Tester, working, critical health, stale (>10 min no progress)
             AgentExecution(
                 job_id=str(uuid4()),
@@ -108,9 +104,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 started_at=now - timedelta(minutes=120),
                 messages=[
                     {"id": "msg4", "status": "acknowledged", "content": "Test started"},
-                ],
-                instance_number=1,
-            ),
+                ],            ),
             # Job 4: Analyzer, complete, healthy (terminal state)
             AgentExecution(
                 job_id=str(uuid4()),
@@ -130,9 +124,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 messages=[
                     {"id": "msg5", "status": "acknowledged", "content": "Analysis complete"},
                     {"id": "msg6", "status": "acknowledged", "content": "Results ready"},
-                ],
-                instance_number=1,
-            ),
+                ],            ),
             # Job 5: Implementer, failed, timeout health
             AgentExecution(
                 job_id=str(uuid4()),
@@ -152,9 +144,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 completed_at=now - timedelta(hours=2),
                 messages=[
                     {"id": "msg7", "status": "pending", "content": "Error occurred"},
-                ],
-                instance_number=1,
-            ),
+                ],            ),
             # Job 6: Orchestrator instance 2 (succession)
             AgentExecution(
                 job_id=str(uuid4()),
@@ -171,9 +161,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 last_progress_at=now - timedelta(minutes=1),
                 created_at=now - timedelta(minutes=10),
                 started_at=now - timedelta(minutes=9),
-                messages=[],
-                instance_number=2,
-            ),
+                messages=[],            ),
         ]
 
         for job in jobs:

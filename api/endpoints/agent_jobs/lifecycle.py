@@ -113,7 +113,6 @@ async def spawn_agent_job(
                 "agent_display_name": request.agent_display_name,
                 "agent_name": request.agent_name or request.agent_display_name,
                 "status": "waiting",
-                "instance_number": result.get("instance_number", 1),  # Handover 0457
                 "mission": request.mission,  # Handover 0464: Include mission for UI display
             }
         )

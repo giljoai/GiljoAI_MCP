@@ -92,9 +92,7 @@ class TestMessageWebSocketRecipientCounters:
                     mission=f"Test mission {i+1}",
                     status="waiting",
                     progress=0,
-                    tool_type="claude-code",
-                    instance_number=i+1,
-                    context_used=0,
+                    tool_type="claude-code",                    context_used=0,
                 )
                 session.add(agent)
 
@@ -226,9 +224,7 @@ class TestMessageWebSocketRecipientCounters:
                     mission="Test mission",
                     status="waiting",
                     progress=0,
-                    tool_type="claude-code",
-                    instance_number=i+1,
-                    context_used=0,
+                    tool_type="claude-code",                    context_used=0,
                 )
                 session.add(agent)
 

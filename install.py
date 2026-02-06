@@ -1087,51 +1087,24 @@ class UnifiedInstaller:
 
                 # Create first execution (completed after reaching 85% context)
                 first_agent_id = str(uuid4())
-                first_execution = AgentExecution(
+                # Create orchestrator execution (active)
+                orchestrator_execution = AgentExecution(
                     agent_id=first_agent_id,
                     job_id=job_id,
                     tenant_key=tenant_key,
                     agent_display_name="orchestrator",
-                    instance_number=1,
-                    status="complete",
-                    started_at=datetime.now(timezone.utc) - timedelta(hours=2),
-                    completed_at=datetime.now(timezone.utc) - timedelta(hours=1),
-                    progress=100,
-                    current_task="Completed initial project analysis and spawned implementation agents",
-                    context_used=85000,
-                    context_budget=100000,
-                    succession_reason="Approaching context limit (85%)",
-                    health_status="healthy",
-                    agent_name="Orchestrator Instance #1",
-                    handover_summary={
-                        "phase": "implementation",
-                        "agents_spawned": ["implementer", "tester"],
-                        "decisions": ["Chose microservices architecture", "Selected PostgreSQL for database"],
-                    },
-                )
-                session.add(first_execution)
-
-                # Create second execution (active, successor)
-                second_agent_id = str(uuid4())
-                second_execution = AgentExecution(
-                    agent_id=second_agent_id,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    agent_display_name="orchestrator",
-                    instance_number=2,
                     status="working",
                     started_at=datetime.now(timezone.utc) - timedelta(hours=1),
                     completed_at=None,
-                    spawned_by=first_agent_id,  # Links to first execution
                     progress=35,
                     current_task="Monitoring implementation agents and coordinating integration testing",
                     context_used=35000,
                     context_budget=100000,
                     health_status="healthy",
                     last_progress_at=datetime.now(timezone.utc),  # Current time to avoid immediate staleness alert
-                    agent_name="Orchestrator Instance #2",
+                    agent_name="Orchestrator",
                 )
-                session.add(second_execution)
+                session.add(orchestrator_execution)
 
                 # Update first execution to point to successor
                 first_execution.succeeded_by = second_agent_id

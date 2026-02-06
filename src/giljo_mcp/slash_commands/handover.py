@@ -52,7 +52,7 @@ async def handle_gil_handover(
                 AgentExecution.agent_id == orchestrator_job_id,
                 AgentExecution.tenant_key == tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
             .limit(1)
         )
         result = await db_session.execute(stmt)
@@ -66,7 +66,7 @@ async def handle_gil_handover(
                     AgentExecution.job_id == orchestrator_job_id,
                     AgentExecution.tenant_key == tenant_key,
                 )
-                .order_by(AgentExecution.instance_number.desc())
+                .order_by(AgentExecution.started_at.desc())
                 .limit(1)
             )
             result = await db_session.execute(stmt)
@@ -216,7 +216,7 @@ async def _get_active_orchestrator(
             AgentJob.project_id == project_id
         )
 
-    stmt = stmt.order_by(AgentExecution.instance_number.desc()).limit(1)
+    stmt = stmt.order_by(AgentExecution.started_at.desc()).limit(1)
 
     result = await db_session.execute(stmt)
     return result.scalar_one_or_none()

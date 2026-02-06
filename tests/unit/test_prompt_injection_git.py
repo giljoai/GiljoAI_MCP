@@ -290,9 +290,7 @@ class TestCombinedInjection:
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
-                project_name="Test Project",
-                instance_number=1,
-                tool="universal",
+                project_name="Test Project",                tool="universal",
                 product=product_with_git_enabled
             )
 
@@ -317,9 +315,7 @@ class TestCombinedInjection:
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
-                project_name="Test Project",
-                instance_number=1,
-                tool="universal",
+                project_name="Test Project",                tool="universal",
                 product=product_with_git_disabled
             )
 
@@ -342,9 +338,7 @@ class TestCombinedInjection:
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
-                project_name="Test Project",
-                instance_number=1,
-                tool="universal",
+                project_name="Test Project",                tool="universal",
                 product=product_with_git_enabled
             )
 
@@ -506,9 +500,7 @@ class TestPromptIntegration:
         result = await generator.generate(
             project_id="proj-123",
             user_id="user-123",
-            tool="universal",
-            instance_number=1,
-            field_priorities=None
+            tool="universal",            field_priorities=None
         )
 
         # Assert result structure
@@ -577,9 +569,7 @@ class TestPromptIntegration:
         result = await generator.generate(
             project_id="proj-123",
             user_id="user-123",
-            tool="universal",
-            instance_number=1,
-            field_priorities=None
+            tool="universal",            field_priorities=None
         )
 
         prompt = result["thin_prompt"]

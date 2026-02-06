@@ -79,9 +79,7 @@ class TestSerenaInjection0408:
                 agent_display_name="orchestrator",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-            )
+                context_used=0,            )
             session.add(orchestrator_exec)
 
             await session.commit()
