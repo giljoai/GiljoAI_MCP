@@ -61,7 +61,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         buggy_result = await db_session.execute(buggy_stmt)
         buggy_orchestrator = buggy_result.scalars().first()
@@ -78,7 +78,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         fixed_result = await db_session.execute(fixed_stmt)
         fixed_orchestrator = fixed_result.scalars().first()
@@ -126,7 +126,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         result = await db_session.execute(fixed_stmt)
         orchestrator = result.scalars().first()

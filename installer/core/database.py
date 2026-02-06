@@ -44,10 +44,10 @@ class DatabaseInstaller:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.pg_host = settings.get("pg_host", "localhost")
-        self.pg_port = settings.get("pg_port", 5432)
-        self.pg_password = settings.get("pg_password")
-        self.pg_user = settings.get("pg_user", "postgres")
+        self.pg_host = settings.get("host", "localhost")
+        self.pg_port = settings.get("port", 5432)
+        self.pg_password = settings.get("password")
+        self.pg_user = settings.get("username", "postgres")
         self.db_name = "giljo_mcp"
         self.logger = logging.getLogger(self.__class__.__name__)
 
