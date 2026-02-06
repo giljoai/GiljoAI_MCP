@@ -21,6 +21,15 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from api.endpoints.auth_models import (
+    CheckFirstLoginRequest,
+    CheckFirstLoginResponse,
+    CompleteFirstLoginRequest,
+    CompleteFirstLoginResponse,
+    PinPasswordResetRequest,
+    PinPasswordResetResponse,
+)
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
@@ -29,7 +38,7 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
 from api.endpoints.dependencies import get_auth_service
-from api.middleware.rate_limit import get_rate_limiter
+from api.middleware.auth_rate_limiter import get_rate_limiter
 
 
 logger = logging.getLogger(__name__)
@@ -193,82 +202,6 @@ class PasswordChangeResponse(BaseModel):
     message: str
     token: str
     user: dict
-
-
-class PinPasswordResetRequest(BaseModel):
-    """Request to reset password using recovery PIN"""
-
-    username: str = Field(..., min_length=3, max_length=64)
-    recovery_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password_strength(cls, v):
-        """Validate password meets security requirements"""
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least 1 uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least 1 lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least 1 number")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
-            raise ValueError("Password must contain at least 1 special character")
-        return v
-
-
-class PinPasswordResetResponse(BaseModel):
-    """Response after successful password reset via PIN"""
-
-    message: str
-
-
-class CheckFirstLoginRequest(BaseModel):
-    """Request to check if first login is required"""
-
-    username: str = Field(..., min_length=3, max_length=64)
-
-
-class CheckFirstLoginResponse(BaseModel):
-    """Response indicating if first login actions required"""
-
-    must_change_password: bool
-    must_set_pin: bool
-
-
-class CompleteFirstLoginRequest(BaseModel):
-    """Request to complete first login setup"""
-
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-    recovery_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-    confirm_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password_strength(cls, v):
-        """Validate password meets security requirements"""
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least 1 uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least 1 lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least 1 number")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
-            raise ValueError("Password must contain at least 1 special character")
-        return v
-
-
-class CompleteFirstLoginResponse(BaseModel):
-    """Response after completing first login"""
-
-    message: str
 
 
 # Auth Endpoints
