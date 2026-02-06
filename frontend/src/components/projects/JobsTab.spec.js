@@ -99,7 +99,6 @@ const createMockMessage = (from, content, overrides = {}) => ({
   content: content,
   timestamp: new Date().toISOString(),
   agent_display_name: from === 'agent' ? 'orchestrator' : null,
-  instance_number: 1,
   ...overrides,
 })
 

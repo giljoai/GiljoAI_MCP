@@ -221,8 +221,7 @@ describe('JobsTab Agent Action Buttons (Handover 0243d)', () => {
     it('handles successor created event', async () => {
       const successorData = {
         id: 'successor-uuid',
-        spawned_by: 'agent-1',
-        instance_number: 2
+        spawned_by: 'agent-1'
       }
 
       wrapper.vm.showHandoverDialog = true

@@ -261,7 +261,7 @@ class TestCreateSuccessorOrchestrator:
     async def test_creates_successor_execution(
         self, db_session: AsyncSession, test_project
     ):
-        """Test creates new AgentExecution with incremented instance_number."""
+        """Test creates new AgentExecution as successor."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
             job_id=str(uuid4()),
@@ -301,7 +301,6 @@ class TestCreateSuccessorOrchestrator:
         assert result["success"] is True
         assert "successor_id" in result  # New agent_id
         assert result["job_id"] == current_job.job_id  # Same job_id
-        assert result["instance_number"] == 2  # Incremented
 
         # Verify successor execution exists in database
         successor_result = await db_session.execute(
