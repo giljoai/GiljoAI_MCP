@@ -940,7 +940,7 @@ def upgrade() -> None:
     sa.Column('failure_reason', sa.String(length=50), nullable=True, comment='Reason for failure: error, timeout, system_error (Handover 0113)'),
     sa.Column('agent_name', sa.String(length=255), nullable=True, comment='Human-readable display name for UI'),
     sa.CheckConstraint("health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')", name='ck_agent_execution_health_status'),
-    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled')", name='ck_agent_execution_status'),
+    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')", name='ck_agent_execution_status'),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_agent_execution_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_agent_execution_context_usage'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_agent_execution_progress_range'),
@@ -1053,7 +1053,7 @@ def downgrade() -> None:
     op.drop_index('idx_agent_executions_status', table_name='agent_executions')
     op.drop_index('idx_agent_executions_last_progress', table_name='agent_executions')
     op.drop_index('idx_agent_executions_job', table_name='agent_executions')
-    op.drop_index('idx_agent_executions_instance', table_name='agent_executions')
+    # Removed: op.drop_index('idx_agent_executions_instance', ...) - column removed in 0700i
     op.drop_index('idx_agent_executions_health', table_name='agent_executions')
     op.drop_table('agent_executions')
     op.drop_index('idx_vision_tenant', table_name='visions')
