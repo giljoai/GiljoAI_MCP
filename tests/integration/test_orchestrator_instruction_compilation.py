@@ -211,7 +211,6 @@ async def test_stage_project_compiles_orchestrator_prompt(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )
@@ -299,7 +298,6 @@ async def test_settings_change_before_stage_project(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )
@@ -377,7 +375,6 @@ async def test_settings_change_after_activation_before_stage(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )
@@ -442,7 +439,6 @@ async def test_repeated_stage_project_reuses_orchestrator(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )
@@ -455,7 +451,6 @@ async def test_repeated_stage_project_reuses_orchestrator(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )
@@ -591,7 +586,6 @@ async def test_field_priorities_persist_through_pipeline(
         json={
             "project_id": test_project.id,
             "tool": "claude-code",
-            "instance_number": 1
         },
         headers=headers
     )

@@ -235,7 +235,6 @@ npm run test:coverage
 
 - Component state variations
 - Responsive design across breakpoints
-- Theme switching (light/dark mode)
 - High contrast mode verification
 
 ## Test Maintenance Guidelines

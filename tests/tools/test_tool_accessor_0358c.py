@@ -13,7 +13,7 @@ Semantic Contract (Phase C):
 - job_id = work order UUID (WHAT - persistent across succession)
 - agent_id = executor UUID (WHO - changes on succession)
 - AgentJob = work order (mission, job_type, status: active/completed/cancelled)
-- AgentExecution = executor (agent_display_name, instance_number, status: waiting/working/...)
+- AgentExecution = executor (agent_display_name, status: waiting/working/...)
 
 API Response Contract:
 - MCP tools MUST return BOTH job_id and agent_id for backward compatibility
@@ -464,9 +464,8 @@ async def test_succession_preserves_job_id_changes_agent_id(
     # Verify success
     assert result.get("success") is True, f"Succession failed: {result.get('error')}"
 
-    # Verify response contains both IDs
+    # Verify response contains successor ID
     assert "successor_id" in result  # This might be agent_id
-    assert "instance_number" in result
 
     # Verify new execution created (use test session to see uncommitted changes)
     from sqlalchemy import select

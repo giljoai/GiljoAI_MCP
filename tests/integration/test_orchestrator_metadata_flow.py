@@ -92,8 +92,6 @@ async def test_orchestrator_metadata_new_creation(
     data = response.json()
     assert "orchestrator_id" in data
     assert "prompt" in data
-    assert "instance_number" in data
-    assert data["instance_number"] == 1  # First instance
 
     orchestrator_id = data["orchestrator_id"]
 
@@ -226,7 +224,6 @@ async def test_orchestrator_metadata_reuse_updates(
     assert response.status_code == 200, f"API failed: {response.text}"
     data = response.json()
     assert data["orchestrator_id"] == old_orchestrator.job_id  # Reused existing
-    assert data["instance_number"] == 1  # Same instance
 
     # ASSERT: Orchestrator metadata is NOW POPULATED (bug fix verification)
     await db_session.refresh(old_orchestrator)
