@@ -77,8 +77,7 @@ class TableRowData(BaseModel):
     # Mission tracking (Handover 0233)
     mission_acknowledged_at: Optional[datetime] = None
 
-    # Instance tracking (orchestrator succession)
-    instance_number: int
+    # Agent role tracking
     is_orchestrator: bool
 
     # TODO-style steps summary for dashboard Steps column (Handover 0297)
@@ -224,9 +223,6 @@ async def get_agent_jobs_table_view(
             if minutes_since_progress > 10 and execution.status not in terminal_states:
                 is_stale = True
 
-        # Determine instance number (orchestrator succession)
-        instance_number = execution.instance_number
-
         # Derive steps summary from execution metadata (note: in new model, metadata is on job)
         steps_total = None
         steps_completed = None
@@ -274,7 +270,6 @@ async def get_agent_jobs_table_view(
                 started_at=execution.started_at,
                 completed_at=execution.completed_at,
                 mission_acknowledged_at=execution.mission_acknowledged_at,  # Handover 0233
-                instance_number=instance_number,
                 is_orchestrator=(execution.agent_display_name == "orchestrator"),
                 steps_total=steps_total,
                 steps_completed=steps_completed,

@@ -206,7 +206,6 @@ class OrchestratorJobResponse(BaseModel):
     created_at: Optional[datetime]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
-    instance_number: Optional[int] = 1  # Handover 0080 - orchestrator succession  # Handover 0080 - orchestrator succession
 
 
 class OrchestratorResponse(BaseModel):

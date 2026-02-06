@@ -60,7 +60,6 @@ def job_to_response(job: dict) -> JobResponse:
         project_id=job.get("project_id"),
         agent_display_name=job["agent_display_name"],
         agent_name=job.get("agent_name"),
-        instance_number=job.get("instance_number", 1),  # Succession instance number
         mission=job["mission"],
         status=job["status"],
         progress=job.get("progress", 0),

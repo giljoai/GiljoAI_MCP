@@ -1170,19 +1170,6 @@ class ProjectService:
             )
             return None
 
-        # Calculate instance number
-        instance_stmt = (
-            select(func.coalesce(func.max(AgentExecution.instance_number), 0))
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                AgentExecution.tenant_key == tenant_key,
-                AgentJob.project_id == project.id,
-                AgentExecution.agent_display_name == "orchestrator",
-            )
-        )
-        instance_result = await session.execute(instance_stmt)
-        instance_number = (instance_result.scalar() or 0) + 1
-
         # Generate IDs
         job_id = str(uuid4())
         agent_id = str(uuid4())
@@ -1209,7 +1196,6 @@ class ProjectService:
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
             agent_name="orchestrator",
-            instance_number=instance_number,
             status="waiting",
             progress=0,
             context_used=0,
@@ -1223,7 +1209,7 @@ class ProjectService:
 
         self._logger.info(
             f"[ORCHESTRATOR FIXTURE] Created orchestrator fixture for project {project.id}: "
-            f"job_id={job_id}, agent_id={agent_id}, instance={instance_number}"
+            f"job_id={job_id}, agent_id={agent_id}"
         )
 
         # Broadcast agent:created event for UI update
@@ -1240,7 +1226,6 @@ class ProjectService:
                         "agent_display_name": "orchestrator",
                         "agent_name": "orchestrator",
                         "status": "waiting",
-                        "instance_number": instance_number,
                         "fixture": True,  # Indicates this is a fixture, not from staging
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
@@ -1252,7 +1237,6 @@ class ProjectService:
         return {
             "job_id": job_id,
             "agent_id": agent_id,
-            "instance_number": instance_number,
         }
 
     async def deactivate_project(
@@ -2018,7 +2002,7 @@ class ProjectService:
                     AgentExecution.tenant_key == tenant_key,
                     ~AgentExecution.status.in_(["failed", "cancelled"]),  # Same filter as Fix 1 & 2
                 )
-                .order_by(AgentExecution.instance_number.desc())
+                .order_by(AgentExecution.started_at.desc())
             )
             existing_orch_result = await session.execute(existing_orch_stmt)
             existing_orchestrator = existing_orch_result.scalars().first()
@@ -2047,22 +2031,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 }
 
             # No existing orchestrator found - create new one
-            # Calculate next instance number for orchestrator (migrated to AgentExecution - Handover 0367a)
-
-            instance_stmt = (
-                select(func.coalesce(func.max(AgentExecution.instance_number), 0))
-                .select_from(AgentExecution)
-                .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .where(
-                    and_(
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentJob.project_id == project_id,
-                        AgentExecution.agent_display_name == "orchestrator",
-                    )
-                )
-            )
-            instance_result = await session.execute(instance_stmt)
-            instance_number = (instance_result.scalar() or 0) + 1
 
             # Create AgentJob (work order) - stores mission ONCE (Handover 0358a)
             orchestrator_job_id = str(uuid4())
@@ -2089,7 +2057,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",  # Lowercase for frontend compatibility
                 agent_name="orchestrator",  # Type key for color lookup
-                instance_number=instance_number,
                 status="waiting",
                 context_used=0,
                 progress=0,

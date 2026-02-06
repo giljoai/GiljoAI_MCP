@@ -200,8 +200,7 @@ class TestTokenReductionComparison:
         # THIN PROMPT APPROACH (NEW)
         thin_generator = ThinClientPromptGenerator(db_session, tenant_key)
         thin_result = await thin_generator.generate(
-            project_id=str(project.id), user_id=user_id, tool="claude-code", instance_number=1
-        )
+            project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Calculate token counts
         thin_prompt_tokens = thin_result.estimated_prompt_tokens

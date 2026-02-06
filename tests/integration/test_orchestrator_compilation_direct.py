@@ -131,9 +131,7 @@ async def test_orchestrator_stores_field_priorities(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"],
         depth_config=env["user"].depth_config
     )
 
@@ -192,9 +190,7 @@ async def test_orchestrator_stores_depth_config(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"],
         depth_config=custom_depth  # Custom depth config
     )
 
@@ -240,9 +236,7 @@ async def test_mcp_tool_retrieves_stored_priorities(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"],
         depth_config=env["user"].depth_config
     )
 
@@ -291,9 +285,7 @@ async def test_mcp_tool_compiles_fresh_mission(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"],
         depth_config=env["user"].depth_config
     )
 
@@ -348,9 +340,7 @@ async def test_repeated_staging_reuses_orchestrator(
     result1 = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"]
     )
     orch_id_1 = result1["orchestrator_id"]
 
@@ -358,9 +348,7 @@ async def test_repeated_staging_reuses_orchestrator(
     result2 = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"]
     )
     orch_id_2 = result2["orchestrator_id"]
 
@@ -422,9 +410,7 @@ async def test_different_priorities_create_different_missions(
     result1 = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=full_priorities
+        tool="claude-code",        field_priorities=full_priorities
     )
     orch_id_1 = result1["orchestrator_id"]
 
@@ -452,9 +438,7 @@ async def test_different_priorities_create_different_missions(
     result2 = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=2,
-        field_priorities=reduced_priorities
+        tool="claude-code",        field_priorities=reduced_priorities
     )
     orch_id_2 = result2["orchestrator_id"]
 
@@ -501,9 +485,7 @@ async def test_thin_prompt_references_mcp_tools(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"]
     )
 
     thin_prompt = result["thin_prompt"]
@@ -556,9 +538,7 @@ async def test_orchestrator_status_waiting_after_creation(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"]
     )
 
     orchestrator_id = result["orchestrator_id"]
@@ -599,9 +579,7 @@ async def test_thin_prompt_contains_orchestrator_id(
     result = await generator.generate(
         project_id=env["project"].id,
         user_id=str(env["user"].id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=env["user"].field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=env["user"].field_priority_config["priorities"]
     )
 
     orchestrator_id = result["orchestrator_id"]

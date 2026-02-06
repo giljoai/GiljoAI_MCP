@@ -111,9 +111,7 @@ async def test_project_with_three_agents(
             job_id=job.job_id,
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
-            status="waiting",
-            instance_number=1,
-            messages_sent_count=0,
+            status="waiting",            messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
         )

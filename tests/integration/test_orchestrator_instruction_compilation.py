@@ -515,9 +515,7 @@ async def test_get_orchestrator_instructions_compiles_fresh(
     result = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
         depth_config=test_user_with_priorities.depth_config
     )
 
@@ -683,9 +681,7 @@ async def test_settings_changes_impact_mission_content(
     result1 = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=full_priorities
+        tool="claude-code",        field_priorities=full_priorities
     )
     orch_id_1 = result1["orchestrator_id"]
 
@@ -713,8 +709,7 @@ async def test_settings_changes_impact_mission_content(
     result2 = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=2,  # Different instance
+        tool="claude-code",  # Different instance
         field_priorities=excluded_priorities
     )
     orch_id_2 = result2["orchestrator_id"]
@@ -778,9 +773,7 @@ async def test_depth_config_persists_and_applies(
     result = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
+        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
         depth_config=custom_depth
     )
 
@@ -852,18 +845,14 @@ async def test_multiple_projects_independent_orchestrators(
     result1 = await generator.generate(
         project_id=project1.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
     )
     orch_id_1 = result1["orchestrator_id"]
 
     result2 = await generator.generate(
         project_id=project2.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
+        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
     )
     orch_id_2 = result2["orchestrator_id"]
 

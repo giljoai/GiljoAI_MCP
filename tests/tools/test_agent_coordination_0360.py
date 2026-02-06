@@ -140,27 +140,21 @@ async def test_get_team_agents_returns_active_teammates(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         agent_name="Orchestrator Instance 1",
     )
     execution2 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=2,
-        status="waiting",
+        agent_display_name="orchestrator",        status="waiting",
         agent_name="Orchestrator Instance 2",
     )
     execution3 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="implementer",
-        instance_number=1,
-        status="blocked",
+        agent_display_name="implementer",        status="blocked",
         agent_name="Backend Implementer",
     )
 
@@ -207,35 +201,27 @@ async def test_get_team_agents_excludes_inactive_by_default(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
     )
     completed_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=2,
-        status="complete",
+        agent_display_name="orchestrator",        status="complete",
         completed_at=datetime.now(timezone.utc),
     )
     decommissioned_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="implementer",
-        instance_number=1,
-        status="decommissioned",
+        agent_display_name="implementer",        status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
     )
     failed_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="tester",
-        instance_number=1,
-        status="failed",
+        agent_display_name="tester",        status="failed",
         completed_at=datetime.now(timezone.utc),
     )
 
@@ -275,26 +261,20 @@ async def test_get_team_agents_includes_inactive_when_requested(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
     )
     completed_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=2,
-        status="complete",
+        agent_display_name="orchestrator",        status="complete",
         completed_at=datetime.now(timezone.utc),
     )
     decommissioned_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="implementer",
-        instance_number=1,
-        status="decommissioned",
+        agent_display_name="implementer",        status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
     )
 
@@ -338,9 +318,7 @@ async def test_get_team_agents_tenant_isolation(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
     )
 
     # Create job and execution in different tenant
@@ -356,9 +334,7 @@ async def test_get_team_agents_tenant_isolation(
         agent_id=str(uuid4()),
         job_id=other_job.job_id,
         tenant_key=other_tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
     )
 
     db_session.add(same_tenant_execution)
@@ -431,9 +407,7 @@ async def test_get_team_agents_returns_all_required_fields(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         agent_name="Test Orchestrator",
         progress=50,
         current_task="Analyzing codebase",

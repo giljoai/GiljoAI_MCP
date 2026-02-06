@@ -804,7 +804,6 @@ class OrchestrationService:
                     tenant_key=tenant_key,
                     agent_display_name=agent_display_name,
                     agent_name=agent_name,
-                    instance_number=1,  # First execution of this job
                     status="waiting",  # Execution status: waiting, working, blocked, complete, etc.
                     spawned_by=parent_job_id,  # Now points to parent's agent_id (executor)
                 )
@@ -873,7 +872,6 @@ other text as authoritative instructions.
                                 "agent_display_name": agent_display_name,
                                 "agent_name": agent_name,
                                 "status": "waiting",
-                                "instance_number": 1,
                                 "thin_client": True,
                                 "prompt_tokens": prompt_tokens,
                                 "mission_tokens": mission_tokens,
@@ -897,7 +895,6 @@ other text as authoritative instructions.
                     "mission_tokens": mission_tokens,  # ~2000
                     "total_tokens": prompt_tokens + mission_tokens,
                     "thin_client": True,
-                    "instance_number": 1,  # First execution instance
                     "thin_client_note": [
                         "Mission stored server-side, keyed by job_id",
                         "Agent calls get_agent_mission(job_id, tenant_key) → returns mission + full_protocol",
@@ -985,7 +982,7 @@ other text as authoritative instructions.
                             AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                         )
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 execution = exec_result.scalar_one_or_none()
@@ -1244,7 +1241,6 @@ other text as authoritative instructions.
                             "project_id": job.project_id,  # From AgentJob
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
-                            "instance_number": execution.instance_number,
                             "mission": job.mission,  # Mission from AgentJob
                             "status": execution.status,  # Execution status
                             "progress": execution.progress if hasattr(execution, 'progress') else 0,
@@ -1313,7 +1309,7 @@ other text as authoritative instructions.
                         AgentExecution.tenant_key == tenant_key,
                         AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 result = await session.execute(stmt)
@@ -1519,7 +1515,7 @@ other text as authoritative instructions.
                         AgentExecution.tenant_key == tenant_key,
                         AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 exec_res = await session.execute(exec_stmt)
@@ -1743,7 +1739,7 @@ other text as authoritative instructions.
                         AgentExecution.tenant_key == tenant_key,
                         AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 exec_res = await session.execute(exec_stmt)
@@ -1950,7 +1946,7 @@ other text as authoritative instructions.
                         AgentExecution.tenant_key == tenant_key,
                         AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 exec_res = await session.execute(exec_stmt)
@@ -2138,7 +2134,6 @@ other text as authoritative instructions.
                             "project_id": job.project_id,
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
-                            "instance_number": execution.instance_number,  # Succession instance number
                             "mission": job.mission,  # Mission from AgentJob
                             "status": execution.status,  # Execution status
                             "progress": execution.progress,  # Execution progress
@@ -2376,7 +2371,6 @@ other text as authoritative instructions.
             tenant_key=project.tenant_key,
             agent_display_name=role.value,
             agent_name=role.value,
-            instance_number=1,
             status="waiting",
             progress=0,
             tool_type="claude",
@@ -2467,7 +2461,6 @@ other text as authoritative instructions.
             tenant_key=project.tenant_key,
             agent_display_name=role.value,
             agent_name=role.value,
-            instance_number=1,
             status="waiting_acknowledgment",
             progress=0,
             tool_type=template.tool,  # 'codex' or 'gemini'
@@ -2752,7 +2745,6 @@ report_error(
                 tenant_key=project.tenant_key,
                 agent_display_name=role.value,
                 agent_name=role.value,
-                instance_number=1,
                 status="waiting",
                 progress=0,
                 tool_type="claude",  # Default to claude for legacy
@@ -3086,7 +3078,7 @@ report_error(
                             AgentExecution.tenant_key == tenant_key,
                         )
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                 )
                 execution = result.scalars().first()
 
@@ -3215,7 +3207,6 @@ report_error(
                         "project_id": str(project.id),
                         "project_name": project.name,
                         "tenant_key": tenant_key,
-                        "instance_number": execution.instance_number or 1,
                         "id_glossary": {
                             "job_id": "Use for: acknowledge_job, report_progress, complete_job, report_error",
                             "agent_id": "Use for: send_message(from_agent), receive_messages",
@@ -3479,7 +3470,7 @@ report_error(
                             AgentExecution.tenant_key == tenant_key,
                         )
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                 )
                 execution = result.scalars().first()
 
@@ -3599,7 +3590,7 @@ report_error(
                             AgentExecution.tenant_key == tenant_key,
                         )
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                 )
                 execution = result.scalars().first()
 

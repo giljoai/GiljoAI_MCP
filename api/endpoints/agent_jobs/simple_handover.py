@@ -70,7 +70,7 @@ async def simple_handover(
                 AgentExecution.agent_id == job_id,
                 AgentExecution.tenant_key == current_user.tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
             .limit(1)
         )
         result = await db.execute(stmt)
@@ -84,7 +84,7 @@ async def simple_handover(
                     AgentExecution.job_id == job_id,
                     AgentExecution.tenant_key == current_user.tenant_key,
                 )
-                .order_by(AgentExecution.instance_number.desc())
+                .order_by(AgentExecution.started_at.desc())
                 .limit(1)
             )
             result = await db.execute(stmt)

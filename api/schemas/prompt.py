@@ -192,7 +192,6 @@ class OrchestratorPromptRequest(BaseModel):
 
     project_id: str = Field(..., min_length=1, description="Project UUID")
     tool: Literal["claude-code", "codex", "gemini"] = Field("claude-code", description="Target AI tool")
-    instance_number: Optional[int] = Field(1, ge=1, description="Orchestrator instance number (for succession)")
 
     model_config = ConfigDict(from_attributes=True)
 
