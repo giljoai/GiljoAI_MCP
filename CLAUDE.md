@@ -28,7 +28,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.3+)**: Organization Hierarchy (0424a-n) • Exception Handling Remediation (0480 series) • Consolidated Vision Documents (0377) • Agent Team Awareness (0353) • Frontend API Pattern Fixes (0396) • WebSocket Improvements (0464) • Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.3+)**: Code Cleanup Series (0700a-h) • Organization Hierarchy (0424a-n) • Exception Handling Remediation (0480 series) • Consolidated Vision Documents (0377) • Agent Team Awareness (0353) • Frontend API Pattern Fixes (0396) • WebSocket Improvements (0464) • Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Orchestrator Workflow Series (Nov 2025)** - Handovers 0246a-0246c:
 - 0246a: 7-Task Staging Workflow (931 tokens, 22% under budget)
@@ -260,7 +260,7 @@ fetch_context(categories=["vision_documents"], product_id=..., tenant_key=...)
 - ✅ Prompts are ~450-550 tokens (down from ~3,500 via 0246 series)
 - ✅ Mission fetched via `get_orchestrator_instructions()` MCP tool
 - ✅ Field priorities applied (context prioritization and orchestration ACTIVE)
-- ⚠️ `OrchestratorPromptGenerator` DEPRECATED (remove in v4.0)
+- ✅ `OrchestratorPromptGenerator` removed (Handover 0700f)
 
 **Definition – Thin-Client Prompts**
 - **Thin-client prompts** are *lean* prompts whose primary job is to tell the agent *how to talk to the MCP server*, not to inline all context.
@@ -305,7 +305,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Documentation**: Only create docs when explicitly requested
 - **Cross-Platform**: All paths use `pathlib.Path()`
 - **Database**: PostgreSQL required - no SQLite support
-- **Template System**: Use `template_manager.py` (new) not `mission_templates.py` (deprecated)
+- **Template System**: Use `UnifiedTemplateManager` (canonical class, Handover 0700e)
 - **Authentication**: Always enabled - first user created during setup wizard
 - **Password Reset**: Recovery PIN system - 4-digit PIN with rate limiting (Handover 0023)
 - **Default Password**: "GiljoMCP" for admin resets only (never admin/admin)
@@ -323,8 +323,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - `messages_waiting_count` - Inbound messages pending read
 - `messages_read_count` - Inbound messages acknowledged
 
-**REMOVED** (Handover 0700c): The `AgentExecution.messages` JSONB column has been removed.
-Counter columns are now the only source of truth for message counts.
+**Removed (0700c)**: The `AgentExecution.messages` JSONB column has been removed. Message counts use counter columns exclusively.
 
 ## Service Layer Architecture & Patterns
 
@@ -364,8 +363,7 @@ Counter columns are now the only source of truth for message counts.
 
 **Architecture**: Normalized `product_memory_entries` table (v3.3+, Handover 0390)
 
-**REMOVED** (Handover 0700c): The `Product.product_memory.sequential_history` JSONB field has been removed.
-All sequential history is now stored in the `product_memory_entries` table.
+**Removed (0700c)**: `Product.product_memory.sequential_history` JSONB array has been removed. Use the `product_memory_entries` table via `ProductMemoryRepository`.
 
 **Key Features**:
 - Memory entries stored in `product_memory_entries` table
