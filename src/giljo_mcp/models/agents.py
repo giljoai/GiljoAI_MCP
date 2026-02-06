@@ -62,6 +62,9 @@ class AgentInteraction(Base):
         ),
     )
 
+    def __repr__(self) -> str:
+        return f"<AgentInteraction(id={self.id}, sub_agent_name='{self.sub_agent_name}', type='{self.interaction_type}')>"
+
 
 class Job(Base):
     """
@@ -88,3 +91,6 @@ class Job(Base):
         Index("idx_job_tenant", "tenant_key"),
         Index("idx_job_status", "status"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Job(id={self.id}, job_type='{self.job_type}', status='{self.status}')>"
