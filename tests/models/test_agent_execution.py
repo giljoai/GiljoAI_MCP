@@ -332,62 +332,6 @@ class TestAgentExecutionProgressConstraint:
         await db_session.rollback()
 
 
-class TestAgentExecutionInstanceConstraint:
-    """Test execution instance_number validation."""
-
-    @pytest.mark.asyncio
-    async def test_agent_execution_allows_positive_instance(self, db_session: AsyncSession):
-        """Execution accepts instance_number >= 1."""
-        job = AgentJob(
-            job_id="job-instance-001",
-            tenant_key="tenant-abc",
-            project_id="project-456",
-            mission="Test mission",
-            job_type="orchestrator",
-            status="active"
-        )
-        db_session.add(job)
-        await db_session.commit()
-
-        execution = AgentExecution(
-            agent_id="agent-instance-001",
-            job_id="job-instance-001",
-            tenant_key="tenant-abc",
-            agent_display_name="orchestrator",
-            status="working"
-        )
-        db_session.add(execution)
-        await db_session.commit()
-
-    @pytest.mark.asyncio
-    async def test_agent_execution_rejects_zero_instance(self, db_session: AsyncSession):
-        """Execution rejects instance_number = 0 (constraint violation)."""
-        job = AgentJob(
-            job_id="job-instance-002",
-            tenant_key="tenant-abc",
-            project_id="project-456",
-            mission="Test mission",
-            job_type="orchestrator",
-            status="active"
-        )
-        db_session.add(job)
-        await db_session.commit()
-
-        execution = AgentExecution(
-            agent_id="agent-instance-002",
-            job_id="job-instance-002",
-            tenant_key="tenant-abc",
-            agent_display_name="orchestrator",
-            status="working"
-        )
-        db_session.add(execution)
-
-        with pytest.raises(IntegrityError):
-            await db_session.commit()
-
-        await db_session.rollback()
-
-
 class TestAgentExecutionSuccessionChain:
     """Test succession chain functionality."""
 

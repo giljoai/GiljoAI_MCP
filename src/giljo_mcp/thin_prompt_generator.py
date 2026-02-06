@@ -1063,7 +1063,6 @@ START NOW:
             orchestrator_id: Job ID (WHAT)
             project_id: Project UUID
             product_id: Product UUID (for fetch_context call)
-            instance_number: DEPRECATED - kept for backward compatibility only
             mcp_url: MCP server URL
 
         Returns:

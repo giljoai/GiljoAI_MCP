@@ -55,7 +55,6 @@ class TestGetOrchestratorInstructionsFramingResponse:
                     "project_id": "test-project-id",
                     "tenant_key": "test-tenant",
                     "project_name": "Test Project",
-                    "instance_number": 1,
                 },
                 "project_description_inline": {
                     "description": "Test description",
@@ -164,7 +163,6 @@ class TestGetOrchestratorInstructionsFramingResponse:
                 "project_id": "660e8400-e29b-41d4-a716-446655440001",
                 "tenant_key": "tenant_abc",
                 "project_name": "Test Project",
-                "instance_number": 1,
             },
             "project_description_inline": {
                 "description": "Build a new feature for the application",
