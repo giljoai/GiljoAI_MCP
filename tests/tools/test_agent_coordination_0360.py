@@ -433,4 +433,3 @@ async def test_get_team_agents_returns_all_required_fields(
 
     # Optional but useful fields
     assert "agent_name" in member or member.get("agent_name") == "Test Orchestrator"
-    assert "instance_number" in member or member.get("instance_number") == 1

@@ -41,7 +41,6 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:30:00Z',
       from: 'agent',
       agent_display_name: 'orchestrator',
-      instance_number: 1,
     },
     {
       id: '2',
@@ -52,7 +51,6 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:32:00Z',
       from: 'agent',
       agent_display_name: 'implementor',
-      instance_number: 1,
     },
     {
       id: '3',
@@ -69,7 +67,6 @@ describe('MessageStream', () => {
       timestamp: '2023-04-29T09:40:00Z',
       from: 'agent',
       agent_display_name: 'orchestrator',
-      instance_number: 1,
     },
   ]
 
@@ -501,13 +498,6 @@ describe('MessageStream', () => {
       expect(wrapper.vm.getAgentType({ agent_display_name: 'analyzer' })).toBe('analyzer')
       expect(wrapper.vm.getAgentType({ from_agent: 'reviewer' })).toBe('reviewer')
       expect(wrapper.vm.getAgentType({})).toBe('orchestrator')
-    })
-
-    it('gets correct instance number from message', () => {
-      wrapper = createWrapper()
-
-      expect(wrapper.vm.getInstanceNumber({ instance_number: 2 })).toBe(2)
-      expect(wrapper.vm.getInstanceNumber({})).toBe(1)
     })
 
     it('formats agent name correctly', () => {

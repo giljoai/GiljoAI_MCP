@@ -56,11 +56,11 @@ async def test_continuation_prompt_for_instance_greater_than_1(
     """
     Test: Instance > 1 should get continuation prompt, not staging prompt.
 
-    Handover 0429 Phase 4: When orchestrator is a successor (instance > 1),
+    Handover 0429 Phase 4: When orchestrator is a successor,
     generate_staging_prompt should return a CONTINUATION prompt that tells
     the orchestrator to check messages and workflow status, NOT to re-stage.
 
-    GIVEN: An orchestrator with instance_number > 1 (successor)
+    GIVEN: An orchestrator that is a successor
     WHEN: generate_staging_prompt() is called
     THEN: Prompt includes continuation instructions, NOT staging workflow
 

@@ -560,7 +560,7 @@ class TestProjectServiceLifecycle:
 
         session.add = Mock(side_effect=capture_job)
 
-        # Mock database queries: project fetch, instance_number query
+        # Mock database queries: project fetch
         call_count = [0]
 
         async def mock_execute_side_effect(*args, **kwargs):

@@ -226,9 +226,6 @@ async def test_get_orchestrator_instructions_success(
     assert "agent_templates" in result
     assert isinstance(result["agent_templates"], list)
 
-    # Verify instance number
-    assert result["instance_number"] == 1
-
 
 # ========================================================================
 # Test 2: get_orchestrator_instructions() - Not Found Error
