@@ -136,7 +136,7 @@ class MCPContextIndex(Base):
         Index("idx_mcp_context_product_vision_doc", "product_id", "vision_document_id"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<MCPContextIndex(id={self.id}, chunk_id={self.chunk_id}, product_id={self.product_id})>"
 
 
@@ -171,5 +171,5 @@ class MCPContextSummary(Base):
         Index("idx_mcp_summary_context_id", "context_id"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<MCPContextSummary(id={self.id}, context_id={self.context_id}, reduction={self.reduction_percent}%)>"
