@@ -2,7 +2,7 @@
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
   "status": "active",
-  "current_handover": "0704",
+  "current_handover": "0700-REMEDIATION",
   "handovers": [
     {
       "id": "0700a",
@@ -329,7 +329,8 @@
     {
       "id": "0702",
       "title": "Utils & Config Cleanup",
-      "status": "complete",
+      "status": "superseded",
+      "superseded_by": "0702-REVISED",
       "effort_hours": "2-3",
       "priority": "MEDIUM",
       "dependencies": [
@@ -350,12 +351,14 @@
         "tests_created": 1,
         "tests_passing": 6,
         "subagents_used": 3
-      }
+      },
+      "audit_finding": "Incomplete - only 3 files deleted, 271 orphan modules remain"
     },
     {
       "id": "0703",
       "title": "Auth & Logging Cleanup",
-      "status": "complete",
+      "status": "superseded",
+      "superseded_by": "0703-REVISED",
       "effort_hours": "1.5",
       "priority": "MEDIUM",
       "dependencies": [
@@ -374,12 +377,14 @@
         "scope_correction": "rate_limit.py preserved (was NOT orphan)",
         "high_risk_files_preserved": ["auth/dependencies.py", "api/dependencies.py", "rate_limit.py", "rate_limiter.py"],
         "spec_error_documented": true
-      }
+      },
+      "audit_finding": "Incomplete - RateLimiter duplication, 6 duplicate Pydantic models, logging not documented"
     },
     {
       "id": "0704",
       "title": "Models Base Cleanup",
-      "status": "complete",
+      "status": "superseded",
+      "superseded_by": "0704-REVISED",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
       "dependencies": [
@@ -397,12 +402,14 @@
         "files_modified": 6,
         "behavior_changes": 0,
         "actual_effort_minutes": 10
-      }
+      },
+      "audit_finding": "Incomplete - only 50% __repr__ coverage (17/34 classes)"
     },
     {
       "id": "0705",
       "title": "Models Core Cleanup",
-      "status": "pending",
+      "status": "superseded",
+      "superseded_by": "0704-REVISED",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
       "dependencies": [
@@ -412,7 +419,113 @@
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "audit_finding": "Merged into 0704-REVISED for complete __repr__ coverage"
+    },
+    {
+      "id": "0700-REMEDIATION",
+      "title": "Fix Gaps in 0700a/h/i",
+      "status": "complete",
+      "effort_hours": "1-2",
+      "priority": "HIGH",
+      "dependencies": [],
+      "scope": "Fix gaps from audit: light mode remnants (0700a), DEPRECATED markers (0700h), instance_number in test fixtures (0700i)",
+      "started_at": "2026-02-06T19:30:00Z",
+      "completed_at": "2026-02-06T20:00:00Z",
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0700_REMEDIATION.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0700_REMEDIATION_kickoff.md",
+      "validation_required": true,
+      "commit_hash": "cf9b23e2",
+      "actual_results": {
+        "claimed_gaps": 5,
+        "confirmed_gaps": 5,
+        "additional_gaps_found": 21,
+        "total_files_fixed": 26,
+        "lines_removed": 150,
+        "subagents_used": 2,
+        "validation_expanded_scope": "5x"
+      }
+    },
+    {
+      "id": "0702-REVISED",
+      "title": "Comprehensive Orphan Module Cleanup",
+      "status": "pending",
+      "effort_hours": "2-3",
+      "priority": "HIGH",
+      "dependencies": ["0700-REMEDIATION"],
+      "scope": "Delete 271 orphan modules identified by architecture analysis. Comprehensive cleanup with validation.",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0702_REVISED.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0702_REVISED_kickoff.md",
+      "validation_required": true,
+      "architecture_intel": {
+        "orphan_modules": 271,
+        "source": "research-architecture-001"
+      }
+    },
+    {
+      "id": "0703-REVISED",
+      "title": "Auth & Middleware Consolidation",
+      "status": "pending",
+      "effort_hours": "2-3",
+      "priority": "MEDIUM",
+      "dependencies": ["0702-REVISED"],
+      "scope": "Consolidate RateLimiter duplication, extract shared Pydantic models, document logging patterns, add type hints",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0703_REVISED.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0703_REVISED_kickoff.md",
+      "validation_required": true,
+      "audit_gaps": ["RateLimiter duplication", "6 duplicate Pydantic models", "logging not documented", "type hints missing"]
+    },
+    {
+      "id": "0704-REVISED",
+      "title": "Complete Model __repr__ Coverage",
+      "status": "pending",
+      "effort_hours": "1-2",
+      "priority": "MEDIUM",
+      "dependencies": ["0703-REVISED"],
+      "scope": "Add __repr__ to remaining 17 model classes (100% coverage). Merges original 0704 and 0705.",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0704_REVISED.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0704_REVISED_kickoff.md",
+      "validation_required": true,
+      "coverage": {
+        "before": "17/34 (50%)",
+        "after": "34/34 (100%)"
+      }
+    },
+    {
+      "id": "0706b",
+      "title": "agent_identity.py God Object Investigation",
+      "status": "pending",
+      "effort_hours": "1-2",
+      "priority": "MEDIUM",
+      "dependencies": ["0704-REVISED"],
+      "scope": "Investigate agent_identity.py (149 dependents) for god object pattern. RESEARCH ONLY - no refactoring.",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0706b_agent_identity_investigation.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0706b_kickoff.md",
+      "validation_required": true,
+      "architecture_intel": {
+        "dependents": 149,
+        "production_dependents": 29,
+        "test_dependents": 145,
+        "source": "research-architecture-002-validation"
+      }
     },
     {
       "id": "0706",
@@ -421,7 +534,7 @@
       "effort_hours": "6-8",
       "priority": "HIGH",
       "dependencies": [
-        "0705"
+        "0706b"
       ],
       "scope": "Type hints for AgentJob model, cascade verification - fills gaps not covered by 0700b-h",
       "started_at": null,
@@ -519,5 +632,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "0700a-i + 0702-0703 COMPLETE (2026-02-06). Series total: ~7,129+ lines removed. 0702: 16 legacy config aliases DELETED, 3 orphan files deleted, PathResolver→PathNormalizer rename. 0703: middleware.py deleted (260 lines), rate_limit.py preserved (spec error corrected). Next: 0704 (Models Base Cleanup) - sequential chain 0704→0705→0706→0707→0708→0711→0373."
+  "notes": "AUDIT RESET (2026-02-06): Comprehensive audit found gaps in 0702-0705. Original handovers marked SUPERSEDED. New execution chain: 0700-REMEDIATION → 0702-REVISED → 0703-REVISED → 0704-REVISED → 0706b → 0706 → 0707 → 0708 → 0711 → 0373. All revised handovers use VALIDATION-FIRST pattern (Phase 0 research before execution). Architecture intel: 271 orphan modules, 45 DEPRECATED markers, 49 circular deps. Hubs validated as healthy (don't refactor). agent_identity.py flagged for investigation (149 dependents)."
 }
