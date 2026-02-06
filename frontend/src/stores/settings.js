@@ -46,7 +46,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // CRITICAL: Check theme-preference as source of truth
       // This prevents NavigationDrawer theme toggles from being overwritten
       const themePreference = localStorage.getItem('theme-preference')
-      if (themePreference && (themePreference === 'dark' || themePreference === 'light')) {
+      if (themePreference && themePreference === 'dark') {
         settings.value.theme = themePreference
       }
 
@@ -60,10 +60,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
         // Re-check theme-preference after server load
         const currentThemePreference = localStorage.getItem('theme-preference')
-        if (
-          currentThemePreference &&
-          (currentThemePreference === 'dark' || currentThemePreference === 'light')
-        ) {
+        if (currentThemePreference && currentThemePreference === 'dark') {
           settings.value.theme = currentThemePreference
         }
 

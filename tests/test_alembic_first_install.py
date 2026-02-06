@@ -413,7 +413,6 @@ class TestAlembicFirstInstallation:
 
         # Read file and verify it contains expected columns
         content = migration_file.read_text()
-        assert "instance_number" in content
         assert "handover_to" in content
         assert "handover_summary" in content
         assert "succession_reason" in content

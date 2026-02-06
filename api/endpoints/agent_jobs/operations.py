@@ -296,14 +296,6 @@ async def update_agent_mission(
             job_id=job_id,
         )
 
-        # ORIGINAL QUERY (kept for reference):
-        # exec_stmt = select(AgentExecution).where(
-        #     AgentExecution.job_id == job_id,
-        #     AgentExecution.tenant_key == current_user.tenant_key,
-        # ).order_by(AgentExecution.instance_number.desc())
-        # exec_result = await session.execute(exec_stmt)
-        # current_execution = exec_result.scalar_one_or_none()
-
         # Emit WebSocket event for real-time updates
         from api.websocket_manager import manager as websocket_manager
 

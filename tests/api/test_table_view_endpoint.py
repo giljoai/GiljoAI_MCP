@@ -267,7 +267,6 @@ async def test_table_row_structure(async_client: AsyncClient, test_jobs_with_var
         "created_at",
         "started_at",
         "completed_at",
-        "instance_number",
         "is_orchestrator",
     ]
 
