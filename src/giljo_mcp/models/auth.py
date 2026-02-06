@@ -151,7 +151,7 @@ class User(Base):
         CheckConstraint("failed_pin_attempts >= 0", name="ck_user_pin_attempts_positive"),  # Handover 0023
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, role={self.role})>"
 
 
@@ -210,7 +210,7 @@ class APIKey(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<APIKey(id={self.id}, name={self.name}, user_id={self.user_id}, active={self.is_active})>"
 
     @property
@@ -272,7 +272,7 @@ class MCPSession(Base):
         Index("idx_mcp_session_data_gin", "session_data", postgresql_using="gin"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<MCPSession(id={self.id}, session_id={self.session_id}, tenant_key={self.tenant_key})>"
 
     @property
