@@ -114,9 +114,7 @@ async def test_project_staging(
         tenant_key=test_tenant_key,
         agent_display_name="orchestrator",
         agent_name="orchestrator",  # CRITICAL: Used for detection
-        status="waiting",  # Staging phase
-        instance_number=1,
-        messages_sent_count=0,
+        status="waiting",  # Staging phase        messages_sent_count=0,
         messages_waiting_count=0,
         messages_read_count=0,
     )
@@ -143,9 +141,7 @@ async def test_project_staging(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_display_name,
-            status="waiting",
-            instance_number=1,
-            messages_sent_count=0,
+            status="waiting",            messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
         )
@@ -204,9 +200,7 @@ async def test_project_implementation(
         tenant_key=test_tenant_key,
         agent_display_name="orchestrator",
         agent_name="orchestrator",
-        status="working",  # Implementation phase (acknowledged)
-        instance_number=1,
-        messages_sent_count=0,
+        status="working",  # Implementation phase (acknowledged)        messages_sent_count=0,
         messages_waiting_count=0,
         messages_read_count=0,
     )
@@ -233,9 +227,7 @@ async def test_project_implementation(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_display_name,
-            status="waiting",
-            instance_number=1,
-            messages_sent_count=0,
+            status="waiting",            messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
         )

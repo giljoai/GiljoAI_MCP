@@ -1209,7 +1209,6 @@ async def get_orchestrator_instructions(
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
-                "instance_number": agent_execution.instance_number or 1,
                 "thin_client": True,
                 # Handover 0347c: Add 6 new guidance fields
                 "post_staging_behavior": _get_post_staging_behavior(cli_mode),
@@ -1621,7 +1620,6 @@ async def _spawn_agent_job_impl(
             tenant_key=tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_name,
-            instance_number=1,  # First instance
             status="waiting",  # AgentExecution uses 'waiting'
             spawned_by=parent_job_id,  # Link to parent agent_id (not job_id)
             context_budget=10000,
@@ -1712,7 +1710,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "agent_display_name": agent_display_name,
                         "agent_name": agent_name,
                         "status": "waiting",
-                        "instance_number": 1,  # Handover 0457: First instance
                         "thin_client": True,
                         "prompt_tokens": prompt_tokens,
                         "mission_tokens": mission_tokens,
@@ -1728,7 +1725,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
             "job_id": job_id,  # Work order UUID
             "agent_id": agent_id,  # Executor UUID
             "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
-            "instance_number": 1,  # Handover 0457: First instance
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,

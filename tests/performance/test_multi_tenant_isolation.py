@@ -369,7 +369,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             user_id=tenant_a_user.id
         )
-        prompt_a = await generator_a.generate(instance_number=1, tool="claude-code")
+        prompt_a = await generator_a.generate(tool="claude-code")
 
         # Prompt should reference Tenant A's mode and agents
         assert "get_available_agents" in prompt_a.lower()

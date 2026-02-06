@@ -101,7 +101,6 @@ class JobResponse(BaseModel):
     project_id: Optional[str] = None
     agent_display_name: str
     agent_name: Optional[str] = None
-    instance_number: int = 1  # Succession instance number (1, 2, 3...)
     mission: str
     status: str
     progress: int = 0
@@ -262,7 +261,6 @@ class AgentExecutionResponse(BaseModel):
 
     agent_id: str
     job_id: str
-    instance_number: int
     status: str
     progress: int = 0
     spawned_by: Optional[str] = None

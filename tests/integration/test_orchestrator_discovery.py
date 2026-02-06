@@ -118,9 +118,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        prompt = await generator.generate(            tool="claude-code"
         )
 
         # Should reference get_available_agents() tool
@@ -174,9 +172,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        prompt = await generator.generate(            tool="claude-code"
         )
 
         # Rough token estimate (chars ÷ 4)
@@ -264,9 +260,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        prompt = await generator.generate(            tool="claude-code"
         )
 
         # Check for tool reference with correct parameters
@@ -326,9 +320,7 @@ class TestOrchestratorTokenReduction:
             user_id=test_user.id
         )
 
-        prompt = await generator.generate(
-            instance_number=1,
-            tool="claude-code"
+        prompt = await generator.generate(            tool="claude-code"
         )
 
         # Verify tenant_key is included in tool call

@@ -208,6 +208,7 @@ export const EVENT_MAP = {
       // Update the existing orchestrator with staging info
       // The orchestrator fixture was created on activation; staging generates the prompt
       // CRITICAL: Include execution_id so the store uses correct unique_key (matches API load)
+      // Handover 0700i: Removed instance_number
       agentJobsStore.handleUpdated?.({
         job_id: payload.orchestrator_id,
         agent_id: payload.agent_id,
@@ -215,7 +216,6 @@ export const EVENT_MAP = {
         project_id: payload.project_id,
         agent_display_name: 'orchestrator',
         status: 'waiting', // Still waiting for user to paste prompt
-        instance_number: payload.instance_number,
         staged: true, // Mark as staged
       })
 

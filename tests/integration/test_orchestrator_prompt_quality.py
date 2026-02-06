@@ -94,9 +94,7 @@ class TestTechStackEncoding:
                 mission="Test orchestrator for tech stack encoding",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {
                         "product_core": 1,
                         "tech_stack": 1,  # CRITICAL priority (always included)
@@ -175,9 +173,7 @@ class TestTechStackEncoding:
                 mission="Test orchestrator for mixed tech stack",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {"tech_stack": 1},
                     "depth_config": {},
                 },
@@ -283,9 +279,7 @@ class TestTokenEstimationAccuracy:
                 mission="Test orchestrator for token estimation",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {
                         "vision_documents": 2,  # IMPORTANT - include vision
                         "tech_stack": 1,
@@ -400,9 +394,7 @@ class TestFullContextPolicy:
                 mission="Test orchestrator for full context",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {"vision_documents": 2},  # Include vision
                     "depth_config": {},  # No depth limits - full context always
                 },
@@ -487,9 +479,7 @@ class TestCLIModeRulesInclusion:
                 mission="Test orchestrator for CLI mode",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {},
                     "depth_config": {},
                     "execution_mode": "claude_code_cli",  # CLI MODE
@@ -605,9 +595,7 @@ class TestPromptQualityRegression:
                 mission="Comprehensive test orchestrator",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {
                         "tech_stack": 1,
                         "vision_documents": 2,

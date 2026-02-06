@@ -27,8 +27,8 @@ async def get_job_executions(
     """
     Get all agent execution instances for a specific job.
 
-    Returns list of AgentExecution records sorted by instance_number ascending.
-    Used by frontend to display execution history and succession timeline.
+    Returns list of AgentExecution records sorted by created_at ascending.
+    Used by frontend to display execution history.
 
     Handover 0366d-1: Frontend Core Agent Display
     """
@@ -48,7 +48,7 @@ async def get_job_executions(
     result = await db.execute(
         select(AgentExecution)
         .where(AgentExecution.job_id == job_id)
-        .order_by(AgentExecution.instance_number.asc())
+        .order_by(AgentExecution.started_at.asc())
     )
     executions = result.scalars().all()
 
@@ -56,7 +56,6 @@ async def get_job_executions(
         AgentExecutionResponse(
             agent_id=str(exec.agent_id),
             job_id=str(exec.job_id),
-            instance_number=exec.instance_number,
             status=exec.status,
             progress=exec.progress,
             spawned_by=str(exec.spawned_by) if exec.spawned_by else None,

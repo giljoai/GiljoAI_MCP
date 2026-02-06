@@ -117,7 +117,7 @@ async def get_project_orchestrator(
             detail=f"Project not found: {project_id}"
         )
 
-    # Find orchestrator - support succession (get latest ACTIVE instance)
+    # Find orchestrator - get latest ACTIVE instance
     # FIX: Filter by active statuses to avoid returning cancelled/failed orchestrators
     # Bug: Previously returned cancelled orchestrators causing "Project not ready to launch" error
     # MIGRATION: Query AgentExecution joined with AgentJob (Handover 0367b)
@@ -133,7 +133,7 @@ async def get_project_orchestrator(
             # Previously excluded these, causing auto-spawn bug when viewing completed projects
             AgentExecution.status.in_(["waiting", "working", "blocked", "complete", "handed_over"]),
         )
-        .order_by(AgentExecution.instance_number.desc())
+        .order_by(AgentExecution.started_at.desc())
     )
     orch_result = await db.execute(orch_stmt)
     orchestrator_execution = orch_result.scalars().first()
@@ -169,6 +169,5 @@ async def get_project_orchestrator(
             created_at=orchestrator_execution.started_at or orchestrator_execution.job.created_at,
             started_at=orchestrator_execution.started_at,  # From AgentExecution
             completed_at=orchestrator_execution.completed_at,  # From AgentExecution
-            instance_number=orchestrator_execution.instance_number or 1,  # From AgentExecution
         ),
     )

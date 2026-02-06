@@ -204,7 +204,7 @@ async def get_job_health_status(
             stmt = select(AgentExecution).where(
                 AgentExecution.tenant_key == tenant_key,
                 AgentExecution.job_id == job_id,
-            ).order_by(AgentExecution.instance_number.desc()).limit(1)
+            ).order_by(AgentExecution.started_at.desc()).limit(1)
             result = await session.execute(stmt)
             execution = result.scalar_one_or_none()
 

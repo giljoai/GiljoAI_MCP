@@ -384,7 +384,6 @@ async def get_context_history(
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
                 "agent_display_name": execution.agent_display_name,
-                "instance_number": execution.instance_number,
                 "context_history": context_history,
             }
 
@@ -441,7 +440,7 @@ async def get_succession_context(
             all_executions_query = select(AgentExecution).where(
                 AgentExecution.job_id == current_execution.job_id,
                 AgentExecution.tenant_key == tenant_key,
-            ).order_by(AgentExecution.instance_number)
+            ).order_by(AgentExecution.started_at)
 
             all_result = await session.execute(all_executions_query)
             all_executions = all_result.scalars().all()
@@ -450,7 +449,6 @@ async def get_succession_context(
             for execution in all_executions:
                 succession_chain.append({
                     "agent_id": execution.agent_id,
-                    "instance_number": execution.instance_number,
                     "agent_display_name": execution.agent_display_name,
                     "status": execution.status,
                     "context_used": execution.context_used,
@@ -462,7 +460,6 @@ async def get_succession_context(
                 "success": True,
                 "agent_id": current_execution.agent_id,
                 "job_id": current_execution.job_id,
-                "instance_number": current_execution.instance_number,
                 "succession_chain": succession_chain,
             }
 

@@ -6,16 +6,10 @@ Handover 0366a: Separates work order (job) from executor (execution).
 Design Philosophy:
 - AgentJob: Persistent work order (mission, scope, goals) - WHAT
 - AgentExecution: Executor instance (who's working, when, status) - WHO
-- Succession: New execution, SAME job (job_id persists)
 
 Semantic Clarity:
-- job_id = The work to be done (persistent across succession)
-- agent_id = The executor doing the work (changes on succession)
-
-Example Succession Flow:
-1. Job created: job_id="build-auth", mission="Build OAuth2 system"
-2. Execution 1: agent_id="orch-001", job_id="build-auth", instance=1
-3. Succession: agent_id="orch-002", job_id="build-auth", instance=2 (NEW executor, SAME job)
+- job_id = The work to be done (persistent)
+- agent_id = The executor doing the work
 
 Data Normalization:
 - Mission stored ONCE in AgentJob (no duplication)
@@ -111,7 +105,7 @@ class AgentJob(Base):
         "AgentExecution",
         back_populates="job",
         cascade="all, delete-orphan",
-        order_by="AgentExecution.instance_number",
+        order_by="AgentExecution.started_at",
     )
     todo_items = relationship(
         "AgentTodoItem",
@@ -140,12 +134,9 @@ class AgentExecution(Base):
 
     Represents the WHO (which agent instance is executing).
 
-    Handover 0461b DEPRECATION NOTICE:
-    - instance_number: Marked for removal. Use single instance per agent.
-
     Relationships:
     - job: Many executions → One job (work order)
-    - spawned_by: Points to parent agent_id (who spawned this executor) - STILL ACTIVE
+    - spawned_by: Points to parent agent_id (who spawned this executor)
 
     Multi-tenant Isolation:
     - All queries MUST filter by tenant_key
@@ -172,12 +163,6 @@ class AgentExecution(Base):
         String(100),
         nullable=False,
         comment="Human-readable display name for UI",
-    )
-    instance_number = Column(
-        Integer,
-        default=1,
-        nullable=False,
-        comment="DEPRECATED (Handover 0461b): Marked for removal. Use single instance per agent.",
     )
 
     # Execution lifecycle
@@ -303,11 +288,8 @@ class AgentExecution(Base):
         Index("idx_agent_executions_job", "job_id"),
         Index("idx_agent_executions_tenant_job", "tenant_key", "job_id"),
         Index("idx_agent_executions_status", "status"),
-        Index("idx_agent_executions_instance", "job_id", "instance_number"),
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
-        # Handover 0429: Allow same agent_id with different instance_number (succession)
-        UniqueConstraint("agent_id", "instance_number", name="uq_agent_instance"),
         CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
             name="ck_agent_execution_status",
@@ -315,9 +297,6 @@ class AgentExecution(Base):
         CheckConstraint(
             "progress >= 0 AND progress <= 100",
             name="ck_agent_execution_progress_range",
-        ),
-        CheckConstraint(
-            "instance_number >= 1", name="ck_agent_execution_instance_positive"
         ),
         CheckConstraint(
             "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')",
@@ -336,7 +315,7 @@ class AgentExecution(Base):
     def __repr__(self):
         return (
             f"<AgentExecution(agent_id={self.agent_id}, job_id={self.job_id}, "
-            f"agent_display_name={self.agent_display_name}, status={self.status}, instance={self.instance_number})>"
+            f"agent_display_name={self.agent_display_name}, status={self.status})>"
         )
 
 

@@ -95,9 +95,7 @@ class TestThinPromptGeneratorDeduplication:
             job_id=complete_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="complete",  # COMPLETE status - should be found
+            agent_name="orchestrator",            status="complete",  # COMPLETE status - should be found
             progress=100,
         )
         db_session.add(agent_execution)
@@ -192,9 +190,7 @@ class TestThinPromptGeneratorDeduplication:
             job_id=blocked_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="blocked",  # BLOCKED status - should be found
+            agent_name="orchestrator",            status="blocked",  # BLOCKED status - should be found
             progress=50,
         )
         db_session.add(agent_execution)
@@ -278,9 +274,7 @@ class TestThinPromptGeneratorDeduplication:
             job_id=failed_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="failed",  # FAILED status - should NOT be found
+            agent_name="orchestrator",            status="failed",  # FAILED status - should NOT be found
             progress=25,
         )
         db_session.add(agent_execution)

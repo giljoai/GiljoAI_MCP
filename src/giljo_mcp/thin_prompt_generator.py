@@ -116,7 +116,6 @@ class ThinClientPromptGenerator:
         project_id: str,
         user_id: Optional[str] = None,
         tool: str = "universal",
-        instance_number: int = 1,
         field_priorities: Optional[Dict[str, int]] = None,
         depth_config: Optional[Dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
         continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
@@ -138,7 +137,6 @@ class ThinClientPromptGenerator:
             project_id: Project UUID
             user_id: Optional user ID for tracking and fetching priorities/depth config
             tool: AI coding tool (claude-code, codex, gemini, universal)
-            instance_number: Orchestrator instance number (for succession) - DEPRECATED in continuation mode
             field_priorities: Optional field importance weights (v2.0 categories)
             depth_config: Optional depth configuration (v2.0 depth settings)
             continuation_mode: If True, generate continuation prompt (reads 360 Memory instead of re-staging)
@@ -204,7 +202,7 @@ class ThinClientPromptGenerator:
                 AgentExecution.tenant_key == self.tenant_key,
                 ~AgentExecution.status.in_(["failed", "cancelled"]),  # FIX 2
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
 
         existing_exec_result = await self.db.execute(existing_exec_stmt)
@@ -215,7 +213,6 @@ class ThinClientPromptGenerator:
             orchestrator_id = existing_execution.job_id  # WHAT - work order ID
             agent_id = existing_execution.agent_id  # WHO - executor ID (for MCP tool calls)
             execution_id = existing_execution.id  # UNIQUE row ID - for frontend Map key
-            instance_number = existing_execution.instance_number
 
             # BUG FIX (Handover 0275): Update job_metadata when reusing orchestrator
             # Handover 0367c-2: Update AgentJob.job_metadata (persistent work order metadata)
@@ -234,7 +231,7 @@ class ThinClientPromptGenerator:
 
             logger.info(
                 f"[ThinPromptGenerator] Reusing existing orchestrator {orchestrator_id} "
-                f"(instance #{instance_number}) for project {project_id} - metadata updated"
+                f"for project {project_id} - metadata updated"
             )
         else:
             # No active orchestrator exists - create new one
@@ -248,24 +245,6 @@ class ThinClientPromptGenerator:
             # by the MCP tool get_orchestrator_instructions() when the orchestrator calls it.
             # This placeholder ensures the job exists in the database for MCP lookup.
             placeholder_mission = project.mission or f"Orchestrator mission for project: {project.name}"
-
-            # If instance_number not provided, calculate next in sequence
-            # Handover 0367c-2: Check AgentExecution only (no fallback)
-            if instance_number is None or instance_number == 1:
-                # Check AgentExecution for max instance number
-                exec_instance_stmt = (
-                    select(func.coalesce(func.max(AgentExecution.instance_number), 0))
-                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                    .where(
-                        AgentJob.tenant_key == self.tenant_key,
-                        AgentJob.project_id == project_id,
-                        AgentExecution.agent_display_name == "orchestrator",
-                    )
-                )
-                exec_instance_result = await self.db.execute(exec_instance_stmt)
-                max_instance = exec_instance_result.scalar() or 0
-
-                instance_number = max_instance + 1
 
             # Generate orchestrator_id (full UUID for consistency)
             orchestrator_id = str(uuid4())
@@ -297,12 +276,10 @@ class ThinClientPromptGenerator:
                 tenant_key=self.tenant_key,
                 agent_display_name="orchestrator",  # Lowercase for frontend compatibility
                 agent_name="orchestrator",  # Type key for color lookup
-                instance_number=instance_number,
                 status="waiting",
                 progress=0,
                 tool_type=tool,
                 context_used=0,
-                messages=[],
             )
             self.db.add(agent_execution)
 
@@ -320,8 +297,8 @@ class ThinClientPromptGenerator:
             execution_id = agent_execution.id  # UNIQUE row ID - for frontend Map key
 
             logger.info(
-                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id} "
-                f"(instance #{instance_number}), project staging_status='staged'"
+                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id}, "
+                f"project staging_status='staged'"
             )
 
         # Handover 0461c: Generate continuation prompt if continuation_mode enabled
@@ -338,7 +315,6 @@ class ThinClientPromptGenerator:
                 orchestrator_id=orchestrator_id,
                 project_id=project_id,
                 product_id=str(product.id) if product else None,
-                instance_number=1,  # Always 1 in new model (no more instance tracking)
                 mcp_url=mcp_url,
             )
         else:
@@ -350,7 +326,6 @@ class ThinClientPromptGenerator:
                 project_id=project_id,
                 project=project,
                 product=product,
-                instance_number=instance_number,
                 tool=tool,
                 field_priorities=field_priorities or {},
                 depth_config=depth_config,
@@ -388,7 +363,6 @@ class ThinClientPromptGenerator:
             "agent_id": agent_id,  # WHO - executor ID for MCP tool calls (Handover 0388)
             "execution_id": execution_id,  # UNIQUE row ID - for frontend Map key (prevents duplicates)
             "thin_prompt": thin_prompt,
-            "instance_number": instance_number,
             "context_budget": 150000,  # Hardcoded default (AgentExecution.context_budget has same default)
             "estimated_prompt_tokens": estimated_tokens,
             # Handover 0276: Include regenerated mission in response
@@ -478,7 +452,7 @@ class ThinClientPromptGenerator:
             return project.mission or f"Mission for project: {project.name}"
 
     def _build_thin_prompt(
-        self, orchestrator_id: str, project_id: str, project_name: str, instance_number: int, tool: str
+        self, orchestrator_id: str, project_id: str, project_name: str, tool: str
     ) -> str:
         """
         Build thin client prompt (~10 lines).
@@ -516,7 +490,7 @@ class ThinClientPromptGenerator:
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
-        return f"""I am Orchestrator #{instance_number} for GiljoAI Project "{project_name}".
+        return f"""I am Orchestrator for GiljoAI Project "{project_name}".
 
 IDENTITY:
 - Orchestrator ID: {orchestrator_id}
@@ -572,7 +546,6 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         project_id: str,
         project: Any,
         product: Any,
-        instance_number: int,
         tool: str,
         field_priorities: Dict[str, int],
         depth_config: Dict[str, Any],
@@ -590,7 +563,6 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             project_id: Project UUID
             project: Project model
             product: Product model
-            instance_number: Orchestrator instance number
             tool: AI coding tool (claude-code, codex, gemini, universal)
             field_priorities: User field priority configuration (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
             depth_config: User depth configuration (vision_documents, memory_last_n_projects, etc.)
@@ -631,7 +603,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
 
         # Build thin prompt with MCP tool reference (Monolithic Context Architecture)
         # Handover 0388: Updated IDENTITY to show agent_id (WHO) and job_id (WHAT) separately
-        prompt = f"""I am Orchestrator #{instance_number} for GiljoAI Project "{project.name}".
+        prompt = f"""I am Orchestrator for GiljoAI Project "{project.name}".
 
 IDENTITY:
 - Orchestrator Agent ID: {agent_id}
@@ -872,7 +844,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         orchestrator_id: str,
         project_id: str,
         project_name: str,
-        instance_number: int,
         tool: str,
         product,
         field_priorities: Optional[Dict[str, int]] = None,
@@ -891,7 +862,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             orchestrator_id: Orchestrator job UUID
             project_id: Project UUID
             project_name: Project display name
-            instance_number: Orchestrator instance number
             tool: AI coding tool (claude-code, codex, gemini, universal)
             product: Product model for context injection
             field_priorities: Optional user field priority config
@@ -904,7 +874,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             orchestrator_id=orchestrator_id,
             project_id=project_id,
             project_name=project_name,
-            instance_number=instance_number,
             tool=tool,
         )
 
@@ -1034,7 +1003,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
                 # Fallback: use orchestrator_id if no execution found (legacy)
                 agent_id = orchestrator_id
         else:
-            # If agent_id provided, fetch execution to check instance_number
+            # If agent_id provided, fetch execution (for potential future use)
             exec_stmt = (
                 select(AgentExecution)
                 .where(
@@ -1045,25 +1014,11 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             exec_result = await self.db.execute(exec_stmt)
             execution = exec_result.scalars().first()
 
-        # Handover 0429 Phase 4: Detect instance number and return continuation prompt if > 1
-        instance_number = execution.instance_number if execution else 1
-
         # Get MCP server URL
         config = get_config()
         mcp_host = self._get_external_host()
         mcp_port = config.server.api_port
         mcp_url = f"http://{mcp_host}:{mcp_port}"
-
-        # Return continuation prompt for successors (instance > 1)
-        if instance_number > 1:
-            return self._generate_continuation_prompt(
-                project_name=project.name,
-                agent_id=agent_id,
-                orchestrator_id=orchestrator_id,
-                project_id=project_id,
-                instance_number=instance_number,
-                mcp_url=mcp_url,
-            )
 
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
         # Handover 0424: Added health_check as mandatory first step
@@ -1094,7 +1049,6 @@ START NOW:
         orchestrator_id: str,
         project_id: str,
         product_id: Optional[str],
-        instance_number: int,
         mcp_url: str,
     ) -> str:
         """
