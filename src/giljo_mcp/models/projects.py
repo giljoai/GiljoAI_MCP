@@ -15,7 +15,6 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -152,3 +151,6 @@ class Project(Base):
             postgresql_where=text("status = 'active'"),
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<Project(id={self.id}, name='{self.name}', product_id='{self.product_id}')>"
