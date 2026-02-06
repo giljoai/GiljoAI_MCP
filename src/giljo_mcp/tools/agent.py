@@ -182,7 +182,7 @@ async def _ensure_agent_with_session(
                 AgentExecution.job_id == existing_job.job_id,
                 AgentExecution.tenant_key == project.tenant_key
             )
-        ).order_by(AgentExecution.instance_number.desc())
+        ).order_by(AgentExecution.started_at.desc())
         execution_result = await session.execute(execution_query)
         existing_execution = execution_result.first()
 
@@ -220,9 +220,8 @@ async def _ensure_agent_with_session(
         job_id=job_id,
         tenant_key=project.tenant_key,
         agent_display_name=agent_name,
-        instance_number=1,
         status="waiting",
-        agent_name=f"{agent_name} #1",
+        agent_name=agent_name,
         context_used=0,
         context_budget=50000,
         tool_type="claude-code"

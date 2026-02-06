@@ -110,15 +110,14 @@ async def get_job_messages(
         agents_result = await session.execute(agents_stmt)
         agents = agents_result.scalars().all()
 
-        # Build lookup: agent_id -> "DisplayName #instance" (e.g., "Orchestrator #1")
+        # Build lookup: agent_id -> "DisplayName" (e.g., "Orchestrator")
         agent_lookup = {}
         for agent in agents:
             display_name = agent.agent_display_name.capitalize() if agent.agent_display_name else "Agent"
-            instance_suffix = f" #{agent.instance_number}" if agent.instance_number > 1 else ""
-            agent_lookup[agent.agent_id] = f"{display_name}{instance_suffix}"
-            # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer #1")
+            agent_lookup[agent.agent_id] = display_name
+            # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer")
             if agent.agent_name:
-                agent_lookup[agent.agent_name] = f"{display_name}{instance_suffix}"
+                agent_lookup[agent.agent_name] = display_name
 
         # Query messages where agent is sender or recipient
         # Note: from_agent is stored in meta_data["_from_agent"], not as a column

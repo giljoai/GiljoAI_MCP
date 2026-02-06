@@ -708,7 +708,6 @@ def upgrade() -> None:
     sa.Column('estimated_completion', sa.DateTime(timezone=True), nullable=True, comment='Estimated completion timestamp'),
     sa.Column('tool_type', sa.String(length=20), nullable=False, comment='AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)'),
     sa.Column('agent_name', sa.String(length=255), nullable=True, comment='Human-readable agent display name (e.g., Backend Agent, Database Agent)'),
-    sa.Column('instance_number', sa.Integer(), nullable=False, comment='Sequential instance number for orchestrator succession (1, 2, 3, ...)'),
     sa.Column('handover_to', sa.String(length=36), nullable=True, comment='UUID of successor orchestrator job (NULL if no handover)'),
     sa.Column('handover_summary', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Compressed state transfer for successor orchestrator'),
     sa.Column('handover_context_refs', sa.JSON(), nullable=True, comment='Array of context chunk IDs referenced in handover summary'),
@@ -731,7 +730,6 @@ def upgrade() -> None:
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_mcp_agent_job_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_mcp_agent_job_context_usage'),
     sa.CheckConstraint('health_failure_count >= 0', name='ck_mcp_agent_job_health_failure_count'),
-    sa.CheckConstraint('instance_number >= 1', name='ck_mcp_agent_job_instance_positive'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_mcp_agent_job_progress_range'),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.ForeignKeyConstraint(['template_id'], ['agent_templates.id'], ),
@@ -739,7 +737,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('job_id')
     )
     op.create_index('idx_agent_jobs_handover', 'mcp_agent_jobs', ['handover_to'], unique=False)
-    op.create_index('idx_agent_jobs_instance', 'mcp_agent_jobs', ['project_id', 'agent_type', 'instance_number'], unique=False)
     op.create_index('idx_mcp_agent_jobs_composite_status', 'mcp_agent_jobs', ['project_id', 'status', 'last_progress_at'], unique=False)
     op.create_index('idx_mcp_agent_jobs_health_status', 'mcp_agent_jobs', ['health_status'], unique=False)
     op.create_index('idx_mcp_agent_jobs_job_id', 'mcp_agent_jobs', ['job_id'], unique=False)
@@ -921,7 +918,6 @@ def upgrade() -> None:
     sa.Column('job_id', sa.String(length=36), nullable=False, comment='Foreign key to parent AgentJob'),
     sa.Column('tenant_key', sa.String(length=50), nullable=False),
     sa.Column('agent_display_name', sa.String(length=100), nullable=False, comment='Human-readable display name for UI'),
-    sa.Column('instance_number', sa.Integer(), nullable=False, comment='Sequential instance number for succession (1, 2, 3, ...)'),
     sa.Column('status', sa.String(length=50), nullable=False, comment='Execution status: waiting, working, blocked, complete, failed, cancelled'),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
@@ -947,14 +943,11 @@ def upgrade() -> None:
     sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled')", name='ck_agent_execution_status'),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_agent_execution_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_agent_execution_context_usage'),
-    sa.CheckConstraint('instance_number >= 1', name='ck_agent_execution_instance_positive'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_agent_execution_progress_range'),
     sa.ForeignKeyConstraint(['job_id'], ['agent_jobs.job_id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('agent_id', 'instance_number', name='uq_agent_instance')
     )
     op.create_index('idx_agent_executions_health', 'agent_executions', ['health_status'], unique=False)
-    op.create_index('idx_agent_executions_instance', 'agent_executions', ['job_id', 'instance_number'], unique=False)
     op.create_index('idx_agent_executions_job', 'agent_executions', ['job_id'], unique=False)
     op.create_index('idx_agent_executions_last_progress', 'agent_executions', ['last_progress_at'], unique=False)
     op.create_index('idx_agent_executions_status', 'agent_executions', ['status'], unique=False)

@@ -53,7 +53,6 @@ const messages = ref([
     timestamp: '2023-04-29T09:30:00Z',
     from: 'agent',
     agent_type: 'orchestrator',
-    instance_number: 1,
   },
   {
     id: '2',
@@ -136,7 +135,6 @@ interface Message {
   timestamp: string // ISO 8601 timestamp
   from: 'agent' | 'developer' // Message source
   agent_type?: string // Agent type for chat head color
-  instance_number?: number // Agent instance (default: 1)
 }
 ```
 
@@ -154,7 +152,6 @@ interface Message {
   timestamp: '2023-04-29T09:30:00Z',
   from: 'agent',
   agent_type: 'orchestrator',
-  instance_number: 1
 }
 ```
 

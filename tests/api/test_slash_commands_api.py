@@ -61,9 +61,7 @@ async def mock_orchestrator(db_session, test_tenant_key, mock_project):
         agent_display_name="orchestrator",
         status="working",
         tenant_key=test_tenant_key,
-        project_id=mock_project.id,
-        instance_number=1,
-        context_used=50000,
+        project_id=mock_project.id,        context_used=50000,
         context_budget=200000,
         mission="Lead the test project",
     )
@@ -240,7 +238,6 @@ class TestTriggerSuccessionEndpoint:
 
         assert successor.status == "waiting"
         assert successor.agent_display_name == "orchestrator"
-        assert successor.instance_number == 2
         assert successor.spawned_by == mock_orchestrator.job_id
 
     @pytest.mark.asyncio

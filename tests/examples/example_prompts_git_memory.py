@@ -106,9 +106,7 @@ def main():
     prompt_git = generator._build_thin_prompt_with_memory(
         orchestrator_id="orch-example-123",
         project_id="proj-example-456",
-        project_name="GiljoAI MCP Server",
-        instance_number=1,
-        tool="universal",
+        project_name="GiljoAI MCP Server",        tool="universal",
         product=product_git
     )
 
@@ -127,9 +125,7 @@ def main():
     prompt_nogit = generator._build_thin_prompt_with_memory(
         orchestrator_id="orch-example-789",
         project_id="proj-example-012",
-        project_name="Prototype App",
-        instance_number=1,
-        tool="universal",
+        project_name="Prototype App",        tool="universal",
         product=product_nogit
     )
 

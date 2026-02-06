@@ -110,9 +110,7 @@ class TestMultiTerminalModeWorkflow:
         result = await generator.generate(
             project_id=str(project.id),
             user_id=test_user.id,
-            tool="multi-terminal",
-            instance_number=1
-        )
+            tool="multi-terminal")
         prompt = result["thin_prompt"]
 
         # Verify message passing tools present
@@ -182,9 +180,7 @@ class TestMultiTerminalModeWorkflow:
         result = await generator.generate(
             project_id=str(project.id),
             user_id=test_user.id,
-            tool="multi-terminal",
-            instance_number=1
-        )
+            tool="multi-terminal")
         prompt = result["thin_prompt"]
 
         # Token estimation
@@ -250,8 +246,7 @@ class TestMultiTerminalModeWorkflow:
         result = await generator.generate(
             project_id=str(legacy_project.id),
             user_id=test_user.id,
-            tool="multi-terminal",  # Default should be multi-terminal
-            instance_number=1
+            tool="multi-terminal"  # Default should be multi-terminal
         )
         prompt = result["thin_prompt"]
 

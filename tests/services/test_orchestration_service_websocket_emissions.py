@@ -201,9 +201,7 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         agent_name="impl-worker-1",
         status="working",
         started_at=started_at,
-        completed_at=None,
-        instance_number=1,
-        progress=0,
+        completed_at=None,        progress=0,
     )
     job = SimpleNamespace(
         job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None
@@ -257,9 +255,7 @@ async def test_report_progress_fallback_emits_message_new_event(
         agent_name="impl-worker-1",
         status="working",
         started_at=datetime.now(timezone.utc),
-        mission_acknowledged_at=datetime.now(timezone.utc),
-        instance_number=1,
-    )
+        mission_acknowledged_at=datetime.now(timezone.utc),    )
     job = SimpleNamespace(
         job_id=job_id,
         tenant_key=tenant_key,

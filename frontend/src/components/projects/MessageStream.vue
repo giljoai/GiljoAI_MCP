@@ -47,7 +47,6 @@
           <ChatHeadBadge
             v-if="!isUserMessage(message)"
             :agent-display-name="getAgentDisplayName(message)"
-            :instance-number="getInstanceNumber(message)"
             size="default"
             class="message-stream__chat-head"
           />
@@ -154,7 +153,6 @@ const props = defineProps({
    * - timestamp: ISO timestamp
    * - from: 'agent' | 'developer'
    * - agent_display_name: agent display name (for chat head color)
-   * - instance_number: agent instance number (optional, defaults to 1)
    */
   messages: {
     type: Array,
@@ -221,13 +219,6 @@ function isBroadcast(message) {
  */
 function getAgentDisplayName(message) {
   return message.agent_display_name || message.from_agent || 'orchestrator'
-}
-
-/**
- * Get agent instance number from message
- */
-function getInstanceNumber(message) {
-  return message.instance_number || 1
 }
 
 /**

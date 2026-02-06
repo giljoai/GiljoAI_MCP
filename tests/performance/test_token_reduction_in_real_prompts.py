@@ -219,8 +219,7 @@ class TestTokenReductionInRealPrompts:
         result = await generator.generate(
             project_id=str(test_project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
+            tool="claude-code"
         )
         prompt = result["thin_prompt"]
 
@@ -275,8 +274,7 @@ class TestTokenReductionInRealPrompts:
         result = await generator.generate(
             project_id=str(test_project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
+            tool="claude-code"
         )
         prompt = result["thin_prompt"]
 
@@ -340,9 +338,7 @@ class TestTokenReductionInRealPrompts:
             result = await generator.generate(
                 project_id=str(test_project.id),
                 user_id=test_user.id,
-                tool=mode,
-                instance_number=1
-            )
+                tool=mode)
             prompt = result["thin_prompt"]
 
             token_counts[mode] = len(prompt) // 4
@@ -411,8 +407,7 @@ class TestTokenReductionInRealPrompts:
         result = await generator.generate(
             project_id=str(test_project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
+            tool="claude-code"
         )
         prompt = result["thin_prompt"]
 

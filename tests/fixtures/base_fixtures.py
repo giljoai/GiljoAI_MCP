@@ -64,7 +64,7 @@ class TestData:
 
     @staticmethod
     def generate_agent_execution_data(
-        job_id: str, tenant_key: str, agent_display_name: Optional[str] = None, instance_number: int = 1
+        job_id: str, tenant_key: str, agent_display_name: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Generate test AgentExecution data (executor - the WHO).
@@ -78,7 +78,6 @@ class TestData:
             "tenant_key": tenant_key,
             "agent_display_name": agent_display_name or "worker",
             "agent_name": f"Test {agent_display_name or 'worker'} Agent",
-            "instance_number": instance_number,
             "status": "waiting",  # AgentExecution has 7 statuses
             "progress": 0,
             "messages_sent_count": 0,

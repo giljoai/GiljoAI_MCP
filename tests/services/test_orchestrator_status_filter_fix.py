@@ -43,9 +43,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="complete",  # COMPLETE status
+            agent_name="orchestrator",            status="complete",  # COMPLETE status
             progress=100,
         )
         db_session.add(agent_execution)
@@ -112,9 +110,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="blocked",  # BLOCKED status
+            agent_name="orchestrator",            status="blocked",  # BLOCKED status
             progress=50,
         )
         db_session.add(agent_execution)
@@ -164,9 +160,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="failed",  # FAILED status
+            agent_name="orchestrator",            status="failed",  # FAILED status
             progress=25,
         )
         db_session.add(agent_execution)
@@ -215,9 +209,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="cancelled",  # CANCELLED status
+            agent_name="orchestrator",            status="cancelled",  # CANCELLED status
             progress=10,
         )
         db_session.add(agent_execution)
@@ -267,9 +259,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=waiting_job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",  # WAITING status
+            agent_name="orchestrator",            status="waiting",  # WAITING status
             progress=0,
         )
         db_session.add(agent_execution_waiting)
@@ -293,9 +283,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=working_job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=2,
-            status="working",  # WORKING status
+            agent_name="orchestrator",            status="working",  # WORKING status
             progress=75,
         )
         db_session.add(agent_execution_working)
@@ -312,7 +300,7 @@ class TestOrchestratorStatusFilterFix:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
             )
-            .order_by(AgentExecution.instance_number)
+            
         )
         result = await db_session.execute(stmt)
         found = result.scalars().all()

@@ -240,15 +240,20 @@ const nonOrchestratorAgents = computed(() => {
 })
 
 /**
- * Get current orchestrator execution (most recent instance)
+ * Get current orchestrator execution (most recent by started_at)
+ * Handover 0700i: Removed instance_number sorting - use timestamp instead
  */
 const currentOrchestrator = computed(() => {
   if (!sortedJobs.value || sortedJobs.value.length === 0) return null
 
-  // Find orchestrator jobs
+  // Find orchestrator jobs, sort by started_at descending (most recent first)
   const orchestrators = sortedJobs.value
     .filter((agent) => agent.agent_display_name === 'orchestrator')
-    .sort((a, b) => (b.instance_number || 0) - (a.instance_number || 0))
+    .sort((a, b) => {
+      const aTime = a.started_at ? new Date(a.started_at).getTime() : 0
+      const bTime = b.started_at ? new Date(b.started_at).getTime() : 0
+      return bTime - aTime // descending
+    })
 
   return orchestrators[0] || null
 })

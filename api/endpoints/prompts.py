@@ -154,7 +154,7 @@ async def generate_orchestrator_prompt_thin(
     - Clean separation between staging/execution
 
     Args:
-        request: Request containing project_id, tool, and instance_number
+        request: Request containing project_id and tool
         current_user: Currently authenticated user
         db: Database session
 
@@ -167,7 +167,6 @@ async def generate_orchestrator_prompt_thin(
     try:
         project_id = request.project_id
         tool = request.tool or "universal"
-        instance_number = request.instance_number or 1
 
         # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
@@ -183,7 +182,6 @@ async def generate_orchestrator_prompt_thin(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            instance_number=instance_number,
             field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
 
@@ -196,7 +194,6 @@ async def generate_orchestrator_prompt_thin(
                     "project_id": project_id,
                     "orchestrator_id": result["orchestrator_id"],
                     "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
-                    "instance_number": result["instance_number"],
                     "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
                     "timestamp": datetime.now(timezone.utc).isoformat()
@@ -207,7 +204,6 @@ async def generate_orchestrator_prompt_thin(
             success=True,
             orchestrator_id=result["orchestrator_id"],
             prompt=result["thin_prompt"],
-            instance_number=result["instance_number"],
             context_budget=result["context_budget"],
             context_used=0,  # New orchestrator starts with 0 context used
             estimated_prompt_tokens=result["estimated_prompt_tokens"],
@@ -347,7 +343,6 @@ Prerequisites:
 async def generate_staging_prompt(
     project_id: str,
     tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
-    instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
     execution_mode: str = Query(
         "multi_terminal",
         pattern="^(multi_terminal|claude_code_cli)$",
@@ -381,12 +376,10 @@ async def generate_staging_prompt(
     - Dynamic field priority integration (user-configured)
     - Professional UX (copy 10 lines, not 3000)
     - Multi-tool support (Claude Code, Codex, Gemini)
-    - Orchestrator succession support (instance_number)
 
     Args:
         project_id: Project UUID to generate prompt for
         tool: Target AI tool (claude-code, codex, or gemini)
-        instance_number: Orchestrator instance number (for succession)
         current_user: Authenticated user (ensures tenant isolation)
         db: Database session
 
@@ -422,7 +415,6 @@ async def generate_staging_prompt(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            instance_number=instance_number,
             field_priorities=field_priorities  # FIX: Pass user's configured field priorities
         )
 
@@ -449,7 +441,6 @@ async def generate_staging_prompt(
                     "project_id": project_id,
                     "thin_client": True,
                     "tool": tool,
-                    "instance_number": result["instance_number"],
                 },
             )
             logger.info(f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}")
@@ -458,7 +449,6 @@ async def generate_staging_prompt(
         logger.info(
             f"[STAGING PROMPT THIN] Generated for project={project_id}, "
             f"tool={tool}, tokens={result['estimated_prompt_tokens']}, "
-            f"instance={result['instance_number']}, "
             f"user={current_user.username}"
         )
 
@@ -469,7 +459,6 @@ async def generate_staging_prompt(
             "orchestrator_id": result["orchestrator_id"],
             "agent_id": result.get("agent_id"),  # WHO - executor ID for MCP tool calls
             "prompt": staging_prompt,  # Mode-specific staging prompt
-            "instance_number": result["instance_number"],
             "context_budget": result["context_budget"],
             "estimated_prompt_tokens": staging_tokens,  # Updated token count for staging prompt
         }

@@ -43,7 +43,6 @@ class TestAgentExecutionCreation:
             job_id="job-exec-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="waiting"
         )
         db_session.add(execution)
@@ -51,7 +50,6 @@ class TestAgentExecutionCreation:
 
         assert execution.agent_id == "agent-abc-123"
         assert execution.job_id == "job-exec-001"
-        assert execution.instance_number == 1
         assert execution.status == "waiting"
 
     @pytest.mark.asyncio
@@ -61,7 +59,6 @@ class TestAgentExecutionCreation:
             agent_id="agent-abc-456",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="waiting"
             # job_id missing - should FAIL
         )
@@ -90,7 +87,6 @@ class TestAgentExecutionCreation:
             agent_id="agent-abc-789",
             job_id="job-exec-002",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="waiting"
             # tenant_key missing - should FAIL
         )
@@ -119,7 +115,6 @@ class TestAgentExecutionCreation:
             job_id="job-exec-003",
             tenant_key="tenant-abc",
             agent_display_name="analyzer",
-            instance_number=1,
             status="waiting"
             # agent_id NOT provided - should auto-generate
         )
@@ -152,7 +147,6 @@ class TestAgentExecutionForeignKey:
             job_id="job-fk-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="waiting"
         )
         db_session.add(execution)
@@ -170,7 +164,6 @@ class TestAgentExecutionForeignKey:
             job_id="nonexistent-job-id",  # Does NOT exist
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="waiting"
         )
         db_session.add(execution)
@@ -213,7 +206,6 @@ class TestAgentExecutionStatusConstraint:
             job_id=f"job-status-{status}",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status=status
         )
         db_session.add(execution)
@@ -240,7 +232,6 @@ class TestAgentExecutionStatusConstraint:
             job_id="job-status-invalid",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="invalid_status"  # NOT in allowed list
         )
         db_session.add(execution)
@@ -274,7 +265,6 @@ class TestAgentExecutionProgressConstraint:
             job_id="job-progress-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             progress=50
         )
@@ -302,7 +292,6 @@ class TestAgentExecutionProgressConstraint:
             job_id="job-progress-002",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             progress=-10  # INVALID - negative
         )
@@ -332,7 +321,6 @@ class TestAgentExecutionProgressConstraint:
             job_id="job-progress-003",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             progress=150  # INVALID - exceeds 100
         )
@@ -366,13 +354,10 @@ class TestAgentExecutionInstanceConstraint:
             job_id="job-instance-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=5,  # Valid
             status="working"
         )
         db_session.add(execution)
         await db_session.commit()
-
-        assert execution.instance_number == 5
 
     @pytest.mark.asyncio
     async def test_agent_execution_rejects_zero_instance(self, db_session: AsyncSession):
@@ -393,7 +378,6 @@ class TestAgentExecutionInstanceConstraint:
             job_id="job-instance-002",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=0,  # INVALID
             status="working"
         )
         db_session.add(execution)
@@ -427,7 +411,6 @@ class TestAgentExecutionSuccessionChain:
             job_id="job-succession-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete",
             succeeded_by="agent-002"  # Points to next execution
         )
@@ -440,7 +423,6 @@ class TestAgentExecutionSuccessionChain:
             job_id="job-succession-001",  # SAME job
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="working",
             spawned_by="agent-001"  # Points to previous execution
         )
@@ -475,7 +457,6 @@ class TestAgentExecutionContextTracking:
             job_id="job-context-001",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             context_used=75000,
             context_budget=150000
@@ -506,7 +487,6 @@ class TestAgentExecutionContextTracking:
             job_id="job-context-002",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             context_used=200000,  # Exceeds budget
             context_budget=150000
@@ -550,7 +530,6 @@ class TestAgentExecutionHealthMonitoring:
             job_id=f"job-health-{health_status}",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             health_status=health_status
         )
@@ -578,7 +557,6 @@ class TestAgentExecutionHealthMonitoring:
             job_id="job-health-tracking",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             health_status="warning",
             health_failure_count=3,
@@ -621,7 +599,6 @@ class TestAgentExecutionToolAssignment:
             job_id=f"job-tool-{tool_type}",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             tool_type=tool_type
         )
@@ -649,7 +626,6 @@ class TestAgentExecutionToolAssignment:
             job_id="job-tool-invalid",
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working",
             tool_type="invalid-tool"  # NOT in allowed list
         )

@@ -66,9 +66,7 @@ class TestGetOrchestratorInstructions:
             job_id=orchestrator_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
             context_used=5000,
             context_budget=150000,
         )
@@ -166,9 +164,7 @@ class TestGetOrchestratorInstructions:
             job_id=implementer_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="implementer",
-            agent_name="implementer",
-            instance_number=1,
-            status="waiting",
+            agent_name="implementer",            status="waiting",
         )
         db_session.add(implementer_execution)
         await db_session.commit()
@@ -233,9 +229,7 @@ class TestGetOrchestratorInstructions:
             job_id=orchestrator_job_a.job_id,
             tenant_key=tenant_a,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
         )
         db_session.add(orchestrator_execution_a)
         await db_session.commit()
@@ -285,9 +279,7 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -315,7 +307,6 @@ class TestCreateSuccessorOrchestrator:
         successor_result = await db_session.execute(
             select(AgentExecution).where(
                 AgentExecution.job_id == current_job.job_id,
-                AgentExecution.instance_number == 2,
             )
         )
         successor = successor_result.scalar_one_or_none()
@@ -346,9 +337,7 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -395,9 +384,7 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -442,9 +429,7 @@ class TestCreateSuccessorOrchestrator:
             job_id=completed_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="complete",  # AgentExecution: waiting, working, blocked, complete, failed, cancelled, decommissioned
+            agent_name="orchestrator",            status="complete",  # AgentExecution: waiting, working, blocked, complete, failed, cancelled, decommissioned
         )
         db_session.add(completed_execution)
         await db_session.commit()

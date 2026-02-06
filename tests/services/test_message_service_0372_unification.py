@@ -111,8 +111,7 @@ async def test_project_with_agents(
             agent_id=str(uuid4()),  # Explicit agent_id for executor identity
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
-            status="waiting",
-            instance_number=1,  # Must be >= 1 per check constraint
+            status="waiting",  # Must be >= 1 per check constraint
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -211,8 +210,8 @@ class TestMessageService0372AgentIDRouting:
         HANDOVER 0372 TEST: Verify messages route to NEW orchestrator after succession.
 
         Scenario:
-        1. Original orchestrator exists (instance_number=0)
-        2. Succession creates new orchestrator (instance_number=1)
+        1. Original orchestrator exists
+        2. Succession creates new orchestrator
         3. Send message to "orchestrator" type
         4. Verify message routes to NEW orchestrator (latest instance)
         """
@@ -225,8 +224,7 @@ class TestMessageService0372AgentIDRouting:
             agent_id=str(uuid4()),  # Different executor
             tenant_key=project.tenant_key,
             agent_display_name="orchestrator",
-            status="working",
-            instance_number=2,  # Higher instance number (old was 1)
+            status="working",  # Higher instance number (old was 1)
             messages=[],
         )
         db_session.add(new_orchestrator)

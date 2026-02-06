@@ -2,7 +2,7 @@
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
   "status": "active",
-  "current_handover": "0700b",
+  "current_handover": "0700i",
   "handovers": [
     {
       "id": "0700a",
@@ -202,10 +202,11 @@
         "0700f"
       ],
       "scope": "Remove unused enums (AugmentationType, ArchiveType, InteractionType) and exceptions (Git*, Template*). Delete orphaned frontend components. Clean dead code comments.",
-      "started_at": "2026-02-05T07:45:00Z",
+      "started_at": "2026-02-05T07:30:00Z",
       "completed_at": "2026-02-05T08:00:00Z",
       "worker_session_id": null,
       "docs_updated": [],
+      "lines_removed": 95,
       "enums_removed": [
         "AugmentationType",
         "ArchiveType",
@@ -225,9 +226,9 @@
         "frontend/src/components/projects/__tests__/SuccessionTimeline.spec.js",
         "frontend/src/components/projects/__tests__/AgentCardEnhanced.succession.spec.js"
       ],
-      "lines_removed": 95,
       "items_kept": [
-        "AgentStatus.DECOMMISSIONED (30+ raw string usages in production code)"
+        "AgentStatus.DECOMMISSIONED (30+ raw string usages)",
+        "TemplateError base class (parent of TemplateNotFoundError)"
       ]
     },
     {
@@ -240,16 +241,58 @@
         "0700g"
       ],
       "scope": "Remove unused imports identified by vulture, final code quality pass",
-      "started_at": "2026-02-05T09:00:00Z",
-      "completed_at": "2026-02-05T07:20:23Z",
+      "started_at": "2026-02-05T08:00:00Z",
+      "completed_at": "2026-02-05T08:30:00Z",
       "worker_session_id": null,
       "docs_updated": [],
       "lines_removed": 536,
-      "files_modified": 44,
-      "items_deferred": [
-        "dep-016 (instance_number)",
-        "dep-038 (TemplateCreate fields)"
+      "vulture_findings_fixed": 8,
+      "deprecated_methods_removed": [
+        "ToolAccessor.close_project",
+        "ToolAccessor.gil_handover",
+        "ToolAccessor.gil_activate"
+      ],
+      "deprecated_schema_fields_removed": 5,
+      "skipped_tests_deleted": 6,
+      "deprecated_markers_remaining": 4,
+      "deferred_items": [
+        "instance_number (dep-016, 161 usages)",
+        "TemplateCreate fields (dep-038, tied to DB columns)"
+      ],
+      "bugs_fixed": [
+        "project_service.py unreachable code after raise"
       ]
+    },
+    {
+      "id": "0700i",
+      "title": "instance_number Column Removal",
+      "status": "complete",
+      "effort_hours": "2-3",
+      "priority": "MEDIUM-HIGH",
+      "dependencies": [
+        "0700d",
+        "0700h"
+      ],
+      "scope": "Remove vestigial instance_number column from AgentExecution and all related code. Refactor ~40 ORDER BY queries from instance_number.desc() to started_at.desc(). Delete succession test files.",
+      "started_at": "2026-02-05T09:00:00Z",
+      "completed_at": "2026-02-05T10:30:00Z",
+      "worker_session_id": null,
+      "docs_updated": [
+        "CLAUDE.md"
+      ],
+      "actual_results": {
+        "lines_removed": 350,
+        "files_modified": 36,
+        "test_files_deleted": 8,
+        "fixture_files_updated": 4,
+        "queries_refactored": 50,
+        "src_files_cleaned": 9,
+        "api_files_cleaned": 12,
+        "frontend_files_cleaned": 10,
+        "subagents_used": 4,
+        "execution_method": "parallel_subagent_delegation"
+      },
+      "remaining_references": "2 (deprecated comment, commented code)"
     },
     {
       "id": "0701",
@@ -450,5 +493,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "0700a + 0700 complete. Merged cleanup approach: 0701 (visualization) \u00e2\u2020\u2019 0700b-h (deprecated purge ~1050 lines) \u00e2\u2020\u2019 modified 0704-0706 (type hints, TODOs, cascade verification - gaps not covered by 0700b-h). Dead code audit revealed 5000 estimate was inflated - actual dead code ~400 lines, deprecated code ~1500 lines. Total addressable: ~2000 lines. Execution order: 0701 \u00e2\u2020\u2019 0700b \u00e2\u2020\u2019 0700d \u00e2\u2020\u2019 0700c \u00e2\u2020\u2019 0700e \u00e2\u2020\u2019 0700f \u00e2\u2020\u2019 0700g \u00e2\u2020\u2019 0700h \u00e2\u2020\u2019 0702 \u00e2\u2020\u2019 0703 \u00e2\u2020\u2019 0704 \u00e2\u2020\u2019 0705 \u00e2\u2020\u2019 0706 \u00e2\u2020\u2019 0707 \u00e2\u2020\u2019 0708 \u00e2\u2020\u2019 0711 \u00e2\u2020\u2019 0373. SCOPE AMENDMENT: 0700b scope amended via orchestrator-002 (2026-02-04T15:30:00Z) - Changed from 'remove columns' to 'purge columns AND code'. Human authorized destructive purge approach for v1.0 release. No external users, no v4.0 migration path needed."
+  "notes": "0700a-i COMPLETE (2026-02-05). Series total: ~6,450 lines removed. 0700i completed via parallel subagent delegation (4 agents). instance_number column fully removed from model, all ORDER BY queries refactored to started_at.desc(), 8 succession test files deleted. dep-038 deferred (TemplateCreate fields tied to active DB columns - category is NOT deprecated). Next: 0702+ (Utils & Config Cleanup)."
 }

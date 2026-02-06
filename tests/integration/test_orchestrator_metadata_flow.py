@@ -107,7 +107,6 @@ async def test_orchestrator_metadata_new_creation(
     assert orchestrator.status == "waiting"
     assert orchestrator.project_id == project.id
     assert orchestrator.tenant_key == test_user.tenant_key
-    assert orchestrator.instance_number == 1
 
     # CRITICAL: job_metadata must be populated (NOT empty {})
     assert orchestrator.job_metadata is not None, "job_metadata is None"
@@ -182,9 +181,7 @@ async def test_orchestrator_metadata_reuse_updates(
         agent_name="Orchestrator",
         agent_display_name="orchestrator",
         status="waiting",
-        mission="Old orchestrator mission",
-        instance_number=1,
-        context_budget=200000,
+        mission="Old orchestrator mission",        context_budget=200000,
         context_used=0,
         tool_type="claude-code",
         job_metadata={},  # OLD: Empty metadata (the bug we're fixing)

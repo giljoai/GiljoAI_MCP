@@ -90,7 +90,6 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
-        mock_orchestrator_job.instance_number = 1
         mock_orchestrator_job.job_metadata = {
             "field_priorities": {
                 "product_core": 1,
@@ -170,7 +169,6 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
-        mock_orchestrator_job.instance_number = 1
         mock_orchestrator_job.job_metadata = {
             "field_priorities": {
                 "product_core": 1,
@@ -244,7 +242,6 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
-        mock_orchestrator_job.instance_number = 1
         mock_orchestrator_job.job_metadata = {
             "field_priorities": {
                 "product_core": 1,
@@ -319,7 +316,6 @@ class TestToolAccessorMCPCatalog:
         mock_orchestrator_job.project_id = "proj-456"
         mock_orchestrator_job.context_budget = 150000
         mock_orchestrator_job.context_used = 0
-        mock_orchestrator_job.instance_number = 1
         mock_orchestrator_job.job_metadata = {
             "field_priorities": {
                 "product_core": 1,

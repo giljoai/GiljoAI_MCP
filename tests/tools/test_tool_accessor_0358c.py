@@ -131,9 +131,7 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         progress=0,
     )
     db_session.add(execution)
@@ -353,17 +351,13 @@ async def test_get_pending_jobs_queries_agentjob_table(
         agent_id=str(uuid4()),
         job_id=job1.job_id,
         tenant_key=tenant_key,
-        agent_display_name="analyzer",
-        instance_number=1,
-        status="waiting",
+        agent_display_name="analyzer",        status="waiting",
     )
     exec2 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=job2.job_id,
         tenant_key=tenant_key,
-        agent_display_name="implementer",
-        instance_number=1,
-        status="working",
+        agent_display_name="implementer",        status="working",
     )
 
     db_session.add_all([exec1, exec2])
@@ -422,9 +416,7 @@ async def test_multi_tenant_isolation_for_mcp_tools(
         agent_id=str(uuid4()),
         job_id=job_a.job_id,
         tenant_key=tenant_a,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
     )
 
     db_session.add_all([job_a, exec_a])
@@ -487,7 +479,7 @@ async def test_succession_preserves_job_id_changes_agent_id(
             AgentExecution.job_id == orchestrator_job.job_id,
             AgentExecution.tenant_key == tenant_key,
         )
-        .order_by(AgentExecution.instance_number)
+        
     )
     executions = exec_result.scalars().all()
 
@@ -499,8 +491,6 @@ async def test_succession_preserves_job_id_changes_agent_id(
     assert executions[0].agent_id != executions[1].agent_id
 
     # Verify instance numbers
-    assert executions[0].instance_number == 1
-    assert executions[1].instance_number == 2
 
     # Verify succession chain
     assert executions[1].spawned_by == executions[0].agent_id
@@ -530,17 +520,13 @@ async def test_get_agent_mission_handles_succession(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=1,
-        status="decommissioned",
+        agent_display_name="orchestrator",        status="decommissioned",
     )
     exec2 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",
-        instance_number=2,
-        status="working",
+        agent_display_name="orchestrator",        status="working",
         spawned_by=exec1.agent_id,
     )
 

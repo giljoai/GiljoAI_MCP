@@ -709,7 +709,6 @@ class ToolAccessor:
                         "job_id": str,
                         "agent_display_name": str,
                         "status": str,
-                        "instance_number": int,
                         "agent_name": str,
                         "tenant_key": str
                     },

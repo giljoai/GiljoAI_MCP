@@ -368,7 +368,7 @@ async def write_360_memory(
                         AgentExecution.job_id == author_job_id,
                         AgentExecution.tenant_key == tenant_key,
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 execution_result = await active_session.execute(execution_stmt)

@@ -36,9 +36,7 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
-            status="cancelled",
-            instance_number=2,
-            decommissioned_at=datetime.now(timezone.utc),
+            status="cancelled",            decommissioned_at=datetime.now(timezone.utc),
             mission="Cancelled mission",
         )
         db_session.add(cancelled_orch)
@@ -50,9 +48,7 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #2",
-            status="waiting",
-            instance_number=1,
-            mission="Active mission",
+            status="waiting",            mission="Active mission",
         )
         db_session.add(active_orch)
         await db_session.commit()
@@ -106,9 +102,7 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Cancelled Orchestrator",
-            status="cancelled",
-            instance_number=1,
-            mission="Cancelled",
+            status="cancelled",            mission="Cancelled",
         )
         db_session.add(cancelled_orch)
 
@@ -118,9 +112,7 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Failed Orchestrator",
-            status="failed",
-            instance_number=2,
-            mission="Failed",
+            status="failed",            mission="Failed",
         )
         db_session.add(failed_orch)
         await db_session.commit()
