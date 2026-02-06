@@ -108,9 +108,6 @@ class TestProjectServiceFieldPriorities:
             # Call 2: Fetch user
             elif call_count[0] == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_user))
-            # Call 3: Get max instance number (func.max/coalesce query)
-            elif call_count[0] == 3:
-                return Mock(scalar=Mock(return_value=0))  # Return 0 so instance_number becomes 1
             # Default: return None (for any other queries)
             return Mock(scalar_one_or_none=Mock(return_value=None))
 

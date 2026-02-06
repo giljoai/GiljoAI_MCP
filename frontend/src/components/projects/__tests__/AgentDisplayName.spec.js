@@ -141,7 +141,6 @@ const createMockAgent = (overrides = {}) => ({
   // agent_display_name would go here after migration
   agent_name: 'implementer',
   status: 'waiting',
-  instance_number: 1,
   mission_acknowledged_at: null,
   started_at: null,
   completed_at: null,
