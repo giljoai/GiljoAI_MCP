@@ -14,7 +14,6 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -364,6 +363,9 @@ class Product(Base):
             return "none"
         return doc.storage_type
 
+    def __repr__(self) -> str:
+        return f"<Product(id={self.id}, name='{self.name}', tenant_key='{self.tenant_key}')>"
+
 
 class VisionDocument(Base):
     """
@@ -599,6 +601,9 @@ class VisionDocument(Base):
         self.content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return self.content_hash
 
+    def __repr__(self) -> str:
+        return f"<VisionDocument(id={self.id}, name='{self.document_name}', product_id='{self.product_id}')>"
+
 
 class Vision(Base):
     """
@@ -636,3 +641,6 @@ class Vision(Base):
         Index("idx_vision_project", "project_id"),
         Index("idx_vision_document", "document_name"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Vision(id={self.id}, product_id='{self.project_id}')>"
