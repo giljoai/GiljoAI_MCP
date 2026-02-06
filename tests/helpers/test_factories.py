@@ -67,7 +67,6 @@ class TestDataFactory:
         agent_name: str = "test_agent",
         agent_display_name: str = "worker",
         status: str = "waiting",
-        instance_number: int = 1,
     ) -> dict[str, Any]:
         """
         Create AgentExecution data dictionary (executor - the WHO).
@@ -83,7 +82,6 @@ class TestDataFactory:
             "tenant_key": tenant_key,
             "agent_display_name": agent_display_name,
             "agent_name": agent_name,
-            "instance_number": instance_number,
             "status": status,
             "progress": 0,
             "messages_sent_count": 0,

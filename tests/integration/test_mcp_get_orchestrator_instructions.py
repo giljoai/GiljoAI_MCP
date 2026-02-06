@@ -66,9 +66,7 @@ class TestGetOrchestratorInstructionsMCP:
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {"core_features": 10, "tech_stack": 8, "architecture": 7},
                     "user_id": "test_user_123",
                 },
@@ -460,9 +458,7 @@ class TestGetOrchestratorInstructionsMCP:
                 mission="Orchestrate test project with vision",
                 status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {"core_features": 10, "vision": 9},
                     "user_id": "test_user_123",
                 },

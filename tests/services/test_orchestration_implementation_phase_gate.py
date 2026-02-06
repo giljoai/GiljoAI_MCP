@@ -107,9 +107,7 @@ def mock_agent_job_and_execution():
         tenant_key="tenant-test",
         agent_display_name="implementer",
         agent_name="implementer-1",
-        status="waiting",
-        instance_number=1,
-        mission_acknowledged_at=None,
+        status="waiting",        mission_acknowledged_at=None,
         started_at=None,
     )
 

@@ -406,7 +406,7 @@ class AgentJobRepository:
         job_id: str,
     ) -> Optional["AgentExecution"]:
         """
-        Get the latest execution instance for a job (by instance_number desc).
+        Get the latest execution instance for a job (by started_at desc).
 
         Args:
             session: Async database session
@@ -419,7 +419,7 @@ class AgentJobRepository:
         Example:
             >>> execution = await repo.get_latest_execution_for_job(session, "tenant-1", "job-123")
             >>> if execution:
-            ...     print(f"Instance #{execution.instance_number}")
+            ...     print(f"Status: {execution.status}")
         """
         # ORIGINAL QUERY: operations.py lines 343-348 (update_agent_mission WebSocket event)
         from ..models.agent_identity import AgentExecution
@@ -430,7 +430,7 @@ class AgentJobRepository:
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()

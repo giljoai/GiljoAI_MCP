@@ -727,6 +727,96 @@
         ],
         "series_complete": true
       }
+    },
+    {
+      "id": "orchestrator-003",
+      "timestamp": "2026-02-05T09:00:00Z",
+      "from_handover": "orchestrator",
+      "to_handovers": ["0702"],
+      "type": "warning",
+      "subject": "WebSocket staging updates arrive as burst, not incremental",
+      "message": "During 0700h regression testing, user observed that staging workflow UI updates arrive all at once (burst) instead of incrementally. Mission text, agent discovery, and all job cards appear simultaneously rather than one-by-one as the orchestrator creates them. Likely cause: transaction batching (all jobs created in single DB commit, WS events fire after commit) or frontend debounce. Diagnostic prompt created: kickoff_prompts/diagnostic_websocket_staging_burst.md. This is NOT a 0700 regression — behavior may have been pre-existing but is now more visible after cleanup.",
+      "files_affected": [],
+      "action_required": false,
+      "context": {
+        "type": "observation",
+        "severity": "medium",
+        "likely_causes": ["transaction batching", "frontend debounce", "poll-on-push pattern"],
+        "diagnostic_prompt": "handovers/0700_series/kickoff_prompts/diagnostic_websocket_staging_burst.md",
+        "is_regression": false
+      }
+    },
+    {
+      "id": "0700i-complete-001",
+      "timestamp": "2026-02-05T10:30:00Z",
+      "from_handover": "0700i",
+      "to_handovers": ["0700"],
+      "type": "info",
+      "subject": "instance_number column removal complete",
+      "message": "Removed vestigial instance_number column from AgentExecution model and all code references. Column was part of succession system removed in 0700d. Work delegated to 4 parallel subagents: (1) src tools - 9 files cleaned, (2) API layer - 12+ files cleaned, (3) frontend - 10 files cleaned, (4) tests - 8 succession test files deleted + 4 fixtures updated. All ORDER BY instance_number.desc() replaced with started_at.desc(). All func.max(instance_number) replaced with func.max(started_at). Verification shows only 2 remaining references (both are comments/deprecated markers).",
+      "files_affected": [
+        "src/giljo_mcp/models/agent_identity.py",
+        "src/giljo_mcp/services/orchestration_service.py",
+        "src/giljo_mcp/services/message_service.py",
+        "src/giljo_mcp/services/agent_job_manager.py",
+        "src/giljo_mcp/services/agent_health_monitor.py",
+        "src/giljo_mcp/thin_prompt_generator.py",
+        "src/giljo_mcp/services/project_service.py",
+        "src/giljo_mcp/tools/agent.py",
+        "src/giljo_mcp/tools/agent_job_status.py",
+        "src/giljo_mcp/tools/agent_coordination.py",
+        "src/giljo_mcp/tools/context.py",
+        "src/giljo_mcp/tools/write_360_memory.py",
+        "src/giljo_mcp/tools/orchestration.py",
+        "api/schemas/prompt.py",
+        "api/endpoints/prompts.py",
+        "api/endpoints/agent_jobs/table_view.py",
+        "api/endpoints/agent_jobs/executions.py",
+        "api/endpoints/agent_jobs/simple_handover.py",
+        "api/endpoints/agent_jobs/messages.py",
+        "api/endpoints/agent_jobs/lifecycle.py",
+        "api/endpoints/agent_jobs/status.py",
+        "api/endpoints/agent_jobs/models.py",
+        "api/endpoints/projects/status.py",
+        "api/endpoints/projects/models.py",
+        "api/websocket.py",
+        "frontend/src/components/orchestration/AgentTableView.vue",
+        "frontend/src/components/projects/LaunchTab.vue",
+        "frontend/src/components/messages/MessageStream.vue",
+        "frontend/src/components/messages/MessageInput.vue",
+        "frontend/src/components/projects/AgentExecutionModal.vue",
+        "frontend/src/components/messages/ChatHeadBadge.vue",
+        "frontend/src/components/messages/MessageModal.vue",
+        "frontend/src/stores/agentJobsStore.js",
+        "frontend/src/stores/websocketEventRouter.js",
+        "alembic/versions/0001_baseline_schema.py",
+        "install.py"
+      ],
+      "action_required": false,
+      "context": {
+        "queries_refactored": 50,
+        "test_files_deleted": 8,
+        "fixture_files_updated": 4,
+        "src_files_cleaned": 9,
+        "api_files_cleaned": 12,
+        "frontend_files_cleaned": 10,
+        "lines_removed": 634,
+        "series_total_lines_removed": "~6,734+ (0700a:145, 0700b:1000, 0700c:~150, 0700d:750, 0700e:500, 0700f:2800, 0700g:95, 0700h:536, 0700i:634)",
+        "test_cleanup_phase": {
+          "test_files_processed": 67,
+          "code_assignments_removed": 284,
+          "remaining_references": "42 (all docstrings/documentation)"
+        },
+        "replacement_patterns": {
+          "ORDER_BY": "instance_number.desc() → started_at.desc()",
+          "func_max": "func.max(instance_number) → func.max(started_at)",
+          "creation": "removed instance_number=1 from AgentExecution()",
+          "response_dicts": "removed instance_number from all return values"
+        },
+        "remaining_references": "2 (deprecated comment in thin_prompt_generator.py, commented code in operations.py)",
+        "subagents_used": 4,
+        "execution_method": "parallel subagent delegation"
+      }
     }
   ],
   "schema": {

@@ -205,7 +205,7 @@ class MessageService:
                                     AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Active statuses
                                     AgentExecution.tenant_key == tenant_key
                                 )
-                            ).order_by(AgentExecution.instance_number.desc()).limit(1)  # Latest instance
+                            ).order_by(AgentExecution.started_at.desc()).limit(1)  # Latest instance
                         )
                         execution = exec_result.scalar_one_or_none()
                         if execution:
@@ -273,7 +273,7 @@ class MessageService:
                                     (AgentExecution.agent_display_name == sender_ref) |
                                     (AgentExecution.agent_id == sender_ref)
                                 )
-                            ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                            ).order_by(AgentExecution.started_at.desc()).limit(1)
                         )
                         sender_execution = sender_result.scalar_one_or_none()
 
@@ -357,7 +357,7 @@ class MessageService:
                             recipient_result = await session.execute(
                                 select(AgentExecution).where(
                                     AgentExecution.agent_id == recipient_agent_ids[0]
-                                ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                                ).order_by(AgentExecution.started_at.desc()).limit(1)
                             )
                             first_recipient = recipient_result.scalar_one_or_none()
                             if first_recipient:
@@ -437,7 +437,7 @@ class MessageService:
                                 AgentExecution.agent_id == from_agent,
                                 AgentExecution.tenant_key == tenant_key
                             )
-                        ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                        ).order_by(AgentExecution.started_at.desc()).limit(1)
                     )
                     sender_execution = sender_result.scalar_one_or_none()
 
@@ -769,7 +769,7 @@ class MessageService:
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    ).order_by(AgentExecution.started_at.desc()).limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
@@ -1300,7 +1300,7 @@ class MessageService:
                             AgentExecution.agent_id == agent_id,
                             AgentExecution.tenant_key == tenant_key
                         )
-                    ).order_by(AgentExecution.instance_number.desc()).limit(1)
+                    ).order_by(AgentExecution.started_at.desc()).limit(1)
                 )
                 execution = exec_result.scalar_one_or_none()
                 waiting_count = execution.messages_waiting_count if execution else None

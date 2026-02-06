@@ -110,9 +110,7 @@ class TestClaudeCodeModeWorkflow:
         result = await generator.generate(
             project_id=str(project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
-        )
+            tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Verify Task tool instructions present
@@ -181,9 +179,7 @@ class TestClaudeCodeModeWorkflow:
         result = await generator.generate(
             project_id=str(project.id),
             user_id=test_user.id,
-            tool="claude-code",
-            instance_number=1
-        )
+            tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Token estimation

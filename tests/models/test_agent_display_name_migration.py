@@ -57,9 +57,7 @@ class TestAgentDisplayNameModelAttribute:
             agent_id="agent-display-001",
             job_id="job-display-name-001",
             tenant_key="tenant-abc",
-            agent_display_name="System Architect",  # NEW FIELD NAME (will fail)
-            instance_number=1,
-            status="waiting"
+            agent_display_name="System Architect",  # NEW FIELD NAME (will fail)            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()
@@ -93,9 +91,7 @@ class TestAgentDisplayNameModelAttribute:
             agent_id="agent-no-type-001",
             job_id="job-no-type-001",
             tenant_key="tenant-abc",
-            agent_display_name="Database Expert",  # NEW FIELD NAME
-            instance_number=1,
-            status="waiting"
+            agent_display_name="Database Expert",  # NEW FIELD NAME            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()
@@ -129,9 +125,7 @@ class TestAgentDisplayNameModelAttribute:
             job_id="job-agent-name-001",
             tenant_key="tenant-abc",
             agent_name="system-architect",  # Template lookup key (KEEP)
-            agent_display_name="System Architect",  # UI label (NEW)
-            instance_number=1,
-            status="waiting"
+            agent_display_name="System Architect",  # UI label (NEW)            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()
@@ -171,9 +165,7 @@ class TestAgentDisplayNameDatabaseColumn:
             agent_id="agent-column-001",
             job_id="job-column-001",
             tenant_key="tenant-abc",
-            agent_display_name="TDD Implementor",
-            instance_number=1,
-            status="waiting"
+            agent_display_name="TDD Implementor",            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()
@@ -210,9 +202,7 @@ class TestAgentDisplayNameDatabaseColumn:
             agent_id="agent-not-null-001",
             job_id="job-not-null-001",
             tenant_key="tenant-abc",
-            # agent_display_name missing - should violate NOT NULL constraint
-            instance_number=1,
-            status="waiting"
+            # agent_display_name missing - should violate NOT NULL constraint            status="waiting"
         )
         db_session.add(execution)
 
@@ -246,9 +236,7 @@ class TestAgentDisplayNameDatabaseColumn:
             agent_id="agent-maxlen-001",
             job_id="job-maxlen-001",
             tenant_key="tenant-abc",
-            agent_display_name="A" * 100,  # Exactly 100 characters (should pass)
-            instance_number=1,
-            status="waiting"
+            agent_display_name="A" * 100,  # Exactly 100 characters (should pass)            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()
@@ -284,17 +272,13 @@ class TestAgentDisplayNameQueryOperations:
             agent_id="agent-filter-001",
             job_id="job-filter-001",
             tenant_key="tenant-abc",
-            agent_display_name="Orchestrator",
-            instance_number=1,
-            status="complete"
+            agent_display_name="Orchestrator",            status="complete"
         )
         exec2 = AgentExecution(
             agent_id="agent-filter-002",
             job_id="job-filter-001",
             tenant_key="tenant-abc",
-            agent_display_name="Implementor",
-            instance_number=2,
-            status="working"
+            agent_display_name="Implementor",            status="working"
         )
         db_session.add_all([exec1, exec2])
         await db_session.commit()
@@ -333,17 +317,13 @@ class TestAgentDisplayNameQueryOperations:
             agent_id="agent-order-b",
             job_id="job-order-001",
             tenant_key="tenant-abc",
-            agent_display_name="Beta Agent",
-            instance_number=1,
-            status="waiting"
+            agent_display_name="Beta Agent",            status="waiting"
         )
         exec_a = AgentExecution(
             agent_id="agent-order-a",
             job_id="job-order-001",
             tenant_key="tenant-abc",
-            agent_display_name="Alpha Agent",
-            instance_number=2,
-            status="waiting"
+            agent_display_name="Alpha Agent",            status="waiting"
         )
         db_session.add_all([exec_b, exec_a])
         await db_session.commit()
@@ -391,9 +371,7 @@ class TestAgentDisplayNameReprMethod:
             agent_id="agent-repr-001",
             job_id="job-repr-001",
             tenant_key="tenant-abc",
-            agent_display_name="Documentation Manager",
-            instance_number=1,
-            status="waiting"
+            agent_display_name="Documentation Manager",            status="waiting"
         )
         db_session.add(execution)
         await db_session.commit()

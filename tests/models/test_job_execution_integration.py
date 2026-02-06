@@ -43,7 +43,6 @@ class TestJobPersistenceAcrossSuccession:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete",
             started_at=datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             completed_at=datetime(2025, 1, 1, 14, 0, 0, tzinfo=timezone.utc)
@@ -57,7 +56,6 @@ class TestJobPersistenceAcrossSuccession:
             job_id=job.job_id,  # SAME job
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
             started_at=datetime(2025, 1, 1, 14, 5, 0, tzinfo=timezone.utc)
@@ -98,7 +96,6 @@ class TestJobPersistenceAcrossSuccession:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete" if i < 5 else "working",
                 spawned_by=prev_agent_id
             )
@@ -119,8 +116,6 @@ class TestJobPersistenceAcrossSuccession:
 
         # Validate succession chain
         assert len(job.executions) == 5
-        assert job.executions[0].instance_number == 1
-        assert job.executions[4].instance_number == 5
         assert job.executions[4].spawned_by == "agent-004"
 
 
@@ -148,7 +143,6 @@ class TestMissionDataNormalization:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete" if i < 3 else "working"
             )
             db_session.add(exec_instance)
@@ -189,7 +183,6 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working"
         )
         exec2 = AgentExecution(
@@ -197,7 +190,6 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="analyzer",
-            instance_number=1,
             status="working"
         )
         db_session.add_all([exec1, exec2])
@@ -246,7 +238,6 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete",
             messages=[
                 {"id": "msg-1", "content": "Message for instance 1", "status": "acknowledged"}
@@ -261,7 +252,6 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
             messages=[
@@ -305,7 +295,6 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete"
         )
         db_session.add(exec1)
@@ -316,7 +305,6 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="complete",
             spawned_by=exec1.agent_id
         )
@@ -329,7 +317,6 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=3,
             status="working",
             spawned_by=exec2.agent_id
         )
@@ -373,7 +360,6 @@ class TestSuccessionChainIntegrity:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete" if i < 4 else "working"
             )
             db_session.add(exec_instance)
@@ -381,12 +367,10 @@ class TestSuccessionChainIntegrity:
 
         # Query all executions for job
         executions = (await db_session.execute(select(AgentExecution).filter(AgentExecution.job_id == job.job_id
-        ).order_by(AgentExecution.instance_number))).scalars().all()
+        ))).scalars().all()
 
         # Validate
         assert len(executions) == 4
-        assert executions[0].instance_number == 1
-        assert executions[3].instance_number == 4
         assert executions[3].status == "working"
 
 
@@ -413,7 +397,6 @@ class TestJobStatusTransitions:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="working"
         )
         db_session.add(execution)
@@ -462,7 +445,6 @@ class TestIndexPerformance:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete"
             )
             db_session.add(exec_instance)
@@ -495,7 +477,6 @@ class TestIndexPerformance:
                 job_id=job.job_id,
                 tenant_key="tenant-xyz",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete"
             )
             db_session.add(exec_instance)

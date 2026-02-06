@@ -110,9 +110,7 @@ async def test_continuation_prompt_for_instance_greater_than_1(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=1,
-            status="complete",  # Ran out of context
+            agent_name="orchestrator",            status="complete",  # Ran out of context
         )
         session.add(instance1)
 
@@ -122,9 +120,7 @@ async def test_continuation_prompt_for_instance_greater_than_1(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            instance_number=2,
-            status="waiting",
+            agent_name="orchestrator",            status="waiting",
         )
         session.add(instance2)
 

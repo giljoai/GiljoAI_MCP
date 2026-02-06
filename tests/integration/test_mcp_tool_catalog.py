@@ -65,9 +65,7 @@ class TestMCPToolCatalog:
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {
                         "core_features": 10,
                         "tech_stack": 8,
@@ -408,9 +406,7 @@ class TestMCPToolCatalogIntegration:
                 mission="Orchestrate integration test",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,
-                instance_number=1,
-                job_metadata={
+                context_used=0,                job_metadata={
                     "field_priorities": {
                         "mcp_tool_catalog": 9,
                     },

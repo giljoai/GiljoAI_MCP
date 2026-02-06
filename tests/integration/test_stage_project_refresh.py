@@ -89,9 +89,7 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=initial_field_priorities,
+        tool="claude-code",        field_priorities=initial_field_priorities,
     )
 
     orchestrator_id_1 = result1["orchestrator_id"]
@@ -106,9 +104,7 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=updated_field_priorities,
+        tool="claude-code",        field_priorities=updated_field_priorities,
     )
 
     orchestrator_id_2 = result2["orchestrator_id"]
@@ -195,9 +191,7 @@ async def test_stage_project_regenerates_instructions_with_current_settings(db_s
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=initial_field_priorities,
+        tool="claude-code",        field_priorities=initial_field_priorities,
     )
 
     # ACT: Update field priorities to INCLUDE product_core
@@ -209,9 +203,7 @@ async def test_stage_project_regenerates_instructions_with_current_settings(db_s
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=updated_field_priorities,
+        tool="claude-code",        field_priorities=updated_field_priorities,
     )
 
     # ASSERT: Verify response includes fresh instructions
@@ -297,9 +289,7 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=initial_field_priorities,
+        tool="claude-code",        field_priorities=initial_field_priorities,
     )
 
     # ACT: User changes settings (promotes product_core to CRITICAL)
@@ -312,9 +302,7 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=updated_field_priorities,
+        tool="claude-code",        field_priorities=updated_field_priorities,
     )
 
     # ASSERT: Response includes fresh prompt
@@ -390,25 +378,19 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=field_priorities,
+        tool="claude-code",        field_priorities=field_priorities,
     )
 
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=field_priorities,
+        tool="claude-code",        field_priorities=field_priorities,
     )
 
     result3 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",
-        instance_number=1,
-        field_priorities=field_priorities,
+        tool="claude-code",        field_priorities=field_priorities,
     )
 
     # ASSERT: All three calls return same orchestrator_id

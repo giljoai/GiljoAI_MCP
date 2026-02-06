@@ -52,9 +52,7 @@ def create_test_job_and_execution(session, tenant_key: str, job_id: str, mission
         job_id=job_id,  # References the job
         tenant_key=tenant_key,
         agent_display_name="implementor",
-        agent_name="Test Agent",
-        instance_number=1,
-        status=status,  # Execution status: waiting, working, etc.
+        agent_name="Test Agent",        status=status,  # Execution status: waiting, working, etc.
         progress=0,
     )
     session.add(agent_execution)
