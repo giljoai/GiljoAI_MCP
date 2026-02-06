@@ -107,6 +107,9 @@ class Task(Base):
         Index("idx_task_tenant_job", "tenant_key", "job_id"),  # Composite for tenant isolation
     )
 
+    def __repr__(self) -> str:
+        return f"<Task(id={self.id}, title='{self.title}', status='{self.status}')>"
+
 
 class Message(Base):
     """
@@ -151,3 +154,6 @@ class Message(Base):
         Index("idx_message_priority", "priority"),
         Index("idx_message_created", "created_at"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Message(id={self.id}, subject='{self.subject}', status='{self.status}')>"

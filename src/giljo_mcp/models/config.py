@@ -55,6 +55,9 @@ class Configuration(Base):
         Index("idx_config_category", "category"),
     )
 
+    def __repr__(self) -> str:
+        return f"<Configuration(id={self.id}, key='{self.key}', category='{self.category}')>"
+
 
 class DiscoveryConfig(Base):
     """
@@ -83,6 +86,9 @@ class DiscoveryConfig(Base):
         Index("idx_discovery_tenant", "tenant_key"),
         Index("idx_discovery_project", "project_id"),
     )
+
+    def __repr__(self) -> str:
+        return f"<DiscoveryConfig(id={self.id}, path_key='{self.path_key}')>"
 
 
 class GitConfig(Base):
@@ -163,6 +169,9 @@ class GitConfig(Base):
         """Check if webhook is properly configured"""
         return bool(self.webhook_url and self.webhook_secret)
 
+    def __repr__(self) -> str:
+        return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
+
 
 class GitCommit(Base):
     """
@@ -222,6 +231,9 @@ class GitCommit(Base):
             name="ck_git_commit_push_status",
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<GitCommit(id={self.id}, commit_hash='{self.commit_hash[:8] if self.commit_hash else None}')>"
 
 
 class SetupState(Base):
@@ -484,6 +496,9 @@ class SetupState(Base):
         self.validation_passed = True
         self.last_validation_at = datetime.utcnow()
 
+    def __repr__(self) -> str:
+        return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"
+
 
 class OptimizationRule(Base):
     """
@@ -667,3 +682,6 @@ class ApiMetrics(Base):
     total_mcp_calls = Column(Integer, default=0)
 
     __table_args__ = (Index("idx_api_metrics_tenant_date", "tenant_key", "date"),)
+
+    def __repr__(self) -> str:
+        return f"<ApiMetrics(id={self.id}, tenant_key='{self.tenant_key}')>"
