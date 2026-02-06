@@ -525,7 +525,7 @@ class OptimizationRule(Base):
         CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
 
 
@@ -573,7 +573,7 @@ class OptimizationMetric(Base):
         CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
 
 
@@ -641,7 +641,7 @@ class DownloadToken(Base):
         CheckConstraint("staging_status IN ('pending', 'ready', 'failed')", name="ck_download_token_staging_status"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, downloads={self.download_count})>"
 
     @property
