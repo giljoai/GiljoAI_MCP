@@ -124,7 +124,7 @@ class AgentJob(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<AgentJob(job_id={self.job_id}, job_type={self.job_type}, status={self.status})>"
 
 
@@ -312,7 +312,7 @@ class AgentExecution(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<AgentExecution(agent_id={self.agent_id}, job_id={self.job_id}, "
             f"agent_display_name={self.agent_display_name}, status={self.status})>"
@@ -393,7 +393,7 @@ class AgentTodoItem(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<AgentTodoItem(id={self.id}, job_id={self.job_id}, "
             f"content={self.content[:30]}..., status={self.status}, sequence={self.sequence})>"
