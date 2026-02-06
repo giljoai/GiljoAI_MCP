@@ -117,6 +117,17 @@
 | 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
 | 0419 | Long Polling Orchestrator Monitoring | Ready | Medium | - |
 | 0464 | Empty State API Resilience | Ready | Medium | - |
+| **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | Job reactivation, mission versioning, todo append |
+
+### Continuation Workflow Series (0486) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | 16-24h total |
+
+> **Purpose**: Enable seamless multi-phase project continuation
+> **Key Features**: Job reactivation (`reopen_job`), mission versioning, todo list append mode, duration timer resumption
+> **Origin**: TinyContacts project trial (2026-02-05/06) identified gaps in continuation workflow
+> **Phases**: 5 implementation phases (P0: Job Reactivation, P1: Mission Versioning, P2: Todo/Duration, P5: Integration)
 
 ### Superseded/Moved to Completed (Cleanup)
 | ID | Title | Status | Notes |
@@ -608,7 +619,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0396 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0484 (0480 REVISED complete, 0481-0484 in progress)
+**0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), **0486 (ready - continuation workflow)**
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631

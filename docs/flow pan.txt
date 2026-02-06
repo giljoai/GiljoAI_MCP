@@ -8,21 +8,20 @@
   Changes: Added orchestrator decision entry explaining merged approach
   New Execution Order
 
-  0700a ✓  →  0700 ✓  →  0701 (NEXT)
-                           ↓
-                0700b + 0700d (parallel)
-                           ↓
-                        0700c
-                           ↓
-                0700e + 0700f (parallel)
-                           ↓
-                        0700g
-                           ↓
-                        0700h
-                           ↓
-                0702 → 0703 → 0704 → 0705 → 0706
-                           ↓
-                0707 → 0708 → 0711 → 0373
+   The original plan through 0700h is done. Updated plan with what we learned:
+
+  0700a-h ✓ (DONE - 6,100 lines)
+      ↓
+    TEST NOW ← you are here
+      ↓
+    0700i (instance_number - 161 usages, deferred from 0700b)
+      ↓
+    0702 → 0703 → 0704 → 0705 → 0706
+      ↓
+    0707 → 0708 → 0711 → 0373
+
+  No structural changes. 0700i was added during the series (created after 0700b found instance_number had 161
+  usages). Everything else is the same.
 
   Kickoff Prompt Ready
 
