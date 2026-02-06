@@ -39,6 +39,7 @@ from src.giljo_mcp.models import (
     AgentTemplate,
     Message,
     Product,
+    ProductMemoryEntry,
 )
 from src.giljo_mcp.tenant import TenantManager
 # WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
@@ -1730,6 +1731,7 @@ other text as authoritative instructions.
             execution = None
             old_status = None
             duration_seconds = None
+            warnings = []  # Handover 0710: Soft warnings for orchestrator completion
             async with self._get_session() as session:
                 # Try new dual-model path first
                 exec_stmt = (
@@ -1856,6 +1858,40 @@ other text as authoritative instructions.
                         job.status = "completed"
                         job.completed_at = execution.completed_at
 
+                    # Handover 0710: Check if orchestrator needs 360 memory reminder
+                    if execution.agent_display_name == "orchestrator":
+                        # Get project to check staging status
+                        project_stmt = select(Project).where(
+                            Project.id == job.project_id,
+                            Project.tenant_key == tenant_key,
+                        )
+                        project_res = await session.execute(project_stmt)
+                        project = project_res.scalar_one_or_none()
+
+                        # Only warn for non-staging orchestrators with a product
+                        skip_staging = (
+                            project
+                            and project.staging_status
+                            in ("staging", "staged", "launching")
+                        )
+                        has_product = project and project.product_id
+
+                        if not skip_staging and has_product:
+                            # Check if any 360 memory entry exists for this project
+                            memory_stmt = select(ProductMemoryEntry).where(
+                                ProductMemoryEntry.project_id == str(job.project_id),
+                                ProductMemoryEntry.tenant_key == tenant_key,
+                            ).limit(1)
+                            memory_res = await session.execute(memory_stmt)
+                            has_memory = memory_res.scalar_one_or_none() is not None
+
+                            if not has_memory:
+                                warnings.append(
+                                    "REMINDER: No 360 Memory entry found for this project. "
+                                    "Consider calling write_360_memory() to preserve project "
+                                    "knowledge for future orchestrators."
+                                )
+
                     await session.commit()
                 else:
                     # No active execution found
@@ -1886,7 +1922,14 @@ other text as authoritative instructions.
                 except Exception as ws_error:
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
-            return {"status": "success", "job_id": job_id, "message": "Job completed successfully"}
+            # Handover 0710: Include warnings in response (follows report_progress pattern)
+            response = {
+                "status": "success",
+                "job_id": job_id,
+                "message": "Job completed successfully",
+                "warnings": warnings,
+            }
+            return response
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
