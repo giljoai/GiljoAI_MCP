@@ -225,7 +225,6 @@
     "frontend\\src\\views\\UsersView.vue",
     "frontend\\src\\views\\WelcomeView.vue",
     "src\\giljo_mcp\\agent_message_queue.py",
-    "src\\giljo_mcp\\api_helpers\\task_helpers.py",
     "src\\giljo_mcp\\cleanup\\visualizer.py",
     "src\\giljo_mcp\\context_management\\manager.py",
     "src\\giljo_mcp\\database_backup.py",
@@ -260,11 +259,10 @@
     "src\\giljo_mcp\\tools\\agent_status.py",
     "src\\giljo_mcp\\tools\\claude_export.py",
     "src\\giljo_mcp\\tools\\context_tools\\framing_helpers.py",
-    "src\\giljo_mcp\\tools\\download_utils.py",
     "src\\giljo_mcp\\tools\\product.py",
     "src\\giljo_mcp\\tools\\project.py",
     "src\\giljo_mcp\\tools\\template.py",
-    "src\\giljo_mcp\\utils\\path_resolver.py",
+    "src\\giljo_mcp\\utils\\path_normalizer.py",
     "src\\giljo_mcp\\websocket_client.py",
     "src\\giljo_mcp\\workflow_engine.py"
   ],
@@ -283,7 +281,7 @@
     },
     {
       "path": "src\\giljo_mcp\\database.py",
-      "dependents": 58
+      "dependents": 57
     },
     {
       "path": "src\\giljo_mcp\\exceptions.py",
@@ -291,7 +289,7 @@
     },
     {
       "path": "src\\giljo_mcp\\models\\__init__.py",
-      "dependents": 102
+      "dependents": 101
     },
     {
       "path": "src\\giljo_mcp\\models\\agent_identity.py",
@@ -299,7 +297,7 @@
     },
     {
       "path": "src\\giljo_mcp\\tenant.py",
-      "dependents": 29
+      "dependents": 28
     }
   ],
   "circular_dependencies": [
@@ -1889,7 +1887,6 @@
     "api\\endpoints\\vision_documents.py",
     "api\\endpoints\\websocket_bridge.py",
     "api\\events\\__init__.py",
-    "api\\middleware\\__init__.py",
     "api\\middleware\\auth.py",
     "api\\middleware\\csrf.py",
     "api\\middleware\\input_validator.py",
@@ -2056,7 +2053,6 @@
     "src\\giljo_mcp\\__init__.py",
     "src\\giljo_mcp\\agent_message_queue.py",
     "src\\giljo_mcp\\api_helpers\\__init__.py",
-    "src\\giljo_mcp\\api_helpers\\task_helpers.py",
     "src\\giljo_mcp\\cleanup\\__init__.py",
     "src\\giljo_mcp\\cleanup\\visualizer.py",
     "src\\giljo_mcp\\context_management\\manager.py",
@@ -2099,11 +2095,10 @@
     "src\\giljo_mcp\\tools\\claude_export.py",
     "src\\giljo_mcp\\tools\\context_tools\\__init__.py",
     "src\\giljo_mcp\\tools\\context_tools\\framing_helpers.py",
-    "src\\giljo_mcp\\tools\\download_utils.py",
     "src\\giljo_mcp\\tools\\product.py",
     "src\\giljo_mcp\\tools\\project.py",
     "src\\giljo_mcp\\tools\\template.py",
-    "src\\giljo_mcp\\utils\\path_resolver.py",
+    "src\\giljo_mcp\\utils\\path_normalizer.py",
     "src\\giljo_mcp\\validation\\__init__.py",
     "src\\giljo_mcp\\websocket_client.py",
     "src\\giljo_mcp\\workflow_engine.py",
@@ -2180,16 +2175,16 @@
     "src\\giljo_mcp\\api_key_utils.py"
   ],
   "stats": {
-    "total_files": 451,
-    "total_edges": 748,
+    "total_files": 448,
+    "total_edges": 745,
     "by_layer": {
-      "api": 108,
+      "api": 107,
       "model": 20,
       "frontend": 180,
-      "service": 140,
+      "service": 138,
       "config": 3
     },
-    "orphans": 267,
+    "orphans": 265,
     "high_risk": 8,
     "circular_deps": 48
   }
