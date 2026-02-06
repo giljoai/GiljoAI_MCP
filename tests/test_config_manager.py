@@ -266,21 +266,21 @@ class TestMultiTenantConfig:
         manager = ConfigManager()
 
         # Test default TenantConfig values
-        assert manager.tenant.enabled is True
-        assert manager.tenant.default_key is None
+        assert manager.tenant.enable_multi_tenant is True
+        assert manager.tenant.default_tenant_key is None
         assert manager.tenant.key_header == "X-Tenant-Key"
-        assert manager.tenant.isolation_strict is True
+        assert manager.tenant.tenant_isolation_level == "strict"
 
         # Test modifying TenantConfig
-        manager.tenant.enabled = False
-        manager.tenant.default_key = "test-tenant-123"
+        manager.tenant.enable_multi_tenant = False
+        manager.tenant.default_tenant_key = "test-tenant-123"
         manager.tenant.key_header = "X-Custom-Tenant"
-        manager.tenant.isolation_strict = False
+        manager.tenant.tenant_isolation_level = "relaxed"
 
-        assert manager.tenant.enabled is False
-        assert manager.tenant.default_key == "test-tenant-123"
+        assert manager.tenant.enable_multi_tenant is False
+        assert manager.tenant.default_tenant_key == "test-tenant-123"
         assert manager.tenant.key_header == "X-Custom-Tenant"
-        assert manager.tenant.isolation_strict is False
+        assert manager.tenant.tenant_isolation_level == "relaxed"
 
     def test_tenant_isolation_settings(self):
         """Test tenant-specific configuration settings."""
