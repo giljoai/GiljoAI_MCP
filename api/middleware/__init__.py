@@ -26,6 +26,7 @@ from .metrics import APIMetricsMiddleware
 # New security middleware (Handover 0129c)
 from .security import SecurityHeadersMiddleware, CORSSecurityMiddleware
 from .rate_limiter import RateLimitMiddleware, EndpointRateLimiter, RateLimiter
+from .auth_rate_limiter import get_rate_limiter, RateLimiter as AuthRateLimiter
 from .input_validator import InputValidationMiddleware, RequestSanitizer, sanitize
 from .csrf import CSRFProtectionMiddleware, CSRFProtectionOptional, get_csrf_token
 
@@ -46,4 +47,7 @@ __all__ = [
     "CSRFProtectionMiddleware",
     "CSRFProtectionOptional",
     "get_csrf_token",
+    # Auth-specific rate limiting
+    "get_rate_limiter",
+    "AuthRateLimiter",
 ]

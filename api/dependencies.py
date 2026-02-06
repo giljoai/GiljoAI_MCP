@@ -3,8 +3,10 @@ FastAPI dependencies for request handling
 """
 
 import os
+from typing import Generator
 
 from fastapi import Request
+from sqlalchemy.orm import Session
 
 from src.giljo_mcp.tenant import TenantManager
 
@@ -81,7 +83,7 @@ async def get_tenant_key(request: Request) -> str:
     return default_tenant
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     """
     Get database session dependency.
     Creates a new database session for the request and ensures it's closed after use.
