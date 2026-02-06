@@ -170,6 +170,28 @@ log_file = 'F:/logs/app.log'
 
 **Always use**: `pathlib.Path()` • `Path.cwd()` • Relative paths in configs
 
+### Logging Standards
+
+**Standard logging** (default for most code):
+```python
+import logging
+logger = logging.getLogger(__name__)
+```
+
+**Structured logging** (for critical paths):
+```python
+from giljo_mcp.logging import get_logger, ErrorCode
+logger = get_logger(__name__)
+```
+
+**Use structured logging in:**
+- Authentication flows (auth endpoints, middleware)
+- Database operations (connection, transactions)
+- WebSocket handlers
+- MCP tool orchestration
+
+All other code should use standard logging (133 files currently use standard logging vs 7 structured).
+
 ## Context Management (v3.0 - On-Demand Fetch)
 
 GiljoAI uses an on-demand context fetch architecture to prevent token truncation and enable smart context prioritization.
