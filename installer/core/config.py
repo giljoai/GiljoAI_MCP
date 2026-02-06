@@ -467,9 +467,9 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 },
                 "agent": {
-                    "max_per_project": 20,
-                    "context_limit": 150000,
-                    "handoff_threshold": 140000,
+                    "max_agents": 20,
+                    "default_context_budget": 150000,
+                    "context_warning_threshold": 140000,
                     "default_role": "orchestrator",
                 },
                 "session": {
@@ -481,7 +481,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                 "message_queue": {
                     "max_size": 1000,
                     "batch_size": 10,
-                    "retry_attempts": 3,
+                    "max_retries": 3,
                     "retry_delay": 1.0,
                     "priority_levels": ["low", "normal", "high", "critical"],
                 },

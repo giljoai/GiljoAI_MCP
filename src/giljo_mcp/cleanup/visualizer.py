@@ -47,19 +47,22 @@ def extract_vue_imports(file_path: Path) -> List[str]:
 
 def classify_layer(file_path: Path, root_path: Path) -> str:
     """Classify file into architectural layer based on path."""
-    rel_path = str(file_path.relative_to(root_path)).lower()
-    if 'models' in rel_path:
+    # Normalize to forward slashes for consistent matching across platforms
+    rel_path = str(file_path.relative_to(root_path)).lower().replace('\\', '/')
+    if '/models/' in rel_path or rel_path.startswith('models/') or rel_path.endswith('/models.py') or rel_path == 'models.py':
         return 'model'
-    elif 'services/' in rel_path:
+    elif '/services/' in rel_path or rel_path.startswith('services/'):
         return 'service'
-    elif 'api/' in rel_path or 'endpoints/' in rel_path:
+    elif '/api/' in rel_path or rel_path.startswith('api/') or '/endpoints/' in rel_path:
         return 'api'
-    elif 'frontend/' in rel_path:
+    elif '/frontend/' in rel_path or rel_path.startswith('frontend/'):
         return 'frontend'
-    elif 'tests/' in rel_path:
+    elif '/tests/' in rel_path or rel_path.startswith('tests/'):
         return 'test'
-    elif 'config' in rel_path:
+    elif '/config' in rel_path or rel_path.startswith('config'):
         return 'config'
+    elif '/tools/' in rel_path or rel_path.startswith('tools/') or '/src/giljo_mcp/' in rel_path or rel_path.startswith('src/giljo_mcp/'):
+        return 'service'
     else:
         return 'docs'
 
@@ -228,25 +231,92 @@ def generate_html(data_path: Path, output_path: Path):
     print("Generating HTML...")
     with open(data_path, 'r', encoding='utf-8') as f:
         gd = f.read()
+
+    # CSS styles including autocomplete and filter enhancements
+    css = '''*{margin:0;padding:0}body{background:#0f172a;color:#e2e8f0}
+#controls{position:absolute;top:20px;left:20px;background:#1e293b;padding:20px;border-radius:8px;max-width:300px;z-index:1000}
+#controls h2{color:#60a5fa}
+#search-container{position:relative}
+#search{width:100%;padding:8px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;box-sizing:border-box}
+#autocomplete{position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #334155;border-top:none;max-height:200px;overflow-y:auto;display:none;z-index:1001}
+#autocomplete div{padding:8px;cursor:pointer;color:#e2e8f0;border-bottom:1px solid #334155}
+#autocomplete div:hover{background:#334155;color:#60a5fa}
+#reset-view{width:100%;padding:8px;margin:10px 0;background:#0f172a;border:1px solid #334155;color:#e2e8f0;cursor:pointer;transition:all 0.2s}
+#reset-view:hover{background:#334155;border-color:#60a5fa;color:#60a5fa}
+.filter-group{margin-bottom:10px}
+.filter-group label{display:flex;padding:4px 0;cursor:pointer}
+.filter-group label:hover{color:#60a5fa}
+.layer-indicator{width:12px;height:12px;margin-right:6px;display:inline-block}
+#stats{font-size:12px;color:#94a3b8;margin-top:10px}
+#graph{width:100vw;height:100vh}
+.node{stroke:#1e293b;stroke-width:2px;cursor:pointer}
+.node:hover{stroke:#f59e0b;stroke-width:3px}
+.node.highlighted{stroke:#f59e0b;stroke-width:3px}
+.node.dimmed{opacity:0.2}
+.link{stroke:#475569;stroke-opacity:0.3}
+.link.highlighted{stroke:#f59e0b;stroke-opacity:0.8;stroke-width:2px}
+.link.dimmed{opacity:0.1}
+.tooltip{position:absolute;background:#1e293b;padding:12px;border:1px solid #334155;pointer-events:none;z-index:2000;max-width:300px}
+.tooltip-title{font-weight:600;color:#60a5fa}'''
+
+    # HTML structure with search container, autocomplete, and reset button
+    html_body = '''<div id="controls">
+<h2>Dependency Graph</h2>
+<div id="search-container"><input type="text" id="search" placeholder="Search..."><div id="autocomplete"></div></div>
+<button id="reset-view">Reset View</button>
+<h3>Layers</h3><div class="filter-group" id="layer-filters"></div>
+<h3>Risk</h3><div class="filter-group" id="risk-filters"></div>
+<div id="stats"><div id="stats-content"></div></div>
+</div>
+<svg id="graph"></svg>
+<div class="tooltip" id="tooltip" style="display:none"></div>'''
+
+    # JavaScript with all enhancements
+    js = '''const graphData=''' + gd + ''';
+const lc={model:"#3b82f6",service:"#22c55e",api:"#eab308",frontend:"#a855f7",test:"#6b7280",config:"#f97316",docs:"#06b6d4"};
+const rs={critical:20,high:15,medium:10,low:6};
+const svg=d3.select("#graph"),w=window.innerWidth,h=window.innerHeight;
+svg.attr("width",w).attr("height",h);
+const g=svg.append("g");
+svg.call(d3.zoom().scaleExtent([0.1,10]).on("zoom",e=>{g.attr("transform",e.transform);}));
+const sim=d3.forceSimulation(graphData.nodes).force("link",d3.forceLink(graphData.links).id(d=>d.id).distance(100)).force("charge",d3.forceManyBody().strength(-300)).force("center",d3.forceCenter(w/2,h/2));
+const link=g.append("g").selectAll("line").data(graphData.links).join("line").attr("class","link");
+let selectedNode=null;
+const node=g.append("g").selectAll("circle").data(graphData.nodes).join("circle").attr("class","node").attr("r",d=>rs[d.risk]||8).attr("fill",d=>lc[d.layer]||"#64748b")
+.call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}))
+.on("click",(e,d)=>{e.stopPropagation();if(selectedNode===d){resetView();}else{selectedNode=d;node.classed("highlighted",n=>n===d).classed("dimmed",n=>n!==d);link.classed("highlighted",l=>l.source===d||l.target===d).classed("dimmed",l=>l.source!==d&&l.target!==d);}})
+.on("mouseover",(e,d)=>{const tt=d3.select("#tooltip");tt.html("<div class=tooltip-title>"+d.name+"</div><div>Path: "+d.path+"</div><div>Layer: "+d.layer+"</div><div>Risk: "+d.risk+"</div><div>Dependents: "+d.dependents.length+"</div><div>Dependencies: "+d.dependencies.length+"</div>").style("display","block").style("left",(e.pageX+15)+"px").style("top",(e.pageY+15)+"px");})
+.on("mouseout",()=>{d3.select("#tooltip").style("display","none");});
+sim.on("tick",()=>{link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);node.attr("cx",d=>d.x).attr("cy",d=>d.y);});
+
+const layers=Object.keys(lc),lf=d3.select("#layer-filters");
+layers.forEach(l=>{const lab=lf.append("label");lab.append("input").attr("type","checkbox").attr("checked",true).attr("data-layer",l).on("change",applyFilters);lab.append("span").attr("class","layer-indicator").style("background",lc[l]);lab.append("span").text(l);});
+const risks=["low","medium","high","critical"],rf=d3.select("#risk-filters");
+risks.forEach(r=>{const lab=rf.append("label");lab.append("input").attr("type","checkbox").attr("checked",true).attr("data-risk",r).on("change",applyFilters);lab.append("span").text(r);});
+
+function applyFilters(){
+const selectedLayers=[];lf.selectAll("input").each(function(){if(this.checked)selectedLayers.push(this.getAttribute("data-layer"));});
+const selectedRisks=[];rf.selectAll("input").each(function(){if(this.checked)selectedRisks.push(this.getAttribute("data-risk"));});
+node.classed("dimmed",d=>!selectedLayers.includes(d.layer)||!selectedRisks.includes(d.risk));
+link.classed("dimmed",l=>{const srcVisible=selectedLayers.includes(l.source.layer)&&selectedRisks.includes(l.source.risk);const tgtVisible=selectedLayers.includes(l.target.layer)&&selectedRisks.includes(l.target.risk);return!srcVisible||!tgtVisible;});
+}
+
+function resetView(){selectedNode=null;node.classed("highlighted",false).classed("dimmed",false);link.classed("highlighted",false).classed("dimmed",false);d3.select("#search").property("value","");d3.select("#autocomplete").style("display","none");applyFilters();}
+d3.select("#reset-view").on("click",resetView);
+
+const searchInput=d3.select("#search"),autocomplete=d3.select("#autocomplete");
+searchInput.on("input",function(){const q=this.value.toLowerCase();autocomplete.html("");if(q.length>0){const matches=graphData.nodes.filter(d=>d.path.toLowerCase().includes(q)||d.name.toLowerCase().includes(q)).slice(0,10);if(matches.length>0){matches.forEach(d=>{autocomplete.append("div").text(d.path).on("click",()=>{selectedNode=d;node.classed("highlighted",n=>n===d).classed("dimmed",n=>n!==d);link.classed("highlighted",l=>l.source===d||l.target===d).classed("dimmed",l=>l.source!==d&&l.target!==d);searchInput.property("value",d.path);autocomplete.style("display","none");});});autocomplete.style("display","block");}else{autocomplete.style("display","none");}}else{autocomplete.style("display","none");applyFilters();}});
+document.addEventListener("click",e=>{if(!document.getElementById("search-container").contains(e.target)){autocomplete.style("display","none");}});
+
+function updateStats(){const s={total:graphData.nodes.length,edges:graphData.links.length,layers:{},risks:{}};graphData.nodes.forEach(n=>{s.layers[n.layer]=(s.layers[n.layer]||0)+1;s.risks[n.risk]=(s.risks[n.risk]||0)+1;});let ht="<div>Files: "+s.total+"</div><div>Connections: "+s.edges+"</div><div>Layers:</div>";Object.entries(s.layers).forEach(([l,c])=>{ht+="<div>  "+l+": "+c+"</div>";});ht+="<div>Risk:</div>";Object.entries(s.risks).forEach(([r,c])=>{ht+="<div>  "+r+": "+c+"</div>";});d3.select("#stats-content").html(ht);}
+updateStats();'''
+
     h = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dependency Graph</title>'
     h += '<script src="https://d3js.org/d3.v7.min.js"></script>'
-    h += '<style>*{margin:0;padding:0}body{background:#0f172a;color:#e2e8f0}#controls{position:absolute;top:20px;left:20px;background:#1e293b;padding:20px;border-radius:8px;max-width:300px;z-index:1000}#controls h2{color:#60a5fa}#search{width:100%;padding:8px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;margin-bottom:15px}.filter-group{margin-bottom:10px}.filter-group label{display:flex;padding:4px 0}.layer-indicator{width:12px;height:12px;margin-right:6px;display:inline-block}#stats{font-size:12px;color:#94a3b8;margin-top:10px}#graph{width:100vw;height:100vh}.node{stroke:#1e293b;stroke-width:2px;cursor:pointer}.node:hover{stroke:#f59e0b;stroke-width:3px}.node.highlighted{stroke:#f59e0b;stroke-width:3px}.node.dimmed{opacity:0.2}.link{stroke:#475569;stroke-opacity:0.3}.link.highlighted{stroke:#f59e0b;stroke-opacity:0.8;stroke-width:2px}.link.dimmed{opacity:0.1}.tooltip{position:absolute;background:#1e293b;padding:12px;border:1px solid #334155;pointer-events:none;z-index:2000;max-width:300px}.tooltip-title{font-weight:600;color:#60a5fa}</style></head><body>'
-    h += '<div id="controls"><h2>Dependency Graph</h2><input type="text" id="search" placeholder="Search..."><h3>Layers</h3><div class="filter-group" id="layer-filters"></div><h3>Risk</h3><div class="filter-group" id="risk-filters"></div><div id="stats"><div id="stats-content"></div></div></div>'
-    h += '<svg id="graph"></svg><div class="tooltip" id="tooltip" style="display:none"></div>'
-    h += '<script>const graphData=' + gd + ';'
-    h += 'const lc={model:"#3b82f6",service:"#22c55e",api:"#eab308",frontend:"#a855f7",test:"#6b7280",config:"#f97316",docs:"#06b6d4"};'
-    h += 'const rs={critical:20,high:15,medium:10,low:6};'
-    h += 'const svg=d3.select("#graph"),w=window.innerWidth,h=window.innerHeight;svg.attr("width",w).attr("height",h);const g=svg.append("g");'
-    h += 'svg.call(d3.zoom().scaleExtent([0.1,10]).on("zoom",e=>{g.attr("transform",e.transform);}));'
-    h += 'const sim=d3.forceSimulation(graphData.nodes).force("link",d3.forceLink(graphData.links).id(d=>d.id).distance(100)).force("charge",d3.forceManyBody().strength(-300)).force("center",d3.forceCenter(w/2,h/2));'
-    h += 'const link=g.append("g").selectAll("line").data(graphData.links).join("line").attr("class","link");'
-    h += 'const node=g.append("g").selectAll("circle").data(graphData.nodes).join("circle").attr("class","node").attr("r",d=>rs[d.risk]||8).attr("fill",d=>lc[d.layer]||"#64748b").call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;})).on("click",(e,d)=>{e.stopPropagation();const sel=node.datum()===d;node.classed("highlighted",n=>n===d).classed("dimmed",n=>n!==d&&!sel);link.classed("highlighted",l=>l.source===d||l.target===d).classed("dimmed",l=>l.source!==d&&l.target!==d&&!sel);}).on("mouseover",(e,d)=>{const tt=d3.select("#tooltip");tt.html("<div class=tooltip-title>"+d.name+"</div><div>Path: "+d.path+"</div><div>Layer: "+d.layer+"</div><div>Risk: "+d.risk+"</div><div>Dependents: "+d.dependents.length+"</div><div>Dependencies: "+d.dependencies.length+"</div>").style("display","block").style("left",(e.pageX+15)+"px").style("top",(e.pageY+15)+"px");}).on("mouseout",()=>{d3.select("#tooltip").style("display","none");});'
-    h += 'sim.on("tick",()=>{link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);node.attr("cx",d=>d.x).attr("cy",d=>d.y);});'
-    h += 'const layers=Object.keys(lc),lf=d3.select("#layer-filters");layers.forEach(l=>{const lab=lf.append("label");lab.append("input").attr("type","checkbox").attr("checked",true).attr("data-layer",l);lab.append("span").attr("class","layer-indicator").style("background",lc[l]);lab.append("span").text(l);});'
-    h += 'const risks=["low","medium","high","critical"],rf=d3.select("#risk-filters");risks.forEach(r=>{const lab=rf.append("label");lab.append("input").attr("type","checkbox").attr("checked",true).attr("data-risk",r);lab.append("span").text(r);});'
-    h += 'd3.select("#search").on("input",function(){const q=this.value.toLowerCase();node.classed("dimmed",d=>q&&!d.name.toLowerCase().includes(q));});'
-    h += 'function updateStats(){const s={total:graphData.nodes.length,edges:graphData.links.length,layers:{},risks:{}};graphData.nodes.forEach(n=>{s.layers[n.layer]=(s.layers[n.layer]||0)+1;s.risks[n.risk]=(s.risks[n.risk]||0)+1;});let ht="<div>Files: "+s.total+"</div><div>Connections: "+s.edges+"</div><div>Layers:</div>";Object.entries(s.layers).forEach(([l,c])=>{ht+="<div>"+l+": "+c+"</div>";});ht+="<div>Risk:</div>";Object.entries(s.risks).forEach(([r,c])=>{ht+="<div>"+r+": "+c+"</div>";});d3.select("#stats-content").html(ht);}updateStats();'
-    h += '</script></body></html>'
+    h += '<style>' + css.replace('\n', '') + '</style></head><body>'
+    h += html_body
+    h += '<script>' + js + '</script></body></html>'
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(h)
