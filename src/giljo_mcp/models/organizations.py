@@ -79,6 +79,9 @@ class Organization(Base):
         Index("idx_org_active", "is_active"),  # Match migration name (0424m)
     )
 
+    def __repr__(self) -> str:
+        return f"<Organization(id={self.id}, name='{self.name}', slug='{self.slug}')>"
+
 
 class OrgMembership(Base):
     """
@@ -133,3 +136,6 @@ class OrgMembership(Base):
         Index("idx_membership_user", "user_id"),  # FIXED: Match migration (0424m)
         Index("idx_membership_tenant", "tenant_key"),  # ADDED: Match migration (0424m)
     )
+
+    def __repr__(self) -> str:
+        return f"<OrgMembership(id={self.id}, org_id='{self.org_id}', user_id='{self.user_id}', role='{self.role}')>"

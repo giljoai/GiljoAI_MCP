@@ -143,6 +143,9 @@ class AgentTemplate(Base):
 
         return self.updated_at > self.last_exported_at
 
+    def __repr__(self) -> str:
+        return f"<AgentTemplate(id={self.id}, name='{self.name}', category='{self.category}')>"
+
 
 class TemplateArchive(Base):
     """
@@ -197,6 +200,9 @@ class TemplateArchive(Base):
         Index("idx_archive_date", "archived_at"),
     )
 
+    def __repr__(self) -> str:
+        return f"<TemplateArchive(id={self.id}, template_id='{self.template_id}', version={self.version})>"
+
 
 class TemplateUsageStats(Base):
     """
@@ -233,3 +239,6 @@ class TemplateUsageStats(Base):
         Index("idx_usage_project", "project_id"),
         Index("idx_usage_date", "used_at"),
     )
+
+    def __repr__(self) -> str:
+        return f"<TemplateUsageStats(id={self.id}, template_id='{self.template_id}')>"
