@@ -1,5 +1,5 @@
 """
-PathResolver utility for consistent cross-platform path handling.
+PathNormalizer utility for consistent cross-platform path handling.
 Ensures all paths use forward slashes and handles edge cases.
 """
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 
-class PathResolver:
+class PathNormalizer:
     """
     Utility class for consistent path handling across platforms.
     Ensures all paths use forward slashes for cross-platform compatibility.
@@ -131,7 +131,7 @@ class PathResolver:
         Returns:
             URL-safe path with forward slashes
         """
-        normalized = PathResolver.normalize(path)
+        normalized = PathNormalizer.normalize(path)
         # Ensure no backslashes in URL
         return normalized.replace("\\", "/")
 
@@ -180,15 +180,15 @@ class PathResolver:
 
 # Convenience functions
 def normalize_path(path: Union[str, Path]) -> str:
-    """Convenience function for PathResolver.normalize()"""
-    return PathResolver.normalize(path)
+    """Convenience function for PathNormalizer.normalize()"""
+    return PathNormalizer.normalize(path)
 
 
 def join_paths(*parts: Union[str, Path]) -> str:
-    """Convenience function for PathResolver.join()"""
-    return PathResolver.join(*parts)
+    """Convenience function for PathNormalizer.join()"""
+    return PathNormalizer.join(*parts)
 
 
 def resolve_relative_path(base: Union[str, Path], relative: Union[str, Path]) -> str:
-    """Convenience function for PathResolver.resolve_relative()"""
-    return PathResolver.resolve_relative(base, relative)
+    """Convenience function for PathNormalizer.resolve_relative()"""
+    return PathNormalizer.resolve_relative(base, relative)

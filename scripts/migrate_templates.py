@@ -36,11 +36,11 @@ async def migrate_templates():
     # Build database URL
     if config.database.type == "postgresql":
         db_url = DatabaseManager.build_postgresql_url(
-            host=config.database.pg_host,
-            port=config.database.pg_port,
-            database=config.database.pg_database,
-            username=config.database.pg_user,
-            password=config.database.pg_password or "4010",
+            host=config.database.host,
+            port=config.database.port,
+            database=config.database.database_name,
+            username=config.database.username,
+            password=config.database.password or "4010",
         )
     else:
         db_url = DatabaseManager.build_sqlite_url(str(config.database.sqlite_path))
