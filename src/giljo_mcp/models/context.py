@@ -60,6 +60,9 @@ class ContextIndex(Base):
         Index("idx_context_doc", "document_name"),
     )
 
+    def __repr__(self) -> str:
+        return f"<ContextIndex(id={self.id}, document_name='{self.document_name}')>"
+
 
 class LargeDocumentIndex(Base):
     """
@@ -87,6 +90,9 @@ class LargeDocumentIndex(Base):
         UniqueConstraint("project_id", "document_path", name="uq_large_doc_path"),
         Index("idx_large_doc_tenant", "tenant_key"),
     )
+
+    def __repr__(self) -> str:
+        return f"<LargeDocumentIndex(id={self.id}, document_path='{self.document_path}')>"
 
 
 class MCPContextIndex(Base):
