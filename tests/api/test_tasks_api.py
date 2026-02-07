@@ -854,7 +854,6 @@ class TestTaskConversion:
 class TestTaskSummary:
     """Test task summary endpoint"""
 
-    @pytest.mark.skip(reason="Endpoint routing issue - /summary/ returns 404")
     @pytest.mark.asyncio
     async def test_get_task_summary_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product):
         """Test GET /api/v1/tasks/summary/ - Get task summary successfully."""
@@ -890,7 +889,6 @@ class TestTaskSummary:
         assert "total_tasks" in data
         assert data["total_tasks"] >= 3
 
-    @pytest.mark.skip(reason="Endpoint routing issue - /summary/ returns 404")
     @pytest.mark.asyncio
     async def test_get_task_summary_product_filter(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
@@ -912,7 +910,6 @@ class TestTaskSummary:
         assert data["success"] is True
         assert "summary" in data
 
-    @pytest.mark.skip(reason="Endpoint routing issue - /summary/ returns 404")
     @pytest.mark.asyncio
     async def test_get_task_summary_empty(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/tasks/summary/ - Empty summary when no tasks."""
@@ -978,7 +975,6 @@ class TestMultiTenantIsolation:
         )
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Endpoint routing issue - /summary/ returns 404")
     @pytest.mark.asyncio
     async def test_task_summary_tenant_isolation(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str, tenant_a_task, tenant_b_task

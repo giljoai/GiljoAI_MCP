@@ -3,11 +3,10 @@
 One-click dependency graph updater.
 Regenerates complete dependency graph without requiring LLM assistance.
 
+Standalone development tool - isolated from GiljoAI MCP product.
+
 Usage:
     python scripts/update_dependency_graph_full.py
-
-    OR via HTTP endpoint:
-    POST /api/admin/update-dependency-graph
 """
 
 import ast
