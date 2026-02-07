@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
-    BaseGiljoException,
+    BaseGiljoError,
     TemplateNotFoundError,
     ValidationError,
 )
@@ -87,7 +87,7 @@ class TemplateService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.list_templates()
@@ -129,9 +129,7 @@ class TemplateService:
             raise
         except Exception as e:
             self._logger.exception("Failed to list templates")
-            raise BaseGiljoException(
-                message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}
-            ) from e
+            raise BaseGiljoError(message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}) from e
 
     async def get_template(
         self, template_id: Optional[str] = None, template_name: Optional[str] = None, tenant_key: Optional[str] = None
@@ -150,7 +148,7 @@ class TemplateService:
         Raises:
             ValidationError: When neither template_id nor template_name provided, or no tenant context
             TemplateNotFoundError: When template not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.get_template(template_name="orchestrator")
@@ -215,7 +213,7 @@ class TemplateService:
             raise
         except Exception as e:
             self._logger.exception("Failed to get template")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to get template: {e!s}",
                 context={
                     "template_id": template_id,
@@ -254,7 +252,7 @@ class TemplateService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.create_template(
@@ -304,7 +302,7 @@ class TemplateService:
             raise
         except Exception as e:
             self._logger.exception("Failed to create template")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to create template: {e!s}",
                 context={
                     "name": name,
@@ -343,7 +341,7 @@ class TemplateService:
         Raises:
             ValidationError: When no tenant context is available
             TemplateNotFoundError: When template not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.update_template(
@@ -402,7 +400,7 @@ class TemplateService:
             raise
         except Exception as e:
             self._logger.exception("Failed to update template")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to update template: {e!s}",
                 context={
                     "template_id": template_id,

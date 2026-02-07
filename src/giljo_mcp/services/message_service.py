@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
-    BaseGiljoException,
+    BaseGiljoError,
     MessageDeliveryError,
     ResourceNotFoundError,
     ValidationError,
@@ -478,13 +478,11 @@ class MessageService:
 
                 return response
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to send message")
-            raise BaseGiljoException(
-                message=str(e), context={"operation": "send_message", "project_id": project_id}
-            ) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "send_message", "project_id": project_id}) from e
 
     async def broadcast(
         self, content: str, project_id: str, priority: str = "normal", from_agent: str = "orchestrator"
@@ -552,13 +550,11 @@ class MessageService:
 
                 return result
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to broadcast message")
-            raise BaseGiljoException(
-                message=str(e), context={"operation": "broadcast", "project_id": project_id}
-            ) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "broadcast", "project_id": project_id}) from e
 
     async def broadcast_to_project(
         self,
@@ -629,11 +625,11 @@ class MessageService:
 
                 return result
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to broadcast message to project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=str(e), context={"operation": "broadcast_to_project", "project_id": project_id}
             ) from e
 
@@ -695,11 +691,11 @@ class MessageService:
                     "messages": agent_messages,
                 }
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to get messages")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=str(e),
                 context={"operation": "get_messages", "agent_name": agent_name, "project_id": project_id},
             ) from e
@@ -899,13 +895,11 @@ class MessageService:
 
                 return {"success": True, "data": {"messages": messages_list, "count": len(messages_list)}}
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to receive messages")
-            raise BaseGiljoException(
-                message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}
-            ) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}) from e
 
     async def list_messages(
         self,
@@ -1083,11 +1077,11 @@ class MessageService:
 
                 return {"success": True, "messages": message_list, "count": len(message_list)}
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to list messages")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=str(e), context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
             ) from e
 
@@ -1157,11 +1151,11 @@ class MessageService:
                     "completed_by": agent_name,
                 }
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to complete message")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=str(e), context={"operation": "complete_message", "message_id": message_id}
             ) from e
 
@@ -1269,10 +1263,10 @@ class MessageService:
                     "message_id": message_id,
                 }
 
-        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
+        except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to acknowledge message")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=str(e), context={"operation": "acknowledge_message", "message_id": message_id}
             ) from e
