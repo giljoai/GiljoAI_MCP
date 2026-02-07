@@ -68,6 +68,13 @@ ignore = [
     "S107",   # Hardcoded password default arg - false positives in test helpers
     "S108",   # Probable insecure usage of temp file - managed by tempfile module
 
+    # --- Security: Reviewed false positives (2026-02-07, Handover 0720) ---
+    "S104",   # Bind all interfaces (0.0.0.0) - intentional for local dev server (firewall controls access)
+    "S311",   # Non-cryptographic random - UUIDs, port allocation, mock data (no cryptographic use)
+    "S603",   # Subprocess without shell - intentionally using shell=False for git/pg_dump (BETTER security)
+    "S607",   # Partial executable path - standard system utilities (git, uvx) via PATH lookup
+    "S301",   # Pickle usage - internal Redis cache only, trusted data (not deserializing user input)
+
     # --- Readability preferences (established codebase patterns) ---
     "FBT001", # Boolean positional arg - clarity over strictness in known interfaces
     "FBT002", # Boolean default value - explicit flags are clearer than Optional

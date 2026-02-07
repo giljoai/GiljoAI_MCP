@@ -1180,7 +1180,8 @@ When ready, coordinate agents based on current status.
             "Below are the specialist agents spawned during staging.",
             "Each has a unique job_id and agent_display_name.",
             "",
-        ] + agent_spawn_lines
+            *agent_spawn_lines,
+        ]
 
         # SECTION 3: Task Tool Spawning Template
         spawning_section = [

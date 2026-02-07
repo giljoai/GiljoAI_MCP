@@ -316,8 +316,8 @@ class AgentJobRepository:
 
         return {
             "total_jobs": total_jobs,
-            "by_status": {status: count for status, count in status_counts},
-            "by_agent_display_name": {agent_display_name: count for agent_display_name, count in type_counts},
+            "by_status": dict(status_counts),
+            "by_agent_display_name": dict(type_counts),
             "active_jobs": len([s for s, c in status_counts if s in ["pending", "active"]]),
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
             "failed_jobs": len([s for s, c in status_counts if s == "failed"]),

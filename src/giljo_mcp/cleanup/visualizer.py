@@ -20,8 +20,7 @@ def extract_python_imports(file_path: Path) -> list[str]:
         imports = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
+                imports.extend([alias.name for alias in node.names])
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imports.append(node.module)
         return imports
@@ -64,12 +63,7 @@ def classify_layer(file_path: Path, root_path: Path) -> str:
         return "test"
     if "/config" in rel_path or rel_path.startswith("config"):
         return "config"
-    if (
-        "/tools/" in rel_path
-        or rel_path.startswith("tools/")
-        or "/src/giljo_mcp/" in rel_path
-        or rel_path.startswith("src/giljo_mcp/")
-    ):
+    if "/tools/" in rel_path or rel_path.startswith(("tools/", "src/giljo_mcp/")) or "/src/giljo_mcp/" in rel_path:
         return "service"
     return "docs"
 
@@ -184,7 +178,7 @@ def detect_circular_dependencies(graph: dict) -> list[list[int]]:
                     return True
             elif dep_idx in rec_stack:
                 cycle_start = path.index(dep_idx)
-                cycles.append(path[cycle_start:] + [dep_idx])
+                cycles.append([*path[cycle_start:], dep_idx])
                 return True
         path.pop()
         rec_stack.remove(node_idx)

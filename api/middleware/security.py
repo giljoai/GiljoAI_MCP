@@ -42,11 +42,8 @@ def is_development_mode() -> bool:
         return True
 
     env = os.getenv("ENVIRONMENT", "").lower()
-    if env in ("dev", "development"):
-        return True
-
-    # Default to production for security (fail-safe)
-    return False
+    # Return the condition directly
+    return env in ("dev", "development")
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

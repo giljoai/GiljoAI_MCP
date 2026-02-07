@@ -33,23 +33,23 @@ from .security import CORSSecurityMiddleware, SecurityHeadersMiddleware
 
 
 __all__ = [
+    "APIMetricsMiddleware",
     # Existing middleware
     "AuthMiddleware",
-    "LoggingMiddleware",
-    "APIMetricsMiddleware",
-    # New security middleware
-    "SecurityHeadersMiddleware",
+    "AuthRateLimiter",
     "CORSSecurityMiddleware",
-    "RateLimitMiddleware",
-    "EndpointRateLimiter",
-    "RateLimiter",
-    "InputValidationMiddleware",
-    "RequestSanitizer",
-    "sanitize",
     "CSRFProtectionMiddleware",
     "CSRFProtectionOptional",
+    "EndpointRateLimiter",
+    "InputValidationMiddleware",
+    "LoggingMiddleware",
+    "RateLimitMiddleware",
+    "RateLimiter",
+    "RequestSanitizer",
+    # New security middleware
+    "SecurityHeadersMiddleware",
     "get_csrf_token",
     # Auth-specific rate limiting
     "get_rate_limiter",
-    "AuthRateLimiter",
+    "sanitize",
 ]
