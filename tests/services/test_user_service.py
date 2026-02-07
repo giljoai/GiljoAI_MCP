@@ -32,7 +32,7 @@ from passlib.hash import bcrypt
 from src.giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
-    BaseGiljoException,
+    BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -737,7 +737,7 @@ async def test_user_service_handles_database_errors(user_service, db_session):
     # Simulate database error by closing session
     await db_session.close()
 
-    with pytest.raises(BaseGiljoException):
+    with pytest.raises(BaseGiljoError):
         await user_service.list_users()
 
 

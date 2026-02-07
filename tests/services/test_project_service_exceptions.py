@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.exceptions import (
-    BaseGiljoException,
+    BaseGiljoError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
@@ -85,8 +85,8 @@ class TestProjectServiceExceptions:
 
     @pytest.mark.asyncio
     async def test_complete_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
-        """Test complete_project raises BaseGiljoException (wraps ResourceNotFoundError)"""
-        with pytest.raises(BaseGiljoException) as exc_info:
+        """Test complete_project raises BaseGiljoError (wraps ResourceNotFoundError)"""
+        with pytest.raises(BaseGiljoError) as exc_info:
             await project_service.complete_project(
                 "nonexistent-id", "Summary", key_outcomes=[], decisions_made=[], tenant_key=test_tenant_key
             )
