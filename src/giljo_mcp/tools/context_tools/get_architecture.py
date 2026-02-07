@@ -28,7 +28,7 @@ def estimate_tokens(data: Any) -> int:
 
 async def get_architecture(
     product_id: str, tenant_key: str, db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch architecture documentation for given product.
 

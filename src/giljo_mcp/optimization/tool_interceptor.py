@@ -26,7 +26,7 @@ class SerenaToolInterceptor:
         self.optimizer = optimizer
         self._operation_mapping = self._create_operation_mapping()
 
-    def _create_operation_mapping(self) -> Dict[str, OperationType]:
+    def _create_operation_mapping(self) -> dict[str, OperationType]:
         """Create mapping from MCP tool names to operation types"""
         return {
             # Serena MCP tools mapping
@@ -42,8 +42,8 @@ class SerenaToolInterceptor:
         }
 
     async def intercept_tool_call(
-        self, agent_id: str, tool_name: str, params: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        self, agent_id: str, tool_name: str, params: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Intercept MCP tool call and apply optimizations.
 
@@ -90,8 +90,8 @@ class SerenaToolInterceptor:
         return tool_name.startswith("mcp__serena__")
 
     async def _apply_optimizations(
-        self, agent_id: str, tool_name: str, operation_type: OperationType, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, agent_id: str, tool_name: str, operation_type: OperationType, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Apply optimization rules to tool parameters"""
 
         # Get optimization rules
@@ -122,7 +122,7 @@ class SerenaToolInterceptor:
 
         return optimized_params
 
-    def _optimize_file_read(self, params: Dict[str, Any], rule) -> Dict[str, Any]:
+    def _optimize_file_read(self, params: dict[str, Any], rule) -> dict[str, Any]:
         """Apply file_read specific optimizations"""
 
         # Warn about potentially large files
@@ -142,7 +142,7 @@ class SerenaToolInterceptor:
 
         return params
 
-    def _optimize_symbol_search(self, params: Dict[str, Any], rule) -> Dict[str, Any]:
+    def _optimize_symbol_search(self, params: dict[str, Any], rule) -> dict[str, Any]:
         """Apply symbol_search specific optimizations"""
 
         # Default to not including body unless explicitly requested
@@ -159,7 +159,7 @@ class SerenaToolInterceptor:
 
         return params
 
-    def _optimize_pattern_search(self, params: Dict[str, Any], rule) -> Dict[str, Any]:
+    def _optimize_pattern_search(self, params: dict[str, Any], rule) -> dict[str, Any]:
         """Apply pattern_search specific optimizations"""
 
         # Restrict to code files by default
@@ -175,7 +175,7 @@ class SerenaToolInterceptor:
 
         return params
 
-    def _optimize_directory_list(self, params: Dict[str, Any], rule) -> Dict[str, Any]:
+    def _optimize_directory_list(self, params: dict[str, Any], rule) -> dict[str, Any]:
         """Apply directory_list specific optimizations"""
 
         # Default to non-recursive unless needed
@@ -188,7 +188,7 @@ class SerenaToolInterceptor:
 
         return params
 
-    def _optimize_symbol_replace(self, params: Dict[str, Any], rule) -> Dict[str, Any]:
+    def _optimize_symbol_replace(self, params: dict[str, Any], rule) -> dict[str, Any]:
         """Apply symbol_replace specific optimizations"""
 
         # Add safety limits for replacement operations
@@ -229,7 +229,7 @@ class SerenaToolInterceptor:
         path_lower = relative_path.lower()
         return any(indicator in path_lower for indicator in very_large_indicators)
 
-    def _get_applied_optimizations(self, original: Dict[str, Any], optimized: Dict[str, Any]) -> List[str]:
+    def _get_applied_optimizations(self, original: dict[str, Any], optimized: dict[str, Any]) -> list[str]:
         """Get list of optimizations that were applied"""
 
         optimizations = []
@@ -244,7 +244,7 @@ class SerenaToolInterceptor:
         return optimizations
 
     async def record_tool_execution(
-        self, agent_id: str, tool_name: str, params: Dict[str, Any], result: Any, metadata: Dict[str, Any]
+        self, agent_id: str, tool_name: str, params: dict[str, Any], result: Any, metadata: dict[str, Any]
     ):
         """Record tool execution for analytics and optimization tracking"""
 
@@ -280,7 +280,7 @@ class MissionOptimizationInjector:
     def __init__(self, optimizer: SerenaOptimizer):
         self.optimizer = optimizer
 
-    async def inject_optimization_rules(self, agent_role: str, mission: str, context_data: Dict[str, Any]) -> str:
+    async def inject_optimization_rules(self, agent_role: str, mission: str, context_data: dict[str, Any]) -> str:
         """
         Inject optimization rules directly into agent mission text.
 
@@ -304,7 +304,7 @@ class MissionOptimizationInjector:
 
         return optimized_mission
 
-    def _inject_augmentation(self, mission: str, augmentation: Dict[str, Any]) -> str:
+    def _inject_augmentation(self, mission: str, augmentation: dict[str, Any]) -> str:
         """Inject augmentation content into mission"""
 
         if augmentation["type"] != "inject":
@@ -321,7 +321,7 @@ class MissionOptimizationInjector:
         # Append to end if target section not found
         return mission + "\n\n" + content
 
-    async def estimate_optimization_impact(self, agent_role: str, context_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def estimate_optimization_impact(self, agent_role: str, context_data: dict[str, Any]) -> dict[str, Any]:
         """
         Estimate the context-efficiency impact of optimization rules.
 
@@ -344,7 +344,7 @@ class MissionOptimizationInjector:
 
         return estimated_impact
 
-    def _count_context_adjustments(self, original_rules: Dict, adjusted_rules: Dict) -> int:
+    def _count_context_adjustments(self, original_rules: dict, adjusted_rules: dict) -> int:
         """Count how many rules were adjusted based on context"""
 
         adjustments = 0

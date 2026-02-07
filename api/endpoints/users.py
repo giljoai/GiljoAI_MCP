@@ -282,7 +282,7 @@ def user_to_response(user: User) -> UserResponse:
     )
 
 
-def migrate_project_context_to_description(user_config: Dict[str, Any]) -> Dict[str, Any]:
+def migrate_project_context_to_description(user_config: dict[str, Any]) -> dict[str, Any]:
     """
     Migrate old 'project_context' field name to 'project_description'.
 
@@ -878,11 +878,11 @@ async def reset_field_priority_config(
 # Depth Configuration Endpoints (Handover 0314)
 
 
-@router.get("/me/context/depth", response_model=Dict[str, Any])
+@router.get("/me/context/depth", response_model=dict[str, Any])
 async def get_depth_config(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get user's depth configuration.
 
@@ -923,12 +923,12 @@ async def get_depth_config(
     return {"depth_config": result["config"]}
 
 
-@router.put("/me/context/depth", response_model=Dict[str, Any])
+@router.put("/me/context/depth", response_model=dict[str, Any])
 async def update_depth_config(
     depth_request: UpdateDepthConfigRequest,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Update user's depth configuration.
 
@@ -992,7 +992,7 @@ async def update_depth_config(
 async def get_execution_mode(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Get the current user's execution mode."""
     result = await user_service.get_execution_mode(str(current_user.id))
     if not result["success"]:
@@ -1005,7 +1005,7 @@ async def update_execution_mode(
     payload: ExecutionModeUpdate,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Update the current user's execution mode."""
     result = await user_service.update_execution_mode(
         user_id=str(current_user.id),

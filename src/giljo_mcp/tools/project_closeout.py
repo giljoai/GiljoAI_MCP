@@ -31,12 +31,12 @@ MAX_DECISIONS_MADE = 100
 async def close_project_and_update_memory(
     project_id: str,
     summary: str,
-    key_outcomes: List[str],
-    decisions_made: List[str],
+    key_outcomes: list[str],
+    decisions_made: list[str],
     tenant_key: str,
     db_manager: Optional[DatabaseManager] = None,
     session: Optional[AsyncSession] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Close project and update product memory with history entry.
 
@@ -111,12 +111,12 @@ async def close_project_and_update_memory(
             if not product:
                 return {"success": False, "error": "Product not found for project"}
 
-            product_memory: Dict[str, Any] = product.product_memory or {}
+            product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[List[Dict[str, Any]]] = None
+            git_commits: Optional[list[dict[str, Any]]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -193,7 +193,7 @@ async def close_project_and_update_memory(
         return {"success": False, "error": str(exc)}
 
 
-def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
+def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
@@ -201,10 +201,10 @@ def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
     return git_cfg if isinstance(git_cfg, dict) else {}
 
 
-def _extract_deliverables(key_outcomes: List[str]) -> List[str]:
+def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
     """Derive deliverables from key outcomes (deduplicated)."""
     seen = set()
-    deliverables: List[str] = []
+    deliverables: list[str] = []
     for outcome in key_outcomes or []:
         normalized = (outcome or "").strip()
         if normalized and normalized not in seen:
@@ -213,7 +213,7 @@ def _extract_deliverables(key_outcomes: List[str]) -> List[str]:
     return deliverables
 
 
-def _extract_tags(summary: str, key_outcomes: List[str], decisions_made: List[str]) -> List[str]:
+def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:
     """Extract lightweight tags from summary/outcomes/decisions."""
     tokens = (summary or "").split()
     for item in key_outcomes or []:
@@ -234,7 +234,7 @@ def _extract_tags(summary: str, key_outcomes: List[str], decisions_made: List[st
     return tags[:10]
 
 
-def _derive_priority(project: Project, summary: str, key_outcomes: List[str]) -> int:
+def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:
     """Derive priority (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)."""
     summary_text = summary.lower() if summary else ""
     outcome_text = " ".join(key_outcomes or []).lower()
@@ -245,7 +245,7 @@ def _derive_priority(project: Project, summary: str, key_outcomes: List[str]) ->
     return 3
 
 
-def _calculate_significance(project: Project, key_outcomes: List[str], git_commits: List[Dict[str, Any]]) -> float:
+def _calculate_significance(project: Project, key_outcomes: list[str], git_commits: list[dict[str, Any]]) -> float:
     """Calculate significance score between 0.0 and 1.0."""
     outcome_factor = min(len(key_outcomes or []), 5) * 0.1
     commit_factor = min(len(git_commits or []), 20) * 0.01
@@ -253,7 +253,7 @@ def _calculate_significance(project: Project, key_outcomes: List[str], git_commi
     return round(min(1.0, base), 2)
 
 
-def _estimate_tokens(summary: str, key_outcomes: List[str], decisions_made: List[str]) -> int:
+def _estimate_tokens(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> int:
     """Rough token estimate based on content length."""
     lengths = [len(summary or "")]
     lengths.extend(len(item or "") for item in key_outcomes or [])
@@ -262,7 +262,7 @@ def _estimate_tokens(summary: str, key_outcomes: List[str], decisions_made: List
     return max(estimate, 1)
 
 
-def _count_files_changed(git_commits: List[Dict[str, Any]]) -> int:
+def _count_files_changed(git_commits: list[dict[str, Any]]) -> int:
     """Count files changed across commits."""
     total = 0
     for commit in git_commits or []:
@@ -275,7 +275,7 @@ def _count_files_changed(git_commits: List[Dict[str, Any]]) -> int:
     return total
 
 
-def _count_lines_added(git_commits: List[Dict[str, Any]]) -> int:
+def _count_lines_added(git_commits: list[dict[str, Any]]) -> int:
     """Count lines added across commits."""
     total = 0
     for commit in git_commits or []:
@@ -288,7 +288,7 @@ def _count_lines_added(git_commits: List[Dict[str, Any]]) -> int:
     return total
 
 
-def _build_metrics(git_commits: List[Dict[str, Any]], meta_data: Dict[str, Any]) -> Dict[str, Any]:
+def _build_metrics(git_commits: list[dict[str, Any]], meta_data: dict[str, Any]) -> dict[str, Any]:
     """Build metrics block for history entry."""
     test_coverage = 0.0
     if isinstance(meta_data, dict):
@@ -314,7 +314,7 @@ async def emit_websocket_event(
     event_type: str,
     tenant_key: str,
     product_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
 ) -> None:
     """
     Emit WebSocket event; graceful no-op if manager unavailable.
@@ -351,7 +351,7 @@ async def _fetch_github_commits(
     access_token: Optional[str],
     project_created_at: datetime,
     project_completed_at: Optional[datetime],
-) -> Optional[List[Dict[str, Any]]]:
+) -> Optional[list[dict[str, Any]]]:
     """
     Fetch GitHub commits between project creation and completion.
 
@@ -388,7 +388,7 @@ async def _fetch_github_commits(
                 return None
 
             commits_data = response.json()
-            commits: List[Dict[str, Any]] = []
+            commits: list[dict[str, Any]] = []
             for commit in commits_data[:100]:
                 commits.append(
                     {

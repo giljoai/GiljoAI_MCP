@@ -39,7 +39,7 @@ class MemoryInstructionGenerator:
     """
 
     def generate_context(
-        self, sequential_history: Optional[List[Dict[str, Any]]], priority: int, git_enabled: bool = False
+        self, sequential_history: Optional[list[dict[str, Any]]], priority: int, git_enabled: bool = False
     ) -> str:
         """
         Generate memory instructions based on priority level.
@@ -171,7 +171,7 @@ class MemoryInstructionGenerator:
 
         return "\n".join(sections)
 
-    def _generate_minimal_instructions(self, sequential_history: List[Dict[str, Any]], git_enabled: bool) -> str:
+    def _generate_minimal_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Minimal instructions (priority 1-3): Brief overview.
         """
@@ -195,7 +195,7 @@ class MemoryInstructionGenerator:
 
         return "\n".join(sections)
 
-    def _generate_abbreviated_instructions(self, sequential_history: List[Dict[str, Any]], git_enabled: bool) -> str:
+    def _generate_abbreviated_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Abbreviated instructions (priority 4-6): More detail than minimal.
         """
@@ -245,7 +245,7 @@ class MemoryInstructionGenerator:
 
         return "\n".join(sections)
 
-    def _generate_moderate_instructions(self, sequential_history: List[Dict[str, Any]], git_enabled: bool) -> str:
+    def _generate_moderate_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Moderate instructions (priority 7-9): Comprehensive with examples.
         """
@@ -343,7 +343,7 @@ class MemoryInstructionGenerator:
 
         return "\n".join(sections)
 
-    def _generate_full_instructions(self, sequential_history: List[Dict[str, Any]], git_enabled: bool) -> str:
+    def _generate_full_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Full instructions (priority 10): Most comprehensive guide.
         """

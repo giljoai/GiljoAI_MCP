@@ -40,7 +40,7 @@ router = APIRouter()
 class JSONRPCRequest(BaseModel):
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     method: str = Field(..., description="Method name")
-    params: Optional[Dict[str, Any]] = Field(None, description="Method parameters")
+    params: Optional[dict[str, Any]] = Field(None, description="Method parameters")
     id: Optional[str | int] = Field(None, description="Request ID")
 
 

@@ -78,7 +78,7 @@ class UserService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_users(self, include_all_tenants: bool = False) -> Dict[str, Any]:
+    async def list_users(self, include_all_tenants: bool = False) -> dict[str, Any]:
         """
         List all users in tenant (or all tenants for admin view).
 
@@ -121,7 +121,7 @@ class UserService:
                 message=str(e), context={"operation": "list_users", "include_all_tenants": include_all_tenants}
             ) from e
 
-    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> Dict[str, Any]:
+    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> dict[str, Any]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant view - see all users
@@ -155,7 +155,7 @@ class UserService:
 
         return {"success": True, "data": user_list}
 
-    async def get_user(self, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
+    async def get_user(self, user_id: str, include_all_tenants: bool = False) -> dict[str, Any]:
         """
         Get a specific user by ID.
 
@@ -188,7 +188,7 @@ class UserService:
 
     async def _get_user_impl(
         self, session: AsyncSession, user_id: str, include_all_tenants: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant fetch
@@ -227,7 +227,7 @@ class UserService:
         password: Optional[str] = None,
         role: str = "developer",
         is_active: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new user.
 
@@ -275,7 +275,7 @@ class UserService:
         password: Optional[str],
         role: str,
         is_active: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Check for duplicate username (global uniqueness)
         stmt = select(User).where(User.username == username)
@@ -330,7 +330,7 @@ class UserService:
             },
         }
 
-    async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> Dict[str, Any]:
+    async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> dict[str, Any]:
         """
         Update a user.
 
@@ -366,7 +366,7 @@ class UserService:
 
     async def _update_user_impl(
         self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant update
@@ -421,7 +421,7 @@ class UserService:
             },
         }
 
-    async def delete_user(self, user_id: str) -> Dict[str, Any]:
+    async def delete_user(self, user_id: str) -> dict[str, Any]:
         """
         Soft delete a user (set is_active=False).
 
@@ -449,7 +449,7 @@ class UserService:
             self._logger.exception(f"Failed to delete user: {e}")
             raise BaseGiljoException(message=str(e), context={"operation": "delete_user", "user_id": user_id}) from e
 
-    async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -476,7 +476,7 @@ class UserService:
     # Role Management
     # ============================================================================
 
-    async def change_role(self, user_id: str, new_role: str) -> Dict[str, Any]:
+    async def change_role(self, user_id: str, new_role: str) -> dict[str, Any]:
         """
         Change user role with admin restrictions.
 
@@ -507,7 +507,7 @@ class UserService:
                 message=str(e), context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
             ) from e
 
-    async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> Dict[str, Any]:
+    async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Validate role
         valid_roles = ["admin", "developer", "viewer"]
@@ -556,7 +556,7 @@ class UserService:
 
     async def change_password(
         self, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Change user password with verification.
 
@@ -595,7 +595,7 @@ class UserService:
 
     async def _change_password_impl(
         self, session: AsyncSession, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -622,7 +622,7 @@ class UserService:
 
         return {"success": True, "message": "Password updated successfully"}
 
-    async def reset_password(self, user_id: str) -> Dict[str, Any]:
+    async def reset_password(self, user_id: str) -> dict[str, Any]:
         """
         Reset user password to default 'GiljoMCP'.
 
@@ -650,7 +650,7 @@ class UserService:
             self._logger.exception(f"Failed to reset password: {e}")
             raise BaseGiljoException(message=str(e), context={"operation": "reset_password", "user_id": user_id}) from e
 
-    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -679,7 +679,7 @@ class UserService:
     # Validation Methods
     # ============================================================================
 
-    async def check_username_exists(self, username: str) -> Dict[str, Any]:
+    async def check_username_exists(self, username: str) -> dict[str, Any]:
         """
         Check if username already exists.
 
@@ -711,7 +711,7 @@ class UserService:
                 message=str(e), context={"operation": "check_username_exists", "username": username}
             ) from e
 
-    async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> Dict[str, Any]:
+    async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
@@ -719,7 +719,7 @@ class UserService:
 
         return {"success": True, "exists": user is not None}
 
-    async def check_email_exists(self, email: str) -> Dict[str, Any]:
+    async def check_email_exists(self, email: str) -> dict[str, Any]:
         """
         Check if email already exists.
 
@@ -749,7 +749,7 @@ class UserService:
             self._logger.exception(f"Failed to check email: {e}")
             raise BaseGiljoException(message=str(e), context={"operation": "check_email_exists", "email": email}) from e
 
-    async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> Dict[str, Any]:
+    async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(User.email == email)
         result = await session.execute(stmt)
@@ -757,7 +757,7 @@ class UserService:
 
         return {"success": True, "exists": user is not None}
 
-    async def verify_password(self, user_id: str, password: str) -> Dict[str, Any]:
+    async def verify_password(self, user_id: str, password: str) -> dict[str, Any]:
         """
         Verify user password using bcrypt.
 
@@ -790,7 +790,7 @@ class UserService:
                 message=str(e), context={"operation": "verify_password", "user_id": user_id}
             ) from e
 
-    async def _verify_password_impl(self, session: AsyncSession, user_id: str, password: str) -> Dict[str, Any]:
+    async def _verify_password_impl(self, session: AsyncSession, user_id: str, password: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -807,7 +807,7 @@ class UserService:
     # Configuration Management
     # ============================================================================
 
-    async def get_field_priority_config(self, user_id: str) -> Dict[str, Any]:
+    async def get_field_priority_config(self, user_id: str) -> dict[str, Any]:
         """
         Get user's field priority configuration or defaults.
 
@@ -838,7 +838,7 @@ class UserService:
                 message=str(e), context={"operation": "get_field_priority_config", "user_id": user_id}
             ) from e
 
-    async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -856,7 +856,7 @@ class UserService:
 
         return {"success": True, "config": DEFAULT_FIELD_PRIORITY}
 
-    async def update_field_priority_config(self, user_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_field_priority_config(self, user_id: str, config: dict[str, Any]) -> dict[str, Any]:
         """
         Update user's field priority configuration.
 
@@ -891,8 +891,8 @@ class UserService:
             ) from e
 
     async def _update_field_priority_config_impl(
-        self, session: AsyncSession, user_id: str, config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, session: AsyncSession, user_id: str, config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Validate config structure
         if "version" not in config or "priorities" not in config:
@@ -930,7 +930,7 @@ class UserService:
 
         return {"success": True, "message": "Field priority config updated successfully"}
 
-    async def reset_field_priority_config(self, user_id: str) -> Dict[str, Any]:
+    async def reset_field_priority_config(self, user_id: str) -> dict[str, Any]:
         """
         Reset field priority configuration to system defaults.
 
@@ -960,7 +960,7 @@ class UserService:
                 message=str(e), context={"operation": "reset_field_priority_config", "user_id": user_id}
             ) from e
 
-    async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -977,7 +977,7 @@ class UserService:
 
         return {"success": True, "message": "Field priority config reset to defaults"}
 
-    async def get_depth_config(self, user_id: str) -> Dict[str, Any]:
+    async def get_depth_config(self, user_id: str) -> dict[str, Any]:
         """
         Get user's depth configuration or defaults.
 
@@ -1008,7 +1008,7 @@ class UserService:
                 message=str(e), context={"operation": "get_depth_config", "user_id": user_id}
             ) from e
 
-    async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
@@ -1029,7 +1029,7 @@ class UserService:
 
         return {"success": True, "config": depth_config}
 
-    async def update_depth_config(self, user_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_depth_config(self, user_id: str, config: dict[str, Any]) -> dict[str, Any]:
         """
         Update user's depth configuration.
 
@@ -1064,8 +1064,8 @@ class UserService:
             ) from e
 
     async def _update_depth_config_impl(
-        self, session: AsyncSession, user_id: str, config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, session: AsyncSession, user_id: str, config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Validate config values
         valid_vision = ["none", "optional", "light", "medium", "full"]
@@ -1103,7 +1103,7 @@ class UserService:
     # Execution mode (stored in depth_config.execution_mode)
     # ------------------------------------------------------------------
 
-    async def get_execution_mode(self, user_id: str) -> Dict[str, Any]:
+    async def get_execution_mode(self, user_id: str) -> dict[str, Any]:
         """Get user's execution mode or default."""
         try:
             if self._session:
@@ -1119,7 +1119,7 @@ class UserService:
                 message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}
             ) from e
 
-    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
+    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -1132,7 +1132,7 @@ class UserService:
 
         return {"success": True, "execution_mode": mode}
 
-    async def update_execution_mode(self, user_id: str, execution_mode: str) -> Dict[str, Any]:
+    async def update_execution_mode(self, user_id: str, execution_mode: str) -> dict[str, Any]:
         """Update user's execution mode with validation."""
         try:
             if self._session:
@@ -1150,7 +1150,7 @@ class UserService:
 
     async def _update_execution_mode_impl(
         self, session: AsyncSession, user_id: str, execution_mode: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         valid_modes = {"claude_code", "multi_terminal"}
         if execution_mode not in valid_modes:
             raise ValidationError(
@@ -1200,7 +1200,7 @@ class UserService:
     # Private Helper Methods
     # ============================================================================
 
-    async def _emit_websocket_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def _emit_websocket_event(self, event_type: str, data: dict[str, Any]) -> None:
         """
         Emit WebSocket event to tenant clients (Handover 0139a).
 

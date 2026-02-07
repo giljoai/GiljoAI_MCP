@@ -50,7 +50,7 @@ def format_list_safely(items: Any) -> str:
         return "- (Error formatting data)"
 
 
-def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
+def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     """
     Apply priority framing to a rich product_memory_entries entry.
 
@@ -94,7 +94,7 @@ def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
     return framing
 
 
-def _extract_priorities(config: Any) -> Dict[str, int]:
+def _extract_priorities(config: Any) -> dict[str, int]:
     """Extract priority mapping from user config supporting legacy and nested formats."""
     if not isinstance(config, dict):
         return {}
@@ -227,7 +227,7 @@ def inject_priority_framing(
     return framed_content
 
 
-def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> Dict[str, Any]:
+def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> dict[str, Any]:
     """Return a standardized response when a category is excluded (priority=4)."""
     return {
         "source": source,
@@ -244,14 +244,14 @@ def build_priority_excluded_response(source: str, category: str, tenant_key: str
 
 
 async def build_framed_context_response(
-    raw_result: Dict[str, Any],
+    raw_result: dict[str, Any],
     category: str,
     tenant_key: str,
     user_id: Optional[str],
     db_manager: Optional[DatabaseManager],
-    content_formatter: Optional[Callable[[Dict[str, Any]], str]] = None,
+    content_formatter: Optional[Callable[[dict[str, Any]], str]] = None,
     priority_override: Optional[int] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Apply priority framing to a context tool response.
 

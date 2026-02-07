@@ -42,7 +42,7 @@ async def get_git_history(
     limit: int = None,
     db_manager: Optional[DatabaseManager] = None,
     session: Optional[AsyncSession] = None,  # For testing only
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch git commit history for given product with depth control.
 

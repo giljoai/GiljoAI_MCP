@@ -78,7 +78,7 @@ class VisionDocumentChunker:
             # Fallback to character-based estimation
             return len(text) // 4
 
-    def extract_keywords(self, text: str, max_keywords: int = 10) -> List[str]:
+    def extract_keywords(self, text: str, max_keywords: int = 10) -> list[str]:
         """
         Extract keywords using simple term frequency approach.
 
@@ -168,7 +168,7 @@ class VisionDocumentChunker:
 
         return truncated.strip() + "..."
 
-    def chunk_document(self, content: str, product_id: str) -> List[Dict[str, Any]]:
+    def chunk_document(self, content: str, product_id: str) -> list[dict[str, Any]]:
         """
         Chunk document into semantic chunks with metadata.
 
@@ -239,7 +239,7 @@ class VisionDocumentChunker:
 
         return processed_chunks
 
-    async def chunk_vision_document(self, session, tenant_key: str, vision_document_id: str) -> Dict[str, Any]:
+    async def chunk_vision_document(self, session, tenant_key: str, vision_document_id: str) -> dict[str, Any]:
         """
         Chunk a specific vision document with selective re-chunking.
 

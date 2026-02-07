@@ -578,7 +578,7 @@ Success criteria:
     ]
 
 
-def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
+def _get_template_metadata() -> dict[str, dict[str, Any]]:
     """
     Get comprehensive metadata for each agent role template.
 

@@ -58,7 +58,7 @@ class OrganizationResponse(BaseModel):
     created_at: datetime = Field(..., description="Organization creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")  # 0424m: nullable
     settings: dict = Field(..., description="Organization-level settings")
-    members: List[MemberResponse] = Field(default_factory=list, description="Organization members")
+    members: list[MemberResponse] = Field(default_factory=list, description="Organization members")
 
     class Config:
         from_attributes = True

@@ -38,7 +38,7 @@ class ConfigurationRepository:
     async def list_tenant_keys(
         self,
         session: AsyncSession,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         List all distinct tenant keys that have custom configurations.
 
@@ -57,7 +57,7 @@ class ConfigurationRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> List[Configuration]:
+    ) -> list[Configuration]:
         """
         Get all configurations for a specific tenant.
 

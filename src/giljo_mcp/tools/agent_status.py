@@ -60,7 +60,7 @@ async def set_agent_status(
     reason: Optional[str] = None,
     current_task: Optional[str] = None,
     estimated_completion: Optional[datetime] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     MCP tool for agents to update their own status in the orchestration grid.
 
@@ -227,7 +227,7 @@ async def report_progress(
     agent_id: str,
     tenant_key: str,
     progress: dict,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     MCP tool for agents to report progress updates (Handover 0107).
 

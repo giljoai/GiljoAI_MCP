@@ -26,7 +26,7 @@ async def export_agents_command(
     tenant_key: str,
     product_path: Optional[str] = None,
     personal: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Export agent templates via MCP command.
 
@@ -113,7 +113,7 @@ async def get_product_for_tenant(
 
 async def validate_product_path(
     db_manager: DatabaseManager, tenant_key: str, product_id: str, project_path: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate and update product's project_path.
 

@@ -47,7 +47,7 @@ async def _check_closeout_readiness(
     project_id: str,
     tenant_key: str,
     orchestrator_job_id: Optional[str] = None,
-) -> Tuple[bool, Dict[str, Any]]:
+) -> tuple[bool, dict[str, Any]]:
     """
     Verify all agents are ready for project closeout (Handover 0431).
 
@@ -69,7 +69,7 @@ async def _check_closeout_readiness(
         - result_data: Contains blockers list and summary if blocked,
                        or verified dict if ready
     """
-    blockers: List[Dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
     summary = {
         "agents_checked": 0,
         "still_working": 0,
@@ -202,13 +202,13 @@ async def write_360_memory(
     project_id: str,
     tenant_key: str,
     summary: str,
-    key_outcomes: List[str],
-    decisions_made: List[str],
+    key_outcomes: list[str],
+    decisions_made: list[str],
     entry_type: str = "project_completion",
     author_job_id: Optional[str] = None,
     db_manager: Optional[DatabaseManager] = None,
     session: Optional[AsyncSession] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Write a 360 memory entry for project completion or handover.
 
@@ -331,13 +331,13 @@ async def write_360_memory(
                     }
 
             # Get or initialize product_memory for git config
-            product_memory: Dict[str, Any] = product.product_memory or {}
+            product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
             # Get git configuration and fetch commits if enabled
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[List[Dict[str, Any]]] = None
+            git_commits: Optional[list[dict[str, Any]]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -457,7 +457,7 @@ async def _emit_websocket_event(
     event_type: str,
     tenant_key: str,
     product_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
 ) -> None:
     """
     Emit WebSocket event; graceful no-op if manager unavailable.
@@ -488,7 +488,7 @@ async def _emit_websocket_event(
         logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
 
-def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
+def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
@@ -502,7 +502,7 @@ async def _fetch_github_commits(
     access_token: Optional[str],
     project_created_at: datetime,
     project_completed_at: Optional[datetime],
-) -> Optional[List[Dict[str, Any]]]:
+) -> Optional[list[dict[str, Any]]]:
     """
     Fetch GitHub commits between project creation and completion.
 
@@ -539,7 +539,7 @@ async def _fetch_github_commits(
                 return None
 
             commits_data = response.json()
-            commits: List[Dict[str, Any]] = []
+            commits: list[dict[str, Any]] = []
             for commit in commits_data[:100]:
                 commits.append(
                     {
