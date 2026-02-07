@@ -21,16 +21,6 @@ INTERNAL Tools (10 total - called by fetch_context, NOT exposed via MCP):
 """
 
 from .fetch_context import fetch_context  # Handover 0350a: PUBLIC - unified dispatcher
-from .get_vision_document import get_vision_document
-from .get_360_memory import get_360_memory
-from .get_git_history import get_git_history
-from .get_agent_templates import get_agent_templates
-from .get_tech_stack import get_tech_stack
-from .get_architecture import get_architecture
-from .get_product_context import get_product_context  # Handover 0316: NEW
-from .get_project import get_project  # Handover 0316: NEW
-from .get_testing import get_testing  # Handover 0316: NEW
-from .get_self_identity import get_self_identity  # Handover 0430: NEW
 from .framing_helpers import (
     apply_rich_entry_framing,
     build_framed_context_response,
@@ -39,25 +29,36 @@ from .framing_helpers import (
     get_user_priority,
     inject_priority_framing,
 )
+from .get_360_memory import get_360_memory
+from .get_agent_templates import get_agent_templates
+from .get_architecture import get_architecture
+from .get_git_history import get_git_history
+from .get_product_context import get_product_context  # Handover 0316: NEW
+from .get_project import get_project  # Handover 0316: NEW
+from .get_self_identity import get_self_identity  # Handover 0430: NEW
+from .get_tech_stack import get_tech_stack
+from .get_testing import get_testing  # Handover 0316: NEW
+from .get_vision_document import get_vision_document
+
 
 __all__ = [
-    "fetch_context",        # Handover 0350a: PUBLIC - exposed via MCP HTTP
-    # Internal tools (not exposed, used by fetch_context)
-    "get_vision_document",
-    "get_360_memory",
-    "get_git_history",
-    "get_agent_templates",
-    "get_tech_stack",
-    "get_architecture",
-    "get_product_context",  # Handover 0316: NEW
-    "get_project",          # Handover 0316: NEW
-    "get_testing",          # Handover 0316: NEW
-    "get_self_identity",    # Handover 0430: NEW
     # Framing helpers
     "apply_rich_entry_framing",
     "build_framed_context_response",
     "build_priority_excluded_response",
+    "fetch_context",  # Handover 0350a: PUBLIC - exposed via MCP HTTP
     "format_list_safely",
+    "get_360_memory",
+    "get_agent_templates",
+    "get_architecture",
+    "get_git_history",
+    "get_product_context",  # Handover 0316: NEW
+    "get_project",  # Handover 0316: NEW
+    "get_self_identity",  # Handover 0430: NEW
+    "get_tech_stack",
+    "get_testing",  # Handover 0316: NEW
     "get_user_priority",
+    # Internal tools (not exposed, used by fetch_context)
+    "get_vision_document",
     "inject_priority_framing",
 ]

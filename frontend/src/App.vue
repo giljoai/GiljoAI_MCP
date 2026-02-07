@@ -44,10 +44,6 @@ html.no-transition * {
   color-scheme: dark;
 }
 
-[data-theme='light'] {
-  color-scheme: light;
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

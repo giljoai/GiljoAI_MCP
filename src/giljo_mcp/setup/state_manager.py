@@ -17,11 +17,12 @@ Provides:
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 
@@ -36,15 +37,15 @@ class SetupStateManager:
     Implements singleton pattern per tenant for consistency.
     """
 
-    _instances: Dict[str, "SetupStateManager"] = {}
-    _lock = Lock()
+    _instances: ClassVar[dict[str, "SetupStateManager"]] = {}
+    _lock: ClassVar[Lock] = Lock()
 
     def __init__(
         self,
-        tenant_key: Optional[str] = None,
-        db_session: Optional[Session] = None,
-        current_version: Optional[str] = None,
-        required_db_version: Optional[str] = None,
+        tenant_key: str | None = None,
+        db_session: Session | None = None,
+        current_version: str | None = None,
+        required_db_version: str | None = None,
     ):
         """
         Initialize SetupStateManager.
@@ -77,9 +78,9 @@ class SetupStateManager:
     def get_instance(
         cls,
         tenant_key: str,
-        db_session: Optional[Session] = None,
-        current_version: Optional[str] = None,
-        required_db_version: Optional[str] = None,
+        db_session: Session | None = None,
+        current_version: str | None = None,
+        required_db_version: str | None = None,
     ) -> "SetupStateManager":
         """
         Get singleton instance for tenant.
@@ -103,7 +104,7 @@ class SetupStateManager:
                 )
             return cls._instances[tenant_key]
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """
         Get current setup state.
 
@@ -121,7 +122,7 @@ class SetupStateManager:
                 state_dict = self._get_state_from_database()
                 if state_dict is not None:
                     return state_dict
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to get state from database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -132,13 +133,13 @@ class SetupStateManager:
             state_dict = self._get_state_from_file()
             if state_dict is not None:
                 return state_dict
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             logger.warning(f"Failed to get state from file for tenant {self.tenant_key}: {e}. Returning default state.")
 
         # Return default state
         return self._get_default_state()
 
-    def _get_state_from_database(self) -> Optional[Dict[str, Any]]:
+    def _get_state_from_database(self) -> dict[str, Any | None]:
         """Get state from database."""
         from src.giljo_mcp.models import SetupState
 
@@ -147,7 +148,7 @@ class SetupStateManager:
             return state.to_dict()
         return None
 
-    def _get_state_from_file(self) -> Optional[Dict[str, Any]]:
+    def _get_state_from_file(self) -> dict[str, Any | None]:
         """Get state from file."""
         if not self.state_file.exists():
             return None
@@ -161,13 +162,13 @@ class SetupStateManager:
                 if data.get("tenant_key") == self.tenant_key:
                     return data
 
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse setup state file: {e}")
+            except json.JSONDecodeError:
+                logger.exception("Failed to parse setup state file")
                 return None
 
         return None
 
-    def _get_default_state(self) -> Dict[str, Any]:
+    def _get_default_state(self) -> dict[str, Any]:
         """Get default state structure."""
         return {
             "tenant_key": self.tenant_key,
@@ -192,8 +193,8 @@ class SetupStateManager:
 
     def mark_database_initialized(
         self,
-        setup_version: Optional[str] = None,
-        config_snapshot: Optional[Dict[str, Any]] = None,
+        setup_version: str | None = None,
+        config_snapshot: dict[str, Any | None] = None,
     ) -> None:
         """
         Mark database as initialized (tables created and ready for use).
@@ -215,7 +216,7 @@ class SetupStateManager:
                 self._mark_database_initialized_in_database(setup_version, config_snapshot)
                 logger.info(f"Marked database initialized in database for tenant {self.tenant_key}")
                 return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to mark database initialized in database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -227,17 +228,17 @@ class SetupStateManager:
 
     def _mark_database_initialized_in_database(
         self,
-        setup_version: Optional[str],
-        config_snapshot: Optional[Dict[str, Any]],
+        setup_version: str | None,
+        config_snapshot: dict[str, Any | None],
     ) -> None:
         """Mark database initialized in database."""
         from src.giljo_mcp.models import SetupState
 
-        state = SetupState.create_or_update(
+        SetupState.create_or_update(
             self.db_session,
             tenant_key=self.tenant_key,
             database_initialized=True,
-            database_initialized_at=datetime.utcnow(),
+            database_initialized_at=datetime.now(timezone.utc),
             setup_version=setup_version,
             config_snapshot=config_snapshot,
         )
@@ -246,8 +247,8 @@ class SetupStateManager:
 
     def _mark_database_initialized_in_file(
         self,
-        setup_version: Optional[str],
-        config_snapshot: Optional[Dict[str, Any]],
+        setup_version: str | None,
+        config_snapshot: dict[str, Any | None],
     ) -> None:
         """Mark database initialized in file."""
         # Ensure directory exists
@@ -260,7 +261,7 @@ class SetupStateManager:
 
         # Update state
         state["database_initialized"] = True
-        state["database_initialized_at"] = datetime.utcnow().isoformat()
+        state["database_initialized_at"] = datetime.now(timezone.utc).isoformat()
         if setup_version:
             state["setup_version"] = setup_version
         if config_snapshot:
@@ -275,9 +276,9 @@ class SetupStateManager:
             import platform
 
             if platform.system() != "Windows":
-                import os
+                from pathlib import Path
 
-                os.chmod(self.state_file, 0o600)
+                Path(self.state_file).chmod(0o600)
 
     def update_state(self, **kwargs) -> None:
         """
@@ -291,7 +292,7 @@ class SetupStateManager:
             try:
                 self._update_state_in_database(**kwargs)
                 return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to update state in database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -331,9 +332,9 @@ class SetupStateManager:
             import platform
 
             if platform.system() != "Windows":
-                import os
+                from pathlib import Path
 
-                os.chmod(self.state_file, 0o600)
+                Path(self.state_file).chmod(0o600)
 
     def migrate_file_to_database(self) -> bool:
         """
@@ -385,8 +386,8 @@ class SetupStateManager:
             logger.info(f"Successfully migrated file state to database for tenant {self.tenant_key}")
             return True
 
-        except Exception as e:
-            logger.error(f"Failed to migrate file state to database: {e}")
+        except SQLAlchemyError:
+            logger.exception("Failed to migrate file state to database")
             self.db_session.rollback()
             return False
 
@@ -409,7 +410,7 @@ class SetupStateManager:
         # Compare versions
         return stored_version != self.current_version
 
-    def validate_state(self) -> Tuple[bool, List[str]]:
+    def validate_state(self) -> tuple[bool, list[str]]:
         """
         Validate current state against requirements.
 
@@ -420,19 +421,18 @@ class SetupStateManager:
         state = self.get_state()
 
         # Check version compatibility
-        if self.current_version and state.get("setup_version"):
-            if state["setup_version"] != self.current_version:
-                errors.append(
-                    f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}"
-                )
+        if self.current_version and state.get("setup_version") and state["setup_version"] != self.current_version:
+            errors.append(f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}")
 
         # Check database version
-        if self.required_db_version and state.get("database_version"):
-            if state["database_version"] != self.required_db_version:
-                errors.append(
-                    f"Database version mismatch: stored={state['database_version']}, "
-                    f"required={self.required_db_version}"
-                )
+        if (
+            self.required_db_version
+            and state.get("database_version")
+            and state["database_version"] != self.required_db_version
+        ):
+            errors.append(
+                f"Database version mismatch: stored={state['database_version']}, required={self.required_db_version}"
+            )
 
         # Check validation failures
         validation_failures = state.get("validation_failures", [])
@@ -445,7 +445,7 @@ class SetupStateManager:
     def migrate_state(
         self,
         new_setup_version: str,
-        new_database_version: Optional[str] = None,
+        new_database_version: str | None = None,
     ) -> None:
         """
         Migrate state to new version.
@@ -482,16 +482,18 @@ class SetupStateManager:
                     state.add_validation_failure(message)
                     self.db_session.commit()
                     return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to add validation failure to database: {e}")
 
         # Fall back to file
         current_state = self.get_state()
         failures = list(current_state.get("validation_failures", []))
-        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
 
         self.update_state(
-            validation_failures=failures, validation_passed=False, last_validation_at=datetime.utcnow().isoformat()
+            validation_failures=failures,
+            validation_passed=False,
+            last_validation_at=datetime.now(timezone.utc).isoformat(),
         )
 
     def add_validation_warning(self, message: str) -> None:
@@ -510,15 +512,15 @@ class SetupStateManager:
                     state.add_validation_warning(message)
                     self.db_session.commit()
                     return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to add validation warning to database: {e}")
 
         # Fall back to file
         current_state = self.get_state()
         warnings = list(current_state.get("validation_warnings", []))
-        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        warnings.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
 
-        self.update_state(validation_warnings=warnings, last_validation_at=datetime.utcnow().isoformat())
+        self.update_state(validation_warnings=warnings, last_validation_at=datetime.now(timezone.utc).isoformat())
 
     def reset_state(self) -> None:
         """
@@ -536,8 +538,8 @@ class SetupStateManager:
                     self.db_session.delete(state)
                     self.db_session.commit()
                     logger.info(f"Deleted setup state from database for tenant {self.tenant_key}")
-            except Exception as e:
-                logger.error(f"Failed to delete state from database: {e}")
+            except SQLAlchemyError:
+                logger.exception("Failed to delete state from database")
                 self.db_session.rollback()
 
         # Remove file
@@ -548,8 +550,8 @@ class SetupStateManager:
                 if state and state.get("tenant_key") == self.tenant_key:
                     self.state_file.unlink()
                     logger.info(f"Deleted setup state file for tenant {self.tenant_key}")
-            except Exception as e:
-                logger.error(f"Failed to delete state file: {e}")
+            except (OSError, json.JSONDecodeError, KeyError, ValueError):
+                logger.exception("Failed to delete state file")
 
     def add_configured_feature(self, feature_name: str, feature_config: Any = True) -> None:
         """
@@ -607,7 +609,7 @@ class SetupStateManager:
 
         return bool(value)
 
-    def get_config_snapshot(self) -> Optional[Dict[str, Any]]:
+    def get_config_snapshot(self) -> dict[str, Any | None]:
         """
         Get configuration snapshot.
 

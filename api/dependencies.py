@@ -70,7 +70,7 @@ async def get_tenant_key(request: Request) -> str:
                 )
     except HTTPException:
         raise
-    except Exception:
+    except (OSError, ValueError, KeyError):
         pass  # If config read fails, allow fallback  # nosec B110
 
     # Fallback to default tenant (localhost mode only)
@@ -81,20 +81,29 @@ async def get_tenant_key(request: Request) -> str:
     return default_tenant
 
 
-def get_db():
+async def get_db():
     """
-    Get database session dependency.
-    Creates a new database session for the request and ensures it's closed after use.
+    Get async database session dependency for FastAPI endpoints.
+
+    This dependency provides an AsyncSession for use in async FastAPI endpoints.
+    The session is automatically managed and cleaned up after the request completes.
+
+    Returns:
+        AsyncSession: SQLAlchemy async database session
+
+    Raises:
+        RuntimeError: If database manager not initialized
+
+    Note:
+        This is the async version for FastAPI endpoints. For auth-specific endpoints,
+        use get_db_session() from src.giljo_mcp.auth.dependencies which includes
+        additional HTTP exception handling.
     """
     from api.app import state
 
     if not state.db_manager:
         raise RuntimeError("Database manager not initialized")
 
-    # Get a synchronous session context manager
-    session_ctx = state.db_manager.get_session()
-    db = session_ctx.__enter__()
-    try:
-        yield db
-    finally:
-        session_ctx.__exit__(None, None, None)
+    # Get an async session context manager
+    async with state.db_manager.get_session_async() as session:
+        yield session

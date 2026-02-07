@@ -57,16 +57,6 @@ const props = defineProps({
   },
 
   /**
-   * Instance number for multiple agents of same type (1 = default)
-   * Shows as "Im" for 1, "I2" for 2, "I3" for 3, etc.
-   */
-  instanceNumber: {
-    type: Number,
-    default: 1,
-    validator: (value) => value >= 1 && value <= 99,
-  },
-
-  /**
    * Badge size: 'default' (32px), 'small' (28px), or 'compact' (24px)
    */
   size: {
@@ -98,10 +88,11 @@ const agentColor = computed(() => {
 })
 
 /**
- * Badge ID to display (e.g., "Or", "Im", "I2", "I3")
+ * Badge ID to display (e.g., "Or", "Im")
+ * Handover 0700i: Removed instance number - always uses default ID
  */
 const badgeId = computed(() => {
-  return getAgentBadgeId(normalizedAgentType.value, props.instanceNumber)
+  return getAgentBadgeId(normalizedAgentType.value, 1)
 })
 
 /**
@@ -115,24 +106,20 @@ const sizeClass = computed(() => {
 
 /**
  * Tooltip text for hover
+ * Handover 0700i: Simplified - no instance number
  */
 const tooltipText = computed(() => {
   const config = agentColorConfig.value
-  if (props.instanceNumber === 1) {
-    return `${config.name} - ${config.description}`
-  }
-  return `${config.name} #${props.instanceNumber} - ${config.description}`
+  return `${config.name} - ${config.description}`
 })
 
 /**
  * Accessible ARIA label
+ * Handover 0700i: Simplified - no instance number
  */
 const ariaLabel = computed(() => {
   const config = agentColorConfig.value
-  if (props.instanceNumber === 1) {
-    return `${config.name} agent badge`
-  }
-  return `${config.name} agent instance ${props.instanceNumber} badge`
+  return `${config.name} agent badge`
 })
 </script>
 

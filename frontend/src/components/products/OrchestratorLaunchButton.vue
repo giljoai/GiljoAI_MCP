@@ -9,8 +9,8 @@
           variant="elevated"
           :disabled="!canLaunch"
           :loading="isLaunching"
-          @click="handleLaunch"
           aria-label="Launch Orchestrator"
+          @click="handleLaunch"
         >
           <v-icon start>mdi-rocket-launch</v-icon>
           Launch Orchestrator
@@ -129,15 +129,15 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn v-if="canClose" variant="text" @click="handleClose" aria-label="Close dialog">
+          <v-btn v-if="canClose" variant="text" aria-label="Close dialog" @click="handleClose">
             Close
           </v-btn>
           <v-btn
             v-if="errorMessage"
             color="primary"
             variant="flat"
-            @click="handleRetry"
             aria-label="Retry orchestrator launch"
+            @click="handleRetry"
           >
             Retry
           </v-btn>

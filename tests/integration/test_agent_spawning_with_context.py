@@ -19,25 +19,20 @@ Tests validate:
 5. Agent has access to necessary MCP tools via instructions
 """
 
-import json
-import pytest
-import pytest_asyncio
-from uuid import uuid4
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import uuid4
 
-from src.giljo_mcp.models import (
-    User, Product, Project, AgentExecution, AgentTemplate
-)
+import pytest_asyncio
+
 from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def agent_test_tenant():
@@ -66,7 +61,7 @@ async def agent_test_user(db_session, agent_test_tenant):
                 "memory_360": 2,
                 "git_history": 3,
                 "agent_templates": 3,
-            }
+            },
         },
         serena_enabled=True,
     )
@@ -107,7 +102,7 @@ async def agent_test_product(db_session, agent_test_tenant):
                     "summary": "First iteration completed",
                     "timestamp": datetime.utcnow().isoformat(),
                 }
-            ]
+            ],
         },
     )
     db_session.add(product)
@@ -134,6 +129,7 @@ async def agent_test_project(db_session, agent_test_product, agent_test_tenant):
 # ============================================================================
 # TEST SUITE 1: Implementer Agent Context
 # ============================================================================
+
 
 class TestImplementerAgentContext:
     """
@@ -221,6 +217,7 @@ class TestImplementerAgentContext:
 # TEST SUITE 2: Tester Agent Context
 # ============================================================================
 
+
 class TestTesterAgentContext:
     """
     Validate that Tester agents receive testing-focused context
@@ -283,6 +280,7 @@ class TestTesterAgentContext:
 # TEST SUITE 3: Architect Agent Context
 # ============================================================================
 
+
 class TestArchitectAgentContext:
     """
     Validate that Architect agents receive design-focused context
@@ -342,6 +340,7 @@ class TestArchitectAgentContext:
 # TEST SUITE 4: Context Respects Field Priorities
 # ============================================================================
 
+
 class TestContextRespectsPriorities:
     """
     Validate that agent context respects user's field priority settings
@@ -395,7 +394,7 @@ class TestContextRespectsPriorities:
                 "priorities": {
                     "product_core": 1,
                     "git_history": 4,  # EXCLUDED
-                }
+                },
             },
         )
         db_session.add(user)
@@ -408,6 +407,7 @@ class TestContextRespectsPriorities:
 # ============================================================================
 # TEST SUITE 5: Serena Instructions in Agent Context
 # ============================================================================
+
 
 class TestSerenaInstructionsForAgents:
     """
@@ -471,6 +471,7 @@ class TestSerenaInstructionsForAgents:
 # ============================================================================
 # TEST SUITE 6: Agent Mission Completeness
 # ============================================================================
+
 
 class TestAgentMissionCompleteness:
     """
@@ -556,6 +557,7 @@ class TestAgentMissionCompleteness:
 # TEST SUITE 7: Agent Job Metadata Completeness
 # ============================================================================
 
+
 class TestAgentJobMetadataCompleteness:
     """
     Validate that agent jobs have complete metadata for execution
@@ -637,6 +639,7 @@ class TestAgentJobMetadataCompleteness:
 # ============================================================================
 # TEST SUITE 8: Role-Specific Context Filtering
 # ============================================================================
+
 
 class TestRoleSpecificContextFiltering:
     """

@@ -16,12 +16,12 @@ production use including comprehensive error handling and metrics tracking.
 """
 
 import time
-from typing import Dict, Any
+from typing import Any
 
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer
 from sumy.nlp.stemmers import Stemmer
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.summarizers.lsa import LsaSummarizer
 from sumy.utils import get_stop_words
 
 
@@ -75,7 +75,7 @@ class VisionDocumentSummarizer:
         text: str,
         target_tokens: int = 25000,
         chunk_size: int = 10000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Summarize document to target token count using map-reduce LSA.
 
@@ -139,7 +139,7 @@ class VisionDocumentSummarizer:
                 parser = PlaintextParser.from_string(chunk, Tokenizer(self.language))
                 sentences = self.summarizer(parser.document, sentences_per_chunk)
                 summaries.append(" ".join(str(s) for s in sentences))
-            except Exception:
+            except (ValueError, ImportError, RuntimeError):  # noqa: PERF203 - Chunk processing resilience: skip bad chunks
                 # If chunk summarization fails, skip it
                 # This handles edge cases like very short chunks
                 continue  # nosec B112
@@ -218,16 +218,12 @@ class VisionDocumentSummarizer:
             sentence_count = max(5, int(target_tokens / 25))  # ~25 tokens per sentence (more aggressive)
             sentences = self.summarizer(parser.document, sentence_count)
             return " ".join(str(s) for s in sentences)
-        except Exception:
+        except (ValueError, ImportError, RuntimeError):
             # If consolidation fails, return text as-is
             # Better to be slightly over target than lose content
             return text
 
-    def summarize_multi_level(
-        self,
-        text: str,
-        levels: Dict[str, float] = None
-    ) -> Dict[str, Any]:
+    def summarize_multi_level(self, text: str, levels: dict[str, float] = None) -> dict[str, Any]:
         """
         Generate 2 summary levels based on percentage of original content.
 
@@ -274,7 +270,7 @@ class VisionDocumentSummarizer:
         # Default: percentage-based reduction (Handover 0246b)
         if levels is None:
             levels = {
-                "light": 0.33,   # Keep 33% of original
+                "light": 0.33,  # Keep 33% of original
                 "medium": 0.66,  # Keep 66% of original
             }
 
@@ -306,12 +302,12 @@ class VisionDocumentSummarizer:
 
             # Count sentences (split on period followed by space or end)
             summary_text = summary_result["summary"]
-            sentences = [s.strip() for s in summary_text.split('.') if s.strip()]
+            sentences = [s.strip() for s in summary_text.split(".") if s.strip()]
 
             results[level] = {
                 "summary": summary_text,
                 "tokens": summary_result["summary_tokens"],
-                "sentences": len(sentences)
+                "sentences": len(sentences),
             }
 
         results["original_tokens"] = original_tokens

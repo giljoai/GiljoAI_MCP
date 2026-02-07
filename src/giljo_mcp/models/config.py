@@ -6,18 +6,17 @@ optimization rules and metrics, download tokens, and API metrics.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -55,6 +54,9 @@ class Configuration(Base):
         Index("idx_config_category", "category"),
     )
 
+    def __repr__(self) -> str:
+        return f"<Configuration(id={self.id}, key='{self.key}', category='{self.category}')>"
+
 
 class DiscoveryConfig(Base):
     """
@@ -83,6 +85,9 @@ class DiscoveryConfig(Base):
         Index("idx_discovery_tenant", "tenant_key"),
         Index("idx_discovery_project", "project_id"),
     )
+
+    def __repr__(self) -> str:
+        return f"<DiscoveryConfig(id={self.id}, path_key='{self.path_key}')>"
 
 
 class GitConfig(Base):
@@ -163,6 +168,9 @@ class GitConfig(Base):
         """Check if webhook is properly configured"""
         return bool(self.webhook_url and self.webhook_secret)
 
+    def __repr__(self) -> str:
+        return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
+
 
 class GitCommit(Base):
     """
@@ -223,6 +231,9 @@ class GitCommit(Base):
         ),
     )
 
+    def __repr__(self) -> str:
+        return f"<GitCommit(id={self.id}, commit_hash='{self.commit_hash[:8] if self.commit_hash else None}')>"
+
 
 class SetupState(Base):
     """
@@ -254,11 +265,8 @@ class SetupState(Base):
     python_version = Column(String(20), nullable=True)
     node_version = Column(String(20), nullable=True)
 
-    # REMOVED (Handover 0034): Default password tracking fields
-    # Legacy admin/admin pattern no longer used
+    # REMOVED (Handover 0034): Default password tracking fields removed
     # Fresh install now creates admin via CreateAdminAccount.vue
-    # default_password_active = Column(...)  # REMOVED
-    # password_changed_at = Column(...)  # REMOVED
 
     # First admin creation tracking (Handover 0035: Security Enhancement)
     # CRITICAL SECURITY: Atomic flag preventing duplicate admin creation after first user setup
@@ -352,7 +360,7 @@ class SetupState(Base):
         ),
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize SetupState to dictionary.
 
@@ -390,7 +398,7 @@ class SetupState(Base):
         }
 
     @classmethod
-    async def get_by_tenant(cls, session: AsyncSession, tenant_key: str) -> Optional["SetupState"]:
+    async def get_by_tenant(cls, session: AsyncSession, tenant_key: str) -> "SetupState" | None:
         """
         Retrieve SetupState for a specific tenant.
 
@@ -434,7 +442,7 @@ class SetupState(Base):
         session.flush()
         return state
 
-    def mark_completed(self, setup_version: Optional[str] = None) -> None:
+    def mark_completed(self, setup_version: str | None = None) -> None:
         """
         Mark setup as completed.
 
@@ -442,7 +450,7 @@ class SetupState(Base):
             setup_version: Optional version string to set
         """
         self.completed = True
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         if setup_version:
             self.setup_version = setup_version
 
@@ -457,10 +465,10 @@ class SetupState(Base):
             self.validation_failures = []
 
         failures = list(self.validation_failures)  # Convert to mutable list
-        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
         self.validation_failures = failures
         self.validation_passed = False
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
 
     def add_validation_warning(self, message: str) -> None:
         """
@@ -473,16 +481,19 @@ class SetupState(Base):
             self.validation_warnings = []
 
         warnings = list(self.validation_warnings)  # Convert to mutable list
-        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        warnings.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
         self.validation_warnings = warnings
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
 
     def clear_validation_failures(self) -> None:
         """Clear all validation failures and warnings."""
         self.validation_failures = []
         self.validation_warnings = []
         self.validation_passed = True
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
+
+    def __repr__(self) -> str:
+        return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"
 
 
 class OptimizationRule(Base):
@@ -525,7 +536,7 @@ class OptimizationRule(Base):
         CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
 
 
@@ -573,7 +584,7 @@ class OptimizationMetric(Base):
         CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
 
 
@@ -616,14 +627,6 @@ class DownloadToken(Base):
         JSONB, default=dict, nullable=False, comment="Additional metadata (filename, file_count, file_size, etc.)"
     )
 
-    # Historical compatibility (kept for backward compatibility only)
-    is_used = Column(
-        Boolean, default=False, nullable=False, comment="Deprecated: legacy one-time download flag (not enforced)"
-    )
-    downloaded_at = Column(
-        DateTime(timezone=True), nullable=True, comment="Deprecated: legacy single-use timestamp (not enforced)"
-    )
-
     # Staging lifecycle and metrics (Handover 0102)
     staging_status = Column(
         String(20), default="pending", nullable=False, comment="Staging lifecycle status: pending|ready|failed"
@@ -649,8 +652,8 @@ class DownloadToken(Base):
         CheckConstraint("staging_status IN ('pending', 'ready', 'failed')", name="ck_download_token_staging_status"),
     )
 
-    def __repr__(self):
-        return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, used={self.is_used})>"
+    def __repr__(self) -> str:
+        return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, downloads={self.download_count})>"
 
     @property
     def is_expired(self) -> bool:
@@ -675,3 +678,6 @@ class ApiMetrics(Base):
     total_mcp_calls = Column(Integer, default=0)
 
     __table_args__ = (Index("idx_api_metrics_tenant_date", "tenant_key", "date"),)
+
+    def __repr__(self) -> str:
+        return f"<ApiMetrics(id={self.id}, tenant_key='{self.tenant_key}')>"

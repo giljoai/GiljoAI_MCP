@@ -11,9 +11,8 @@ Handles:
 import logging
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
 
 import yaml
 from fastapi import APIRouter, HTTPException
@@ -35,7 +34,7 @@ class DatabaseSetupRequest(BaseModel):
 
 
 @router.post("/test-connection")
-async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
+async def test_database_connection(request: DatabaseSetupRequest) -> dict:
     """
     Test connection to PostgreSQL server.
 
@@ -113,15 +112,14 @@ async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
             }
         return {"success": False, "status": "error", "message": f"Connection failed: {e!s}"}
 
-    except ImportError:
-        raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        if isinstance(e, ImportError):
+            raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
         return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
 
 
 @router.post("/setup")
-async def setup_database(request: DatabaseSetupRequest) -> Dict:
+async def setup_database(request: DatabaseSetupRequest) -> dict:
     """
     Set up PostgreSQL database for GiljoAI MCP.
 
@@ -209,7 +207,7 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
             del config_data["setup_mode"]
 
         # Write updated config
-        backup_path = config_path.with_suffix(f".yaml.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        backup_path = config_path.with_suffix(f".yaml.backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
         shutil.copy(config_path, backup_path)
 
         with open(config_path, "w", encoding="utf-8") as f:
@@ -230,13 +228,13 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
             "config_backup": str(backup_path),
         }
 
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         logger.error(f"Database setup failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database setup failed: {e!s}") from e
 
 
 @router.get("/verify")
-async def verify_database_setup() -> Dict:
+async def verify_database_setup() -> dict:
     """
     Verify database setup from CLI installation.
 
@@ -364,9 +362,8 @@ async def verify_database_setup() -> Dict:
                 "error": str(e),
             }
 
-    except ImportError:
-        raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
+        if isinstance(e, ImportError):
+            raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
         logger.error(f"Database verification failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database verification failed: {e!s}") from e

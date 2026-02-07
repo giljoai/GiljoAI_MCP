@@ -10,11 +10,12 @@ TDD Phase: RED (Tests written BEFORE optimization)
 Expected: Tests MAY FAIL initially if performance not optimized
 """
 
+import time
+from statistics import quantiles
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-import time
-from uuid import uuid4
-from statistics import quantiles
 
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.agent_discovery import get_available_agents
@@ -28,7 +29,7 @@ async def test_user(db_session):
         email=f"perf_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         role="developer",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db_session.add(user)
     await db_session.commit()
@@ -39,6 +40,7 @@ async def test_user(db_session):
 @pytest_asyncio.fixture
 async def populate_agents(db_session, test_user):
     """Populate database with test agents for performance testing"""
+
     async def _populate(count: int):
         agents = []
         for i in range(count):
@@ -49,7 +51,7 @@ async def populate_agents(db_session, test_user):
                 tenant_key=test_user.tenant_key,
                 is_active=True,
                 version=f"1.{i}.0",
-                template_content="Test content"
+                system_instructions="Test content",
             )
             agents.append(agent)
             db_session.add(agent)
@@ -92,10 +94,9 @@ class TestMCPToolLatency:
         p99 = quantiles(latencies, n=100)[98]  # P99
 
         # Assertions
-        assert p95 < 100, \
-            f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (100ms)"
+        assert p95 < 100, f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (100ms)"
 
-        print(f"\n✓ Small dataset (5 agents) latency:")
+        print("\n✓ Small dataset (5 agents) latency:")
         print(f"  - P50: {p50:.2f}ms")
         print(f"  - P95: {p95:.2f}ms (target: <50ms, acceptance: <100ms)")
         print(f"  - P99: {p99:.2f}ms")
@@ -129,10 +130,9 @@ class TestMCPToolLatency:
         p99 = quantiles(latencies, n=100)[98]
 
         # Assertions
-        assert p95 < 200, \
-            f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (200ms)"
+        assert p95 < 200, f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (200ms)"
 
-        print(f"\n✓ Medium dataset (20 agents) latency:")
+        print("\n✓ Medium dataset (20 agents) latency:")
         print(f"  - P50: {p50:.2f}ms")
         print(f"  - P95: {p95:.2f}ms (target: <100ms, acceptance: <200ms)")
         print(f"  - P99: {p99:.2f}ms")
@@ -168,10 +168,9 @@ class TestMCPToolLatency:
         p99 = latencies[p99_idx] if p99_idx < len(latencies) else latencies[-1]
 
         # Assertions
-        assert p95 < 500, \
-            f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (500ms)"
+        assert p95 < 500, f"P95 latency ({p95:.2f}ms) exceeds acceptance threshold (500ms)"
 
-        print(f"\n✓ Large dataset (50 agents) latency:")
+        print("\n✓ Large dataset (50 agents) latency:")
         print(f"  - P50: {p50:.2f}ms")
         print(f"  - P95: {p95:.2f}ms (target: <200ms, acceptance: <500ms)")
         print(f"  - P99: {p99:.2f}ms")
@@ -208,10 +207,9 @@ class TestMCPToolLatency:
         p99 = quantiles(latencies, n=100)[98]
 
         # Assertions
-        assert p95 < 300, \
-            f"P95 latency under load ({p95:.2f}ms) exceeds acceptance threshold (300ms)"
+        assert p95 < 300, f"P95 latency under load ({p95:.2f}ms) exceeds acceptance threshold (300ms)"
 
-        print(f"\n✓ Concurrent calls (10 agents, 50 total calls) latency:")
+        print("\n✓ Concurrent calls (10 agents, 50 total calls) latency:")
         print(f"  - P50: {p50:.2f}ms")
         print(f"  - P95: {p95:.2f}ms (target: <150ms, acceptance: <300ms)")
         print(f"  - P99: {p99:.2f}ms")
@@ -246,7 +244,7 @@ class TestMCPToolLatency:
         # If no caching, they should be similar
         performance_improvement = ((cold_latency - avg_warm_latency) / cold_latency) * 100
 
-        print(f"\n✓ Cache performance (if implemented):")
+        print("\n✓ Cache performance (if implemented):")
         print(f"  - Cold call latency: {cold_latency:.2f}ms")
         print(f"  - Avg warm call latency: {avg_warm_latency:.2f}ms")
         print(f"  - Performance improvement: {performance_improvement:.1f}%")
@@ -280,11 +278,11 @@ class TestMCPToolThroughput:
         actual_duration = time.perf_counter() - start_time
         rps = request_count / actual_duration
 
-        print(f"\n✓ Throughput test (5 agents):")
+        print("\n✓ Throughput test (5 agents):")
         print(f"  - Requests completed: {request_count}")
         print(f"  - Duration: {actual_duration:.2f}s")
         print(f"  - Requests per second: {rps:.1f} RPS")
-        print(f"  - Target: >100 RPS")
+        print("  - Target: >100 RPS")
         print(f"  - Result: {'OPTIMAL' if rps > 100 else 'ACCEPTABLE' if rps > 50 else 'NEEDS OPTIMIZATION'}")
 
         # This is informational - no hard assertion

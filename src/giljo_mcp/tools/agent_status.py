@@ -19,11 +19,11 @@ Handover 0366c Changes:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
-from ..models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,12 @@ VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancel
 # Terminal states (cannot transition from these)
 TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
-# Module-level db_manager (initialized by register function or init_for_testing)
-_db_manager: Optional[Any] = None
+
+# Module-level state holder
+class _AgentStatusState:
+    """State holder to avoid global statement."""
+
+    db_manager: Any | None = None
 
 
 def init_for_testing(db_manager):
@@ -48,19 +52,18 @@ def init_for_testing(db_manager):
     Args:
         db_manager: Database manager instance for testing
     """
-    global _db_manager
-    _db_manager = db_manager
+    _AgentStatusState.db_manager = db_manager
 
 
 async def set_agent_status(
     agent_id: str,
     tenant_key: str,
     status: str,
-    progress: Optional[int] = None,
-    reason: Optional[str] = None,
-    current_task: Optional[str] = None,
-    estimated_completion: Optional[datetime] = None,
-) -> Dict[str, Any]:
+    progress: int | None = None,
+    reason: str | None = None,
+    current_task: str | None = None,
+    estimated_completion: datetime | None = None,
+) -> dict[str, Any]:
     """
     MCP tool for agents to update their own status in the orchestration grid.
 
@@ -68,10 +71,10 @@ async def set_agent_status(
         agent_id: Agent execution ID to update (the WHO - specific executor instance)
         tenant_key: Tenant identifier for multi-tenant isolation
         status: One of ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned']
-        progress: Optional[int] - Progress percentage (0-100), required for 'working' status
-        reason: Optional[str] - Reason for 'failed' or 'blocked' status
-        current_task: Optional[str] - Description of current task (for 'working' status)
-        estimated_completion: Optional[datetime] - When agent expects to complete
+        progress: int | None - Progress percentage (0-100), required for 'working' status
+        reason: str | None - Reason for 'failed' or 'blocked' status
+        current_task: str | None - Description of current task (for 'working' status)
+        estimated_completion: datetime | None - When agent expects to complete
 
     Returns:
         dict: {
@@ -128,17 +131,17 @@ async def set_agent_status(
             websocket_manager = None
 
         # Use module-level db_manager (injected by tests or register function)
-        if _db_manager is None:
-            from ..database import DatabaseManager
+        if _AgentStatusState.db_manager is None:
+            from giljo_mcp.database import DatabaseManager
+
             db_manager = DatabaseManager()
         else:
-            db_manager = _db_manager
+            db_manager = _AgentStatusState.db_manager
 
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)
             stmt = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key
+                AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             execution = result.scalar_one_or_none()
@@ -151,17 +154,6 @@ async def set_agent_status(
 
             # Validate state machine - cannot transition from terminal states
             if old_status in TERMINAL_STATES:
-                # Handover 0113: Special message for decommissioned agents
-                if old_status == "decommissioned":
-                    return {
-                        "success": False,
-                        "error": "AGENT_DECOMMISSIONED",
-                        "agent_id": agent_id,
-                        "job_id": execution.job_id,
-                        "old_status": old_status,
-                        "message": f"Agent {agent_id} has been decommissioned (project closeout complete). Spawn a new agent if needed.",
-                        "decommissioned_at": execution.decommissioned_at.isoformat() if execution.decommissioned_at else None,
-                    }
                 raise ValueError(
                     f"Cannot transition from terminal state '{old_status}'. Execution is already in final state."
                 )
@@ -209,7 +201,7 @@ async def set_agent_status(
                         block_reason=reason if status == "blocked" else None,
                         estimated_completion=estimated_completion,
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
@@ -231,14 +223,14 @@ async def set_agent_status(
         raise
     except Exception as e:
         logger.error(f"[set_agent_status] Error updating status: {e}", exc_info=True)
-        raise ValueError(f"Failed to update agent status: {e!s}")
+        raise ValueError(f"Failed to update agent status: {e!s}") from e
 
 
 async def report_progress(
     agent_id: str,
     tenant_key: str,
     progress: dict,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     MCP tool for agents to report progress updates (Handover 0107).
 
@@ -284,17 +276,17 @@ async def report_progress(
             websocket_manager = None
 
         # Use module-level db_manager (injected by tests or register function)
-        if _db_manager is None:
-            from ..database import DatabaseManager
+        if _AgentStatusState.db_manager is None:
+            from giljo_mcp.database import DatabaseManager
+
             db_manager = DatabaseManager()
         else:
-            db_manager = _db_manager
+            db_manager = _AgentStatusState.db_manager
 
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)
             stmt = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key
+                AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             execution = result.scalar_one_or_none()
@@ -331,13 +323,11 @@ async def report_progress(
                             "timestamp": now.isoformat(),
                         }
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
-            logger.info(
-                f"[report_progress] Execution {agent_id} progress updated, tenant={tenant_key}"
-            )
+            logger.info(f"[report_progress] Execution {agent_id} progress updated, tenant={tenant_key}")
 
             return {
                 "success": True,
@@ -352,4 +342,4 @@ async def report_progress(
         raise
     except Exception as e:
         logger.error(f"[report_progress] Error reporting progress: {e}", exc_info=True)
-        raise ValueError(f"Failed to report progress: {e!s}")
+        raise ValueError(f"Failed to report progress: {e!s}") from e

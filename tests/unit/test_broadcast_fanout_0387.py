@@ -11,14 +11,15 @@ Tests cover:
 Expected: ALL tests FAIL until implementation is complete.
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, MagicMock
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
-from src.giljo_mcp.services.message_service import MessageService
+import pytest
+
 from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.services.message_service import MessageService
 
 
 class TestBroadcastFanoutSendMessage:
@@ -64,8 +65,10 @@ class TestBroadcastFanoutSendMessage:
 
         # Track added messages
         added_messages = []
+
         def track_add(msg):
             added_messages.append(msg)
+
         session.add = Mock(side_effect=track_add)
 
         # Mock database responses in order:
@@ -81,11 +84,13 @@ class TestBroadcastFanoutSendMessage:
         ws_agents_result = Mock()
         ws_agents_result.scalars = Mock(return_value=Mock(all=Mock(return_value=active_executions)))
 
-        session.execute = AsyncMock(side_effect=[
-            project_result,     # Project lookup
-            agents_result,      # Fan-out agent lookup
-            ws_agents_result,   # WebSocket recipient lookup
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                project_result,  # Project lookup
+                agents_result,  # Fan-out agent lookup
+                ws_agents_result,  # WebSocket recipient lookup
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -96,7 +101,7 @@ class TestBroadcastFanoutSendMessage:
             project_id=project_id,
             message_type="broadcast",
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         # Assert: Success
@@ -169,11 +174,13 @@ class TestBroadcastFanoutSendMessage:
         ws_agents_result = Mock()
         ws_agents_result.scalars = Mock(return_value=Mock(all=Mock(return_value=active_executions)))
 
-        session.execute = AsyncMock(side_effect=[
-            project_result,
-            agents_result,
-            ws_agents_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                project_result,
+                agents_result,
+                ws_agents_result,
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -183,7 +190,7 @@ class TestBroadcastFanoutSendMessage:
             content="Test broadcast",
             project_id=project_id,
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         # Assert: Sender not in recipients
@@ -194,8 +201,7 @@ class TestBroadcastFanoutSendMessage:
             all_recipients.extend(msg.to_agents)
 
         assert sender_agent_id not in all_recipients, (
-            f"Sender ({sender_agent_id}) should be excluded from broadcast recipients. "
-            f"Found in: {all_recipients}"
+            f"Sender ({sender_agent_id}) should be excluded from broadcast recipients. Found in: {all_recipients}"
         )
 
     @pytest.mark.asyncio
@@ -243,11 +249,13 @@ class TestBroadcastFanoutSendMessage:
         ws_agents_result = Mock()
         ws_agents_result.scalars = Mock(return_value=Mock(all=Mock(return_value=active_executions)))
 
-        session.execute = AsyncMock(side_effect=[
-            project_result,
-            agents_result,
-            ws_agents_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                project_result,
+                agents_result,
+                ws_agents_result,
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -257,7 +265,7 @@ class TestBroadcastFanoutSendMessage:
             content="Test broadcast",
             project_id=project_id,
             from_agent="external-sender",  # External so no sender exclusion overlap
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         # Assert
@@ -268,8 +276,7 @@ class TestBroadcastFanoutSendMessage:
             all_recipients.extend(msg.to_agents)
 
         assert completed_agent_id not in all_recipients, (
-            f"Completed agent ({completed_agent_id}) should be excluded. "
-            f"Found in: {all_recipients}"
+            f"Completed agent ({completed_agent_id}) should be excluded. Found in: {all_recipients}"
         )
 
 
@@ -338,29 +345,25 @@ class TestBroadcastFanoutReceiveMessages:
         msg_result = Mock()
         msg_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[msg_for_a])))
 
-        session.execute = AsyncMock(side_effect=[
-            exec_result,  # Agent execution lookup
-            job_result,   # Job lookup
-            msg_result,   # Messages query
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                exec_result,  # Agent execution lookup
+                job_result,  # Job lookup
+                msg_result,  # Messages query
+            ]
+        )
 
         service = MessageService(db_manager, tenant_manager)
 
         # Act: Agent A receives messages
-        result = await service.receive_messages(
-            agent_id=agent_a_id,
-            limit=10,
-            tenant_key="test-tenant"
-        )
+        result = await service.receive_messages(agent_id=agent_a_id, limit=10, tenant_key="test-tenant")
 
         # Assert: Success and message retrieved
         assert result["success"] is True
         assert result["count"] == 1
 
         # Assert: Agent A's message status changed
-        assert msg_for_a.status == "acknowledged", (
-            f"Agent A's message should be acknowledged. Got: {msg_for_a.status}"
-        )
+        assert msg_for_a.status == "acknowledged", f"Agent A's message should be acknowledged. Got: {msg_for_a.status}"
 
         # Assert: Agent B's message NOT affected (independent Message record)
         assert msg_for_b.status == "pending", (
@@ -428,19 +431,18 @@ class TestBroadcastFanoutReceiveMessages:
         msg_result = Mock()
         msg_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[fanout_msg])))
 
-        session.execute = AsyncMock(side_effect=[
-            exec_result,
-            job_result,
-            msg_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                exec_result,
+                job_result,
+                msg_result,
+            ]
+        )
 
         service = MessageService(db_manager, tenant_manager)
 
         # Act
-        result = await service.receive_messages(
-            agent_id=agent_id,
-            tenant_key="test-tenant"
-        )
+        result = await service.receive_messages(agent_id=agent_id, tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -487,11 +489,13 @@ class TestBroadcastFanoutEdgeCases:
         ws_agents_result = Mock()
         ws_agents_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
 
-        session.execute = AsyncMock(side_effect=[
-            project_result,
-            agents_result,
-            ws_agents_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                project_result,
+                agents_result,
+                ws_agents_result,
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -501,7 +505,7 @@ class TestBroadcastFanoutEdgeCases:
             content="Lonely broadcast",
             project_id=project_id,
             from_agent="orchestrator",
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert: Should succeed but create 0 messages (no recipients)
@@ -529,8 +533,6 @@ class TestBroadcastFanoutEdgeCases:
         target_execution.agent_id = target_agent_id
         target_execution.agent_display_name = "implementer"
         target_execution.status = "waiting"
-        target_execution.instance_number = 1
-
         added_messages = []
         session.add = Mock(side_effect=lambda msg: added_messages.append(msg))
 
@@ -544,11 +546,13 @@ class TestBroadcastFanoutEdgeCases:
         ws_agents_result = Mock()
         ws_agents_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[target_execution])))
 
-        session.execute = AsyncMock(side_effect=[
-            project_result,
-            exec_result,  # Agent type resolution
-            ws_agents_result,
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                project_result,
+                exec_result,  # Agent type resolution
+                ws_agents_result,
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -559,20 +563,16 @@ class TestBroadcastFanoutEdgeCases:
             project_id=project_id,
             message_type="direct",
             from_agent="orchestrator",
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert: Direct message creates exactly 1 message
         assert result["success"] is True
-        assert len(added_messages) == 1, (
-            f"Direct message should create exactly 1 message. Got: {len(added_messages)}"
-        )
+        assert len(added_messages) == 1, f"Direct message should create exactly 1 message. Got: {len(added_messages)}"
 
         # Assert: to_agents contains resolved agent_id (not "implementer" or "all")
         msg = added_messages[0]
-        assert target_agent_id in msg.to_agents, (
-            f"Direct message should resolve to agent_id. Got: {msg.to_agents}"
-        )
+        assert target_agent_id in msg.to_agents, f"Direct message should resolve to agent_id. Got: {msg.to_agents}"
 
 
 # Fixtures

@@ -10,15 +10,14 @@ TDD Approach:
 - Refactoring if needed (REFACTOR phase)
 """
 
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Base, AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import AgentTemplate, Base, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestAgentJobTemplateTracking:
@@ -74,7 +73,6 @@ class TestAgentJobTemplateTracking:
             role="implementer",
             cli_tool="claude",
             description="Test implementation agent",
-            template_content="Test template content",
             system_instructions="System instructions",
             user_instructions="User instructions",
             model="sonnet",
@@ -120,9 +118,7 @@ class TestAgentJobTemplateTracking:
         assert agent_job.template_id == sample_template.id
 
         # Verify we can query by template_id
-        result = db_session.execute(
-            select(AgentExecution).where(AgentExecution.template_id == sample_template.id)
-        )
+        result = db_session.execute(select(AgentExecution).where(AgentExecution.template_id == sample_template.id))
         retrieved_job = result.scalar_one()
         assert retrieved_job.id == agent_job.id
 
@@ -199,9 +195,7 @@ class TestAgentJobTemplateTracking:
         db_session.commit()
 
         # Query all jobs with this template
-        result = db_session.execute(
-            select(AgentExecution).where(AgentExecution.template_id == sample_template.id)
-        )
+        result = db_session.execute(select(AgentExecution).where(AgentExecution.template_id == sample_template.id))
         jobs = result.scalars().all()
 
         assert len(jobs) == 2

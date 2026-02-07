@@ -49,10 +49,7 @@ async def upload_vision_document(
     """
     from src.giljo_mcp.services.product_service import ProductService
 
-    logger.info(
-        f"User {current_user.username} uploading vision document "
-        f"'{file.filename}' for product {product_id}"
-    )
+    logger.info(f"User {current_user.username} uploading vision document '{file.filename}' for product {product_id}")
 
     # Validate file size (10MB limit)
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -63,7 +60,7 @@ async def upload_vision_document(
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
+            detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB",
         )
 
     # Validate file type (markdown/text)
@@ -71,16 +68,17 @@ async def upload_vision_document(
     if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}",
         )
 
     try:
         # Read file content
         content = await file.read()
-        content_str = content.decode('utf-8')
+        content_str = content.decode("utf-8")
 
         # Upload via ProductService
         from src.giljo_mcp.database import DatabaseManager
+
         db_manager = DatabaseManager()
         product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
 
@@ -94,8 +92,7 @@ async def upload_vision_document(
 
         if not result["success"]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.get("error", "Vision upload failed")
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.get("error", "Vision upload failed")
             )
 
         logger.info(
@@ -113,22 +110,16 @@ async def upload_vision_document(
         }
 
     except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be valid UTF-8 encoded text"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be valid UTF-8 encoded text")
     except ValueError as e:
         # Handover 0508: Catch validation errors from ProductService
         error_msg = str(e).lower()
         if "already exists" in error_msg or "duplicate" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again."
+                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again.",
             )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValidationError as e:
@@ -138,17 +129,17 @@ async def upload_vision_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Vision upload failed: {e}")
+        logger.exception("Vision upload failed")
         # Handover 0508: Check for IntegrityError (duplicate constraint violation)
         error_str = str(e).lower()
         if "unique" in error_str or "duplicate" in error_str or "uq_vision_doc" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again."
+                detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Upload failed. Please try again or contact support."
+            detail="Upload failed. Please try again or contact support.",
         )
 
 
@@ -174,12 +165,16 @@ async def list_vision_documents(
 
     try:
         # Query vision documents for this product
-        stmt = select(VisionDocument).where(
-            and_(
-                VisionDocument.tenant_key == tenant_key,
-                VisionDocument.product_id == product_id,
+        stmt = (
+            select(VisionDocument)
+            .where(
+                and_(
+                    VisionDocument.tenant_key == tenant_key,
+                    VisionDocument.product_id == product_id,
+                )
             )
-        ).order_by(VisionDocument.display_order, VisionDocument.created_at)
+            .order_by(VisionDocument.display_order, VisionDocument.created_at)
+        )
 
         result = await db.execute(stmt)
         documents = result.scalars().all()
@@ -190,34 +185,36 @@ async def list_vision_documents(
             # Check if summaries exist
             has_summaries = bool(doc.summary_light or doc.summary_medium)
 
-            response_docs.append(VisionDocumentResponse(
-                id=doc.id,
-                tenant_key=doc.tenant_key,
-                product_id=doc.product_id,
-                document_name=doc.document_name,
-                document_type=doc.document_type,
-                storage_type=doc.storage_type,
-                vision_path=doc.vision_path,
-                vision_document=doc.vision_document,
-                chunked=doc.chunked,
-                chunk_count=doc.chunk_count,
-                total_tokens=doc.total_tokens,
-                file_size=doc.file_size,
-                content_hash=doc.content_hash,
-                version=doc.version,
-                is_active=doc.is_active,
-                display_order=doc.display_order,
-                created_at=doc.created_at,
-                updated_at=doc.updated_at,
-                chunked_at=doc.chunked_at,
-                meta_data=doc.meta_data or {},
-                # Summary fields (Handover 0246b: light/medium only)
-                summary_light=doc.summary_light,
-                summary_medium=doc.summary_medium,
-                summary_light_tokens=doc.summary_light_tokens,
-                summary_medium_tokens=doc.summary_medium_tokens,
-                has_summaries=has_summaries,
-            ))
+            response_docs.append(
+                VisionDocumentResponse(
+                    id=doc.id,
+                    tenant_key=doc.tenant_key,
+                    product_id=doc.product_id,
+                    document_name=doc.document_name,
+                    document_type=doc.document_type,
+                    storage_type=doc.storage_type,
+                    vision_path=doc.vision_path,
+                    vision_document=doc.vision_document,
+                    chunked=doc.chunked,
+                    chunk_count=doc.chunk_count,
+                    total_tokens=doc.total_tokens,
+                    file_size=doc.file_size,
+                    content_hash=doc.content_hash,
+                    version=doc.version,
+                    is_active=doc.is_active,
+                    display_order=doc.display_order,
+                    created_at=doc.created_at,
+                    updated_at=doc.updated_at,
+                    chunked_at=doc.chunked_at,
+                    meta_data=doc.meta_data or {},
+                    # Summary fields (Handover 0246b: light/medium only)
+                    summary_light=doc.summary_light,
+                    summary_medium=doc.summary_medium,
+                    summary_light_tokens=doc.summary_light_tokens,
+                    summary_medium_tokens=doc.summary_medium_tokens,
+                    has_summaries=has_summaries,
+                )
+            )
 
         logger.debug(f"Retrieved {len(response_docs)} vision documents for product {product_id}")
 
@@ -231,12 +228,9 @@ async def list_vision_documents(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to list vision documents: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+    except Exception:
+        logger.exception("Failed to list vision documents")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.delete("/{product_id}/vision/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -274,10 +268,7 @@ async def delete_vision_document(
         doc = result.scalar_one_or_none()
 
         if not doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Vision document not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vision document not found")
 
         # Delete associated chunks first
         delete_chunks_stmt = delete(MCPContextIndex).where(
@@ -294,7 +285,7 @@ async def delete_vision_document(
 
         logger.info(f"Successfully deleted vision document {doc_id}")
 
-        return None
+        return
 
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -304,12 +295,9 @@ async def delete_vision_document(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to delete vision document: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+    except Exception:
+        logger.exception("Failed to delete vision document")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/{product_id}/vision-chunks", response_model=List[VisionChunk])
@@ -333,22 +321,20 @@ async def get_vision_chunks(
 
     from src.giljo_mcp.models import MCPContextIndex
 
-    logger.debug(
-        f"User {current_user.username} retrieving vision chunks "
-        f"for product {product_id}"
-    )
+    logger.debug(f"User {current_user.username} retrieving vision chunks for product {product_id}")
 
     try:
         # Query context chunks for this product
-        stmt = select(MCPContextIndex).where(
-            and_(
-                MCPContextIndex.tenant_key == tenant_key,
-                MCPContextIndex.product_id == product_id,
-                MCPContextIndex.vision_document_id.isnot(None)
+        stmt = (
+            select(MCPContextIndex)
+            .where(
+                and_(
+                    MCPContextIndex.tenant_key == tenant_key,
+                    MCPContextIndex.product_id == product_id,
+                    MCPContextIndex.vision_document_id.isnot(None),
+                )
             )
-        ).order_by(
-            MCPContextIndex.vision_document_id,
-            MCPContextIndex.chunk_order
+            .order_by(MCPContextIndex.vision_document_id, MCPContextIndex.chunk_order)
         )
 
         result = await db.execute(stmt)
@@ -357,16 +343,18 @@ async def get_vision_chunks(
         # Convert to response model
         response_chunks = []
         for chunk in chunks:
-            response_chunks.append(VisionChunk(
-                chunk_number=chunk.chunk_order,
-                total_chunks=len(chunks),
-                content=chunk.content,
-                char_start=0,  # Not tracked in current schema
-                char_end=len(chunk.content),
-                boundary_type="semantic",  # Default boundary type
-                keywords=chunk.keywords or [],
-                headers=chunk.summary.split("\n") if chunk.summary else [],
-            ))
+            response_chunks.append(
+                VisionChunk(
+                    chunk_number=chunk.chunk_order,
+                    total_chunks=len(chunks),
+                    content=chunk.content,
+                    char_start=0,  # Not tracked in current schema
+                    char_end=len(chunk.content),
+                    boundary_type="semantic",  # Default boundary type
+                    keywords=chunk.keywords or [],
+                    headers=chunk.summary.split("\n") if chunk.summary else [],
+                )
+            )
 
         logger.debug(f"Retrieved {len(response_chunks)} vision chunks for product {product_id}")
 
@@ -380,9 +368,6 @@ async def get_vision_chunks(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to retrieve vision chunks: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+    except Exception:
+        logger.exception("Failed to retrieve vision chunks")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

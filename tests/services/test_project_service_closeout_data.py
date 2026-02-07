@@ -211,9 +211,7 @@ async def test_get_closeout_data_with_git_integration(
 
 
 @pytest.mark.asyncio
-async def test_get_closeout_data_tenant_isolation(
-    db_manager, db_session: AsyncSession, tenant_manager: TenantManager
-):
+async def test_get_closeout_data_tenant_isolation(db_manager, db_session: AsyncSession, tenant_manager: TenantManager):
     """Closeout data cannot be fetched across tenants."""
     tenant_one = TenantManager.generate_tenant_key()
     tenant_two = TenantManager.generate_tenant_key()

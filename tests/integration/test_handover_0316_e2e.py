@@ -9,17 +9,18 @@ Tests the complete workflow:
 5. Verify bug fixes (get_tech_stack, get_architecture)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.tools.context_tools.get_product_context import get_product_context
-from src.giljo_mcp.tools.context_tools.get_testing import get_testing
-from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
-from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
-from src.giljo_mcp.tools.context_tools.get_project import get_project
+import pytest
+
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from src.giljo_mcp.tools.context_tools.get_product_context import get_product_context
+from src.giljo_mcp.tools.context_tools.get_project import get_project
+from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+from src.giljo_mcp.tools.context_tools.get_testing import get_testing
 
 
 @pytest.mark.integration
@@ -38,23 +39,17 @@ async def test_full_product_creation_with_quality_standards(mock_db_manager):
                 "languages": ["Python"],
                 "frontend": ["Vue 3"],
                 "backend": ["FastAPI"],
-                "database": ["PostgreSQL"]
+                "database": ["PostgreSQL"],
             },
             "architecture": {
                 "pattern": "Microservices",
                 "design_patterns": "Repository",
                 "api_style": "RESTful",
-                "notes": "Notes here"
+                "notes": "Notes here",
             },
-            "test_config": {
-                "strategy": "TDD",
-                "coverage_target": 80,
-                "frameworks": ["pytest"]
-            },
-            "features": {
-                "core": ["Feature 1", "Feature 2"]
-            }
-        }
+            "test_config": {"strategy": "TDD", "coverage_target": 80, "frameworks": ["pytest"]},
+            "features": {"core": ["Feature 1", "Feature 2"]},
+        },
     }
 
     product = Product(**product_data)
@@ -90,9 +85,7 @@ async def test_full_product_creation_with_quality_standards(mock_db_manager):
     # Step 2: Update quality_standards via service
     service = ProductService(mock_db_manager, mock_ws_manager)
     result = await service.update_quality_standards(
-        product_id="e2e-product-id",
-        quality_standards="80% coverage, TDD required",
-        tenant_key="e2e-tenant"
+        product_id="e2e-product-id", quality_standards="80% coverage, TDD required", tenant_key="e2e-tenant"
     )
 
     # Update product object to reflect changes
@@ -102,30 +95,21 @@ async def test_full_product_creation_with_quality_standards(mock_db_manager):
 
     # Step 3: Fetch via get_product_context
     product_ctx = await get_product_context(
-        product_id="e2e-product-id",
-        tenant_key="e2e-tenant",
-        include_metadata=False,
-        db_manager=mock_db_manager
+        product_id="e2e-product-id", tenant_key="e2e-tenant", include_metadata=False, db_manager=mock_db_manager
     )
     assert product_ctx["data"]["product_name"] == "E2E Test Product"
     assert product_ctx["data"]["core_features"] == ["Feature 1", "Feature 2"]
 
     # Step 4: Fetch via get_testing
     testing_ctx = await get_testing(
-        product_id="e2e-product-id",
-        tenant_key="e2e-tenant",
-        depth="full",
-        db_manager=mock_db_manager
+        product_id="e2e-product-id", tenant_key="e2e-tenant", depth="full", db_manager=mock_db_manager
     )
     assert testing_ctx["data"]["quality_standards"] == "80% coverage, TDD required"
     assert testing_ctx["data"]["testing_strategy"] == "TDD"
 
     # Step 5: Fetch via get_tech_stack (verify bug fix)
     tech_ctx = await get_tech_stack(
-        product_id="e2e-product-id",
-        tenant_key="e2e-tenant",
-        sections="all",
-        db_manager=mock_db_manager
+        product_id="e2e-product-id", tenant_key="e2e-tenant", sections="all", db_manager=mock_db_manager
     )
     assert tech_ctx["data"]["programming_languages"] == ["Python"]
     assert tech_ctx["data"]["frontend_frameworks"] == ["Vue 3"]
@@ -147,7 +131,7 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
         get_project,
         get_tech_stack,
         get_testing,
-        get_vision_document
+        get_vision_document,
     )
 
     # Verify all tools are callable
@@ -170,13 +154,9 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
             "tech_stack": {"languages": ["Python"]},
             "architecture": {"pattern": "Microservices"},
             "test_config": {"strategy": "TDD"},
-            "features": {"core": ["Feature 1"]}
+            "features": {"core": ["Feature 1"]},
         },
-        "product_memory": {
-            "github": {},
-            "learnings": [],
-            "context": {}
-        }
+        "product_memory": {"github": {}, "learnings": [], "context": {}},
     }
 
     project_data = {
@@ -186,7 +166,7 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
         "name": "Test Project",
         "alias": "ABC123",
         "description": "Test",
-        "mission": "Test mission"
+        "mission": "Test mission",
     }
 
     product = Product(**product_data)
@@ -223,8 +203,7 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
         # First 4 calls are for product, 5th is for project
         if execute_call_count[0] <= 4:
             return create_mock_result(product)
-        else:
-            return create_mock_result(project)
+        return create_mock_result(project)
 
     mock_session.execute = mock_execute
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -235,33 +214,23 @@ async def test_orchestrator_fetches_all_9_context_tools(mock_db_manager):
     results = []
 
     # 1. get_product_context
-    r1 = await get_product_context(
-        "orchestrator-test-id", "orch-tenant", False, mock_db_manager
-    )
+    r1 = await get_product_context("orchestrator-test-id", "orch-tenant", False, mock_db_manager)
     results.append(r1["source"] == "product_context")
 
     # 2. get_testing
-    r2 = await get_testing(
-        "orchestrator-test-id", "orch-tenant", "basic", mock_db_manager
-    )
+    r2 = await get_testing("orchestrator-test-id", "orch-tenant", "basic", mock_db_manager)
     results.append(r2["source"] == "testing")
 
     # 3. get_tech_stack
-    r3 = await get_tech_stack(
-        "orchestrator-test-id", "orch-tenant", "all", 0, None, mock_db_manager
-    )
+    r3 = await get_tech_stack("orchestrator-test-id", "orch-tenant", "all", 0, None, mock_db_manager)
     results.append(r3["source"] == "tech_stack")
 
     # 4. get_architecture
-    r4 = await get_architecture(
-        "orchestrator-test-id", "orch-tenant", "overview", 0, None, mock_db_manager
-    )
+    r4 = await get_architecture("orchestrator-test-id", "orch-tenant", "overview", 0, None, mock_db_manager)
     results.append(r4["source"] == "architecture")
 
     # 5. get_project
-    r5 = await get_project(
-        "orch-project-id", "orch-tenant", False, mock_db_manager
-    )
+    r5 = await get_project("orch-project-id", "orch-tenant", False, mock_db_manager)
     results.append(r5["source"] == "project_description")
 
     # All 5 tools should work
@@ -279,7 +248,7 @@ async def test_multi_tenant_isolation_e2e(mock_db_manager):
         tenant_key="tenant-a",
         name="Tenant A Product",
         description="Product for tenant A",
-        config_data={"tech_stack": {"languages": ["Python"]}}
+        config_data={"tech_stack": {"languages": ["Python"]}},
     )
 
     product_b = Product(
@@ -287,14 +256,14 @@ async def test_multi_tenant_isolation_e2e(mock_db_manager):
         tenant_key="tenant-b",
         name="Tenant B Product",
         description="Product for tenant B",
-        config_data={"tech_stack": {"languages": ["JavaScript"]}}
+        config_data={"tech_stack": {"languages": ["JavaScript"]}},
     )
 
     # Mock database manager with multi-tenant logic
     async def mock_get_product(product_id, tenant_key):
         if product_id == "product-a" and tenant_key == "tenant-a":
             return product_a
-        elif product_id == "product-b" and tenant_key == "tenant-b":
+        if product_id == "product-b" and tenant_key == "tenant-b":
             return product_b
         return None  # Cross-tenant access denied
 
@@ -330,10 +299,7 @@ async def test_multi_tenant_isolation_e2e(mock_db_manager):
 
     # Test 1: Tenant A can access their own product
     result_a = await get_product_context(
-        product_id="product-a",
-        tenant_key="tenant-a",
-        include_metadata=False,
-        db_manager=mock_db_manager
+        product_id="product-a", tenant_key="tenant-a", include_metadata=False, db_manager=mock_db_manager
     )
     assert result_a["data"]["product_name"] == "Tenant A Product"
 
@@ -342,17 +308,14 @@ async def test_multi_tenant_isolation_e2e(mock_db_manager):
         product_id="product-b",
         tenant_key="tenant-a",  # Wrong tenant
         include_metadata=False,
-        db_manager=mock_db_manager
+        db_manager=mock_db_manager,
     )
     assert "error" in result_cross["metadata"]
     assert result_cross["metadata"]["error"] == "product_not_found"
 
     # Test 3: Tenant B can access their own product
     result_b = await get_product_context(
-        product_id="product-b",
-        tenant_key="tenant-b",
-        include_metadata=False,
-        db_manager=mock_db_manager
+        product_id="product-b", tenant_key="tenant-b", include_metadata=False, db_manager=mock_db_manager
     )
     assert result_b["data"]["product_name"] == "Tenant B Product"
 
@@ -371,15 +334,15 @@ async def test_bug_fixes_verified_e2e(mock_db_manager):
                 "languages": ["Python", "TypeScript"],
                 "frontend": ["Vue 3", "React"],
                 "backend": ["FastAPI", "Express"],
-                "database": ["PostgreSQL", "MongoDB"]
+                "database": ["PostgreSQL", "MongoDB"],
             },
             "architecture": {
                 "pattern": "Microservices",
                 "design_patterns": "Repository, Service Layer, Factory",
                 "api_style": "RESTful",
-                "notes": "Architecture notes here"
-            }
-        }
+                "notes": "Architecture notes here",
+            },
+        },
     )
 
     async def mock_get_product(product_id, tenant_key):
@@ -400,10 +363,7 @@ async def test_bug_fixes_verified_e2e(mock_db_manager):
 
     # Test Bug Fix 1: get_tech_stack reads from config_data
     tech_result = await get_tech_stack(
-        product_id="bug-test-id",
-        tenant_key="bug-tenant",
-        sections="all",
-        db_manager=mock_db_manager
+        product_id="bug-test-id", tenant_key="bug-tenant", sections="all", db_manager=mock_db_manager
     )
 
     assert tech_result["data"]["programming_languages"] == ["Python", "TypeScript"]
@@ -413,10 +373,7 @@ async def test_bug_fixes_verified_e2e(mock_db_manager):
 
     # Test Bug Fix 2: get_architecture reads from config_data
     arch_result = await get_architecture(
-        product_id="bug-test-id",
-        tenant_key="bug-tenant",
-        depth="detailed",
-        db_manager=mock_db_manager
+        product_id="bug-test-id", tenant_key="bug-tenant", depth="detailed", db_manager=mock_db_manager
     )
 
     assert arch_result["data"]["primary_pattern"] == "Microservices"
@@ -437,7 +394,7 @@ async def test_project_description_no_context_budget(mock_db_manager):
         alias="ABC123",
         description="Test project",
         mission="Test mission",
-        status="active"
+        status="active",
     )
 
     async def mock_get_project(project_id, tenant_key):
@@ -460,7 +417,7 @@ async def test_project_description_no_context_budget(mock_db_manager):
         project_id="project-test-id",
         tenant_key="project-tenant",
         include_summary=False,  # Correct parameter name (not include_metadata)
-        db_manager=mock_db_manager
+        db_manager=mock_db_manager,
     )
 
     # Verify context_budget is NOT in the response

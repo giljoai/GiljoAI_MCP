@@ -29,7 +29,4 @@ def get_template_service(
     # Import state lazily to avoid circular import
     from api.app import state
 
-    return TemplateService(
-        db_manager=state.db_manager,
-        tenant_manager=state.tenant_manager
-    )
+    return TemplateService(db_manager=state.db_manager, tenant_manager=state.tenant_manager)

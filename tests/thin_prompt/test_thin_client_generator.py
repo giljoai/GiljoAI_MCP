@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator, ThinPromptResponse
 
 
@@ -72,9 +72,7 @@ class TestThinClientGeneratorBasic:
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id), user_id=user_id, tool="claude-code", instance_number=1
-        )
+        result = await generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Verify response structure
         assert isinstance(result, ThinPromptResponse)
@@ -98,7 +96,6 @@ class TestThinClientGeneratorBasic:
         assert orchestrator.status == "pending"
         assert orchestrator.tenant_key == tenant_key
         assert orchestrator.project_id == str(project.id)
-        assert orchestrator.instance_number == 1
 
         # Verify mission stored
         assert orchestrator.mission is not None
@@ -130,7 +127,7 @@ class TestThinClientGeneratorBasic:
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(project_id=str(project.id), tool="claude-code", instance_number=1)
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # CRITICAL VALIDATIONS
         prompt_lines = result.prompt.split("\n")
@@ -172,7 +169,7 @@ class TestThinClientGeneratorBasic:
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(project_id=str(project.id), tool="codex", instance_number=2)
+        result = await generator.generate(project_id=str(project.id), tool="codex")
 
         # Verify database persistence
         orchestrator = await db_session.get(AgentExecution, result.orchestrator_id)
@@ -181,7 +178,6 @@ class TestThinClientGeneratorBasic:
         assert orchestrator.agent_name == "Orchestrator #2"
         assert orchestrator.status == "pending"
         assert orchestrator.tool_type == "codex"
-        assert orchestrator.instance_number == 2
         assert orchestrator.context_budget == 150000
         assert orchestrator.context_used == 0
 
@@ -474,9 +470,7 @@ class TestThinClientGeneratorPromptContent:
 
         # Generate staging prompt (claude_code_mode=True to use staging prompt)
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id=str(uuid4()),
-            project_id=str(project.id),
-            claude_code_mode=True
+            orchestrator_id=str(uuid4()), project_id=str(project.id), claude_code_mode=True
         )
 
         # Verify execution plan instruction is present
@@ -539,7 +533,7 @@ class TestThinClientGeneratorPromptContent:
         await db_session.commit()
 
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(project_id=str(project.id), tool="claude-code", instance_number=3)
+        result = await generator.generate(project_id=str(project.id), tool="claude-code")
 
         # Verify identity elements in prompt
         assert "Orchestrator #3" in result.prompt
@@ -571,7 +565,7 @@ class TestThinClientGeneratorPromptContent:
 
         # Test each supported tool
         for tool in ["claude-code", "codex", "gemini"]:
-            result = await generator.generate(project_id=str(project.id), tool=tool, instance_number=1)
+            result = await generator.generate(project_id=str(project.id), tool=tool)
 
             assert result.prompt is not None
             assert len(result.prompt) > 0

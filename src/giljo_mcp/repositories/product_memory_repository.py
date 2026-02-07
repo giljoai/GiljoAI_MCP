@@ -5,11 +5,11 @@ CRUD operations for 360 memory entries with tenant isolation.
 """
 
 import logging
-from datetime import datetime
-from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update, func, and_
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
@@ -30,21 +30,21 @@ class ProductMemoryRepository:
         entry_type: str,
         source: str,
         timestamp: datetime,
-        project_id: Optional[UUID] = None,
-        project_name: Optional[str] = None,
-        summary: Optional[str] = None,
-        key_outcomes: Optional[List[str]] = None,
-        decisions_made: Optional[List[str]] = None,
-        git_commits: Optional[List[Dict[str, Any]]] = None,
-        deliverables: Optional[List[str]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
+        project_id: UUID | None = None,
+        project_name: str | None = None,
+        summary: str | None = None,
+        key_outcomes: list[str | None] = None,
+        decisions_made: list[str | None] = None,
+        git_commits: list[dict[str, Any | None]] = None,
+        deliverables: list[str | None] = None,
+        metrics: dict[str, Any | None] = None,
         priority: int = 3,
         significance_score: float = 0.5,
-        token_estimate: Optional[int] = None,
-        tags: Optional[List[str]] = None,
-        author_job_id: Optional[UUID] = None,
-        author_name: Optional[str] = None,
-        author_type: Optional[str] = None,
+        token_estimate: int | None = None,
+        tags: list[str | None] = None,
+        author_job_id: UUID | None = None,
+        author_name: str | None = None,
+        author_type: str | None = None,
     ) -> ProductMemoryEntry:
         """
         Create a new 360 memory entry.
@@ -104,10 +104,10 @@ class ProductMemoryRepository:
         session: AsyncSession,
         product_id: UUID,
         tenant_key: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
         include_deleted: bool = False,
-    ) -> List[ProductMemoryEntry]:
+    ) -> list[ProductMemoryEntry]:
         """
         Get 360 memory entries for a product with pagination.
 
@@ -133,7 +133,7 @@ class ProductMemoryRepository:
         )
 
         if not include_deleted:
-            stmt = stmt.where(ProductMemoryEntry.deleted_by_user == False)
+            stmt = stmt.where(not ProductMemoryEntry.deleted_by_user)
 
         if limit:
             stmt = stmt.limit(limit)
@@ -146,7 +146,7 @@ class ProductMemoryRepository:
         session: AsyncSession,
         entry_id: UUID,
         tenant_key: str,
-    ) -> Optional[ProductMemoryEntry]:
+    ) -> ProductMemoryEntry | None:
         """
         Get a single entry by ID with tenant isolation.
 
@@ -217,8 +217,8 @@ class ProductMemoryRepository:
             )
             .values(
                 deleted_by_user=True,
-                user_deleted_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                user_deleted_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
         )
         result = await session.execute(stmt)
@@ -238,7 +238,7 @@ class ProductMemoryRepository:
         entry_id: UUID,
         tenant_key: str,
         **kwargs,
-    ) -> Optional[ProductMemoryEntry]:
+    ) -> ProductMemoryEntry | None:
         """
         Update an existing entry.
 
@@ -259,7 +259,7 @@ class ProductMemoryRepository:
             if hasattr(entry, key):
                 setattr(entry, key, value)
 
-        entry.updated_at = datetime.utcnow()
+        entry.updated_at = datetime.now(timezone.utc)
         await session.flush()
         await session.refresh(entry)
         return entry
@@ -270,7 +270,7 @@ class ProductMemoryRepository:
         product_id: UUID,
         tenant_key: str,
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get entries formatted for context (mission planning).
 
@@ -300,7 +300,7 @@ class ProductMemoryRepository:
         product_id: UUID,
         tenant_key: str,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get aggregated git commits from all entries.
 

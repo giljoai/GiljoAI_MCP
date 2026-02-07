@@ -8,7 +8,7 @@ Responsibilities:
 - Context document indexing (placeholder/stub functionality)
 - Vision document management (placeholder/stub functionality)
 - Product settings retrieval
-- Context discovery (deprecated - returns error messages)
+- Context discovery (stub - returns error messages)
 
 Design Principles:
 - Single Responsibility: Only context domain logic
@@ -17,8 +17,8 @@ Design Principles:
 - Error Handling: Consistent exception handling and logging
 - Testability: Can be unit tested independently
 
-Note: Many methods in this service are currently stubs or deprecated.
-They are kept for backward compatibility and will be removed in v3.2.0.
+Note: Many methods in this service are currently stubs.
+The thin client architecture (Handover 0088) provides context via MCP tools.
 """
 
 import logging
@@ -36,8 +36,8 @@ class ContextService:
     Service for managing context and vision documents.
 
     This service handles context-related operations. Note that many
-    methods are currently stubs or deprecated as the thin client
-    architecture (Handover 0088) provides context via other means.
+    methods are currently stubs as the thin client architecture
+    (Handover 0088) provides context via MCP tools.
 
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
@@ -58,10 +58,7 @@ class ContextService:
     # Context Index (Stub)
     # ============================================================================
 
-    async def get_context_index(
-        self,
-        product_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get the context index for intelligent querying.
 
@@ -80,23 +77,13 @@ class ContextService:
         """
         self._logger.debug(f"get_context_index called for product_id={product_id} (stub)")
 
-        return {
-            "success": True,
-            "index": {
-                "documents": [],
-                "sections": []
-            }
-        }
+        return {"success": True, "index": {"documents": [], "sections": []}}
 
     # ============================================================================
     # Vision Document (Stub)
     # ============================================================================
 
-    async def get_vision(
-        self,
-        part: int = 1,
-        max_tokens: int = 20000
-    ) -> dict[str, Any]:
+    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
         """
         Get a vision document part.
 
@@ -140,22 +127,13 @@ class ContextService:
         """
         self._logger.debug("get_vision_index called (stub)")
 
-        return {
-            "success": True,
-            "index": {
-                "files": [],
-                "chunks": []
-            }
-        }
+        return {"success": True, "index": {"files": [], "chunks": []}}
 
     # ============================================================================
     # Product Settings (Stub)
     # ============================================================================
 
-    async def get_product_settings(
-        self,
-        product_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get all product settings for analysis.
 
@@ -176,9 +154,5 @@ class ContextService:
 
         return {
             "success": True,
-            "settings": {
-                "product_id": product_id or "default",
-                "config": {}
-            },
+            "settings": {"product_id": product_id or "default", "config": {}},
         }
-

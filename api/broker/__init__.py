@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from api.broker.base import WebSocketEventBroker
 from api.broker.in_memory import InMemoryWebSocketEventBroker
@@ -19,8 +18,8 @@ def _normalize_dsn(database_url: str) -> str:
 
 def create_websocket_event_broker(
     *,
-    config: Optional[object] = None,
-    database_url: Optional[str] = None,
+    config: object | None = None,
+    database_url: str | None = None,
 ) -> WebSocketEventBroker:
     """
     Factory for WebSocket event brokers.

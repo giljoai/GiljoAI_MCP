@@ -3,18 +3,14 @@ Agent Lifecycle Management Tools for GiljoAI MCP
 Handles agent operations: ensure, activate, assign_job, decommission
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentInteraction, Job, Message, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.websocket_client import broadcast_sub_agent_event
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -25,11 +21,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-async def launch_agent(
-    agent_id: str,
-    tenant_key: str,
-    session
-) -> dict[str, Any]:
+async def launch_agent(agent_id: str, tenant_key: str, session) -> dict[str, Any]:
     """
     Launch an agent by ID with tenant isolation (testable helper).
 
@@ -46,10 +38,7 @@ async def launch_agent(
     try:
         # Get the agent execution with TENANT ISOLATION
         agent_query = select(AgentExecution).where(
-            and_(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key
-            )
+            and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key)
         )
         agent_result = await session.execute(agent_query)
         agent = agent_result.scalar_one_or_none()
@@ -69,15 +58,11 @@ async def launch_agent(
         }
 
     except Exception as e:
-        logger.exception(f"Failed to launch agent: {e}")
+        logger.exception("Failed to launch agent")
         return {"success": False, "error": str(e)}
 
 
-async def log_interaction_legacy(
-    interaction: dict[str, Any],
-    tenant_key: str,
-    session
-) -> dict[str, Any]:
+async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, session) -> dict[str, Any]:
     """
     Log agent interaction with tenant isolation (testable helper).
 
@@ -93,18 +78,13 @@ async def log_interaction_legacy(
     """
     try:
         # Validate tenant matches
-        agent_id = interaction.get("agent_id")
+        interaction.get("agent_id")
         parent_agent_id = interaction.get("parent_agent_id")
         project_id = interaction.get("project_id")
 
         # Verify project belongs to tenant
         if project_id:
-            project_query = select(Project).where(
-                and_(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key
-                )
-            )
+            project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
             project_result = await session.execute(project_query)
             project = project_result.scalar_one_or_none()
 
@@ -114,10 +94,7 @@ async def log_interaction_legacy(
         # Verify parent agent belongs to tenant (if specified)
         if parent_agent_id:
             parent_query = select(AgentExecution).where(
-                and_(
-                    AgentExecution.agent_id == parent_agent_id,
-                    AgentExecution.tenant_key == tenant_key
-                )
+                and_(AgentExecution.agent_id == parent_agent_id, AgentExecution.tenant_key == tenant_key)
             )
             parent_result = await session.execute(parent_query)
             parent_agent = parent_result.scalar_one_or_none()
@@ -129,7 +106,7 @@ async def log_interaction_legacy(
         return {"success": True, "message": "Interaction validated"}
 
     except Exception as e:
-        logger.exception(f"Failed to log interaction: {e}")
+        logger.exception("Failed to log interaction")
         return {"success": False, "error": str(e)}
 
 
@@ -142,8 +119,8 @@ async def _ensure_agent(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _ensure_agent_with_session(session, project_id, agent_name, mission)
+        async with db_manager.get_session_async() as db_session:
+            return await _ensure_agent_with_session(db_session, project_id, agent_name, mission)
     else:
         return await _ensure_agent_with_session(session, project_id, agent_name, mission)
 
@@ -170,7 +147,7 @@ async def _ensure_agent_with_session(
         and_(
             AgentJob.project_id == project_id,
             AgentJob.job_type == agent_name,
-            AgentJob.tenant_key == project.tenant_key
+            AgentJob.tenant_key == project.tenant_key,
         )
     )
     job_result = await session.execute(job_query)
@@ -178,12 +155,11 @@ async def _ensure_agent_with_session(
 
     if existing_job:
         # Return existing job with latest execution
-        execution_query = select(AgentExecution).where(
-            and_(
-                AgentExecution.job_id == existing_job.job_id,
-                AgentExecution.tenant_key == project.tenant_key
-            )
-        ).order_by(AgentExecution.instance_number.desc())
+        execution_query = (
+            select(AgentExecution)
+            .where(and_(AgentExecution.job_id == existing_job.job_id, AgentExecution.tenant_key == project.tenant_key))
+            .order_by(AgentExecution.started_at.desc())
+        )
         execution_result = await session.execute(execution_query)
         existing_execution = execution_result.first()
 
@@ -210,7 +186,7 @@ async def _ensure_agent_with_session(
         mission=mission or f"Agent: {agent_name}",
         job_type=agent_name,
         status="active",
-        job_metadata={}
+        job_metadata={},
     )
     session.add(agent_job)
     await session.flush()
@@ -221,12 +197,11 @@ async def _ensure_agent_with_session(
         job_id=job_id,
         tenant_key=project.tenant_key,
         agent_display_name=agent_name,
-        instance_number=1,
         status="waiting",
-        agent_name=f"{agent_name} #1",
+        agent_name=agent_name,
         context_used=0,
         context_budget=50000,
-        tool_type="claude-code"
+        tool_type="claude-code",
     )
     session.add(agent_execution)
     await session.commit()
@@ -250,8 +225,8 @@ async def _decommission_agent(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _decommission_agent_with_session(session, agent_name, project_id, reason)
+        async with db_manager.get_session_async() as db_session:
+            return await _decommission_agent_with_session(db_session, agent_name, project_id, reason)
     else:
         return await _decommission_agent_with_session(session, agent_name, project_id, reason)
 
@@ -272,13 +247,11 @@ async def _decommission_agent_with_session(
         }
 
     # Find agent execution by agent_name pattern (matches agent_display_name or agent_name)
-    execution_query = select(AgentExecution).where(
-        and_(
-            AgentExecution.tenant_key == project.tenant_key,
-            AgentExecution.agent_name.like(f"{agent_name}%")
-        )
-    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
-        AgentJob.project_id == project_id
+    execution_query = (
+        select(AgentExecution)
+        .where(and_(AgentExecution.tenant_key == project.tenant_key, AgentExecution.agent_name.like(f"{agent_name}%")))
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(AgentJob.project_id == project_id)
     )
     execution_result = await session.execute(execution_query)
     execution = execution_result.scalar_one_or_none()
@@ -294,10 +267,7 @@ async def _decommission_agent_with_session(
 
     # Get the parent job
     job_query = select(AgentJob).where(
-        and_(
-            AgentJob.job_id == execution.job_id,
-            AgentJob.tenant_key == project.tenant_key
-        )
+        and_(AgentJob.job_id == execution.job_id, AgentJob.tenant_key == project.tenant_key)
     )
     job_result = await session.execute(job_query)
     agent_job = job_result.scalar_one_or_none()
@@ -305,10 +275,7 @@ async def _decommission_agent_with_session(
     # Check if all executions for this job are done
     if agent_job:
         all_executions_query = select(AgentExecution).where(
-            and_(
-                AgentExecution.job_id == agent_job.job_id,
-                AgentExecution.tenant_key == project.tenant_key
-            )
+            and_(AgentExecution.job_id == agent_job.job_id, AgentExecution.tenant_key == project.tenant_key)
         )
         all_executions_result = await session.execute(all_executions_query)
         all_executions = all_executions_result.scalars().all()
@@ -333,8 +300,8 @@ async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> d
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _get_agent_health_with_session(session, agent_name)
+        async with db_manager.get_session_async() as db_session:
+            return await _get_agent_health_with_session(db_session, agent_name)
     else:
         return await _get_agent_health_with_session(session, agent_name)
 
@@ -343,9 +310,7 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
     """Internal helper with session for agent_health - Queries AgentExecution table"""
     if agent_name:
         # Query AgentExecution by agent_name
-        execution_query = select(AgentExecution).where(
-            AgentExecution.agent_name.like(f"{agent_name}%")
-        )
+        execution_query = select(AgentExecution).where(AgentExecution.agent_name.like(f"{agent_name}%"))
         execution_result = await session.execute(execution_query)
         execution = execution_result.scalar_one_or_none()
 
@@ -373,12 +338,14 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
         job_result = await session.execute(job_query)
         job = job_result.scalar_one_or_none()
 
-        agents_data.append({
-            "name": execution.agent_name,
-            "status": execution.status,
-            "context_used": execution.context_used or 0,
-            "project_id": str(job.project_id) if job else None,
-        })
+        agents_data.append(
+            {
+                "name": execution.agent_name,
+                "status": execution.status,
+                "context_used": execution.context_used or 0,
+                "project_id": str(job.project_id) if job else None,
+            }
+        )
 
     return {
         "success": True,
@@ -395,8 +362,8 @@ async def _handoff_agent_work(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
+        async with db_manager.get_session_async() as db_session:
+            return await _handoff_agent_work_with_session(db_session, from_agent, to_agent, project_id, context)
     else:
         return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
 
@@ -414,13 +381,11 @@ async def _handoff_agent_work_with_session(
         return {"success": False, "error": f"Project {project_id} not found"}
 
     # Find from_agent execution (match exact agent_name)
-    from_query = select(AgentExecution).where(
-        and_(
-            AgentExecution.agent_name == from_agent,
-            AgentExecution.tenant_key == project.tenant_key
-        )
-    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
-        AgentJob.project_id == project_id
+    from_query = (
+        select(AgentExecution)
+        .where(and_(AgentExecution.agent_name == from_agent, AgentExecution.tenant_key == project.tenant_key))
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(AgentJob.project_id == project_id)
     )
     from_result = await session.execute(from_query)
     from_execution = from_result.scalar_one_or_none()
@@ -429,13 +394,11 @@ async def _handoff_agent_work_with_session(
         return {"success": False, "error": f"From agent '{from_agent}' not found"}
 
     # Find to_agent execution (match exact agent_name)
-    to_query = select(AgentExecution).where(
-        and_(
-            AgentExecution.agent_name == to_agent,
-            AgentExecution.tenant_key == project.tenant_key
-        )
-    ).join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
-        AgentJob.project_id == project_id
+    to_query = (
+        select(AgentExecution)
+        .where(and_(AgentExecution.agent_name == to_agent, AgentExecution.tenant_key == project.tenant_key))
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(AgentJob.project_id == project_id)
     )
     to_result = await session.execute(to_query)
     to_execution = to_result.scalar_one_or_none()
@@ -443,9 +406,8 @@ async def _handoff_agent_work_with_session(
     if not to_execution:
         return {"success": False, "error": f"To agent '{to_agent}' not found"}
 
-    # Update execution statuses and track succession
+    # Update execution statuses
     from_execution.status = "complete"
-    from_execution.succeeded_by = to_execution.agent_id
     from_execution.completed_at = datetime.now(timezone.utc)
 
     to_execution.status = "working"

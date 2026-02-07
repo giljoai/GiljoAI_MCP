@@ -7,8 +7,8 @@
       variant="tonal"
       size="small"
       :class="['connection-status', { reconnecting: wsStore.connectionStatus === 'reconnecting' }]"
-      @click="showDebugPanel = !showDebugPanel"
       style="cursor: pointer"
+      @click="showDebugPanel = !showDebugPanel"
     >
       <span class="text-caption">{{ statusText }}</span>
       <v-tooltip v-if="showTooltip" activator="parent" location="bottom">
@@ -37,7 +37,7 @@
 
         <v-card-text>
           <!-- Connection Info -->
-          <v-expansion-panels variant="accordion" v-model="panels">
+          <v-expansion-panels v-model="panels" variant="accordion">
             <!-- Connection Status -->
             <v-expansion-panel value="status">
               <v-expansion-panel-title>
@@ -165,7 +165,7 @@
             </v-expansion-panel>
 
             <!-- Last Error -->
-            <v-expansion-panel value="error" v-if="debugInfo?.stats?.lastError">
+            <v-expansion-panel v-if="debugInfo?.stats?.lastError" value="error">
               <v-expansion-panel-title color="error">
                 <v-icon start color="error">mdi-alert-circle</v-icon>
                 Last Error
@@ -183,23 +183,23 @@
 
         <!-- Test Actions -->
         <v-card-actions>
-          <v-btn color="primary" variant="tonal" @click="forceReconnect" :disabled="isConnecting">
+          <v-btn color="primary" variant="tonal" :disabled="isConnecting" @click="forceReconnect">
             <v-icon start>mdi-refresh</v-icon>
             Force Reconnect
           </v-btn>
-          <v-btn color="warning" variant="tonal" @click="simulateDrop" :disabled="!isConnected">
+          <v-btn color="warning" variant="tonal" :disabled="!isConnected" @click="simulateDrop">
             <v-icon start>mdi-connection</v-icon>
             Simulate Drop
           </v-btn>
-          <v-btn color="info" variant="tonal" @click="sendTestMessage" :disabled="!isConnected">
+          <v-btn color="info" variant="tonal" :disabled="!isConnected" @click="sendTestMessage">
             <v-icon start>mdi-send</v-icon>
             Send Test
           </v-btn>
           <v-btn
             color="secondary"
             variant="tonal"
-            @click="clearQueue"
             :disabled="messageQueueSize === 0"
+            @click="clearQueue"
           >
             <v-icon start>mdi-delete-sweep</v-icon>
             Clear Queue ({{ messageQueueSize }})

@@ -6,23 +6,21 @@ Projects are work initiatives that belong to products.
 """
 
 from sqlalchemy import (
-    Boolean,
+    JSON,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base, generate_uuid, generate_project_alias
+from .base import Base, generate_project_alias, generate_uuid
 
 
 class Project(Base):
@@ -63,23 +61,24 @@ class Project(Base):
     staging_status = Column(
         String(50),
         nullable=True,
-        comment="Staging workflow status: null, staging, staged, cancelled, launching, active"
+        comment="Staging workflow status: null, staging, staged, cancelled, launching, active",
     )
 
-    context_budget = Column(Integer, default=150000)
     context_used = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
     activated_at = Column(
+        DateTime(timezone=True), nullable=True, comment="First activation timestamp (only set once on first activation)"
+    )
+    implementation_launched_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="First activation timestamp (only set once on first activation)"
+        default=None,
+        comment="Timestamp when user clicked Implement button. NULL = staging only.",
     )
     paused_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp when project was last paused/deactivated"
+        DateTime(timezone=True), nullable=True, comment="Timestamp when project was last paused/deactivated"
     )
     deleted_at = Column(
         DateTime(timezone=True),
@@ -147,3 +146,6 @@ class Project(Base):
             postgresql_where=text("status = 'active'"),
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<Project(id={self.id}, name='{self.name}', product_id='{self.product_id}')>"

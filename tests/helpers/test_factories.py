@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 class TestDataFactory:
@@ -67,7 +67,6 @@ class TestDataFactory:
         agent_name: str = "test_agent",
         agent_display_name: str = "worker",
         status: str = "waiting",
-        instance_number: int = 1,
     ) -> dict[str, Any]:
         """
         Create AgentExecution data dictionary (executor - the WHO).
@@ -83,7 +82,6 @@ class TestDataFactory:
             "tenant_key": tenant_key,
             "agent_display_name": agent_display_name,
             "agent_name": agent_name,
-            "instance_number": instance_number,
             "status": status,
             "progress": 0,
             "messages_sent_count": 0,
@@ -102,7 +100,7 @@ class TestDataFactory:
         agent_name: str = "test_agent",
         agent_display_name: str = "worker",
         mission: str = "Test mission for agent job",
-        status: str = "waiting"
+        status: str = "waiting",
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Create both AgentJob and AgentExecution data (backward compatibility).

@@ -4,7 +4,7 @@ Pydantic Models for Product Endpoints - Handover 0126
 Request/response models for product operations.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -18,14 +18,12 @@ class ProductCreate(BaseModel):
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
-    config_data: Optional[Dict[str, Any]] = Field(
-        None, description="Rich configuration data (JSONB)"
-    )
+    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
     target_platforms: Optional[List[str]] = Field(
-        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 
@@ -35,9 +33,7 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     project_path: Optional[str] = None
-    config_data: Optional[Dict[str, Any]] = Field(
-        None, description="Rich configuration data (JSONB)"
-    )
+    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -69,10 +65,10 @@ class ProductResponse(BaseModel):
     )
     product_memory: Optional[Dict[str, Any]] = Field(
         default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
-        description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412"
+        description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412",
     )
     target_platforms: Optional[List[str]] = Field(
-        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 
@@ -95,9 +91,7 @@ class ProductActivationResponse(BaseModel):
     )
     product: ProductResponse = Field(..., description="Full activated product details")
     message: str = Field(..., description="Success message")
-    deactivated_projects: List[str] = Field(
-        default_factory=list, description="IDs of projects that were auto-paused"
-    )
+    deactivated_projects: List[str] = Field(default_factory=list, description="IDs of projects that were auto-paused")
 
 
 class ProductDeleteResponse(BaseModel):
@@ -158,6 +152,7 @@ class VisionDocumentStatsResponse(BaseModel):
     is_summarized: bool = Field(default=False, description="Whether vision document is summarized")
     summary_tokens: int = Field(default=0, description="Token count of summary (if available)")
 
+
 class CascadeImpact(BaseModel):
     """Cascade impact response for product deletion"""
 
@@ -182,24 +177,16 @@ class GitHubSettingsRequest(BaseModel):
         None,
         description="GitHub repository URL (HTTPS or SSH format). Required when enabled=True",
     )
-    auto_commit: bool = Field(
-        False, description="Whether to automatically commit changes to GitHub"
-    )
+    auto_commit: bool = Field(False, description="Whether to automatically commit changes to GitHub")
 
 
 class GitHubSettingsResponse(BaseModel):
     """Response model for GitHub integration settings"""
 
     enabled: bool = Field(..., description="Whether GitHub integration is enabled")
-    repo_url: Optional[str] = Field(
-        None, description="GitHub repository URL (HTTPS or SSH format)"
-    )
-    auto_commit: bool = Field(
-        ..., description="Whether to automatically commit changes to GitHub"
-    )
-    last_sync: Optional[str] = Field(
-        None, description="ISO timestamp of last sync with GitHub"
-    )
+    repo_url: Optional[str] = Field(None, description="GitHub repository URL (HTTPS or SSH format)")
+    auto_commit: bool = Field(..., description="Whether to automatically commit changes to GitHub")
+    last_sync: Optional[str] = Field(None, description="ISO timestamp of last sync with GitHub")
 
 
 # ============================================================================
@@ -211,12 +198,8 @@ class GitIntegrationRequest(BaseModel):
     """Request model for updating Git integration settings (Handover 013B)"""
 
     enabled: bool = Field(..., description="Whether Git integration is enabled")
-    commit_limit: int = Field(
-        20, ge=1, le=100, description="Max commits to include in prompts (1-100)"
-    )
-    default_branch: str = Field(
-        "main", description="Default branch name (e.g., main, master, develop)"
-    )
+    commit_limit: int = Field(20, ge=1, le=100, description="Max commits to include in prompts (1-100)")
+    default_branch: str = Field("main", description="Default branch name (e.g., main, master, develop)")
 
 
 class GitIntegrationResponse(BaseModel):
@@ -225,3 +208,42 @@ class GitIntegrationResponse(BaseModel):
     enabled: bool = Field(..., description="Whether Git integration is enabled")
     commit_limit: int = Field(..., description="Max commits to include in prompts")
     default_branch: str = Field(..., description="Default branch name")
+
+
+# ============================================================================
+# 360 Memory Entries (Handover 0490)
+# ============================================================================
+
+
+class MemoryEntryResponse(BaseModel):
+    """Response model for a single 360 memory entry"""
+
+    id: str = Field(..., description="Entry UUID")
+    sequence: int = Field(..., description="Sequence number within product")
+    entry_type: str = Field(..., description="Entry type (project_closeout, session_handover, etc.)")
+    source: str = Field(..., description="Source tool identifier")
+    timestamp: str = Field(..., description="ISO timestamp of entry creation")
+    project_id: Optional[str] = Field(None, description="Source project UUID (if applicable)")
+    project_name: Optional[str] = Field(None, description="Project name at time of entry")
+    summary: Optional[str] = Field(None, description="2-3 paragraph summary")
+    key_outcomes: list[str] = Field(default_factory=list, description="Key achievements")
+    decisions_made: list[str] = Field(default_factory=list, description="Architectural/design decisions")
+    git_commits: list[dict[str, Any]] = Field(default_factory=list, description="Git commit objects")
+    deliverables: list[Any] = Field(default_factory=list, description="Deliverables/artifacts")
+    metrics: dict[str, Any] = Field(default_factory=dict, description="Metrics dictionary")
+    priority: int = Field(default=3, description="Priority level 1-5")
+    significance_score: float = Field(default=0.5, description="Significance score 0.0-1.0")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
+    author_job_id: Optional[str] = Field(None, description="Job ID of authoring agent")
+    author_name: Optional[str] = Field(None, description="Name of authoring agent")
+    author_type: Optional[str] = Field(None, description="Type of authoring agent")
+    deleted_by_user: bool = Field(default=False, description="Whether entry was soft-deleted")
+
+
+class MemoryEntriesResponse(BaseModel):
+    """Response model for memory entries list endpoint"""
+
+    success: bool = Field(default=True, description="Operation success status")
+    entries: list[MemoryEntryResponse] = Field(default_factory=list, description="Memory entries array")
+    total_count: int = Field(..., description="Total entries for product (including deleted)")
+    filtered_count: int = Field(..., description="Count of entries returned (after filters)")

@@ -5,17 +5,10 @@ Tests full workflows from MCP tool call to database state verification.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Project, Product, AgentTemplate
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution, AgentTodoItem
-from src.giljo_mcp.enums import AgentRole
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 
 
 # ============================================================================
@@ -55,18 +48,14 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
     agent_id = spawn_result["agent_id"]
 
     # Verify AgentJob created
-    result = await db_session.execute(
-        select(AgentJob).where(AgentJob.job_id == job_id)
-    )
+    result = await db_session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
     agent_job = result.scalar_one_or_none()
     assert agent_job is not None
     assert agent_job.status == "active"  # Jobs are created as "active"
     assert agent_job.tenant_key == test_tenant_key
 
     # Verify AgentExecution created
-    result = await db_session.execute(
-        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-    )
+    result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
     agent_execution = result.scalar_one_or_none()
     assert agent_execution is not None
     assert agent_execution.status == "waiting"
@@ -92,16 +81,14 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
             {"content": "Setup authentication schema", "status": "completed"},
             {"content": "Implement login endpoint", "status": "in_progress"},
             {"content": "Add JWT token generation", "status": "pending"},
-        ]
+        ],
     )
 
     # Check for success
     assert progress_result.get("status") == "success" or progress_result.get("success") is True
 
     # Verify todo items stored in database
-    result = await db_session.execute(
-        select(AgentTodoItem).where(AgentTodoItem.job_id == job_id)
-    )
+    result = await db_session.execute(select(AgentTodoItem).where(AgentTodoItem.job_id == job_id))
     todo_items = result.scalars().all()
     assert len(todo_items) == 3
     assert todo_items[0].status == "completed"
@@ -120,14 +107,13 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
             {"content": "Setup authentication schema", "status": "completed"},
             {"content": "Implement login endpoint", "status": "completed"},
             {"content": "Add JWT token generation", "status": "completed"},
-        ]
+        ],
     )
     assert progress_result_final.get("status") == "success" or progress_result_final.get("success") is True
 
     # Step 4: Complete job
     complete_result = await service.complete_job(
-        job_id=job_id,
-        result={"summary": "Authentication endpoint implemented successfully"}
+        job_id=job_id, result={"summary": "Authentication endpoint implemented successfully"}
     )
 
     # Check for success
@@ -141,7 +127,9 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() method deleted (manual succession only)")
+@pytest.mark.skip(
+    reason="Test removed in Handover 0461a - check_succession_status() method deleted (manual succession only)"
+)
 async def test_e2e_succession_workflow(
     db_session: AsyncSession,
     test_tenant_key: str,
@@ -152,7 +140,6 @@ async def test_e2e_succession_workflow(
     DEPRECATED: This test tested check_succession_status() which was removed in Handover 0461a.
     Succession is now manual-only via UI or /gil_handover command.
     """
-    pass
 
 
 @pytest.mark.asyncio
@@ -171,7 +158,7 @@ async def test_e2e_agent_communication_workflow(
     NOTE: Skipped because MessageService requires its own db_manager instance.
     This is a known limitation of the current test architecture.
     """
-    pass  # Skipped for now
+    # Skipped for now
 
 
 @pytest.mark.asyncio
@@ -204,18 +191,13 @@ async def test_e2e_error_propagation(
     await service.acknowledge_job(job_id=job_id, agent_id=agent_id)
 
     # Report error
-    error_result = await service.report_error(
-        job_id=job_id,
-        error="Database connection failed during migration"
-    )
+    error_result = await service.report_error(job_id=job_id, error="Database connection failed during migration")
 
     # Check for success
     assert error_result.get("status") == "success" or error_result.get("success") is True
 
     # Verify execution status changed to blocked
-    result = await db_session.execute(
-        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-    )
+    result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
     agent_execution = result.scalar_one_or_none()
     assert agent_execution.status == "blocked"
     assert agent_execution.block_reason == "Database connection failed during migration"
@@ -266,20 +248,11 @@ async def test_e2e_get_workflow_status(
     )
 
     # Complete first agent
-    await service.acknowledge_job(
-        job_id=agent1_result["job_id"],
-        agent_id=agent1_result["agent_id"]
-    )
-    await service.complete_job(
-        job_id=agent1_result["job_id"],
-        result={"summary": "Implementation complete"}
-    )
+    await service.acknowledge_job(job_id=agent1_result["job_id"], agent_id=agent1_result["agent_id"])
+    await service.complete_job(job_id=agent1_result["job_id"], result={"summary": "Implementation complete"})
 
     # Start second agent
-    await service.acknowledge_job(
-        job_id=agent2_result["job_id"],
-        agent_id=agent2_result["agent_id"]
-    )
+    await service.acknowledge_job(job_id=agent2_result["job_id"], agent_id=agent2_result["agent_id"])
 
     # Third agent remains pending
 
@@ -379,16 +352,12 @@ async def test_e2e_update_agent_mission(
 
     # Update mission
     update_result = await service.update_agent_mission(
-        job_id=job_id,
-        tenant_key=test_tenant_key,
-        mission="Updated mission with new requirements"
+        job_id=job_id, tenant_key=test_tenant_key, mission="Updated mission with new requirements"
     )
 
     assert update_result["success"] is True
 
     # Verify mission was updated in database
-    result = await db_session.execute(
-        select(AgentJob).where(AgentJob.job_id == job_id)
-    )
+    result = await db_session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
     agent_job = result.scalar_one_or_none()
     assert agent_job.mission == "Updated mission with new requirements"

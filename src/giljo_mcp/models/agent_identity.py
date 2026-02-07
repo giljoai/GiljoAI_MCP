@@ -6,16 +6,10 @@ Handover 0366a: Separates work order (job) from executor (execution).
 Design Philosophy:
 - AgentJob: Persistent work order (mission, scope, goals) - WHAT
 - AgentExecution: Executor instance (who's working, when, status) - WHO
-- Succession: New execution, SAME job (job_id persists)
 
 Semantic Clarity:
-- job_id = The work to be done (persistent across succession)
-- agent_id = The executor doing the work (changes on succession)
-
-Example Succession Flow:
-1. Job created: job_id="build-auth", mission="Build OAuth2 system"
-2. Execution 1: agent_id="orch-001", job_id="build-auth", instance=1
-3. Succession: agent_id="orch-002", job_id="build-auth", instance=2 (NEW executor, SAME job)
+- job_id = The work to be done (persistent)
+- agent_id = The executor doing the work
 
 Data Normalization:
 - Mission stored ONCE in AgentJob (no duplication)
@@ -32,7 +26,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -111,7 +104,7 @@ class AgentJob(Base):
         "AgentExecution",
         back_populates="job",
         cascade="all, delete-orphan",
-        order_by="AgentExecution.instance_number",
+        order_by="AgentExecution.started_at",
     )
     todo_items = relationship(
         "AgentTodoItem",
@@ -125,12 +118,10 @@ class AgentJob(Base):
         Index("idx_agent_jobs_project", "project_id"),
         Index("idx_agent_jobs_tenant_project", "tenant_key", "project_id"),
         Index("idx_agent_jobs_status", "status"),
-        CheckConstraint(
-            "status IN ('active', 'completed', 'cancelled')", name="ck_agent_job_status"
-        ),
+        CheckConstraint("status IN ('active', 'completed', 'cancelled')", name="ck_agent_job_status"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<AgentJob(job_id={self.job_id}, job_type={self.job_type}, status={self.status})>"
 
 
@@ -140,20 +131,9 @@ class AgentExecution(Base):
 
     Represents the WHO (which agent instance is executing).
 
-    Handover 0461b DEPRECATION NOTICE:
-    The following columns are deprecated and will be removed in v4.0:
-    - instance_number: Use single instance per agent
-    - decommissioned_at: Agents no longer decommissioned
-    - succeeded_by: Use 360 Memory for handover tracking
-    - succession_reason: Use 360 Memory session_handover entry
-    - handover_summary: Use 360 Memory session_handover entry
-
-    NOTE: The `messages` JSONB column is also DEPRECATED (Handover 0387i).
-    Use `messages_sent_count`, `messages_waiting_count`, `messages_read_count` instead.
-
     Relationships:
     - job: Many executions → One job (work order)
-    - spawned_by: Points to parent agent_id (who spawned this executor) - STILL ACTIVE
+    - spawned_by: Points to parent agent_id (who spawned this executor)
 
     Multi-tenant Isolation:
     - All queries MUST filter by tenant_key
@@ -181,38 +161,22 @@ class AgentExecution(Base):
         nullable=False,
         comment="Human-readable display name for UI",
     )
-    instance_number = Column(
-        Integer,
-        default=1,
-        nullable=False,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use single instance per agent.",
-    )
 
     # Execution lifecycle
     status = Column(
         String(50),
         default="waiting",
         nullable=False,
-        comment="Execution status: waiting, working, blocked, complete, failed, cancelled, decommissioned",
+        comment="Execution status: waiting, working, blocked, complete, failed, cancelled",
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    decommissioned_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Agents no longer decommissioned.",
-    )
 
     # Succession tracking (points to OTHER executions via agent_id)
     spawned_by = Column(
         String(36),
         nullable=True,
         comment="Agent ID of parent executor (clear: agent, not job)",
-    )
-    succeeded_by = Column(
-        String(36),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory for handover tracking.",
     )
 
     # Progress tracking
@@ -278,30 +242,8 @@ class AgentExecution(Base):
         comment="Maximum context window budget in tokens",
     )
 
-    # Succession metadata (for orchestrator executions)
-    succession_reason = Column(
-        String(100),
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
-    )
-    handover_summary = Column(
-        JSONB,
-        nullable=True,
-        comment="DEPRECATED (Handover 0461b): Will be removed in v4.0. Use 360 Memory session_handover entry.",
-    )
-
-    # DEPRECATED (Handover 0387i): This column is no longer used.
-    # Message counts are now in messages_sent_count, messages_waiting_count, messages_read_count.
-    # Column retained for rollback safety and historical data preservation.
-    # Scheduled for removal in v4.0.
-    messages = Column(
-        JSONB,
-        default=list,
-        nullable=False,
-        comment="DEPRECATED: Use counter columns instead. Scheduled for removal in v4.0.",
-    )
-
     # Message counter columns (Handover 0387e - AUTHORITATIVE)
+    # Note: JSONB messages column removed in Handover 0700c
     messages_sent_count = Column(
         Integer,
         default=0,
@@ -343,11 +285,8 @@ class AgentExecution(Base):
         Index("idx_agent_executions_job", "job_id"),
         Index("idx_agent_executions_tenant_job", "tenant_key", "job_id"),
         Index("idx_agent_executions_status", "status"),
-        Index("idx_agent_executions_instance", "job_id", "instance_number"),
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
-        # Handover 0429: Allow same agent_id with different instance_number (succession)
-        UniqueConstraint("agent_id", "instance_number", name="uq_agent_instance"),
         CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
             name="ck_agent_execution_status",
@@ -355,9 +294,6 @@ class AgentExecution(Base):
         CheckConstraint(
             "progress >= 0 AND progress <= 100",
             name="ck_agent_execution_progress_range",
-        ),
-        CheckConstraint(
-            "instance_number >= 1", name="ck_agent_execution_instance_positive"
         ),
         CheckConstraint(
             "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')",
@@ -373,10 +309,10 @@ class AgentExecution(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<AgentExecution(agent_id={self.agent_id}, job_id={self.job_id}, "
-            f"agent_display_name={self.agent_display_name}, status={self.status}, instance={self.instance_number})>"
+            f"agent_display_name={self.agent_display_name}, status={self.status})>"
         )
 
 
@@ -454,7 +390,7 @@ class AgentTodoItem(Base):
         ),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<AgentTodoItem(id={self.id}, job_id={self.job_id}, "
             f"content={self.content[:30]}..., status={self.status}, sequence={self.sequence})>"

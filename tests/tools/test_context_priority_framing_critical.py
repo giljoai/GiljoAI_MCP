@@ -7,14 +7,14 @@ This test module focuses on achieving >80% coverage by testing:
 - Error paths in build_framed_context_response()
 """
 
-import pytest
-from uuid import uuid4
 from typing import Any, Dict
+
+import pytest
 
 from src.giljo_mcp.tools.context_tools.framing_helpers import (
     apply_rich_entry_framing,
-    build_priority_excluded_response,
     build_framed_context_response,
+    build_priority_excluded_response,
 )
 
 
@@ -32,14 +32,11 @@ def test_apply_rich_entry_framing_valid_all_fields():
         "key_outcomes": [
             "User login flow completed",
             "Token refresh mechanism implemented",
-            "Session management added"
+            "Session management added",
         ],
-        "decisions_made": [
-            "Chose JWT over session cookies",
-            "Selected bcrypt for password hashing"
-        ],
+        "decisions_made": ["Chose JWT over session cookies", "Selected bcrypt for password hashing"],
         "priority": 1,
-        "significance_score": 0.95
+        "significance_score": 0.95,
     }
 
     result = apply_rich_entry_framing(entry)
@@ -60,11 +57,7 @@ def test_apply_rich_entry_framing_valid_all_fields():
 
 def test_apply_rich_entry_framing_minimal_valid():
     """Test rich entry framing with only required fields."""
-    entry = {
-        "sequence": 1,
-        "project_name": "Minimal Project",
-        "summary": "Basic summary"
-    }
+    entry = {"sequence": 1, "project_name": "Minimal Project", "summary": "Basic summary"}
 
     result = apply_rich_entry_framing(entry)
 
@@ -80,10 +73,7 @@ def test_apply_rich_entry_framing_minimal_valid():
 
 def test_apply_rich_entry_framing_missing_sequence():
     """Test that missing 'sequence' field raises ValueError."""
-    entry = {
-        "project_name": "Test Project",
-        "summary": "Test summary"
-    }
+    entry = {"project_name": "Test Project", "summary": "Test summary"}
 
     with pytest.raises(ValueError, match="Invalid entry: missing sequence"):
         apply_rich_entry_framing(entry)
@@ -91,10 +81,7 @@ def test_apply_rich_entry_framing_missing_sequence():
 
 def test_apply_rich_entry_framing_missing_project_name():
     """Test that missing 'project_name' field raises ValueError."""
-    entry = {
-        "sequence": 1,
-        "summary": "Test summary"
-    }
+    entry = {"sequence": 1, "summary": "Test summary"}
 
     with pytest.raises(ValueError, match="Invalid entry: missing project_name"):
         apply_rich_entry_framing(entry)
@@ -102,10 +89,7 @@ def test_apply_rich_entry_framing_missing_project_name():
 
 def test_apply_rich_entry_framing_missing_summary():
     """Test that missing 'summary' field raises ValueError."""
-    entry = {
-        "sequence": 1,
-        "project_name": "Test Project"
-    }
+    entry = {"sequence": 1, "project_name": "Test Project"}
 
     with pytest.raises(ValueError, match="Invalid entry: missing summary"):
         apply_rich_entry_framing(entry)
@@ -118,7 +102,7 @@ def test_apply_rich_entry_framing_malformed_key_outcomes():
         "project_name": "Test Project",
         "summary": "Test summary",
         "key_outcomes": "This should be a list but is a string",
-        "decisions_made": ["Valid decision"]
+        "decisions_made": ["Valid decision"],
     }
 
     result = apply_rich_entry_framing(entry)
@@ -137,7 +121,7 @@ def test_apply_rich_entry_framing_malformed_decisions_made():
         "project_name": "Test Project",
         "summary": "Test summary",
         "key_outcomes": ["Valid outcome"],
-        "decisions_made": {"invalid": "structure"}
+        "decisions_made": {"invalid": "structure"},
     }
 
     result = apply_rich_entry_framing(entry)
@@ -157,7 +141,7 @@ def test_apply_rich_entry_framing_empty_lists():
         "summary": "Project with no outcomes or decisions tracked",
         "key_outcomes": [],
         "decisions_made": [],
-        "priority": 2
+        "priority": 2,
     }
 
     result = apply_rich_entry_framing(entry)
@@ -170,11 +154,7 @@ def test_apply_rich_entry_framing_empty_lists():
 
 def test_apply_rich_entry_framing_priority_levels():
     """Test different priority levels produce correct labels."""
-    base_entry = {
-        "sequence": 1,
-        "project_name": "Test",
-        "summary": "Test"
-    }
+    base_entry = {"sequence": 1, "project_name": "Test", "summary": "Test"}
 
     # Priority 1: CRITICAL
     entry_p1 = {**base_entry, "priority": 1}
@@ -204,7 +184,7 @@ def test_apply_rich_entry_framing_empty_string_items():
         "project_name": "Test",
         "summary": "Test",
         "key_outcomes": ["Valid outcome", "", "Another valid outcome", ""],
-        "decisions_made": ["", "Valid decision", ""]
+        "decisions_made": ["", "Valid decision", ""],
     }
 
     result = apply_rich_entry_framing(entry)
@@ -224,10 +204,7 @@ def test_apply_rich_entry_framing_empty_string_items():
 def test_build_priority_excluded_response_structure():
     """Test that build_priority_excluded_response returns correct structure."""
     result = build_priority_excluded_response(
-        source="test_source",
-        category="git_history",
-        tenant_key="tenant_123",
-        priority=4
+        source="test_source", category="git_history", tenant_key="tenant_123", priority=4
     )
 
     # Verify all required fields
@@ -251,15 +228,12 @@ def test_build_priority_excluded_response_different_categories():
         "agent_templates",
         "project_description",
         "memory_360",
-        "git_history"
+        "git_history",
     ]
 
     for category in categories:
         result = build_priority_excluded_response(
-            source=f"{category}_source",
-            category=category,
-            tenant_key="tenant_test",
-            priority=4
+            source=f"{category}_source", category=category, tenant_key="tenant_test", priority=4
         )
 
         assert result["category"] == category
@@ -270,10 +244,7 @@ def test_build_priority_excluded_response_different_categories():
 def test_build_priority_excluded_response_maintains_priority():
     """Test that excluded response preserves the priority value."""
     result = build_priority_excluded_response(
-        source="test",
-        category="test_category",
-        tenant_key="tenant_999",
-        priority=4
+        source="test", category="test_category", tenant_key="tenant_999", priority=4
     )
 
     # Priority should be in both top-level and metadata
@@ -289,18 +260,10 @@ def test_build_priority_excluded_response_maintains_priority():
 @pytest.mark.asyncio
 async def test_build_framed_context_response_empty_content(db_manager):
     """Test build_framed_context_response with empty content."""
-    raw_result = {
-        "source": "test_source",
-        "data": [],
-        "metadata": {}
-    }
+    raw_result = {"source": "test_source", "data": [], "metadata": {}}
 
     result = await build_framed_context_response(
-        raw_result=raw_result,
-        category="product_core",
-        tenant_key="tenant_empty",
-        user_id=None,
-        db_manager=db_manager
+        raw_result=raw_result, category="product_core", tenant_key="tenant_empty", user_id=None, db_manager=db_manager
     )
 
     # Should handle empty content gracefully
@@ -313,11 +276,7 @@ async def test_build_framed_context_response_empty_content(db_manager):
 @pytest.mark.asyncio
 async def test_build_framed_context_response_framing_error(db_manager):
     """Test build_framed_context_response when content_formatter raises ValueError."""
-    raw_result = {
-        "source": "test_source",
-        "data": {"test": "data"},
-        "metadata": {"existing": "value"}
-    }
+    raw_result = {"source": "test_source", "data": {"test": "data"}, "metadata": {"existing": "value"}}
 
     def failing_formatter(raw: Dict[str, Any]) -> str:
         """Formatter that always raises ValueError."""
@@ -329,7 +288,7 @@ async def test_build_framed_context_response_framing_error(db_manager):
         tenant_key="tenant_error",
         user_id="user_123",
         db_manager=db_manager,
-        content_formatter=failing_formatter
+        content_formatter=failing_formatter,
     )
 
     # Should handle error gracefully
@@ -346,10 +305,7 @@ async def test_build_framed_context_response_preserves_existing_metadata(db_mana
     raw_result = {
         "source": "test_source",
         "data": [],
-        "metadata": {
-            "existing_field": "existing_value",
-            "another_field": 123
-        }
+        "metadata": {"existing_field": "existing_value", "another_field": 123},
     }
 
     result = await build_framed_context_response(
@@ -357,7 +313,7 @@ async def test_build_framed_context_response_preserves_existing_metadata(db_mana
         category="agent_templates",
         tenant_key="tenant_preserve",
         user_id=None,
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     # Original metadata should be preserved
@@ -371,11 +327,7 @@ async def test_build_framed_context_response_preserves_existing_metadata(db_mana
 @pytest.mark.asyncio
 async def test_build_framed_context_response_with_priority_override(db_manager):
     """Test that priority_override takes precedence over user config."""
-    raw_result = {
-        "source": "test_source",
-        "data": [],
-        "metadata": {}
-    }
+    raw_result = {"source": "test_source", "data": [], "metadata": {}}
 
     result = await build_framed_context_response(
         raw_result=raw_result,
@@ -383,7 +335,7 @@ async def test_build_framed_context_response_with_priority_override(db_manager):
         tenant_key="tenant_override",
         user_id="user_override",
         db_manager=db_manager,
-        priority_override=1  # Force CRITICAL priority
+        priority_override=1,  # Force CRITICAL priority
     )
 
     # Should use override priority
@@ -397,15 +349,11 @@ async def test_build_framed_context_response_none_metadata(db_manager):
     raw_result = {
         "source": "test_source",
         "data": [],
-        "metadata": None  # Edge case: None instead of dict
+        "metadata": None,  # Edge case: None instead of dict
     }
 
     result = await build_framed_context_response(
-        raw_result=raw_result,
-        category="git_history",
-        tenant_key="tenant_none",
-        user_id=None,
-        db_manager=db_manager
+        raw_result=raw_result, category="git_history", tenant_key="tenant_none", user_id=None, db_manager=db_manager
     )
 
     # Should handle None gracefully by creating new metadata dict
@@ -417,19 +365,11 @@ async def test_build_framed_context_response_none_metadata(db_manager):
 @pytest.mark.asyncio
 async def test_build_framed_context_response_custom_formatter(db_manager):
     """Test build_framed_context_response with custom content_formatter."""
-    raw_result = {
-        "source": "custom_source",
-        "data": [{"item": "test"}],
-        "metadata": {}
-    }
+    raw_result = {"source": "custom_source", "data": [{"item": "test"}], "metadata": {}}
 
     def custom_formatter(raw: Dict[str, Any]) -> Dict[str, Any]:
         """Custom formatter that restructures content."""
-        return {
-            "source": raw.get("source"),
-            "formatted": True,
-            "data": raw.get("data")
-        }
+        return {"source": raw.get("source"), "formatted": True, "data": raw.get("data")}
 
     result = await build_framed_context_response(
         raw_result=raw_result,
@@ -437,7 +377,7 @@ async def test_build_framed_context_response_custom_formatter(db_manager):
         tenant_key="tenant_custom",
         user_id=None,
         db_manager=db_manager,
-        content_formatter=custom_formatter
+        content_formatter=custom_formatter,
     )
 
     # Should successfully apply custom formatter

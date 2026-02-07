@@ -77,7 +77,7 @@ def get_server_url() -> str:
             host = "localhost"
 
         return f"http://{host}:{port}"
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"
 
@@ -93,7 +93,7 @@ def generate_secure_token(user_id: str, expires_in: int) -> str:
     Returns:
         JWT token string
     """
-    expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
     payload = {"user_id": user_id, "expires_at": expires_at.isoformat() + "Z", "type": "mcp_installer_download"}
 
@@ -127,8 +127,8 @@ def validate_token(token: str) -> Optional[dict]:
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
         return None
-    except Exception as e:
-        logger.error(f"Token validation error: {e}")
+    except (OSError, ValueError, KeyError):
+        logger.exception("Token validation error")
         return None
 
 
@@ -181,24 +181,10 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
         User object or None if not found
     """
     # Simple query: Get user by ID (active users only)
-    stmt = select(User).where(User.id == user_id, User.is_active == True)
+    stmt = select(User).where(User.id == user_id, User.is_active)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     return user
-
-    # ORIGINAL IMPLEMENTATION (kept for reference):
-    # This created a new DatabaseManager for each call (anti-pattern)
-    # import os
-    # from src.giljo_mcp.database import DatabaseManager
-    # db_url = os.getenv("DATABASE_URL")
-    # if not db_url:
-    #     raise RuntimeError("DATABASE_URL not configured")
-    # db_manager = DatabaseManager(database_url=db_url, is_async=True)
-    # async with db_manager.get_session_async() as session:
-    #     stmt = select(User).where(User.id == user_id, User.is_active == True)
-    #     result = await session.execute(stmt)
-    #     user = result.scalar_one_or_none()
-    #     return user
 
 
 # API Endpoints
@@ -254,14 +240,14 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
-        logger.error(f"Template not found: {e}")
+        logger.exception("Template not found")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",
-        )
+        ) from e
 
     logger.info(f"Windows installer generated successfully for: {current_user.username}")
 
@@ -320,14 +306,14 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
-        logger.error(f"Template not found: {e}")
+        logger.exception("Template not found")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",
-        )
+        ) from e
 
     logger.info(f"Unix installer generated successfully for: {current_user.username}")
 
@@ -413,7 +399,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
     # Generate URLs
     windows_url = f"{base_url}/download/mcp/{token}/windows"
     unix_url = f"{base_url}/download/mcp/{token}/unix"
-    expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z"
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat() + "Z"
 
     logger.info(f"Share link generated for {current_user.username}, expires: {expires_at}")
 
@@ -421,11 +407,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
 
 
 @router.get("/download/{token}/{platform}", tags=["MCP Integration"])
-async def download_via_token(
-    token: str,
-    platform: str,
-    session: AsyncSession = Depends(get_db_session)
-):
+async def download_via_token(token: str, platform: str, session: AsyncSession = Depends(get_db_session)):
     """
     Public download endpoint using secure token.
 

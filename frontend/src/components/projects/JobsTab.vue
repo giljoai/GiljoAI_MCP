@@ -25,8 +25,8 @@
               <button
                 type="button"
                 class="agent-avatar-button"
-                @click="handleAgentRole(agent)"
                 aria-label="View agent details"
+                @click="handleAgentRole(agent)"
               >
                 <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
                   <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
@@ -73,8 +73,8 @@
                         type="button"
                         class="id-value id-value-button"
                         v-bind="tooltipProps"
-                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
                         aria-label="Show full agent ID"
+                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
                       >
                         {{ getShortId(agent.agent_id || agent.job_id) }}
                       </button>
@@ -94,8 +94,8 @@
                         type="button"
                         class="id-value id-value-button"
                         v-bind="tooltipProps"
-                        @click="copyId(agent.job_id, 'Job ID')"
                         aria-label="Show full job ID"
+                        @click="copyId(agent.job_id, 'Job ID')"
                       >
                         {{ getShortId(agent.job_id) }}
                       </button>
@@ -164,8 +164,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages sent"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count">{{ getMessagesSent(agent) }}</span>
               </button>
@@ -176,8 +176,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages waiting"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
               </button>
@@ -188,8 +188,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages read"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
               </button>
@@ -440,19 +440,17 @@ const theme = useTheme()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
 
 /**
- * GiljoAI face icon - theme-aware (Handover 0358)
+ * GiljoAI face icon (dark theme only)
  */
 const giljoFaceIcon = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+  return '/giljo_YW_Face.svg'
 })
 
 /**
- * Action icon color - theme-aware (yellow in dark, blue in light)
+ * Action icon color (dark theme only)
  */
 const actionIconColor = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? 'warning' : 'primary'
+  return 'warning'
 })
 
 function isOrchestrator(agent) {
@@ -777,7 +775,15 @@ async function handlePlay(agent) {
       // CLI mode: Generate implementation prompt
       if (props.project?.execution_mode === 'claude_code_cli') {
         try {
-          const response = await api.prompts.implementation(props.project.project_id || props.project.id)
+          // Handover 0709: Set implementation phase gate before copying prompt
+          const projectId = props.project.project_id || props.project.id
+          try {
+            await api.projects.launchImplementation(projectId)
+          } catch (gateError) {
+            console.warn('[JobsTab] launch-implementation call failed (non-blocking):', gateError)
+          }
+
+          const response = await api.prompts.implementation(projectId)
           const prompt = response.data.prompt
           await copyToClipboard(prompt)
           showLocalToast({

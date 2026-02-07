@@ -5,9 +5,10 @@ SettingsService handles CRUD operations for tenant-scoped settings (general, net
 Handover 0506: Settings endpoints implementation.
 """
 
-from typing import Dict, Any
+from typing import Any, ClassVar
+
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
 from src.giljo_mcp.models.settings import Settings
 
@@ -28,13 +29,13 @@ class SettingsService:
         ValueError if category is invalid
     """
 
-    VALID_CATEGORIES = {"general", "network", "database"}
+    VALID_CATEGORIES: ClassVar[set[str]] = {"general", "network", "database"}
 
     def __init__(self, session: AsyncSession, tenant_key: str):
         self.session = session
         self.tenant_key = tenant_key
 
-    async def get_settings(self, category: str) -> Dict[str, Any]:
+    async def get_settings(self, category: str) -> dict[str, Any]:
         """
         Get settings for category.
 
@@ -50,12 +51,7 @@ class SettingsService:
         if category not in self.VALID_CATEGORIES:
             raise ValueError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
 
-        stmt = select(Settings).where(
-            and_(
-                Settings.tenant_key == self.tenant_key,
-                Settings.category == category
-            )
-        )
+        stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
         result = await self.session.execute(stmt)
         settings = result.scalar_one_or_none()
 
@@ -64,11 +60,7 @@ class SettingsService:
 
         return settings.settings_data or {}
 
-    async def update_settings(
-        self,
-        category: str,
-        settings_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def update_settings(self, category: str, settings_data: dict[str, Any]) -> dict[str, Any]:
         """
         Update settings for category (upsert).
 
@@ -85,12 +77,7 @@ class SettingsService:
         if category not in self.VALID_CATEGORIES:
             raise ValueError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
 
-        stmt = select(Settings).where(
-            and_(
-                Settings.tenant_key == self.tenant_key,
-                Settings.category == category
-            )
-        )
+        stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
         result = await self.session.execute(stmt)
         settings = result.scalar_one_or_none()
 
@@ -99,11 +86,7 @@ class SettingsService:
             settings.settings_data = settings_data
         else:
             # Create new
-            settings = Settings(
-                tenant_key=self.tenant_key,
-                category=category,
-                settings_data=settings_data
-            )
+            settings = Settings(tenant_key=self.tenant_key, category=category, settings_data=settings_data)
             self.session.add(settings)
 
         await self.session.commit()

@@ -56,30 +56,103 @@ select = [
 ]
 
 ignore = [
-    "E501",   # Line too long - handled by formatter
-    "S101",   # Use of assert detected - needed for tests
-    "S105",   # Hardcoded password - false positives in tests
-    "S106",   # Hardcoded password - false positives in tests
-    "S107",   # Hardcoded password - false positives in tests
-    "S108",   # Probable insecure usage of temp file - managed properly
+    # --- Formatter compatibility ---
+    "E501",   # Line too long - handled by black formatter
     "COM812", # Missing trailing comma - handled by formatter
     "ISC001", # Implicit string concatenation - conflicts with formatter
-    "FBT001", # Boolean positional arg - sometimes needed
-    "FBT002", # Boolean default value - often clearer
-    "G004",   # Logging uses f-string - more readable
-    "TRY003", # Avoid long messages outside exception class - sometimes needed
-    "EM101",  # Exception string literals - simpler for small exceptions
-    "EM102",  # Exception f-string literals - more readable
-    "PLR0913", # Too many arguments - sometimes necessary
-    "PLR0911", # Too many return statements - can be clearer
-    "PLR2004", # Magic value comparison - sometimes clearer inline
-    "PGH003", # Specific type ignore - sometimes needed
-    "RET504", # Unnecessary variable before return - often clearer
-    "SIM108", # Use ternary operator - not always clearer
-    "C901",   # Too complex - will address case by case
-    "PLR0912", # Too many branches - will address case by case
-    "PLR0915", # Too many statements - will address case by case
-    "PTH123", # open() without pathlib - sometimes cleaner
+
+    # --- Security: Test-only false positives ---
+    "S101",   # Use of assert detected - required for pytest
+    "S105",   # Hardcoded password string - false positives in test fixtures
+    "S106",   # Hardcoded password function arg - false positives in test utilities
+    "S107",   # Hardcoded password default arg - false positives in test helpers
+    "S108",   # Probable insecure usage of temp file - managed by tempfile module
+
+    # --- Security: Reviewed false positives (2026-02-07, Handover 0720) ---
+    "S104",   # Bind all interfaces (0.0.0.0) - intentional for local dev server (firewall controls access)
+    "S311",   # Non-cryptographic random - UUIDs, port allocation, mock data (no cryptographic use)
+    "S603",   # Subprocess without shell - intentionally using shell=False for git/pg_dump (BETTER security)
+    "S607",   # Partial executable path - standard system utilities (git, uvx) via PATH lookup
+    "S301",   # Pickle usage - internal Redis cache only, trusted data (not deserializing user input)
+
+    # --- Readability preferences (established codebase patterns) ---
+    "FBT001", # Boolean positional arg - clarity over strictness in known interfaces
+    "FBT002", # Boolean default value - explicit flags are clearer than Optional
+    "G004",   # Logging f-string - more readable than % formatting
+    "G201",   # Logging .exception vs .error(exc_info=True) - both acceptable
+    "TRY003", # Avoid long messages outside exception class - sometimes clearer inline
+    "EM101",  # Exception string literals - acceptable for simple errors
+    "EM102",  # Exception f-string literals - more readable than concatenation
+    "RET504", # Unnecessary variable before return - naming often adds clarity
+    "SIM108", # Use ternary operator - not always more readable
+    "PTH123", # open() without pathlib - sometimes cleaner for simple cases
+
+    # --- Complexity: Case-by-case review (deferred to focused refactoring) ---
+    "C901",   # Function too complex - will address with targeted refactoring
+    "PLR0912", # Too many branches - will address with targeted refactoring
+    "PLR0915", # Too many statements - will address with targeted refactoring
+    "PLR0913", # Too many arguments - sometimes necessary for service layer APIs
+    "PLR0911", # Too many return statements - can be clearer than nested conditionals
+    "PLR2004", # Magic value comparison - sometimes clearer inline than named constants
+
+    # --- Type checking: Pragmatic defaults ---
+    "PGH003", # Use specific rule codes when ignoring type issues - blanket ignore acceptable for vendor code
+
+    # ==================================================================================
+    # 0720 DELINTING: Intentional architectural patterns (1221 occurrences)
+    # ==================================================================================
+
+    # --- Lazy loading pattern (413 occurrences) ---
+    "PLC0415",  # Import outside top-level (module scope)
+                # Rationale: Avoid circular imports and reduce startup time via lazy loading
+                # Example: def get_manager(): from .manager import Manager; return Manager()
+                # This is intentional lazy import pattern, not accidental import placement
+
+    # --- FastAPI dependency injection pattern (325 occurrences) ---
+    "B008",     # Function call in default argument
+                # Rationale: FastAPI Depends() in defaults is the canonical pattern
+                # Example: async def endpoint(db: AsyncSession = Depends(get_db_session))
+                # This is not a bug - it's how FastAPI's DI system works
+
+    # --- Error transformation pattern (198 occurrences) ---
+    "TRY301",   # Raise within try block
+                # Rationale: Catching one exception type and raising a more specific one
+                # Example: try: ... except SQLAlchemyError as e: raise DatabaseError(...) from e
+                # This is intentional error context enrichment, not accidental re-raising
+
+    # --- Control flow: try-else blocks (102 occurrences) ---
+    "TRY300",   # Consider moving statement to else block
+                # Rationale: Often false positives where else block would reduce clarity
+                # Many cases involve early returns or complex control flow where else is awkward
+
+    # --- API compatibility: Unused arguments (98 occurrences) ---
+    "ARG001",   # Unused function argument (42 occurrences)
+    "ARG002",   # Unused method argument (54 occurrences)
+    "ARG003",   # Unused class method argument (2 occurrences)
+                # Rationale: Required for API compatibility, interface contracts, or future use
+                # Example: MCP tool signatures require tenant_key even if not used in all implementations
+                # Example: Abstract base class methods that subclasses may not need all parameters
+
+    # --- Type annotations: Implicit Optional pattern (45 occurrences) ---
+    "RUF013",   # PEP 484 prohibits implicit Optional
+                # Rationale: foo: str = None is valid Python and clear in context
+                # PEP 484 is advisory, not enforced by runtime. Explicit Optional[str] = None
+                # is more verbose without adding clarity in many simple cases
+
+    # --- Testing: Private member access (12 occurrences) ---
+    "SLF001",   # Private member accessed
+                # Rationale: Tests need to verify internal state and setup test fixtures
+                # All occurrences are in test files or test helper utilities
+                # Per-file-ignores already cover tests/**, but some test utilities are in src/
+
+    # --- Type checking imports: Pedantic optimization (28 occurrences) ---
+    "TC001",    # Typing-only first-party import should be in TYPE_CHECKING block (11)
+    "TC002",    # Typing-only third-party import should be in TYPE_CHECKING block (4)
+    "TC003",    # Typing-only stdlib import should be in TYPE_CHECKING block (4)
+    "TC010",    # Runtime string union - move to TYPE_CHECKING (9)
+                # Rationale: Micro-optimization with minimal runtime impact
+                # TYPE_CHECKING blocks add complexity for marginal import time savings
+                # Most imports are used at runtime or in hybrid typing/runtime contexts
 ]
 
 # Allow autofix for all enabled rules
@@ -129,16 +202,31 @@ lines-after-imports = 2
 inline-quotes = "double"
 
 [lint.per-file-ignores]
+# --- Test files ---
 "tests/**/*.py" = [
     "S101",   # Assert allowed in tests
     "ARG",    # Unused arguments in fixtures OK
     "PLR2004", # Magic values OK in tests
     "S311",   # Random OK in tests
-    "SLF001", # Private member access OK in tests
+    "SLF001", # Private member access OK in tests - need to verify internal state
 ]
+"**/conftest.py" = [
+    "ARG",    # Unused arguments OK in pytest fixtures
+    "E402",   # Module-level imports after code - fixture setup may require this
+]
+
+# --- Application entry points (logging/config before imports) ---
+"api/app.py" = [
+    "E402",   # Module-level import not at top - logging configured before imports
+]
+"startup.py" = [
+    "E402",   # Module-level import not at top - early initialization required
+]
+
+# --- Examples and CLI tools ---
 "examples/**/*.py" = [
     "T20",    # Print allowed in examples
-    "INP001", # No __init__.py needed
+    "INP001", # No __init__.py needed in examples
 ]
 "setup*.py" = [
     "T20",    # Print allowed in setup scripts
@@ -146,10 +234,17 @@ inline-quotes = "double"
 "monitor*.py" = [
     "T20",    # Print allowed in monitoring scripts
 ]
-"**/conftest.py" = [
-    "ARG",    # Unused arguments OK in pytest fixtures
+"src/giljo_mcp/cleanup/visualizer.py" = [
+    "T201",   # CLI dependency visualization tool - print() is the interface
 ]
-# Installation files - bypass all linting (transient code, user runs once)
+"src/giljo_mcp/database_backup.py" = [
+    "T201",   # CLI database backup utility - print() for user feedback
+]
+"src/giljo_mcp/colored_logger.py" = [
+    "T201",   # Public API for colored console output
+]
+
+# --- Installation files (transient code, users run once) ---
 "bootstrap.py" = ["ALL"]
 "setup.py" = ["ALL"]
 "setup_gui.py" = ["ALL"]

@@ -1,6 +1,6 @@
-<!-- 
+<!--
   INTEGRATION EXAMPLE: How to use StatusBadge in ProjectsView
-  
+
   This file demonstrates the integration pattern for StatusBadge.
   Copy this code into your ProjectsView.vue component.
 -->
@@ -149,13 +149,13 @@ onMounted(() => {
 /* Add any view-specific styles here */
 </style>
 
-<!-- 
+<!--
   ALTERNATIVE INTEGRATION: Card Grid Layout
-  
+
   If you're using a card grid instead of a table:
 -->
 
-<!-- 
+<!--
 <template>
   <v-container fluid>
     <v-row>

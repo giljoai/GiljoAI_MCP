@@ -14,7 +14,6 @@ import os
 import socket
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 import yaml
 
@@ -36,8 +35,8 @@ class PortConfiguration:
     postgres_port: int = 5432
 
     # Alternative ports if preferred are occupied
-    api_alternatives: List[int] = None
-    frontend_alternatives: List[int] = None
+    api_alternatives: list[int] = None
+    frontend_alternatives: list[int] = None
 
     def __post_init__(self):
         """Initialize default alternatives if not provided"""
@@ -60,7 +59,7 @@ class PortManager:
     Also provides port availability checking and conflict resolution.
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """
         Initialize PortManager.
 
@@ -87,12 +86,12 @@ class PortManager:
                 sock.settimeout(1)
                 result = sock.connect_ex((host, port))
                 return result != 0  # True if NOT in use (connection failed)
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.debug(f"Error checking port {port}: {e}")
             return False
 
     @staticmethod
-    def find_available_port(preferred: int, alternatives: Optional[List[int]] = None) -> int:
+    def find_available_port(preferred: int, alternatives: list[int | None] = None) -> int:
         """
         Find an available port, starting with preferred.
 
@@ -121,7 +120,7 @@ class PortManager:
         import random
 
         for _ in range(10):
-            port = random.randint(7200, 9999)  # nosec B311 - port selection
+            port = random.randint(7200, 9999)
             if PortManager.check_port_available(port):
                 logger.warning(f"Using random available port {port} (preferred {preferred} was occupied)")
                 return port
@@ -148,22 +147,19 @@ class PortManager:
                 services = data["services"]
 
                 # API port from services.api.port
-                if "api" in services and isinstance(services["api"], dict):
-                    if "port" in services["api"]:
-                        self.config.api_port = services["api"]["port"]
-                        logger.debug(f"Loaded API port from services config: {self.config.api_port}")
+                if "api" in services and isinstance(services["api"], dict) and "port" in services["api"]:
+                    self.config.api_port = services["api"]["port"]
+                    logger.debug(f"Loaded API port from services config: {self.config.api_port}")
 
                 # Frontend port from services.frontend.port
-                if "frontend" in services and isinstance(services["frontend"], dict):
-                    if "port" in services["frontend"]:
-                        self.config.frontend_port = services["frontend"]["port"]
-                        logger.debug(f"Loaded frontend port from services config: {self.config.frontend_port}")
+                if "frontend" in services and isinstance(services["frontend"], dict) and "port" in services["frontend"]:
+                    self.config.frontend_port = services["frontend"]["port"]
+                    logger.debug(f"Loaded frontend port from services config: {self.config.frontend_port}")
 
                 # PostgreSQL port from database.port (if in services section)
-                if "database" in data and isinstance(data["database"], dict):
-                    if "port" in data["database"]:
-                        self.config.postgres_port = data["database"]["port"]
-                        logger.debug(f"Loaded PostgreSQL port from database config: {self.config.postgres_port}")
+                if "database" in data and isinstance(data["database"], dict) and "port" in data["database"]:
+                    self.config.postgres_port = data["database"]["port"]
+                    logger.debug(f"Loaded PostgreSQL port from database config: {self.config.postgres_port}")
 
                 logger.info(f"Loaded port configuration from {self.config_path}")
                 return True
@@ -179,17 +175,15 @@ class PortManager:
                     logger.debug(f"Loaded unified server port from config: {self.config.api_port}")
 
                 # Nested structure: server.api.port
-                if "api" in server and isinstance(server["api"], dict):
-                    if "port" in server["api"]:
-                        self.config.api_port = server["api"]["port"]
-                        logger.debug(f"Loaded API port from config: {self.config.api_port}")
+                if "api" in server and isinstance(server["api"], dict) and "port" in server["api"]:
+                    self.config.api_port = server["api"]["port"]
+                    logger.debug(f"Loaded API port from config: {self.config.api_port}")
 
                 # Frontend port
                 if "frontend_port" in server:
                     self.config.frontend_port = server["frontend_port"]
-                elif "dashboard" in server and isinstance(server["dashboard"], dict):
-                    if "port" in server["dashboard"]:
-                        self.config.frontend_port = server["dashboard"]["port"]
+                elif "dashboard" in server and isinstance(server["dashboard"], dict) and "port" in server["dashboard"]:
+                    self.config.frontend_port = server["dashboard"]["port"]
 
                 logger.info(f"Loaded port configuration from {self.config_path}")
                 return True
@@ -197,8 +191,8 @@ class PortManager:
             logger.debug("No 'services' or 'server' section found in config")
             return False
 
-        except Exception as e:
-            logger.error(f"Error loading port configuration from {self.config_path}: {e}")
+        except (OSError, ValueError):
+            logger.exception("Error loading port configuration from {self.config_path}")
             return False
 
     def load_from_environment(self) -> bool:
@@ -323,7 +317,7 @@ class PortManager:
         """
         return self.config.postgres_port
 
-    def validate_ports(self) -> List[str]:
+    def validate_ports(self) -> list[str]:
         """
         Validate port configuration for conflicts and issues.
 
@@ -387,7 +381,7 @@ class PortManager:
 
 
 # Convenience functions
-def get_port_manager(config_path: Optional[Path] = None) -> PortManager:
+def get_port_manager(config_path: Path | None = None) -> PortManager:
     """
     Get a PortManager instance with configuration loaded.
 
@@ -402,7 +396,7 @@ def get_port_manager(config_path: Optional[Path] = None) -> PortManager:
     return manager
 
 
-def get_api_port(config_path: Optional[Path] = None, check_availability: bool = False) -> int:
+def get_api_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """
     Convenience function to get API port.
 
@@ -417,7 +411,7 @@ def get_api_port(config_path: Optional[Path] = None, check_availability: bool = 
     return manager.get_api_port(check_availability)
 
 
-def get_frontend_port(config_path: Optional[Path] = None, check_availability: bool = False) -> int:
+def get_frontend_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """
     Convenience function to get frontend port.
 

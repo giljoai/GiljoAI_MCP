@@ -96,4 +96,3 @@ const formattedTimestamp = computed(() => {
   border-radius: 4px;
 }
 </style>
-

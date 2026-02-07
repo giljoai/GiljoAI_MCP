@@ -9,6 +9,8 @@ Tests the complete flow:
 """
 
 import pytest
+
+
 pytest.skip("TODO(0127a-2): Comprehensive refactoring needed for MCPAgentJob model", allow_module_level=True)
 import json
 
@@ -16,6 +18,8 @@ import pytest
 
 from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
 from src.giljo_mcp.database import get_db_manager
+
+
 # TODO(0127a): from src.giljo_mcp.models import Agent, Product, Project
 # from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 

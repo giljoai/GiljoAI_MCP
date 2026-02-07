@@ -32,9 +32,9 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 
 
 # ========================================================================
@@ -129,9 +129,7 @@ async def test_job(db_session, tenant_key, test_project):
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_returns_active_teammates(
-    db_session, tenant_key, test_job
-):
+async def test_get_team_agents_returns_active_teammates(db_session, tenant_key, test_job):
     """Should return all active agent executions for the job."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
 
@@ -141,7 +139,6 @@ async def test_get_team_agents_returns_active_teammates(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
         agent_name="Orchestrator Instance 1",
     )
@@ -150,7 +147,6 @@ async def test_get_team_agents_returns_active_teammates(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=2,
         status="waiting",
         agent_name="Orchestrator Instance 2",
     )
@@ -159,7 +155,6 @@ async def test_get_team_agents_returns_active_teammates(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="implementer",
-        instance_number=1,
         status="blocked",
         agent_name="Backend Implementer",
     )
@@ -197,18 +192,16 @@ async def test_get_team_agents_returns_active_teammates(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_excludes_inactive_by_default(
-    db_session, tenant_key, test_job
-):
+async def test_get_team_agents_excludes_inactive_by_default(db_session, tenant_key, test_job):
     """Completed/decommissioned executions should be filtered by default."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
+
     # Create mix of active and inactive executions
     active_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
     )
     completed_execution = AgentExecution(
@@ -216,7 +209,6 @@ async def test_get_team_agents_excludes_inactive_by_default(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=2,
         status="complete",
         completed_at=datetime.now(timezone.utc),
     )
@@ -225,7 +217,6 @@ async def test_get_team_agents_excludes_inactive_by_default(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="implementer",
-        instance_number=1,
         status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
     )
@@ -234,7 +225,6 @@ async def test_get_team_agents_excludes_inactive_by_default(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="tester",
-        instance_number=1,
         status="failed",
         completed_at=datetime.now(timezone.utc),
     )
@@ -265,18 +255,16 @@ async def test_get_team_agents_excludes_inactive_by_default(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_includes_inactive_when_requested(
-    db_session, tenant_key, test_job
-):
+async def test_get_team_agents_includes_inactive_when_requested(db_session, tenant_key, test_job):
     """include_inactive=True should return all executions."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
+
     # Create mix of active and inactive executions
     active_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
     )
     completed_execution = AgentExecution(
@@ -284,7 +272,6 @@ async def test_get_team_agents_includes_inactive_when_requested(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=2,
         status="complete",
         completed_at=datetime.now(timezone.utc),
     )
@@ -293,7 +280,6 @@ async def test_get_team_agents_includes_inactive_when_requested(
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="implementer",
-        instance_number=1,
         status="decommissioned",
         decommissioned_at=datetime.now(timezone.utc),
     )
@@ -328,18 +314,16 @@ async def test_get_team_agents_includes_inactive_when_requested(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_tenant_isolation(
-    db_session, tenant_key, other_tenant_key, test_job
-):
+async def test_get_team_agents_tenant_isolation(db_session, tenant_key, other_tenant_key, test_job):
     """Should only return agents from same tenant."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
+
     # Create execution in correct tenant
     same_tenant_execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
     )
 
@@ -357,7 +341,6 @@ async def test_get_team_agents_tenant_isolation(
         job_id=other_job.job_id,
         tenant_key=other_tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
     )
 
@@ -384,9 +367,7 @@ async def test_get_team_agents_tenant_isolation(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_empty_team(
-    db_session, tenant_key, test_job
-):
+async def test_get_team_agents_empty_team(db_session, tenant_key, test_job):
     """Should return empty team list when no executions exist."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
 
@@ -403,9 +384,7 @@ async def test_get_team_agents_empty_team(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_missing_job_id(
-    tenant_key
-):
+async def test_get_team_agents_missing_job_id(tenant_key):
     """Should handle missing job_id gracefully."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
 
@@ -422,17 +401,15 @@ async def test_get_team_agents_missing_job_id(
 
 
 @pytest.mark.asyncio
-async def test_get_team_agents_returns_all_required_fields(
-    db_session, tenant_key, test_job
-):
+async def test_get_team_agents_returns_all_required_fields(db_session, tenant_key, test_job):
     """Should return all required fields for each team member."""
     from src.giljo_mcp.tools.agent_coordination import get_team_agents
+
     execution = AgentExecution(
         agent_id=str(uuid4()),
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
         agent_name="Test Orchestrator",
         progress=50,
@@ -459,4 +436,3 @@ async def test_get_team_agents_returns_all_required_fields(
 
     # Optional but useful fields
     assert "agent_name" in member or member.get("agent_name") == "Test Orchestrator"
-    assert "instance_number" in member or member.get("instance_number") == 1

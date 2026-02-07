@@ -1,18 +1,20 @@
 """
 Test mission_acknowledged_at tracking in AgentJobManager (Handover 0233)
 """
+
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -48,11 +50,7 @@ def test_status_transition_to_working_sets_mission_acknowledged_at(db_session, d
     assert job.status == "waiting"
 
     # Transition to 'working' status
-    updated_job = manager.update_job_status(
-        tenant_key=tenant_key,
-        job_id=job.job_id,
-        status="working"
-    )
+    updated_job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
 
     # Verify mission_acknowledged_at is set
     assert updated_job.mission_acknowledged_at is not None
@@ -71,27 +69,15 @@ def test_mission_acknowledged_at_only_set_once(db_session, db_manager):
         mission="Test mission",
     )
 
-    job = manager.update_job_status(
-        tenant_key=tenant_key,
-        job_id=job.job_id,
-        status="working"
-    )
+    job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
 
     first_ack_time = job.mission_acknowledged_at
     assert first_ack_time is not None
 
     # Transition to 'blocked' then back to 'working'
-    manager.update_job_status(
-        tenant_key=tenant_key,
-        job_id=job.job_id,
-        status="blocked"
-    )
+    manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="blocked")
 
-    job = manager.update_job_status(
-        tenant_key=tenant_key,
-        job_id=job.job_id,
-        status="working"
-    )
+    job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
 
     # Verify timestamp UNCHANGED (idempotent)
     assert job.mission_acknowledged_at == first_ack_time
@@ -111,11 +97,7 @@ def test_other_status_transitions_dont_set_mission_acknowledged_at(db_session, d
     assert job.mission_acknowledged_at is None
 
     # Transition to 'failed' (not 'working')
-    updated_job = manager.update_job_status(
-        tenant_key=tenant_key,
-        job_id=job.job_id,
-        status="failed"
-    )
+    updated_job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="failed")
 
     # Verify mission_acknowledged_at is still None
     assert updated_job.mission_acknowledged_at is None

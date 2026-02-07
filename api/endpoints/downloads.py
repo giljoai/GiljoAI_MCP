@@ -19,9 +19,9 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
 
 
@@ -60,7 +60,7 @@ def get_server_url(request=None) -> str:
         scheme = "https" if (request and request.headers.get("x-forwarded-proto") == "https") else "http"
 
         return f"{scheme}://{host}:{port}"
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"
 
@@ -235,7 +235,7 @@ async def download_agent_templates(
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
-    active_only: bool = Query(True, description="Only include active templates"),
+    active_only: bool = Query(default=True, description="Only include active templates"),
 ):
     """
     Download agent templates as complete ZIP file (dynamic content from database).
@@ -307,7 +307,7 @@ async def download_agent_templates(
         )
 
         if active_only:
-            stmt = stmt.where(AgentTemplate.is_active == True)
+            stmt = stmt.where(AgentTemplate.is_active)
 
         result = await db.execute(stmt)
         templates = result.scalars().all()
@@ -322,10 +322,10 @@ async def download_agent_templates(
         # Unauthenticated: Use system default templates (tenant_key IS NULL)
         logger.info("Generating agent templates ZIP (unauthenticated - system defaults)")
 
-        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == None).order_by(AgentTemplate.name)
+        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key is None).order_by(AgentTemplate.name)
 
         if active_only:
-            stmt = stmt.where(AgentTemplate.is_active == True)
+            stmt = stmt.where(AgentTemplate.is_active)
 
         result = await db.execute(stmt)
         templates = result.scalars().all()
@@ -387,9 +387,7 @@ async def download_agent_templates(
         logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
 
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
-    logger.info(
-        f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes"
-    )
+    logger.info(f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes")
 
     return Response(
         content=zip_bytes,
@@ -537,12 +535,12 @@ async def generate_download_token(
         x_api_key = request.headers.get("x-api-key")
         authorization = request.headers.get("authorization")
         current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
-    except HTTPException:
+    except HTTPException as e:
         logger.warning("Token generation failed: Authentication required")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required to generate download token",
-        )
+        ) from e
 
     # Derive content_type from query or JSON body (compat with older tests)
     if not content_type and body:
@@ -607,12 +605,12 @@ async def generate_download_token(
             "one_time_use": True,
         }
 
-    except Exception as e:
-        logger.error(f"Failed to generate download token: {e}")
+    except (OSError, ValueError, KeyError) as e:
+        logger.exception("Failed to generate download token")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate download token: {e!s}",
-        )
+        ) from e
 
 
 @router.get("/temp/{token}/{filename}")
@@ -684,7 +682,9 @@ async def download_temp_file(
 
         # Check if staging is ready
         if token_info.get("staging_status") != "ready":
-            logger.warning(f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}")
+            logger.warning(
+                f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}"
+            )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
         # Check if filename matches metadata
@@ -710,9 +710,9 @@ async def download_temp_file(
 
         try:
             content = file_path.read_bytes()
-        except Exception as e:
-            logger.error(f"Failed reading file {file_path}: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error")
+        except (OSError, ValueError, KeyError) as e:
+            logger.exception("Failed reading file {file_path}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error") from e
 
         # Increment download metrics
         await token_manager.increment_download_count(token)
@@ -728,9 +728,9 @@ async def download_temp_file(
                 "Expires": "0",
             },
         )
-    except Exception as e:
-        logger.error(f"Unexpected error during download: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    except (OSError, ValueError, KeyError) as e:
+        logger.exception("Unexpected error during download")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 #

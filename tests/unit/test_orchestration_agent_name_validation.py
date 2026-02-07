@@ -21,15 +21,12 @@ TDD PHASE: RED - These tests should FAIL initially.
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from tests.utils.tools_helpers import ToolsTestHelper, MockMCPToolRegistrar
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestOrchestratorInstructionsConstraintAgentName:
@@ -87,7 +84,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Implementer Agent\n\nImplements code features.",
+                    system_instructions="# Implementer Agent\n\nImplements code features.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -98,7 +95,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Tester Agent\n\nWrites tests.",
+                    system_instructions="# Tester Agent\n\nWrites tests.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -109,7 +106,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Reviewer Agent\n\nReviews code.",
+                    system_instructions="# Reviewer Agent\n\nReviews code.",
                 ),
             ]
             for template in self.agent_templates:
@@ -155,9 +152,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             )
 
             # ASSERTION 1: agent_spawning_constraint exists
-            assert "agent_spawning_constraint" in result, (
-                "CLI mode MUST include agent_spawning_constraint"
-            )
+            assert "agent_spawning_constraint" in result, "CLI mode MUST include agent_spawning_constraint"
 
             constraint = result["agent_spawning_constraint"]
 
@@ -179,9 +174,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             # ASSERTION 5: allowed_agent_names matches available template names
             from src.giljo_mcp.tools.agent_discovery import get_available_agents
 
-            agents_result = await get_available_agents(
-                session, self.tenant_key, depth="type_only"
-            )
+            agents_result = await get_available_agents(session, self.tenant_key, depth="type_only")
 
             expected_names = [t["name"] for t in agents_result["data"]["agents"]]
             assert set(constraint["allowed_agent_names"]) == set(expected_names), (
@@ -222,9 +215,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             instruction = constraint["instruction"]
 
             # ASSERTION 1: Instruction mentions agent_name field
-            assert "agent_name" in instruction, (
-                "Handover 0351: Instruction must reference agent_name field"
-            )
+            assert "agent_name" in instruction, "Handover 0351: Instruction must reference agent_name field"
 
             # ASSERTION 2: Instruction should NOT mention agent_display_name as validation field
             # (agent_display_name may be mentioned for other purposes, but not as the SSOT)
@@ -272,8 +263,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             # ASSERTION: All template names present
             expected_names = ["implementer", "tester", "reviewer"]
             assert set(allowed_names) == set(expected_names), (
-                f"Constraint must include all active template names. "
-                f"Expected: {expected_names}, Got: {allowed_names}"
+                f"Constraint must include all active template names. Expected: {expected_names}, Got: {allowed_names}"
             )
 
     @pytest.mark.asyncio
@@ -294,7 +284,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
                 product_id=self.product.id,
                 is_active=False,  # INACTIVE
                 version="0.5.0",
-                template_content="# Deprecated Agent\n\nOld agent.",
+                system_instructions="# Deprecated Agent\n\nOld agent.",
             )
             session.add(inactive_template)
             await session.commit()
@@ -323,9 +313,7 @@ class TestOrchestratorInstructionsConstraintAgentName:
             allowed_names = constraint["allowed_agent_names"]
 
             # ASSERTION: Inactive template NOT in allowed names
-            assert "deprecated_agent" not in allowed_names, (
-                "Inactive templates must NOT be in allowed_agent_names"
-            )
+            assert "deprecated_agent" not in allowed_names, "Inactive templates must NOT be in allowed_agent_names"
 
             # ASSERTION: Only active templates present
             assert set(allowed_names) == {"implementer", "tester", "reviewer"}, (
@@ -385,7 +373,7 @@ class TestSpawnAgentJobValidationAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Implementer\n\nImplements code.",
+                    system_instructions="# Implementer\n\nImplements code.",
                 ),
                 AgentTemplate(
                     id=str(uuid.uuid4()),
@@ -395,7 +383,7 @@ class TestSpawnAgentJobValidationAgentName:
                     product_id=self.product.id,
                     is_active=True,
                     version="1.0.0",
-                    template_content="# Tester\n\nWrites tests.",
+                    system_instructions="# Tester\n\nWrites tests.",
                 ),
             ]
             for template in self.agent_templates:
@@ -454,8 +442,7 @@ class TestSpawnAgentJobValidationAgentName:
 
             # ASSERTION: Each valid name accepted
             assert result["success"] is True, (
-                f"Valid agent_name '{agent_name}' should be accepted. "
-                f"Error: {result.get('error')}"
+                f"Valid agent_name '{agent_name}' should be accepted. Error: {result.get('error')}"
             )
 
     @pytest.mark.asyncio
@@ -479,9 +466,7 @@ class TestSpawnAgentJobValidationAgentName:
         )
 
         # ASSERTION 1: Spawn fails
-        assert result["success"] is False, (
-            "Invalid agent_name should be rejected"
-        )
+        assert result["success"] is False, "Invalid agent_name should be rejected"
 
         # ASSERTION 2: Error message present
         assert "error" in result, "Rejected spawn must include error message"
@@ -496,17 +481,11 @@ class TestSpawnAgentJobValidationAgentName:
         )
 
         # ASSERTION 4: Error lists valid agent names (not types)
-        assert "implementer" in error_msg, (
-            f"Error should list valid agent names. Got: {error_msg}"
-        )
-        assert "tester" in error_msg, (
-            f"Error should list valid agent names. Got: {error_msg}"
-        )
+        assert "implementer" in error_msg, f"Error should list valid agent names. Got: {error_msg}"
+        assert "tester" in error_msg, f"Error should list valid agent names. Got: {error_msg}"
 
         # ASSERTION 5: Hint field present
-        assert "hint" in result, (
-            "Rejected spawn should include 'hint' field to guide orchestrator"
-        )
+        assert "hint" in result, "Rejected spawn should include 'hint' field to guide orchestrator"
 
     @pytest.mark.asyncio
     async def test_extended_descriptive_name_rejected(self):
@@ -529,18 +508,14 @@ class TestSpawnAgentJobValidationAgentName:
         )
 
         # ASSERTION 1: Spawn fails
-        assert result["success"] is False, (
-            "Extended descriptive names should be rejected if not matching template"
-        )
+        assert result["success"] is False, "Extended descriptive names should be rejected if not matching template"
 
         # ASSERTION 2: Error present
         assert "error" in result
 
         # ASSERTION 3: Error references agent_name field
         error_lower = result["error"].lower()
-        assert "agent_name" in error_lower, (
-            "Handover 0351: Error should reference agent_name field"
-        )
+        assert "agent_name" in error_lower, "Handover 0351: Error should reference agent_name field"
 
         # ASSERTION 4: Hint explains exact template name requirement
         assert "hint" in result, "Hint field must be present for guidance"
@@ -570,16 +545,12 @@ class TestSpawnAgentJobValidationAgentName:
         )
 
         # ASSERTION: Case mismatch rejected
-        assert result["success"] is False, (
-            "Agent name matching must be case-sensitive. 'Implementer' != 'implementer'"
-        )
+        assert result["success"] is False, "Agent name matching must be case-sensitive. 'Implementer' != 'implementer'"
 
         # ASSERTION: Error mentions case sensitivity
         assert "error" in result
         error_msg = result["error"]
-        assert "Implementer" in error_msg, (
-            f"Error should show the invalid name. Got: {error_msg}"
-        )
+        assert "Implementer" in error_msg, f"Error should show the invalid name. Got: {error_msg}"
 
     @pytest.mark.asyncio
     async def test_inactive_template_name_rejected(self):
@@ -600,7 +571,7 @@ class TestSpawnAgentJobValidationAgentName:
                 tenant_key=self.tenant_key,
                 product_id=self.product.id,
                 is_active=False,  # INACTIVE
-                template_content="# Deprecated\n\nOld agent.",
+                system_instructions="# Deprecated\n\nOld agent.",
             )
             session.add(inactive_template)
             await session.commit()
@@ -616,16 +587,12 @@ class TestSpawnAgentJobValidationAgentName:
             )
 
             # ASSERTION: Inactive template rejected
-            assert result["success"] is False, (
-                "Inactive template names should be rejected"
-            )
+            assert result["success"] is False, "Inactive template names should be rejected"
 
             # ASSERTION: Error explains template is inactive
             assert "error" in result
             # Should list only active template names
-            assert "implementer" in result["error"], (
-                "Error should list active template names only"
-            )
+            assert "implementer" in result["error"], "Error should list active template names only"
 
     @pytest.mark.asyncio
     async def test_error_message_includes_valid_names_list(self):

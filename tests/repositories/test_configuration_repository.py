@@ -103,9 +103,7 @@ class TestTenantConfigurationDomain:
         assert isinstance(tenant_keys, list)
 
     @pytest.mark.asyncio
-    async def test_get_tenant_configurations(
-        self, config_repo, db_session, test_tenant_key, test_configurations
-    ):
+    async def test_get_tenant_configurations(self, config_repo, db_session, test_tenant_key, test_configurations):
         """Test retrieving all configurations for a tenant"""
         configs = await config_repo.get_tenant_configurations(db_session, test_tenant_key)
 
@@ -133,9 +131,7 @@ class TestTenantConfigurationDomain:
         assert configs == []
 
     @pytest.mark.asyncio
-    async def test_get_configuration_by_key(
-        self, config_repo, db_session, test_tenant_key, test_configurations
-    ):
+    async def test_get_configuration_by_key(self, config_repo, db_session, test_tenant_key, test_configurations):
         """Test retrieving specific configuration by key"""
         config = await config_repo.get_configuration_by_key(db_session, test_tenant_key, "test.key.0")
 
@@ -157,16 +153,12 @@ class TestTenantConfigurationDomain:
     @pytest.mark.asyncio
     async def test_get_configuration_by_key_not_found(self, config_repo, db_session, test_tenant_key):
         """Test retrieving non-existent configuration"""
-        config = await config_repo.get_configuration_by_key(
-            db_session, test_tenant_key, "nonexistent.key"
-        )
+        config = await config_repo.get_configuration_by_key(db_session, test_tenant_key, "nonexistent.key")
 
         assert config is None
 
     @pytest.mark.asyncio
-    async def test_delete_tenant_configurations(
-        self, config_repo, db_session, test_tenant_key, test_configurations
-    ):
+    async def test_delete_tenant_configurations(self, config_repo, db_session, test_tenant_key, test_configurations):
         """Test deleting all configurations for a tenant"""
         # Delete all configurations
         deleted_count = await config_repo.delete_tenant_configurations(db_session, test_tenant_key)
@@ -196,13 +188,9 @@ class TestTenantConfigurationDomain:
         assert len(other_configs) == 2
 
     @pytest.mark.asyncio
-    async def test_delete_tenant_configurations_not_found(
-        self, config_repo, db_session
-    ):
+    async def test_delete_tenant_configurations_not_found(self, config_repo, db_session):
         """Test deleting configurations for tenant with none"""
-        deleted_count = await config_repo.delete_tenant_configurations(
-            db_session, "nonexistent_tenant"
-        )
+        deleted_count = await config_repo.delete_tenant_configurations(db_session, "nonexistent_tenant")
 
         assert deleted_count == 0
 
@@ -229,6 +217,7 @@ class TestSetupDomain:
         async with db_manager.get_session_async() as fresh_session:
             # First verify no admin exists by not creating one
             from sqlalchemy import delete
+
             from src.giljo_mcp.models.auth import User
 
             # Delete any admin users that might exist from other tests
@@ -259,6 +248,7 @@ class TestHealthCheckDomain:
     @pytest.mark.asyncio
     async def test_execute_health_check_failure(self, config_repo, db_manager, monkeypatch):
         """Test health check when database fails"""
+
         # Create a mock session that raises an exception
         class FailingSession:
             async def execute(self, stmt):

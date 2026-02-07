@@ -1,4 +1,5 @@
 """Smoke test: Multi-tenant isolation for products/projects."""
+
 from __future__ import annotations
 
 import pytest
@@ -67,4 +68,3 @@ async def test_multi_tenant_isolation_smoke(authenticated_client) -> None:
     assert all(p.get("tenant_key") == "tenant-b" for p in projects_b)
 
     print("✓ Multi-tenant isolation: PASS")
-

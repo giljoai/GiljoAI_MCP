@@ -29,9 +29,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.agent_message_queue import AgentMessageQueue
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, Project
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -124,7 +124,7 @@ def claude_template(db_manager, tenant_key):
             category="role",
             role="implementer",
             tool="claude",
-            template_content="Implement the following feature: {{feature}}",
+            system_instructions="Implement the following feature: {{feature}}",
             success_criteria=["Code compiles and tests pass"],
             is_default=True,
         )
@@ -144,7 +144,7 @@ def codex_template(db_manager, tenant_key):
             category="role",
             role="implementer",
             tool="codex",
-            template_content="Implement using Codex: {{feature}}",
+            system_instructions="Implement using Codex: {{feature}}",
             success_criteria=["Working implementation with tests"],
             is_default=False,
         )
@@ -164,7 +164,7 @@ def gemini_template(db_manager, tenant_key):
             category="role",
             role="tester",
             tool="gemini",
-            template_content="Test the implementation: {{feature}}",
+            system_instructions="Test the implementation: {{feature}}",
             success_criteria=["All tests pass with high coverage"],
             is_default=False,
         )
@@ -982,7 +982,7 @@ class TestTemplateConsistency:
                 category="role",
                 role="implementer",
                 tool="claude",
-                template_content="Template 1",
+                system_instructions="Template 1",
                 is_default=False,
             )
             session.add(t1_template)
@@ -995,7 +995,7 @@ class TestTemplateConsistency:
                 category="role",
                 role="implementer",
                 tool="codex",
-                template_content="Template 2",
+                system_instructions="Template 2",
                 is_default=False,
             )
             session.add(t2_template)

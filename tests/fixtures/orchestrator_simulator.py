@@ -25,7 +25,8 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -479,7 +480,12 @@ class OrchestratorSimulator:
         import aiohttp
 
         url = f"{self.mcp_base_url}/mcp"
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool_name, "arguments": params}}
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": params},
+        }
 
         try:
             async with aiohttp.ClientSession() as session:
@@ -487,9 +493,8 @@ class OrchestratorSimulator:
                     if response.status == 200:
                         data = await response.json()
                         return data.get("result", {})
-                    else:
-                        logger.error(f"MCP tool call failed: {response.status}")
-                        return {"success": False, "error": f"HTTP {response.status}"}
+                    logger.error(f"MCP tool call failed: {response.status}")
+                    return {"success": False, "error": f"HTTP {response.status}"}
 
         except Exception as e:
             logger.error(f"MCP tool call exception: {e}", exc_info=True)
@@ -530,12 +535,12 @@ if __name__ == "__main__":
 
         result = await simulator.execute_staging()
 
-        print(f"\nStaging Result:")
+        print("\nStaging Result:")
         print(f"  Success: {result['success']}")
         print(f"  Duration: {result['duration_ms']}ms")
         print(f"  Tasks Completed: {len(result['tasks_completed'])}")
         print(f"  Agents Spawned: {result['spawned_agents_count']}")
-        print(f"\nSpawned Agents:")
+        print("\nSpawned Agents:")
         for agent in result["spawned_agents"]:
             print(f"  - {agent['agent_display_name']}: {agent['job_id']}")
 

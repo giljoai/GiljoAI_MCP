@@ -166,8 +166,8 @@ def create_backup(file_path: Path) -> Optional[Path]:
     try:
         backup_path.write_text(file_path.read_text(), encoding="utf-8")
         logger.info(f"Created backup: {backup_path}")
-    except Exception as e:
-        logger.exception(f"Failed to create backup for {file_path}: {e}")
+    except Exception:
+        logger.exception("Failed to create backup for {file_path}")
         raise
     else:
         return backup_path
@@ -233,8 +233,8 @@ def create_zip_backup(agents_dir: Path) -> Optional[Path]:
 
         return backup_path
 
-    except Exception as e:
-        logger.exception(f"[create_zip_backup] Failed to create backup: {e}")
+    except Exception:
+        logger.exception("[create_zip_backup] Failed to create backup")
         return None
 
 
@@ -313,7 +313,7 @@ async def export_template_to_claude_code(
 
     # Add template content
     content_parts.append("\n")
-    content_parts.append(template.template_content.strip())
+    content_parts.append(template.system_instructions.strip())
     content_parts.append("\n")
 
     # Add behavioral rules if present
@@ -482,7 +482,7 @@ async def export_templates_to_claude_code(
 
             # Add template content
             content_parts.append("\n")
-            content_parts.append(template.template_content.strip())
+            content_parts.append(template.system_instructions.strip())
             content_parts.append("\n")
 
             # Add behavioral rules if present
@@ -511,8 +511,8 @@ async def export_templates_to_claude_code(
                 }
             )
 
-        except Exception as e:
-            logger.exception(f"Failed to export template {template.name}: {e}")
+        except Exception:  # noqa: PERF203 - Resilient export: continue with other templates on error
+            logger.exception("Failed to export template {template.name}")
             # Continue with other templates rather than failing completely
             continue
 
@@ -635,7 +635,7 @@ async def export_claude_code_endpoint(
 
     except Exception as e:
         # Unexpected errors
-        logger.exception(f"Export failed: {e}")
+        logger.exception("Export failed")
         raise HTTPException(
             status_code=500,
             detail=f"Export failed: {e!s}",

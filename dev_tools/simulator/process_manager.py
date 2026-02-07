@@ -1,10 +1,10 @@
 import os
 import signal
+import subprocess
 import sys
 import time
-import subprocess
+from dataclasses import dataclass
 from pathlib import Path
-from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -121,4 +121,7 @@ class ProcessManager:
                 "command": info.command,
             }
 
-        return {"api": proc_state(self._api_proc, self._api_info), "frontend": proc_state(self._frontend_proc, self._frontend_info)}
+        return {
+            "api": proc_state(self._api_proc, self._api_info),
+            "frontend": proc_state(self._frontend_proc, self._frontend_info),
+        }

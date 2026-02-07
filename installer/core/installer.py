@@ -46,7 +46,10 @@ class BaseInstaller:
         steps = [
             ("create_venv", self.create_venv),
             ("db_setup", lambda: self.db_installer.setup() if self.db_installer else {"success": True}),
-            ("config_generate", lambda: self.config_manager.generate_all() if self.config_manager else {"success": True}),
+            (
+                "config_generate",
+                lambda: self.config_manager.generate_all() if self.config_manager else {"success": True},
+            ),
             ("install_deps", self.install_dependencies),
             ("install_frontend", self.install_frontend_dependencies),
             ("create_launchers", self.create_launchers),

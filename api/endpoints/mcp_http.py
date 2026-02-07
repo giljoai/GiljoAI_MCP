@@ -33,7 +33,7 @@ Example Usage (Claude Code):
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -46,18 +46,13 @@ from .mcp_session import MCPSessionManager
 
 logger = logging.getLogger(__name__)
 
-
 # ============================================================================
 # SECURITY: Tenant Key Validation (Handover 0424 Phase 0)
 # ============================================================================
 
 
 def validate_and_override_tenant_key(
-    arguments: dict,
-    session_tenant_key: str,
-    session_user_id: str | None,
-    tool_name: str,
-    tool_func: callable = None
+    arguments: dict, session_tenant_key: str, session_user_id: str | None, tool_name: str, tool_func: callable = None
 ) -> dict:
     """
     SECURITY: Override client-supplied tenant_key with session tenant_key.
@@ -110,15 +105,14 @@ def validate_and_override_tenant_key(
                 "session_tenant_key": session_tenant_key,
                 "client_tenant_key": client_tenant_key,
                 "user_id": session_user_id,
-                "security_event": "tenant_key_override"
-            }
+                "security_event": "tenant_key_override",
+            },
         )
 
     return arguments
 
 
 router = APIRouter()
-
 
 # Pydantic models for JSON-RPC 2.0
 
@@ -128,8 +122,8 @@ class JSONRPCRequest(BaseModel):
 
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     method: str = Field(..., description="Method name")
-    params: Optional[Dict[str, Any]] = Field(None, description="Method parameters")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    params: dict[str, Any | None] = Field(None, description="Method parameters")
+    id: str | int | None = Field(None, description="Request ID")
 
 
 class JSONRPCResponse(BaseModel):
@@ -137,7 +131,7 @@ class JSONRPCResponse(BaseModel):
 
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     result: Any = Field(..., description="Result data")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    id: str | int | None = Field(None, description="Request ID")
 
 
 class JSONRPCError(BaseModel):
@@ -145,7 +139,7 @@ class JSONRPCError(BaseModel):
 
     code: int = Field(..., description="Error code")
     message: str = Field(..., description="Error message")
-    data: Optional[Any] = Field(None, description="Additional error data")
+    data: Any | None = Field(None, description="Additional error data")
 
 
 class JSONRPCErrorResponse(BaseModel):
@@ -153,15 +147,15 @@ class JSONRPCErrorResponse(BaseModel):
 
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     error: JSONRPCError = Field(..., description="Error details")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    id: str | int | None = Field(None, description="Request ID")
 
 
 # MCP Protocol Handlers
 
 
 async def handle_initialize(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+) -> dict[str, Any]:
     """
     Handle MCP initialize request
 
@@ -198,8 +192,8 @@ HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
 
 
 async def handle_tools_list(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+) -> dict[str, Any]:
     """
     Handle tools/list request
 
@@ -235,7 +229,10 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "AgentJob UUID (work order identifier)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "mission": {"type": "string", "description": "Execution plan to persist (agent order, dependencies, checkpoints)"},
+                    "mission": {
+                        "type": "string",
+                        "description": "Execution plan to persist (agent order, dependencies, checkpoints)",
+                    },
                 },
                 "required": ["job_id", "mission"],
             },
@@ -304,22 +301,22 @@ async def handle_tools_list(
                     "limit": {
                         "type": "integer",
                         "description": "Maximum messages to retrieve (default: 10)",
-                        "default": 10
+                        "default": 10,
                     },
                     "exclude_self": {
                         "type": "boolean",
                         "description": "Filter out messages from same agent_id (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "exclude_progress": {
                         "type": "boolean",
                         "description": "Filter out progress-type messages (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "message_types": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional allow-list of message types (e.g., ['direct', 'broadcast']). If not provided, all types (except filtered) are included."
+                        "description": "Optional allow-list of message types (e.g., ['direct', 'broadcast']). If not provided, all types (except filtered) are included.",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -343,15 +340,31 @@ async def handle_tools_list(
         # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
         {
             "name": "create_task",
-            "description": "Create a new task",
+            "description": "Create a new task bound to the active product. Requires an active product to be set.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Task title"},
                     "description": {"type": "string", "description": "Task description"},
-                    "priority": {"type": "string", "description": "Task priority"},
+                    "priority": {
+                        "type": "string",
+                        "description": "Task priority (low, medium, high, critical)",
+                        "default": "medium",
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Optional task category (frontend, backend, database, infra, docs, general)",
+                    },
+                    "assigned_to": {
+                        "type": "string",
+                        "description": "Optional agent name to assign to (not implemented yet)",
+                    },
+                    "tenant_key": {
+                        "type": "string",
+                        "description": "Tenant isolation key (automatically injected by MCP security layer)",
+                    },
                 },
-                "required": ["title"],
+                "required": ["title", "description"],
             },
         },
         # Health & Status Tools
@@ -370,7 +383,7 @@ async def handle_tools_list(
                     "content_type": {
                         "type": "string",
                         "enum": ["agent_templates", "slash_commands"],
-                        "description": "Type of content to download"
+                        "description": "Type of content to download",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
@@ -422,10 +435,6 @@ async def handle_tools_list(
                             },
                             "required": ["content", "status"],
                         },
-                    },
-                    "progress": {
-                        "type": "object",
-                        "description": "DEPRECATED: Use todo_items instead. Legacy progress object.",
                     },
                 },
                 "required": ["job_id"],
@@ -540,36 +549,49 @@ async def handle_tools_list(
                     "product_id": {"type": "string", "description": "Product UUID"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                     "project_id": {"type": "string", "description": "Project UUID (required for 'project' category)"},
-                    "agent_name": {"type": "string", "description": "Agent template name (e.g., 'orchestrator-coordinator'). Required when category is 'self_identity'."},
+                    "agent_name": {
+                        "type": "string",
+                        "description": "Agent template name (e.g., 'orchestrator-coordinator'). Required when category is 'self_identity'.",
+                    },
                     "categories": {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["all", "product_core", "vision_documents", "tech_stack",
-                                     "architecture", "testing", "memory_360", "git_history",
-                                     "agent_templates", "project", "self_identity"]
+                            "enum": [
+                                "all",
+                                "product_core",
+                                "vision_documents",
+                                "tech_stack",
+                                "architecture",
+                                "testing",
+                                "memory_360",
+                                "git_history",
+                                "agent_templates",
+                                "project",
+                                "self_identity",
+                            ],
                         },
                         "description": "Categories to fetch. ['all'] for everything.",
-                        "default": ["all"]
+                        "default": ["all"],
                     },
                     "depth_config": {
                         "type": "object",
-                        "description": "Override depth per category. Example: {\"vision_documents\": \"light\"}"
+                        "description": 'Override depth per category. Example: {"vision_documents": "light"}',
                     },
                     "apply_user_config": {
                         "type": "boolean",
                         "description": "Apply user's saved settings (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "format": {
                         "type": "string",
                         "enum": ["structured", "flat"],
                         "description": "Response format (default: structured)",
-                        "default": "structured"
-                    }
+                        "default": "structured",
+                    },
                 },
-                "required": ["product_id"]
-            }
+                "required": ["product_id"],
+            },
         },
         # Project Closeout Tool (Handover 0411)
         {
@@ -579,21 +601,24 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "UUID of the project to close"},
-                    "summary": {"type": "string", "description": "2-3 paragraph summary of project delivery focusing on outcomes and next steps"},
+                    "summary": {
+                        "type": "string",
+                        "description": "2-3 paragraph summary of project delivery focusing on outcomes and next steps",
+                    },
                     "key_outcomes": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of key deliverables and outcomes achieved"
+                        "description": "List of key deliverables and outcomes achieved",
                     },
                     "decisions_made": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of architectural or technical decisions made during the project"
+                        "description": "List of architectural or technical decisions made during the project",
                     },
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
-            }
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
+            },
         },
         # 360 Memory Writing Tool (Handover 0412)
         {
@@ -608,37 +633,39 @@ async def handle_tools_list(
                     "key_outcomes": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "3-5 specific achievements"
+                        "description": "3-5 specific achievements",
                     },
                     "decisions_made": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "3-5 architectural/design decisions"
+                        "description": "3-5 architectural/design decisions",
                     },
                     "entry_type": {
                         "type": "string",
                         "enum": ["project_completion", "handover_closeout"],
                         "description": "Type of 360 memory entry",
-                        "default": "project_completion"
+                        "default": "project_completion",
                     },
-                    "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"}
+                    "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"},
                 },
-                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
-            }
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
+            },
         },
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
     visible_tools = [t for t in tools if t["name"] not in HIDDEN_FROM_SCHEMA_TOOLS]
 
-    logger.debug(f"Listed {len(visible_tools)} tools for session {session_id} ({len(tools) - len(visible_tools)} hidden)")
+    logger.debug(
+        f"Listed {len(visible_tools)} tools for session {session_id} ({len(tools) - len(visible_tools)} hidden)"
+    )
 
     return {"tools": visible_tools}
 
 
 async def handle_tools_call(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
+) -> dict[str, Any]:
     """
     Handle tools/call request
 
@@ -713,9 +740,9 @@ async def handle_tools_call(
     arguments = validate_and_override_tenant_key(
         arguments=arguments,
         session_tenant_key=session.tenant_key,
-        session_user_id=getattr(session, 'user_id', None),
+        session_user_id=getattr(session, "user_id", None),
         tool_name=tool_name,
-        tool_func=tool_func
+        tool_func=tool_func,
     )
 
     try:
@@ -764,8 +791,8 @@ async def handle_tools_call(
 async def mcp_endpoint(
     rpc_request: JSONRPCRequest,
     request: Request,
-    x_api_key: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    x_api_key: str | None = Header(None),
+    authorization: str | None = Header(None),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -784,7 +811,7 @@ async def mcp_endpoint(
         JSON-RPC 2.0 response (success or error)
     """
     # Resolve API key from supported headers
-    api_key_value: Optional[str] = None
+    api_key_value: str | None = None
 
     # Preferred header for this server (backward compatible)
     if x_api_key:
@@ -796,7 +823,7 @@ async def mcp_endpoint(
             scheme, _, token = authorization.partition(" ")
             if scheme.lower() == "bearer" and token:
                 api_key_value = token
-        except Exception:
+        except (ValueError, KeyError):
             api_key_value = None
 
     # Validate API key presence

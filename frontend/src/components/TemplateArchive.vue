@@ -64,7 +64,7 @@
                 <div class="text-caption">
                   <strong>Modified by:</strong> {{ version.modified_by || 'System' }}
                 </div>
-                <div class="text-caption" v-if="version.change_reason">
+                <div v-if="version.change_reason" class="text-caption">
                   <strong>Reason:</strong> {{ version.change_reason }}
                 </div>
                 <div class="text-caption">
@@ -90,7 +90,7 @@
                 </div>
               </v-expand-transition>
 
-              <v-btn size="x-small" variant="text" @click="toggleVersion(version.id)" class="mt-2">
+              <v-btn size="x-small" variant="text" class="mt-2" @click="toggleVersion(version.id)">
                 {{ expandedVersions.has(version.id) ? 'Hide' : 'Show' }} Template
                 <v-icon right>
                   {{ expandedVersions.has(version.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -120,7 +120,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="diffDialog = false" />
         </v-card-title>
 
         <v-card-text>
@@ -183,7 +183,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Confirm Restore</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="cancelRestore" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="cancelRestore" />
         </v-card-title>
         <v-card-text>
           <div class="mb-4">
@@ -201,7 +201,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="cancelRestore">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" @click="confirmRestore" :loading="restoring">
+          <v-btn color="primary" variant="flat" :loading="restoring" @click="confirmRestore">
             Restore
           </v-btn>
         </v-card-actions>

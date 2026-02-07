@@ -43,10 +43,9 @@ def check_python_version():
     if version.major >= 3 and version.minor >= 11:
         print(f"  {CHECK} Python {version.major}.{version.minor}.{version.micro}")
         return True
-    else:
-        print(f"  {FAIL} Python {version.major}.{version.minor}.{version.micro}")
-        print(f"  ERROR: Python 3.11+ required")
-        return False
+    print(f"  {FAIL} Python {version.major}.{version.minor}.{version.micro}")
+    print("  ERROR: Python 3.11+ required")
+    return False
 
 
 def check_dependencies():
@@ -71,27 +70,26 @@ def check_api_key():
         masked = api_key[:6] + "..." + api_key[-4:] if len(api_key) > 10 else "***"
         print(f"  {CHECK} GILJO_API_KEY is set ({masked})")
         return True
-    else:
-        print(f"  {FAIL} GILJO_API_KEY not set")
-        print()
-        print("  HOW TO GET YOUR API KEY:")
-        print("  -------------------------")
-        print("  1. Open the GiljoAI dashboard: http://10.1.0.164:7274")
-        print("  2. Log in with your credentials")
-        print("  3. Go to: Settings (gear icon) -> API Keys")
-        print("  4. Click 'Create New API Key'")
-        print("  5. Copy the key (starts with 'gk_')")
-        print("  6. Set the environment variable:")
-        print()
-        print("     Windows PowerShell:")
-        print('       $env:GILJO_API_KEY = "gk_your_key_here"')
-        print()
-        print("     Windows CMD:")
-        print('       set GILJO_API_KEY=gk_your_key_here')
-        print()
-        print("     Linux/macOS:")
-        print('       export GILJO_API_KEY="gk_your_key_here"')
-        return False
+    print(f"  {FAIL} GILJO_API_KEY not set")
+    print()
+    print("  HOW TO GET YOUR API KEY:")
+    print("  -------------------------")
+    print("  1. Open the GiljoAI dashboard: http://10.1.0.164:7274")
+    print("  2. Log in with your credentials")
+    print("  3. Go to: Settings (gear icon) -> API Keys")
+    print("  4. Click 'Create New API Key'")
+    print("  5. Copy the key (starts with 'gk_')")
+    print("  6. Set the environment variable:")
+    print()
+    print("     Windows PowerShell:")
+    print('       $env:GILJO_API_KEY = "gk_your_key_here"')
+    print()
+    print("     Windows CMD:")
+    print("       set GILJO_API_KEY=gk_your_key_here")
+    print()
+    print("     Linux/macOS:")
+    print('       export GILJO_API_KEY="gk_your_key_here"')
+    return False
 
 
 def check_server_connection():
@@ -108,10 +106,9 @@ def check_server_connection():
         if response.status_code == 200:
             print(f"  {CHECK} Server reachable at {api_base_url}")
             return True
-        else:
-            print(f"  {WARN} Server returned {response.status_code}")
-            print(f"       URL: {api_base_url}")
-            return True  # Server reachable, just not health endpoint
+        print(f"  {WARN} Server returned {response.status_code}")
+        print(f"       URL: {api_base_url}")
+        return True  # Server reachable, just not health endpoint
     except Exception as e:
         print(f"  {FAIL} Connection failed: {e}")
         print(f"       Check that server is running at {api_base_url}")
@@ -138,7 +135,7 @@ def check_api_authentication():
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/call",
-            "params": {"name": "health_check", "arguments": {}}
+            "params": {"name": "health_check", "arguments": {}},
         }
 
         client = httpx.Client(timeout=10.0)
@@ -149,7 +146,7 @@ def check_api_authentication():
             if "result" in data:
                 print(f"  {CHECK} API key valid (MCP authenticated)")
                 return True
-            elif "error" in data:
+            if "error" in data:
                 print(f"  {FAIL} MCP error: {data['error']}")
                 return False
         elif response.status_code == 401:
@@ -169,18 +166,9 @@ def check_test_credentials():
     print("\nChecking test credentials...")
 
     # Get credentials from environment or use defaults
-    orchestrator_id = os.environ.get(
-        "GILJO_ORCHESTRATOR_ID",
-        "6792fae5-c46b-4ed7-86d6-df58aa833df3"
-    )
-    tenant_key = os.environ.get(
-        "GILJO_TENANT_KEY",
-        "***REMOVED***"
-    )
-    project_id = os.environ.get(
-        "GILJO_PROJECT_ID",
-        "97d95e5a-51dd-47ae-92de-7f8839de503a"
-    )
+    orchestrator_id = os.environ.get("GILJO_ORCHESTRATOR_ID", "6792fae5-c46b-4ed7-86d6-df58aa833df3")
+    tenant_key = os.environ.get("GILJO_TENANT_KEY", "***REMOVED***")
+    project_id = os.environ.get("GILJO_PROJECT_ID", "97d95e5a-51dd-47ae-92de-7f8839de503a")
 
     print(f"  {CHECK} ORCHESTRATOR_ID: {orchestrator_id[:8]}...")
     print(f"  {CHECK} TENANT_KEY: {tenant_key[:12]}...")
@@ -263,10 +251,9 @@ def main():
         print("  Run tests with:")
         print("    python run_context_tests.py")
         return 0
-    else:
-        print()
-        print(f"  {FAIL} Some checks failed. Please fix errors above.")
-        return 1
+    print()
+    print(f"  {FAIL} Some checks failed. Please fix errors above.")
+    return 1
 
 
 if __name__ == "__main__":

@@ -17,7 +17,6 @@ Expected: All tests FAIL until backend + WebSocket implementation complete
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # ============================================================================
@@ -28,11 +27,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 @pytest.fixture
 async def integration_test_user(db_manager):
     """Create integration test user with default v2.0 priorities"""
+    from uuid import uuid4
+
+    from passlib.hash import bcrypt
+
+    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-    from uuid import uuid4
-    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     username = f"integration_{unique_id}"
@@ -91,6 +92,7 @@ class TestEndToEndPriorityWorkflow:
         # Step 1: Verify user created with defaults
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             stmt = select(User).where(User.id == integration_test_user.id)
@@ -329,10 +331,12 @@ class TestFrontendIntegration:
 @pytest.fixture
 async def tenant_a_user(db_manager):
     """Create Tenant A user"""
+    from uuid import uuid4
+
+    from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
-    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     username = f"tenant_a_{unique_id}"
@@ -359,10 +363,12 @@ async def tenant_a_user(db_manager):
 @pytest.fixture
 async def tenant_b_user(db_manager):
     """Create Tenant B user (different tenant)"""
+    from uuid import uuid4
+
+    from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
-    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     username = f"tenant_b_{unique_id}"
@@ -487,6 +493,7 @@ class TestMultiTenantIsolation:
         # Verify database-level isolation
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             # Fetch both users

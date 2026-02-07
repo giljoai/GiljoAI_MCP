@@ -11,18 +11,15 @@ Tests the 6 new guidance fields added to get_orchestrator_instructions():
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import the helper functions we'll create
 from src.giljo_mcp.tools.orchestration import (
+    _get_context_management,
+    _get_error_handling,
+    _get_multi_terminal_rules,
     _get_post_staging_behavior,
     _get_required_final_action,
-    _get_multi_terminal_rules,
-    _get_error_handling,
     _get_spawning_limits,
-    _get_context_management,
-    get_orchestrator_instructions,
 )
 
 

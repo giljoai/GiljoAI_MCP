@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
-    import json  # noqa: PLC0415
+    import json
 
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
@@ -89,7 +89,7 @@ async def _get_summary_response(
     product: Product,
     depth: str,
     product_id: str,
-    tenant_key: str,  # noqa: ARG001
+    tenant_key: str,
 ) -> dict[str, Any]:
     """
     Helper function to retrieve CONSOLIDATED summary response (Handover 0377).

@@ -35,14 +35,12 @@ async def cleanup_expired_download_tokens(state: APIState):
                     token_manager = TokenManager(session)
                     result = await token_manager.cleanup_expired_tokens()
                     # Backward-compatible handling: support int or dict
-                    deleted_total = (
-                        result.get("total", 0) if isinstance(result, dict) else int(result or 0)
-                    )
+                    deleted_total = result.get("total", 0) if isinstance(result, dict) else int(result or 0)
                     if deleted_total > 0:
                         logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                     else:
                         logger.debug("Download token cleanup: no tokens removed")
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203 - Background task resilience: catch errors, continue loop
             logger.error(f"Error during download token cleanup: {e}", exc_info=True)
 
 
@@ -72,11 +70,11 @@ async def sync_api_metrics_to_db(state: APIState):
                             )
                             .on_conflict_do_update(
                                 index_elements=["tenant_key"],
-                                set_=dict(
-                                    total_api_calls=ApiMetrics.total_api_calls + api_count,
-                                    total_mcp_calls=ApiMetrics.total_mcp_calls + mcp_count,
-                                    date=datetime.now(timezone.utc),
-                                ),
+                                set_={
+                                    "total_api_calls": ApiMetrics.total_api_calls + api_count,
+                                    "total_mcp_calls": ApiMetrics.total_mcp_calls + mcp_count,
+                                    "date": datetime.now(timezone.utc),
+                                },
                             )
                         )
                         await session.execute(stmt)
@@ -89,9 +87,7 @@ async def sync_api_metrics_to_db(state: APIState):
                     state.mcp_call_count.update(mcp_counts)
 
 
-async def purge_expired_deleted_items(
-    db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+async def purge_expired_deleted_items(db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Run one-time purge of expired deleted projects and products (Handover 0070)"""
     try:
         logger.info("Running startup purge of expired deleted items...")
@@ -130,27 +126,19 @@ async def purge_expired_deleted_items(
                 # Purge for each tenant
                 for tenant_key in all_tenants:
                     # Purge expired deleted projects
-                    project_service = ProjectService(
-                        db_manager=db_manager, tenant_manager=tenant_manager
-                    )
+                    project_service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
                     # Set tenant context for this purge
                     tenant_manager.set_current_tenant(tenant_key)
 
-                    project_purge_result = (
-                        await project_service.purge_expired_deleted_projects(days_before_purge=10)
-                    )
+                    project_purge_result = await project_service.purge_expired_deleted_projects(days_before_purge=10)
                     if project_purge_result.get("success"):
                         purged_count = project_purge_result.get("purged_count", 0)
                         total_projects_purged += purged_count
 
                     # Purge expired deleted products
-                    product_service = ProductService(
-                        db_manager=db_manager, tenant_key=tenant_key
-                    )
+                    product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
 
-                    product_purge_result = (
-                        await product_service.purge_expired_deleted_products(days_before_purge=10)
-                    )
+                    product_purge_result = await product_service.purge_expired_deleted_products(days_before_purge=10)
                     if product_purge_result.get("success"):
                         purged_count = product_purge_result.get("purged_count", 0)
                         total_products_purged += purged_count

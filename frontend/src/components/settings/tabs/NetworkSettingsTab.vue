@@ -101,9 +101,9 @@
                   icon="mdi-content-copy"
                   size="small"
                   variant="text"
-                  @click="copyOrigin(origin)"
                   title="Copy Origin"
                   disabled
+                  @click="copyOrigin(origin)"
                 />
                 <v-btn
                   v-if="!isDefaultOrigin(origin)"
@@ -111,9 +111,9 @@
                   size="small"
                   variant="text"
                   color="error"
-                  @click="removeOrigin(index)"
                   title="Remove Origin"
                   disabled
+                  @click="removeOrigin(index)"
                 />
               </template>
             </v-list-item>
@@ -133,9 +133,9 @@
             hint="Disabled for single-server installations"
             persistent-hint
             :append-icon="'mdi-plus'"
+            disabled
             @click:append="addOrigin"
             @keyup.enter="addOrigin"
-            disabled
           />
         </div>
 
@@ -159,7 +159,7 @@
 
     <v-card-actions>
       <v-spacer />
-      <v-btn variant="text" @click="handleRefresh" data-test="reload-button">
+      <v-btn variant="text" data-test="reload-button" @click="handleRefresh">
         <v-icon start>mdi-refresh</v-icon>
         Reload
       </v-btn>

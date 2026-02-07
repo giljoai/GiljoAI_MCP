@@ -14,25 +14,23 @@ Handover 0431: Added pre-closeout verification protocol.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from inspect import iscoroutine
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution, AgentTodoItem
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
-
 
 # Field length constraints
 MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
@@ -47,8 +45,8 @@ async def _check_closeout_readiness(
     session: AsyncSession,
     project_id: str,
     tenant_key: str,
-    orchestrator_job_id: Optional[str] = None,
-) -> Tuple[bool, Dict[str, Any]]:
+    orchestrator_job_id: str | None = None,
+) -> tuple[bool, dict[str, Any]]:
     """
     Verify all agents are ready for project closeout (Handover 0431).
 
@@ -70,7 +68,7 @@ async def _check_closeout_readiness(
         - result_data: Contains blockers list and summary if blocked,
                        or verified dict if ready
     """
-    blockers: List[Dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
     summary = {
         "agents_checked": 0,
         "still_working": 0,
@@ -107,25 +105,29 @@ async def _check_closeout_readiness(
         # Check 1: Agent status must be 'complete'
         if execution.status != "complete":
             summary["still_working"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "still_working",
-                "status": execution.status,
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "still_working",
+                    "status": execution.status,
+                }
+            )
             continue  # Don't check further issues for this agent
 
         # Check 2: No unread messages
         if execution.messages_waiting_count > 0:
             summary["agents_with_unread"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "unread_messages",
-                "messages_waiting": execution.messages_waiting_count,
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "unread_messages",
+                    "messages_waiting": execution.messages_waiting_count,
+                }
+            )
 
         # Check 3: All todos completed
         incomplete_todos_stmt = select(AgentTodoItem).where(
@@ -140,15 +142,17 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in incomplete_todos if t.status == "pending")
             in_progress_count = sum(1 for t in incomplete_todos if t.status == "in_progress")
             summary["agents_with_incomplete_todos"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "incomplete_todos",
-                "pending_count": pending_count,
-                "in_progress_count": in_progress_count,
-                "incomplete_items": [t.content for t in incomplete_todos],
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "incomplete_todos",
+                    "pending_count": pending_count,
+                    "in_progress_count": in_progress_count,
+                    "incomplete_items": [t.content for t in incomplete_todos],
+                }
+            )
 
     # Check 4: Orchestrator's own todos (if orchestrator_job_id provided)
     if orchestrator_job_id:
@@ -164,13 +168,15 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in orch_incomplete if t.status == "pending")
             in_progress_count = sum(1 for t in orch_incomplete if t.status == "in_progress")
             summary["orchestrator_incomplete_todos"] = len(orch_incomplete)
-            blockers.append({
-                "job_id": orchestrator_job_id,
-                "issue_type": "orchestrator_incomplete_todos",
-                "pending_count": pending_count,
-                "in_progress_count": in_progress_count,
-                "incomplete_items": [t.content for t in orch_incomplete],
-            })
+            blockers.append(
+                {
+                    "job_id": orchestrator_job_id,
+                    "issue_type": "orchestrator_incomplete_todos",
+                    "pending_count": pending_count,
+                    "in_progress_count": in_progress_count,
+                    "incomplete_items": [t.content for t in orch_incomplete],
+                }
+            )
 
     # Return results
     if blockers:
@@ -195,13 +201,13 @@ async def write_360_memory(
     project_id: str,
     tenant_key: str,
     summary: str,
-    key_outcomes: List[str],
-    decisions_made: List[str],
+    key_outcomes: list[str],
+    decisions_made: list[str],
     entry_type: str = "project_completion",
-    author_job_id: Optional[str] = None,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,
-) -> Dict[str, Any]:
+    author_job_id: str | None = None,
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,
+) -> dict[str, Any]:
     """
     Write a 360 memory entry for project completion or handover.
 
@@ -255,11 +261,11 @@ async def write_360_memory(
         decisions_made = decisions_made[:MAX_DECISIONS_MADE]
 
     # Validate entry_type
-    VALID_ENTRY_TYPES = {"project_completion", "handover_closeout", "session_handover"}
-    if entry_type not in VALID_ENTRY_TYPES:
+    valid_entry_types = {"project_completion", "handover_closeout", "session_handover"}
+    if entry_type not in valid_entry_types:
         return {
             "success": False,
-            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {VALID_ENTRY_TYPES}",
+            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {valid_entry_types}",
         }
 
     try:
@@ -273,10 +279,7 @@ async def write_360_memory(
 
         async with session_ctx as active_session:
             # Get project with tenant isolation
-            project_stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == tenant_key
-            )
+            project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
             project_result = await active_session.execute(project_stmt)
             project = project_result.scalar_one_or_none()
             if iscoroutine(project):
@@ -327,13 +330,13 @@ async def write_360_memory(
                     }
 
             # Get or initialize product_memory for git config
-            product_memory: Dict[str, Any] = product.product_memory or {}
+            product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
             # Get git configuration and fetch commits if enabled
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[List[Dict[str, Any]]] = None
+            git_commits: list[dict[str, Any | None]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -341,7 +344,7 @@ async def write_360_memory(
                     repo_owner=git_config.get("repo_owner"),
                     access_token=git_config.get("access_token"),
                     project_created_at=project.created_at,
-                    project_completed_at=project.completed_at or datetime.utcnow(),
+                    project_completed_at=project.completed_at or datetime.now(timezone.utc),
                 )
 
             if git_commits is None:
@@ -368,7 +371,7 @@ async def write_360_memory(
                         AgentExecution.job_id == author_job_id,
                         AgentExecution.tenant_key == tenant_key,
                     )
-                    .order_by(AgentExecution.instance_number.desc())
+                    .order_by(AgentExecution.started_at.desc())
                     .limit(1)
                 )
                 execution_result = await active_session.execute(execution_stmt)
@@ -386,7 +389,7 @@ async def write_360_memory(
                 sequence=sequence_number,
                 entry_type=entry_type,
                 source="write_360_memory_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 project_name=project.name,
                 summary=summary,
                 key_outcomes=key_outcomes,
@@ -433,15 +436,18 @@ async def write_360_memory(
                     tenant_key=tenant_key,
                     orchestrator_job_id=author_job_id,
                 )
-                result["verified"] = verification_result.get("verified", {
-                    "all_complete": True,
-                    "all_messages_read": True,
-                    "all_todos_done": True,
-                })
+                result["verified"] = verification_result.get(
+                    "verified",
+                    {
+                        "all_complete": True,
+                        "all_messages_read": True,
+                        "all_todos_done": True,
+                    },
+                )
 
             return result
 
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
 
@@ -450,7 +456,7 @@ async def _emit_websocket_event(
     event_type: str,
     tenant_key: str,
     product_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
 ) -> None:
     """
     Emit WebSocket event; graceful no-op if manager unavailable.
@@ -477,11 +483,11 @@ async def _emit_websocket_event(
                 event_type=event_type,
                 data={"product_id": product_id, **data},
             )
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
 
-def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
+def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
@@ -490,12 +496,12 @@ def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _fetch_github_commits(
-    repo_name: Optional[str],
-    repo_owner: Optional[str],
-    access_token: Optional[str],
+    repo_name: str | None,
+    repo_owner: str | None,
+    access_token: str | None,
     project_created_at: datetime,
-    project_completed_at: Optional[datetime],
-) -> Optional[List[Dict[str, Any]]]:
+    project_completed_at: datetime | None,
+) -> list[dict[str, Any | None]]:
     """
     Fetch GitHub commits between project creation and completion.
 
@@ -532,30 +538,28 @@ async def _fetch_github_commits(
                 return None
 
             commits_data = response.json()
-            commits: List[Dict[str, Any]] = []
-            for commit in commits_data[:100]:
-                commits.append(
-                    {
-                        "sha": commit.get("sha"),
-                        "message": commit.get("commit", {}).get("message"),
-                        "author": commit.get("commit", {}).get("author", {}).get("name")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else commit.get("commit", {}).get("author"),
-                        "date": commit.get("commit", {}).get("author", {}).get("date")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else None,
-                        "url": commit.get("html_url"),
-                        "files_changed": commit.get("files_changed"),
-                        "lines_added": commit.get("lines_added")
-                        or commit.get("stats", {}).get("additions")
-                        if isinstance(commit.get("stats"), dict)
-                        else None,
-                    }
-                )
+            commits: list[dict[str, Any]] = [
+                {
+                    "sha": commit.get("sha"),
+                    "message": commit.get("commit", {}).get("message"),
+                    "author": commit.get("commit", {}).get("author", {}).get("name")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else commit.get("commit", {}).get("author"),
+                    "date": commit.get("commit", {}).get("author", {}).get("date")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else None,
+                    "url": commit.get("html_url"),
+                    "files_changed": commit.get("files_changed"),
+                    "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
+                    if isinstance(commit.get("stats"), dict)
+                    else None,
+                }
+                for commit in commits_data[:100]
+            ]
 
             logger.info(f"Fetched {len(commits)} GitHub commits for {repo_owner}/{repo_name}")
             return commits
 
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.exception("Failed to fetch GitHub commits", extra={"error": str(exc)})
         return None

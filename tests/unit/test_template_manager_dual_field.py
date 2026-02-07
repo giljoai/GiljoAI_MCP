@@ -6,13 +6,15 @@ when retrieving agent templates.
 
 Handover 0106: Dual-Field System
 """
-import pytest
+
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
-from src.giljo_mcp.database import DatabaseManager
 
 
 @pytest.mark.asyncio
@@ -34,7 +36,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test orchestrator",
             system_instructions="## SYSTEM INSTRUCTIONS\nUse MCP tools properly.",
             user_instructions="## USER INSTRUCTIONS\nCoordinate agents effectively.",
-            template_content="Legacy content",  # Should not be used
+            legacy_content="Legacy content",  # Should not be used
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -51,7 +53,11 @@ class TestTemplateManagerDualFieldMerging:
         result = await manager.get_template(
             role="orchestrator",
             tenant_key=tenant_key,
-            variables={"project_name": "Test Project", "product_name": "Test Product", "project_mission": "Test Mission"},
+            variables={
+                "project_name": "Test Project",
+                "product_name": "Test Product",
+                "project_mission": "Test Mission",
+            },
         )
 
         # Verify merging
@@ -78,7 +84,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test analyzer",
             system_instructions="## SYSTEM INSTRUCTIONS\nUse MCP tools properly.",
             user_instructions=None,  # No user instructions
-            template_content="Legacy content",
+            legacy_content="Legacy content",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -100,10 +106,12 @@ class TestTemplateManagerDualFieldMerging:
 
         # Verify only system instructions returned
         assert "## SYSTEM INSTRUCTIONS" in result, "Should contain system instructions"
-        assert result.strip() == "## SYSTEM INSTRUCTIONS\nUse MCP tools properly.", "Should only contain system instructions"
+        assert result.strip() == "## SYSTEM INSTRUCTIONS\nUse MCP tools properly.", (
+            "Should only contain system instructions"
+        )
 
-    async def test_fallback_to_template_content(self, db_session: AsyncSession, db_manager: DatabaseManager):
-        """Fallback to template_content if system_instructions NULL (backward compatibility)."""
+    async def test_fallback_to_legacy_content(self, db_session: AsyncSession, db_manager: DatabaseManager):
+        """Fallback to legacy content if system_instructions NULL (backward compatibility)."""
         tenant_key = "test_tenant_fallback"
 
         # Create legacy template (system_instructions would be NULL in old data)
@@ -119,7 +127,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test implementer",
             system_instructions="",  # Empty (simulating NULL after fetch)
             user_instructions=None,
-            template_content="## LEGACY TEMPLATE\nImplement features carefully.",
+            legacy_content="## LEGACY TEMPLATE\nImplement features carefully.",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -139,7 +147,7 @@ class TestTemplateManagerDualFieldMerging:
             variables={"project_name": "Test Project", "custom_mission": "Implement feature"},
         )
 
-        # Verify fallback to template_content
+        # Verify fallback to legacy content
         # Note: Since system_instructions is empty, manager should fall back to legacy
         assert "LEGACY TEMPLATE" in result or "Implement feature" in result, "Should use fallback mechanism"
 
@@ -158,7 +166,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test tester",
             system_instructions="SYSTEM_MARKER: MCP tools required",
             user_instructions="USER_MARKER: Write comprehensive tests",
-            template_content="Legacy",
+            legacy_content="Legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -201,7 +209,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test reviewer",
             system_instructions="SYSTEM LINE",
             user_instructions="USER LINE",
-            template_content="Legacy",
+            legacy_content="Legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -239,7 +247,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Test documenter",
             system_instructions="System: Project {project_name}",
             user_instructions="User: Mission {custom_mission}",
-            template_content="Legacy",
+            legacy_content="Legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -281,7 +289,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Cache test",
             system_instructions="System V1",
             user_instructions="User V1",
-            template_content="Legacy V1",
+            legacy_content="Legacy V1",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -339,7 +347,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Tenant-level orchestrator",
             system_instructions="TENANT SYSTEM",
             user_instructions="TENANT USER",
-            template_content="Tenant legacy",
+            legacy_content="Tenant legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -360,7 +368,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Product-level orchestrator",
             system_instructions="PRODUCT SYSTEM",
             user_instructions="PRODUCT USER",
-            template_content="Product legacy",
+            legacy_content="Product legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -402,7 +410,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Empty user test",
             system_instructions="SYSTEM CONTENT",
             user_instructions="",  # Empty string (not NULL)
-            template_content="Legacy",
+            legacy_content="Legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,
@@ -441,7 +449,7 @@ class TestTemplateManagerDualFieldMerging:
             description="Serena test",
             system_instructions="SYSTEM",
             user_instructions="USER",
-            template_content="Legacy",
+            legacy_content="Legacy",
             model="sonnet",
             version="1.0.0",
             is_active=True,

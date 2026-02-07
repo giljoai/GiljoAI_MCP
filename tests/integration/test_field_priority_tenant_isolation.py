@@ -14,23 +14,24 @@ These tests will initially FAIL to confirm proper tenant isolation.
 Handover: Field Priority Bug Fix - Phase 1
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
+
 # Use existing fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def tenant_a_key():
@@ -62,9 +63,9 @@ async def user_tenant_a(db_session, tenant_a_key):
                 "agent_templates": 3,
                 "project_description": 1,
                 "memory_360": 2,
-                "git_history": 4  # Tenant A excludes git_history
-            }
-        }
+                "git_history": 4,  # Tenant A excludes git_history
+            },
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -90,9 +91,9 @@ async def user_tenant_b(db_session, tenant_b_key):
                 "agent_templates": 2,
                 "project_description": 1,
                 "memory_360": 4,  # Tenant B excludes memory_360
-                "git_history": 2   # Tenant B INCLUDES git_history (different from A)
-            }
-        }
+                "git_history": 2,  # Tenant B INCLUDES git_history (different from A)
+            },
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -108,7 +109,7 @@ async def product_tenant_a(db_session, tenant_a_key):
         name=f"Product A {uuid4().hex[:8]}",
         description="Product for Tenant A.",
         tenant_key=tenant_a_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -124,7 +125,7 @@ async def product_tenant_b(db_session, tenant_b_key):
         name=f"Product B {uuid4().hex[:8]}",
         description="Product for Tenant B.",
         tenant_key=tenant_b_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -143,7 +144,7 @@ async def project_tenant_a(db_session, product_tenant_a, tenant_a_key):
         tenant_key=tenant_a_key,
         status="planning",
         mission="Mission for Tenant A.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -162,7 +163,7 @@ async def project_tenant_b(db_session, product_tenant_b, tenant_b_key):
         tenant_key=tenant_b_key,
         status="planning",
         mission="Mission for Tenant B.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -174,13 +175,10 @@ async def project_tenant_b(db_session, product_tenant_b, tenant_b_key):
 # TEST 4: Multi-Tenant Isolation of Field Priorities
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_field_priorities_isolated_between_tenants(
-    db_session,
-    user_tenant_a,
-    user_tenant_b,
-    project_tenant_a,
-    project_tenant_b
+    db_session, user_tenant_a, user_tenant_b, project_tenant_a, project_tenant_b
 ):
     """
     TEST 4a: Field priorities should be isolated between tenants.
@@ -202,10 +200,7 @@ async def test_field_priorities_isolated_between_tenants(
     assert priorities_b["git_history"] == 2  # Tenant B includes
 
     # ACT: Generate orchestrator job for Tenant A
-    generator_a = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_tenant_a.tenant_key
-    )
+    generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=user_tenant_a.tenant_key)
 
     user_field_config_a = user_tenant_a.field_priority_config or {}
     field_priorities_a = user_field_config_a.get("priorities", {})
@@ -214,14 +209,11 @@ async def test_field_priorities_isolated_between_tenants(
         project_id=str(project_tenant_a.id),
         user_id=str(user_tenant_a.id),
         tool="claude-code",
-        field_priorities=field_priorities_a
+        field_priorities=field_priorities_a,
     )
 
     # ACT: Generate orchestrator job for Tenant B
-    generator_b = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_tenant_b.tenant_key
-    )
+    generator_b = ThinClientPromptGenerator(db=db_session, tenant_key=user_tenant_b.tenant_key)
 
     user_field_config_b = user_tenant_b.field_priority_config or {}
     field_priorities_b = user_field_config_b.get("priorities", {})
@@ -230,7 +222,7 @@ async def test_field_priorities_isolated_between_tenants(
         project_id=str(project_tenant_b.id),
         user_id=str(user_tenant_b.id),
         tool="claude-code",
-        field_priorities=field_priorities_b
+        field_priorities=field_priorities_b,
     )
 
     # ASSERT: Verify Tenant A got their own priorities
@@ -243,8 +235,7 @@ async def test_field_priorities_isolated_between_tenants(
     actual_priorities_a = orchestrator_job_a.job_metadata.get("field_priorities", {})
 
     assert actual_priorities_a == priorities_a, (
-        f"Tenant A should get their own priorities. "
-        f"Expected: {priorities_a}, Got: {actual_priorities_a}"
+        f"Tenant A should get their own priorities. Expected: {priorities_a}, Got: {actual_priorities_a}"
     )
 
     # ASSERT: Verify Tenant B got their own priorities
@@ -257,23 +248,18 @@ async def test_field_priorities_isolated_between_tenants(
     actual_priorities_b = orchestrator_job_b.job_metadata.get("field_priorities", {})
 
     assert actual_priorities_b == priorities_b, (
-        f"Tenant B should get their own priorities. "
-        f"Expected: {priorities_b}, Got: {actual_priorities_b}"
+        f"Tenant B should get their own priorities. Expected: {priorities_b}, Got: {actual_priorities_b}"
     )
 
     # CRITICAL ASSERTION: Priorities should be DIFFERENT
     assert actual_priorities_a != actual_priorities_b, (
-        "Tenant A and Tenant B should have DIFFERENT field priorities. "
-        "Tenant isolation is broken if they're the same."
+        "Tenant A and Tenant B should have DIFFERENT field priorities. Tenant isolation is broken if they're the same."
     )
 
 
 @pytest.mark.asyncio
 async def test_tenant_cannot_access_other_tenant_orchestrator_job(
-    db_session,
-    user_tenant_a,
-    user_tenant_b,
-    project_tenant_a
+    db_session, user_tenant_a, user_tenant_b, project_tenant_a
 ):
     """
     TEST 4b: Tenant B cannot access Tenant A's orchestrator job.
@@ -286,10 +272,7 @@ async def test_tenant_cannot_access_other_tenant_orchestrator_job(
     This verifies database-level tenant isolation.
     """
     # ARRANGE: Create orchestrator job for Tenant A
-    generator_a = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_tenant_a.tenant_key
-    )
+    generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=user_tenant_a.tenant_key)
 
     user_field_config_a = user_tenant_a.field_priority_config or {}
     field_priorities_a = user_field_config_a.get("priorities", {})
@@ -298,7 +281,7 @@ async def test_tenant_cannot_access_other_tenant_orchestrator_job(
         project_id=str(project_tenant_a.id),
         user_id=str(user_tenant_a.id),
         tool="claude-code",
-        field_priorities=field_priorities_a
+        field_priorities=field_priorities_a,
     )
 
     orchestrator_id_a = result_a["orchestrator_id"]
@@ -306,36 +289,29 @@ async def test_tenant_cannot_access_other_tenant_orchestrator_job(
     # ACT: Try to access Tenant A's job using Tenant B's tenant_key
     stmt_b = select(AgentExecution).where(
         AgentExecution.job_id == orchestrator_id_a,
-        AgentExecution.tenant_key == user_tenant_b.tenant_key  # WRONG TENANT
+        AgentExecution.tenant_key == user_tenant_b.tenant_key,  # WRONG TENANT
     )
     job_result_b = await db_session.execute(stmt_b)
     orchestrator_job_b = job_result_b.scalar_one_or_none()
 
     # ASSERT: Tenant B should NOT be able to access Tenant A's job
     assert orchestrator_job_b is None, (
-        "Tenant B should NOT be able to access Tenant A's orchestrator job. "
-        "Tenant isolation is broken!"
+        "Tenant B should NOT be able to access Tenant A's orchestrator job. Tenant isolation is broken!"
     )
 
     # VERIFY: Tenant A CAN access their own job
     stmt_a = select(AgentExecution).where(
         AgentExecution.job_id == orchestrator_id_a,
-        AgentExecution.tenant_key == user_tenant_a.tenant_key  # CORRECT TENANT
+        AgentExecution.tenant_key == user_tenant_a.tenant_key,  # CORRECT TENANT
     )
     job_result_a = await db_session.execute(stmt_a)
     orchestrator_job_a = job_result_a.scalar_one_or_none()
 
-    assert orchestrator_job_a is not None, (
-        "Tenant A should be able to access their own orchestrator job"
-    )
+    assert orchestrator_job_a is not None, "Tenant A should be able to access their own orchestrator job"
 
 
 @pytest.mark.asyncio
-async def test_field_priorities_query_respects_tenant_key(
-    db_session,
-    user_tenant_a,
-    user_tenant_b
-):
+async def test_field_priorities_query_respects_tenant_key(db_session, user_tenant_a, user_tenant_b):
     """
     TEST 4c: Querying users by field priorities should respect tenant_key.
 
@@ -351,30 +327,20 @@ async def test_field_priorities_query_respects_tenant_key(
     assert user_tenant_b.field_priority_config is not None
 
     # ACT: Query for users in Tenant A with field priority config
-    stmt = select(User).where(
-        User.tenant_key == user_tenant_a.tenant_key,
-        User.field_priority_config.isnot(None)
-    )
+    stmt = select(User).where(User.tenant_key == user_tenant_a.tenant_key, User.field_priority_config.isnot(None))
     result = await db_session.execute(stmt)
     users_a = result.scalars().all()
 
     # ASSERT: Should only find Tenant A user
     user_ids_a = [u.id for u in users_a]
 
-    assert user_tenant_a.id in user_ids_a, (
-        "Query should find Tenant A user"
-    )
+    assert user_tenant_a.id in user_ids_a, "Query should find Tenant A user"
 
-    assert user_tenant_b.id not in user_ids_a, (
-        "Query should NOT find Tenant B user (different tenant)"
-    )
+    assert user_tenant_b.id not in user_ids_a, "Query should NOT find Tenant B user (different tenant)"
 
 
 @pytest.mark.asyncio
-async def test_multiple_users_same_tenant_independent_priorities(
-    db_session,
-    tenant_a_key
-):
+async def test_multiple_users_same_tenant_independent_priorities(db_session, tenant_a_key):
     """
     TEST 4d: Multiple users in same tenant can have independent field priorities.
 
@@ -399,9 +365,9 @@ async def test_multiple_users_same_tenant_independent_priorities(
             "priorities": {
                 "product_core": 1,
                 "vision_documents": 2,
-                "git_history": 4  # Alice excludes git
-            }
-        }
+                "git_history": 4,  # Alice excludes git
+            },
+        },
     )
 
     bob = User(
@@ -416,9 +382,9 @@ async def test_multiple_users_same_tenant_independent_priorities(
             "priorities": {
                 "product_core": 1,
                 "vision_documents": 4,  # Bob excludes vision (different from Alice)
-                "git_history": 2
-            }
-        }
+                "git_history": 2,
+            },
+        },
     )
 
     db_session.add(alice)
@@ -429,10 +395,7 @@ async def test_multiple_users_same_tenant_independent_priorities(
 
     # Create shared product and projects
     product = Product(
-        id=str(uuid4()),
-        name=f"Shared Product {uuid4().hex[:8]}",
-        tenant_key=tenant_a_key,
-        is_active=True
+        id=str(uuid4()), name=f"Shared Product {uuid4().hex[:8]}", tenant_key=tenant_a_key, is_active=True
     )
     db_session.add(product)
     await db_session.commit()
@@ -444,7 +407,7 @@ async def test_multiple_users_same_tenant_independent_priorities(
         tenant_key=tenant_a_key,
         status="planning",
         mission="Alice's mission.",
-        context_budget=180000
+        context_budget=180000,
     )
 
     project_bob = Project(
@@ -454,7 +417,7 @@ async def test_multiple_users_same_tenant_independent_priorities(
         tenant_key=tenant_a_key,
         status="planning",
         mission="Bob's mission.",
-        context_budget=180000
+        context_budget=180000,
     )
 
     db_session.add(project_alice)
@@ -462,72 +425,47 @@ async def test_multiple_users_same_tenant_independent_priorities(
     await db_session.commit()
 
     # ACT: Generate orchestrator for Alice
-    generator_alice = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=tenant_a_key
-    )
+    generator_alice = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
 
     alice_priorities = alice.field_priority_config.get("priorities", {})
 
     result_alice = await generator_alice.generate(
-        project_id=str(project_alice.id),
-        user_id=str(alice.id),
-        tool="claude-code",
-        field_priorities=alice_priorities
+        project_id=str(project_alice.id), user_id=str(alice.id), tool="claude-code", field_priorities=alice_priorities
     )
 
     # ACT: Generate orchestrator for Bob
-    generator_bob = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=tenant_a_key
-    )
+    generator_bob = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
 
     bob_priorities = bob.field_priority_config.get("priorities", {})
 
     result_bob = await generator_bob.generate(
-        project_id=str(project_bob.id),
-        user_id=str(bob.id),
-        tool="claude-code",
-        field_priorities=bob_priorities
+        project_id=str(project_bob.id), user_id=str(bob.id), tool="claude-code", field_priorities=bob_priorities
     )
 
     # ASSERT: Verify Alice got her priorities
-    stmt_alice = select(AgentExecution).where(
-        AgentExecution.job_id == result_alice["orchestrator_id"]
-    )
+    stmt_alice = select(AgentExecution).where(AgentExecution.job_id == result_alice["orchestrator_id"])
     job_alice = (await db_session.execute(stmt_alice)).scalar_one()
 
     actual_priorities_alice = job_alice.job_metadata.get("field_priorities", {})
 
-    assert actual_priorities_alice["git_history"] == 4, (
-        "Alice should have git_history=4 (excluded)"
-    )
+    assert actual_priorities_alice["git_history"] == 4, "Alice should have git_history=4 (excluded)"
 
     # ASSERT: Verify Bob got his priorities
-    stmt_bob = select(AgentExecution).where(
-        AgentExecution.job_id == result_bob["orchestrator_id"]
-    )
+    stmt_bob = select(AgentExecution).where(AgentExecution.job_id == result_bob["orchestrator_id"])
     job_bob = (await db_session.execute(stmt_bob)).scalar_one()
 
     actual_priorities_bob = job_bob.job_metadata.get("field_priorities", {})
 
-    assert actual_priorities_bob["git_history"] == 2, (
-        "Bob should have git_history=2 (included)"
-    )
+    assert actual_priorities_bob["git_history"] == 2, "Bob should have git_history=2 (included)"
 
     # CRITICAL: Priorities should be DIFFERENT
     assert actual_priorities_alice != actual_priorities_bob, (
-        "Alice and Bob should have independent field priorities "
-        "even though they're in the same tenant"
+        "Alice and Bob should have independent field priorities even though they're in the same tenant"
     )
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_job_tenant_key_matches_user_tenant(
-    db_session,
-    user_tenant_a,
-    project_tenant_a
-):
+async def test_orchestrator_job_tenant_key_matches_user_tenant(db_session, user_tenant_a, project_tenant_a):
     """
     TEST 4e: Orchestrator job tenant_key should match user's tenant_key.
 
@@ -543,16 +481,13 @@ async def test_orchestrator_job_tenant_key_matches_user_tenant(
     field_priorities = user_field_config.get("priorities", {})
 
     # ACT: Generate orchestrator job
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_tenant_a.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_tenant_a.tenant_key)
 
     result = await generator.generate(
         project_id=str(project_tenant_a.id),
         user_id=str(user_tenant_a.id),
         tool="claude-code",
-        field_priorities=field_priorities
+        field_priorities=field_priorities,
     )
 
     orchestrator_id = result["orchestrator_id"]

@@ -4,7 +4,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useTheme } from 'vuetify'
 
 const props = defineProps({
   active: { type: Boolean, default: true },
@@ -12,14 +11,11 @@ const props = defineProps({
   alt: { type: String, default: 'GiljoAI' },
 })
 
-const theme = useTheme()
-
 const src = computed(() => {
-  const isDark = theme.global.current.value.dark
   if (props.active) {
-    return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
+    return '/icons/Giljo_YW_Face.svg'
   }
-  return isDark ? '/icons/Giljo_Inactive_Dark.svg' : '/icons/Giljo_Inactive_Light.svg'
+  return '/icons/Giljo_Inactive_Dark.svg'
 })
 </script>
 

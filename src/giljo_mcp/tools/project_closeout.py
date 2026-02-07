@@ -6,9 +6,9 @@ Handles project completion and updates product memory with sequential history en
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from inspect import iscoroutine
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +17,9 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
-
 
 # Field length constraints (added for validation)
 MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
@@ -32,16 +30,16 @@ MAX_DECISIONS_MADE = 100
 async def close_project_and_update_memory(
     project_id: str,
     summary: str,
-    key_outcomes: List[str],
-    decisions_made: List[str],
+    key_outcomes: list[str],
+    decisions_made: list[str],
     tenant_key: str,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,
-) -> Dict[str, Any]:
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,
+) -> dict[str, Any]:
     """
-    Close project and update product memory with sequential history entry.
+    Close project and update product memory with history entry.
 
-    Adds a rich entry to product_memory.sequential_history.
+    Adds a rich entry to the product_memory_entries table.
     """
     if not project_id:
         return {"success": False, "error": "project_id is required"}
@@ -112,12 +110,12 @@ async def close_project_and_update_memory(
             if not product:
                 return {"success": False, "error": "Product not found for project"}
 
-            product_memory: Dict[str, Any] = product.product_memory or {}
+            product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
                 product_memory = {}
 
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[List[Dict[str, Any]]] = None
+            git_commits: list[dict[str, Any | None]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -125,7 +123,7 @@ async def close_project_and_update_memory(
                     repo_owner=git_config.get("repo_owner"),
                     access_token=git_config.get("access_token"),
                     project_created_at=project.created_at,
-                    project_completed_at=project.completed_at or datetime.utcnow(),
+                    project_completed_at=project.completed_at or datetime.now(timezone.utc),
                 )
 
             if git_commits is None:
@@ -133,10 +131,7 @@ async def close_project_and_update_memory(
 
             # Use repository for atomic sequence generation and entry creation
             repo = ProductMemoryRepository()
-            sequence_number = await repo.get_next_sequence(
-                session=active_session,
-                product_id=product.id
-            )
+            sequence_number = await repo.get_next_sequence(session=active_session, product_id=product.id)
 
             deliverables = _extract_deliverables(key_outcomes)
             tags = _extract_tags(summary, key_outcomes, decisions_made)
@@ -154,7 +149,7 @@ async def close_project_and_update_memory(
                 sequence=sequence_number,
                 entry_type="project_closeout",
                 source="closeout_v1",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 project_name=project.name,
                 summary=summary,
                 key_outcomes=key_outcomes,
@@ -197,7 +192,7 @@ async def close_project_and_update_memory(
         return {"success": False, "error": str(exc)}
 
 
-def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
+def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
@@ -205,10 +200,10 @@ def _get_git_config(product_memory: Dict[str, Any]) -> Dict[str, Any]:
     return git_cfg if isinstance(git_cfg, dict) else {}
 
 
-def _extract_deliverables(key_outcomes: List[str]) -> List[str]:
+def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
     """Derive deliverables from key outcomes (deduplicated)."""
     seen = set()
-    deliverables: List[str] = []
+    deliverables: list[str] = []
     for outcome in key_outcomes or []:
         normalized = (outcome or "").strip()
         if normalized and normalized not in seen:
@@ -217,7 +212,7 @@ def _extract_deliverables(key_outcomes: List[str]) -> List[str]:
     return deliverables
 
 
-def _extract_tags(summary: str, key_outcomes: List[str], decisions_made: List[str]) -> List[str]:
+def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:
     """Extract lightweight tags from summary/outcomes/decisions."""
     tokens = (summary or "").split()
     for item in key_outcomes or []:
@@ -238,7 +233,7 @@ def _extract_tags(summary: str, key_outcomes: List[str], decisions_made: List[st
     return tags[:10]
 
 
-def _derive_priority(project: Project, summary: str, key_outcomes: List[str]) -> int:
+def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:
     """Derive priority (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)."""
     summary_text = summary.lower() if summary else ""
     outcome_text = " ".join(key_outcomes or []).lower()
@@ -249,7 +244,7 @@ def _derive_priority(project: Project, summary: str, key_outcomes: List[str]) ->
     return 3
 
 
-def _calculate_significance(project: Project, key_outcomes: List[str], git_commits: List[Dict[str, Any]]) -> float:
+def _calculate_significance(project: Project, key_outcomes: list[str], git_commits: list[dict[str, Any]]) -> float:
     """Calculate significance score between 0.0 and 1.0."""
     outcome_factor = min(len(key_outcomes or []), 5) * 0.1
     commit_factor = min(len(git_commits or []), 20) * 0.01
@@ -257,7 +252,7 @@ def _calculate_significance(project: Project, key_outcomes: List[str], git_commi
     return round(min(1.0, base), 2)
 
 
-def _estimate_tokens(summary: str, key_outcomes: List[str], decisions_made: List[str]) -> int:
+def _estimate_tokens(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> int:
     """Rough token estimate based on content length."""
     lengths = [len(summary or "")]
     lengths.extend(len(item or "") for item in key_outcomes or [])
@@ -266,7 +261,7 @@ def _estimate_tokens(summary: str, key_outcomes: List[str], decisions_made: List
     return max(estimate, 1)
 
 
-def _count_files_changed(git_commits: List[Dict[str, Any]]) -> int:
+def _count_files_changed(git_commits: list[dict[str, Any]]) -> int:
     """Count files changed across commits."""
     total = 0
     for commit in git_commits or []:
@@ -279,7 +274,7 @@ def _count_files_changed(git_commits: List[Dict[str, Any]]) -> int:
     return total
 
 
-def _count_lines_added(git_commits: List[Dict[str, Any]]) -> int:
+def _count_lines_added(git_commits: list[dict[str, Any]]) -> int:
     """Count lines added across commits."""
     total = 0
     for commit in git_commits or []:
@@ -292,7 +287,7 @@ def _count_lines_added(git_commits: List[Dict[str, Any]]) -> int:
     return total
 
 
-def _build_metrics(git_commits: List[Dict[str, Any]], meta_data: Dict[str, Any]) -> Dict[str, Any]:
+def _build_metrics(git_commits: list[dict[str, Any]], meta_data: dict[str, Any]) -> dict[str, Any]:
     """Build metrics block for history entry."""
     test_coverage = 0.0
     if isinstance(meta_data, dict):
@@ -318,7 +313,7 @@ async def emit_websocket_event(
     event_type: str,
     tenant_key: str,
     product_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
 ) -> None:
     """
     Emit WebSocket event; graceful no-op if manager unavailable.
@@ -345,17 +340,17 @@ async def emit_websocket_event(
                 event_type=event_type,
                 data={"product_id": product_id, **data},
             )
-    except Exception as exc:  # pragma: no cover - best-effort emit
+    except (RuntimeError, ValueError, KeyError) as exc:  # pragma: no cover - best-effort emit
         logger.warning("WebSocket emit failed", extra={"error": str(exc), "event_type": event_type})
 
 
 async def _fetch_github_commits(
-    repo_name: Optional[str],
-    repo_owner: Optional[str],
-    access_token: Optional[str],
+    repo_name: str | None,
+    repo_owner: str | None,
+    access_token: str | None,
     project_created_at: datetime,
-    project_completed_at: Optional[datetime],
-) -> Optional[List[Dict[str, Any]]]:
+    project_completed_at: datetime | None,
+) -> list[dict[str, Any | None]]:
     """
     Fetch GitHub commits between project creation and completion.
 
@@ -392,26 +387,24 @@ async def _fetch_github_commits(
                 return None
 
             commits_data = response.json()
-            commits: List[Dict[str, Any]] = []
-            for commit in commits_data[:100]:
-                commits.append(
-                    {
-                        "sha": commit.get("sha"),
-                        "message": commit.get("commit", {}).get("message"),
-                        "author": commit.get("commit", {}).get("author", {}).get("name")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else commit.get("commit", {}).get("author"),
-                        "date": commit.get("commit", {}).get("author", {}).get("date")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else None,
-                        "url": commit.get("html_url"),
-                        "files_changed": commit.get("files_changed"),
-                        "lines_added": commit.get("lines_added")
-                        or commit.get("stats", {}).get("additions")
-                        if isinstance(commit.get("stats"), dict)
-                        else None,
-                    }
-                )
+            commits: list[dict[str, Any]] = [
+                {
+                    "sha": commit.get("sha"),
+                    "message": commit.get("commit", {}).get("message"),
+                    "author": commit.get("commit", {}).get("author", {}).get("name")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else commit.get("commit", {}).get("author"),
+                    "date": commit.get("commit", {}).get("author", {}).get("date")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else None,
+                    "url": commit.get("html_url"),
+                    "files_changed": commit.get("files_changed"),
+                    "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
+                    if isinstance(commit.get("stats"), dict)
+                    else None,
+                }
+                for commit in commits_data[:100]
+            ]
 
             logger.info(f"Fetched {len(commits)} GitHub commits for {repo_owner}/{repo_name}")
             return commits

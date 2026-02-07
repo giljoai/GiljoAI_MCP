@@ -10,6 +10,8 @@ This module provides a robust configuration system that:
 - Supports hot-reloading of configuration
 """
 
+import importlib.util
+import json
 import logging
 import os
 import threading
@@ -82,57 +84,6 @@ class DatabaseConfig:
     username: str = "postgres"
     password: str = ""
     pg_pool_size: int = 10
-
-    @property
-    def database_type(self) -> str:
-        """Alias for type property to match test expectations."""
-        return self.type
-
-    @database_type.setter
-    def database_type(self, value: str):
-        """Setter for database_type alias."""
-        self.type = value
-
-    # Legacy aliases for PostgreSQL settings
-    @property
-    def pg_host(self) -> str:
-        return self.host
-
-    @pg_host.setter
-    def pg_host(self, value: str):
-        self.host = value
-
-    @property
-    def pg_port(self) -> int:
-        return self.port
-
-    @pg_port.setter
-    def pg_port(self, value: int):
-        self.port = value
-
-    @property
-    def pg_database(self) -> str:
-        return self.database_name
-
-    @pg_database.setter
-    def pg_database(self, value: str):
-        self.database_name = value
-
-    @property
-    def pg_user(self) -> str:
-        return self.username
-
-    @pg_user.setter
-    def pg_user(self, value: str):
-        self.username = value
-
-    @property
-    def pg_password(self) -> str:
-        return self.password
-
-    @pg_password.setter
-    def pg_password(self, value: str):
-        self.password = value
 
     def get_connection_string(self, tenant_key: Optional[str] = None) -> str:
         """
@@ -228,31 +179,6 @@ class AgentConfig:
     default_context_budget: int = 150000  # tokens
     context_warning_threshold: int = 140000  # tokens
 
-    # Legacy aliases for backwards compatibility
-    @property
-    def max_per_project(self) -> int:
-        return self.max_agents
-
-    @max_per_project.setter
-    def max_per_project(self, value: int):
-        self.max_agents = value
-
-    @property
-    def context_limit(self) -> int:
-        return self.default_context_budget
-
-    @context_limit.setter
-    def context_limit(self, value: int):
-        self.default_context_budget = value
-
-    @property
-    def handoff_threshold(self) -> int:
-        return self.context_warning_threshold
-
-    @handoff_threshold.setter
-    def handoff_threshold(self, value: int):
-        self.context_warning_threshold = value  # tokens
-
 
 @dataclass
 class MessageConfig:
@@ -261,32 +187,8 @@ class MessageConfig:
     max_queue_size: int = 1000
     message_timeout: int = 300  # seconds
     max_retries: int = 3
-    _batch_size: int = 10  # Internal batch size storage
-    _retry_delay: float = 1.0  # Internal retry delay storage
-
-    @property
-    def batch_size(self) -> int:
-        return self._batch_size
-
-    @batch_size.setter
-    def batch_size(self, value: int):
-        self._batch_size = value
-
-    @property
-    def retry_attempts(self) -> int:
-        return self.max_retries
-
-    @retry_attempts.setter
-    def retry_attempts(self, value: int):
-        self.max_retries = value
-
-    @property
-    def retry_delay(self) -> float:
-        return self._retry_delay
-
-    @retry_delay.setter
-    def retry_delay(self, value: float):
-        self._retry_delay = value  # Fixed retry delay for legacy compatibility  # seconds
+    batch_size: int = 10
+    retry_delay: float = 1.0  # seconds
 
 
 @dataclass
@@ -298,31 +200,6 @@ class TenantConfig:
     tenant_isolation_level: str = "strict"
     key_header: str = "X-Tenant-Key"
 
-    # Legacy alias for backwards compatibility
-    @property
-    def enabled(self) -> bool:
-        return self.enable_multi_tenant
-
-    @enabled.setter
-    def enabled(self, value: bool):
-        self.enable_multi_tenant = value
-
-    @property
-    def default_key(self) -> Optional[str]:
-        return self.default_tenant_key
-
-    @default_key.setter
-    def default_key(self, value: Optional[str]):
-        self.default_tenant_key = value
-
-    @property
-    def isolation_strict(self) -> bool:
-        return self.tenant_isolation_level == "strict"
-
-    @isolation_strict.setter
-    def isolation_strict(self, value: bool):
-        self.tenant_isolation_level = "strict" if value else "relaxed"
-
 
 @dataclass
 class FeatureFlags:
@@ -333,15 +210,6 @@ class FeatureFlags:
     enable_websockets: bool = True
     auto_handoff: bool = True
     dynamic_discovery: bool = True
-
-    # Legacy aliases for backwards compatibility
-    @property
-    def websocket_updates(self) -> bool:
-        return self.enable_websockets
-
-    @websocket_updates.setter
-    def websocket_updates(self, value: bool):
-        self.enable_websockets = value
 
 
 class ConfigFileWatcher(FileSystemEventHandler):
@@ -578,11 +446,11 @@ class ConfigManager:
                 # v3 primary: nested postgresql config
                 if "postgresql" in db:
                     pg = db["postgresql"]
-                    self.database.pg_host = pg.get("host", self.database.pg_host)
-                    self.database.pg_port = pg.get("port", self.database.pg_port)
-                    self.database.pg_database = pg.get("database", self.database.pg_database)
-                    self.database.pg_user = pg.get("user", self.database.pg_user)
-                    self.database.pg_password = pg.get("password", self.database.pg_password)
+                    self.database.host = pg.get("host", self.database.host)
+                    self.database.port = pg.get("port", self.database.port)
+                    self.database.database_name = pg.get("database", self.database.database_name)
+                    self.database.username = pg.get("user", self.database.username)
+                    self.database.password = pg.get("password", self.database.password)
                     self.database.pg_pool_size = pg.get("pool_size", self.database.pg_pool_size)
 
                 # Fallback: support legacy top-level keys under database
@@ -614,25 +482,27 @@ class ConfigManager:
             # Agent configuration
             if "agents" in data:
                 ag = data["agents"]
-                self.agent.max_per_project = ag.get("max_per_project", self.agent.max_per_project)
-                self.agent.context_limit = ag.get("context_limit", self.agent.context_limit)
-                self.agent.handoff_threshold = ag.get("handoff_threshold", self.agent.handoff_threshold)
+                self.agent.max_agents = ag.get("max_per_project", self.agent.max_agents)
+                self.agent.default_context_budget = ag.get("context_limit", self.agent.default_context_budget)
+                self.agent.context_warning_threshold = ag.get("handoff_threshold", self.agent.context_warning_threshold)
 
             # Message configuration
             if "messages" in data:
                 msg = data["messages"]
                 self.message.max_queue_size = msg.get("max_queue_size", self.message.max_queue_size)
                 self.message.batch_size = msg.get("batch_size", self.message.batch_size)
-                self.message.retry_attempts = msg.get("retry_attempts", self.message.retry_attempts)
+                self.message.max_retries = msg.get("retry_attempts", self.message.max_retries)
                 self.message.retry_delay = msg.get("retry_delay", self.message.retry_delay)
 
             # Tenant configuration
             if "tenant" in data:
                 tn = data["tenant"]
-                self.tenant.enabled = tn.get("enabled", self.tenant.enabled)
-                self.tenant.default_key = tn.get("default_key", self.tenant.default_key)
+                self.tenant.enable_multi_tenant = tn.get("enabled", self.tenant.enable_multi_tenant)
+                self.tenant.default_tenant_key = tn.get("default_key", self.tenant.default_tenant_key)
                 self.tenant.key_header = tn.get("key_header", self.tenant.key_header)
-                self.tenant.isolation_strict = tn.get("isolation_strict", self.tenant.isolation_strict)
+                # Handle isolation_strict -> tenant_isolation_level conversion
+                if "isolation_strict" in tn:
+                    self.tenant.tenant_isolation_level = "strict" if tn["isolation_strict"] else "relaxed"
 
             # Setup mode flag (allows placeholder password during initial wizard setup)
             if "setup_mode" in data:
@@ -643,13 +513,13 @@ class ConfigManager:
                 feat = data["features"]
                 self.features.vision_chunking = feat.get("vision_chunking", self.features.vision_chunking)
                 self.features.multi_tenant = feat.get("multi_tenant", self.features.multi_tenant)
-                self.features.websocket_updates = feat.get("websocket_updates", self.features.websocket_updates)
+                self.features.enable_websockets = feat.get("websocket_updates", self.features.enable_websockets)
                 self.features.auto_handoff = feat.get("auto_handoff", self.features.auto_handoff)
                 self.features.dynamic_discovery = feat.get("dynamic_discovery", self.features.dynamic_discovery)
 
         except Exception as e:
-            logger.exception(f"Error loading config file: {e}")
-            raise ConfigValidationError(f"Failed to load config file: {e}")
+            logger.exception("Error loading config file")
+            raise ConfigValidationError(f"Failed to load config file: {e}") from e
 
     def _load_from_env(self):
         """Override configuration with environment variables."""
@@ -691,19 +561,19 @@ class ConfigManager:
             self.database.database_url = db_url
 
         if db_host := os.getenv("DB_HOST"):
-            self.database.pg_host = db_host
+            self.database.host = db_host
 
         if db_port := os.getenv("DB_PORT"):
-            self.database.pg_port = int(db_port)
+            self.database.port = int(db_port)
 
         if db_name := os.getenv("DB_NAME"):
-            self.database.pg_database = db_name
+            self.database.database_name = db_name
 
         if db_user := os.getenv("DB_USER"):
-            self.database.pg_user = db_user
+            self.database.username = db_user
 
         if db_password := os.getenv("DB_PASSWORD"):
-            self.database.pg_password = db_password
+            self.database.password = db_password
 
         # Logging settings
         if log_level := os.getenv("LOG_LEVEL"):
@@ -717,7 +587,7 @@ class ConfigManager:
             self.features.multi_tenant = val.lower() in ("true", "1", "yes")
 
         if val := os.getenv("ENABLE_WEBSOCKET"):
-            self.features.websocket_updates = val.lower() in ("true", "1", "yes")
+            self.features.enable_websockets = val.lower() in ("true", "1", "yes")
 
     # _detect_mode() method removed in v3.0
     # No longer needed as mode detection is removed
@@ -740,30 +610,34 @@ class ConfigManager:
         if len(ports) != len(set(ports)):
             errors.append("Port conflict: All service ports must be unique")
 
-        for port in ports:
-            if not 1024 <= port <= 65535:
-                errors.append(f"Invalid port {port}: Must be between 1024 and 65535")
+        errors.extend(
+            [f"Invalid port {port}: Must be between 1024 and 65535" for port in ports if not 1024 <= port <= 65535]
+        )
 
         # Database validation
         if self.database.type != "postgresql":
             errors.append(f"Only PostgreSQL is supported. Got: {self.database.type}")
 
-        if self.database.type == "postgresql":
-            # Only require password if no database URL is provided
-            if not self.database.database_url and not self.database.pg_password and not os.getenv("DB_PASSWORD"):
-                # Check if we're in setup mode (allows placeholder password during initial setup)
-                if not getattr(self, "setup_mode", False):
-                    errors.append("PostgreSQL password is required")
+        # Only require password if no database URL is provided (for PostgreSQL)
+        # Check if we're in setup mode (allows placeholder password during initial setup)
+        if (
+            self.database.type == "postgresql"
+            and not self.database.database_url
+            and not self.database.password
+            and not os.getenv("DB_PASSWORD")
+            and not getattr(self, "setup_mode", False)
+        ):
+            errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
-        if self.agent.handoff_threshold >= self.agent.context_limit:
+        if self.agent.context_warning_threshold >= self.agent.default_context_budget:
             errors.append("Handoff threshold must be less than context limit")
 
-        if self.agent.max_per_project < 1:
+        if self.agent.max_agents < 1:
             errors.append("Must allow at least 1 agent per project")
 
         # Message configuration validation
-        if self.message.retry_attempts < 0:
+        if self.message.max_retries < 0:
             errors.append("Retry attempts must be non-negative")
 
         if self.message.batch_size > self.message.max_queue_size:
@@ -783,8 +657,8 @@ class ConfigManager:
         try:
             self.load()
             logger.info("Configuration reloaded successfully")
-        except Exception as e:
-            logger.exception(f"Failed to reload configuration: {e}")
+        except Exception:
+            logger.exception("Failed to reload configuration")
             raise
 
     def _setup_file_watcher(self):
@@ -858,26 +732,26 @@ class ConfigManager:
                 "cleanup_interval": self.session.cleanup_interval,
             },
             "agents": {
-                "max_per_project": self.agent.max_per_project,
-                "context_limit": self.agent.context_limit,
-                "handoff_threshold": self.agent.handoff_threshold,
+                "max_per_project": self.agent.max_agents,
+                "context_limit": self.agent.default_context_budget,
+                "handoff_threshold": self.agent.context_warning_threshold,
             },
             "messages": {
                 "max_queue_size": self.message.max_queue_size,
                 "batch_size": self.message.batch_size,
-                "retry_attempts": self.message.retry_attempts,
+                "retry_attempts": self.message.max_retries,
                 "retry_delay": self.message.retry_delay,
             },
             "tenant": {
-                "enabled": self.tenant.enabled,
-                "default_key": self.tenant.default_key,
+                "enabled": self.tenant.enable_multi_tenant,
+                "default_key": self.tenant.default_tenant_key,
                 "key_header": self.tenant.key_header,
-                "isolation_strict": self.tenant.isolation_strict,
+                "isolation_strict": self.tenant.tenant_isolation_level == "strict",
             },
             "features": {
                 "vision_chunking": self.features.vision_chunking,
                 "multi_tenant": self.features.multi_tenant,
-                "websocket_updates": self.features.websocket_updates,
+                "websocket_updates": self.features.enable_websockets,
                 "auto_handoff": self.features.auto_handoff,
                 "dynamic_discovery": self.features.dynamic_discovery,
             },
@@ -980,25 +854,32 @@ class ConfigManager:
             return default
 
 
-# Global configuration instance
-_config_manager: Optional[ConfigManager] = None
+# Module-level configuration holder
+class _ConfigManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[ConfigManager] = None
+
+    @classmethod
+    def get_instance(cls) -> ConfigManager:
+        if cls._instance is None:
+            cls._instance = ConfigManager(auto_reload=True)
+            cls._instance.logging.setup_logging()
+        return cls._instance
+
+    @classmethod
+    def set_instance(cls, config: ConfigManager):
+        cls._instance = config
 
 
 def get_config() -> ConfigManager:
     """Get the global configuration manager instance."""
-    global _config_manager
-
-    if _config_manager is None:
-        _config_manager = ConfigManager(auto_reload=True)
-        _config_manager.logging.setup_logging()
-
-    return _config_manager
+    return _ConfigManagerHolder.get_instance()
 
 
 def set_config(config: ConfigManager):
     """Set the global configuration manager instance."""
-    global _config_manager
-    _config_manager = config
+    _ConfigManagerHolder.set_instance(config)
 
 
 def generate_sample_config(path: Optional[Path] = None) -> Path:
@@ -1106,8 +987,8 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return None
 
     # Look for architecture section
@@ -1156,8 +1037,8 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return []
 
     tech_stack = []
@@ -1211,8 +1092,8 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return []
 
     test_commands = []
@@ -1248,7 +1129,6 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
     Returns:
         Frontend framework name or None
     """
-    import json
 
     package_json = root_path / "package.json"
 
@@ -1267,7 +1147,7 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
 
         if "vue" in dependencies:
             version = dependencies["vue"]
-            if version.startswith("^3") or version.startswith("3."):
+            if version.startswith(("^3", "3.")):
                 return "Vue 3"
             return "Vue.js"
         if "react" in dependencies:
@@ -1277,7 +1157,7 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
         if "svelte" in dependencies:
             return "Svelte"
 
-    except Exception as e:
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
         logger.warning(f"Failed to parse package.json: {e}")
 
     return None
@@ -1305,7 +1185,7 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
                 return "Django"
             if "flask" in content:
                 return "Flask"
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             logger.warning(f"Failed to read requirements.txt: {e}")
 
     # Check pyproject.toml
@@ -1320,7 +1200,7 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
                 return "Django"
             if "flask" in content:
                 return "Flask"
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             logger.warning(f"Failed to read pyproject.toml: {e}")
 
     return None
@@ -1378,11 +1258,9 @@ def check_serena_mcp_available() -> bool:
     """
     try:
         # Check if serena-mcp package is importable
-        import importlib.util
-
         spec = importlib.util.find_spec("serena_mcp")
         return spec is not None
-    except Exception:
+    except (ImportError, ModuleNotFoundError, ValueError, AttributeError):
         return False
 
 
