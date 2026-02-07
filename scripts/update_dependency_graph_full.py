@@ -379,7 +379,7 @@ class DependencyGraphBuilder:
 
 
 def update_html_with_data(html_path: Path, graph_data: Dict):
-    """Update HTML file with new graph data."""
+    """Update HTML file with new graph data and timestamp."""
     print("[EDIT] Updating HTML file...")
 
     html_content = html_path.read_text(encoding="utf-8")
@@ -394,8 +394,8 @@ def update_html_with_data(html_path: Path, graph_data: Dict):
     if start_idx == -1 or end_idx == -1:
         raise ValueError("Could not find graphData section in HTML")
 
-    # Build new data section (minified JSON)
-    graph_json = json.dumps({"nodes": graph_data["nodes"], "links": graph_data["links"]}, separators=(",", ":"))
+    # Build new data section (minified JSON) - include metadata with timestamp
+    graph_json = json.dumps(graph_data, separators=(",", ":"))
 
     new_section = f"const graphData={graph_json};\n"
 
@@ -403,7 +403,7 @@ def update_html_with_data(html_path: Path, graph_data: Dict):
     new_html = html_content[:start_idx] + new_section + html_content[end_idx:]
 
     html_path.write_text(new_html, encoding="utf-8")
-    print("[OK] HTML updated")
+    print("[OK] HTML updated with timestamp")
 
 
 def main():
