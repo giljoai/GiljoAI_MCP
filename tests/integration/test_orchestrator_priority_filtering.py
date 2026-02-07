@@ -6,12 +6,14 @@ Tests that user's field priority settings are respected when orchestrator fetche
 Handover 0279: Fixes context priority integration gap where orchestrator tool templates
 were missing user_id parameter, causing priority filtering to be bypassed.
 """
-import pytest
-from sqlalchemy import select
+
 from uuid import uuid4
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest
+from sqlalchemy import select
+
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -29,19 +31,19 @@ async def test_user(db_session, test_tenant):
             "version": "2.0",
             "priorities": {
                 "vision_documents": 4,  # EXCLUDED
-                "tech_stack": 1,        # CRITICAL
-                "architecture": 2,      # IMPORTANT
-                "git_history": 3,       # NICE_TO_HAVE
-                "memory_360": 1,        # CRITICAL
-            }
+                "tech_stack": 1,  # CRITICAL
+                "architecture": 2,  # IMPORTANT
+                "git_history": 3,  # NICE_TO_HAVE
+                "memory_360": 1,  # CRITICAL
+            },
         },
         depth_config={
-            "vision_chunking": "none",         # Don't want vision docs
-            "git_commits": 10,                 # Minimal git history
-            "memory_last_n_projects": 3,       # Last 3 projects
+            "vision_chunking": "none",  # Don't want vision docs
+            "git_commits": 10,  # Minimal git history
+            "memory_last_n_projects": 3,  # Last 3 projects
             "architecture_depth": "overview",  # Overview only
-            "tech_stack_sections": "required"  # Required sections only
-        }
+            "tech_stack_sections": "required",  # Required sections only
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -57,7 +59,7 @@ async def test_product(db_session, test_tenant):
         tenant_key=test_tenant,
         name="Test Product for Priority Filtering",
         description="Test product with vision documents",
-        vision_document="This is a test vision document that should be excluded when priority=4."
+        vision_document="This is a test vision document that should be excluded when priority=4.",
     )
     db_session.add(product)
     await db_session.commit()
@@ -74,7 +76,7 @@ async def test_project(db_session, test_tenant, test_product):
         product_id=test_product.id,
         name="Test Project for Priority Filtering",
         description="Test project to verify priority filtering works",
-        status="inactive"
+        status="inactive",
     )
     db_session.add(project)
     await db_session.commit()
@@ -95,10 +97,7 @@ async def test_orchestrator_prompt_includes_user_id(
     This verifies the fix from Handover 0279 where tool templates were missing user_id.
     """
     # ARRANGE: Create prompt generator
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=test_user.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
     # ACT: Generate thin prompt for orchestrator
     result = await generator.generate(
@@ -106,16 +105,15 @@ async def test_orchestrator_prompt_includes_user_id(
         user_id=str(test_user.id),
         tool="claude-code",
         field_priorities=test_user.field_priority_config["priorities"],
-        depth_config=test_user.depth_config
+        depth_config=test_user.depth_config,
     )
 
     thin_prompt = result["thin_prompt"]
 
     # ASSERT: All MCP tool calls should include user_id parameter
-    assert f"user_id='{test_user.id}'" in thin_prompt, \
-        "Orchestrator prompt missing user_id in tool calls"
+    assert f"user_id='{test_user.id}'" in thin_prompt, "Orchestrator prompt missing user_id in tool calls"
 
-    print(f"\n[TEST] Orchestrator prompt includes user_id: PASS")
+    print("\n[TEST] Orchestrator prompt includes user_id: PASS")
     print(f"[TEST] user_id='{test_user.id}' found in prompt")
 
 
@@ -137,17 +135,14 @@ async def test_depth_config_applied_in_orchestrator_prompt(
     assert test_user.depth_config["vision_chunking"] == "none"
 
     # ACT: Generate orchestrator prompt
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=test_user.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
     result = await generator.generate(
         project_id=str(test_project.id),
         user_id=str(test_user.id),
         tool="claude-code",
         field_priorities=test_user.field_priority_config["priorities"],
-        depth_config=test_user.depth_config
+        depth_config=test_user.depth_config,
     )
 
     thin_prompt = result["thin_prompt"]
@@ -156,7 +151,7 @@ async def test_depth_config_applied_in_orchestrator_prompt(
     assert thin_prompt is not None
     assert len(thin_prompt) > 0
 
-    print(f"\n[TEST] Depth config applied successfully")
+    print("\n[TEST] Depth config applied successfully")
 
 
 @pytest.mark.asyncio
@@ -178,21 +173,18 @@ async def test_end_to_end_priority_filtering(
     """
     # ARRANGE: User has priorities configured (done in fixture)
     assert test_user.field_priority_config["priorities"]["vision_documents"] == 4  # EXCLUDED
-    assert test_user.field_priority_config["priorities"]["tech_stack"] == 1        # CRITICAL
+    assert test_user.field_priority_config["priorities"]["tech_stack"] == 1  # CRITICAL
 
     # ACT: Launch project (simulates clicking [Stage Project])
     project_service = ProjectService(db_session, test_user.tenant_key)
 
-    result = await project_service.launch_project(
-        project_id=str(test_project.id),
-        user_id=str(test_user.id)
-    )
+    result = await project_service.launch_project(project_id=str(test_project.id), user_id=str(test_user.id))
 
     # ASSERT 1: Orchestrator job created with user settings in metadata
     orchestrator_stmt = select(AgentExecution).where(
         AgentExecution.project_id == test_project.id,
         AgentExecution.agent_display_name == "orchestrator",
-        AgentExecution.tenant_key == test_user.tenant_key
+        AgentExecution.tenant_key == test_user.tenant_key,
     )
     orchestrator_result = await db_session.execute(orchestrator_stmt)
     orchestrator = orchestrator_result.scalar_one()
@@ -212,7 +204,7 @@ async def test_end_to_end_priority_filtering(
     assert orchestrator.job_metadata["depth_config"]["git_commits"] == 10
     assert orchestrator.job_metadata["depth_config"]["vision_chunking"] == "none"
 
-    print(f"\n[TEST] End-to-end priority filtering: PASS")
+    print("\n[TEST] End-to-end priority filtering: PASS")
     print(f"[TEST] Orchestrator ID: {orchestrator.job_id}")
     print(f"[TEST] User priorities applied: {orchestrator.job_metadata['field_priorities']}")
     print(f"[TEST] User depth config applied: {orchestrator.job_metadata['depth_config']}")

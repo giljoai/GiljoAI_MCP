@@ -14,7 +14,9 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 from .models import AgentExecutionResponse
 
+
 router = APIRouter()
+
 
 @router.get("/{job_id}/executions", response_model=list[AgentExecutionResponse])
 async def get_job_executions(

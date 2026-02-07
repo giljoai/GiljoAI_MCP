@@ -5,8 +5,8 @@ Tests last_exported_at timestamp tracking and may_be_stale flag computation.
 Following TDD principles - these tests are written BEFORE implementation.
 """
 
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest

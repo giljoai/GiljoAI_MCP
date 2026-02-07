@@ -9,11 +9,11 @@ Verifies:
 5. New tools: get_product_context, get_project, get_testing work (Phase 3)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from src.giljo_mcp.models.products import Product
-from src.giljo_mcp.models.projects import Project
 
 
 @pytest.mark.integration
@@ -29,7 +29,7 @@ async def test_all_9_context_tools_importable():
         get_project,
         get_tech_stack,
         get_testing,
-        get_vision_document
+        get_vision_document,
     )
 
     # Verify all 9 tools are callable functions
@@ -42,7 +42,7 @@ async def test_all_9_context_tools_importable():
         get_project,
         get_tech_stack,
         get_testing,
-        get_vision_document
+        get_vision_document,
     ]
 
     for tool in tools:
@@ -59,7 +59,7 @@ def test_product_model_has_quality_standards_field():
         tenant_key="test-tenant",
         name="Test Product",
         description="Test",
-        quality_standards="80% coverage required"
+        quality_standards="80% coverage required",
     )
 
     assert hasattr(product, "quality_standards")
@@ -73,10 +73,7 @@ def test_product_config_data_field_exists():
         id="test-id",
         tenant_key="test-tenant",
         name="Test Product",
-        config_data={
-            "tech_stack": {"languages": ["Python"]},
-            "architecture": {"pattern": "Microservices"}
-        }
+        config_data={"tech_stack": {"languages": ["Python"]}, "architecture": {"pattern": "Microservices"}},
     )
 
     assert hasattr(product, "config_data")
@@ -94,6 +91,7 @@ async def test_product_service_update_quality_standards_exists():
     assert hasattr(ProductService, "update_quality_standards")
 
     import inspect
+
     assert inspect.iscoroutinefunction(ProductService.update_quality_standards)
 
 
@@ -111,12 +109,11 @@ def test_context_tools_registered_in_init():
         "get_project",
         "get_tech_stack",
         "get_testing",
-        "get_vision_document"
+        "get_vision_document",
     ]
 
     for tool_name in expected_tools:
-        assert hasattr(context_tools, tool_name), \
-            f"{tool_name} not exported from context_tools __init__.py"
+        assert hasattr(context_tools, tool_name), f"{tool_name} not exported from context_tools __init__.py"
 
 
 @pytest.mark.integration
@@ -137,9 +134,9 @@ async def test_bug_fix_get_tech_stack_uses_config_data():
                 "languages": ["Python", "TypeScript"],
                 "frontend": ["Vue 3"],
                 "backend": ["FastAPI"],
-                "database": ["PostgreSQL"]
+                "database": ["PostgreSQL"],
             }
-        }
+        },
     )
 
     mock_result = AsyncMock()
@@ -149,12 +146,7 @@ async def test_bug_fix_get_tech_stack_uses_config_data():
     session.__aexit__ = AsyncMock(return_value=False)
     db_manager.get_session_async = MagicMock(return_value=session)
 
-    result = await get_tech_stack(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        sections="all",
-        db_manager=db_manager
-    )
+    result = await get_tech_stack(product_id="test-id", tenant_key="test-tenant", sections="all", db_manager=db_manager)
 
     assert result["data"]["programming_languages"] == ["Python", "TypeScript"]
     assert result["data"]["frontend_frameworks"] == ["Vue 3"]
@@ -180,9 +172,9 @@ async def test_bug_fix_get_architecture_uses_config_data():
                 "pattern": "Microservices",
                 "design_patterns": "Repository, Service Layer",
                 "api_style": "RESTful",
-                "notes": "Test architecture notes"
+                "notes": "Test architecture notes",
             }
-        }
+        },
     )
 
     mock_result = AsyncMock()
@@ -193,10 +185,7 @@ async def test_bug_fix_get_architecture_uses_config_data():
     db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_architecture(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="detailed",
-        db_manager=db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="detailed", db_manager=db_manager
     )
 
     assert result["data"]["primary_pattern"] == "Microservices"
@@ -219,11 +208,7 @@ async def test_new_tool_get_product_context():
         tenant_key="test-tenant",
         name="Test Product",
         description="Test Description",
-        config_data={
-            "features": {
-                "core": ["Feature 1", "Feature 2"]
-            }
-        }
+        config_data={"features": {"core": ["Feature 1", "Feature 2"]}},
     )
 
     mock_result = AsyncMock()
@@ -234,10 +219,7 @@ async def test_new_tool_get_product_context():
     db_manager.get_session_async = MagicMock(return_value=session)
 
     result = await get_product_context(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        include_metadata=False,
-        db_manager=db_manager
+        product_id="test-id", tenant_key="test-tenant", include_metadata=False, db_manager=db_manager
     )
 
     assert result["source"] == "product_context"
@@ -260,13 +242,7 @@ async def test_new_tool_get_testing():
         tenant_key="test-tenant",
         name="Test Product",
         quality_standards="80% coverage",
-        config_data={
-            "test_config": {
-                "strategy": "TDD",
-                "coverage_target": 80,
-                "frameworks": ["pytest", "jest"]
-            }
-        }
+        config_data={"test_config": {"strategy": "TDD", "coverage_target": 80, "frameworks": ["pytest", "jest"]}},
     )
 
     mock_result = AsyncMock()
@@ -276,12 +252,7 @@ async def test_new_tool_get_testing():
     session.__aexit__ = AsyncMock(return_value=False)
     db_manager.get_session_async = MagicMock(return_value=session)
 
-    result = await get_testing(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="full",
-        db_manager=db_manager
-    )
+    result = await get_testing(product_id="test-id", tenant_key="test-tenant", depth="full", db_manager=db_manager)
 
     assert result["source"] == "testing"
     assert result["data"]["quality_standards"] == "80% coverage"

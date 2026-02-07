@@ -13,11 +13,10 @@ Test Organization:
 - TestProductionCodeReferenceCount: Verify zero code references
 - TestTableReferenceValidation: Verify no mcp_agent_jobs table queries
 """
+
 import ast
-import os
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

@@ -22,19 +22,22 @@ Test Coverage:
 Phase 2 Progress: API Layer Testing (9/10 groups)
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 # ============================================================================
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_user(db_manager):
     """Create Tenant A user for multi-tenant isolation testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -66,6 +69,7 @@ async def tenant_a_user(db_manager):
 async def tenant_b_user(db_manager):
     """Create Tenant B user for cross-tenant access testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -97,8 +101,7 @@ async def tenant_b_user(db_manager):
 async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
     """Get JWT token for Tenant A user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
+        "/api/auth/login", json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -110,8 +113,7 @@ async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
 async def tenant_b_token(api_client: AsyncClient, tenant_b_user):
     """Get JWT token for Tenant B user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
+        "/api/auth/login", json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -122,7 +124,7 @@ async def tenant_b_token(api_client: AsyncClient, tenant_b_user):
 @pytest.fixture
 async def tenant_a_project(api_client: AsyncClient, tenant_a_token: str, db_manager, tenant_a_user):
     """Create a test project for Tenant A."""
-    from src.giljo_mcp.models import Project, Product
+    from src.giljo_mcp.models import Product, Project
 
     async with db_manager.get_session_async() as session:
         # Create product first (required for project)
@@ -158,7 +160,7 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_token: str, db_mana
 @pytest.fixture
 async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, db_manager, tenant_b_user):
     """Create a test project for Tenant B."""
-    from src.giljo_mcp.models import Project, Product
+    from src.giljo_mcp.models import Product, Project
 
     async with db_manager.get_session_async() as session:
         # Create product first
@@ -194,8 +196,9 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, db_mana
 @pytest.fixture
 async def tenant_a_agent_job(db_manager, tenant_a_project, tenant_a_user):
     """Create a test agent job (work order) and execution (executor) for Tenant A."""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from datetime import datetime, timezone
+
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     async with db_manager.get_session_async() as session:
         # Create the work order (AgentJob) first
@@ -230,8 +233,9 @@ async def tenant_a_agent_job(db_manager, tenant_a_project, tenant_a_user):
 @pytest.fixture
 async def tenant_b_agent_job(db_manager, tenant_b_project, tenant_b_user):
     """Create a test agent job (work order) and execution (executor) for Tenant B."""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from datetime import datetime, timezone
+
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     async with db_manager.get_session_async() as session:
         # Create the work order (AgentJob) first
@@ -267,16 +271,13 @@ async def tenant_b_agent_job(db_manager, tenant_b_project, tenant_b_user):
 # SEND MESSAGE TESTS
 # ============================================================================
 
+
 class TestSendMessage:
     """Test POST /api/messages/ - Send message to agents"""
 
     @pytest.mark.asyncio
     async def test_send_message_happy_path(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job
     ):
         """Test POST /api/messages/ - Send message successfully."""
         response = await api_client.post(
@@ -287,9 +288,9 @@ class TestSendMessage:
                 "project_id": tenant_a_project.id,
                 "message_type": "direct",
                 "priority": "normal",
-                "from_agent": "orchestrator"
+                "from_agent": "orchestrator",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -307,11 +308,7 @@ class TestSendMessage:
 
     @pytest.mark.asyncio
     async def test_send_message_multiple_agents(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job
     ):
         """Test POST /api/messages/ - Send message to multiple agents."""
         response = await api_client.post(
@@ -321,9 +318,9 @@ class TestSendMessage:
                 "content": "Message to multiple agents",
                 "project_id": tenant_a_project.id,
                 "message_type": "direct",
-                "priority": "high"
+                "priority": "high",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -333,11 +330,7 @@ class TestSendMessage:
 
     @pytest.mark.asyncio
     async def test_send_message_defaults_from_orchestrator(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job
     ):
         """Test POST /api/messages/ - Defaults to 'orchestrator' when from_agent not provided."""
         response = await api_client.post(
@@ -347,7 +340,7 @@ class TestSendMessage:
                 "content": "Message without from_agent",
                 "project_id": tenant_a_project.id,
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -355,9 +348,7 @@ class TestSendMessage:
         assert data["from"] == "orchestrator"
 
     @pytest.mark.asyncio
-    async def test_send_message_unauthorized(
-        self, api_client: AsyncClient, tenant_a_project
-    ):
+    async def test_send_message_unauthorized(self, api_client: AsyncClient, tenant_a_project):
         """Test POST /api/messages/ - 401 without authentication."""
         response = await api_client.post(
             "/api/v1/messages/",
@@ -365,22 +356,18 @@ class TestSendMessage:
                 "to_agents": ["worker"],
                 "content": "Unauthorized message",
                 "project_id": tenant_a_project.id,
-            }
+            },
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_send_message_invalid_data(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_send_message_invalid_data(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/messages/ - 400 for invalid message data."""
         # Missing required fields
         response = await api_client.post(
             "/api/v1/messages/",
-            json={
-                "content": "Missing to_agents and project_id"
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"content": "Missing to_agents and project_id"},
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 422  # FastAPI validation error
 
@@ -388,6 +375,7 @@ class TestSendMessage:
 # ============================================================================
 # BROADCAST MESSAGE TESTS
 # ============================================================================
+
 
 class TestBroadcastMessage:
     """Test POST /api/messages/broadcast - Broadcast to all agents"""
@@ -400,12 +388,13 @@ class TestBroadcastMessage:
         tenant_a_project,
         tenant_a_agent_job,
         db_manager,
-        tenant_a_user
+        tenant_a_user,
     ):
         """Test POST /api/messages/broadcast - Broadcast successfully."""
         # Create multiple active agents using dual-model structure
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
         from datetime import datetime, timezone
+
+        from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         async with db_manager.get_session_async() as session:
             # Create work order (AgentJob) first
@@ -439,9 +428,9 @@ class TestBroadcastMessage:
                 "project_id": tenant_a_project.id,
                 "content": "Broadcast to all agents",
                 "priority": "high",
-                "from_agent": "user"
+                "from_agent": "user",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -457,22 +446,14 @@ class TestBroadcastMessage:
 
     @pytest.mark.asyncio
     async def test_broadcast_message_no_active_agents(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        db_manager
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, db_manager
     ):
         """Test POST /api/messages/broadcast - 404 when no active agents."""
         # No active agents in project
         response = await api_client.post(
             "/api/v1/messages/broadcast",
-            json={
-                "project_id": tenant_a_project.id,
-                "content": "Broadcast to empty project",
-                "priority": "normal"
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"project_id": tenant_a_project.id, "content": "Broadcast to empty project", "priority": "normal"},
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 404
@@ -481,11 +462,7 @@ class TestBroadcastMessage:
 
     @pytest.mark.asyncio
     async def test_broadcast_message_defaults_from_user(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job
     ):
         """Test POST /api/messages/broadcast - Defaults to 'user' when from_agent not provided."""
         response = await api_client.post(
@@ -494,22 +471,20 @@ class TestBroadcastMessage:
                 "project_id": tenant_a_project.id,
                 "content": "Broadcast without from_agent",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_broadcast_message_unauthorized(
-        self, api_client: AsyncClient, tenant_a_project
-    ):
+    async def test_broadcast_message_unauthorized(self, api_client: AsyncClient, tenant_a_project):
         """Test POST /api/messages/broadcast - 401 without authentication."""
         response = await api_client.post(
             "/api/v1/messages/broadcast",
             json={
                 "project_id": tenant_a_project.id,
                 "content": "Unauthorized broadcast",
-            }
+            },
         )
         assert response.status_code == 401
 
@@ -518,18 +493,14 @@ class TestBroadcastMessage:
 # LIST MESSAGES TESTS
 # ============================================================================
 
+
 class TestListMessages:
     """Test GET /api/messages/ - List messages with filters"""
 
     @pytest.mark.asyncio
-    async def test_list_messages_empty(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_list_messages_empty(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/messages/ - Empty list when no messages."""
-        response = await api_client.get(
-            "/api/v1/messages/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/messages/", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -543,12 +514,12 @@ class TestListMessages:
         tenant_a_project,
         tenant_a_agent_job,
         db_manager,
-        tenant_a_user
+        tenant_a_user,
     ):
         """Test GET /api/messages/ - List messages successfully."""
         # Create messages in the Message table (not deprecated JSONB column)
+
         from src.giljo_mcp.models import Message
-        from datetime import datetime, timezone
 
         async with db_manager.get_session_async() as session:
             # Create first message
@@ -580,10 +551,7 @@ class TestListMessages:
             session.add(msg2)
             await session.commit()
 
-        response = await api_client.get(
-            "/api/v1/messages/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/messages/", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -598,7 +566,7 @@ class TestListMessages:
         tenant_a_project,
         tenant_a_agent_job,
         db_manager,
-        tenant_a_user
+        tenant_a_user,
     ):
         """Test GET /api/messages/ - Filter by project_id."""
         # Create messages in the Message table (not deprecated JSONB column)
@@ -620,8 +588,7 @@ class TestListMessages:
             await session.commit()
 
         response = await api_client.get(
-            f"/api/v1/messages/?project_id={tenant_a_project.id}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/messages/?project_id={tenant_a_project.id}", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -636,7 +603,7 @@ class TestListMessages:
         tenant_a_project,
         tenant_a_agent_job,
         db_manager,
-        tenant_a_user
+        tenant_a_user,
     ):
         """Test GET /api/messages/ - Filter by status."""
         # Create messages in the Message table (not deprecated JSONB column)
@@ -672,10 +639,7 @@ class TestListMessages:
             session.add(msg2)
             await session.commit()
 
-        response = await api_client.get(
-            "/api/v1/messages/?status=pending",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/messages/?status=pending", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -694,24 +658,17 @@ class TestListMessages:
 # GET AGENT MESSAGES TESTS
 # ============================================================================
 
+
 class TestGetAgentMessages:
     """Test GET /api/messages/agent/{agent_name} - Get messages for agent"""
 
     @pytest.mark.asyncio
     async def test_get_agent_messages_happy_path(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job,
-        db_manager
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job, db_manager
     ):
         """Test GET /api/messages/agent/{agent_name} - Get messages successfully."""
         # Note: This endpoint uses tool_accessor.get_messages which may not have messages
-        response = await api_client.get(
-            "/api/v1/messages/agent/worker",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/messages/agent/worker", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -719,15 +676,11 @@ class TestGetAgentMessages:
 
     @pytest.mark.asyncio
     async def test_get_agent_messages_with_project_filter(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
     ):
         """Test GET /api/messages/agent/{agent_name} - Filter by project_id."""
         response = await api_client.get(
-            f"/api/v1/messages/agent/worker?project_id={tenant_a_project.id}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/messages/agent/worker?project_id={tenant_a_project.id}", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -745,6 +698,7 @@ class TestGetAgentMessages:
 # COMPLETE MESSAGE TESTS
 # ============================================================================
 
+
 class TestCompleteMessage:
     """Test POST /api/messages/{message_id}/complete - Complete message"""
 
@@ -756,7 +710,7 @@ class TestCompleteMessage:
         tenant_a_project,
         tenant_a_agent_job,
         db_manager,
-        tenant_a_user
+        tenant_a_user,
     ):
         """Test POST /api/messages/{message_id}/complete - Complete successfully."""
         # Create message in the Message table (not deprecated JSONB column)
@@ -780,7 +734,7 @@ class TestCompleteMessage:
 
         response = await api_client.post(
             f"/api/v1/messages/{message_id}/complete?agent_name=worker&result=Task completed successfully",
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -790,14 +744,12 @@ class TestCompleteMessage:
         assert data["result"] == "Task completed successfully"
 
     @pytest.mark.asyncio
-    async def test_complete_message_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_complete_message_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/messages/{message_id}/complete - 400 for non-existent message."""
         fake_message_id = str(uuid4())
         response = await api_client.post(
             f"/api/v1/messages/{fake_message_id}/complete?agent_name=worker&result=Done",
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # Tool accessor returns 400 for not found
@@ -807,15 +759,14 @@ class TestCompleteMessage:
     async def test_complete_message_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/messages/{message_id}/complete - 401 without authentication."""
         message_id = str(uuid4())
-        response = await api_client.post(
-            f"/api/v1/messages/{message_id}/complete?agent_name=worker&result=Done"
-        )
+        response = await api_client.post(f"/api/v1/messages/{message_id}/complete?agent_name=worker&result=Done")
         assert response.status_code == 401
 
 
 # ============================================================================
 # MESSAGE LIFECYCLE TESTS
 # ============================================================================
+
 
 class TestMessageLifecycle:
     """Test complete message lifecycle: send → acknowledge → complete"""
@@ -826,11 +777,7 @@ class TestMessageLifecycle:
         "Acknowledgment is done via agent_jobs endpoint. This test needs redesign."
     )
     async def test_message_lifecycle_complete_flow(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_a_project,
-        tenant_a_agent_job
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project, tenant_a_agent_job
     ):
         """Test complete message lifecycle from send to completion."""
         # Step 1: Send message
@@ -842,9 +789,9 @@ class TestMessageLifecycle:
                 "project_id": tenant_a_project.id,
                 "message_type": "direct",
                 "priority": "normal",
-                "from_agent": "orchestrator"
+                "from_agent": "orchestrator",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert send_response.status_code == 200
@@ -854,8 +801,7 @@ class TestMessageLifecycle:
 
         # Step 2: Acknowledge message
         ack_response = await api_client.post(
-            f"/api/v1/messages/{message_id}/acknowledge?agent_name=worker",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/messages/{message_id}/acknowledge?agent_name=worker", cookies={"access_token": tenant_a_token}
         )
 
         assert ack_response.status_code == 200
@@ -864,7 +810,7 @@ class TestMessageLifecycle:
         # Step 3: Complete message
         complete_response = await api_client.post(
             f"/api/v1/messages/{message_id}/complete?agent_name=worker&result=Lifecycle test completed",
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert complete_response.status_code == 200
@@ -876,6 +822,7 @@ class TestMessageLifecycle:
 # ============================================================================
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
+
 
 class TestMultiTenantIsolation:
     """Comprehensive multi-tenant isolation verification for messages"""
@@ -890,7 +837,7 @@ class TestMultiTenantIsolation:
         tenant_b_project,
         tenant_a_agent_job,
         tenant_b_agent_job,
-        db_manager
+        db_manager,
     ):
         """Verify messages are isolated between tenants."""
         # Tenant A sends a message
@@ -901,7 +848,7 @@ class TestMultiTenantIsolation:
                 "content": "Tenant A message",
                 "project_id": tenant_a_project.id,
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response_a.status_code == 200
         message_a = response_a.json()
@@ -914,15 +861,17 @@ class TestMultiTenantIsolation:
                 "content": "Tenant B message",
                 "project_id": tenant_b_project.id,
             },
-            cookies={"access_token": tenant_b_token}
+            cookies={"access_token": tenant_b_token},
         )
         assert response_b.status_code == 200
         message_b = response_b.json()
 
         # Add messages to database for list testing
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-        from sqlalchemy import select
         from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
         async with db_manager.get_session_async() as session:
             # Add to Tenant A job
@@ -939,7 +888,7 @@ class TestMultiTenantIsolation:
                     "type": "direct",
                     "priority": "normal",
                     "status": "pending",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             ]
 
@@ -957,16 +906,13 @@ class TestMultiTenantIsolation:
                     "type": "direct",
                     "priority": "normal",
                     "status": "pending",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             ]
             await session.commit()
 
         # Tenant A lists messages - should only see their messages
-        list_a = await api_client.get(
-            "/api/v1/messages/",
-            cookies={"access_token": tenant_a_token}
-        )
+        list_a = await api_client.get("/api/v1/messages/", cookies={"access_token": tenant_a_token})
         assert list_a.status_code == 200
         messages_a = list_a.json()
         message_ids_a = [m["id"] for m in messages_a]
@@ -977,10 +923,7 @@ class TestMultiTenantIsolation:
             assert message_b["id"] not in message_ids_a
 
         # Tenant B lists messages - should only see their messages
-        list_b = await api_client.get(
-            "/api/v1/messages/",
-            cookies={"access_token": tenant_b_token}
-        )
+        list_b = await api_client.get("/api/v1/messages/", cookies={"access_token": tenant_b_token})
         assert list_b.status_code == 200
         messages_b = list_b.json()
         message_ids_b = [m["id"] for m in messages_b]
@@ -998,7 +941,7 @@ class TestMultiTenantIsolation:
         tenant_a_project,
         tenant_b_project,
         tenant_a_agent_job,
-        tenant_b_agent_job
+        tenant_b_agent_job,
     ):
         """Verify broadcast messages are isolated between tenants."""
         # Tenant A broadcasts
@@ -1008,7 +951,7 @@ class TestMultiTenantIsolation:
                 "project_id": tenant_a_project.id,
                 "content": "Tenant A broadcast",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response_a.status_code == 200
 
@@ -1019,7 +962,7 @@ class TestMultiTenantIsolation:
                 "project_id": tenant_b_project.id,
                 "content": "Tenant B broadcast",
             },
-            cookies={"access_token": tenant_b_token}
+            cookies={"access_token": tenant_b_token},
         )
         assert response_b.status_code == 200
 

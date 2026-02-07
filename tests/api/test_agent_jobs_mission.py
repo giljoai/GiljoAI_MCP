@@ -14,19 +14,22 @@ Handover 0483: Fixed to use correct dual-model structure (AgentJob + AgentExecut
 Mission is stored on AgentJob (work order), not AgentExecution (executor).
 """
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime, timezone
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models import User
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 # Correct endpoint path: /api/jobs/ not /api/agent-jobs/
 MISSION_ENDPOINT_PREFIX = "/api/jobs"
 
 
-def create_test_job_and_execution(session, tenant_key: str, job_id: str, mission: str = "Original mission", status: str = "waiting"):
+def create_test_job_and_execution(
+    session, tenant_key: str, job_id: str, mission: str = "Original mission", status: str = "waiting"
+):
     """
     Helper to create the dual-model structure: AgentJob + AgentExecution.
 
@@ -52,7 +55,8 @@ def create_test_job_and_execution(session, tenant_key: str, job_id: str, mission
         job_id=job_id,  # References the job
         tenant_key=tenant_key,
         agent_display_name="implementor",
-        agent_name="Test Agent",        status=status,  # Execution status: waiting, working, etc.
+        agent_name="Test Agent",
+        status=status,  # Execution status: waiting, working, etc.
         progress=0,
     )
     session.add(agent_execution)
@@ -73,9 +77,7 @@ async def test_update_agent_mission_success(
         job_id = f"test-job-{unique_id}"
 
         # Create dual-model structure
-        agent_job, agent_execution = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission text"
-        )
+        agent_job, agent_execution = create_test_job_and_execution(session, tenant_key, job_id, "Original mission text")
         await session.commit()
         await session.refresh(agent_job)
 
@@ -141,9 +143,7 @@ async def test_update_mission_validation_empty_mission(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Try to update with empty mission
@@ -169,9 +169,7 @@ async def test_update_mission_validation_too_long(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Create mission that's too long (>50K characters)
@@ -200,9 +198,7 @@ async def test_update_mission_validation_max_length_boundary(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Create mission at exactly 50K characters (boundary test)
@@ -252,9 +248,7 @@ async def test_update_mission_missing_field(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Try to update without mission field
@@ -278,9 +272,7 @@ async def test_update_mission_unauthorized(
         unique_id = uuid4().hex[:8]
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, f"test_tenant_{unique_id}", job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, f"test_tenant_{unique_id}", job_id, "Original mission")
         await session.commit()
 
     # Try to update without authentication headers
@@ -331,6 +323,7 @@ async def test_update_mission_preserves_other_fields(
         # Verify other fields unchanged
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(AgentJob).where(AgentJob.job_id == job_id)
             result = await session.execute(stmt)
             updated_job = result.scalar_one()
@@ -354,9 +347,7 @@ async def test_update_mission_updates_timestamp(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Update mission
@@ -382,9 +373,7 @@ async def test_update_mission_with_special_characters(
         tenant_key = f"test_tenant_{unique_id}"
         job_id = f"test-job-{unique_id}"
 
-        agent_job, _ = create_test_job_and_execution(
-            session, tenant_key, job_id, "Original mission"
-        )
+        agent_job, _ = create_test_job_and_execution(session, tenant_key, job_id, "Original mission")
         await session.commit()
 
     # Mission with special characters, newlines, and unicode

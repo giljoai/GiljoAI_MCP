@@ -15,16 +15,12 @@ TDD Approach:
 - REFACTOR: Clean up while keeping tests green
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-
 # Import functions under test
 from src.giljo_mcp.template_seeder import (
-    _get_mcp_coordination_section,
-    _get_check_in_protocol_section,
     _get_agent_messaging_protocol_section,
+    _get_check_in_protocol_section,
     _get_default_templates_v103,
+    _get_mcp_coordination_section,
 )
 
 
@@ -90,8 +86,9 @@ class TestCheckInProtocolSectionSlimming:
         """Check-in section should direct agents to full_protocol for detailed behavior."""
         section = _get_check_in_protocol_section()
         # Should mention that behavior is in full_protocol, or be very brief
-        assert "full_protocol" in section or len(section) < 500, \
+        assert "full_protocol" in section or len(section) < 500, (
             "Check-in section should either reference full_protocol or be very brief"
+        )
 
 
 class TestAgentMessagingProtocolSlimming:
@@ -142,8 +139,9 @@ class TestAgentMessagingProtocolSlimming:
         """Messaging section should reference full_protocol or be very brief."""
         section = _get_agent_messaging_protocol_section()
         # Either it mentions full_protocol, or it's very brief (< 500 chars)
-        assert "full_protocol" in section or len(section) < 500, \
+        assert "full_protocol" in section or len(section) < 500, (
             "Messaging section should either reference full_protocol or be very brief"
+        )
 
 
 class TestDefaultTemplatesSlimming:
@@ -213,8 +211,9 @@ class TestDefaultTemplatesSlimming:
                 "### Phase 6:",
             ]
             for header in lifecycle_headers:
-                assert header not in content, \
+                assert header not in content, (
                     f"Template '{template['role']}' should not contain lifecycle header '{header}'"
+                )
 
 
 class TestTeamContextNote:
@@ -235,5 +234,4 @@ class TestTeamContextNote:
             "full_protocol",
         ]
         has_team_reference = any(phrase in section.lower() for phrase in team_related_phrases)
-        assert has_team_reference, \
-            "MCP section should reference mission/team context or full_protocol"
+        assert has_team_reference, "MCP section should reference mission/team context or full_protocol"

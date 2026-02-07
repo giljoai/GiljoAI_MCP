@@ -46,21 +46,22 @@ Date: 2026-01-05
 import argparse
 import asyncio
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.config_manager import ConfigManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.tasks import Message
 
 
 class MessageRepairStats:
@@ -101,11 +102,7 @@ async def get_async_session() -> AsyncSession:
     return async_session()
 
 
-async def clear_all_jsonb_messages(
-    session: AsyncSession,
-    tenant_key: str = None,
-    verbose: bool = False
-) -> int:
+async def clear_all_jsonb_messages(session: AsyncSession, tenant_key: str = None, verbose: bool = False) -> int:
     """
     Clear all JSONB message arrays in agent_executions table.
 
@@ -139,9 +136,7 @@ async def clear_all_jsonb_messages(
 
 
 async def rebuild_agent_messages_from_table(
-    session: AsyncSession,
-    tenant_key: str = None,
-    verbose: bool = False
+    session: AsyncSession, tenant_key: str = None, verbose: bool = False
 ) -> int:
     """
     Rebuild all JSONB message arrays from the Message table.
@@ -188,16 +183,16 @@ async def rebuild_agent_messages_from_table(
 
             # Process SENDER (outbound message)
             sender_result = await session.execute(
-                select(AgentExecution).join(AgentJob).where(
+                select(AgentExecution)
+                .join(AgentJob)
+                .where(
                     and_(
                         AgentExecution.tenant_key == message.tenant_key,
                         AgentJob.project_id == project_id,
-                        or_(
-                            AgentExecution.agent_id == from_agent,
-                            AgentExecution.agent_type == from_agent
-                        )
+                        or_(AgentExecution.agent_id == from_agent, AgentExecution.agent_type == from_agent),
                     )
-                ).limit(1)
+                )
+                .limit(1)
             )
             sender_agent = sender_result.scalar_one_or_none()
 
@@ -206,16 +201,18 @@ async def rebuild_agent_messages_from_table(
                     sender_agent.messages = []
 
                 # Add outbound message
-                sender_agent.messages.append({
-                    "id": str(message.id),
-                    "from": from_agent,
-                    "direction": "outbound",
-                    "status": "sent",
-                    "text": content[:200],  # Truncate for storage
-                    "priority": priority,
-                    "timestamp": timestamp,
-                    "to_agents": message.to_agents,
-                })
+                sender_agent.messages.append(
+                    {
+                        "id": str(message.id),
+                        "from": from_agent,
+                        "direction": "outbound",
+                        "status": "sent",
+                        "text": content[:200],  # Truncate for storage
+                        "priority": priority,
+                        "timestamp": timestamp,
+                        "to_agents": message.to_agents,
+                    }
+                )
 
                 flag_modified(sender_agent, "messages")
                 messages_rebuilt += 1
@@ -225,18 +222,20 @@ async def rebuild_agent_messages_from_table(
 
             # Process RECIPIENTS (inbound messages)
             # message.to_agents contains agent_ids (UUIDs)
-            for recipient_agent_id in (message.to_agents or []):
+            for recipient_agent_id in message.to_agents or []:
                 # Skip sender - don't add inbound message to sender
                 if sender_agent and recipient_agent_id == sender_agent.agent_id:
                     continue
 
                 # Look up recipient agent execution
                 recipient_result = await session.execute(
-                    select(AgentExecution).join(AgentJob).where(
+                    select(AgentExecution)
+                    .join(AgentJob)
+                    .where(
                         and_(
                             AgentExecution.tenant_key == message.tenant_key,
                             AgentJob.project_id == project_id,
-                            AgentExecution.agent_id == recipient_agent_id
+                            AgentExecution.agent_id == recipient_agent_id,
                         )
                     )
                 )
@@ -247,21 +246,25 @@ async def rebuild_agent_messages_from_table(
                         recipient_agent.messages = []
 
                     # Add inbound message with correct message_id and status
-                    recipient_agent.messages.append({
-                        "id": str(message.id),  # CORRECT message_id for this recipient
-                        "from": from_agent,
-                        "direction": "inbound",
-                        "status": jsonb_status,  # "waiting" or "read"
-                        "text": content[:200],  # Truncate for storage
-                        "priority": priority,
-                        "timestamp": timestamp,
-                    })
+                    recipient_agent.messages.append(
+                        {
+                            "id": str(message.id),  # CORRECT message_id for this recipient
+                            "from": from_agent,
+                            "direction": "inbound",
+                            "status": jsonb_status,  # "waiting" or "read"
+                            "text": content[:200],  # Truncate for storage
+                            "priority": priority,
+                            "timestamp": timestamp,
+                        }
+                    )
 
                     flag_modified(recipient_agent, "messages")
                     messages_rebuilt += 1
 
                     if verbose:
-                        print(f"  Added inbound message {message.id} to {recipient_agent.agent_type} (status: {jsonb_status})")
+                        print(
+                            f"  Added inbound message {message.id} to {recipient_agent.agent_type} (status: {jsonb_status})"
+                        )
 
         except Exception as e:
             print(f"ERROR processing message {message.id}: {e}")
@@ -270,11 +273,7 @@ async def rebuild_agent_messages_from_table(
     return messages_rebuilt
 
 
-async def repair_jsonb_messages(
-    dry_run: bool = False,
-    tenant_key: str = None,
-    verbose: bool = False
-):
+async def repair_jsonb_messages(dry_run: bool = False, tenant_key: str = None, verbose: bool = False):
     """
     Main repair function.
 
@@ -295,7 +294,7 @@ async def repair_jsonb_messages(
 
     if not dry_run:
         confirm = input("This will modify the database. Continue? [y/N]: ")
-        if confirm.lower() != 'y':
+        if confirm.lower() != "y":
             print("Aborted.")
             return
 
@@ -362,35 +361,19 @@ Examples:
 
   # Verbose output with dry-run
   python scripts/repair_jsonb_messages.py --dry-run --verbose
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without modifying the database"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without modifying the database")
 
-    parser.add_argument(
-        "--tenant-key",
-        type=str,
-        help="Repair only specific tenant (default: all tenants)"
-    )
+    parser.add_argument("--tenant-key", type=str, help="Repair only specific tenant (default: all tenants)")
 
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show detailed progress information"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Show detailed progress information")
 
     args = parser.parse_args()
 
     # Run async repair function
-    asyncio.run(repair_jsonb_messages(
-        dry_run=args.dry_run,
-        tenant_key=args.tenant_key,
-        verbose=args.verbose
-    ))
+    asyncio.run(repair_jsonb_messages(dry_run=args.dry_run, tenant_key=args.tenant_key, verbose=args.verbose))
 
 
 if __name__ == "__main__":

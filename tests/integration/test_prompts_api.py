@@ -14,8 +14,8 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -303,5 +303,3 @@ async def test_agent_prompt_with_long_mission(
     # Mission preview should be truncated to 200 chars + "..."
     assert len(data["mission_preview"]) == 203
     assert data["mission_preview"].endswith("...")
-
-

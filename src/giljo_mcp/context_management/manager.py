@@ -18,7 +18,9 @@ from src.giljo_mcp.context_management.indexer import ContextIndexer
 from src.giljo_mcp.context_management.loader import DynamicContextLoader
 from src.giljo_mcp.context_management.summarizer import ContextSummarizer
 
+
 logger = logging.getLogger(__name__)
+
 
 class ContextManagementSystem:
     """

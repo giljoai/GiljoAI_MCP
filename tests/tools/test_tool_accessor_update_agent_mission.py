@@ -5,9 +5,11 @@ Handover 0380: Enables staging -> implementation flow across terminal sessions.
 The orchestrator writes its execution plan during staging via update_agent_mission(),
 then retrieves it in a fresh terminal session via get_agent_mission().
 """
+
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -33,7 +35,7 @@ async def tool_accessor(db_manager, db_session, tenant_key):
 @pytest_asyncio.fixture
 async def orchestrator_job(db_session, tenant_key):
     """Create an orchestrator AgentJob for testing."""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     job_id = str(uuid4())
     agent_id = str(uuid4())
@@ -56,7 +58,8 @@ async def orchestrator_job(db_session, tenant_key):
         job_id=job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator",        status="working",
+        agent_name="Orchestrator",
+        status="working",
     )
     db_session.add(execution)
     await db_session.commit()
@@ -164,8 +167,8 @@ async def test_staging_to_implementation_flow(db_manager, db_session, tenant_key
     3. User opens new terminal, launches implementation
     4. Fresh orchestrator retrieves its persisted plan via get_agent_mission()
     """
-    from src.giljo_mcp.tenant import TenantManager
     from src.giljo_mcp.services.orchestration_service import OrchestrationService
+    from src.giljo_mcp.tenant import TenantManager
 
     tenant_manager = TenantManager()
     tenant_manager.get_current_tenant = lambda: tenant_key

@@ -19,7 +19,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.enums import AgentStatus, ProjectStatus
+from src.giljo_mcp.enums import ProjectStatus
 from src.giljo_mcp.models import Message, Project, Task, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
@@ -30,9 +30,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 @pytest_asyncio.fixture
-async def statistics_test_data(
-    db_session: AsyncSession, test_user: User, test_product
-):
+async def statistics_test_data(db_session: AsyncSession, test_user: User, test_product):
     """
     Create comprehensive test data for statistics testing.
 
@@ -105,7 +103,8 @@ async def statistics_test_data(
             job_id=job.job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="worker",
-            agent_name=f"Test Worker {i}",            status=status_map[i % 5],
+            agent_name=f"Test Worker {i}",
+            status=status_map[i % 5],
             progress=0,
             messages_sent_count=0,
             messages_waiting_count=0,
@@ -166,9 +165,7 @@ async def statistics_test_data(
 
 
 @pytest.mark.asyncio
-async def test_get_system_statistics_success(
-    authed_client: AsyncClient, test_user: User, statistics_test_data
-):
+async def test_get_system_statistics_success(authed_client: AsyncClient, test_user: User, statistics_test_data):
     """
     Test GET /api/v1/stats/system returns correct statistics.
 
@@ -338,8 +335,9 @@ async def test_get_system_statistics_unauthenticated(db_manager, db_session):
     - Returns 401 Unauthorized
     - Clear error message about missing authentication
     """
-    from api.app import app
     from httpx import ASGITransport, AsyncClient
+
+    from api.app import app
 
     # Create client without authentication
     transport = ASGITransport(app=app)
@@ -351,9 +349,7 @@ async def test_get_system_statistics_unauthenticated(db_manager, db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_system_statistics_missing_tenant_key(
-    authed_client: AsyncClient, test_user: User
-):
+async def test_get_system_statistics_missing_tenant_key(authed_client: AsyncClient, test_user: User):
     """
     Test GET /api/v1/stats/system with missing tenant_key in request state.
 
@@ -380,9 +376,7 @@ async def test_get_system_statistics_missing_tenant_key(
 
 @pytest.mark.asyncio
 @pytest.mark.slow
-async def test_system_statistics_performance(
-    authed_client: AsyncClient, test_user: User, statistics_test_data
-):
+async def test_system_statistics_performance(authed_client: AsyncClient, test_user: User, statistics_test_data):
     """
     Test GET /api/v1/stats/system response time.
 
@@ -448,8 +442,9 @@ async def test_system_statistics_context_calculation(
 
     # Average should be (10000 + 20000 + 30000 + 40000 + 50000) / 5 = 30000
     expected_average = sum(context_values) / len(context_values)
-    assert abs(data["average_context_usage"] - expected_average) < 1.0, \
+    assert abs(data["average_context_usage"] - expected_average) < 1.0, (
         f"Average context should be {expected_average}, got {data['average_context_usage']}"
+    )
 
     # Peak should be 50000
     assert data["peak_context_usage"] == 50000, "Peak context should be 50000"
@@ -516,11 +511,12 @@ async def test_system_statistics_agent_status_counting(
                 job_id=job.job_id,
                 tenant_key=test_user.tenant_key,
                 agent_display_name="worker",
-                agent_name=f"Test Worker {status} {i}",                status=status,
+                agent_name=f"Test Worker {status} {i}",
+                status=status,
                 progress=0,
                 messages_sent_count=0,
-            messages_waiting_count=0,
-            messages_read_count=0,
+                messages_waiting_count=0,
+                messages_read_count=0,
                 health_status="healthy",
                 tool_type="universal",
                 context_used=0,
@@ -537,17 +533,20 @@ async def test_system_statistics_agent_status_counting(
 
     # Total agents = sum of all statuses = 13
     expected_total = sum(statuses.values())
-    assert data["total_agents"] == expected_total, \
+    assert data["total_agents"] == expected_total, (
         f"Total agents should be {expected_total}, got {data['total_agents']}"
+    )
 
     # Active agents = waiting + working = 2 + 3 = 5
     expected_active = statuses["waiting"] + statuses["working"]
-    assert data["active_agents"] == expected_active, \
+    assert data["active_agents"] == expected_active, (
         f"Active agents should be {expected_active}, got {data['active_agents']}"
+    )
 
     # Completed jobs = complete status = 4
-    assert data["total_jobs_completed"] == statuses["complete"], \
+    assert data["total_jobs_completed"] == statuses["complete"], (
         f"Completed jobs should be {statuses['complete']}, got {data['total_jobs_completed']}"
+    )
 
 
 # ============================================================================
@@ -600,9 +599,7 @@ async def test_system_statistics_no_division_by_zero(
 
 
 @pytest.mark.asyncio
-async def test_system_statistics_response_schema(
-    authed_client: AsyncClient, statistics_test_data
-):
+async def test_system_statistics_response_schema(authed_client: AsyncClient, statistics_test_data):
     """
     Test that the response matches the documented SystemStatsResponse schema.
 

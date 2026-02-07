@@ -18,8 +18,10 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
 
 class DatabaseSetupRequest(BaseModel):
     """Request model for database setup."""
@@ -29,6 +31,7 @@ class DatabaseSetupRequest(BaseModel):
     admin_user: str = Field(default="postgres", description="PostgreSQL admin username")
     admin_password: str = Field(..., description="PostgreSQL admin password")
     database_name: str = Field(default="giljo_mcp", description="Database name to create")
+
 
 @router.post("/test-connection")
 async def test_database_connection(request: DatabaseSetupRequest) -> dict:
@@ -114,6 +117,7 @@ async def test_database_connection(request: DatabaseSetupRequest) -> dict:
 
     except (ImportError, OSError, ValueError) as e:
         return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
+
 
 @router.post("/setup")
 async def setup_database(request: DatabaseSetupRequest) -> dict:
@@ -228,6 +232,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
     except (ImportError, OSError, ValueError) as e:
         logger.error(f"Database setup failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database setup failed: {e!s}") from e
+
 
 @router.get("/verify")
 async def verify_database_setup() -> dict:

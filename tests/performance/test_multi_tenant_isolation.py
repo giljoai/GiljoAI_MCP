@@ -12,16 +12,16 @@ TDD Phase: RED (Tests written BEFORE isolation optimized)
 Expected: Tests SHOULD PASS (isolation is critical security requirement)
 """
 
+import time
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
-import time
 
-from src.giljo_mcp.models import Project, Product, User, AgentTemplate
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.tools.agent_discovery import get_available_agents
+from src.giljo_mcp.models import AgentTemplate, Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+from src.giljo_mcp.tools.agent_discovery import get_available_agents
 
 
 @pytest_asyncio.fixture
@@ -32,7 +32,7 @@ async def tenant_a_user(db_session):
         email=f"tenant_a_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_a_{uuid4().hex[:8]}",
         role="developer",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db_session.add(user)
     await db_session.commit()
@@ -48,7 +48,7 @@ async def tenant_b_user(db_session):
         email=f"tenant_b_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_b_{uuid4().hex[:8]}",
         role="developer",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db_session.add(user)
     await db_session.commit()
@@ -63,7 +63,7 @@ async def tenant_a_product(db_session, tenant_a_user):
         name=f"Tenant A Product {uuid4().hex[:8]}",
         description="Tenant A product",
         tenant_key=tenant_a_user.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -78,7 +78,7 @@ async def tenant_b_product(db_session, tenant_b_user):
         name=f"Tenant B Product {uuid4().hex[:8]}",
         description="Tenant B product",
         tenant_key=tenant_b_user.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -91,8 +91,7 @@ class TestMultiTenantIsolation:
     """Multi-tenant isolation tests across all components."""
 
     async def test_execution_mode_toggle_isolation(
-        self, db_session, tenant_a_user, tenant_b_user,
-        tenant_a_product, tenant_b_product
+        self, db_session, tenant_a_user, tenant_b_user, tenant_a_product, tenant_b_product
     ):
         """
         Test that Tenant A cannot affect Tenant B's execution mode.
@@ -107,7 +106,7 @@ class TestMultiTenantIsolation:
             product_id=tenant_a_product.id,
             status="active",
             mission="Test A",
-            meta_data={"execution_mode": "claude-code"}
+            meta_data={"execution_mode": "claude-code"},
         )
         project_b = Project(
             name="Tenant B Project",
@@ -116,7 +115,7 @@ class TestMultiTenantIsolation:
             product_id=tenant_b_product.id,
             status="active",
             mission="Test B",
-            meta_data={"execution_mode": "multi-terminal"}
+            meta_data={"execution_mode": "multi-terminal"},
         )
 
         db_session.add(project_a)
@@ -131,16 +130,15 @@ class TestMultiTenantIsolation:
 
         # Verify Tenant B's mode unchanged
         await db_session.refresh(project_b)
-        assert project_b.meta_data["execution_mode"] == "multi-terminal", \
+        assert project_b.meta_data["execution_mode"] == "multi-terminal", (
             "Tenant B's mode should be unaffected by Tenant A"
+        )
 
         print("\n✓ Execution mode toggle isolation:")
-        print(f"  - Tenant A changed mode: ✓")
-        print(f"  - Tenant B unaffected: ✓")
+        print("  - Tenant A changed mode: ✓")
+        print("  - Tenant B unaffected: ✓")
 
-    async def test_agent_discovery_isolation(
-        self, db_session, tenant_a_user, tenant_b_user
-    ):
+    async def test_agent_discovery_isolation(self, db_session, tenant_a_user, tenant_b_user):
         """
         Test that Tenant A cannot see Tenant B's agents.
         Component: 0246b (Dynamic Agent Discovery)
@@ -154,7 +152,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Tenant A"
+            system_instructions="Tenant A",
         )
         agent_a2 = AgentTemplate(
             name="tenant_a_tester",
@@ -163,7 +161,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Tenant A"
+            system_instructions="Tenant A",
         )
 
         # Create agents for Tenant B
@@ -174,7 +172,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Tenant B"
+            system_instructions="Tenant B",
         )
         agent_b2 = AgentTemplate(
             name="tenant_b_tester",
@@ -183,54 +181,42 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Tenant B"
+            system_instructions="Tenant B",
         )
 
         db_session.add_all([agent_a1, agent_a2, agent_b1, agent_b2])
         await db_session.commit()
 
         # Tenant A fetches agents
-        result_a = await get_available_agents(
-            session=db_session,
-            tenant_key=tenant_a_user.tenant_key
-        )
+        result_a = await get_available_agents(session=db_session, tenant_key=tenant_a_user.tenant_key)
 
         # Tenant B fetches agents
-        result_b = await get_available_agents(
-            session=db_session,
-            tenant_key=tenant_b_user.tenant_key
-        )
+        result_b = await get_available_agents(session=db_session, tenant_key=tenant_b_user.tenant_key)
 
         # Each tenant should see only their own agents
         assert result_a["success"] is True
         assert result_b["success"] is True
 
-        assert result_a["data"]["count"] == 2, \
-            "Tenant A should see 2 agents (their own)"
-        assert result_b["data"]["count"] == 2, \
-            "Tenant B should see 2 agents (their own)"
+        assert result_a["data"]["count"] == 2, "Tenant A should see 2 agents (their own)"
+        assert result_b["data"]["count"] == 2, "Tenant B should see 2 agents (their own)"
 
         # Verify Tenant A doesn't see Tenant B's agents
         tenant_a_agent_names = [a["name"] for a in result_a["data"]["agents"]]
-        assert "tenant_b_implementer" not in tenant_a_agent_names, \
-            "Tenant A should NOT see Tenant B's agents"
+        assert "tenant_b_implementer" not in tenant_a_agent_names, "Tenant A should NOT see Tenant B's agents"
 
         # Verify Tenant B doesn't see Tenant A's agents
         tenant_b_agent_names = [a["name"] for a in result_b["data"]["agents"]]
-        assert "tenant_a_implementer" not in tenant_b_agent_names, \
-            "Tenant B should NOT see Tenant A's agents"
+        assert "tenant_a_implementer" not in tenant_b_agent_names, "Tenant B should NOT see Tenant A's agents"
 
         print("\n✓ Agent discovery isolation:")
         print(f"  - Tenant A sees: {result_a['data']['count']} agents (their own)")
         print(f"  - Tenant B sees: {result_b['data']['count']} agents (their own)")
-        print(f"  - Cross-tenant access: BLOCKED ✓")
+        print("  - Cross-tenant access: BLOCKED ✓")
 
     # HANDOVER 0422: Removed test_succession_isolation
     # This test called trigger_succession() which was removed (dead token budget cleanup)
 
-    async def test_isolation_performance_overhead(
-        self, db_session, tenant_a_user, tenant_b_user
-    ):
+    async def test_isolation_performance_overhead(self, db_session, tenant_a_user, tenant_b_user):
         """
         Test that tenant isolation checks don't significantly degrade performance.
         Target: <10% overhead compared to single-tenant queries
@@ -244,7 +230,7 @@ class TestMultiTenantIsolation:
                 tenant_key=tenant_a_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                system_instructions="Test"
+                system_instructions="Test",
             )
             agent_b = AgentTemplate(
                 name=f"tenant_b_agent_{i}",
@@ -252,7 +238,7 @@ class TestMultiTenantIsolation:
                 tenant_key=tenant_b_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                system_instructions="Test"
+                system_instructions="Test",
             )
             db_session.add(agent_a)
             db_session.add(agent_b)
@@ -282,18 +268,16 @@ class TestMultiTenantIsolation:
         variance = abs(avg_latency_a - avg_latency_b)
         variance_pct = (variance / avg_latency_a) * 100
 
-        assert variance_pct < 20, \
-            f"Tenant isolation overhead too high ({variance_pct:.1f}%)"
+        assert variance_pct < 20, f"Tenant isolation overhead too high ({variance_pct:.1f}%)"
 
         print("\n✓ Isolation performance overhead:")
         print(f"  - Tenant A avg latency: {avg_latency_a:.2f}ms")
         print(f"  - Tenant B avg latency: {avg_latency_b:.2f}ms")
         print(f"  - Variance: {variance_pct:.1f}%")
-        print(f"  - Overhead acceptable: ✓")
+        print("  - Overhead acceptable: ✓")
 
     async def test_cross_component_isolation_integrity(
-        self, db_session, tenant_a_user, tenant_b_user,
-        tenant_a_product, tenant_b_product
+        self, db_session, tenant_a_user, tenant_b_user, tenant_a_product, tenant_b_product
     ):
         """
         Test isolation integrity across all 3 components (0246a/b/c).
@@ -308,7 +292,7 @@ class TestMultiTenantIsolation:
             product_id=tenant_a_product.id,
             status="active",
             mission="Test",
-            meta_data={"execution_mode": "claude-code"}
+            meta_data={"execution_mode": "claude-code"},
         )
         agent_a = AgentTemplate(
             name="tenant_a_impl",
@@ -316,7 +300,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_a_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="A"
+            system_instructions="A",
         )
         orchestrator_a = AgentExecution(
             project_id=None,  # Will be set after project creation
@@ -324,7 +308,7 @@ class TestMultiTenantIsolation:
             agent_display_name="orchestrator",
             status="waiting",
             mission="A",
-            job_metadata={"user_id": tenant_a_user.id}
+            job_metadata={"user_id": tenant_a_user.id},
         )
 
         # Tenant B
@@ -334,7 +318,7 @@ class TestMultiTenantIsolation:
             product_id=tenant_b_product.id,
             status="active",
             mission="Test",
-            meta_data={"execution_mode": "multi-terminal"}
+            meta_data={"execution_mode": "multi-terminal"},
         )
         agent_b = AgentTemplate(
             name="tenant_b_impl",
@@ -342,7 +326,7 @@ class TestMultiTenantIsolation:
             tenant_key=tenant_b_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="B"
+            system_instructions="B",
         )
 
         db_session.add_all([project_a, project_b, agent_a, agent_b])
@@ -367,7 +351,7 @@ class TestMultiTenantIsolation:
             orchestrator_id=str(orchestrator_a.job_id),
             project_id=str(project_a.id),
             tenant_key=tenant_a_user.tenant_key,
-            user_id=tenant_a_user.id
+            user_id=tenant_a_user.id,
         )
         prompt_a = await generator_a.generate(tool="claude-code")
 
@@ -378,7 +362,7 @@ class TestMultiTenantIsolation:
         assert "tenant_b_impl" not in prompt_a
 
         print("\n✓ Cross-component isolation integrity:")
-        print(f"  - Execution mode isolated: ✓")
-        print(f"  - Agent discovery isolated: ✓")
-        print(f"  - Prompt generation isolated: ✓")
-        print(f"  - Complete workflow integrity: ✓")
+        print("  - Execution mode isolated: ✓")
+        print("  - Agent discovery isolated: ✓")
+        print("  - Prompt generation isolated: ✓")
+        print("  - Complete workflow integrity: ✓")

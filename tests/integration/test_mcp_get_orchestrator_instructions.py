@@ -16,9 +16,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -66,7 +65,8 @@ class TestGetOrchestratorInstructionsMCP:
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {"core_features": 10, "tech_stack": 8, "architecture": 7},
                     "user_id": "test_user_123",
                 },
@@ -304,7 +304,7 @@ class TestGetOrchestratorInstructionsMCP:
 
     async def test_empty_mission_fallback(self):
         """Test 11: get_orchestrator_instructions handles empty mission with fallback"""
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
 
         # Test the fallback logic directly without database
         # This tests the fallback generation in get_orchestrator_instructions
@@ -458,7 +458,8 @@ class TestGetOrchestratorInstructionsMCP:
                 mission="Orchestrate test project with vision",
                 status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {"core_features": 10, "vision": 9},
                     "user_id": "test_user_123",
                 },
@@ -559,9 +560,7 @@ class TestErrorHandling:
             session.add(orchestrator)
             await session.commit()
 
-        result = await tool_accessor.get_orchestrator_instructions(
-            job_id=orchestrator_id, tenant_key=tenant_key
-        )
+        result = await tool_accessor.get_orchestrator_instructions(job_id=orchestrator_id, tenant_key=tenant_key)
 
         # Should return error
         assert "error" in result

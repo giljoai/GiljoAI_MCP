@@ -4,9 +4,11 @@
 import json
 from pathlib import Path
 
+
 PROJECT_ROOT = Path(__file__).parent.parent
 JSON_FILE = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.json"
 HTML_FILE = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.html"
+
 
 def build_hub_table_html(hub_files):
     """Build HTML for the hub files table."""
@@ -14,9 +16,9 @@ def build_hub_table_html(hub_files):
     # Build table rows
     rows = []
     for f in hub_files:
-        prod = f.get('production_dependents', 0)
-        test = f.get('test_dependents', 0)
-        total = f['dependents']
+        prod = f.get("production_dependents", 0)
+        test = f.get("test_dependents", 0)
+        total = f["dependents"]
         prod_pct = (prod / total * 100) if total > 0 else 0
 
         # Visual ratio bar
@@ -24,16 +26,16 @@ def build_hub_table_html(hub_files):
 
         rows.append(f"""
     <tr data-prod="{prod}" data-test="{test}" data-total="{total}">
-      <td>{f['path']}</td>
-      <td><span class="layer-badge" style="background:{get_layer_color(f['layer'])}">{f['layer']}</span></td>
+      <td>{f["path"]}</td>
+      <td><span class="layer-badge" style="background:{get_layer_color(f["layer"])}">{f["layer"]}</span></td>
       <td class="number dep-total">{total}</td>
       <td class="number dep-prod">{prod}</td>
       <td class="number dep-test">{test}</td>
       <td class="ratio-cell">{ratio_bar}<span class="ratio-text">{prod_pct:.0f}% prod</span></td>
-      <td class="number">{f['dependencies']}</td>
-      <td><span class="risk-badge risk-{f['risk']}">{f['risk']}</span></td>
-      <td class="number">{f['todos']}</td>
-      <td class="number">{f['deprecations']}</td>
+      <td class="number">{f["dependencies"]}</td>
+      <td><span class="risk-badge risk-{f["risk"]}">{f["risk"]}</span></td>
+      <td class="number">{f["todos"]}</td>
+      <td class="number">{f["deprecations"]}</td>
     </tr>""")
 
     rows_html = "".join(rows)
@@ -346,45 +348,49 @@ function sortTable(columnIndex) {{
 </script>
 """
 
+
 def get_layer_color(layer):
     """Get color for layer badge."""
     colors = {
-        'model': '#3b82f6',
-        'service': '#22c55e',
-        'api': '#eab308',
-        'frontend': '#a855f7',
-        'test': '#6b7280',
-        'config': '#f97316',
-        'docs': '#06b6d4'
+        "model": "#3b82f6",
+        "service": "#22c55e",
+        "api": "#eab308",
+        "frontend": "#a855f7",
+        "test": "#6b7280",
+        "config": "#f97316",
+        "docs": "#06b6d4",
     }
-    return colors.get(layer, '#6b7280')
+    return colors.get(layer, "#6b7280")
+
 
 def main():
     # Read JSON data
     print(f"Reading JSON from {JSON_FILE}...")
-    with open(JSON_FILE, 'r', encoding='utf-8') as f:
+    with open(JSON_FILE, encoding="utf-8") as f:
         graph_data = json.load(f)
 
     # Find hub files (50+ dependents)
     hub_files = []
-    for node in graph_data['nodes']:
-        dependent_count = len(node['dependents'])
+    for node in graph_data["nodes"]:
+        dependent_count = len(node["dependents"])
         if dependent_count >= 50:
-            hub_files.append({
-                'path': node['path'],
-                'name': node['name'],
-                'layer': node['layer'],
-                'dependents': dependent_count,
-                'dependencies': len(node['dependencies']),
-                'risk': node['risk'],
-                'todos': node.get('todos', 0),
-                'deprecations': node.get('deprecations', 0),
-                'production_dependents': node.get('production_dependents', 0),
-                'test_dependents': node.get('test_dependents', 0)
-            })
+            hub_files.append(
+                {
+                    "path": node["path"],
+                    "name": node["name"],
+                    "layer": node["layer"],
+                    "dependents": dependent_count,
+                    "dependencies": len(node["dependencies"]),
+                    "risk": node["risk"],
+                    "todos": node.get("todos", 0),
+                    "deprecations": node.get("deprecations", 0),
+                    "production_dependents": node.get("production_dependents", 0),
+                    "test_dependents": node.get("test_dependents", 0),
+                }
+            )
 
     # Sort by dependents descending
-    hub_files.sort(key=lambda x: x['dependents'], reverse=True)
+    hub_files.sort(key=lambda x: x["dependents"], reverse=True)
 
     print(f"Found {len(hub_files)} hub files with 50+ dependents")
 
@@ -394,15 +400,15 @@ def main():
 
     # Read HTML file
     print(f"Reading HTML from {HTML_FILE}...")
-    with open(HTML_FILE, 'r', encoding='utf-8') as f:
+    with open(HTML_FILE, encoding="utf-8") as f:
         html_content = f.read()
 
     # Check if table already exists
     if 'id="hub-files-section"' in html_content:
         print("Hub files table already exists. Removing old version...")
         # Remove old table section
-        start_marker = '<!-- Hub Files Analysis Table -->'
-        end_marker = '</script>\n</body>'
+        start_marker = "<!-- Hub Files Analysis Table -->"
+        end_marker = "</script>\n</body>"
 
         start_idx = html_content.find(start_marker)
         end_idx = html_content.find(end_marker, start_idx)
@@ -414,20 +420,16 @@ def main():
     table_html = build_hub_table_html(hub_files)
 
     # Insert before closing </body> tag
-    insertion_point = html_content.rfind('</body>')
+    insertion_point = html_content.rfind("</body>")
     if insertion_point == -1:
         print("ERROR: Could not find </body> tag")
         return 1
 
-    new_html = (
-        html_content[:insertion_point] +
-        table_html +
-        html_content[insertion_point:]
-    )
+    new_html = html_content[:insertion_point] + table_html + html_content[insertion_point:]
 
     # Write back
     print(f"Writing updated HTML to {HTML_FILE}...")
-    with open(HTML_FILE, 'w', encoding='utf-8') as f:
+    with open(HTML_FILE, "w", encoding="utf-8") as f:
         f.write(new_html)
 
     print(f"[SUCCESS] Added hub files table with {len(hub_files)} entries")
@@ -435,6 +437,7 @@ def main():
         print(f"  {i}. {f['path']} - {f['dependents']} dependents")
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

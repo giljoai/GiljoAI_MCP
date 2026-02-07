@@ -3,8 +3,9 @@
 
 import re
 
+
 # Read the original file
-with open('complete-project-lifecycle.spec.ts', 'r') as f:
+with open("complete-project-lifecycle.spec.ts") as f:
     content = f.read()
 
 # Add import statement after the helpers import
@@ -69,7 +70,7 @@ before_each_replacement = """// Cache auth token across all tests for performanc
 content = re.sub(before_each_pattern, before_each_replacement, content, flags=re.DOTALL, count=1)
 
 # Write the updated content
-with open('complete-project-lifecycle.spec.ts', 'w') as f:
+with open("complete-project-lifecycle.spec.ts", "w") as f:
     f.write(content)
 
 print("Patched complete-project-lifecycle.spec.ts with auth bypass")

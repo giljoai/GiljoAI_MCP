@@ -87,9 +87,7 @@ async def update_git_integration(
         raise
     except Exception as e:
         logger.exception(f"Failed to update git integration: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal server error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
 
 
 @router.get("/{product_id}/git-integration", response_model=GitIntegrationResponse)
@@ -111,9 +109,7 @@ async def get_git_integration(
     - 404: Product not found
     - 403: User lacks permission
     """
-    logger.info(
-        f"User {current_user.username} retrieving git integration for product {product_id}"
-    )
+    logger.info(f"User {current_user.username} retrieving git integration for product {product_id}")
 
     try:
         result = await service.get_product(product_id, include_metrics=False)
@@ -139,6 +135,4 @@ async def get_git_integration(
         raise
     except Exception as e:
         logger.exception(f"Failed to get git integration: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal server error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")

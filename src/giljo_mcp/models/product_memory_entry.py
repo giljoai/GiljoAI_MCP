@@ -29,6 +29,7 @@ from sqlalchemy.orm import relationship
 
 from .base import Base
 
+
 class ProductMemoryEntry(Base):
     """
     360 Memory Entry - normalized from Product.product_memory.sequential_history.

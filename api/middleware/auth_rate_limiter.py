@@ -15,7 +15,9 @@ from collections import defaultdict, deque
 
 from fastapi import HTTPException, Request, status
 
+
 logger = logging.getLogger(__name__)
+
 
 class RateLimiter:
     """
@@ -164,8 +166,10 @@ class RateLimiter:
         if expired_ips:
             logger.debug(f"Cleaned up {len(expired_ips)} expired IP entries")
 
+
 # Global rate limiter instance (singleton)
 _rate_limiter: RateLimiter | None = None
+
 
 def get_rate_limiter() -> RateLimiter:
     """

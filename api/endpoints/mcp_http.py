@@ -43,11 +43,13 @@ from src.giljo_mcp.auth.dependencies import get_db_session
 
 from .mcp_session import MCPSessionManager
 
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # SECURITY: Tenant Key Validation (Handover 0424 Phase 0)
 # ============================================================================
+
 
 def validate_and_override_tenant_key(
     arguments: dict, session_tenant_key: str, session_user_id: str | None, tool_name: str, tool_func: callable = None
@@ -109,9 +111,11 @@ def validate_and_override_tenant_key(
 
     return arguments
 
+
 router = APIRouter()
 
 # Pydantic models for JSON-RPC 2.0
+
 
 class JSONRPCRequest(BaseModel):
     """JSON-RPC 2.0 request"""
@@ -121,12 +125,14 @@ class JSONRPCRequest(BaseModel):
     params: dict[str, Any | None] = Field(None, description="Method parameters")
     id: str | int | None = Field(None, description="Request ID")
 
+
 class JSONRPCResponse(BaseModel):
     """JSON-RPC 2.0 success response"""
 
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     result: Any = Field(..., description="Result data")
     id: str | int | None = Field(None, description="Request ID")
+
 
 class JSONRPCError(BaseModel):
     """JSON-RPC 2.0 error object"""
@@ -135,6 +141,7 @@ class JSONRPCError(BaseModel):
     message: str = Field(..., description="Error message")
     data: Any | None = Field(None, description="Additional error data")
 
+
 class JSONRPCErrorResponse(BaseModel):
     """JSON-RPC 2.0 error response"""
 
@@ -142,7 +149,9 @@ class JSONRPCErrorResponse(BaseModel):
     error: JSONRPCError = Field(..., description="Error details")
     id: str | int | None = Field(None, description="Request ID")
 
+
 # MCP Protocol Handlers
+
 
 async def handle_initialize(
     params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
@@ -176,9 +185,11 @@ async def handle_initialize(
         "capabilities": {"tools": {"listChanged": False}},
     }
 
+
 # Tools hidden from MCP schema (tools/list). Kept for future use.
 # As of Jan 2026, no MCP tools are hidden from schema.
 HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
+
 
 async def handle_tools_list(
     params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
@@ -635,6 +646,7 @@ async def handle_tools_list(
 
     return {"tools": visible_tools}
 
+
 async def handle_tools_call(
     params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
 ) -> dict[str, Any]:
@@ -757,6 +769,7 @@ async def handle_tools_call(
 
         # Return error in MCP format (agent still receives the message)
         return {"content": [{"type": "text", "text": f"Error executing {tool_name}: {e!s}"}], "isError": True}
+
 
 @router.post("/mcp", tags=["MCP"])
 async def mcp_endpoint(

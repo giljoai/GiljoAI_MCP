@@ -21,17 +21,13 @@ Related Handovers:
 - 0302: Tech Stack Formatting
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 import tiktoken
-from sqlalchemy import and_, select
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project, VisionDocument
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -94,7 +90,8 @@ class TestTechStackEncoding:
                 mission="Test orchestrator for tech stack encoding",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {
                         "product_core": 1,
                         "tech_stack": 1,  # CRITICAL priority (always included)
@@ -173,7 +170,8 @@ class TestTechStackEncoding:
                 mission="Test orchestrator for mixed tech stack",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {"tech_stack": 1},
                     "depth_config": {},
                 },
@@ -279,7 +277,8 @@ class TestTokenEstimationAccuracy:
                 mission="Test orchestrator for token estimation",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {
                         "vision_documents": 2,  # IMPORTANT - include vision
                         "tech_stack": 1,
@@ -353,8 +352,7 @@ class TestFullContextPolicy:
 
             # Create vision document with known content
             vision_content = (
-                "# Product Vision\n\n"
-                "This is the full vision document content that must be preserved. " * 100
+                "# Product Vision\n\nThis is the full vision document content that must be preserved. " * 100
             )
 
             vision_doc = VisionDocument(
@@ -394,7 +392,8 @@ class TestFullContextPolicy:
                 mission="Test orchestrator for full context",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {"vision_documents": 2},  # Include vision
                     "depth_config": {},  # No depth limits - full context always
                 },
@@ -423,10 +422,7 @@ class TestFullContextPolicy:
             "Full context policy: no truncation markers should appear"
         )
 
-        print(
-            f"\n[FULL_CONTEXT] Vision document included in full: "
-            f"{len(mission)} chars (no truncation)"
-        )
+        print(f"\n[FULL_CONTEXT] Vision document included in full: {len(mission)} chars (no truncation)")
 
 
 @pytest.mark.asyncio
@@ -479,7 +475,8 @@ class TestCLIModeRulesInclusion:
                 mission="Test orchestrator for CLI mode",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {},
                     "depth_config": {},
                     "execution_mode": "claude_code_cli",  # CLI MODE
@@ -497,27 +494,17 @@ class TestCLIModeRulesInclusion:
         )
 
         # ASSERT: Response includes agent_spawning_constraint for CLI mode
-        assert "agent_spawning_constraint" in result, (
-            "CLI mode should include agent_spawning_constraint field"
-        )
+        assert "agent_spawning_constraint" in result, "CLI mode should include agent_spawning_constraint field"
 
         constraint = result["agent_spawning_constraint"]
-        assert constraint["mode"] == "strict_task_tool", (
-            "CLI mode should enforce strict Task tool usage"
-        )
+        assert constraint["mode"] == "strict_task_tool", "CLI mode should enforce strict Task tool usage"
 
-        assert "allowed_agent_display_names" in constraint, (
-            "Constraint should include list of allowed agent types"
-        )
+        assert "allowed_agent_display_names" in constraint, "Constraint should include list of allowed agent types"
 
-        assert "instruction" in constraint, (
-            "Constraint should include instruction text for orchestrator"
-        )
+        assert "instruction" in constraint, "Constraint should include instruction text for orchestrator"
 
         # Verify instruction mentions Task tool
-        assert "Task tool" in constraint["instruction"], (
-            "Instruction should mention Claude Code's native Task tool"
-        )
+        assert "Task tool" in constraint["instruction"], "Instruction should mention Claude Code's native Task tool"
 
         print(
             f"\n[CLI_MODE] Agent spawning constraint included with "
@@ -595,7 +582,8 @@ class TestPromptQualityRegression:
                 mission="Comprehensive test orchestrator",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {
                         "tech_stack": 1,
                         "vision_documents": 2,
@@ -629,9 +617,7 @@ class TestPromptQualityRegression:
         estimated_tokens = result["estimated_tokens"]
         discrepancy_ratio = abs(actual_tokens - estimated_tokens) / actual_tokens
 
-        assert discrepancy_ratio < 0.20, (
-            f"Token estimation accuracy within 20%: {discrepancy_ratio:.1%}"
-        )
+        assert discrepancy_ratio < 0.20, f"Token estimation accuracy within 20%: {discrepancy_ratio:.1%}"
 
         # 3. Full context preserved (vision document included without truncation)
         assert "should be fully preserved" in mission, "Full context should be preserved"

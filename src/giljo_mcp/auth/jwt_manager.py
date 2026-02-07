@@ -40,6 +40,7 @@ from uuid import UUID
 import jwt
 from fastapi import HTTPException, status
 
+
 class JWTManager:
     """Manage JWT tokens for user sessions"""
 

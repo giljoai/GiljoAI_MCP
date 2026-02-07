@@ -31,7 +31,9 @@ from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
+
 logger = logging.getLogger(__name__)
+
 
 async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key: str) -> int:
     """
@@ -101,6 +103,7 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
     except Exception as e:
         logger.error(f"Failed to refresh templates for tenant '{tenant_key}': {e}", exc_info=True)
         raise
+
 
 async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     """
@@ -256,6 +259,7 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         # Log and re-raise database/unexpected errors
         logger.error(f"Failed to seed templates for tenant '{tenant_key}': {e}", exc_info=True)
         raise
+
 
 def _get_default_templates_v103() -> list[dict[str, Any]]:
     """
@@ -573,6 +577,7 @@ Success criteria:
         },
     ]
 
+
 def _get_template_metadata() -> dict[str, dict[str, Any]]:
     """
     Get comprehensive metadata for each agent role template.
@@ -723,6 +728,7 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
         },
     }
 
+
 def _get_mcp_coordination_section() -> str:
     """
     Generate the MCP coordination section to append to all templates.
@@ -751,6 +757,7 @@ mcp__giljo-mcp__get_agent_mission(job_id="...")
 **Note**: `tenant_key` auto-injected by server. Tool signatures in `full_protocol`.
 """
 
+
 def _get_check_in_protocol_section() -> str:
     """
     Generate the Check-In Protocol section for agent monitoring (Handover 0107).
@@ -770,6 +777,7 @@ def _get_check_in_protocol_section() -> str:
 Report progress at natural workflow breaks (after todos, after phases, before long tasks).
 NOT timer-based. Full protocol in `full_protocol` from `get_agent_mission()`.
 """
+
 
 def _get_context_request_section() -> str:
     """
@@ -829,6 +837,7 @@ If your mission objectives are unclear or require broader project context:
 - ✅ Avoids context duplication
 """
 
+
 def _get_orchestrator_context_response_section() -> str:
     """
     Generate orchestrator-specific context response section (Handover 0109).
@@ -864,6 +873,7 @@ mcp__giljo-mcp__send_message(
 **Keep responses concise** - Only provide information directly relevant to agent's question.
 """
 
+
 def _get_agent_messaging_protocol_section() -> str:
     """
     Generate agent messaging protocol section (Handover 0296, slimmed in 0353).
@@ -882,6 +892,7 @@ def _get_agent_messaging_protocol_section() -> str:
 **Prefixes:** BLOCKER: (urgent), PROGRESS: (update), COMPLETE: (done), READY: (available)
 Use `send_message()` and `receive_messages()`. Full protocol in `full_protocol`.
 """
+
 
 def _get_agent_guidelines_section() -> str:
     """
@@ -912,6 +923,7 @@ def _get_agent_guidelines_section() -> str:
 3. Wait for response via `receive_messages()`
 4. Call `acknowledge_job()` to resume (sets status back to working)
 """
+
 
 def _get_orchestrator_messaging_protocol_section() -> str:
     """
@@ -954,6 +966,7 @@ Send ESCALATION: message to developer/user for intervention.
 
 Tool signatures and full protocol in `full_protocol` from `get_agent_mission()`.
 """
+
 
 def get_orchestrator_identity_content() -> str:
     """

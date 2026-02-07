@@ -8,6 +8,7 @@ Following TDD principles: Tests written BEFORE implementation.
 """
 
 import pytest
+
 from src.giljo_mcp.tools.context_tools.framing_helpers import get_user_priority
 
 

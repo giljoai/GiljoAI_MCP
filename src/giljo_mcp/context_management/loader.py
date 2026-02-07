@@ -14,6 +14,7 @@ import logging
 
 from src.giljo_mcp.context_management.indexer import ContextIndexer
 
+
 logger = logging.getLogger(__name__)
 
 # Agent role patterns for chunk selection
@@ -24,6 +25,7 @@ ROLE_PATTERNS = {
     "analyzer": ["analysis", "requirements", "specification"],
     "orchestrator": ["mission", "vision", "goal", "objective"],
 }
+
 
 class DynamicContextLoader:
     """

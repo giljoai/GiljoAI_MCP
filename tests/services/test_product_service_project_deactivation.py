@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import select
 
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.services.product_service import ProductService
@@ -101,8 +100,7 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
     # Step 4: CRITICAL ASSERTION - Project X should be inactive
     # This is the fix we're testing for
     assert project_x.status == "inactive", (
-        f"Expected Project X to be deactivated when Product A was deactivated, "
-        f"but status is '{project_x.status}'"
+        f"Expected Project X to be deactivated when Product A was deactivated, but status is '{project_x.status}'"
     )
 
 
@@ -182,7 +180,7 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         db_manager,
         tenant_key=tenant_key,
         websocket_manager=mock_ws,  # Pass mock here
-        test_session=db_session
+        test_session=db_session,
     )
     result = await service.activate_product(product_b.id)
 

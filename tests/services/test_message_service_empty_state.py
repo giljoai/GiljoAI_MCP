@@ -15,8 +15,9 @@ Critical behaviors:
 Handover Reference: Empty state API resilience - service layer
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.services.message_service import MessageService
@@ -58,11 +59,7 @@ def _create_service_with_empty_db():
     mock_db_manager = MagicMock()
     mock_tenant_manager = MagicMock()
 
-    service = MessageService(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager,
-        test_session=mock_session
-    )
+    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
 
     return service, mock_session, mock_db_manager, mock_tenant_manager
 
@@ -79,12 +76,7 @@ async def test_list_messages_no_project_returns_empty():
     service, _, _, _ = _create_service_with_empty_db()
 
     # Call list_messages
-    messages = await service.list_messages(
-        project_id="nonexistent-project-id",
-        agent_id=None,
-        status=None,
-        limit=10
-    )
+    messages = await service.list_messages(project_id="nonexistent-project-id", agent_id=None, status=None, limit=10)
 
     # Verify empty array returned
     assert messages == [], "Expected empty array when no messages exist"
@@ -131,11 +123,7 @@ async def test_broadcast_no_project_returns_graceful():
     mock_tenant_manager = MagicMock()
 
     # Create service with test_session
-    service = MessageService(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager,
-        test_session=mock_session
-    )
+    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
 
     # Attempt broadcast with no agents
     result = await service.send_message(
@@ -143,7 +131,7 @@ async def test_broadcast_no_project_returns_graceful():
         to_agents=["all"],  # Broadcast to all
         content="Test broadcast",
         project_id="test-project-id",
-        message_type="broadcast"
+        message_type="broadcast",
     )
 
     # Verify graceful handling
@@ -158,10 +146,10 @@ async def test_broadcast_no_project_returns_graceful():
     if isinstance(result, dict):
         # If dict, check for indicators of zero recipients
         assert (
-            result.get("success") is False or
-            result.get("messages_sent") == 0 or
-            result.get("recipients") == [] or
-            len(result.get("messages", [])) == 0
+            result.get("success") is False
+            or result.get("messages_sent") == 0
+            or result.get("recipients") == []
+            or len(result.get("messages", [])) == 0
         ), f"Expected empty/zero result, got {result}"
     elif isinstance(result, list):
         assert result == [], f"Expected empty list, got {result}"
@@ -188,11 +176,7 @@ async def test_get_message_by_id_nonexistent_returns_none():
     mock_tenant_manager = MagicMock()
 
     # Create service with test_session
-    service = MessageService(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager,
-        test_session=mock_session
-    )
+    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
 
     # Query nonexistent message
     message = await service.get_message_by_id("nonexistent-message-id")
@@ -222,19 +206,10 @@ async def test_list_messages_with_filters_empty_returns_empty():
     mock_tenant_manager = MagicMock()
 
     # Create service with test_session
-    service = MessageService(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager,
-        test_session=mock_session
-    )
+    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
 
     # Apply multiple filters on empty database
-    messages = await service.list_messages(
-        project_id="test-project",
-        agent_id="test-agent",
-        status="pending",
-        limit=10
-    )
+    messages = await service.list_messages(project_id="test-project", agent_id="test-agent", status="pending", limit=10)
 
     # Verify empty result
     assert messages == []
@@ -262,17 +237,10 @@ async def test_count_messages_empty_database_returns_zero():
     mock_tenant_manager = MagicMock()
 
     # Create service with test_session
-    service = MessageService(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager,
-        test_session=mock_session
-    )
+    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
 
     # Count messages
-    count = await service.count_messages(
-        project_id="test-project",
-        status="pending"
-    )
+    count = await service.count_messages(project_id="test-project", status="pending")
 
     # Verify zero count
     assert count == 0, "Expected count of 0 for empty database"
@@ -301,13 +269,9 @@ class TestEmptyStateBoundaryConditions:
         service, _, _, _ = _create_service_with_empty_db()
 
         # Request page 2 (skip=10) on empty database
-        messages = await service.list_messages(
-            skip=10,
-            limit=10
-        )
+        messages = await service.list_messages(skip=10, limit=10)
 
         assert messages == []
-
 
     @pytest.mark.asyncio
     async def test_aggregate_stats_empty_database_returns_zeros(self):
@@ -335,7 +299,6 @@ class TestEmptyStateBoundaryConditions:
         elif isinstance(stats, list):
             assert stats == []
 
-
     @pytest.mark.asyncio
     async def test_delete_messages_empty_database_no_error(self):
         """
@@ -354,10 +317,7 @@ class TestEmptyStateBoundaryConditions:
         mock_session.commit = AsyncMock()
 
         # Attempt to delete nonexistent messages
-        deleted_count = await service.delete_messages(
-            project_id="test-project",
-            status="read"
-        )
+        deleted_count = await service.delete_messages(project_id="test-project", status="read")
 
         # Verify zero deleted, no errors
         assert deleted_count == 0

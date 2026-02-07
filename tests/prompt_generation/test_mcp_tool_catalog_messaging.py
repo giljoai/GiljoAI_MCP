@@ -3,7 +3,9 @@ Tests for MCP tool catalog messaging tools compliance (Handover 0296).
 
 Verifies that the tool catalog exposes ONLY canonical messaging tools.
 """
+
 import pytest
+
 from src.giljo_mcp.prompt_generation.mcp_tool_catalog import MCPToolCatalogGenerator
 
 
@@ -42,10 +44,8 @@ class TestMCPToolCatalogMessaging:
         param_str = " ".join(params)
 
         # Should have to_agents (list) not to_agent_id (single)
-        assert "to_agents" in param_str or "to_agent" in param_str, \
-            "send_message should have to_agents parameter"
-        assert "content" in param_str or "message_content" in param_str, \
-            "send_message should have content parameter"
+        assert "to_agents" in param_str or "to_agent" in param_str, "send_message should have to_agents parameter"
+        assert "content" in param_str or "message_content" in param_str, "send_message should have content parameter"
         assert "project_id" in param_str, "send_message should have project_id parameter"
 
     def test_receive_messages_has_correct_params(self, catalog_generator):
@@ -68,8 +68,9 @@ class TestMCPToolCatalogMessaging:
             for tool_ref in comm_tools:
                 tool_name = tool_ref.split(".")[-1]
                 # Should not reference legacy tools
-                assert tool_name not in ["get_messages", "broadcast_message"], \
+                assert tool_name not in ["get_messages", "broadcast_message"], (
                     f"{agent_display_name} should not reference legacy {tool_name}"
+                )
 
     def test_full_catalog_mentions_canonical_tools(self, catalog_generator):
         """Generated full catalog should mention canonical tools."""
@@ -84,7 +85,5 @@ class TestMCPToolCatalogMessaging:
         catalog = catalog_generator.generate_full_catalog()
 
         # These should not appear as tool headings
-        assert "### broadcast_message" not in catalog, \
-            "broadcast_message should not be a separate tool"
-        assert "### get_messages" not in catalog, \
-            "get_messages should not be a tool (use receive_messages)"
+        assert "### broadcast_message" not in catalog, "broadcast_message should not be a separate tool"
+        assert "### get_messages" not in catalog, "get_messages should not be a tool (use receive_messages)"

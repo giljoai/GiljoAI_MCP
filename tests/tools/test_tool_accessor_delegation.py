@@ -76,19 +76,14 @@ async def test_get_orchestrator_instructions_delegates_to_service(tool_accessor)
     tenant_key = "test_tenant"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"instructions": "Test instructions"}
-    }
+    expected_result = {"success": True, "data": {"instructions": "Test instructions"}}
     tool_accessor._orchestration_service.get_orchestrator_instructions.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.get_orchestrator_instructions(job_id, tenant_key)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.get_orchestrator_instructions.assert_called_once_with(
-        job_id, tenant_key
-    )
+    tool_accessor._orchestration_service.get_orchestrator_instructions.assert_called_once_with(job_id, tenant_key)
 
     # Verify result passed through
     assert result == expected_result
@@ -105,10 +100,7 @@ async def test_spawn_agent_job_delegates_to_service(tool_accessor):
     parent_job_id = str(uuid4())
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"job_id": str(uuid4()), "agent_id": str(uuid4())}
-    }
+    expected_result = {"success": True, "data": {"job_id": str(uuid4()), "agent_id": str(uuid4())}}
     tool_accessor._orchestration_service.spawn_agent_job.return_value = expected_result
 
     # Call accessor method
@@ -118,7 +110,7 @@ async def test_spawn_agent_job_delegates_to_service(tool_accessor):
         mission=mission,
         project_id=project_id,
         tenant_key=tenant_key,
-        parent_job_id=parent_job_id
+        parent_job_id=parent_job_id,
     )
 
     # Verify service method was called with correct args
@@ -128,7 +120,7 @@ async def test_spawn_agent_job_delegates_to_service(tool_accessor):
         mission=mission,
         project_id=project_id,
         tenant_key=tenant_key,
-        parent_job_id=parent_job_id
+        parent_job_id=parent_job_id,
     )
 
     # Verify result passed through
@@ -142,19 +134,14 @@ async def test_get_agent_mission_delegates_to_service(tool_accessor):
     tenant_key = "test_tenant"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"mission": "Test mission", "full_protocol": "Protocol text"}
-    }
+    expected_result = {"success": True, "data": {"mission": "Test mission", "full_protocol": "Protocol text"}}
     tool_accessor._orchestration_service.get_agent_mission.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.get_agent_mission(job_id, tenant_key)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.get_agent_mission.assert_called_once_with(
-        job_id=job_id, tenant_key=tenant_key
-    )
+    tool_accessor._orchestration_service.get_agent_mission.assert_called_once_with(job_id=job_id, tenant_key=tenant_key)
 
     # Verify result passed through
     assert result == expected_result
@@ -174,8 +161,8 @@ async def test_get_workflow_status_delegates_to_service(tool_accessor):
             "completed_agents": 1,
             "active_agents": 1,
             "pending_agents": 1,
-            "progress_percent": 33
-        }
+            "progress_percent": 33,
+        },
     }
     tool_accessor._orchestration_service.get_workflow_status.return_value = expected_result
 
@@ -198,10 +185,7 @@ async def test_get_pending_jobs_delegates_to_service(tool_accessor):
     tenant_key = "test_tenant"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"jobs": [{"job_id": str(uuid4())}]}
-    }
+    expected_result = {"success": True, "data": {"jobs": [{"job_id": str(uuid4())}]}}
     tool_accessor._orchestration_service.get_pending_jobs.return_value = expected_result
 
     # Call accessor method
@@ -223,19 +207,14 @@ async def test_acknowledge_job_delegates_to_service(tool_accessor):
     agent_id = str(uuid4())
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"status": "active"}
-    }
+    expected_result = {"success": True, "data": {"status": "active"}}
     tool_accessor._orchestration_service.acknowledge_job.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.acknowledge_job(job_id, agent_id)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.acknowledge_job.assert_called_once_with(
-        job_id=job_id, agent_id=agent_id
-    )
+    tool_accessor._orchestration_service.acknowledge_job.assert_called_once_with(job_id=job_id, agent_id=agent_id)
 
     # Verify result passed through
     assert result == expected_result
@@ -252,25 +231,15 @@ async def test_report_progress_delegates_to_service(tool_accessor):
     ]
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"progress_percent": 50}
-    }
+    expected_result = {"success": True, "data": {"progress_percent": 50}}
     tool_accessor._orchestration_service.report_progress.return_value = expected_result
 
     # Call accessor method
-    result = await tool_accessor.report_progress(
-        job_id=job_id,
-        tenant_key=tenant_key,
-        todo_items=todo_items
-    )
+    result = await tool_accessor.report_progress(job_id=job_id, tenant_key=tenant_key, todo_items=todo_items)
 
     # Verify service method was called with correct args
     tool_accessor._orchestration_service.report_progress.assert_called_once_with(
-        job_id=job_id,
-        progress=None,
-        tenant_key=tenant_key,
-        todo_items=todo_items
+        job_id=job_id, progress=None, tenant_key=tenant_key, todo_items=todo_items
     )
 
     # Verify result passed through
@@ -284,19 +253,14 @@ async def test_complete_job_delegates_to_service(tool_accessor):
     result_data = {"summary": "Job completed successfully"}
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"status": "completed"}
-    }
+    expected_result = {"success": True, "data": {"status": "completed"}}
     tool_accessor._orchestration_service.complete_job.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.complete_job(job_id, result_data)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.complete_job.assert_called_once_with(
-        job_id=job_id, result=result_data
-    )
+    tool_accessor._orchestration_service.complete_job.assert_called_once_with(job_id=job_id, result=result_data)
 
     # Verify result passed through
     assert result == expected_result
@@ -309,19 +273,14 @@ async def test_report_error_delegates_to_service(tool_accessor):
     error = "Database connection failed"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"status": "error"}
-    }
+    expected_result = {"success": True, "data": {"status": "error"}}
     tool_accessor._orchestration_service.report_error.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.report_error(job_id, error)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.report_error.assert_called_once_with(
-        job_id=job_id, error=error
-    )
+    tool_accessor._orchestration_service.report_error.assert_called_once_with(job_id=job_id, error=error)
 
     # Verify result passed through
     assert result == expected_result
@@ -335,16 +294,11 @@ async def test_create_successor_orchestrator_delegates_to_service(tool_accessor)
     reason = "context_limit"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"successor_job_id": str(uuid4())}
-    }
+    expected_result = {"success": True, "data": {"successor_job_id": str(uuid4())}}
     tool_accessor._orchestration_service.create_successor_orchestrator.return_value = expected_result
 
     # Call accessor method
-    result = await tool_accessor.create_successor_orchestrator(
-        current_job_id, tenant_key, reason
-    )
+    result = await tool_accessor.create_successor_orchestrator(current_job_id, tenant_key, reason)
 
     # Verify service method was called with correct args
     tool_accessor._orchestration_service.create_successor_orchestrator.assert_called_once_with(
@@ -355,8 +309,6 @@ async def test_create_successor_orchestrator_delegates_to_service(tool_accessor)
     assert result == expected_result
 
 
-
-
 @pytest.mark.asyncio
 async def test_update_agent_mission_delegates_to_service(tool_accessor):
     """ToolAccessor.update_agent_mission calls OrchestrationService.update_agent_mission"""
@@ -365,19 +317,14 @@ async def test_update_agent_mission_delegates_to_service(tool_accessor):
     mission = "Updated mission text"
 
     # Setup mock response
-    expected_result = {
-        "success": True,
-        "data": {"mission": mission}
-    }
+    expected_result = {"success": True, "data": {"mission": mission}}
     tool_accessor._orchestration_service.update_agent_mission.return_value = expected_result
 
     # Call accessor method
     result = await tool_accessor.update_agent_mission(job_id, tenant_key, mission)
 
     # Verify service method was called with correct args
-    tool_accessor._orchestration_service.update_agent_mission.assert_called_once_with(
-        job_id, tenant_key, mission
-    )
+    tool_accessor._orchestration_service.update_agent_mission.assert_called_once_with(job_id, tenant_key, mission)
 
     # Verify result passed through
     assert result == expected_result
@@ -414,12 +361,12 @@ async def test_all_orchestration_methods_delegate_without_modification(tool_acce
 
     # Verify all methods exist on ToolAccessor
     for method_name in delegation_methods:
-        assert hasattr(tool_accessor, method_name), \
-            f"ToolAccessor missing delegation method: {method_name}"
+        assert hasattr(tool_accessor, method_name), f"ToolAccessor missing delegation method: {method_name}"
 
         # Verify method exists on OrchestrationService
-        assert hasattr(tool_accessor._orchestration_service, method_name), \
+        assert hasattr(tool_accessor._orchestration_service, method_name), (
             f"OrchestrationService missing method: {method_name}"
+        )
 
 
 @pytest.mark.asyncio

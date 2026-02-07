@@ -7,19 +7,18 @@ Validates that the simplified succession:
 3. Resets context_used to 0
 4. Creates 360 Memory entry with session_handover type
 """
+
+from unittest.mock import patch
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Project, AgentJob, Product
+from src.giljo_mcp.models import AgentJob, Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest_asyncio.fixture
@@ -82,9 +81,7 @@ class TestCreateSuccessorOrchestrator:
         agent_id = spawn_result["agent_id"]
 
         # Get initial count of AgentExecution rows
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
         executions_before = result.scalars().all()
         count_before = len(executions_before)
         assert count_before == 1  # Should have one execution from spawn
@@ -108,9 +105,7 @@ class TestCreateSuccessorOrchestrator:
         assert result["success"] is True
 
         # Verify count of AgentExecution rows remains the same
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
         executions_after = result.scalars().all()
         count_after = len(executions_after)
 
@@ -156,9 +151,7 @@ class TestCreateSuccessorOrchestrator:
         assert result["agent_id"] == original_agent_id  # SAME agent_id, not new
 
         # Verify in database
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == original_agent_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == original_agent_id))
         execution = result.scalar_one_or_none()
         assert execution is not None
         assert execution.agent_id == original_agent_id
@@ -188,9 +181,7 @@ class TestCreateSuccessorOrchestrator:
         agent_id = spawn_result["agent_id"]
 
         # Update context_used to simulate work
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
         execution = result.scalar_one()
         original_context_used = 75000
         execution.context_used = original_context_used
@@ -241,9 +232,7 @@ class TestCreateSuccessorOrchestrator:
         agent_id = spawn_result["agent_id"]
 
         # Update execution to have realistic state
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
         execution = result.scalar_one()
         execution.context_used = 80000
         execution.progress = 65
@@ -341,9 +330,7 @@ class TestCreateSuccessorOrchestrator:
         agent_id = spawn_result["agent_id"]
 
         # Update context_used
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
         execution = result.scalar_one()
         execution.context_used = 50000
         await db_session.commit()
@@ -517,16 +504,12 @@ class TestCreateSuccessorOrchestrator:
             )
 
         # Verify AgentExecution still points to same AgentJob
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))
         execution = result.scalar_one()
         assert execution.job_id == job_id
 
         # Verify AgentJob still exists and is linked
-        result = await db_session.execute(
-            select(AgentJob).where(AgentJob.job_id == job_id)
-        )
+        result = await db_session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
         job = result.scalar_one()
         assert job.job_id == job_id
         assert job.project_id == project.id

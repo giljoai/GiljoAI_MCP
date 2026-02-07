@@ -18,6 +18,7 @@ from ..database import DatabaseManager
 from ..models import MCPContextIndex, Product, VisionDocument
 from .base import BaseRepository
 
+
 class VisionDocumentRepository:
     """
     Repository for VisionDocument operations with multi-tenant isolation.

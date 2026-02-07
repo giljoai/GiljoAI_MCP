@@ -13,12 +13,12 @@ Expected Test Results:
 - GREEN (AFTER FIX): Tests pass, verifying correct session management
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.models import Product
 
 
 @pytest.mark.asyncio
@@ -37,10 +37,7 @@ async def test_get_session_without_test_injection():
     mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
     mock_db_manager.get_session_async.return_value.__aexit__.return_value = None
 
-    product_service = ProductService(
-        db_manager=mock_db_manager,
-        tenant_key="tk_test_tenant"
-    )
+    product_service = ProductService(db_manager=mock_db_manager, tenant_key="tk_test_tenant")
 
     # Act: Try to get a session (should call db_manager, not itself)
     async with product_service._get_session() as session:
@@ -65,11 +62,7 @@ async def test_get_session_with_test_injection():
     mock_db_manager = MagicMock()
     test_session = AsyncMock(spec=AsyncSession)
 
-    product_service = ProductService(
-        db_manager=mock_db_manager,
-        tenant_key="tk_test_tenant",
-        test_session=test_session
-    )
+    product_service = ProductService(db_manager=mock_db_manager, tenant_key="tk_test_tenant", test_session=test_session)
 
     # Act: Get session with injection
     async with product_service._get_session() as session:
@@ -105,9 +98,7 @@ async def test_list_products_does_not_recurse():
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     product_service = ProductService(
-        db_manager=mock_db_manager,
-        tenant_key="tk_test_tenant",
-        websocket_manager=mock_ws_manager
+        db_manager=mock_db_manager, tenant_key="tk_test_tenant", websocket_manager=mock_ws_manager
     )
 
     tenant_key = "tk_test_tenant"
@@ -157,9 +148,7 @@ async def test_multiple_operations_do_not_recurse():
     mock_session.commit = AsyncMock()
 
     product_service = ProductService(
-        db_manager=mock_db_manager,
-        tenant_key="tk_test_tenant",
-        websocket_manager=mock_ws_manager
+        db_manager=mock_db_manager, tenant_key="tk_test_tenant", websocket_manager=mock_ws_manager
     )
 
     tenant_key = "tk_test_tenant"

@@ -22,7 +22,9 @@ import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any
 
+
 logger = logging.getLogger(__name__)
+
 
 class GitService:
     """Service for git operations on local repositories"""
@@ -93,7 +95,7 @@ class GitService:
                 cmd.insert(4, f"--since={since}")
 
             # Execute git log
-            result = subprocess.run(  # noqa: S603, S607 - git is standard system tool, repo_path validated
+            result = subprocess.run(  # noqa: S603 - git is standard system tool, repo_path validated
                 cmd,
                 shell=False,
                 check=False,

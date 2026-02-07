@@ -14,16 +14,15 @@ Business Flow:
 4. User copies fresh prompt with updated settings
 """
 
-import pytest
-from datetime import datetime, timezone
 from uuid import uuid4
+
+import pytest
 from passlib.hash import bcrypt
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project, Product, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -89,7 +88,8 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=initial_field_priorities,
+        tool="claude-code",
+        field_priorities=initial_field_priorities,
     )
 
     orchestrator_id_1 = result1["orchestrator_id"]
@@ -104,7 +104,8 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=updated_field_priorities,
+        tool="claude-code",
+        field_priorities=updated_field_priorities,
     )
 
     orchestrator_id_2 = result2["orchestrator_id"]
@@ -191,7 +192,8 @@ async def test_stage_project_regenerates_instructions_with_current_settings(db_s
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=initial_field_priorities,
+        tool="claude-code",
+        field_priorities=initial_field_priorities,
     )
 
     # ACT: Update field priorities to INCLUDE product_core
@@ -203,22 +205,23 @@ async def test_stage_project_regenerates_instructions_with_current_settings(db_s
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=updated_field_priorities,
+        tool="claude-code",
+        field_priorities=updated_field_priorities,
     )
 
     # ASSERT: Verify response includes fresh instructions
     # NOTE: This test will FAIL initially (RED) because generate() doesn't yet
     # regenerate instructions - it only updates metadata
-    assert "instructions" in result2 or "mission" in result2, \
-        "Response should include regenerated instructions"
+    assert "instructions" in result2 or "mission" in result2, "Response should include regenerated instructions"
 
     # ASSERT: Verify instructions reflect updated field priorities
     # Since product_core is now CRITICAL (priority 1), it should appear in instructions
     instructions = result2.get("instructions") or result2.get("mission") or ""
 
     # This will FAIL initially (RED) - we expect the instructions to be regenerated
-    assert "Core feature set" in instructions or len(instructions) > 100, \
+    assert "Core feature set" in instructions or len(instructions) > 100, (
         "Instructions should be regenerated with updated context (product_core is CRITICAL)"
+    )
 
 
 @pytest.mark.asyncio
@@ -289,7 +292,8 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=initial_field_priorities,
+        tool="claude-code",
+        field_priorities=initial_field_priorities,
     )
 
     # ACT: User changes settings (promotes product_core to CRITICAL)
@@ -302,7 +306,8 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=updated_field_priorities,
+        tool="claude-code",
+        field_priorities=updated_field_priorities,
     )
 
     # ASSERT: Response includes fresh prompt
@@ -310,13 +315,13 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
 
     # ASSERT: Response includes fresh instructions
     # This will FAIL initially (RED) - we expect instructions to be returned
-    assert "instructions" in result2 or "mission" in result2, \
+    assert "instructions" in result2 or "mission" in result2, (
         "Response should include fresh instructions for user to copy"
+    )
 
     # ASSERT: Instructions are not empty
     instructions = result2.get("instructions") or result2.get("mission") or ""
-    assert len(instructions) > 50, \
-        "Fresh instructions should be non-trivial (>50 chars)"
+    assert len(instructions) > 50, "Fresh instructions should be non-trivial (>50 chars)"
 
 
 @pytest.mark.asyncio
@@ -343,9 +348,7 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
         email=f"test_{uuid4().hex[:8]}@example.com",
         password_hash=bcrypt.hash("Test@Pass123"),
         tenant_key=tenant_key,
-        field_priority_config={
-            "priorities": {"product_core": 1}
-        },
+        field_priority_config={"priorities": {"product_core": 1}},
     )
     db_session.add(user)
 
@@ -378,26 +381,31 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
     result1 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=field_priorities,
+        tool="claude-code",
+        field_priorities=field_priorities,
     )
 
     result2 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=field_priorities,
+        tool="claude-code",
+        field_priorities=field_priorities,
     )
 
     result3 = await generator.generate(
         project_id=project.id,
         user_id=str(user.id),
-        tool="claude-code",        field_priorities=field_priorities,
+        tool="claude-code",
+        field_priorities=field_priorities,
     )
 
     # ASSERT: All three calls return same orchestrator_id
-    assert result1["orchestrator_id"] == result2["orchestrator_id"], \
+    assert result1["orchestrator_id"] == result2["orchestrator_id"], (
         "Second stage should reuse orchestrator from first stage"
-    assert result2["orchestrator_id"] == result3["orchestrator_id"], \
+    )
+    assert result2["orchestrator_id"] == result3["orchestrator_id"], (
         "Third stage should reuse orchestrator from previous stages"
+    )
 
     # ASSERT: Only one orchestrator exists in database
     stmt = select(AgentExecution).where(
@@ -408,5 +416,4 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
     result = await db_session.execute(stmt)
     orchestrators = result.scalars().all()
 
-    assert len(orchestrators) == 1, \
-        "Only one orchestrator should exist (no duplicates created)"
+    assert len(orchestrators) == 1, "Only one orchestrator should exist (no duplicates created)"

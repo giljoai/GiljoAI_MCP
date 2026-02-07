@@ -19,16 +19,13 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import User
-from src.giljo_mcp.services.user_service import UserService
 
 
 @pytest.mark.asyncio
 class TestFieldPriorityEndpoints:
     """Integration tests for field priority endpoints"""
 
-    async def test_get_field_priority_returns_defaults(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_get_field_priority_returns_defaults(self, async_client: AsyncClient, test_user: User):
         """GET /api/v1/users/me/field-priority returns default config for new user"""
         response = await async_client.get(
             "/api/v1/users/me/field-priority",
@@ -85,9 +82,7 @@ class TestFieldPriorityEndpoints:
         assert test_user.field_priority_config["version"] == "2.0"
         assert test_user.field_priority_config["priorities"]["product_core"] == 1
 
-    async def test_put_field_priority_invalid_priority_fails(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_put_field_priority_invalid_priority_fails(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority rejects invalid priority values"""
         invalid_config = {
             "version": "2.0",
@@ -103,9 +98,7 @@ class TestFieldPriorityEndpoints:
         # Should fail validation
         assert response.status_code == 422
 
-    async def test_put_field_priority_missing_version_fails(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_put_field_priority_missing_version_fails(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority rejects config without version"""
         invalid_config = {"priorities": {"product_core": 1}}
 
@@ -118,9 +111,7 @@ class TestFieldPriorityEndpoints:
         # Should fail validation (Pydantic)
         assert response.status_code == 422
 
-    async def test_put_field_priority_missing_priorities_fails(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_put_field_priority_missing_priorities_fails(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority rejects config without priorities"""
         invalid_config = {"version": "2.0"}
 
@@ -182,9 +173,7 @@ class TestFieldPriorityEndpoints:
 
         assert response.status_code == 401 or response.status_code == 403
 
-    async def test_field_priority_requires_authentication_put(
-        self, async_client: AsyncClient
-    ):
+    async def test_field_priority_requires_authentication_put(self, async_client: AsyncClient):
         """PUT /api/v1/users/me/field-priority requires authentication"""
         response = await async_client.put(
             "/api/v1/users/me/field-priority",
@@ -193,9 +182,7 @@ class TestFieldPriorityEndpoints:
 
         assert response.status_code == 401 or response.status_code == 403
 
-    async def test_field_priority_requires_authentication_reset(
-        self, async_client: AsyncClient
-    ):
+    async def test_field_priority_requires_authentication_reset(self, async_client: AsyncClient):
         """POST /api/v1/users/me/field-priority/reset requires authentication"""
         response = await async_client.post("/api/v1/users/me/field-priority/reset")
 
@@ -318,9 +305,7 @@ class TestFieldPriorityEndpoints:
         assert data["priorities"]["product_core"] == 4
         assert data["priorities"]["vision_documents"] == 4
 
-    async def test_field_priority_zero_priority_fails(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_field_priority_zero_priority_fails(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority rejects priority 0"""
         invalid_config = {"version": "2.0", "priorities": {"product_core": 0}}
 
@@ -332,9 +317,7 @@ class TestFieldPriorityEndpoints:
 
         assert response.status_code == 422
 
-    async def test_field_priority_negative_priority_fails(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_field_priority_negative_priority_fails(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority rejects negative priority"""
         invalid_config = {"version": "2.0", "priorities": {"product_core": -1}}
 
@@ -364,9 +347,7 @@ class TestFieldPriorityEndpoints:
         await db_session.refresh(test_user)
         assert test_user.field_priority_config["priorities"] == {}
 
-    async def test_field_priority_extra_fields_ignored(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_field_priority_extra_fields_ignored(self, async_client: AsyncClient, test_user: User):
         """PUT /api/v1/users/me/field-priority ignores extra fields"""
         config_with_extra = {
             "version": "2.0",
@@ -403,9 +384,7 @@ class TestFieldPriorityEndpoints:
         await db_session.refresh(test_user)
         assert test_user.field_priority_config["version"] == "2.0"
 
-    async def test_field_priority_all_valid_priority_values(
-        self, async_client: AsyncClient, test_user: User
-    ):
+    async def test_field_priority_all_valid_priority_values(self, async_client: AsyncClient, test_user: User):
         """All valid priority values (1-4) are accepted"""
         for priority in [1, 2, 3, 4]:
             config = {

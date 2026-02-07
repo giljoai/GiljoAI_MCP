@@ -18,12 +18,13 @@ from src.giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
+
 # Model imports: Use modular pattern (Post-0128a refactoring)
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services import ProductService
 
 from .dependencies import get_product_service
-from .models import ProductCreate, ProductResponse, ProductUpdate, DeletedProductResponse
+from .models import DeletedProductResponse, ProductCreate, ProductResponse, ProductUpdate
 
 
 logger = logging.getLogger(__name__)
@@ -54,10 +55,7 @@ async def create_product(
             raise HTTPException(status_code=400, detail=result["error"])
 
         # Get full product details with metrics
-        product_result = await service.get_product(
-            product_id=result["product_id"],
-            include_metrics=True
-        )
+        product_result = await service.get_product(product_id=result["product_id"], include_metrics=True)
 
         if not product_result["success"]:
             raise HTTPException(status_code=500, detail="Failed to retrieve created product")
@@ -119,10 +117,7 @@ async def list_products(
     Uses ProductService.list_products() for database operations.
     """
     try:
-        result = await service.list_products(
-            include_inactive=include_inactive,
-            include_metrics=True
-        )
+        result = await service.list_products(include_inactive=include_inactive, include_metrics=True)
 
         if not result["success"]:
             raise HTTPException(status_code=500, detail=result["error"])
@@ -227,10 +222,7 @@ async def get_product(
     Uses ProductService.get_product() for database operations.
     """
     try:
-        result = await service.get_product(
-            product_id=product_id,
-            include_metrics=True
-        )
+        result = await service.get_product(product_id=product_id, include_metrics=True)
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail=result["error"])
@@ -303,10 +295,7 @@ async def update_product(
             raise HTTPException(status_code=400, detail=result["error"])
 
         # Get full updated product with metrics
-        product_result = await service.get_product(
-            product_id=product_id,
-            include_metrics=True
-        )
+        product_result = await service.get_product(product_id=product_id, include_metrics=True)
 
         if not product_result["success"]:
             raise HTTPException(status_code=500, detail="Failed to retrieve updated product")

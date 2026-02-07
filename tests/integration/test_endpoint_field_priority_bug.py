@@ -13,22 +13,24 @@ This test simulates the EXACT endpoint behavior to prove the bug exists.
 Handover: Field Priority Bug Fix - Phase 1 (RED TEST)
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
+
 # Use existing fixtures
-from tests.fixtures.base_fixtures import db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def user_with_correct_priorities_structure(db_session):
@@ -62,9 +64,9 @@ async def user_with_correct_priorities_structure(db_session):
                 "agent_templates": 3,
                 "project_description": 1,
                 "memory_360": 2,
-                "git_history": 4
-            }
-        }
+                "git_history": 4,
+            },
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -81,7 +83,7 @@ async def test_project_for_bug_demo(db_session, user_with_correct_priorities_str
         name=f"Test Product {uuid4().hex[:8]}",
         description="Test product for bug demonstration.",
         tenant_key=user_with_correct_priorities_structure.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -95,7 +97,7 @@ async def test_project_for_bug_demo(db_session, user_with_correct_priorities_str
         tenant_key=user_with_correct_priorities_structure.tenant_key,
         status="planning",
         mission="Test mission to demonstrate field priority bug.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -107,11 +109,10 @@ async def test_project_for_bug_demo(db_session, user_with_correct_priorities_str
 # TEST: Demonstrate the Actual Bug
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_endpoint_uses_wrong_key_for_field_priorities(
-    db_session,
-    user_with_correct_priorities_structure,
-    test_project_for_bug_demo
+    db_session, user_with_correct_priorities_structure, test_project_for_bug_demo
 ):
     """
     CRITICAL BUG DEMONSTRATION TEST
@@ -137,12 +138,8 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
 
     # ARRANGE: Verify user has correct config structure
     assert user.field_priority_config is not None, "User should have field priority config"
-    assert "priorities" in user.field_priority_config, (
-        "User config should have 'priorities' key (correct structure)"
-    )
-    assert "fields" not in user.field_priority_config, (
-        "User config should NOT have 'fields' key (old/wrong structure)"
-    )
+    assert "priorities" in user.field_priority_config, "User config should have 'priorities' key (correct structure)"
+    assert "fields" not in user.field_priority_config, "User config should NOT have 'fields' key (old/wrong structure)"
 
     expected_priorities = {
         "product_core": 1,
@@ -150,7 +147,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
         "agent_templates": 3,
         "project_description": 1,
         "memory_360": 2,
-        "git_history": 4
+        "git_history": 4,
     }
 
     # ACT: Simulate EXACTLY what the endpoint does (BUGGY CODE)
@@ -167,21 +164,17 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
     field_priorities_fixed = user_field_config.get("priorities", {})  # CORRECT KEY
 
     assert field_priorities_fixed == expected_priorities, (
-        f"CORRECT BEHAVIOR: Using 'priorities' key returns user config. "
-        f"Got: {field_priorities_fixed}"
+        f"CORRECT BEHAVIOR: Using 'priorities' key returns user config. Got: {field_priorities_fixed}"
     )
 
     # ACT: Generate orchestrator job using BUGGY extraction (simulating endpoint bug)
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user.tenant_key)
 
     result_buggy = await generator.generate(
         project_id=str(project.id),
         user_id=str(user.id),
         tool="claude-code",
-        field_priorities=field_priorities_buggy  # EMPTY DICT due to bug!
+        field_priorities=field_priorities_buggy,  # EMPTY DICT due to bug!
     )
 
     # ASSERT: Orchestrator receives EMPTY field_priorities (bug consequence)
@@ -204,7 +197,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
         project_id=str(project.id),
         user_id=str(user.id),
         tool="claude-code",
-        field_priorities=field_priorities_fixed  # CORRECT priorities
+        field_priorities=field_priorities_fixed,  # CORRECT priorities
     )
 
     orchestrator_id_fixed = result_fixed["orchestrator_id"]
@@ -232,10 +225,7 @@ async def test_endpoint_uses_wrong_key_for_field_priorities(
 
 
 @pytest.mark.asyncio
-async def test_key_mismatch_causes_empty_field_priorities(
-    db_session,
-    user_with_correct_priorities_structure
-):
+async def test_key_mismatch_causes_empty_field_priorities(db_session, user_with_correct_priorities_structure):
     """
     SIMPLIFIED BUG DEMONSTRATION
 
@@ -255,14 +245,10 @@ async def test_key_mismatch_causes_empty_field_priorities(
     extracted_fixed = config.get("priorities", {})
 
     # BUG: Wrong key returns empty dict
-    assert extracted_buggy == {}, (
-        "Using 'fields' key on config with 'priorities' key returns empty dict"
-    )
+    assert extracted_buggy == {}, "Using 'fields' key on config with 'priorities' key returns empty dict"
 
     # CORRECT: Right key returns user's priorities
-    assert len(extracted_fixed) > 0, (
-        "Using 'priorities' key returns user's configured priorities"
-    )
+    assert len(extracted_fixed) > 0, "Using 'priorities' key returns user's configured priorities"
 
     # THIS TEST WILL FAIL - demonstrating the key mismatch bug
     assert extracted_buggy == extracted_fixed, (

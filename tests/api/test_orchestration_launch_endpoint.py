@@ -17,9 +17,7 @@ Priority: BLOCKER - Production bug fix
 import pytest
 from httpx import AsyncClient
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Product, Project, User
 
 # Password hashing
 bcrypt = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -42,23 +40,19 @@ async def test_launch_project_endpoint_exists(
     If endpoint doesn't exist, we get 404. If it exists but requires auth, we get 401.
     """
     # ACT - Call launch-project endpoint without auth (simpler test)
-    response = await async_client.post(
-        "/api/v1/orchestration/launch-project",
-        json={"project_id": "dummy-id"}
-    )
+    response = await async_client.post("/api/v1/orchestration/launch-project", json={"project_id": "dummy-id"})
 
     # ASSERT - Should NOT be 404 (endpoint should exist)
     assert response.status_code != 404, (
-        f"Launch project endpoint returned 404. "
-        f"Endpoint may not exist or is at wrong route. "
-        f"Expected 401 (Unauthorized) for unauthenticated request, but got 404 (Not Found)."
+        "Launch project endpoint returned 404. "
+        "Endpoint may not exist or is at wrong route. "
+        "Expected 401 (Unauthorized) for unauthenticated request, but got 404 (Not Found)."
     )
 
     # Should be 401 (Unauthorized) since we didn't provide auth token
     # This proves the endpoint exists!
     assert response.status_code == 401, (
-        f"Expected 401 (Unauthorized) but got {response.status_code}. "
-        f"Response: {response.text}"
+        f"Expected 401 (Unauthorized) but got {response.status_code}. Response: {response.text}"
     )
 
 
@@ -72,10 +66,7 @@ async def test_launch_project_endpoint_requires_auth(async_client: AsyncClient):
     THEN: Should return 401 (Unauthorized) NOT 404 (Not Found)
     """
     # ACT - Call endpoint without auth
-    response = await async_client.post(
-        "/api/v1/orchestration/launch-project",
-        json={"project_id": "dummy-id"}
-    )
+    response = await async_client.post("/api/v1/orchestration/launch-project", json={"project_id": "dummy-id"})
 
     # ASSERT - Should NOT be 404 (endpoint should exist)
     assert response.status_code != 404, (
@@ -83,6 +74,4 @@ async def test_launch_project_endpoint_requires_auth(async_client: AsyncClient):
     )
 
     # Should be 401 (Unauthorized)
-    assert response.status_code == 401, (
-        f"Expected 401 (Unauthorized) but got {response.status_code}"
-    )
+    assert response.status_code == 401, f"Expected 401 (Unauthorized) but got {response.status_code}"

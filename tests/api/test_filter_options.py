@@ -11,15 +11,16 @@ Tests for GET /api/agent-jobs/filter-options endpoint covering:
 TDD Approach: Tests describe WHAT the endpoint should return, not HOW it computes it.
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime, timezone, timedelta
 
 
 # ============================================================================
 # BASIC FUNCTIONALITY TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_filter_options_basic(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -62,7 +63,9 @@ async def test_get_filter_options_basic(async_client: AsyncClient, test_jobs_wit
 
 
 @pytest.mark.asyncio
-async def test_filter_options_contains_expected_values(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
+async def test_filter_options_contains_expected_values(
+    async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin
+):
     """Test that filter options contain expected values from test data."""
     # Login
     login_response = await async_client.post(
@@ -113,6 +116,7 @@ async def test_filter_options_contains_expected_values(async_client: AsyncClient
 # SORTING TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_filter_options_are_sorted(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
     """Test that filter options are returned in sorted order."""
@@ -148,6 +152,7 @@ async def test_filter_options_are_sorted(async_client: AsyncClient, test_jobs_wi
 # DISTINCT VALUES TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_filter_options_are_distinct(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
     """Test that filter options contain no duplicates."""
@@ -174,7 +179,9 @@ async def test_filter_options_are_distinct(async_client: AsyncClient, test_jobs_
 
     # Verify no duplicates (length equals unique set length)
     assert len(data["statuses"]) == len(set(data["statuses"])), "Duplicate statuses found"
-    assert len(data["agent_display_names"]) == len(set(data["agent_display_names"])), "Duplicate agent_display_names found"
+    assert len(data["agent_display_names"]) == len(set(data["agent_display_names"])), (
+        "Duplicate agent_display_names found"
+    )
     assert len(data["health_statuses"]) == len(set(data["health_statuses"])), "Duplicate health_statuses found"
     assert len(data["tool_types"]) == len(set(data["tool_types"])), "Duplicate tool_types found"
 
@@ -182,6 +189,7 @@ async def test_filter_options_are_distinct(async_client: AsyncClient, test_jobs_
 # ============================================================================
 # EMPTY RESULTS TESTS
 # ============================================================================
+
 
 @pytest.fixture
 async def empty_project(db_manager, tenant_a_admin):
@@ -237,6 +245,7 @@ async def test_filter_options_empty_project(async_client: AsyncClient, empty_pro
 # ============================================================================
 # UNREAD MESSAGES DETECTION TESTS
 # ============================================================================
+
 
 @pytest.fixture
 async def project_without_unread(db_manager, tenant_a_admin):
@@ -308,8 +317,11 @@ async def test_has_unread_false_when_no_pending(async_client: AsyncClient, proje
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_filter_options_multi_tenant_isolation(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin, tenant_b_admin):
+async def test_filter_options_multi_tenant_isolation(
+    async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin, tenant_b_admin
+):
     """Test that tenant B cannot see tenant A's filter options."""
     # Login as tenant B admin
     login_response = await async_client.post(
@@ -345,6 +357,7 @@ async def test_filter_options_multi_tenant_isolation(async_client: AsyncClient, 
 # AUTHENTICATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_filter_options_authentication_required(async_client: AsyncClient, test_jobs_with_varied_data):
     """Test that authentication is required."""
@@ -360,6 +373,7 @@ async def test_filter_options_authentication_required(async_client: AsyncClient,
 # ============================================================================
 # VALIDATION TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_filter_options_missing_project_id(async_client: AsyncClient, tenant_a_admin):

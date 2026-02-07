@@ -1,6 +1,6 @@
 """Tests for database initialization module"""
+
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,10 +15,11 @@ async def test_init_database_sets_db_manager_on_state():
 
     state = APIState()
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch('api.startup.database.DatabaseManager') as mock_db_manager, \
-         patch.dict(os.environ, {'DATABASE_URL': 'postgresql://localhost/test'}):
-
+    with (
+        patch("api.startup.database.get_config") as mock_get_config,
+        patch("api.startup.database.DatabaseManager") as mock_db_manager,
+        patch.dict(os.environ, {"DATABASE_URL": "postgresql://localhost/test"}),
+    ):
         mock_config = MagicMock()
         mock_get_config.return_value = mock_config
 
@@ -39,12 +40,13 @@ async def test_init_database_uses_env_url_first():
     from api.startup.database import init_database
 
     state = APIState()
-    env_url = 'postgresql://envuser:envpass@envhost/envdb'
+    env_url = "postgresql://envuser:envpass@envhost/envdb"
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch('api.startup.database.DatabaseManager') as mock_db_manager, \
-         patch.dict(os.environ, {'DATABASE_URL': env_url}):
-
+    with (
+        patch("api.startup.database.get_config") as mock_get_config,
+        patch("api.startup.database.DatabaseManager") as mock_db_manager,
+        patch.dict(os.environ, {"DATABASE_URL": env_url}),
+    ):
         mock_config = MagicMock()
         mock_get_config.return_value = mock_config
 
@@ -64,12 +66,13 @@ async def test_init_database_uses_config_url_when_no_env():
     from api.startup.database import init_database
 
     state = APIState()
-    config_url = 'postgresql://configuser:configpass@confighost/configdb'
+    config_url = "postgresql://configuser:configpass@confighost/configdb"
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch('api.startup.database.DatabaseManager') as mock_db_manager, \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.database.get_config") as mock_get_config,
+        patch("api.startup.database.DatabaseManager") as mock_db_manager,
+        patch.dict(os.environ, {}, clear=True),
+    ):
         mock_config = MagicMock()
         mock_config.database.get_connection_string.return_value = config_url
         mock_get_config.return_value = mock_config
@@ -92,9 +95,7 @@ async def test_init_database_raises_on_missing_url():
 
     state = APIState()
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch.dict(os.environ, {}, clear=True):
-
+    with patch("api.startup.database.get_config") as mock_get_config, patch.dict(os.environ, {}, clear=True):
         mock_config = MagicMock()
         mock_config.database = None  # No database config
         mock_get_config.return_value = mock_config
@@ -110,11 +111,12 @@ async def test_init_database_initializes_system_prompt_service():
 
     state = APIState()
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch('api.startup.database.DatabaseManager') as mock_db_manager, \
-         patch('api.startup.database.SystemPromptService') as mock_prompt_service, \
-         patch.dict(os.environ, {'DATABASE_URL': 'postgresql://localhost/test'}):
-
+    with (
+        patch("api.startup.database.get_config") as mock_get_config,
+        patch("api.startup.database.DatabaseManager") as mock_db_manager,
+        patch("api.startup.database.SystemPromptService") as mock_prompt_service,
+        patch.dict(os.environ, {"DATABASE_URL": "postgresql://localhost/test"}),
+    ):
         mock_config = MagicMock()
         mock_get_config.return_value = mock_config
 
@@ -135,13 +137,14 @@ async def test_init_database_logs_connection_info():
     from api.startup.database import init_database
 
     state = APIState()
-    db_url = 'postgresql://user:password@localhost:5432/testdb'
+    db_url = "postgresql://user:password@localhost:5432/testdb"
 
-    with patch('api.startup.database.get_config') as mock_get_config, \
-         patch('api.startup.database.DatabaseManager') as mock_db_manager, \
-         patch('api.startup.database.logger') as mock_logger, \
-         patch.dict(os.environ, {'DATABASE_URL': db_url}):
-
+    with (
+        patch("api.startup.database.get_config") as mock_get_config,
+        patch("api.startup.database.DatabaseManager") as mock_db_manager,
+        patch("api.startup.database.logger") as mock_logger,
+        patch.dict(os.environ, {"DATABASE_URL": db_url}),
+    ):
         mock_config = MagicMock()
         mock_get_config.return_value = mock_config
 
@@ -153,4 +156,4 @@ async def test_init_database_logs_connection_info():
 
         # Verify connection info was logged (without password)
         info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
-        assert any('localhost:5432/testdb' in msg for msg in info_calls)
+        assert any("localhost:5432/testdb" in msg for msg in info_calls)

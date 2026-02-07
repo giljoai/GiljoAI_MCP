@@ -16,10 +16,8 @@ Test Philosophy:
 - Exercises the REAL database.py and dependencies.py code
 """
 
-import asyncio
-import warnings
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.exc import IllegalStateChangeError
@@ -79,8 +77,7 @@ class TestSessionCleanupBehavior:
                     close_called_while_active = True
                     # This is what SQLAlchemy does in production
                     raise IllegalStateChangeError(
-                        "Method 'close()' can't be called here; "
-                        "method '_connection_for_bind()' is already in progress"
+                        "Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress"
                     )
 
         # Create a real DatabaseManager but mock the session creation
@@ -92,7 +89,7 @@ class TestSessionCleanupBehavior:
             return mock_session
 
         # Patch the AsyncSessionLocal to return our mock
-        with patch.object(DatabaseManager, '__init__', lambda self, *args, **kwargs: None):
+        with patch.object(DatabaseManager, "__init__", lambda self, *args, **kwargs: None):
             db_manager = DatabaseManager.__new__(DatabaseManager)
             db_manager.is_async = True
             db_manager.AsyncSessionLocal = mock_session_factory
@@ -103,7 +100,7 @@ class TestSessionCleanupBehavior:
                     # Session is active (simulating mid-transaction)
                     assert session.is_active, "Session should be active"
                     # Simulate GeneratorExit (what FastAPI does on HTTPException)
-                    raise GeneratorExit()
+                    raise GeneratorExit
             except GeneratorExit:
                 pass  # Expected
             except IllegalStateChangeError as e:
@@ -116,10 +113,8 @@ class TestSessionCleanupBehavior:
         # Assert BEHAVIOR
         assert close_called, "Session.close() was never called - connection leak!"
         assert not close_called_while_active, (
-            "close() was called while session was still active. "
-            "Rollback should have been called first."
+            "close() was called while session was still active. Rollback should have been called first."
         )
-
 
     @pytest.mark.asyncio
     async def test_cleanup_does_not_raise_illegal_state_change_error(self):
@@ -153,8 +148,7 @@ class TestSessionCleanupBehavior:
             async def close(self):
                 if self._in_transaction:
                     raise IllegalStateChangeError(
-                        "Method 'close()' can't be called here; "
-                        "method '_connection_for_bind()' is already in progress"
+                        "Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress"
                     )
 
         mock_session = StrictMockSession()
@@ -163,7 +157,7 @@ class TestSessionCleanupBehavior:
         def mock_session_factory():
             return mock_session
 
-        with patch.object(DatabaseManager, '__init__', lambda self, *args, **kwargs: None):
+        with patch.object(DatabaseManager, "__init__", lambda self, *args, **kwargs: None):
             db_manager = DatabaseManager.__new__(DatabaseManager)
             db_manager.is_async = True
             db_manager.AsyncSessionLocal = mock_session_factory
@@ -171,12 +165,11 @@ class TestSessionCleanupBehavior:
             # This should NOT raise IllegalStateChangeError
             try:
                 async with db_manager.get_session_async() as session:
-                    raise GeneratorExit()
+                    raise GeneratorExit
             except GeneratorExit:
                 pass
             except IllegalStateChangeError as e:
                 pytest.fail(f"IllegalStateChangeError raised during cleanup: {e}")
-
 
     @pytest.mark.asyncio
     async def test_cleanup_handles_generator_exit_as_base_exception(self):
@@ -214,7 +207,7 @@ class TestSessionCleanupBehavior:
         def mock_session_factory():
             return mock_session
 
-        with patch.object(DatabaseManager, '__init__', lambda self, *args, **kwargs: None):
+        with patch.object(DatabaseManager, "__init__", lambda self, *args, **kwargs: None):
             db_manager = DatabaseManager.__new__(DatabaseManager)
             db_manager.is_async = True
             db_manager.AsyncSessionLocal = mock_session_factory
@@ -222,7 +215,7 @@ class TestSessionCleanupBehavior:
             try:
                 async with db_manager.get_session_async() as session:
                     # GeneratorExit is BaseException, NOT Exception
-                    raise GeneratorExit()
+                    raise GeneratorExit
             except GeneratorExit:
                 pass
 
@@ -249,6 +242,7 @@ class TestFastAPIDependencySessionBehavior:
         (due to HTTPException), cleanup MUST execute.
         """
         from fastapi import Request
+
         from src.giljo_mcp.auth.dependencies import get_db_session
         from src.giljo_mcp.database import DatabaseManager
 
@@ -301,8 +295,7 @@ class TestFastAPIDependencySessionBehavior:
         await gen.aclose()
 
         assert session_closed, (
-            "Session was not closed when dependency generator was closed. "
-            "This causes connection pool leaks."
+            "Session was not closed when dependency generator was closed. This causes connection pool leaks."
         )
 
 

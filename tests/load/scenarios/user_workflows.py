@@ -9,15 +9,18 @@ Usage:
     locust -f tests/load/scenarios/user_workflows.py --host=http://localhost:7272 \
            --headless -u 10 -r 2 -t 5m
 """
-from locust import SequentialTaskSet, task, between
-import sys
+
 import os
+import sys
+
+from locust import SequentialTaskSet, between, task
+
 
 # Add parent directory to path to import locustfile
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from tests.load.locustfile import AuthenticatedUser
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import random
+
+from tests.load.locustfile import AuthenticatedUser
 
 
 class NewUserOnboarding(SequentialTaskSet):
@@ -47,13 +50,9 @@ class NewUserOnboarding(SequentialTaskSet):
         response = self.client.post(
             "/api/products",
             headers=self.user.get_headers(),
-            json={
-                "name": "My First Product",
-                "description": "Getting started with GiljoAI MCP",
-                "status": "active"
-            },
+            json={"name": "My First Product", "description": "Getting started with GiljoAI MCP", "status": "active"},
             name="Onboarding: Create First Product",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -81,10 +80,10 @@ class NewUserOnboarding(SequentialTaskSet):
                 "product_id": product["id"],
                 "name": "My First Project",
                 "description": "Learning the platform",
-                "status": "active"
+                "status": "active",
             },
             name="Onboarding: Create First Project",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -101,10 +100,7 @@ class NewUserOnboarding(SequentialTaskSet):
     def step4_view_dashboard(self):
         """User views the dashboard."""
         response = self.client.get(
-            "/api/dashboard",
-            headers=self.user.get_headers(),
-            name="Onboarding: View Dashboard",
-            catch_response=True
+            "/api/dashboard", headers=self.user.get_headers(), name="Onboarding: View Dashboard", catch_response=True
         )
 
         if response.status_code in [200, 404]:
@@ -119,10 +115,7 @@ class NewUserOnboarding(SequentialTaskSet):
     def step5_browse_templates(self):
         """User browses available templates."""
         response = self.client.get(
-            "/api/templates",
-            headers=self.user.get_headers(),
-            name="Onboarding: Browse Templates",
-            catch_response=True
+            "/api/templates", headers=self.user.get_headers(), name="Onboarding: Browse Templates", catch_response=True
         )
 
         if response.status_code == 200:
@@ -146,10 +139,10 @@ class NewUserOnboarding(SequentialTaskSet):
                 "project_id": project["id"],
                 "agent_name": "my_first_agent",
                 "agent_display_name": "implementer",
-                "mission": "Help me build something amazing"
+                "mission": "Help me build something amazing",
             },
             name="Onboarding: Create First Agent Job",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -184,10 +177,7 @@ class PowerUserWorkflow(SequentialTaskSet):
     def step2_list_all_products(self):
         """List all existing products."""
         response = self.client.get(
-            "/api/products",
-            headers=self.user.get_headers(),
-            name="Power User: List All Products",
-            catch_response=True
+            "/api/products", headers=self.user.get_headers(), name="Power User: List All Products", catch_response=True
         )
 
         if response.status_code == 200:
@@ -205,13 +195,9 @@ class PowerUserWorkflow(SequentialTaskSet):
         response = self.client.post(
             "/api/products",
             headers=self.user.get_headers(),
-            json={
-                "name": product_name,
-                "description": "New product initiative",
-                "status": "active"
-            },
+            json={"name": product_name, "description": "New product initiative", "status": "active"},
             name="Power User: Create New Product",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -234,18 +220,18 @@ class PowerUserWorkflow(SequentialTaskSet):
 
         # Create 3 projects
         for i in range(3):
-            project_name = f"Sprint {i+1} - {random.choice(['Backend', 'Frontend', 'Infrastructure'])}"
+            project_name = f"Sprint {i + 1} - {random.choice(['Backend', 'Frontend', 'Infrastructure'])}"
             response = self.client.post(
                 "/api/projects",
                 headers=self.user.get_headers(),
                 json={
                     "product_id": product["id"],
                     "name": project_name,
-                    "description": f"Sprint {i+1} work",
-                    "status": "active"
+                    "description": f"Sprint {i + 1} work",
+                    "status": "active",
                 },
                 name="Power User: Create Project",
-                catch_response=True
+                catch_response=True,
             )
 
             if response.status_code == 201:
@@ -274,10 +260,10 @@ class PowerUserWorkflow(SequentialTaskSet):
                 "project_id": project["id"],
                 "agent_name": "orchestrator_main",
                 "agent_display_name": "orchestrator",
-                "mission": "Coordinate development tasks"
+                "mission": "Coordinate development tasks",
             },
             name="Power User: Create Orchestrator",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -289,7 +275,7 @@ class PowerUserWorkflow(SequentialTaskSet):
 
         # Create implementer agents
         for i in range(2):
-            agent_name = f"implementer_{i+1}"
+            agent_name = f"implementer_{i + 1}"
             response = self.client.post(
                 "/api/agent-jobs",
                 headers=self.user.get_headers(),
@@ -297,10 +283,10 @@ class PowerUserWorkflow(SequentialTaskSet):
                     "project_id": project["id"],
                     "agent_name": agent_name,
                     "agent_display_name": "implementer",
-                    "mission": f"Implement feature {i+1}"
+                    "mission": f"Implement feature {i + 1}",
                 },
                 name="Power User: Create Implementer",
-                catch_response=True
+                catch_response=True,
             )
 
             if response.status_code == 201:
@@ -313,10 +299,7 @@ class PowerUserWorkflow(SequentialTaskSet):
         """Monitor job progress across projects."""
         # List all agent jobs
         response = self.client.get(
-            "/api/agent-jobs",
-            headers=self.user.get_headers(),
-            name="Power User: Monitor All Jobs",
-            catch_response=True
+            "/api/agent-jobs", headers=self.user.get_headers(), name="Power User: Monitor All Jobs", catch_response=True
         )
 
         if response.status_code == 200:
@@ -332,7 +315,7 @@ class PowerUserWorkflow(SequentialTaskSet):
             self.client.get(
                 f"/api/projects/{project['id']}",
                 headers=self.user.get_headers(),
-                name="Power User: Check Project Status"
+                name="Power User: Check Project Status",
             )
 
         self.wait()
@@ -347,12 +330,9 @@ class PowerUserWorkflow(SequentialTaskSet):
         response = self.client.put(
             f"/api/projects/{project['id']}",
             headers=self.user.get_headers(),
-            json={
-                "name": project["name"],
-                "status": random.choice(["active", "in_progress", "completed"])
-            },
+            json={"name": project["name"], "status": random.choice(["active", "in_progress", "completed"])},
             name="Power User: Update Project Status",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -386,10 +366,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
     def step2_view_shared_products(self):
         """View products shared with team."""
         response = self.client.get(
-            "/api/products",
-            headers=self.user.get_headers(),
-            name="Team: View Shared Products",
-            catch_response=True
+            "/api/products", headers=self.user.get_headers(), name="Team: View Shared Products", catch_response=True
         )
 
         if response.status_code == 200:
@@ -404,10 +381,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
     def step3_select_active_project(self):
         """Select and view active project."""
         response = self.client.get(
-            "/api/projects",
-            headers=self.user.get_headers(),
-            name="Team: List Projects",
-            catch_response=True
+            "/api/projects", headers=self.user.get_headers(), name="Team: List Projects", catch_response=True
         )
 
         if response.status_code == 200:
@@ -418,9 +392,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
             if self.user.projects:
                 project = self.user.projects[0]
                 self.client.get(
-                    f"/api/projects/{project['id']}",
-                    headers=self.user.get_headers(),
-                    name="Team: View Project Details"
+                    f"/api/projects/{project['id']}", headers=self.user.get_headers(), name="Team: View Project Details"
                 )
         else:
             response.failure(f"Failed to list projects: {response.status_code}")
@@ -431,10 +403,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
     def step4_review_agent_jobs(self):
         """Review existing agent jobs."""
         response = self.client.get(
-            "/api/agent-jobs",
-            headers=self.user.get_headers(),
-            name="Team: Review Agent Jobs",
-            catch_response=True
+            "/api/agent-jobs", headers=self.user.get_headers(), name="Team: Review Agent Jobs", catch_response=True
         )
 
         if response.status_code == 200:
@@ -459,10 +428,10 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
                 "project_id": project["id"],
                 "agent_name": f"team_task_{random.randint(1, 100)}",
                 "agent_display_name": random.choice(["implementer", "reviewer", "tester"]),
-                "mission": "Team collaboration task"
+                "mission": "Team collaboration task",
             },
             name="Team: Create Task",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -477,9 +446,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
         if self.user.projects:
             project = self.user.projects[0]
             self.client.get(
-                f"/api/projects/{project['id']}",
-                headers=self.user.get_headers(),
-                name="Team: Monitor Activity"
+                f"/api/projects/{project['id']}", headers=self.user.get_headers(), name="Team: Monitor Activity"
             )
 
         self.wait()
@@ -488,6 +455,7 @@ class TeamCollaborationWorkflow(SequentialTaskSet):
 # User classes for different workflows
 class OnboardingUser(AuthenticatedUser):
     """User going through onboarding workflow."""
+
     tasks = [NewUserOnboarding]
     wait_time = between(2, 5)
     weight = 2
@@ -495,6 +463,7 @@ class OnboardingUser(AuthenticatedUser):
 
 class PowerUser(AuthenticatedUser):
     """Power user with heavy usage."""
+
     tasks = [PowerUserWorkflow]
     wait_time = between(1, 3)
     weight = 3
@@ -502,6 +471,7 @@ class PowerUser(AuthenticatedUser):
 
 class TeamMember(AuthenticatedUser):
     """Team member collaborating on projects."""
+
     tasks = [TeamCollaborationWorkflow]
     wait_time = between(2, 4)
     weight = 2

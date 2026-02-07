@@ -4,21 +4,20 @@ Integration test for Message Auto-Acknowledge feature (Handover 0326)
 Tests that receive_messages automatically acknowledges messages when retrieved.
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from src.giljo_mcp.services.message_service import MessageService
+import pytest
+
 from src.giljo_mcp.models import Message
+from src.giljo_mcp.services.message_service import MessageService
 
 
 class TestMessageAutoAcknowledge:
     """Test auto-acknowledge functionality in receive_messages"""
 
     @pytest.mark.asyncio
-    async def test_receive_messages_auto_acknowledges(
-        self, db_manager, tenant_manager
-    ):
+    async def test_receive_messages_auto_acknowledges(self, db_manager, tenant_manager):
         """
         Test that receive_messages automatically acknowledges messages when retrieved.
 
@@ -29,7 +28,7 @@ class TestMessageAutoAcknowledge:
         # Create test data: project and agent job
         # We create everything in separate sessions and commit to ensure
         # data is visible across all sessions (not using db_session fixture)
-        from giljo_mcp.models import Project, AgentExecution
+        from giljo_mcp.models import AgentExecution, Project
         from giljo_mcp.tenant import TenantManager
 
         tenant_key = TenantManager.generate_tenant_key(f"test_auto_ack_{uuid4().hex[:8]}")
@@ -102,11 +101,7 @@ class TestMessageAutoAcknowledge:
         # Act: Create service and receive messages
         message_service = MessageService(db_manager, tenant_manager)
 
-        result = await message_service.receive_messages(
-            agent_id=job_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        result = await message_service.receive_messages(agent_id=job_id, limit=10, tenant_key=tenant_key)
 
         # Assert: Verify response
         assert result["success"] is True, f"receive_messages failed: {result.get('error', 'unknown error')}"
@@ -122,6 +117,7 @@ class TestMessageAutoAcknowledge:
         # Assert: Verify database records are updated to acknowledged status
         async with db_manager.get_session_async() as verify_session:
             from sqlalchemy import select
+
             result = await verify_session.execute(select(Message).where(Message.id == msg1_id))
             db_msg1 = result.scalar_one()
 
@@ -137,9 +133,7 @@ class TestMessageAutoAcknowledge:
             assert db_msg2.acknowledged_by == [job_id], "Message 2 acknowledged_by not set correctly"
 
     @pytest.mark.asyncio
-    async def test_receive_messages_respects_limit(
-        self, db_manager, tenant_manager
-    ):
+    async def test_receive_messages_respects_limit(self, db_manager, tenant_manager):
         """
         Test that auto-acknowledge only applies to messages returned (respects limit).
 
@@ -147,7 +141,7 @@ class TestMessageAutoAcknowledge:
         WHEN: Agent calls receive_messages with limit=2
         THEN: Only 2 messages are returned and acknowledged, 3 remain pending
         """
-        from giljo_mcp.models import Project, AgentExecution
+        from giljo_mcp.models import AgentExecution, Project
         from giljo_mcp.tenant import TenantManager
 
         # Create isolated test data
@@ -194,7 +188,7 @@ class TestMessageAutoAcknowledge:
                     project_id=project_id,
                     to_agents=[job_id],
                     message_type="direct",
-                    content=f"Test message {i+1}",
+                    content=f"Test message {i + 1}",
                     priority="normal",
                     status="waiting",
                     created_at=datetime.now(timezone.utc),
@@ -208,11 +202,7 @@ class TestMessageAutoAcknowledge:
         # Act: Receive only 2 messages
         message_service = MessageService(db_manager, tenant_manager)
 
-        result = await message_service.receive_messages(
-            agent_id=job_id,
-            limit=2,
-            tenant_key=tenant_key
-        )
+        result = await message_service.receive_messages(agent_id=job_id, limit=2, tenant_key=tenant_key)
 
         # Assert: Only 2 messages returned and acknowledged
         assert result["success"] is True
@@ -222,9 +212,8 @@ class TestMessageAutoAcknowledge:
         # Verify exactly 2 are acknowledged, 3 remain pending
         async with db_manager.get_session_async() as verify_session:
             from sqlalchemy import select
-            db_messages = await verify_session.execute(
-                select(Message).where(Message.id.in_(message_ids))
-            )
+
+            db_messages = await verify_session.execute(select(Message).where(Message.id.in_(message_ids)))
             all_messages = db_messages.scalars().all()
 
             acknowledged_count = sum(1 for msg in all_messages if msg.status == "acknowledged")
@@ -234,9 +223,7 @@ class TestMessageAutoAcknowledge:
             assert pending_count == 3, "Should have exactly 3 pending messages"
 
     @pytest.mark.asyncio
-    async def test_receive_messages_broadcast_acknowledged_per_agent(
-        self, db_manager, tenant_manager
-    ):
+    async def test_receive_messages_broadcast_acknowledged_per_agent(self, db_manager, tenant_manager):
         """
         Test that broadcast messages are acknowledged independently per agent.
 
@@ -244,7 +231,7 @@ class TestMessageAutoAcknowledge:
         WHEN: One agent receives the message
         THEN: Message is acknowledged by that agent only
         """
-        from giljo_mcp.models import Project, AgentExecution
+        from giljo_mcp.models import AgentExecution, Project
         from giljo_mcp.tenant import TenantManager
 
         # Create isolated test data
@@ -312,11 +299,7 @@ class TestMessageAutoAcknowledge:
         # Act: Agent1 receives the broadcast
         message_service = MessageService(db_manager, tenant_manager)
 
-        result1 = await message_service.receive_messages(
-            agent_id=agent1_job_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        result1 = await message_service.receive_messages(agent_id=agent1_job_id, limit=10, tenant_key=tenant_key)
 
         # Assert: Agent1 received and acknowledged the message
         assert result1["success"] is True
@@ -325,6 +308,7 @@ class TestMessageAutoAcknowledge:
         # Verify message from database
         async with db_manager.get_session_async() as verify_session:
             from sqlalchemy import select
+
             result = await verify_session.execute(select(Message).where(Message.id == msg_id))
             db_msg = result.scalar_one()
 
@@ -335,11 +319,7 @@ class TestMessageAutoAcknowledge:
         # Act: Agent2 receives the broadcast (should still be available since status is shared)
         # Note: This tests the current behavior - broadcast messages become acknowledged
         # after first agent receives them. This may need adjustment based on requirements.
-        result2 = await message_service.receive_messages(
-            agent_id=agent2_job_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        result2 = await message_service.receive_messages(agent_id=agent2_job_id, limit=10, tenant_key=tenant_key)
 
         # For now, verify that the message was already acknowledged by agent1
         # Agent2 won't receive it since status="acknowledged" filters it out
