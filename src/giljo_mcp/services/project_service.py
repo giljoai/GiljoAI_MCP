@@ -2565,7 +2565,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
                     }
                 )
-            except Exception:
+            except Exception:  # noqa: PERF203 - Nuclear delete resilience: continue on failures
                 self._logger.exception("Failed to nuclear delete project {project.id}")
 
         self._logger.info(
@@ -2651,7 +2651,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     f"[Nuclear Purge] Auto-purged expired project {project.id} "
                     f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
                 )
-            except Exception:
+            except Exception:  # noqa: PERF203 - Nuclear delete resilience: continue on failures
                 self._logger.exception("Failed to nuclear delete expired project {project.id}")
 
         self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")
