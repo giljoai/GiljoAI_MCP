@@ -34,8 +34,8 @@ class TemplateValidationResult:
     """Container for validation results."""
 
     is_valid: bool
-    errors: List[ValidationError]
-    warnings: List[ValidationError]
+    errors: list[ValidationError]
+    warnings: list[ValidationError]
     template_id: str
     validated_at: datetime
     validation_duration_ms: float
@@ -95,7 +95,7 @@ class TemplateValidator:
                          If None, caching is disabled.
         """
         self.redis = redis_client
-        self.rules: List[ValidationRule] = []
+        self.rules: list[ValidationRule] = []
         self._lock = threading.Lock()
         self._register_core_rules()
 
@@ -159,7 +159,7 @@ class TemplateValidator:
 
     def _run_all_rules(
         self, content: str, agent_display_name: str
-    ) -> tuple[List[ValidationError], List[ValidationError]]:
+    ) -> tuple[list[ValidationError], list[ValidationError]]:
         """
         Execute all validation rules.
 

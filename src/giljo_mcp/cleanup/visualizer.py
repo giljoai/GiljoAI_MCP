@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Set
 
 
-def extract_python_imports(file_path: Path) -> List[str]:
+def extract_python_imports(file_path: Path) -> list[str]:
     """Extract imported modules from Python file using AST parsing."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -32,7 +32,7 @@ def extract_python_imports(file_path: Path) -> List[str]:
         return []
 
 
-def extract_vue_imports(file_path: Path) -> List[str]:
+def extract_vue_imports(file_path: Path) -> list[str]:
     """Extract imported modules from Vue/JS file using regex."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -76,7 +76,7 @@ def classify_layer(file_path: Path, root_path: Path) -> str:
     return "docs"
 
 
-def resolve_import_to_file(import_name: str, source_file: Path, root_path: Path, all_files: Set[Path]):
+def resolve_import_to_file(import_name: str, source_file: Path, root_path: Path, all_files: set[Path]):
     """Attempt to resolve an import statement to an actual file path."""
     # Handle relative imports
     if import_name.startswith("."):
@@ -110,7 +110,7 @@ def resolve_import_to_file(import_name: str, source_file: Path, root_path: Path,
     return None
 
 
-def build_dependency_graph(root_path: Path) -> Dict:
+def build_dependency_graph(root_path: Path) -> dict:
     print(f"Scanning codebase from: {root_path}")
     include_dirs = ["src", "api", "frontend/src"]
     extensions = {".py", ".vue", ".js", ".ts"}
@@ -172,7 +172,7 @@ def build_dependency_graph(root_path: Path) -> Dict:
     return {"nodes": nodes, "edges": edges, "file_map": file_map}
 
 
-def detect_circular_dependencies(graph: Dict) -> List[List[int]]:
+def detect_circular_dependencies(graph: dict) -> list[list[int]]:
     nodes = graph["nodes"]
     cycles, visited, rec_stack, path = [], set(), set(), []
 
@@ -198,7 +198,7 @@ def detect_circular_dependencies(graph: Dict) -> List[List[int]]:
     return cycles
 
 
-def analyze_dependencies(graph: Dict) -> Dict:
+def analyze_dependencies(graph: dict) -> dict:
     print("Analyzing dependencies...")
     nodes = graph["nodes"]
     entry_points = {"main.py", "app.py", "run_api.py", "startup.py", "install.py", "__init__.py"}
@@ -239,7 +239,7 @@ def analyze_dependencies(graph: Dict) -> Dict:
     }
 
 
-def enrich_with_cleanup_index(graph: Dict, cleanup_index_path: Path) -> Dict:
+def enrich_with_cleanup_index(graph: dict, cleanup_index_path: Path) -> dict:
     if not cleanup_index_path.exists():
         return graph
     print("Enriching with cleanup_index.json...")
@@ -263,7 +263,7 @@ def enrich_with_cleanup_index(graph: Dict, cleanup_index_path: Path) -> Dict:
     return graph
 
 
-def export_graph_data(graph: Dict, cleanup_index_path: Path, output_path: Path):
+def export_graph_data(graph: dict, cleanup_index_path: Path, output_path: Path):
     enriched = enrich_with_cleanup_index(graph, cleanup_index_path)
     d3_data = {"nodes": enriched["nodes"], "links": enriched["edges"]}
     output_path.parent.mkdir(parents=True, exist_ok=True)

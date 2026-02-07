@@ -29,7 +29,7 @@ def estimate_tokens(data: Any) -> int:
 
 async def get_tech_stack(
     product_id: str, tenant_key: str, offset: int = 0, limit: int = None, db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch tech stack information for given product.
 

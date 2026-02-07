@@ -33,15 +33,15 @@ class ProductMemoryRepository:
         project_id: Optional[UUID] = None,
         project_name: Optional[str] = None,
         summary: Optional[str] = None,
-        key_outcomes: Optional[List[str]] = None,
-        decisions_made: Optional[List[str]] = None,
-        git_commits: Optional[List[Dict[str, Any]]] = None,
-        deliverables: Optional[List[str]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
+        key_outcomes: Optional[list[str]] = None,
+        decisions_made: Optional[list[str]] = None,
+        git_commits: Optional[list[dict[str, Any]]] = None,
+        deliverables: Optional[list[str]] = None,
+        metrics: Optional[dict[str, Any]] = None,
         priority: int = 3,
         significance_score: float = 0.5,
         token_estimate: Optional[int] = None,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         author_job_id: Optional[UUID] = None,
         author_name: Optional[str] = None,
         author_type: Optional[str] = None,
@@ -107,7 +107,7 @@ class ProductMemoryRepository:
         limit: Optional[int] = None,
         offset: int = 0,
         include_deleted: bool = False,
-    ) -> List[ProductMemoryEntry]:
+    ) -> list[ProductMemoryEntry]:
         """
         Get 360 memory entries for a product with pagination.
 
@@ -270,7 +270,7 @@ class ProductMemoryRepository:
         product_id: UUID,
         tenant_key: str,
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get entries formatted for context (mission planning).
 
@@ -300,7 +300,7 @@ class ProductMemoryRepository:
         product_id: UUID,
         tenant_key: str,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get aggregated git commits from all entries.
 

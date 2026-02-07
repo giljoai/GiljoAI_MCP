@@ -25,8 +25,8 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         self._dsn = dsn
         self._channel = channel
         self._handlers: set[BrokerHandler] = set()
-        self._listen_conn: Optional[asyncpg.Connection] = None
-        self._publish_pool: Optional[asyncpg.Pool] = None
+        self._listen_conn: asyncpg.Connection | None = None
+        self._publish_pool: asyncpg.Pool | None = None
         self._lock = asyncio.Lock()
 
     async def start(self) -> None:

@@ -125,7 +125,7 @@ class JWTManager:
         return jwt.encode(payload, secret_key, algorithm=cls.ALGORITHM)
 
     @classmethod
-    def verify_token(cls, token: str) -> Dict:
+    def verify_token(cls, token: str) -> dict:
         """
         Verify and decode JWT token.
 
@@ -176,7 +176,7 @@ class JWTManager:
             ) from e
 
     @classmethod
-    def decode_token_no_verify(cls, token: str) -> Dict:
+    def decode_token_no_verify(cls, token: str) -> dict:
         """
         Decode JWT token without verification (for debugging/testing only).
 

@@ -32,13 +32,13 @@ def _get_server_url() -> str:
     return url
 
 
-def _get_api_key() -> Optional[str]:
+def _get_api_key() -> str | None:
     return os.getenv(API_KEY_ENV)
 
 
-def _auth_headers() -> Dict[str, str]:
+def _auth_headers() -> dict[str, str]:
     api_key = _get_api_key()
-    headers: Dict[str, str] = {}
+    headers: dict[str, str] = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     return headers
@@ -48,11 +48,11 @@ server = Server("giljo-mcp-stdin-proxy")
 
 
 @server.list_tools()
-async def list_tools() -> List[types.Tool]:
+async def list_tools() -> list[types.Tool]:
     """Proxy tools/list to HTTP /mcp."""
     server_url = _get_server_url()
     async with httpx.AsyncClient(base_url=server_url, timeout=30.0) as client:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/list",
@@ -65,7 +65,7 @@ async def list_tools() -> List[types.Tool]:
             raise RuntimeError(f"Backend MCP error during tools/list: {body['error']}")
         tools_raw = (body.get("result") or {}).get("tools", [])
 
-        tools: List[types.Tool] = []
+        tools: list[types.Tool] = []
         for t in tools_raw:
             tools.append(
                 types.Tool(
@@ -78,11 +78,11 @@ async def list_tools() -> List[types.Tool]:
 
 
 @server.call_tool()
-async def call_tool(name: str, arguments: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Proxy tools/call to HTTP /mcp."""
     server_url = _get_server_url()
     async with httpx.AsyncClient(base_url=server_url, timeout=60.0) as client:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/call",

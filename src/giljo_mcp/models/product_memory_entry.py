@@ -221,7 +221,7 @@ class ProductMemoryEntry(Base):
     def __repr__(self) -> str:
         return f"<ProductMemoryEntry(id={self.id}, product_id={self.product_id}, sequence={self.sequence}, type={self.entry_type})>"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary (matching JSONB entry format for compatibility)."""
         return {
             "id": str(self.id),

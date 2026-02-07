@@ -56,7 +56,7 @@ class BaseRepository(Generic[T]):
         session.flush()
         return entity
 
-    async def get_by_id(self, session: AsyncSession, tenant_key: str, entity_id: str) -> Optional[T]:
+    async def get_by_id(self, session: AsyncSession, tenant_key: str, entity_id: str) -> T | None:
         """
         Get entity by ID with tenant filter.
 
@@ -75,7 +75,7 @@ class BaseRepository(Generic[T]):
         )
         return result.scalar_one_or_none()
 
-    async def list_all(self, session: AsyncSession, tenant_key: str) -> List[T]:
+    async def list_all(self, session: AsyncSession, tenant_key: str) -> list[T]:
         """
         List all entities for tenant.
 

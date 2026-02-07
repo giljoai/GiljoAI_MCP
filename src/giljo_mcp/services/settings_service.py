@@ -35,7 +35,7 @@ class SettingsService:
         self.session = session
         self.tenant_key = tenant_key
 
-    async def get_settings(self, category: str) -> Dict[str, Any]:
+    async def get_settings(self, category: str) -> dict[str, Any]:
         """
         Get settings for category.
 
@@ -60,7 +60,7 @@ class SettingsService:
 
         return settings.settings_data or {}
 
-    async def update_settings(self, category: str, settings_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_settings(self, category: str, settings_data: dict[str, Any]) -> dict[str, Any]:
         """
         Update settings for category (upsert).
 

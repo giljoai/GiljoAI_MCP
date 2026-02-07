@@ -41,7 +41,7 @@ class AgentJobRepository:
         agent_display_name: str,
         mission: str,
         spawned_by: Optional[str] = None,
-        context_chunks: Optional[List[str]] = None,
+        context_chunks: Optional[list[str]] = None,
     ) -> AgentJob:
         """
         Create a new agent job.
@@ -130,7 +130,7 @@ class AgentJobRepository:
 
     async def get_active_jobs(
         self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
-    ) -> List[AgentJob]:
+    ) -> list[AgentJob]:
         """
         Get all active jobs (pending or active status).
 
@@ -151,7 +151,7 @@ class AgentJobRepository:
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> List[AgentJob]:
+    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> list[AgentJob]:
         """
         Get all jobs with a specific status.
 
@@ -170,7 +170,7 @@ class AgentJobRepository:
         )
         return list(result.scalars().all())
 
-    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> List[AgentJob]:
+    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> list[AgentJob]:
         """
         Get all jobs spawned by a specific agent.
 
@@ -189,7 +189,7 @@ class AgentJobRepository:
         )
         return list(result.scalars().all())
 
-    async def add_message(self, session: AsyncSession, tenant_key: str, job_id: str, message: Dict[str, Any]) -> bool:
+    async def add_message(self, session: AsyncSession, tenant_key: str, job_id: str, message: dict[str, Any]) -> bool:
         """
         Add message to job's message array.
 
@@ -277,7 +277,7 @@ class AgentJobRepository:
 
     async def get_job_statistics(
         self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get job statistics for a tenant.
 

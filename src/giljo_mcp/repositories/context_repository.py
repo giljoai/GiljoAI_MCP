@@ -42,7 +42,7 @@ class ContextRepository:
         tenant_key: str,
         product_id: str,
         content: str,
-        keywords: List[str],
+        keywords: list[str],
         token_count: int,
         chunk_order: int,
         summary: Optional[str] = None,
@@ -76,7 +76,7 @@ class ContextRepository:
 
     async def search_chunks(
         self, session: AsyncSession, tenant_key: str, product_id: str, query: str, limit: int = 10
-    ) -> List[MCPContextIndex]:
+    ) -> list[MCPContextIndex]:
         """
         Search chunks by keywords using PostgreSQL full-text search.
 
@@ -135,7 +135,7 @@ class ContextRepository:
 
     async def get_chunks_by_product(
         self, session: AsyncSession, tenant_key: str, product_id: str
-    ) -> List[MCPContextIndex]:
+    ) -> list[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
@@ -283,7 +283,7 @@ class ContextRepository:
 
     async def get_summaries_by_product(
         self, session: AsyncSession, tenant_key: str, product_id: str
-    ) -> List[MCPContextSummary]:
+    ) -> list[MCPContextSummary]:
         """
         Get all summaries for a product.
 

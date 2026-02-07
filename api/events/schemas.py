@@ -100,7 +100,7 @@ class ProjectMissionUpdatedData(BaseModel):
         default="orchestrator", description="Source of mission generation"
     )
     user_config_applied: bool = Field(default=False, description="Whether user configuration was applied")
-    field_priorities: Optional[Dict[str, int]] = Field(
+    field_priorities: Optional[dict[str, int]] = Field(
         None, description="Field priorities used in generation (1-5 scale)"
     )
 
@@ -152,11 +152,11 @@ class AgentCreatedData(BaseModel):
 
     project_id: str = Field(..., description="Project UUID as string")
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
-    agent: Dict[str, Any] = Field(..., description="Complete agent job data")
+    agent: dict[str, Any] = Field(..., description="Complete agent job data")
 
     @field_validator("agent")
     @classmethod
-    def validate_agent_data(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_agent_data(cls, v: dict[str, Any]) -> dict[str, Any]:
         """
         Validate agent data contains minimum required fields.
 
@@ -429,7 +429,7 @@ class EventFactory:
     def tenant_envelope(
         event_type: str,
         tenant_key: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         schema_version: str = "1.0",
     ) -> dict:
         """Create a canonical tenant-scoped event envelope."""
@@ -456,7 +456,7 @@ class EventFactory:
         mission: str,
         generated_by: Literal["orchestrator", "user"] = "orchestrator",
         user_config_applied: bool = False,
-        field_priorities: Optional[Dict[str, int]] = None,
+        field_priorities: Optional[dict[str, int]] = None,
     ) -> dict:
         """
         Create project:mission_updated event.
@@ -501,7 +501,7 @@ class EventFactory:
     def agent_created(
         project_id: Union[str, UUID],
         tenant_key: str,
-        agent: Dict[str, Any],
+        agent: dict[str, Any],
     ) -> dict:
         """
         Create agent:created event.

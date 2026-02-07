@@ -104,7 +104,7 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> Tuple[float, int]:
+    ) -> tuple[float, int]:
         """
         Get average and peak context usage across all projects.
 
@@ -132,7 +132,7 @@ class StatisticsRepository:
         status: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Project]:
+    ) -> list[Project]:
         """
         Get projects with optional status filter and pagination.
 
@@ -350,7 +350,7 @@ class StatisticsRepository:
         project_id: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 100,
-    ) -> List[AgentExecution]:
+    ) -> list[AgentExecution]:
         """
         Get agent executions with optional filters.
 

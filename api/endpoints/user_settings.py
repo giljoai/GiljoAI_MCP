@@ -38,7 +38,7 @@ class CookieDomainsResponse(BaseModel):
         json_schema_extra={"example": {"domains": ["localhost", "example.com", "subdomain.example.com"]}}
     )
 
-    domains: List[str] = Field(description="List of whitelisted cookie domains")
+    domains: list[str] = Field(description="List of whitelisted cookie domains")
 
 
 class AddCookieDomainRequest(BaseModel):
@@ -187,7 +187,7 @@ def _write_config(config: dict) -> None:
         ) from e
 
 
-def _get_cookie_domains(config: dict) -> List[str]:
+def _get_cookie_domains(config: dict) -> list[str]:
     """
     Extract cookie domain whitelist from config.
 
@@ -200,7 +200,7 @@ def _get_cookie_domains(config: dict) -> List[str]:
     return config.get("security", {}).get("cookie_domain_whitelist", [])
 
 
-def _set_cookie_domains(config: dict, domains: List[str]) -> None:
+def _set_cookie_domains(config: dict, domains: list[str]) -> None:
     """
     Update cookie domain whitelist in config.
 

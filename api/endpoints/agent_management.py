@@ -40,7 +40,7 @@ class VisionUploadResponse(BaseModel):
 class ContextChunkResponse(BaseModel):
     chunk_id: str
     content: str
-    keywords: List[str]
+    keywords: list[str]
     token_count: int
     chunk_order: int
     summary: Optional[str]
@@ -57,7 +57,7 @@ class AgentJobCreate(BaseModel):
     agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Agent mission/instructions")
     spawned_by: Optional[str] = Field(None, description="Agent ID that spawned this job")
-    context_chunks: List[str] = Field(default_factory=list, description="Context chunk IDs")
+    context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
 
 
 class AgentJobResponse(BaseModel):
@@ -67,7 +67,7 @@ class AgentJobResponse(BaseModel):
     status: str
     spawned_by: Optional[str]
     template_id: Optional[str] = None  # Handover 0244a: Link to source template
-    context_chunks: List[str]
+    context_chunks: list[str]
     created_at: datetime
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
@@ -78,7 +78,7 @@ class AgentJobStatusUpdate(BaseModel):
 
 
 class AgentJobMessage(BaseModel):
-    message: Dict[str, Any] = Field(..., description="Message object to add")
+    message: dict[str, Any] = Field(..., description="Message object to add")
 
 
 class TokenReductionStats(BaseModel):
@@ -94,7 +94,7 @@ class TokenReductionStats(BaseModel):
 # Use POST /api/v1/products/{product_id}/vision instead
 
 
-@router.get("/agent-jobs/active", response_model=List[AgentJobResponse])
+@router.get("/agent-jobs/active", response_model=list[AgentJobResponse])
 async def get_active_agent_jobs(
     agent_display_name: Optional[str] = Query(None, description="Filter by agent display name"),
     tenant_key: str = Depends(get_tenant_key),
@@ -297,7 +297,7 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/context/search", response_model=List[ContextChunkResponse])
+@router.post("/context/search", response_model=list[ContextChunkResponse])
 async def search_context(search_data: ContextSearchRequest, tenant_key: str = Depends(get_tenant_key)):
     """Full-text search on vision chunks."""
     from api.app import state
@@ -339,7 +339,7 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/context/product/{product_id}/chunks", response_model=List[ContextChunkResponse])
+@router.get("/context/product/{product_id}/chunks", response_model=list[ContextChunkResponse])
 async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get all context chunks for a product."""
     from api.app import state

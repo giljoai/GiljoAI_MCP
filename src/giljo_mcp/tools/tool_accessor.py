@@ -166,7 +166,7 @@ class ToolAccessor:
 
     async def list_projects(
         self, status: Optional[str] = None, tenant_key: Optional[str] = None
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
         return await self._project_service.list_projects(status=status, tenant_key=tenant_key)
 
