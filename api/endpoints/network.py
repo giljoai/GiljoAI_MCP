@@ -67,7 +67,7 @@ async def detect_ip():
         # Create NetworkManager with minimal settings
         settings = {
             "mode": "server",  # Use server mode for network detection
-            "bind": "0.0.0.0",  # noqa: S104 - Local network access for detection, firewall-controlled
+            "bind": "0.0.0.0",
         }
 
         network_manager = NetworkManager(settings)

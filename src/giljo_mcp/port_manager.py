@@ -120,7 +120,7 @@ class PortManager:
         import random
 
         for _ in range(10):
-            port = random.randint(7200, 9999)  # noqa: S311 - Fallback port selection (non-security-critical)
+            port = random.randint(7200, 9999)
             if PortManager.check_port_available(port):
                 logger.warning(f"Using random available port {port} (preferred {preferred} was occupied)")
                 return port

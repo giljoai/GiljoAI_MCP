@@ -73,7 +73,7 @@ def get_server_url() -> str:
         port = config.api.port if hasattr(config, "api") else 7272
 
         # Use localhost if host is 0.0.0.0 (not accessible from external)
-        if host == "0.0.0.0":  # noqa: S104 - Checking bind address, not setting it
+        if host == "0.0.0.0":
             host = "localhost"
 
         return f"http://{host}:{port}"

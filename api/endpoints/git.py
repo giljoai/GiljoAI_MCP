@@ -118,7 +118,7 @@ async def toggle_git_integration(
                 data={"enabled": request.enabled, "settings": config["features"]["git_integration"]},
             )
             logger.info(f"[WEBSOCKET] Broadcasted git integration change to tenant {tenant_key}")
-        except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+        except Exception as ws_error:
             logger.warning(f"[WEBSOCKET] Failed to broadcast git integration update: {ws_error}")
 
         return GitToggleResponse(
