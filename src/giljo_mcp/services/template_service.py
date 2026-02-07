@@ -107,21 +107,20 @@ class TemplateService:
                 result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
                 templates = result.scalars().all()
 
-                template_list = []
-                for t in templates:
-                    template_list.append(
-                        {
-                            "id": str(t.id),
-                            "name": t.name,
-                            "role": t.role,
-                            "content": t.system_instructions,
-                            "cli_tool": t.cli_tool,
-                            "background_color": t.background_color,
-                            "category": t.category,
-                            "tenant_key": t.tenant_key,
-                            "product_id": t.product_id,
-                        }
-                    )
+                template_list = [
+                    {
+                        "id": str(t.id),
+                        "name": t.name,
+                        "role": t.role,
+                        "content": t.system_instructions,
+                        "cli_tool": t.cli_tool,
+                        "background_color": t.background_color,
+                        "category": t.category,
+                        "tenant_key": t.tenant_key,
+                        "product_id": t.product_id,
+                    }
+                    for t in templates
+                ]
 
                 return {"success": True, "templates": template_list, "count": len(template_list)}
 
@@ -490,7 +489,7 @@ class TemplateService:
             select(AgentTemplate.role)
             .where(
                 AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,
+                AgentTemplate.is_active,
                 AgentTemplate.id != template_id,
             )
             .where(AgentTemplate.role.notin_(system_roles))
@@ -977,7 +976,7 @@ class TemplateService:
         stmt = (
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
-            .where(AgentTemplate.is_active == True)
+            .where(AgentTemplate.is_active)
             .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
             .order_by(AgentTemplate.role, AgentTemplate.name)
         )
@@ -1012,7 +1011,7 @@ class TemplateService:
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
             .where(AgentTemplate.role == role)
-            .where(AgentTemplate.is_active == True)
+            .where(AgentTemplate.is_active)
         )
 
         result = await session.execute(stmt)
