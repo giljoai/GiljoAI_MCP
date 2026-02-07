@@ -44,8 +44,8 @@ def build_hub_table_html(hub_files):
 <!-- Hub Files Analysis Table -->
 <div id="hub-files-section">
   <div id="hub-header" onclick="toggleHubTable()">
-    <h2>Critical Hub Files (50+ Dependents) <span id="hub-toggle">▼</span></h2>
-    <p class="subtitle">Files with high dependency counts that may need refactoring to reduce coupling</p>
+    <h2>All Files Analysis <span id="hub-toggle">▼</span></h2>
+    <p class="subtitle">Complete file listing - sortable by dependencies, risk, TODOs, and more</p>
   </div>
 
   <div id="hub-content">
@@ -72,6 +72,55 @@ def build_hub_table_html(hub_files):
 </div>
 
 <style>
+/* Enhanced tooltip styles for click-to-pin */
+#tooltip {{
+  max-width: 400px !important;
+  max-height: 500px !important;
+  overflow-y: auto;
+}}
+
+#tooltip .tooltip-header {{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}}
+
+#tooltip .tooltip-title {{
+  font-weight: 600;
+  color: #60a5fa;
+  font-size: 14px;
+}}
+
+#tooltip .tooltip-close {{
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+  transition: color 0.2s;
+}}
+
+#tooltip .tooltip-close:hover {{
+  color: #ef4444;
+}}
+
+#tooltip .tooltip-hint {{
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #475569;
+  font-size: 10px;
+  color: #64748b;
+  font-style: italic;
+}}
+
+#tooltip .risk-low {{ color: #22c55e; }}
+#tooltip .risk-medium {{ color: #eab308; }}
+#tooltip .risk-high {{ color: #f97316; }}
+#tooltip .risk-critical {{ color: #ef4444; }}
+
 #hub-files-section {{
   position: absolute;
   bottom: 20px;
@@ -345,6 +394,140 @@ function sortTable(columnIndex) {{
     }}
   }});
 }}
+
+// ========== PERSISTENT TOOLTIP ENHANCEMENT ==========
+// Override D3 tooltip behavior for click-to-pin functionality
+
+(function() {{
+  // Wait for D3 graph to be ready
+  setTimeout(function() {{
+    let pinnedTooltip = null;
+    const tooltip = d3.select("#tooltip");
+    const nodes = d3.selectAll(".node");
+
+    // Layer colors for consistency
+    const layerColors = {{
+      'model': '#3b82f6',
+      'service': '#22c55e',
+      'api': '#eab308',
+      'tool': '#a855f7',
+      'util': '#06b6d4',
+      'test': '#f97316',
+      'docs': '#64748b',
+      'config': '#ec4899',
+      'frontend': '#a855f7',
+      'script': '#84cc16'
+    }};
+
+    function buildTooltipContent(d, isPinned) {{
+      let html = `
+        <div class="tooltip-header">
+          <div class="tooltip-title">${{d.name}}</div>
+          ${{isPinned ? '<button class="tooltip-close" onclick="window.closeTooltip()">&times;</button>' : ''}}
+        </div>
+        <div><strong>Path:</strong> ${{d.path}}</div>
+        <div><strong>Layer:</strong> <span style="color:${{layerColors[d.layer] || '#64748b'}}">${{d.layer}}</span></div>
+        <div><strong>Risk:</strong> <span class="risk-${{d.risk}}">${{d.risk}}</span></div>
+        <div><strong>Dependents:</strong> ${{d.dependents.length}} (${{d.production_dependents || 0}} prod / ${{d.test_dependents || 0}} test)</div>
+        <div><strong>Dependencies:</strong> ${{d.dependencies.length}}</div>
+      `;
+
+      if (isPinned) {{
+        // Show linked files when pinned
+        if (d.dependents.length > 0) {{
+          const showDeps = d.dependents.slice(0, 10);
+          html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #475569;"><strong>Top Dependents:</strong></div>`;
+          html += `<div style="max-height:100px;overflow-y:auto;font-size:11px;">`;
+          showDeps.forEach(dep => {{
+            html += `<div style="color:#94a3b8;padding:2px 0;">• ${{dep}}</div>`;
+          }});
+          if (d.dependents.length > 10) {{
+            html += `<div style="color:#60a5fa;font-style:italic;">+ ${{d.dependents.length - 10}} more...</div>`;
+          }}
+          html += `</div>`;
+        }}
+
+        if (d.dependencies.length > 0) {{
+          const showDeps = d.dependencies.slice(0, 10);
+          html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #475569;"><strong>Dependencies:</strong></div>`;
+          html += `<div style="max-height:100px;overflow-y:auto;font-size:11px;">`;
+          showDeps.forEach(dep => {{
+            html += `<div style="color:#94a3b8;padding:2px 0;">• ${{dep}}</div>`;
+          }});
+          if (d.dependencies.length > 10) {{
+            html += `<div style="color:#60a5fa;font-style:italic;">+ ${{d.dependencies.length - 10}} more...</div>`;
+          }}
+          html += `</div>`;
+        }}
+
+        html += `<div class="tooltip-hint">Click elsewhere or &times; to close</div>`;
+      }} else {{
+        html += `<div class="tooltip-hint">Click to pin tooltip</div>`;
+      }}
+
+      return html;
+    }}
+
+    // Global close function
+    window.closeTooltip = function() {{
+      pinnedTooltip = null;
+      tooltip.style("display", "none");
+    }};
+
+    // Override node interactions
+    nodes
+      .on("mouseover", function(e, d) {{
+        if (pinnedTooltip) return; // Don't show hover tooltip when one is pinned
+        tooltip
+          .html(buildTooltipContent(d, false))
+          .style("display", "block")
+          .style("left", (e.pageX + 15) + "px")
+          .style("top", (e.pageY + 15) + "px");
+      }})
+      .on("mouseout", function() {{
+        if (pinnedTooltip) return; // Don't hide when pinned
+        tooltip.style("display", "none");
+      }})
+      .on("click", function(e, d) {{
+        e.stopPropagation();
+
+        if (pinnedTooltip === d) {{
+          // Clicking same node unpins
+          pinnedTooltip = null;
+          tooltip.style("display", "none");
+          // Reset highlighting
+          d3.selectAll(".node").classed("highlighted", false).classed("dimmed", false);
+          d3.selectAll(".link").classed("highlighted", false).classed("dimmed", false);
+        }} else {{
+          // Pin this tooltip
+          pinnedTooltip = d;
+          tooltip
+            .html(buildTooltipContent(d, true))
+            .style("display", "block")
+            .style("left", (e.pageX + 15) + "px")
+            .style("top", (e.pageY + 15) + "px");
+
+          // Highlight this node and its connections
+          d3.selectAll(".node")
+            .classed("highlighted", n => n === d)
+            .classed("dimmed", n => n !== d);
+          d3.selectAll(".link")
+            .classed("highlighted", l => l.source === d || l.target === d)
+            .classed("dimmed", l => l.source !== d && l.target !== d);
+        }}
+      }});
+
+    // Click on background closes pinned tooltip
+    d3.select("body").on("click.tooltip", function(e) {{
+      if (pinnedTooltip && !tooltip.node().contains(e.target)) {{
+        pinnedTooltip = null;
+        tooltip.style("display", "none");
+      }}
+    }});
+
+    console.log("[Dependency Graph] Persistent tooltip enhancement loaded");
+  }}, 100);
+}})();
 </script>
 """
 
@@ -369,12 +552,11 @@ def main():
     with open(JSON_FILE, encoding="utf-8") as f:
         graph_data = json.load(f)
 
-    # Find hub files (50+ dependents)
+    # Include ALL files (not filtered by dependent count)
     hub_files = []
     for node in graph_data["nodes"]:
         dependent_count = len(node["dependents"])
-        if dependent_count >= 50:
-            hub_files.append(
+        hub_files.append(
                 {
                     "path": node["path"],
                     "name": node["name"],
@@ -392,10 +574,10 @@ def main():
     # Sort by dependents descending
     hub_files.sort(key=lambda x: x["dependents"], reverse=True)
 
-    print(f"Found {len(hub_files)} hub files with 50+ dependents")
+    print(f"Found {len(hub_files)} total files")
 
     if not hub_files:
-        print("No hub files found. Nothing to add.")
+        print("No files found in graph data. Nothing to add.")
         return 0
 
     # Read HTML file
@@ -432,9 +614,11 @@ def main():
     with open(HTML_FILE, "w", encoding="utf-8") as f:
         f.write(new_html)
 
-    print(f"[SUCCESS] Added hub files table with {len(hub_files)} entries")
+    print(f"[SUCCESS] Added files table with {len(hub_files)} entries")
     for i, f in enumerate(hub_files[:5], 1):
         print(f"  {i}. {f['path']} - {f['dependents']} dependents")
+    if len(hub_files) > 5:
+        print(f"  ... and {len(hub_files) - 5} more files")
 
     return 0
 

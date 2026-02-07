@@ -80,78 +80,16 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
 
 
 async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
-    """Wrapper for MCP tool - Get the vision document for the active product"""
-
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.discovery import PathResolver
-    from giljo_mcp.models import Project, Vision
-    from giljo_mcp.tenant import TenantManager
-
-    db_manager = DatabaseManager(is_async=True)
-    tenant_manager = TenantManager()
-    PathResolver(db_manager, tenant_manager)
-
-    try:
-        tenant_key = tenant_manager.get_current_tenant()
-        if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
-
-        async with db_manager.get_tenant_session_async(tenant_key) as session:
-            project_query = select(Project).where(Project.tenant_key == tenant_key)
-            project_result = await session.execute(project_query)
-            project = project_result.scalar_one_or_none()
-
-            if not project:
-                return {"success": False, "error": "Project not found"}
-
-            # Check for existing vision chunks in database
-            vision_query = (
-                select(Vision)
-                .where(Vision.project_id == project.id, Vision.tenant_key == tenant_key)
-                .order_by(Vision.chunk_number)
-            )
-            vision_result = await session.execute(vision_query)
-            visions = vision_result.scalars().all()
-
-            if visions:
-                # Return from database
-                if part <= len(visions):
-                    vision = visions[part - 1]
-                    return {
-                        "success": True,
-                        "part": part,
-                        "total_parts": len(visions),
-                        "content": vision.content,
-                        "tokens": vision.tokens,
-                        "boundary_type": vision.boundary_type,
-                        "keywords": vision.keywords or [],
-                        "headers": vision.headers or [],
-                        "has_more": part < len(visions),
-                        "indexed": True,
-                    }
-                return {
-                    "success": False,
-                    "error": f"Part {part} not found. Document has {len(visions)} parts.",
-                }
-
-            # No vision data in database, return placeholder
-            return {
-                "success": True,
-                "part": 1,
-                "total_parts": 1,
-                "content": "# Vision Document\n\nNo vision documents have been indexed yet. Use the MCP tools to initialize vision documents.",
-                "tokens": 20,
-                "boundary_type": "paragraph",
-                "keywords": ["vision", "placeholder"],
-                "headers": ["Vision Document"],
-                "has_more": False,
-                "indexed": False,
-                "message": "No vision documents found - returning placeholder",
-            }
-
-    except Exception as e:
-        logger.exception("Failed to get vision")
-        return {"success": False, "error": str(e)}
+    """
+    Legacy tool - Vision model removed in Handover 0728.
+    Vision functionality now handled by VisionDocument (product-centric).
+    Use vision_documents API instead.
+    """
+    return {
+        "success": False,
+        "error": "Vision model deprecated - use VisionDocument API",
+        "message": "This tool has been deprecated. Vision documents are now managed at the product level via VisionDocument model.",
+    }
 
 
 async def get_vision_index() -> dict[str, Any]:
