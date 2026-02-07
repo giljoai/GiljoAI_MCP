@@ -121,7 +121,6 @@ from .product_memory_entry import (
 # Product models
 from .products import (
     Product,
-    Vision,
     VisionDocument,
 )
 
@@ -195,7 +194,6 @@ __all__ = [
     "TemplateUsageStats",
     # Auth
     "User",
-    "Vision",
     "VisionDocument",
     "generate_project_alias",
     "generate_uuid",

@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from .context_manager import get_filtered_config, get_full_config, is_orchestrator
 from .database import DatabaseManager
-from .models import Configuration, Product, Project, Vision
+from .models import Configuration, Product, Project
 from .tenant import TenantManager
 
 
@@ -320,46 +320,10 @@ class DiscoveryManager:
         return await self.path_resolver.get_all_paths(project_id)
 
     async def _load_vision(self, project_id: str, max_tokens: int) -> Optional[dict]:
-        """Load vision documents with chunking support"""
-        try:
-            vision_path = await self.path_resolver.resolve_path("vision", project_id)
-
-            # Check if already indexed in database
-            async with self.db_manager.get_session_async() as session:
-                vision_query = (
-                    select(Vision).where(Vision.project_id == project_id).order_by(Vision.chunk_number).limit(1)
-                )
-                result = await session.execute(vision_query)
-                vision = result.scalar_one_or_none()
-
-                if vision:
-                    # Load from database
-                    return {
-                        "content": {
-                            "source": "database",
-                            "chunks_available": vision.total_chunks,
-                            "first_chunk": vision.content[:500] + "...",
-                            "message": "Use get_vision() tool for full content",
-                        },
-                        "tokens": min(max_tokens, 1000),  # Estimate for summary
-                    }
-
-                # Check filesystem
-                if vision_path.exists() and vision_path.is_dir():
-                    files = list(vision_path.glob("*.md"))
-                    return {
-                        "content": {
-                            "source": "filesystem",
-                            "path": str(vision_path),
-                            "files": [f.name for f in files],
-                            "message": "Run get_vision() to index and chunk",
-                        },
-                        "tokens": 500,
-                    }
-
-        except Exception:
-            logger.exception("Failed to load vision")
-
+        """
+        Legacy method - Vision model removed in Handover 0728.
+        Vision functionality now handled by VisionDocument (product-centric).
+        """
         return None
 
     async def _load_config(
