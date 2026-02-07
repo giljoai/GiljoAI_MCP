@@ -2230,13 +2230,12 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 "context_indexes": 0,
                 "document_indexes": 0,
                 "sessions": 0,
-                "visions": 0,
             }
 
             # Import additional models needed for deletion
             from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
-            from src.giljo_mcp.models.products import Vision
             # NOTE: Session import removed (Handover 0423 - dead code cleanup)
+            # NOTE: Vision import removed (Handover 0728 - Vision model deprecated)
 
             # Delete agent jobs (migrated to AgentJob - Handover 0367a)
             # Note: AgentExecution records will cascade delete via FK relationship
@@ -2300,18 +2299,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             deleted_counts["document_indexes"] = len(doc_indexes)
 
             # NOTE: Session deletion removed (Handover 0423 - dead code cleanup)
-
-            # Delete vision documents
-            vision_stmt = select(Vision).where(
-                and_(
-                    Vision.project_id == project_id,
-                    Vision.tenant_key == tenant_key,
-                )
-            )
-            visions = (await session.execute(vision_stmt)).scalars().all()
-            for vision in visions:
-                await session.delete(vision)
-            deleted_counts["visions"] = len(visions)
+            # NOTE: Vision deletion removed (Handover 0728 - Vision model deprecated)
 
             # Mark 360 memory entries as deleted by user (preserve historical reference)
             # Handover 0390b: Use repository instead of JSONB mutation

@@ -17,7 +17,7 @@ import pytest
 sys.path.insert(0, "src")
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import ContextIndex, LargeDocumentIndex, Project, Vision
+from src.giljo_mcp.models import ContextIndex, LargeDocumentIndex, Project
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
@@ -253,67 +253,6 @@ class TestDatabaseIntegration:
             session.add(project)
             await session.commit()
 
-    async def test_vision_storage(self):
-        """Test storing vision chunks in database."""
-        EnhancedChunker()
-        chunks = [
-            {
-                "chunk_number": 1,
-                "total_chunks": 2,
-                "content": "First chunk",
-                "tokens": 10,
-                "char_start": 0,
-                "char_end": 11,
-                "boundary_type": "line",
-                "keywords": ["test"],
-                "headers": [],
-                "document_name": "test.md",
-            },
-            {
-                "chunk_number": 2,
-                "total_chunks": 2,
-                "content": "Second chunk",
-                "tokens": 10,
-                "char_start": 12,
-                "char_end": 24,
-                "boundary_type": "complete",
-                "keywords": ["test"],
-                "headers": [],
-                "document_name": "test.md",
-            },
-        ]
-
-        async with self.db_manager.get_session_async() as session:
-            for chunk_data in chunks:
-                vision = Vision(
-                    tenant_key="test-tenant",
-                    project_id="test-project-id",
-                    document_name=chunk_data["document_name"],
-                    chunk_number=chunk_data["chunk_number"],
-                    total_chunks=chunk_data["total_chunks"],
-                    content=chunk_data["content"],
-                    tokens=chunk_data["tokens"],
-                    char_start=chunk_data["char_start"],
-                    char_end=chunk_data["char_end"],
-                    boundary_type=chunk_data["boundary_type"],
-                    keywords=chunk_data["keywords"],
-                    headers=chunk_data["headers"],
-                )
-                session.add(vision)
-
-            await session.commit()
-
-            # Verify storage
-            from sqlalchemy import select
-
-            result = await session.execute(select(Vision).where(Vision.project_id == "test-project-id"))
-            visions = result.scalars().all()
-
-            assert len(visions) == 2
-            assert visions[0].chunk_number == 1
-            assert visions[1].chunk_number == 2
-            assert visions[0].boundary_type == "line"
-            assert visions[1].boundary_type == "complete"
 
     async def test_context_index_creation(self):
         """Test creation of context index."""

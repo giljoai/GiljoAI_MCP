@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Configuration, Job, Message, Project, Task, Vision
+from src.giljo_mcp.models import Configuration, Job, Message, Project, Task
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -181,45 +181,6 @@ class TestEdgeCases:
         assert len(task2.subtasks) == 1
         assert task2.subtasks[0].title == "Task 3"
 
-    def test_vision_chunk_ordering(self, db_session):
-        """Test vision document chunk ordering and retrieval."""
-        tenant_key = str(uuid4())
-
-        # Create project
-        project = Project(name="Test Project", mission="Test mission", tenant_key=tenant_key)
-        db_session.add(project)
-        db_session.commit()
-
-        # Create chunks out of order
-        chunks = []
-        for i in [3, 1, 5, 2, 4]:  # Deliberately out of order
-            chunk = Vision(
-                tenant_key=tenant_key,
-                project_id=project.id,
-                document_name="large_doc.md",
-                chunk_number=i,
-                total_chunks=5,
-                content=f"Content for chunk {i}",
-                tokens=1000 * i,
-            )
-            chunks.append(chunk)
-
-        db_session.add_all(chunks)
-        db_session.commit()
-
-        # Retrieve in correct order
-        ordered_chunks = (
-            db_session.query(Vision)
-            .filter_by(tenant_key=tenant_key, document_name="large_doc.md")
-            .order_by(Vision.chunk_number)
-            .all()
-        )
-
-        # Verify ordering
-        assert len(ordered_chunks) == 5
-        for i, chunk in enumerate(ordered_chunks, 1):
-            assert chunk.chunk_number == i
-            assert chunk.content == f"Content for chunk {i}"
 
     def test_configuration_tenant_isolation(self, db_session):
         """Test configuration isolation between tenants."""
