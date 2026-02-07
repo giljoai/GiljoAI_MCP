@@ -307,8 +307,8 @@ def main():
         )
     except KeyboardInterrupt:
         logger.info("\nShutting down server...")
-    except (RuntimeError, OSError, ImportError) as e:
-        logger.exception(f"Failed to start server: {e}")
+    except (RuntimeError, OSError, ImportError):
+        logger.exception("Failed to start server")
         sys.exit(1)
 
 

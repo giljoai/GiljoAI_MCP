@@ -22,9 +22,8 @@ def extract_python_imports(file_path: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.append(node.module)
         return imports
     except (OSError, SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Failed to parse {file_path}: {e}")

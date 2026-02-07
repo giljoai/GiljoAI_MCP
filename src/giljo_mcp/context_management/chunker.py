@@ -45,8 +45,8 @@ class VisionDocumentChunker:
         # Initialize tiktoken encoder (cl100k_base for GPT-4/GPT-3.5)
         try:
             self.encoding = tiktoken.get_encoding("cl100k_base")
-        except (ValueError, KeyError, ImportError) as e:
-            logger.error(f"Failed to initialize tiktoken encoding: {e}")
+        except (ValueError, KeyError, ImportError):
+            logger.exception("Failed to initialize tiktoken encoding")
             raise
 
         # Initialize EnhancedChunker for boundary detection
@@ -73,8 +73,8 @@ class VisionDocumentChunker:
         try:
             tokens = self.encoding.encode(text)
             return len(tokens)
-        except (ValueError, KeyError, ImportError) as e:
-            logger.error(f"Error counting tokens: {e}")
+        except (ValueError, KeyError, ImportError):
+            logger.exception("Error counting tokens")
             # Fallback to character-based estimation
             return len(text) // 4
 
@@ -277,11 +277,11 @@ class VisionDocumentChunker:
 
         # Import repositories
         try:
-            from ..models import MCPContextIndex
-            from ..repositories.context_repository import ContextRepository
-            from ..repositories.vision_document_repository import VisionDocumentRepository
+            from giljo_mcp.models import MCPContextIndex
+            from giljo_mcp.repositories.context_repository import ContextRepository
+            from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
         except ImportError as e:
-            logger.error(f"Failed to import repositories: {e}")
+            logger.exception("Failed to import repositories")
             return {"success": False, "error": f"Import error: {e}"}
 
         vision_repo = VisionDocumentRepository(db_manager=None)
@@ -316,7 +316,7 @@ class VisionDocumentChunker:
 
         except (ValueError, KeyError, OSError) as e:
             error_msg = f"Error reading content for document {vision_document_id}: {e}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             return {"success": False, "error": error_msg}
 
         if not content or not content.strip():

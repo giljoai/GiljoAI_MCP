@@ -139,7 +139,7 @@ async def get_workflow_status(
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message) from e
     except DatabaseError as e:
-        logger.exception(f"Database error getting workflow status: {e}")
+        logger.exception("Database error getting workflow status")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.message) from e
 
 

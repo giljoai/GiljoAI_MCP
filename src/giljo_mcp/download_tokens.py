@@ -112,7 +112,7 @@ class TokenManager:
 
         except SQLAlchemyError as e:
             await self.db_session.rollback()
-            logger.error(f"Failed to generate download token: {e}")
+            logger.exception("Failed to generate download token")
             from fastapi import HTTPException, status
 
             raise HTTPException(
@@ -151,8 +151,8 @@ class TokenManager:
             logger.debug(f"Token validated successfully: {token}")
             return True
 
-        except SQLAlchemyError as e:
-            logger.error(f"Error validating token: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error validating token")
             return False
 
     async def cleanup_expired_tokens(self) -> int:
@@ -180,9 +180,9 @@ class TokenManager:
 
             return deleted_count
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error cleaning up expired tokens: {e}")
+            logger.exception("Error cleaning up expired tokens")
             return 0
 
     async def get_token_info(self, token: str, tenant_key: str) -> Optional[dict]:
@@ -220,8 +220,8 @@ class TokenManager:
                 else None,
             }
 
-        except SQLAlchemyError as e:
-            logger.error(f"Error retrieving token info: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error retrieving token info")
             return None
 
     async def get_token_info_by_token(self, token: str) -> Optional[dict]:
@@ -259,8 +259,8 @@ class TokenManager:
                 else None,
             }
 
-        except SQLAlchemyError as e:
-            logger.error(f"Error retrieving token info: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error retrieving token info")
             return None
 
     async def mark_failed(self, token: str, error_message: str) -> bool:
@@ -296,9 +296,9 @@ class TokenManager:
             logger.info(f"Token marked as failed: {token}, error: {error_message}")
             return True
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error marking token as failed: {e}")
+            logger.exception("Error marking token as failed")
             return False
 
     async def mark_ready(self, token: str) -> bool:
@@ -333,9 +333,9 @@ class TokenManager:
             logger.info(f"Token marked as ready: {token}")
             return True
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error marking token as ready: {e}")
+            logger.exception("Error marking token as ready")
             return False
 
     async def increment_download_count(self, token: str) -> bool:
@@ -370,7 +370,7 @@ class TokenManager:
             logger.info(f"Download count incremented for token: {token}, new count: {token_record.download_count}")
             return True
 
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error incrementing download count: {e}")
+            logger.exception("Error incrementing download count")
             return False
