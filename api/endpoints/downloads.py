@@ -60,7 +60,7 @@ def get_server_url(request=None) -> str:
         scheme = "https" if (request and request.headers.get("x-forwarded-proto") == "https") else "http"
 
         return f"{scheme}://{host}:{port}"
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"
 
@@ -535,12 +535,12 @@ async def generate_download_token(
         x_api_key = request.headers.get("x-api-key")
         authorization = request.headers.get("authorization")
         current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
-    except HTTPException:
+    except HTTPException as e:
         logger.warning("Token generation failed: Authentication required")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required to generate download token",
-        )
+        ) from e
 
     # Derive content_type from query or JSON body (compat with older tests)
     if not content_type and body:
@@ -605,12 +605,12 @@ async def generate_download_token(
             "one_time_use": True,
         }
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(f"Failed to generate download token: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate download token: {e!s}",
-        )
+        ) from e
 
 
 @router.get("/temp/{token}/{filename}")
@@ -710,9 +710,9 @@ async def download_temp_file(
 
         try:
             content = file_path.read_bytes()
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
             logger.error(f"Failed reading file {file_path}: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error") from e
 
         # Increment download metrics
         await token_manager.increment_download_count(token)
@@ -728,9 +728,9 @@ async def download_temp_file(
                 "Expires": "0",
             },
         )
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(f"Unexpected error during download: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 #

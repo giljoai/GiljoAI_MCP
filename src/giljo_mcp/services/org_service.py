@@ -15,6 +15,7 @@ import re
 from typing import Any, Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -83,7 +84,7 @@ class OrgService:
 
             return {"success": True, "data": org}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to create organization: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -108,7 +109,7 @@ class OrgService:
 
             return {"success": True, "data": org}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to get organization: {e}")
             return {"success": False, "error": str(e)}
 
@@ -125,7 +126,7 @@ class OrgService:
 
             return {"success": True, "data": org}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to get organization by slug: {e}")
             return {"success": False, "error": str(e)}
 
@@ -152,7 +153,7 @@ class OrgService:
             # Re-query with members to ensure relationships are loaded
             return await self.get_organization(org_id)
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to update organization: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -173,7 +174,7 @@ class OrgService:
 
             return {"success": True, "data": {"deleted": True}}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to delete organization: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -227,7 +228,7 @@ class OrgService:
 
             return {"success": True, "data": membership}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to invite member: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -250,7 +251,7 @@ class OrgService:
 
             return {"success": True, "data": {"removed": True}}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to remove member: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -276,7 +277,7 @@ class OrgService:
 
             return {"success": True, "data": membership}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to change member role: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -304,7 +305,7 @@ class OrgService:
 
             return {"success": True, "data": {"transferred": True}}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to transfer ownership: {e}")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
@@ -323,7 +324,7 @@ class OrgService:
 
             return {"success": True, "data": list(members)}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to list members: {e}")
             return {"success": False, "error": str(e)}
 
@@ -348,7 +349,7 @@ class OrgService:
 
             return {"success": True, "data": list(orgs)}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to get user organizations: {e}")
             return {"success": False, "error": str(e)}
 

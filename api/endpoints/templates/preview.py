@@ -39,16 +39,6 @@ async def get_template_diff(
     """
     logger.info(f"User {current_user.username} requesting diff for template {template_id}")
 
-    # ORIGINAL QUERY: preview.py line 42-49 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     and_(
-    #         AgentTemplate.id == template_id,
-    #         AgentTemplate.tenant_key == current_user.tenant_key,
-    #     )
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
@@ -84,16 +74,6 @@ async def preview_template(
     Migrated to TemplateService - Handover 1011 Phase 2.
     """
     logger.info(f"User {current_user.username} previewing template {template_id}")
-
-    # ORIGINAL QUERY: preview.py line 82-89 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     and_(
-    #         AgentTemplate.id == template_id,
-    #         AgentTemplate.tenant_key == current_user.tenant_key,
-    #     )
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
 
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 

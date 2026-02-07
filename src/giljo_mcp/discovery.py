@@ -120,7 +120,7 @@ class PathResolver:
 
                 if config and config.value:
                     return config.value
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to get database path for {path_key}: {e}")
 
         return None
@@ -140,7 +140,7 @@ class PathResolver:
                 paths = config.get("paths", {})
                 if path_key in paths:
                     return paths[path_key]
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to get config file path for {path_key}: {e}")
 
         return None

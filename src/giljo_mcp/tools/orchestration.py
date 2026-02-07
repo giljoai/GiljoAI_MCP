@@ -109,7 +109,7 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
             ),
         }
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(
             "project_fetch_by_alias_failed",
             error_code=ErrorCode.MCP_ORCHESTRATOR_ERROR.value,
@@ -255,7 +255,7 @@ async def _get_user_config(
 
         return {"field_priorities": field_priorities, "depth_config": depth_config}
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(
             "user_config_fetch_failed",
             error_code=ErrorCode.MCP_CONTEXT_FETCH_FAILED.value,
@@ -1093,7 +1093,7 @@ async def get_orchestrator_instructions(
                                 "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                             },
                         )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
@@ -1178,7 +1178,7 @@ async def get_orchestrator_instructions(
                     with open(config_path, encoding="utf-8") as f:
                         config_data = yaml.safe_load(f) or {}
                     include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
 
             if include_serena:
@@ -1416,7 +1416,7 @@ async def get_generic_agent_template(
             "protocol_version": template.version,
         }
 
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError) as e:
         logger.error(
             f"Failed to render generic agent template: {e}",
             extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
@@ -1716,7 +1716,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "mission": mission,  # Handover 0464: Include mission for UI display
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
             logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
         # Build base response

@@ -170,7 +170,7 @@ async def handle_gil_handover(
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-        except Exception as ws_error:
+        except (RuntimeError, ValueError) as ws_error:
             logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
         return {

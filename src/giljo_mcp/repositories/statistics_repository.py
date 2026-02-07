@@ -646,5 +646,5 @@ class StatisticsRepository:
         try:
             await session.execute(select(1))
             return True
-        except Exception:
+        except (RuntimeError, OSError):
             return False

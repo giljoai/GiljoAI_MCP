@@ -72,7 +72,7 @@ async def get_tenant_key(request: Request) -> str:
                 )
     except HTTPException:
         raise
-    except Exception:
+    except (OSError, ValueError, KeyError):
         pass  # If config read fails, allow fallback  # nosec B110
 
     # Fallback to default tenant (localhost mode only)

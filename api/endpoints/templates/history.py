@@ -38,22 +38,9 @@ async def get_template_history(
     """
     logger.info("User %s requesting history for template %s", current_user.username, template_id)
 
-    # Verify template exists and belongs to user's tenant (tenant isolation)
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
-
-    # ORIGINAL QUERY: history.py line 41-50 (replaced with service call)
-    # stmt = (
-    #     select(TemplateArchive)
-    #     .where(
-    #         TemplateArchive.template_id == template_id,
-    #         TemplateArchive.tenant_key == current_user.tenant_key,
-    #     )
-    #     .order_by(TemplateArchive.archived_at.desc())
-    # )
-    # result = await session.execute(stmt)
-    # archives = result.scalars().all()
 
     archives = await template_service.get_template_history(session, template_id, current_user.tenant_key)
 
@@ -97,34 +84,13 @@ async def restore_template(
         archive_id,
     )
 
-    # ORIGINAL QUERY: history.py line 91-98 (replaced with service call)
-    # stmt = select(TemplateArchive).where(
-    #     TemplateArchive.id == archive_id,
-    #     TemplateArchive.template_id == template_id,
-    #     TemplateArchive.tenant_key == current_user.tenant_key,
-    # )
-    # result = await session.execute(stmt)
-    # archive = result.scalar_one_or_none()
-
     archive = await template_service.get_archive_by_id(session, archive_id, template_id, current_user.tenant_key)
     if not archive:
         raise HTTPException(status_code=404, detail="Archive entry not found")
 
-    # ORIGINAL QUERY: history.py line 102-109 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     AgentTemplate.id == template_id,
-    #     AgentTemplate.tenant_key == current_user.tenant_key,
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
-
-    # ORIGINAL QUERY: history.py line 112-132 (replaced with service call)
-    # current_archive = TemplateArchive(...)
-    # session.add(current_archive)
 
     await template_service.create_template_archive(
         session,
@@ -133,13 +99,6 @@ async def restore_template(
         archive_type="auto",
         archived_by=current_user.username,
     )
-
-    # ORIGINAL QUERY: history.py line 135-139 (replaced with service call)
-    # template.system_instructions = archive.system_instructions
-    # template.variables = archive.variables
-    # template.behavioral_rules = archive.behavioral_rules
-    # template.success_criteria = archive.success_criteria
-    # template.version = archive.version
 
     await template_service.restore_template_from_archive(session, template, archive)
 
@@ -165,38 +124,16 @@ async def reset_template(
     """
     logger.info("User %s resetting template %s", current_user.username, template_id)
 
-    # ORIGINAL QUERY: history.py line 162-167 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     AgentTemplate.id == template_id,
-    #     AgentTemplate.tenant_key == current_user.tenant_key,
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
-        # ORIGINAL QUERY: history.py line 169-172 (replaced with service call)
-        # cross_tenant_result = await session.execute(select(AgentTemplate).where(AgentTemplate.id == template_id))
-        # if cross_tenant_result.scalar_one_or_none():
-
         if await template_service.check_cross_tenant_template_exists(session, template_id):
             raise HTTPException(status_code=403, detail="Access denied for this template")
         raise HTTPException(status_code=404, detail="Template not found")
 
-    # ORIGINAL QUERY: history.py line 175-195 (replaced with service call)
-    # archive = TemplateArchive(...)
-    # session.add(archive)
-
     await template_service.create_template_archive(
         session, template, archive_reason="Reset template", archive_type="auto", archived_by=current_user.username
     )
-
-    # ORIGINAL QUERY: history.py line 198-201 (replaced with service call)
-    # template.user_instructions = None
-    # template.behavioral_rules = []
-    # template.success_criteria = []
-    # template.tags = []
 
     await template_service.reset_template_to_defaults(session, template)
 
@@ -222,28 +159,12 @@ async def reset_system_instructions(
     """
     logger.info("User %s resetting system instructions for template %s", current_user.username, template_id)
 
-    # ORIGINAL QUERY: history.py line 224-229 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     AgentTemplate.id == template_id,
-    #     AgentTemplate.tenant_key == current_user.tenant_key,
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
-        # ORIGINAL QUERY: history.py line 231-234 (replaced with service call)
-        # cross_tenant_result = await session.execute(select(AgentTemplate).where(AgentTemplate.id == template_id))
-        # if cross_tenant_result.scalar_one_or_none():
-
         if await template_service.check_cross_tenant_template_exists(session, template_id):
             raise HTTPException(status_code=403, detail="Access denied for this template")
         raise HTTPException(status_code=404, detail="Template not found")
-
-    # ORIGINAL QUERY: history.py line 239-259 (replaced with service call)
-    # archive = TemplateArchive(...)
-    # session.add(archive)
 
     await template_service.create_template_archive(
         session,
@@ -252,9 +173,6 @@ async def reset_system_instructions(
         archive_type="auto",
         archived_by=current_user.username,
     )
-
-    # ORIGINAL QUERY: history.py line 264-270 (replaced with service call)
-    # template.system_instructions = (...)
 
     await template_service.reset_system_instructions(session, template)
 

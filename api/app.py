@@ -289,7 +289,7 @@ def create_app() -> FastAPI:
 
                 if cors_origins:
                     logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Could not load CORS config from config.yaml: {e}")
 
     # Fallback to environment variable (for backwards compatibility)
@@ -358,7 +358,7 @@ def create_app() -> FastAPI:
 
         except ImportError:
             logger.debug("Network detector not available - skipping dynamic IP detection")
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, KeyError) as e:
             logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
 
     logger.info(f"Configuring CORS with origins: {cors_origins}")
@@ -490,8 +490,8 @@ def create_app() -> FastAPI:
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
-            except (ConnectionError, TimeoutError, Exception) as e:
-                # Catching Exception is needed here for any database errors
+            except (ConnectionError, TimeoutError, RuntimeError, OSError) as e:
+                # Database errors from connection/query
                 checks["database"] = f"unhealthy: {e!s}"
 
         # Check WebSocket manager
@@ -619,8 +619,8 @@ def create_app() -> FastAPI:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
             logger.info(f"WebSocket disconnected: {client_id}")
-        except Exception:
-            logger.exception(f"WebSocket error for {client_id}")
+        except (RuntimeError, ValueError, KeyError) as e:
+            logger.exception(f"WebSocket error for {client_id}: {e}")
             state.websocket_manager.disconnect(client_id)
             if client_id in state.connections:
                 del state.connections[client_id]
