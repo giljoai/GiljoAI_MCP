@@ -36,6 +36,11 @@ class Task(Base):
     - job_id: Links task to AgentJob for execution tracking (Handover 0381: renamed from agent_job_id)
     - project_id: Now nullable to support unassigned tasks
     - status: Added "converted" state for task-to-project conversions
+
+    Handover 0433: Task Product Binding (Security Enhancement)
+    - product_id: Now required (NOT NULL) for tenant isolation
+    - All tasks must be bound to a product
+    - Eliminates "unassigned tasks" vulnerability
     """
 
     __tablename__ = "tasks"
@@ -50,8 +55,8 @@ class Task(Base):
         comment="Organization for org-level tasks (Handover 0424)",
     )
     product_id = Column(
-        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
-    )  # Product-level scope for task isolation
+        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )  # Product-level scope for task isolation (Handover 0433: Made required)
     project_id = Column(
         String(36), ForeignKey("projects.id"), nullable=True
     )  # Handover 0072: Nullable for unassigned tasks

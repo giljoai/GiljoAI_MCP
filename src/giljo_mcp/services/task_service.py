@@ -21,7 +21,6 @@ Design Principles:
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
-from uuid import uuid4
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,20 +82,19 @@ class TaskService:
         category: Optional[str] = None,
         priority: str = "medium",
         project_id: Optional[str] = None,
+        product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Quick task capture - logs a task with minimal information.
-
-        If no project_id is provided, finds or creates an active project.
-        If no tenant_key is provided, uses current tenant context.
 
         Args:
             content: Task description (used as both title and description)
             category: Optional category/classification
             priority: Task priority (default: "medium")
             project_id: Optional project ID to attach task to
-            tenant_key: Optional tenant key (uses current if not provided)
+            product_id: Required product ID (task must belong to a product)
+            tenant_key: Required tenant key for multi-tenant isolation
 
         Returns:
             Dict with success status and task_id or error
@@ -105,15 +103,21 @@ class TaskService:
             >>> result = await service.log_task(
             ...     content="Fix authentication bug",
             ...     category="bug",
-            ...     priority="high"
+            ...     priority="high",
+            ...     product_id="prod-123",
+            ...     tenant_key="tenant-abc"
             ... )
             >>> print(result["task_id"])
         """
         try:
             if self._session:
-                return await self._log_task_impl(self._session, content, category, priority, project_id, tenant_key)
+                return await self._log_task_impl(
+                    self._session, content, category, priority, project_id, product_id, tenant_key
+                )
             async with self.db_manager.get_session_async() as session:
-                return await self._log_task_impl(session, content, category, priority, project_id, tenant_key)
+                return await self._log_task_impl(
+                    session, content, category, priority, project_id, product_id, tenant_key
+                )
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
@@ -128,6 +132,7 @@ class TaskService:
         category: Optional[str],
         priority: str,
         project_id: Optional[str],
+        product_id: Optional[str],
         tenant_key: Optional[str],
     ) -> dict[str, Any]:
         """Implementation of log_task with explicit session parameter."""
@@ -135,50 +140,43 @@ class TaskService:
         if not tenant_key:
             tenant_key = self.tenant_manager.get_current_tenant()
 
+        # Validate required parameters (Handover 0433 Phase 2)
+        if not tenant_key:
+            raise ValidationError(
+                message="tenant_key is required for task creation",
+                context={"operation": "log_task"},
+            )
+
+        if not product_id:
+            raise ValidationError(
+                message="product_id is required for task creation",
+                context={"operation": "log_task"},
+            )
+
         project = None
 
-        # Get or find project
+        # Get project if specified
         if project_id:
-            # Filter by tenant_key to prevent cross-tenant access
-            if tenant_key:
-                result = await session.execute(
-                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+            # Always filter by both tenant_key AND product_id for security
+            result = await session.execute(
+                select(Project).where(
+                    and_(Project.id == project_id, Project.product_id == product_id, Project.tenant_key == tenant_key)
                 )
-            else:
-                # Fallback for backward compatibility
-                result = await session.execute(select(Project).where(Project.id == project_id))
+            )
             project = result.scalar_one_or_none()
 
             # If project_id was provided but project not found, fail immediately
-            # This prevents cross-tenant access attempts from creating default projects
             if not project:
                 raise ResourceNotFoundError(
                     message=f"Project {project_id} not found or access denied",
-                    context={"project_id": project_id, "tenant_key": tenant_key},
+                    context={"project_id": project_id, "product_id": product_id, "tenant_key": tenant_key},
                 )
-        else:
-            # Find first active project
-            stmt = select(Project).where(Project.status == "active").limit(1)
-            result = await session.execute(stmt)
-            project = result.scalar_one_or_none()
-
-        # Create default project if needed
-        if not project:
-            project = Project(
-                name="Default Tasks",
-                description="Default project for task logging",
-                mission="Default project for task logging",
-                tenant_key=tenant_key or f"tk_{uuid4().hex[:12]}",
-                status="active",
-            )
-            session.add(project)
-            await session.flush()
 
         # Create task
         task = Task(
-            tenant_key=project.tenant_key,
-            product_id=project.product_id,  # Inherit from project
-            project_id=str(project.id),
+            tenant_key=tenant_key,
+            product_id=product_id,
+            project_id=str(project.id) if project else None,
             title=content,  # Use content as title
             description=content,  # Also store as description
             category=category,
@@ -191,7 +189,10 @@ class TaskService:
 
         task_id = str(task.id)
 
-        self._logger.info(f"Logged task {task_id} in project {project.id}")
+        if project:
+            self._logger.info(f"Logged task {task_id} in project {project.id}")
+        else:
+            self._logger.info(f"Logged task {task_id} for product {product_id}")
 
         return {
             "success": True,
@@ -206,6 +207,7 @@ class TaskService:
         priority: str = "medium",
         assigned_to: Optional[str] = None,
         project_id: Optional[str] = None,
+        product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
@@ -220,7 +222,8 @@ class TaskService:
             priority: Task priority (default: "medium")
             assigned_to: Optional agent name to assign to (not implemented yet)
             project_id: Optional project ID
-            tenant_key: Optional tenant key
+            product_id: Required product ID (task must belong to a product)
+            tenant_key: Required tenant key for multi-tenant isolation
 
         Returns:
             Dict with success status and task_id or error
@@ -229,11 +232,18 @@ class TaskService:
             >>> result = await service.create_task(
             ...     title="Implement feature X",
             ...     description="Add new feature X with unit tests",
-            ...     priority="high"
+            ...     priority="high",
+            ...     product_id="prod-123",
+            ...     tenant_key="tenant-abc"
             ... )
         """
         return await self.log_task(
-            content=description, category=title, priority=priority, project_id=project_id, tenant_key=tenant_key
+            content=description,
+            category=title,
+            priority=priority,
+            project_id=project_id,
+            product_id=product_id,
+            tenant_key=tenant_key,
         )
 
     # ============================================================================
@@ -302,10 +312,6 @@ class TaskService:
                         else:
                             # No active product - return empty list
                             return {"success": True, "tasks": [], "count": 0}
-
-                elif filter_type == "all_tasks":
-                    # Tasks with NULL product_id
-                    query = query.where(Task.product_id.is_(None))
 
                 # Apply other filters
                 if product_id and not filter_type:
