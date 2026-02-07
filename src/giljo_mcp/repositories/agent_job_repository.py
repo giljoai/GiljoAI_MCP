@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models.agent_identity import AgentJob
+from ..models.agent_identity import AgentExecution, AgentJob
 from .base import BaseRepository
 
 
@@ -349,8 +349,6 @@ class AgentJobRepository:
             ...     print(execution.status)
         """
         # ORIGINAL QUERY: operations.py lines 226-230 (get_job_health endpoint)
-        from ..models.agent_identity import AgentExecution
-
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.agent_id == agent_id,
@@ -379,8 +377,6 @@ class AgentJobRepository:
             >>> execution = await repo.get_execution_by_job_id(session, "tenant-1", "job-456")
         """
         # ORIGINAL QUERY: operations.py lines 235-239 (get_job_health endpoint fallback)
-        from ..models.agent_identity import AgentExecution
-
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.job_id == job_id,
@@ -411,8 +407,6 @@ class AgentJobRepository:
             ...     print(job.mission)
         """
         # ORIGINAL QUERY: operations.py lines 318-322 (update_agent_mission endpoint)
-        from ..models.agent_identity import AgentJob
-
         stmt = select(AgentJob).where(
             AgentJob.tenant_key == tenant_key,
             AgentJob.job_id == job_id,
@@ -443,8 +437,6 @@ class AgentJobRepository:
             ...     print(f"Status: {execution.status}")
         """
         # ORIGINAL QUERY: operations.py lines 343-348 (update_agent_mission WebSocket event)
-        from ..models.agent_identity import AgentExecution
-
         stmt = (
             select(AgentExecution)
             .where(

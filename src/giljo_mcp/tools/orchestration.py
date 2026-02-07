@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import yaml
 from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
@@ -179,7 +180,7 @@ async def _get_user_config(
     try:
         # Query user with tenant isolation
         result = await session.execute(
-            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active == True))
+            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active))
         )
         user = result.scalar_one_or_none()
 
@@ -1185,7 +1186,7 @@ async def get_orchestrator_instructions(
                 logger.info("[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
 
             # Calculate token estimate
-            estimated_tokens = len(full_mission) // 4
+            len(full_mission) // 4
 
             # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
             execution_mode = getattr(project, "execution_mode", None) or metadata.get(
@@ -1323,7 +1324,7 @@ async def get_agent_mission(
             if not agent_job:
                 return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
-            estimated_tokens = len(agent_job.mission or "") // 4
+            len(agent_job.mission or "") // 4
 
             return {
                 "agent_id": agent_id,  # Phase C: WHO is executing
