@@ -13,7 +13,6 @@ WebSocket event integration for real-time alerting.
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,9 +24,7 @@ from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
 
-
 logger = logging.getLogger(__name__)
-
 
 class AgentHealthMonitor:
     """
@@ -38,7 +35,7 @@ class AgentHealthMonitor:
     """
 
     def __init__(
-        self, db_manager: DatabaseManager, ws_manager: WebSocketManager, config: Optional[HealthCheckConfig] = None
+        self, db_manager: DatabaseManager, ws_manager: WebSocketManager, config: HealthCheckConfig | None = None
     ):
         """
         Initialize health monitor.
@@ -52,7 +49,7 @@ class AgentHealthMonitor:
         self.ws = ws_manager
         self.config = config or HealthCheckConfig()
         self.running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._first_scan = True  # Suppress verbose logging on first scan
 
     async def start(self):

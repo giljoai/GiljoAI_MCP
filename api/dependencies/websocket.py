@@ -9,17 +9,15 @@ Created: 2025-11-02
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import Depends, Request
 
 from api.websocket import WebSocketManager
 
-
 logger = logging.getLogger(__name__)
 
-
-async def get_websocket_manager(request: Request) -> Optional[WebSocketManager]:
+async def get_websocket_manager(request: Request) -> WebSocketManager | None:
     """
     Dependency that provides WebSocket manager instance.
 
@@ -49,7 +47,6 @@ async def get_websocket_manager(request: Request) -> Optional[WebSocketManager]:
 
     return ws_manager
 
-
 class WebSocketDependency:
     """
     Injectable WebSocket manager with helper methods.
@@ -63,8 +60,8 @@ class WebSocketDependency:
 
     def __init__(
         self,
-        manager: Optional[WebSocketManager] = None,
-        websocket_manager: Optional[WebSocketManager] = None,
+        manager: WebSocketManager | None = None,
+        websocket_manager: WebSocketManager | None = None,
     ):
         """
         Initialize WebSocket dependency.
@@ -81,7 +78,7 @@ class WebSocketDependency:
         event_type: str,
         data: dict[str, Any],
         schema_version: str = "1.0",
-        exclude_client: Optional[str] = None,
+        exclude_client: str | None = None,
     ) -> int:
         """
         Broadcast event to all clients in a tenant.
@@ -169,9 +166,8 @@ class WebSocketDependency:
         """
         return self.manager is not None
 
-
 async def get_websocket_dependency(
-    manager: Optional[WebSocketManager] = Depends(get_websocket_manager),
+    manager: WebSocketManager | None = Depends(get_websocket_manager),
 ) -> WebSocketDependency:
     """
     FastAPI dependency that provides WebSocketDependency instance.
@@ -194,7 +190,6 @@ async def get_websocket_dependency(
         WebSocketDependency instance (always returns, even if manager is None)
     """
     return WebSocketDependency(manager)
-
 
 # Create __init__.py for the dependencies module
 __all__ = ["WebSocketDependency", "get_websocket_dependency", "get_websocket_manager"]

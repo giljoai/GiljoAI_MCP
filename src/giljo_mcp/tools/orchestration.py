@@ -11,7 +11,7 @@ See: api/endpoints/mcp_http.py for HTTP routing.
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 import yaml
@@ -23,9 +23,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.logging import ErrorCode, get_logger
 from src.giljo_mcp.models import Product, Project
 
-
 # Handover 0450: Removed dead import of ProjectOrchestrator
-
 
 logger = get_logger(__name__)
 
@@ -35,11 +33,9 @@ logger = get_logger(__name__)
 DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
 DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
 
-
 # ============================================================================
 # STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
 # ============================================================================
-
 
 async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str, Any]:
     """
@@ -119,10 +115,8 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
         )
         return {"error": f"Failed to fetch project: {e!s}"}
 
-
 # Handover 0281 Phase 1: Default configurations imported from config/defaults.py
 # (DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG are now unified across the codebase)
-
 
 def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
     """
@@ -152,7 +146,6 @@ def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, i
             # Unknown format, default to IMPORTANT
             normalized[field_key] = 2
     return normalized
-
 
 async def _get_user_config(
     user_id: str,
@@ -268,7 +261,6 @@ async def _get_user_config(
         normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
         return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
-
 def _infer_execution_mode_from_tool(tool_type: str | None) -> str:
     """
     Infer execution_mode from tool_type when not explicitly specified.
@@ -291,7 +283,6 @@ def _infer_execution_mode_from_tool(tool_type: str | None) -> str:
         return "claude-code"
     # Default to legacy for all other cases (codex, gemini, universal, None)
     return "legacy"
-
 
 def _build_mode_instructions(execution_mode: str, agent_templates: list[dict]) -> str:
     """
@@ -355,7 +346,6 @@ Each agent template below includes launch_instructions for manual copying.
 """
     return instructions
 
-
 def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
     """
     Format agent templates with launch_instructions for the given execution mode.
@@ -393,19 +383,16 @@ def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
 
     return formatted_templates
 
-
 # ========================================================================
 # Depth Config Helper Functions (Handover 0281 Phase 3) - REMOVED
 # Individual fetch_* functions replaced with monolithic context architecture
 # All context fetched via get_orchestrator_instructions() MCP tool
 # ========================================================================
 
-
 # ========================================================================
 # Standalone Functions for Testing
 # These are test-friendly wrappers that can be imported directly
 # ========================================================================
-
 
 async def health_check() -> dict[str, Any]:
     """
@@ -425,11 +412,9 @@ async def health_check() -> dict[str, Any]:
         "message": "GiljoAI MCP server is operational",
     }
 
-
 # ============================================================================
 # ORCHESTRATOR RESPONSE HELPER FUNCTIONS (Handover 0347c)
 # ============================================================================
-
 
 def _get_post_staging_behavior(cli_mode: bool) -> dict:
     """
@@ -447,7 +432,6 @@ def _get_post_staging_behavior(cli_mode: bool) -> dict:
         "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). Implementation happens in separate execution.",
         "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
     }
-
 
 def _get_required_final_action() -> dict:
     """
@@ -469,7 +453,6 @@ def _get_required_final_action() -> dict:
         "response_note": "Server returns staging_directive field with STOP action when this broadcast succeeds",
     }
 
-
 def _get_multi_terminal_rules() -> dict:
     """
     Generate multi_terminal_mode_rules field.
@@ -482,7 +465,6 @@ def _get_multi_terminal_rules() -> dict:
         "coordination": "Agents communicate via MCP messaging tools",
         "orchestrator_role": "Staging only - no active coordination after broadcast",
     }
-
 
 def _get_error_handling() -> dict:
     """
@@ -497,7 +479,6 @@ def _get_error_handling() -> dict:
         "mcp_connection_lost": "Abort staging, notify user",
     }
 
-
 def _get_spawning_limits() -> dict:
     """
     Generate agent_spawning_limits field.
@@ -510,7 +491,6 @@ def _get_spawning_limits() -> dict:
         "max_instances_per_type": "unlimited",
         "recommended_total": "2-5 agents for typical projects",
     }
-
 
 def _get_context_management(context_budget: int) -> dict:
     """
@@ -527,7 +507,6 @@ def _get_context_management(context_budget: int) -> dict:
         "warning_threshold": 0.8,
         "action_at_threshold": "Consider triggering succession via create_successor_orchestrator",
     }
-
 
 def _build_orchestrator_protocol(
     cli_mode: bool,
@@ -594,7 +573,6 @@ Completion protocol applies (see CH5 - shown in implementation only)
 ════════════════════════════════════════════════════════════════════════════
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
-
 
 ── STEP 0: Detect Environment ──────────────────────────────────────────────
 Before planning, detect your development environment:
@@ -956,11 +934,10 @@ END OF IMPLEMENTATION PHASE REFERENCE
         "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
     }
 
-
 async def get_orchestrator_instructions(
     agent_id: str,
     tenant_key: str,
-    user_id: Optional[str] = None,  # Handover 0281 Phase 1: User-specific config
+    user_id: str | None = None,  # Handover 0281 Phase 1: User-specific config
     db_manager: "DatabaseManager" = None,
 ) -> dict[str, Any]:
     """
@@ -1265,9 +1242,8 @@ async def get_orchestrator_instructions(
             logger.error(f"Error in get_orchestrator_instructions: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
 
-
 async def get_agent_mission(
-    agent_id: str, tenant_key: str, db_manager: Optional["DatabaseManager"] = None
+    agent_id: str, tenant_key: str, db_manager: "DatabaseManager" | None = None
 ) -> dict[str, Any]:
     """
     Fetch agent mission (standalone for testing - Phase C).
@@ -1341,7 +1317,6 @@ async def get_agent_mission(
         except Exception as e:
             logger.error(f"Error in get_agent_mission: {e}", exc_info=True)
             return {"error": "INTERNAL_ERROR", "message": f"Unexpected error: {e!s}"}
-
 
 async def get_generic_agent_template(
     session: "AsyncSession",
@@ -1428,17 +1403,16 @@ async def get_generic_agent_template(
             "job_id": job_id,
         }
 
-
 async def spawn_agent_job(
     agent_display_name: str,
     agent_name: str,
     mission: str,
     project_id: str,
     tenant_key: str,
-    parent_job_id: Optional[str] = None,
-    parent_agent_id: Optional[str] = None,
-    db_manager: Optional["DatabaseManager"] = None,
-    session: Optional["AsyncSession"] = None,
+    parent_job_id: str | None = None,
+    parent_agent_id: str | None = None,
+    db_manager: "DatabaseManager" | None = None,
+    session: "AsyncSession" | None = None,
 ) -> dict[str, Any]:
     """
     Spawn agent job (standalone for testing).
@@ -1478,7 +1452,6 @@ async def spawn_agent_job(
             session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
-
 async def _spawn_agent_job_impl(
     session,
     agent_display_name: str,
@@ -1486,8 +1459,8 @@ async def _spawn_agent_job_impl(
     mission: str,
     project_id: str,
     tenant_key: str,
-    parent_job_id: Optional[str] = None,
-    parent_agent_id: Optional[str] = None,
+    parent_job_id: str | None = None,
+    parent_agent_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Internal implementation of spawn_agent_job.

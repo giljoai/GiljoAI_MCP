@@ -22,7 +22,7 @@ Design Principles:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from passlib.hash import bcrypt
@@ -43,9 +43,7 @@ from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.config import SetupState
 from src.giljo_mcp.tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
-
 
 class AuthService:
     """
@@ -221,7 +219,7 @@ class AuthService:
     # Setup State Methods
     # ============================================================================
 
-    async def check_setup_state(self, tenant_key: str) -> Optional[dict[str, Any]]:
+    async def check_setup_state(self, tenant_key: str) -> dict[str, Any | None]:
         """
         Check setup state for tenant.
 
@@ -255,7 +253,7 @@ class AuthService:
             self._logger.exception(f"Failed to check setup state: {e}")
             raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}) from e
 
-    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> Optional[dict[str, Any]]:
+    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> dict[str, Any | None]:
         """Implementation that uses provided session"""
         stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         result = await session.execute(stmt)
@@ -482,7 +480,7 @@ class AuthService:
     async def register_user(
         self,
         username: str,
-        email: Optional[str],
+        email: str | None,
         password: str,
         role: str,
         requesting_admin_id: str,
@@ -537,11 +535,11 @@ class AuthService:
         self,
         session: AsyncSession,
         username: str,
-        email: Optional[str],
+        email: str | None,
         password: str,
         role: str,
         requesting_admin_id: str,
-        org_id: Optional[str] = None,
+        org_id: str | None = None,
         org_role: str = "member",
     ) -> dict[str, Any]:
         """Implementation that uses provided session"""
@@ -700,10 +698,10 @@ class AuthService:
     async def create_first_admin(
         self,
         username: str,
-        email: Optional[str],
+        email: str | None,
         password: str,
-        full_name: Optional[str],
-        org_name: Optional[str] = "My Organization",
+        full_name: str | None,
+        org_name: str | None = "My Organization",
     ) -> dict[str, Any]:
         """
         Create first administrator account (fresh install only).
@@ -758,10 +756,10 @@ class AuthService:
         self,
         session: AsyncSession,
         username: str,
-        email: Optional[str],
+        email: str | None,
         password: str,
-        full_name: Optional[str],
-        org_name: Optional[str] = "My Organization",
+        full_name: str | None,
+        org_name: str | None = "My Organization",
     ) -> dict[str, Any]:
         """Implementation that uses provided session (Handover 0424h: accepts org_name)"""
         # Check if users already exist (must be fresh install)

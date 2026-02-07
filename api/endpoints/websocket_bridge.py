@@ -10,17 +10,15 @@ Created: 2025-11-07
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket-bridge"])
-
 
 class WebSocketEventRequest(BaseModel):
     """Request model for triggering WebSocket events from MCP tools."""
@@ -29,15 +27,13 @@ class WebSocketEventRequest(BaseModel):
     tenant_key: str
     data: dict[str, Any]
 
-
 class WebSocketEventResponse(BaseModel):
     """Response model for WebSocket event emissions."""
 
     success: bool
     event_type: str
     clients_notified: int
-    message: Optional[str] = None
-
+    message: str | None = None
 
 @router.post("/emit", response_model=WebSocketEventResponse)
 async def emit_websocket_event(

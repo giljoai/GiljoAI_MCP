@@ -16,7 +16,6 @@ Summaries (light/medium) generated via VisionDocumentSummarizer for large docume
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -34,11 +33,9 @@ from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Vision Documents"])
-
 
 async def trigger_consolidation(product_id: str, tenant_key: str, db_session: AsyncSession) -> None:
     """
@@ -73,7 +70,6 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
         # Don't fail the main operation if consolidation fails
         logger.error(f"consolidation_failed: product_id={product_id}, error={e!s}")
 
-
 async def get_db():
     """
     Get database session dependency (async).
@@ -90,7 +86,6 @@ async def get_db():
     async with state.db_manager.get_session_async() as session:
         yield session
 
-
 def get_vision_repo():
     """
     Get VisionDocumentRepository instance.
@@ -105,14 +100,13 @@ def get_vision_repo():
 
     return VisionDocumentRepository(state.db_manager)
 
-
 @router.post("/", response_model=VisionDocumentResponse, status_code=status.HTTP_201_CREATED)
 async def create_vision_document(
     product_id: str = Form(...),
     document_name: str = Form(...),
     document_type: str = Form("vision"),
-    content: Optional[str] = Form(None),
-    vision_file: Optional[UploadFile] = File(None),
+    content: str | None = Form(None),
+    vision_file: UploadFile | None = File(None),
     display_order: int = Form(0),
     version: str = Form("1.0.0"),
     db: AsyncSession = Depends(get_db),
@@ -308,7 +302,6 @@ async def create_vision_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create vision document: {e!s}"
         ) from e
 
-
 @router.get("/{document_id}", response_model=VisionDocumentResponse)
 async def get_vision_document(
     document_id: str,
@@ -346,7 +339,6 @@ async def get_vision_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found")
 
     return VisionDocumentResponse.model_validate(doc)
-
 
 @router.get("/product/{product_id}", response_model=list[VisionDocumentResponse])
 async def list_vision_documents(
@@ -389,7 +381,6 @@ async def list_vision_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list vision documents: {e!s}"
         ) from e
-
 
 @router.put("/{document_id}", response_model=VisionDocumentResponse)
 async def update_vision_document(
@@ -482,7 +473,6 @@ async def update_vision_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update vision document: {e!s}"
         ) from e
 
-
 @router.delete("/{document_id}", response_model=DeleteResponse)
 async def delete_vision_document(
     document_id: str,
@@ -550,7 +540,6 @@ async def delete_vision_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
         ) from e
-
 
 @router.post("/products/{product_id}/regenerate-consolidated", response_model=dict)
 async def regenerate_consolidated_vision(
@@ -626,7 +615,6 @@ async def regenerate_consolidated_vision(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate consolidated vision: {e!s}"
         ) from e
-
 
 @router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)
 async def regenerate_summaries(

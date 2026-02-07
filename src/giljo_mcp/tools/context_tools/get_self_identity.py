@@ -8,7 +8,7 @@ success criteria, and protocol instructions from the AgentTemplate stored in Adm
 """
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -17,9 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: dict[str, Any]) -> int:
     """
@@ -36,12 +34,11 @@ def estimate_tokens(data: dict[str, Any]) -> int:
     json_str = json.dumps(data, default=str)
     return len(json_str) // 4
 
-
 async def get_self_identity(
     agent_name: str,
     tenant_key: str,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,  # For testing only
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,  # For testing only
 ) -> dict[str, Any]:
     """
     Fetch agent template by name for self-identity context.

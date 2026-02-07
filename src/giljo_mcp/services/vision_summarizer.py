@@ -16,14 +16,13 @@ production use including comprehensive error handling and metrics tracking.
 """
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from sumy.nlp.stemmers import Stemmer
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.utils import get_stop_words
-
 
 class VisionDocumentSummarizer:
     """

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 """
 Base repository with automatic tenant filtering.
 
@@ -8,7 +7,7 @@ Handover 0017: Provides foundation for all repository classes with CRITICAL tena
 Every database operation MUST filter by tenant_key for security.
 """
 
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +15,7 @@ from sqlalchemy.orm import Session
 
 from ..database import DatabaseManager
 
-
 T = TypeVar("T")
-
 
 class BaseRepository(Generic[T]):
     """

@@ -5,7 +5,7 @@ Fetch general product information for context generation.
 Returns Product Core fields: name, description, features, path, status.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -13,9 +13,7 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.products import Product
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: Any) -> int:
     """Estimate token count for data (simple heuristic: 1 token ≈ 4 chars)"""
@@ -24,9 +22,8 @@ def estimate_tokens(data: Any) -> int:
     text = json.dumps(data)
     return len(text) // 4
 
-
 async def get_product_context(
-    product_id: str, tenant_key: str, include_metadata: bool = False, db_manager: Optional[DatabaseManager] = None
+    product_id: str, tenant_key: str, include_metadata: bool = False, db_manager: DatabaseManager | None = None
 ) -> dict[str, Any]:
     """
     Fetch general product information (Product Core).
