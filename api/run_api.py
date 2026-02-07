@@ -162,12 +162,12 @@ def get_default_host() -> str:
 
                 # v3.0 default: bind to all interfaces (firewall controls access)
                 logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
-                return "0.0.0.0"  # noqa: S104 - Intentional for local network, firewall-controlled
+                return "0.0.0.0"
     except (OSError, ValueError, KeyError) as e:
         logging.warning(f"Could not read config: {e}, using v3.0 default: 0.0.0.0")
 
     # v3.0 safe default: bind to all interfaces (firewall controls access)
-    return "0.0.0.0"  # noqa: S104 - Intentional for local network, firewall-controlled
+    return "0.0.0.0"
 
 
 def main():
