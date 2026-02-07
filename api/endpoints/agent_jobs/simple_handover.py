@@ -14,9 +14,8 @@ No more Agent ID Swap. No new AgentExecution rows. Just simple context reset.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +23,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -116,22 +116,17 @@ async def simple_handover(
 
         # Calculate context usage percentage (avoid division by zero)
         context_percent = (
-            int((execution.context_used / execution.context_budget) * 100)
-            if execution.context_budget > 0
-            else 0
+            int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
         )
 
         # Write to 360 Memory
-        from src.giljo_mcp.tools.write_360_memory import write_360_memory
         from api.app import app
+        from src.giljo_mcp.tools.write_360_memory import write_360_memory
 
         # Get database manager from app state (Handover 0461c fix)
         db_manager = getattr(app.state, "db_manager", None)
         if db_manager is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Database manager not initialized"
-            )
+            raise HTTPException(status_code=500, detail="Database manager not initialized")
 
         memory_result = await write_360_memory(
             project_id=str(job.project_id),

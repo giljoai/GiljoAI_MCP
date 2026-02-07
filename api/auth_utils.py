@@ -38,9 +38,7 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
         setup_state = result_default.scalar_one_or_none()
 
         if setup_state is not None:
-            return {
-                "database_initialized": bool(getattr(setup_state, "database_initialized", False))
-            }
+            return {"database_initialized": bool(getattr(setup_state, "database_initialized", False))}
 
         # Fallback: derive initialization from any SetupState row
         # Order by database_initialized desc so True wins

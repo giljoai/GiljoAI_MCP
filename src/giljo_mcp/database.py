@@ -8,14 +8,15 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from .logging import get_logger, ErrorCode
+from .logging import ErrorCode, get_logger
 from .models import Base
 from .tenant import TenantManager
+
 
 logger = get_logger(__name__)
 
@@ -176,7 +177,7 @@ class DatabaseManager:
         except GeneratorExit:
             # GeneratorExit is BaseException (not Exception) - raised by FastAPI
             # when HTTPException occurs or client disconnects
-            if hasattr(session, 'is_active') and session.is_active:
+            if hasattr(session, "is_active") and session.is_active:
                 try:
                     await session.rollback()
                 except Exception:
@@ -196,7 +197,7 @@ class DatabaseManager:
             raise
         finally:
             # Always close session - but check state first to prevent IllegalStateChangeError
-            if hasattr(session, 'is_active') and session.is_active:
+            if hasattr(session, "is_active") and session.is_active:
                 try:
                     await session.rollback()
                 except Exception:
@@ -329,7 +330,6 @@ class DatabaseManager:
                 # Add tenant key to session info for reference
                 session.info["tenant_key"] = tenant_key
                 yield session
-
 
     def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
         """

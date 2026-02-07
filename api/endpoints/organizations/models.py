@@ -17,11 +17,14 @@ from pydantic import BaseModel, Field
 # Organization Schemas
 # ============================================================================
 
+
 class OrganizationCreate(BaseModel):
     """Schema for creating organization."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Organization display name")
-    slug: Optional[str] = Field(None, max_length=100, description="URL-friendly identifier (auto-generated if not provided)")
+    slug: Optional[str] = Field(
+        None, max_length=100, description="URL-friendly identifier (auto-generated if not provided)"
+    )
     settings: Optional[dict] = Field(default_factory=dict, description="Organization-level settings")
 
 
@@ -64,6 +67,7 @@ class OrganizationResponse(BaseModel):
 # ============================================================================
 # Membership Schemas
 # ============================================================================
+
 
 class MemberInvite(BaseModel):
     """Schema for inviting member."""

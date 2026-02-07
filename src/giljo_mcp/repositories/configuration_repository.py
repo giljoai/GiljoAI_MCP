@@ -49,9 +49,7 @@ class ConfigurationRepository:
             List of tenant keys with configurations
         """
         result = await session.execute(
-            select(distinct(Configuration.tenant_key)).where(
-                Configuration.tenant_key.isnot(None)
-            )
+            select(distinct(Configuration.tenant_key)).where(Configuration.tenant_key.isnot(None))
         )
         return [row[0] for row in result]
 
@@ -70,9 +68,7 @@ class ConfigurationRepository:
         Returns:
             List of Configuration instances for the tenant
         """
-        result = await session.execute(
-            select(Configuration).where(Configuration.tenant_key == tenant_key)
-        )
+        result = await session.execute(select(Configuration).where(Configuration.tenant_key == tenant_key))
         return list(result.scalars().all())
 
     async def get_configuration_by_key(
@@ -93,10 +89,7 @@ class ConfigurationRepository:
             Configuration instance or None if not found
         """
         result = await session.execute(
-            select(Configuration).where(
-                Configuration.tenant_key == tenant_key,
-                Configuration.key == key
-            )
+            select(Configuration).where(Configuration.tenant_key == tenant_key, Configuration.key == key)
         )
         return result.scalar_one_or_none()
 
@@ -115,9 +108,7 @@ class ConfigurationRepository:
         Returns:
             Number of configurations deleted
         """
-        result = await session.execute(
-            delete(Configuration).where(Configuration.tenant_key == tenant_key)
-        )
+        result = await session.execute(delete(Configuration).where(Configuration.tenant_key == tenant_key))
         return result.rowcount
 
     # ============================================================================
@@ -137,9 +128,7 @@ class ConfigurationRepository:
         Returns:
             True if admin user exists, False otherwise
         """
-        result = await session.execute(
-            select(User).where(User.role == "admin").limit(1)
-        )
+        result = await session.execute(select(User).where(User.role == "admin").limit(1))
         return result.scalar_one_or_none() is not None
 
     # ============================================================================

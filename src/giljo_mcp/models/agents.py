@@ -6,18 +6,16 @@ These models support the agentic orchestration system.
 """
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
-    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -63,7 +61,9 @@ class AgentInteraction(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<AgentInteraction(id={self.id}, sub_agent_name='{self.sub_agent_name}', type='{self.interaction_type}')>"
+        return (
+            f"<AgentInteraction(id={self.id}, sub_agent_name='{self.sub_agent_name}', type='{self.interaction_type}')>"
+        )
 
 
 class Job(Base):

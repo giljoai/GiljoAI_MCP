@@ -4,16 +4,9 @@ Handles project lifecycle: create, list, switch, close
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any, Optional
-from uuid import uuid4
-
-from sqlalchemy import select, update
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.tenant import TenantManager, current_tenant
 
 
 logger = logging.getLogger(__name__)
@@ -120,5 +113,3 @@ class _SessionContext:
             return await self.context_manager.__aexit__(exc_type, exc_val, exc_tb)
         # Test mode - do nothing, test fixture handles cleanup
         return False
-
-

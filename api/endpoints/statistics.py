@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+
 from src.giljo_mcp.colored_logger import get_colored_logger
 from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
 
@@ -287,7 +287,9 @@ async def get_project_statistics(
                 task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
 
                 # ORIGINAL: completed_task_count = await session.scalar(select(func.count(Task.id)).where(and_(Task.project_id == project.id, Task.status == "completed")))
-                completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+                completed_task_count = await stats_repo.count_completed_tasks_for_project(
+                    session, tenant_key, project.id
+                )
 
                 # Get last activity
                 # ORIGINAL: last_message = await session.scalar(select(func.max(Message.created_at)).where(Message.project_id == project.id))
@@ -299,9 +301,7 @@ async def get_project_statistics(
 
                 # Calculate context usage (hardcoded default budget)
                 context_budget = 150000  # Hardcoded default (Project.context_budget removed)
-                context_percent = (
-                    (project.context_used / context_budget * 100) if context_budget > 0 else 0
-                )
+                context_percent = (project.context_used / context_budget * 100) if context_budget > 0 else 0
 
                 stats.append(
                     ProjectStatsResponse(
@@ -400,11 +400,11 @@ async def get_agent_statistics(
 
                 # Get project_id by joining to AgentJob
                 # ORIGINAL: agent_job = await session.scalar(select(AgentJob).where(AgentJob.job_id == agent_execution.job_id))
-                agent_job = await stats_repo.get_agent_job_by_job_id(
-                    session, tenant_key, agent_execution.job_id
-                )
+                agent_job = await stats_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
 
-                created_ts = agent_execution.started_at or (agent_execution.job.created_at if agent_job else agent_execution.started_at)
+                created_ts = agent_execution.started_at or (
+                    agent_execution.job.created_at if agent_job else agent_execution.started_at
+                )
 
                 stats.append(
                     AgentStatsResponse(

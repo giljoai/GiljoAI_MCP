@@ -16,6 +16,7 @@ import asyncio
 import logging
 from typing import Any, Callable, Dict, List
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -177,8 +178,7 @@ class EventBus:
         """Get count of registered listeners."""
         if event_type:
             return len(self._listeners.get(event_type, []))
-        else:
-            return sum(len(handlers) for handlers in self._listeners.values())
+        return sum(len(handlers) for handlers in self._listeners.values())
 
     def clear(self) -> None:
         """Clear all listeners (for testing)."""

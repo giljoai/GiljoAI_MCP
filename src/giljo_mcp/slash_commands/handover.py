@@ -10,7 +10,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.agent_identity import AgentJob, AgentExecution
+from ..models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -104,14 +104,12 @@ async def handle_gil_handover(
     try:
         # Calculate context usage percentage (avoid division by zero)
         context_percent = (
-            int((execution.context_used / execution.context_budget) * 100)
-            if execution.context_budget > 0
-            else 0
+            int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
         )
 
         # Write to 360 Memory
-        from ..tools.write_360_memory import write_360_memory
         from ..database import DatabaseManager
+        from ..tools.write_360_memory import write_360_memory
 
         db_manager = DatabaseManager()
 
@@ -212,9 +210,7 @@ async def _get_active_orchestrator(
     )
 
     if project_id:
-        stmt = stmt.join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(
-            AgentJob.project_id == project_id
-        )
+        stmt = stmt.join(AgentJob, AgentExecution.job_id == AgentJob.job_id).where(AgentJob.project_id == project_id)
 
     stmt = stmt.order_by(AgentExecution.started_at.desc()).limit(1)
 

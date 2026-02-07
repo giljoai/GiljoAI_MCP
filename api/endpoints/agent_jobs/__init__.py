@@ -23,7 +23,18 @@ Note: succession.py removed in Handover 0700d - use simple_handover.py instead.
 
 from fastapi import APIRouter
 
-from . import executions, filters, lifecycle, messages, operations, orchestration, progress, simple_handover, status, table_view
+from . import (
+    executions,
+    filters,
+    lifecycle,
+    messages,
+    operations,
+    orchestration,
+    progress,
+    simple_handover,
+    status,
+    table_view,
+)
 
 
 # Create main router for agent_jobs module
@@ -45,4 +56,4 @@ router.include_router(messages.router)  # Handover 0387g
 jobs_router = APIRouter(prefix="/api/jobs", tags=["job-operations"])
 jobs_router.include_router(operations.router)
 
-__all__ = ["router", "jobs_router"]
+__all__ = ["jobs_router", "router"]

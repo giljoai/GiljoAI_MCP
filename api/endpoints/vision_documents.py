@@ -57,10 +57,7 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
     try:
         consolidation_service = ConsolidatedVisionService()
         result = await consolidation_service.consolidate_vision_documents(
-            product_id=product_id,
-            session=db_session,
-            tenant_key=tenant_key,
-            force=False
+            product_id=product_id, session=db_session, tenant_key=tenant_key, force=False
         )
 
         if result["success"]:
@@ -70,14 +67,10 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
             )
         else:
             # Not an error - could be "no_changes" which is expected
-            logger.debug(
-                f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}"
-            )
+            logger.debug(f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}")
     except Exception as e:
         # Don't fail the main operation if consolidation fails
-        logger.error(
-            f"consolidation_failed: product_id={product_id}, error={str(e)}"
-        )
+        logger.error(f"consolidation_failed: product_id={product_id}, error={e!s}")
 
 
 async def get_db():
@@ -282,9 +275,7 @@ async def create_vision_document(
 
                 chunker = VisionDocumentChunker(target_chunk_size=25000)
                 chunk_result = await chunker.chunk_vision_document(
-                    session=db,
-                    tenant_key=tenant_key,
-                    vision_document_id=str(doc.id)
+                    session=db, tenant_key=tenant_key, vision_document_id=str(doc.id)
                 )
                 await db.commit()
 
@@ -348,10 +339,7 @@ async def get_vision_document(
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Vision document {document_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found")
 
     return VisionDocumentResponse.model_validate(doc)
 
@@ -528,8 +516,7 @@ async def delete_vision_document(
 
         if not doc:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Vision document {document_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
             )
 
         product_id = doc.product_id  # Store before deletion
@@ -595,34 +582,23 @@ async def regenerate_consolidated_vision(
     """
     try:
         # Verify product exists and belongs to tenant
-        result = await db.execute(
-            select(Product).filter(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
-        )
+        result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
         product = result.scalar_one_or_none()
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {product_id} not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
 
         # Run consolidation service
         consolidation_service = ConsolidatedVisionService()
         consolidation_result = await consolidation_service.consolidate_vision_documents(
-            product_id=product_id,
-            session=db,
-            tenant_key=tenant_key,
-            force=force
+            product_id=product_id, session=db, tenant_key=tenant_key, force=force
         )
 
         if not consolidation_result["success"]:
             # Return error details for debugging
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=consolidation_result.get("error", "Consolidation failed")
+                detail=consolidation_result.get("error", "Consolidation failed"),
             )
 
         return {
@@ -630,7 +606,7 @@ async def regenerate_consolidated_vision(
             "light_tokens": consolidation_result["light"]["tokens"],
             "medium_tokens": consolidation_result["medium"]["tokens"],
             "source_docs": consolidation_result["source_docs"],
-            "hash": consolidation_result["hash"]
+            "hash": consolidation_result["hash"],
         }
 
     except HTTPException:
@@ -638,8 +614,7 @@ async def regenerate_consolidated_vision(
     except Exception as e:
         logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to regenerate consolidated vision: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate consolidated vision: {e!s}"
         )
 
 
@@ -687,7 +662,7 @@ async def regenerate_summaries(
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Vision document {document_id} has no content to summarize"
+                detail=f"Vision document {document_id} has no content to summarize",
             )
 
         # Generate summaries
@@ -714,15 +689,14 @@ async def regenerate_summaries(
 
         return RechunkResponse(
             success=True,
-            message=f"Summaries regenerated successfully",
+            message="Summaries regenerated successfully",
             chunks_created=2,  # light and medium summaries
-            total_tokens=summaries["original_tokens"]
+            total_tokens=summaries["original_tokens"],
         )
 
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to regenerate summaries: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate summaries: {e!s}"
         )

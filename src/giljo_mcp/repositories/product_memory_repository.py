@@ -6,10 +6,10 @@ CRUD operations for 360 memory entries with tenant isolation.
 
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, update, func, and_
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry

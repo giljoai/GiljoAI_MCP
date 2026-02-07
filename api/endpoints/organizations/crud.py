@@ -19,9 +19,10 @@ from src.giljo_mcp.services.org_service import OrgService
 
 from .models import (
     OrganizationCreate,
-    OrganizationUpdate,
     OrganizationResponse,
+    OrganizationUpdate,
 )
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,21 +42,13 @@ def _serialize_organization(org) -> dict:
         "updated_at": org.updated_at,
         "settings": org.settings or {},
         "members": [
-            {
-                "id": m.id,
-                "user_id": m.user_id,
-                "role": m.role,
-                "joined_at": m.joined_at,
-                "invited_by": m.invited_by
-            }
+            {"id": m.id, "user_id": m.user_id, "role": m.role, "joined_at": m.joined_at, "invited_by": m.invited_by}
             for m in (org.members or [])
-        ]
+        ],
     }
 
 
-def get_org_service(
-    db: AsyncSession = Depends(get_db_session)
-) -> OrgService:
+def get_org_service(db: AsyncSession = Depends(get_db_session)) -> OrgService:
     """Dependency for OrgService injection."""
     return OrgService(db)
 
@@ -64,7 +57,7 @@ def get_org_service(
 async def create_organization(
     org_data: OrganizationCreate,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Create new organization with current user as owner.
@@ -87,28 +80,17 @@ async def create_organization(
             slug=org_data.slug,
             owner_id=current_user.id,
             tenant_key=current_user.tenant_key,
-            settings=org_data.settings
+            settings=org_data.settings,
         )
 
         if not result["success"]:
             if "already exists" in result["error"]:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=result["error"]
-                )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result["error"])
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
         org = result["data"]
         logger.info(
-            "Organization created via API",
-            extra={
-                "org_id": org.id,
-                "slug": org.slug,
-                "owner_id": current_user.id
-            }
+            "Organization created via API", extra={"org_id": org.id, "slug": org.slug, "owner_id": current_user.id}
         )
 
         return _serialize_organization(org)
@@ -117,16 +99,12 @@ async def create_organization(
         raise
     except Exception as e:
         logger.error(f"Error creating organization: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("", response_model=List[OrganizationResponse])
 async def list_organizations(
-    current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    current_user: User = Depends(get_current_active_user), org_service: OrgService = Depends(get_org_service)
 ):
     """
     List all organizations for current user.
@@ -147,10 +125,7 @@ async def list_organizations(
         result = await org_service.get_user_organizations(current_user.id)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result["error"]
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"])
 
         return [_serialize_organization(org) for org in result["data"]]
 
@@ -158,17 +133,14 @@ async def list_organizations(
         raise
     except Exception as e:
         logger.error(f"Error listing organizations: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/{org_id}", response_model=OrganizationResponse)
 async def get_organization(
     org_id: str,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Get organization by ID.
@@ -195,26 +167,20 @@ async def get_organization(
                 "org_id": org_id,
                 "user_id": current_user.id,
                 "user_org_id": str(current_user.org_id),
-                "org_id_match": str(current_user.org_id) == str(org_id)
-            }
+                "org_id_match": str(current_user.org_id) == str(org_id),
+            },
         )
 
         # Allow access if user's org_id matches OR has membership
         # This handles cases where user has org_id but no membership record
         if str(current_user.org_id) != str(org_id):
             if not await org_service.can_view_org(org_id, current_user.id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not a member of this organization"
-                )
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
 
         result = await org_service.get_organization(org_id)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
 
         return _serialize_organization(result["data"])
 
@@ -222,10 +188,7 @@ async def get_organization(
         raise
     except Exception as e:
         logger.error(f"Error getting organization: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.put("/{org_id}", response_model=OrganizationResponse)
@@ -233,7 +196,7 @@ async def update_organization(
     org_id: str,
     org_data: OrganizationUpdate,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Update organization (owner or admin only).
@@ -257,29 +220,15 @@ async def update_organization(
     try:
         if not await org_service.can_edit_org(org_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner or admin can update organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owner or admin can update organization"
             )
 
-        result = await org_service.update_organization(
-            org_id=org_id,
-            name=org_data.name,
-            settings=org_data.settings
-        )
+        result = await org_service.update_organization(org_id=org_id, name=org_data.name, settings=org_data.settings)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-        logger.info(
-            "Organization updated via API",
-            extra={
-                "org_id": org_id,
-                "updated_by": current_user.id
-            }
-        )
+        logger.info("Organization updated via API", extra={"org_id": org_id, "updated_by": current_user.id})
 
         return _serialize_organization(result["data"])
 
@@ -287,17 +236,14 @@ async def update_organization(
         raise
     except Exception as e:
         logger.error(f"Error updating organization: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.delete("/{org_id}")
 async def delete_organization(
     org_id: str,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Delete organization (owner only).
@@ -319,26 +265,14 @@ async def delete_organization(
     """
     try:
         if not await org_service.can_delete_org(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner can delete organization"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can delete organization")
 
         result = await org_service.delete_organization(org_id)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
-        logger.info(
-            "Organization deleted via API",
-            extra={
-                "org_id": org_id,
-                "deleted_by": current_user.id
-            }
-        )
+        logger.info("Organization deleted via API", extra={"org_id": org_id, "deleted_by": current_user.id})
 
         return {"message": "Organization deleted"}
 
@@ -346,7 +280,4 @@ async def delete_organization(
         raise
     except Exception as e:
         logger.error(f"Error deleting organization: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

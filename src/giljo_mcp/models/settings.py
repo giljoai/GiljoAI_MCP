@@ -5,12 +5,11 @@ Stores general, network, and database settings per tenant in JSONB format.
 Handover 0506: Settings endpoints implementation.
 """
 
-from datetime import datetime
 from sqlalchemy import (
     Column,
-    String,
     DateTime,
     Index,
+    String,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB

@@ -11,11 +11,10 @@ import logging
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
 
 from .dependencies import get_template_service
@@ -50,9 +49,7 @@ async def get_template_diff(
     # result = await session.execute(stmt)
     # template = result.scalar_one_or_none()
 
-    template = await template_service.get_template_by_id(
-        session, template_id, current_user.tenant_key
-    )
+    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -98,9 +95,7 @@ async def preview_template(
     # result = await session.execute(stmt)
     # template = result.scalar_one_or_none()
 
-    template = await template_service.get_template_by_id(
-        session, template_id, current_user.tenant_key
-    )
+    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")

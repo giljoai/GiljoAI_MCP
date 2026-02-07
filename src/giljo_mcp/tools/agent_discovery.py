@@ -60,11 +60,13 @@ def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str
     }
 
     # Add staleness detection fields (Handover 0421 - always included)
-    agent_info.update({
-        "may_be_stale": template.may_be_stale,
-        "last_exported_at": template.last_exported_at.isoformat() if template.last_exported_at else None,
-        "updated_at": template.updated_at.isoformat() if template.updated_at else None,
-    })
+    agent_info.update(
+        {
+            "may_be_stale": template.may_be_stale,
+            "last_exported_at": template.last_exported_at.isoformat() if template.last_exported_at else None,
+            "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+        }
+    )
 
     # Add additional fields based on depth level
     if depth == "full":
@@ -77,11 +79,13 @@ def _format_agent_info(template: AgentTemplate, depth: str = "full") -> dict[str
                 else template.description
             )
 
-        agent_info.update({
-            "description": description,
-            "expected_filename": f"{template.name}_{version}.md",
-            "created_at": template.created_at.isoformat() if template.created_at else None,
-        })
+        agent_info.update(
+            {
+                "description": description,
+                "expected_filename": f"{template.name}_{version}.md",
+                "created_at": template.created_at.isoformat() if template.created_at else None,
+            }
+        )
 
     return agent_info
 
@@ -200,17 +204,19 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
                 "options": [
                     "Run /gil_get_claude_agents",
                     "Continue anyway (risk using stale templates)",
-                    "Abort staging"
+                    "Abort staging",
                 ],
             }
             logger.warning(
                 f"Staleness detected: {len(stale_agents)} stale agent(s) found",
-                extra={"tenant_key": tenant_key, "stale_agents": stale_agents}
+                extra={"tenant_key": tenant_key, "stale_agents": stale_agents},
             )
         # ═══════════════════════════════════════════════════════════════════════
 
-        logger.info(f"Found {len(agents)} available agents (depth={depth})",
-                   extra={"tenant_key": tenant_key, "count": len(agents), "depth": depth})
+        logger.info(
+            f"Found {len(agents)} available agents (depth={depth})",
+            extra={"tenant_key": tenant_key, "count": len(agents), "depth": depth},
+        )
 
         response_data = {
             "agents": agents,
