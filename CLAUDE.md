@@ -20,6 +20,31 @@
 
 ---
 
+## CRITICAL: Pre-commit Hook Policy
+
+**When pre-commit hooks BLOCK a commit, you MUST:**
+
+1. **DO NOT** use `--no-verify` to bypass hooks without user approval
+2. **DO NOT** disable hooks in `.pre-commit-config.yaml`
+3. **ASK THE USER** before proceeding:
+   ```
+   "Pre-commit hooks are blocking this commit due to:
+   - [list specific issues]
+
+   Options:
+   1. Fix the issues (recommended)
+   2. You explicitly approve bypass (I'll document reason in commit message)
+   3. Defer commit until issues resolved
+
+   How would you like to proceed?"
+   ```
+
+**Why this matters:** The 21K lint issues in this codebase accumulated from repeated `--no-verify` bypasses. Each bypass adds technical debt.
+
+**Config Location**: `.pre-commit-config.yaml`
+
+---
+
 Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Server** codebase.
 
 ## What We're Building
