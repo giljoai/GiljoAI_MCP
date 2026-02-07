@@ -341,7 +341,7 @@ async def emit_websocket_event(
                 event_type=event_type,
                 data={"product_id": product_id, **data},
             )
-    except Exception as exc:  # pragma: no cover - best-effort emit
+    except (RuntimeError, ValueError, KeyError) as exc:  # pragma: no cover - best-effort emit
         logger.warning("WebSocket emit failed", extra={"error": str(exc), "event_type": event_type})
 
 

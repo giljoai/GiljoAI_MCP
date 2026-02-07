@@ -103,7 +103,7 @@ class AgentMessageQueue:
 
         except Exception as e:
             logger.exception(f"Failed to enqueue message: {e}")
-            raise QueueException(f"Enqueue failed: {e}")
+            raise QueueException(f"Enqueue failed: {e}") from e
 
     async def dequeue(self, agent_name: str, batch_size: Optional[int] = None) -> list[Message]:
         """
@@ -161,7 +161,7 @@ class AgentMessageQueue:
             except Exception as e:
                 await session.rollback()
                 logger.exception(f"Failed to dequeue messages: {e}")
-                raise QueueException(f"Dequeue failed: {e}")
+                raise QueueException(f"Dequeue failed: {e}") from e
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
         """
@@ -331,7 +331,7 @@ class AgentMessageQueue:
             except Exception as e:
                 await session.rollback()
                 logger.exception(f"Crash recovery failed: {e}")
-                raise QueueException(f"Recovery failed: {e}")
+                raise QueueException(f"Recovery failed: {e}") from e
 
     async def checkpoint(self):
         """

@@ -809,7 +809,7 @@ async def mcp_endpoint(
             scheme, _, token = authorization.partition(" ")
             if scheme.lower() == "bearer" and token:
                 api_key_value = token
-        except Exception:
+        except (ValueError, KeyError):
             api_key_value = None
 
     # Validate API key presence

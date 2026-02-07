@@ -210,12 +210,12 @@ async def generate_orchestrator_prompt_thin(
 
     except ValueError as e:
         logger.error(f"Validation error generating thin orchestrator prompt: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error generating thin orchestrator prompt: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate orchestrator prompt: {e!s}"
-        )
+        ) from e
 
 
 @router.get("/agent/{agent_id}", response_model=AgentPromptResponse)
@@ -456,14 +456,14 @@ async def generate_staging_prompt(
     except ValueError as e:
         # Project not found or invalid tool
         logger.warning(f"[STAGING PROMPT THIN] Validation error for project={project_id}: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
     except Exception as e:
         # Unexpected error during generation
         logger.exception(f"[STAGING PROMPT THIN] Generation failed for project={project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin staging prompt: {e!s}"
-        )
+        ) from e
 
 
 @router.get("/implementation/{project_id}")
@@ -638,4 +638,4 @@ async def get_implementation_prompt(
         logger.exception(f"[IMPLEMENTATION PROMPT] Generation failed for project={project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate implementation prompt: {e!s}"
-        )
+        ) from e

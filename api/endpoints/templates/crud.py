@@ -107,16 +107,6 @@ async def get_template(
     """
     logger.debug(f"User {current_user.username} getting template {template_id}")
 
-    # ORIGINAL QUERY: crud.py line 115-122 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     and_(
-    #         AgentTemplate.id == template_id,
-    #         AgentTemplate.tenant_key == current_user.tenant_key,
-    #     )
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
     template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
@@ -141,15 +131,6 @@ async def list_templates(
     logger.debug(f"User {current_user.username} listing templates")
 
     try:
-        # ORIGINAL QUERY: crud.py line 151-160 (replaced with service call)
-        # query = select(AgentTemplate).where(AgentTemplate.tenant_key == current_user.tenant_key)
-        # if role:
-        #     query = query.where(AgentTemplate.role == role)
-        # if is_active is not None:
-        #     query = query.where(AgentTemplate.is_active == is_active)
-        # result = await session.execute(query)
-        # templates = result.scalars().all()
-
         templates = await template_service.list_templates_with_filters(
             session, current_user.tenant_key, role=role, is_active=is_active
         )
@@ -158,7 +139,7 @@ async def list_templates(
 
     except Exception as e:
         logger.exception(f"Failed to list templates: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list templates: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to list templates: {e!s}") from e
 
 
 @router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -189,16 +170,6 @@ async def create_template(
         if len(generated_name) > 100:
             raise HTTPException(status_code=400, detail="Name must be 100 characters or less")
 
-        # ORIGINAL QUERY: crud.py line 197-205 (replaced with service call)
-        # stmt = select(AgentTemplate).where(
-        #     and_(
-        #         AgentTemplate.tenant_key == context["tenant_key"],
-        #         AgentTemplate.name == generated_name
-        #     )
-        # )
-        # result = await session.execute(stmt)
-        # if result.scalar_one_or_none():
-
         if await template_service.check_template_name_exists(session, context["tenant_key"], generated_name):
             raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
 
@@ -222,20 +193,7 @@ async def create_template(
         # Extract variables
         variables = re.findall(r"\{(\w+)\}", template.system_instructions)
 
-        # ORIGINAL QUERY: crud.py line 229-240 (replaced with service call)
-        # Handle default template logic
         if template.is_default and template.role:
-            # filters = [
-            #     AgentTemplate.tenant_key == context["tenant_key"],
-            #     AgentTemplate.role == template.role,
-            #     AgentTemplate.is_default == True,
-            # ]
-            # if context.get("product_id"):
-            #     filters.append(AgentTemplate.product_id == context["product_id"])
-            # stmt = select(AgentTemplate).where(and_(*filters))
-            # result = await session.execute(stmt)
-            # for existing in result.scalars().all():
-
             existing_defaults = await template_service.get_default_templates_by_role(
                 session, context["tenant_key"], template.role, context.get("product_id")
             )
@@ -279,7 +237,7 @@ async def create_template(
         raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
         logger.error(f"Failed to create template: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create template: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to create template: {e!s}") from e
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
@@ -298,25 +256,9 @@ async def update_template(
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        # ORIGINAL QUERY: crud.py line 300-307 (replaced with service call)
-        # stmt = select(AgentTemplate).where(
-        #     and_(
-        #         AgentTemplate.id == template_id,
-        #         AgentTemplate.tenant_key == context["tenant_key"]
-        #     )
-        # )
-        # result = await session.execute(stmt)
-        # template = result.scalar_one_or_none()
-
         template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
 
         if not template:
-            # ORIGINAL QUERY: crud.py line 311-314 (replaced with service call)
-            # cross_tenant_result = await session.execute(
-            #     select(AgentTemplate).where(AgentTemplate.id == template_id)
-            # )
-            # if cross_tenant_result.scalar_one_or_none():
-
             if await template_service.check_cross_tenant_template_exists(session, template_id):
                 raise HTTPException(status_code=403, detail="Access denied for this template")
             raise HTTPException(status_code=404, detail="Template not found")
@@ -335,12 +277,7 @@ async def update_template(
                 detail="system_instructions is read-only; use reset-system to restore defaults",
             )
 
-        # ORIGINAL QUERY: crud.py line 340-360 (replaced with service call)
-        # When user_instructions change, create an archive of the previous version
         if "user_instructions" in update_data:
-            # previous = TemplateArchive(...)
-            # session.add(previous)
-
             await template_service.create_template_archive(
                 session,
                 template,
@@ -384,7 +321,7 @@ async def update_template(
         raise  # Re-raise HTTP exceptions (400, 403, 404, 409, etc.) without modification
     except Exception as e:
         logger.error(f"Failed to update template: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update template: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to update template: {e!s}") from e
 
 
 @router.delete("/{template_id}")
@@ -409,16 +346,6 @@ async def delete_template(
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        # ORIGINAL QUERY: crud.py line 427-434 (replaced with service call)
-        # stmt = select(AgentTemplate).where(
-        #     and_(
-        #         AgentTemplate.id == template_id,
-        #         AgentTemplate.tenant_key == context["tenant_key"]
-        #     )
-        # )
-        # result = await session.execute(stmt)
-        # template = result.scalar_one_or_none()
-
         template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
 
         if not template:
@@ -428,17 +355,6 @@ async def delete_template(
             raise HTTPException(status_code=403, detail="Cannot delete system-managed templates")
 
         template_name = template.name
-
-        # ORIGINAL QUERIES: crud.py lines 445-471 (replaced with service call)
-        # 1. Set AgentJob.template_id to NULL for historical jobs
-        # await session.execute(update(AgentJob)...)
-        # NOTE: TemplateAugmentation deletion removed (Handover 0423 - model deleted)
-        # 2. Delete related TemplateUsageStats records
-        # await session.execute(sql_delete(TemplateUsageStats)...)
-        # 3. Delete related TemplateArchive records (version history)
-        # await session.execute(sql_delete(TemplateArchive)...)
-        # 4. Delete the template itself
-        # await session.delete(template)
 
         deleted = await template_service.hard_delete_template(session, template_id, context["tenant_key"])
 
@@ -456,7 +372,7 @@ async def delete_template(
     except Exception as e:
         logger.error(f"Failed to delete template: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}") from e
 
 
 @router.get("/stats/active-count", response_model=dict)
@@ -473,17 +389,6 @@ async def get_active_count(
     try:
         context = get_tenant_and_product_from_user(current_user)
 
-        # ORIGINAL QUERY: crud.py line 496-504 (replaced with service call)
-        # stmt = select(func.count(AgentTemplate.id)).where(
-        #     and_(
-        #         AgentTemplate.tenant_key == context["tenant_key"],
-        #         AgentTemplate.is_active == True,
-        #         AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES)
-        #     )
-        # )
-        # result = await session.execute(stmt)
-        # count = result.scalar()
-
         count = await template_service.get_active_user_managed_count(session, context["tenant_key"])
 
         return {
@@ -494,4 +399,4 @@ async def get_active_count(
 
     except Exception as e:
         logger.error(f"Failed to get active count: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -97,7 +97,7 @@ class SerenaDetector:
             return False, "uvx check timeout"
         except subprocess.CalledProcessError as e:
             return False, f"uvx check failed: {e.stderr}"
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Unexpected error checking uvx: {e}")
             return False, f"Unexpected error: {e!s}"
 
@@ -128,7 +128,7 @@ class SerenaDetector:
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if hasattr(e, "stderr") else str(e)
             return False, None, f"Serena not found: {error_msg}"
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Unexpected error checking Serena: {e}")
             return False, None, f"Unexpected error: {e!s}"
 

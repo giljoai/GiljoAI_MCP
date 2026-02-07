@@ -33,7 +33,7 @@ def read_config() -> Dict[str, Any]:
     try:
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to read config: {e}")
         return {}
 
@@ -44,9 +44,9 @@ def write_config(config: Dict[str, Any]) -> None:
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to write config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class GitToggleRequest(BaseModel):
@@ -118,7 +118,7 @@ async def toggle_git_integration(
                 data={"enabled": request.enabled, "settings": config["features"]["git_integration"]},
             )
             logger.info(f"[WEBSOCKET] Broadcasted git integration change to tenant {tenant_key}")
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
             logger.warning(f"[WEBSOCKET] Failed to broadcast git integration update: {ws_error}")
 
         return GitToggleResponse(
@@ -128,9 +128,9 @@ async def toggle_git_integration(
             settings=config["features"]["git_integration"],
         )
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to toggle Git integration: {e!s}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/settings", response_model=GitToggleResponse)
@@ -168,9 +168,9 @@ async def update_git_settings(
             settings=git_settings,
         )
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to update Git settings: {e!s}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/settings")
@@ -192,6 +192,6 @@ async def get_git_settings(current_user: dict = Depends(get_current_user)) -> Di
             "branch_strategy": "main",
         }
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to get Git settings: {e!s}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

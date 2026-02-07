@@ -27,7 +27,7 @@ def extract_python_imports(file_path: Path) -> List[str]:
                 if node.module:
                     imports.append(node.module)
         return imports
-    except Exception as e:
+    except (OSError, SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Failed to parse {file_path}: {e}")
         return []
 
@@ -40,7 +40,7 @@ def extract_vue_imports(file_path: Path) -> List[str]:
         pattern = r"import\s+(?:(?:\{[^}]+\})|(?:\w+))\s+from\s+['\"]([^'\"]+)['\"]"
         matches = re.findall(pattern, content)
         return matches
-    except Exception as e:
+    except (OSError, SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Failed to parse {file_path}: {e}")
         return []
 

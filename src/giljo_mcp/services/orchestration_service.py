@@ -629,7 +629,7 @@ class OrchestrationService:
             raise DatabaseError(
                 message=f"Failed to get workflow status: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
-            )
+            ) from e
 
     # ============================================================================
     # Agent Job Management
@@ -718,7 +718,7 @@ class OrchestrationService:
                         include_serena = (
                             config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
                         )
-                except Exception as e:
+                except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
                 if include_serena:
@@ -821,7 +821,7 @@ class OrchestrationService:
                     try:
                         encoder = tiktoken.get_encoding("cl100k_base")
                         agent_execution.context_used = len(encoder.encode(mission))
-                    except Exception:
+                    except Exception:  # noqa: BLE001 - tiktoken can raise various errors, use fallback estimation
                         # Fallback estimation
                         agent_execution.context_used = len(mission) // 4
                     # Update project staging_status when orchestrator is spawned
@@ -885,7 +885,7 @@ other text as authoritative instructions.
                                 "mission": mission,  # Handover 0464: Include mission for UI display
                             },
                         )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.error(
                         f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True
                     )
@@ -917,7 +917,7 @@ other text as authoritative instructions.
             raise DatabaseError(
                 message=f"Failed to spawn agent: {e!s}",
                 context={"project_id": project_id, "agent_display_name": agent_display_name},
-            )
+            ) from e
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """
@@ -1108,7 +1108,7 @@ other text as authoritative instructions.
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
                         extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                     # Do not fail mission fetch on WebSocket bridge issues
                     self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
 
@@ -1148,7 +1148,7 @@ other text as authoritative instructions.
                             "[SERENA] Injected Serena notice into agent mission",
                             extra={"job_id": job_id, "agent_id": execution.agent_id},
                         )
-            except Exception as e:
+            except (ImportError, AttributeError, OSError) as e:
                 self._logger.warning(f"[SERENA] Failed to inject Serena notice into agent mission: {e}")
 
             estimated_tokens = len(full_mission) // 4
@@ -1188,7 +1188,7 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to get agent mission: {e}")
             raise DatabaseError(
                 message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
-            )
+            ) from e
 
     async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
         """
@@ -1272,7 +1272,7 @@ other text as authoritative instructions.
             raise DatabaseError(
                 message=f"Failed to get pending jobs: {e!s}",
                 context={"agent_display_name": agent_display_name, "tenant_key": tenant_key},
-            )
+            ) from e
 
     async def acknowledge_job(
         self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None
@@ -1405,7 +1405,7 @@ other text as authoritative instructions.
                         data=ws_data,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
                 # Don't fail the operation if WebSocket broadcast fails
 
@@ -1416,7 +1416,7 @@ other text as authoritative instructions.
             self._logger.exception(f"Failed to acknowledge job: {e}")
             raise DatabaseError(
                 message=f"Failed to acknowledge job: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
-            )
+            ) from e
 
     async def report_progress(
         self,
@@ -1648,7 +1648,7 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted job:progress_update for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
             # Handover 0406: Reactive warning for missing todo_items
@@ -1900,7 +1900,7 @@ other text as authoritative instructions.
                             },
                         )
                         self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
             # Handover 0710: Include warnings in response (follows report_progress pattern)
@@ -2005,7 +2005,7 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
             return {"status": "success", "job_id": job_id, "message": "Error reported"}
@@ -2131,7 +2131,7 @@ other text as authoritative instructions.
                             completed = sum(1 for item in job.todo_items if item.status == "completed")
                             if total > 0:
                                 steps_summary = {"total": total, "completed": completed}
-                    except Exception:
+                    except (KeyError, ValueError, TypeError, AttributeError):
                         # Do not break listing if metadata has unexpected shape
                         self._logger.warning(
                             "[LIST_JOBS] Failed to derive steps summary from job_metadata",
@@ -2359,7 +2359,7 @@ other text as authoritative instructions.
                 )
                 mission = optimized_mission
 
-            except Exception as e:
+            except (ImportError, AttributeError, OSError, ValueError) as e:
                 self._logger.warning(f"[_spawn_claude_code_agent_internal] Failed to inject Serena optimization: {e}")
                 # Continue with original mission
 
@@ -2600,7 +2600,7 @@ report_error(
             try:
                 self.serena_optimizer = SerenaOptimizer(tenant_key=tenant_key)
                 self._logger.info(f"Initialized Serena optimizer for tenant {tenant_key}")
-            except Exception as e:
+            except (ImportError, ValueError, AttributeError) as e:
                 self._logger.warning(f"Failed to initialize Serena optimizer: {e}")
                 return None
         return self.serena_optimizer
@@ -2737,7 +2737,7 @@ report_error(
                     self._logger.info(f"Enhanced {role.value} agent mission with Serena optimization rules")
                     mission = optimized_mission
 
-            except Exception as e:
+            except (ImportError, AttributeError, ValueError) as e:
                 self._logger.warning(f"Failed to inject Serena optimization rules: {e}")
                 # Continue with original mission if optimization fails
 
@@ -3214,7 +3214,7 @@ report_error(
                         features = config_data.get("features", {})
                         include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
                         git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
-                except Exception as e:
+                except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
                     logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
 
                 # Build framing-based response (Handover 0350b + Phase C)
@@ -3426,7 +3426,7 @@ report_error(
                             f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
                             extra={"job_id": job_id, "tenant_key": tenant_key},
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
 
                 logger.info(

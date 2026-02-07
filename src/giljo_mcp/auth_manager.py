@@ -11,9 +11,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import bcrypt
 import jwt
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Request
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config_manager import get_config
@@ -106,13 +108,13 @@ class AuthManager:
                 encrypted_data = api_keys_file.read_bytes()
                 decrypted_data = self.cipher.decrypt(encrypted_data)
                 existing_keys = json.loads(decrypted_data.decode())
-            except Exception as e:
+            except (InvalidToken, OSError, json.JSONDecodeError, ValueError) as e:
                 logger.warning(f"Could not decrypt existing keys (might be unencrypted): {e}")
                 # Try reading as plaintext for migration
                 try:
                     existing_keys = json.loads(api_keys_file.read_text())
                     logger.info("Migrating plaintext API keys to encrypted storage")
-                except Exception:
+                except (OSError, json.JSONDecodeError, ValueError):
                     existing_keys = {}
 
         existing_keys[api_key] = self.api_keys[api_key]
@@ -154,13 +156,13 @@ class AuthManager:
                     decrypted_data = self.cipher.decrypt(encrypted_data)
                     self.api_keys = json.loads(decrypted_data.decode())
                     logger.debug("Loaded API keys from encrypted storage")
-                except Exception as e:
+                except (InvalidToken, OSError, json.JSONDecodeError, ValueError) as e:
                     logger.warning(f"Could not decrypt API keys (might be unencrypted): {e}")
                     # Try reading as plaintext for migration
                     try:
                         self.api_keys = json.loads(api_keys_file.read_text())
                         logger.info("Loaded plaintext API keys - will encrypt on next save")
-                    except Exception:
+                    except (OSError, json.JSONDecodeError, ValueError):
                         logger.error("Could not load API keys from file")
                         self.api_keys = {}
 
@@ -205,13 +207,13 @@ class AuthManager:
                     encrypted_data = api_keys_file.read_bytes()
                     decrypted_data = self.cipher.decrypt(encrypted_data)
                     self.api_keys = json.loads(decrypted_data.decode())
-                except Exception as e:
+                except (InvalidToken, OSError, json.JSONDecodeError, ValueError) as e:
                     logger.warning(f"Could not decrypt API keys (might be unencrypted): {e}")
                     # Try reading as plaintext for migration
                     try:
                         self.api_keys = json.loads(api_keys_file.read_text())
                         logger.info("Loaded plaintext API keys - will encrypt on next save")
-                    except Exception:
+                    except (OSError, json.JSONDecodeError, ValueError):
                         logger.error("Could not load API keys from file")
                         self.api_keys = {}
 
@@ -289,9 +291,9 @@ class AuthManager:
 
             # Verify password hash
             password_hash = admin_data.get("password_hash")
-            return bcrypt.verify(password, password_hash)
+            return bcrypt.checkpw(password.encode(), password_hash.encode())
 
-        except Exception as e:
+        except (InvalidToken, OSError, json.JSONDecodeError, ValueError, AttributeError) as e:
             logger.error(f"Failed to validate admin credentials: {e}")
             return False
 
@@ -448,7 +450,7 @@ class AuthManager:
                                 jwt_result["user_obj"] = user_obj
                                 # Update tenant_key from user object (authoritative source)
                                 jwt_result["tenant_key"] = user_obj.tenant_key
-                    except Exception as e:
+                    except SQLAlchemyError as e:
                         logger.warning(f"Failed to load user object for JWT: {e}")
 
                 return jwt_result
@@ -507,7 +509,7 @@ class AuthManager:
                         result["user_obj"] = user_obj
                         # Update tenant_key from user object (authoritative source)
                         result["tenant_key"] = user_obj.tenant_key
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.debug(f"No user object found for API key: {e}")
 
         return result

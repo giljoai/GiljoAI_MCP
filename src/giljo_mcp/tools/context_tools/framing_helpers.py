@@ -45,7 +45,7 @@ def format_list_safely(items: Any) -> str:
 
     try:
         return "\n".join(f"- {item}" for item in items if item)
-    except Exception as exc:  # pragma: no cover - defensive guard
+    except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
         logger.error("Failed to format list", extra={"error": str(exc)})
         return "- (Error formatting data)"
 
@@ -129,7 +129,7 @@ def _stringify_content(content: Any) -> str:
     else:
         try:
             text = json.dumps(content, indent=2, ensure_ascii=True)
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
             logger.warning("Failed to serialize content for framing", extra={"error": str(exc)})
             text = str(content)
 
@@ -182,7 +182,7 @@ async def get_user_priority(
                 return default_priority
 
             return int(user_priority)
-    except Exception as exc:  # pragma: no cover - defensive guard
+    except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
         logger.warning(
             "Failed to fetch user priority config, using defaults",
             extra={"error": str(exc), "user_id": user_id, "category": category},

@@ -253,7 +253,7 @@ class TemplateValidator:
 
             return result
 
-        except Exception:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail validation
             # Fall through to uncached validation
             # nosec B110
@@ -287,7 +287,7 @@ class TemplateValidator:
             # Store in Redis with TTL
             self.redis.setex(cache_key, self.CACHE_TTL_SECONDS, json.dumps(cache_data))
 
-        except Exception:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail validation
             pass  # nosec B110
 
@@ -326,6 +326,6 @@ class TemplateValidator:
                 if keys:
                     self.redis.delete(*keys)
 
-        except Exception:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail
             pass  # nosec B110

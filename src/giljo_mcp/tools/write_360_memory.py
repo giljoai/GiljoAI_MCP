@@ -448,7 +448,7 @@ async def write_360_memory(
 
             return result
 
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
 
@@ -484,7 +484,7 @@ async def _emit_websocket_event(
                 event_type=event_type,
                 data={"product_id": product_id, **data},
             )
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
 
@@ -562,6 +562,6 @@ async def _fetch_github_commits(
             logger.info(f"Fetched {len(commits)} GitHub commits for {repo_owner}/{repo_name}")
             return commits
 
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError) as exc:
         logger.exception("Failed to fetch GitHub commits", extra={"error": str(exc)})
         return None

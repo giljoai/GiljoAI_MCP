@@ -167,7 +167,7 @@ class WorkflowEngine:
                 completed_stages.append(stage_result)
                 logger.info(f"Stage {stage.name} completed successfully")
 
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 logger.error(f"Stage {stage.name} failed: {e}")
                 failed_stages.append(stage.name)
 
@@ -299,7 +299,7 @@ class WorkflowEngine:
 
                 return await self._execute_stage(stage, tenant_key, project_id)
 
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 last_error = e
                 if attempt < stage.max_retries:
                     # Exponential backoff

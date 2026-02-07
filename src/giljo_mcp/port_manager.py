@@ -87,7 +87,7 @@ class PortManager:
                 sock.settimeout(1)
                 result = sock.connect_ex((host, port))
                 return result != 0  # True if NOT in use (connection failed)
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.debug(f"Error checking port {port}: {e}")
             return False
 
@@ -197,7 +197,7 @@ class PortManager:
             logger.debug("No 'services' or 'server' section found in config")
             return False
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Error loading port configuration from {self.config_path}: {e}")
             return False
 
