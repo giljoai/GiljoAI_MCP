@@ -235,16 +235,15 @@ class JobCoordinator:
 
         if strategy == "collect":
             # Collect all results into array
-            results = []
-            for child in children:
-                results.append(
-                    {
-                        "job_id": child.job_id,
-                        "agent_display_name": child.agent_display_name,
-                        "status": child.status,
-                        "messages": child.messages or [],
-                    }
-                )
+            results = [
+                {
+                    "job_id": child.job_id,
+                    "agent_display_name": child.agent_display_name,
+                    "status": child.status,
+                    "messages": child.messages or [],
+                }
+                for child in children
+            ]
 
             return {"strategy": "collect", "results": results, "count": len(children)}
 
@@ -256,6 +255,7 @@ class JobCoordinator:
                     merged_data.extend(child.messages)
 
             return {"strategy": "merge", "merged_data": merged_data, "count": len(children)}
+        return None
 
     async def create_job_chain(
         self, tenant_key: str, parent_job_id: str, chain_specs: list[dict[str, Any]]

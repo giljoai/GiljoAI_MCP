@@ -614,15 +614,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Create 3 documentation artifacts at project close",
                 "Coordinate multiple agents effectively",
                 "Monitor agent progress and respond to blockers",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All project objectives met",
                 "Clean handoff documentation created",
                 "Zero scope creep maintained",
                 "Effective team coordination achieved",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "product_name", "project_mission"],
         },
         "analyzer": {
@@ -634,15 +634,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Focus on architecture and patterns",
                 "Report analysis findings incrementally (don't wait until end)",
                 "Include file analysis progress in context_used tracking",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Complete requirements documented",
                 "Architecture aligned with vision",
                 "All risks and dependencies identified",
                 "Clear specifications for implementer",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "implementer": {
@@ -654,15 +654,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Test changes incrementally",
                 "Report file modifications after each implementation step",
                 "Include token usage in progress reports (track context carefully)",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All specified features implemented correctly",
                 "Code follows project standards",
                 "Tests passing",
                 "No unauthorized scope changes",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "tester": {
@@ -674,15 +674,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Validate against requirements",
                 "Report test results in completion summary (pass/fail counts, coverage)",
                 "Include test file paths in progress reports",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All features have test coverage",
                 "Tests validate requirements correctly",
                 "Coverage meets project standards",
                 "Test documentation complete",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "reviewer": {
@@ -694,15 +694,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Validate architectural compliance",
                 "Document all findings with severity levels",
                 "Mark completion only after all review comments addressed",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Code meets quality standards",
                 "Security best practices followed",
                 "No critical issues remaining",
                 "All feedback is actionable",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "documenter": {
@@ -714,15 +714,15 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Focus on implemented features only",
                 "Report documentation files created/updated in progress",
                 "Include documentation coverage in completion summary",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Documentation complete and accurate",
                 "Usage examples provided",
                 "All artifacts updated",
                 "Documentation follows project style",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
     }

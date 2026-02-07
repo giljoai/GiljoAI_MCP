@@ -449,7 +449,7 @@ async def get_me(
 
 @router.get("/api-keys", response_model=list[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
-    include_revoked: bool = Query(False, description="Include revoked keys in results"),
+    include_revoked: bool = Query(default=False, description="Include revoked keys in results"),
     current_user: User = Depends(get_current_active_user),
     auth_service: AuthService = Depends(get_auth_service),
 ):

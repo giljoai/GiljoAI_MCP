@@ -331,31 +331,30 @@ class TaskService:
                 tasks = result.scalars().all()
 
                 # Convert to dict list
-                task_list = []
-                for task in tasks:
-                    task_list.append(
-                        {
-                            "id": str(task.id),
-                            "tenant_key": task.tenant_key,
-                            "product_id": task.product_id,
-                            "project_id": task.project_id,
-                            "parent_task_id": task.parent_task_id,
-                            "job_id": task.job_id,
-                            "created_by_user_id": task.created_by_user_id,
-                            "converted_to_project_id": task.converted_to_project_id,
-                            "title": task.title,
-                            "description": task.description,
-                            "category": task.category,
-                            "status": task.status,
-                            "priority": task.priority,
-                            "created_at": task.created_at.isoformat() if task.created_at else None,
-                            "started_at": task.started_at.isoformat() if task.started_at else None,
-                            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                            "due_date": task.due_date.isoformat() if task.due_date else None,
-                            "estimated_effort": task.estimated_effort,
-                            "actual_effort": task.actual_effort,
-                        }
-                    )
+                task_list = [
+                    {
+                        "id": str(task.id),
+                        "tenant_key": task.tenant_key,
+                        "product_id": task.product_id,
+                        "project_id": task.project_id,
+                        "parent_task_id": task.parent_task_id,
+                        "job_id": task.job_id,
+                        "created_by_user_id": task.created_by_user_id,
+                        "converted_to_project_id": task.converted_to_project_id,
+                        "title": task.title,
+                        "description": task.description,
+                        "category": task.category,
+                        "status": task.status,
+                        "priority": task.priority,
+                        "created_at": task.created_at.isoformat() if task.created_at else None,
+                        "started_at": task.started_at.isoformat() if task.started_at else None,
+                        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                        "due_date": task.due_date.isoformat() if task.due_date else None,
+                        "estimated_effort": task.estimated_effort,
+                        "actual_effort": task.actual_effort,
+                    }
+                    for task in tasks
+                ]
 
                 return {"success": True, "tasks": task_list, "count": len(task_list)}
 

@@ -37,7 +37,7 @@ class VisionResponse(BaseModel):
 
 
 class ChunkVisionRequest(BaseModel):
-    force_rechunk: bool = Field(False, description="Force rechunking even if already chunked")
+    force_rechunk: bool = Field(default=False, description="Force rechunking even if already chunked")
 
 
 class ChunkVisionResponse(BaseModel):

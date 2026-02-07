@@ -32,6 +32,8 @@ try:
 except ImportError:
     PSYCOPG2_AVAILABLE = False
 
+import sys
+
 from installer.shared.postgres import PostgreSQLDiscovery
 
 
@@ -605,4 +607,4 @@ if __name__ == "__main__":
 
     except DatabaseBackupError as e:
         print(f"\nBackup failed: {e}")
-        exit(1)
+        sys.exit(1)
