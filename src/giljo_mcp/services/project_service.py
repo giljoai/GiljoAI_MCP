@@ -182,7 +182,7 @@ class ProjectService:
                 }
 
         except Exception as e:
-            self._logger.exception(f"Failed to create project: {e}")
+            self._logger.exception("Failed to create project")
             raise BaseGiljoException(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
@@ -280,7 +280,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get project: {e}")
+            self._logger.exception("Failed to get project")
             raise BaseGiljoException(
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
@@ -366,7 +366,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get active project: {e}")
+            self._logger.exception("Failed to get active project")
             raise BaseGiljoException(message=f"Failed to get active project: {e!s}", context={}) from e
 
     async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
@@ -442,7 +442,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to list projects: {e}")
+            self._logger.exception("Failed to list projects")
             raise BaseGiljoException(
                 message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}
             ) from e
@@ -522,7 +522,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update mission: {e}")
+            self._logger.exception("Failed to update mission")
             raise BaseGiljoException(
                 message=f"Failed to update mission: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
@@ -595,7 +595,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to complete project: {e}")
+            self._logger.exception("Failed to complete project")
             raise BaseGiljoException(
                 message=f"Failed to complete project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
@@ -741,7 +741,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to cancel project: {e}")
+            self._logger.exception("Failed to cancel project")
             raise BaseGiljoException(
                 message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}
             ) from e
@@ -835,7 +835,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to close out project: {e}")
+            self._logger.exception("Failed to close out project")
             raise BaseGiljoException(
                 message=f"Failed to close out project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
@@ -935,7 +935,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to resume project: {e}")
+            self._logger.exception("Failed to resume project")
             raise BaseGiljoException(
                 message=f"Failed to resume project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
@@ -1083,7 +1083,7 @@ class ProjectService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to activate project: {e}")
+            self._logger.exception("Failed to activate project")
             raise BaseGiljoException(
                 message=f"Failed to activate project: {e!s}", context={"project_id": project_id}
             ) from e
@@ -1800,12 +1800,11 @@ class ProjectService:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Handover 0343: Lock execution_mode after staging (mission exists)
-            if "execution_mode" in updates:
-                if project.mission and project.mission.strip():
-                    raise ProjectStateError(
-                        message="Cannot change execution mode after staging. Mission has been generated.",
-                        context={"project_id": project_id},
-                    )
+            if "execution_mode" in updates and project.mission and project.mission.strip():
+                raise ProjectStateError(
+                    message="Cannot change execution mode after staging. Mission has been generated.",
+                    context={"project_id": project_id},
+                )
 
             # Update allowed fields (Handover 0260: Added execution_mode)
             # Handover 0412: Added status, completed_at for archive endpoint
@@ -2567,8 +2566,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
                     }
                 )
-            except Exception as e:  # noqa: BLE001 - Batch operation continues on individual errors
-                self._logger.error(f"Failed to nuclear delete project {project.id}: {e}")
+            except Exception:
+                self._logger.exception("Failed to nuclear delete project {project.id}")
 
         self._logger.info(
             "[Nuclear Purge] Permanently deleted %s project(s) for tenant %s",
@@ -2653,8 +2652,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     f"[Nuclear Purge] Auto-purged expired project {project.id} "
                     f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
                 )
-            except Exception as e:  # noqa: BLE001 - Batch operation continues on individual errors
-                self._logger.error(f"Failed to nuclear delete expired project {project.id}: {e}")
+            except Exception:
+                self._logger.exception("Failed to nuclear delete expired project {project.id}")
 
         self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")
 

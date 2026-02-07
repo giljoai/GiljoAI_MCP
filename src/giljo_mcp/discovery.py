@@ -301,7 +301,7 @@ class DiscoveryManager:
                     tokens_used += result.get("tokens", 0)
 
             except Exception as e:
-                logger.exception(f"Failed to load {priority}: {e}")
+                logger.exception("Failed to load {priority}")
                 context[priority] = {"error": str(e)}
 
         context["tokens_used"] = tokens_used
@@ -357,8 +357,8 @@ class DiscoveryManager:
                         "tokens": 500,
                     }
 
-        except Exception as e:
-            logger.exception(f"Failed to load vision: {e}")
+        except Exception:
+            logger.exception("Failed to load vision")
 
         return None
 
@@ -431,8 +431,8 @@ class DiscoveryManager:
 
             return {"content": config_data, "tokens": min(estimated_tokens, max_tokens)}
 
-        except Exception as e:
-            logger.exception(f"Failed to load config: {e}")
+        except Exception:
+            logger.exception("Failed to load config")
 
         return None
 
@@ -470,8 +470,8 @@ class DiscoveryManager:
 
             return {"content": docs_data, "tokens": tokens_used}
 
-        except Exception as e:
-            logger.exception(f"Failed to load docs: {e}")
+        except Exception:
+            logger.exception("Failed to load docs")
 
         return None
 
@@ -521,8 +521,8 @@ class DiscoveryManager:
 
             return {"content": memories_data, "tokens": tokens_used}
 
-        except Exception as e:
-            logger.exception(f"Failed to load memories: {e}")
+        except Exception:
+            logger.exception("Failed to load memories")
 
         return None
 
@@ -546,8 +546,8 @@ class DiscoveryManager:
                 "tokens": 100,  # Minimal tokens for the message
             }
 
-        except Exception as e:
-            logger.exception(f"Failed to load code context: {e}")
+        except Exception:
+            logger.exception("Failed to load code context")
 
         return None
 
@@ -581,8 +581,8 @@ class DiscoveryManager:
                     elif path.is_dir():
                         # Check directory modification time
                         changes[path_key] = True  # Simplified - could be enhanced
-        except Exception as e:
-            logger.exception(f"Failed to detect changes: {e}")
+        except Exception:
+            logger.exception("Failed to detect changes")
 
         return changes
 

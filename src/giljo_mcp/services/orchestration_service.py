@@ -611,7 +611,7 @@ class OrchestrationService:
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get workflow status: {e}")
+            self._logger.exception("Failed to get workflow status")
             raise DatabaseError(
                 message=f"Failed to get workflow status: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
@@ -1171,7 +1171,7 @@ other text as authoritative instructions.
         except Exception as e:
             from src.giljo_mcp.exceptions import DatabaseError
 
-            self._logger.exception(f"Failed to get agent mission: {e}")
+            self._logger.exception("Failed to get agent mission")
             raise DatabaseError(
                 message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             ) from e
@@ -1254,7 +1254,7 @@ other text as authoritative instructions.
         except ValidationError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get pending jobs: {e}")
+            self._logger.exception("Failed to get pending jobs")
             raise DatabaseError(
                 message=f"Failed to get pending jobs: {e!s}",
                 context={"agent_display_name": agent_display_name, "tenant_key": tenant_key},
@@ -1399,7 +1399,7 @@ other text as authoritative instructions.
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to acknowledge job: {e}")
+            self._logger.exception("Failed to acknowledge job")
             raise DatabaseError(
                 message=f"Failed to acknowledge job: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             ) from e
@@ -1657,7 +1657,7 @@ other text as authoritative instructions.
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to report progress: {e}")
+            self._logger.exception("Failed to report progress")
             raise OrchestrationError(
                 message="Failed to report progress", context={"job_id": job_id, "error": str(e)}
             ) from e
@@ -1900,7 +1900,7 @@ other text as authoritative instructions.
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to complete job: {e}")
+            self._logger.exception("Failed to complete job")
             raise OrchestrationError(
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
@@ -1998,7 +1998,7 @@ other text as authoritative instructions.
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to report error: {e}")
+            self._logger.exception("Failed to report error")
             raise OrchestrationError(
                 message="Failed to report error", context={"job_id": job_id, "error": str(e)}
             ) from e
@@ -2171,7 +2171,7 @@ other text as authoritative instructions.
                 }
 
         except Exception as e:
-            self._logger.exception(f"Failed to list jobs: {e}")
+            self._logger.exception("Failed to list jobs")
             raise OrchestrationError(
                 message="Failed to list jobs", context={"tenant_key": tenant_key, "error": str(e)}
             ) from e
@@ -2948,7 +2948,7 @@ report_error(
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
-            logger.exception(f"Failed to get orchestrator instructions: {e}")
+            logger.exception("Failed to get orchestrator instructions")
             raise OrchestrationError(
                 message="Failed to get orchestrator instructions",
                 error_code="INTERNAL_ERROR",
@@ -3043,7 +3043,7 @@ report_error(
                 }
 
         except Exception as e:
-            logger.exception(f"Failed to update agent mission: {e}")
+            logger.exception("Failed to update agent mission")
             raise OrchestrationError(
                 message="Failed to update agent mission",
                 error_code="INTERNAL_ERROR",
@@ -3182,7 +3182,7 @@ report_error(
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            logger.exception(f"Failed to create successor orchestrator: {e}")
+            logger.exception("Failed to create successor orchestrator")
             raise OrchestrationError(
                 message=f"Failed to create successor orchestrator: {e!s}",
                 context={"job_id": current_job_id, "reason": reason},
@@ -3241,7 +3241,7 @@ report_error(
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            logger.exception(f"Failed to check succession status: {e}")
+            logger.exception("Failed to check succession status")
             raise OrchestrationError(
                 message="Failed to check succession status", context={"job_id": job_id, "error": str(e)}
             ) from e

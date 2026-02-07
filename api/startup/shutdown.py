@@ -5,6 +5,7 @@ Extracted from api/app.py lifespan function (lines ~595-649).
 """
 
 import asyncio
+import contextlib
 import logging
 
 from api.app import APIState
@@ -29,22 +30,16 @@ async def shutdown(state: APIState) -> None:
         logger.info("Canceling background tasks...")
         if state.heartbeat_task:
             state.heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await state.heartbeat_task
-            except asyncio.CancelledError:
-                pass
         if state.cleanup_task:
             state.cleanup_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await state.cleanup_task
-            except asyncio.CancelledError:
-                pass
         if state.metrics_sync_task:
             state.metrics_sync_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await state.metrics_sync_task
-            except asyncio.CancelledError:
-                pass
         logger.info("Background tasks canceled")
     except Exception as e:
         logger.error(f"Error canceling background tasks: {e}", exc_info=True)

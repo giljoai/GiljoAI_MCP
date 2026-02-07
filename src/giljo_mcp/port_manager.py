@@ -178,10 +178,9 @@ class PortManager:
                     logger.debug(f"Loaded unified server port from config: {self.config.api_port}")
 
                 # Nested structure: server.api.port
-                if "api" in server and isinstance(server["api"], dict):
-                    if "port" in server["api"]:
-                        self.config.api_port = server["api"]["port"]
-                        logger.debug(f"Loaded API port from config: {self.config.api_port}")
+                if "api" in server and isinstance(server["api"], dict) and "port" in server["api"]:
+                    self.config.api_port = server["api"]["port"]
+                    logger.debug(f"Loaded API port from config: {self.config.api_port}")
 
                 # Frontend port
                 if "frontend_port" in server:
@@ -196,8 +195,8 @@ class PortManager:
             logger.debug("No 'services' or 'server' section found in config")
             return False
 
-        except (OSError, ValueError) as e:
-            logger.error(f"Error loading port configuration from {self.config_path}: {e}")
+        except (OSError, ValueError):
+            logger.exception("Error loading port configuration from {self.config_path}")
             return False
 
     def load_from_environment(self) -> bool:

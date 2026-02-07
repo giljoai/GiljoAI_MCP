@@ -100,8 +100,8 @@ class MCPSessionManager:
                     logger.warning(
                         f"[MCP Session] Deduplicated {len(stale_ids)} stale sessions for api_key={api_key.id} tenant={user.tenant_key}"
                     )
-            except (ValueError, KeyError) as cleanup_err:
-                logger.error(f"[MCP Session] Failed to cleanup duplicate sessions: {cleanup_err}")
+            except (ValueError, KeyError):
+                logger.exception("[MCP Session] Failed to cleanup duplicate sessions")
 
         if existing_session and not existing_session.is_expired:
             existing_session.last_accessed = datetime.now(timezone.utc)

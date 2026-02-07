@@ -129,7 +129,7 @@ async def upload_vision_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Vision upload failed: {e}")
+        logger.exception("Vision upload failed")
         # Handover 0508: Check for IntegrityError (duplicate constraint violation)
         error_str = str(e).lower()
         if "unique" in error_str or "duplicate" in error_str or "uq_vision_doc" in error_str:
@@ -228,8 +228,8 @@ async def list_vision_documents(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to list vision documents: {e}")
+    except Exception:
+        logger.exception("Failed to list vision documents")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
@@ -295,8 +295,8 @@ async def delete_vision_document(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to delete vision document: {e}")
+    except Exception:
+        logger.exception("Failed to delete vision document")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
@@ -368,6 +368,6 @@ async def get_vision_chunks(
         raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Failed to retrieve vision chunks: {e}")
+    except Exception:
+        logger.exception("Failed to retrieve vision chunks")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

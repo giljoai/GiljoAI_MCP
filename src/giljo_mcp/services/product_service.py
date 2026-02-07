@@ -228,7 +228,7 @@ class ProductService:
             # Re-raise validation errors as-is
             raise
         except (ImportError, ValueError, KeyError) as e:
-            self._logger.exception(f"Failed to create product: {e}")
+            self._logger.exception("Failed to create product")
             raise BaseGiljoException(
                 message=f"Failed to create product: {e!s}",
                 context={"product_name": name, "tenant_key": self.tenant_key},
@@ -315,7 +315,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except (ImportError, ValueError, KeyError) as e:
-            self._logger.exception(f"Failed to get product: {e}")
+            self._logger.exception("Failed to get product")
             raise BaseGiljoException(
                 message=f"Failed to get product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -393,7 +393,7 @@ class ProductService:
                 return {"success": True, "products": product_list}
 
         except Exception as e:
-            self._logger.exception(f"Failed to list products: {e}")
+            self._logger.exception("Failed to list products")
             raise BaseGiljoException(
                 message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
@@ -477,7 +477,7 @@ class ProductService:
             # Re-raise our custom errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update product: {e}")
+            self._logger.exception("Failed to update product")
             raise BaseGiljoException(
                 message=f"Failed to update product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -667,7 +667,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to activate product: {e}")
+            self._logger.exception("Failed to activate product")
             raise BaseGiljoException(
                 message=f"Failed to activate product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -724,7 +724,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to deactivate product: {e}")
+            self._logger.exception("Failed to deactivate product")
             raise BaseGiljoException(
                 message=f"Failed to deactivate product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -779,7 +779,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to delete product: {e}")
+            self._logger.exception("Failed to delete product")
             raise BaseGiljoException(
                 message=f"Failed to delete product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -841,7 +841,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to restore product: {e}")
+            self._logger.exception("Failed to restore product")
             raise BaseGiljoException(
                 message=f"Failed to restore product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -905,7 +905,7 @@ class ProductService:
                 return {"success": True, "products": product_list}
 
         except Exception as e:
-            self._logger.exception(f"Failed to list deleted products: {e}")
+            self._logger.exception("Failed to list deleted products")
             raise BaseGiljoException(
                 message=f"Failed to list deleted products: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
@@ -969,7 +969,7 @@ class ProductService:
                 }
 
         except Exception as e:
-            self._logger.exception(f"Failed to get active product: {e}")
+            self._logger.exception("Failed to get active product")
             raise BaseGiljoException(
                 message=f"Failed to get active product: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
@@ -1028,7 +1028,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get product statistics: {e}")
+            self._logger.exception("Failed to get product statistics")
             raise BaseGiljoException(
                 message=f"Failed to get product statistics: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -1099,7 +1099,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get cascade impact: {e}")
+            self._logger.exception("Failed to get cascade impact")
             raise BaseGiljoException(
                 message=f"Failed to get cascade impact: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -1205,7 +1205,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update git integration: {e}")
+            self._logger.exception("Failed to update git integration")
             raise BaseGiljoException(
                 message=f"Failed to update git integration: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
@@ -1382,7 +1382,7 @@ class ProductService:
                 }
 
         except ValueError as e:
-            self._logger.error(f"Validation error uploading vision document: {e}")
+            self._logger.exception("Validation error uploading vision document")
             raise ValidationError(
                 message=f"Validation error uploading vision document: {e!s}",
                 context={"product_id": product_id, "filename": filename},
@@ -1391,7 +1391,7 @@ class ProductService:
             # Re-raise resource not found errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to upload vision document: {e}")
+            self._logger.exception("Failed to upload vision document")
             raise BaseGiljoException(
                 message=f"Failed to upload vision document: {e!s}",
                 context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key},
@@ -1769,7 +1769,7 @@ class ProductService:
             # Re-raise database errors as-is
             raise
         except Exception as e:
-            self._logger.exception(f"[Product Purge] Failed to purge expired deleted products: {e}")
+            self._logger.exception("[Product Purge] Failed to purge expired deleted products")
             raise BaseGiljoException(
                 message=f"Failed to purge expired deleted products: {e!s}",
                 context={

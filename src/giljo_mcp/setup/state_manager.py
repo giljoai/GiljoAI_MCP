@@ -162,8 +162,8 @@ class SetupStateManager:
                 if data.get("tenant_key") == self.tenant_key:
                     return data
 
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse setup state file: {e}")
+            except json.JSONDecodeError:
+                logger.exception("Failed to parse setup state file")
                 return None
 
         return None
@@ -386,8 +386,8 @@ class SetupStateManager:
             logger.info(f"Successfully migrated file state to database for tenant {self.tenant_key}")
             return True
 
-        except SQLAlchemyError as e:
-            logger.error(f"Failed to migrate file state to database: {e}")
+        except SQLAlchemyError:
+            logger.exception("Failed to migrate file state to database")
             self.db_session.rollback()
             return False
 
@@ -539,8 +539,8 @@ class SetupStateManager:
                     self.db_session.delete(state)
                     self.db_session.commit()
                     logger.info(f"Deleted setup state from database for tenant {self.tenant_key}")
-            except SQLAlchemyError as e:
-                logger.error(f"Failed to delete state from database: {e}")
+            except SQLAlchemyError:
+                logger.exception("Failed to delete state from database")
                 self.db_session.rollback()
 
         # Remove file
@@ -551,8 +551,8 @@ class SetupStateManager:
                 if state and state.get("tenant_key") == self.tenant_key:
                     self.state_file.unlink()
                     logger.info(f"Deleted setup state file for tenant {self.tenant_key}")
-            except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
-                logger.error(f"Failed to delete state file: {e}")
+            except (OSError, json.JSONDecodeError, KeyError, ValueError):
+                logger.exception("Failed to delete state file")
 
     def add_configured_feature(self, feature_name: str, feature_config: Any = True) -> None:
         """

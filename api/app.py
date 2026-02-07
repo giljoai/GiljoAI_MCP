@@ -7,7 +7,7 @@ import asyncio
 import logging
 import os
 import sys
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -62,7 +62,7 @@ try:
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import GiljoAI MCP modules: {e}", exc_info=True)
-    logger.error("Make sure the src/giljo_mcp package is properly installed")
+    logger.exception("Make sure the src/giljo_mcp package is properly installed")
     raise
 
 try:
@@ -299,10 +299,8 @@ def create_app() -> FastAPI:
                 # JSON array format from installer
                 import json
 
-                try:
+                with suppress(json.JSONDecodeError):
                     cors_origins = json.loads(cors_origins_str)
-                except json.JSONDecodeError:
-                    pass
             else:
                 # Comma-separated format
                 cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
@@ -614,8 +612,8 @@ def create_app() -> FastAPI:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
             logger.info(f"WebSocket disconnected: {client_id}")
-        except (RuntimeError, ValueError, KeyError) as e:
-            logger.exception(f"WebSocket error for {client_id}: {e}")
+        except (RuntimeError, ValueError, KeyError):
+            logger.exception("WebSocket error for {client_id}")
             state.websocket_manager.disconnect(client_id)
             if client_id in state.connections:
                 del state.connections[client_id]

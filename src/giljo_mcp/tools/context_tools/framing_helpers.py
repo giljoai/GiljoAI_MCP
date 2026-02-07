@@ -46,7 +46,7 @@ def format_list_safely(items: Any) -> str:
     try:
         return "\n".join(f"- {item}" for item in items if item)
     except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
-        logger.error("Failed to format list", extra={"error": str(exc)})
+        logger.exception("Failed to format list", extra={"error": str(exc)})
         return "- (Error formatting data)"
 
 

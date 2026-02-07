@@ -150,9 +150,8 @@ def get_categories_by_priority(priority_level: int, include_toggled_off: bool = 
     """
     result = []
     for category, config in DEFAULT_FIELD_PRIORITY["priorities"].items():
-        if config["priority"] == priority_level:
-            if include_toggled_off or config["toggle"]:
-                result.append(category)
+        if config["priority"] == priority_level and (include_toggled_off or config["toggle"]):
+            result.append(category)
     return result
 
 

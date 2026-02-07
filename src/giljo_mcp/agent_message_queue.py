@@ -102,7 +102,7 @@ class AgentMessageQueue:
             return str(message.id)
 
         except Exception as e:
-            logger.exception(f"Failed to enqueue message: {e}")
+            logger.exception("Failed to enqueue message")
             raise QueueException(f"Enqueue failed: {e}") from e
 
     async def dequeue(self, agent_name: str, batch_size: Optional[int] = None) -> list[Message]:
@@ -160,7 +160,7 @@ class AgentMessageQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.exception(f"Failed to dequeue messages: {e}")
+                logger.exception("Failed to dequeue messages")
                 raise QueueException(f"Dequeue failed: {e}") from e
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
@@ -202,9 +202,9 @@ class AgentMessageQueue:
                 await session.commit()
                 return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to process message: {e}")
+                logger.exception("Failed to process message")
                 return False
 
     async def detect_stuck_messages(self, timeout_seconds: Optional[int] = None) -> list[Message]:
@@ -271,9 +271,9 @@ class AgentMessageQueue:
                 logger.info(f"Message {message_id} scheduled for retry #{retry_count + 1}")
                 return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to retry message: {e}")
+                logger.exception("Failed to retry message")
                 return False
 
     async def get_statistics(self) -> dict[str, Any]:
@@ -330,7 +330,7 @@ class AgentMessageQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.exception(f"Crash recovery failed: {e}")
+                logger.exception("Crash recovery failed")
                 raise QueueException(f"Recovery failed: {e}") from e
 
     async def checkpoint(self):
@@ -439,7 +439,7 @@ class AgentMessageQueue:
             return {"status": "success", "message_id": str(message.id)}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to send message: {e}")
+            logger.exception("[Compat] Failed to send message")
             return {"status": "error", "error": str(e)}
 
     async def send_message_batch(
@@ -514,7 +514,7 @@ class AgentMessageQueue:
             return {"status": "success", "sent_count": sent_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to send message batch: {e}")
+            logger.exception("[Compat] Failed to send message batch")
             return {"status": "error", "error": str(e)}
 
     async def get_messages(
@@ -612,7 +612,7 @@ class AgentMessageQueue:
             return {"status": "success", "messages": messages_list}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to get messages: {e}")
+            logger.exception("[Compat] Failed to get messages")
             return {"status": "error", "error": str(e)}
 
     async def get_unread_count(
@@ -670,7 +670,7 @@ class AgentMessageQueue:
             return {"status": "success", "unread_count": unread_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to get unread count: {e}")
+            logger.exception("[Compat] Failed to get unread count")
             return {"status": "error", "error": str(e)}
 
     async def acknowledge_all_messages(
@@ -740,7 +740,7 @@ class AgentMessageQueue:
             return {"status": "success", "acknowledged_count": acknowledged_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to acknowledge all messages: {e}")
+            logger.exception("[Compat] Failed to acknowledge all messages")
             return {"status": "error", "error": str(e)}
 
     # ==================================================================================
@@ -1163,9 +1163,9 @@ class DeadLetterQueue:
 
                 logger.error(f"Message {message.id} moved to DLQ: {reason}")
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to move message to DLQ: {e}")
+                logger.exception("Failed to move message to DLQ")
 
     async def get_size(self) -> int:
         """Get number of messages in DLQ"""
@@ -1195,9 +1195,9 @@ class DeadLetterQueue:
                     logger.info(f"Message {message_id} reprocessed from DLQ")
                     return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to reprocess DLQ message: {e}")
+                logger.exception("Failed to reprocess DLQ message")
 
         return False
 

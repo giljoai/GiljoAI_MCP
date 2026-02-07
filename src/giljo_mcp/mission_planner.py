@@ -3144,5 +3144,5 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                         }
                         session.commit()
 
-        except SQLAlchemyError as e:
-            logger.error(f"Failed to store token metrics: {e}")
+        except SQLAlchemyError:
+            logger.exception("Failed to store token metrics")

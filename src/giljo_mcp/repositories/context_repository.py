@@ -9,7 +9,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models import MCPContextIndex, MCPContextSummary
+from src.giljo_mcp.models import MCPContextIndex, MCPContextSummary
+
 from .base import BaseRepository
 
 

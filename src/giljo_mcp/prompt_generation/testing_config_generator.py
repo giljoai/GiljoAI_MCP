@@ -278,9 +278,8 @@ class TestingConfigValidator:
 
         # Validate requirements if present
         requirements = config.get("requirements")
-        if requirements is not None:
-            if not isinstance(requirements, (list, tuple)):
-                logger.warning("Requirements must be list/tuple")
-                return False
+        if requirements is not None and not isinstance(requirements, (list, tuple)):
+            logger.warning("Requirements must be list/tuple")
+            return False
 
         return True
