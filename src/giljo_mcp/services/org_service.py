@@ -96,7 +96,7 @@ class OrgService:
                 select(Organization)
                 .where(
                     Organization.id == org_id,
-                    Organization.is_active == True,  # noqa: E712
+                    Organization.is_active == True,
                 )
                 .options(selectinload(Organization.members))
             )

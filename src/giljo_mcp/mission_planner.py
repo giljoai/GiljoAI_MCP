@@ -528,7 +528,7 @@ Success Criteria:
             )
             return ""
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
                 extra={"project_id": project_id, "tenant_key": tenant_key},
