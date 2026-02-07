@@ -550,9 +550,14 @@ async def _update_job_status_impl(
     if reason:
         response["reason"] = reason
 
+    reason_part = f" (reason: {reason})" if reason else ""
     logger.info(
-        f"Job {job_id} status updated: {old_status} -> {job.status} "
-        f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
+        "Job %s status updated: %s -> %s for tenant %s%s",
+        job_id,
+        old_status,
+        job.status,
+        tenant_key,
+        reason_part,
     )
 
     return response

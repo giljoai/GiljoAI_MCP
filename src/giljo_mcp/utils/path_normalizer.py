@@ -32,14 +32,12 @@ class PathNormalizer:
             path = path.replace("\\", "/")
 
             # Handle special relative path cases
-            if original.startswith((".\\", "./")):
-                # Preserve ./ prefix - strip each separately
-                path = "./" + path.lstrip(".")
-                path = path.lstrip("/")
-            elif original.startswith(("..\\", "../")):
-                # Preserve ../ prefix - strip each separately
-                path = "../" + path.lstrip(".")
-                path = path.lstrip("/")
+            if original.startswith((".\\", "./")) and path.startswith("./"):
+                # Preserve ./ prefix - remove the prefix if exists then re-add it
+                path = "./" + path[2:].lstrip("/")
+            elif original.startswith(("..\\", "../")) and path.startswith("../"):
+                # Preserve ../ prefix - remove the prefix if exists then re-add it
+                path = "../" + path[3:].lstrip("/")
 
             return path
 
