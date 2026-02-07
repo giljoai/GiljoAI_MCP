@@ -62,10 +62,12 @@ message:acknowledged event:
     "timestamp": str (ISO)
 }
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+
 import uuid
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -399,10 +401,10 @@ class TestMessageServiceIntegration:
 
     async def test_send_message_emits_message_sent_event(self):
         """MessageService.send_message should emit message:sent event."""
-        from src.giljo_mcp.services.message_service import MessageService
-        from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant import TenantManager
         from api.websocket import WebSocketManager
+        from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.services.message_service import MessageService
+        from src.giljo_mcp.tenant import TenantManager
 
         # Mock database and WebSocket manager
         db_manager = MagicMock(spec=DatabaseManager)
@@ -446,7 +448,9 @@ class TestMessageServiceIntegration:
         assert call_kwargs["from_agent"] == "orchestrator"
         assert call_kwargs["tenant_key"] == "tenant-123"
 
-    @pytest.mark.skip(reason="MessageService.acknowledge_message method was removed - acknowledgment happens via receive_messages")
+    @pytest.mark.skip(
+        reason="MessageService.acknowledge_message method was removed - acknowledgment happens via receive_messages"
+    )
     async def test_acknowledge_message_emits_acknowledged_event(self):
         """MessageService.acknowledge_message should emit message:acknowledged event.
 
@@ -454,7 +458,6 @@ class TestMessageServiceIntegration:
         Message acknowledgment is now handled via receive_messages() which calls
         broadcast_message_acknowledged. See Handover 0326 for details.
         """
-        pass
 
 
 class TestEventDataSufficiencyForCounters:

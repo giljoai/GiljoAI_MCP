@@ -33,7 +33,7 @@ class TestContextIndexer:
     @pytest.fixture
     def mock_context_repo(self):
         """Create mock context repository."""
-        with patch("giljo_mcp.context_management.indexer.ContextRepository") as mock_repo_class:
+        with patch("src.giljo_mcp.context_management.indexer.ContextRepository") as mock_repo_class:
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
             yield mock_repo

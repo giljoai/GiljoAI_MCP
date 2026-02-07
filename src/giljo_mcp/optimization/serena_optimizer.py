@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -39,7 +39,7 @@ class OptimizationRule:
     max_answer_chars: int
     prefer_symbolic: bool
     guidance: str
-    context_filter: Optional[str] = None
+    context_filter: str | None = None
 
 
 class TokenUsageTracker:
@@ -94,7 +94,7 @@ class SerenaOptimizer:
         self.token_tracker = TokenUsageTracker()
         self.default_rules = self._create_default_rules()
 
-    def _create_default_rules(self) -> Dict[OperationType, OptimizationRule]:
+    def _create_default_rules(self) -> dict[OperationType, OptimizationRule]:
         """Create default optimization rules"""
 
         return {
@@ -103,10 +103,10 @@ class SerenaOptimizer:
                 max_answer_chars=2000,
                 prefer_symbolic=True,
                 guidance="""CRITICAL: NEVER read entire files unless absolutely necessary.
-                
+
 ALWAYS prefer symbolic operations:
 • Use get_symbols_overview() to understand file structure first
-• Use find_symbol() to read specific functions/classes  
+• Use find_symbol() to read specific functions/classes
 • Use find_referencing_symbols() to understand usage
 • Set max_answer_chars=2000 to prevent massive responses
 
@@ -122,7 +122,7 @@ Only use read_file() for:
                 guidance="""Optimize symbol searches for efficiency:
 
 • Start with depth=0, increase only if needed
-• Use include_body=False initially, then get bodies selectively  
+• Use include_body=False initially, then get bodies selectively
 • Prefer find_symbol() over search_for_pattern() when name is known
 • Set max_answer_chars=5000 for symbol operations
 • Use substring_matching=True for discovery phases""",
@@ -163,7 +163,7 @@ Only use read_file() for:
             ),
         }
 
-    async def get_optimization_rules(self) -> Dict[OperationType, OptimizationRule]:
+    async def get_optimization_rules(self) -> dict[OperationType, OptimizationRule]:
         """
         Get optimization rules, preferring database rules with default fallback
         """
@@ -193,19 +193,19 @@ Only use read_file() for:
                             guidance=db_rule.guidance,
                             context_filter=db_rule.context_filter,
                         )
-                    except (ValueError, AttributeError) as e:
+                    except (ValueError, AttributeError) as e:  # noqa: PERF203 - Rule parsing resilience: skip invalid rules
                         logger.warning(f"Invalid optimization rule in database: {e}")
                         continue
 
                 return rules
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to load optimization rules from database: {e}")
             return self.default_rules.copy()
 
     def adjust_rules_for_context(
-        self, rules: Dict[OperationType, OptimizationRule], context_data: Dict[str, Any]
-    ) -> Dict[OperationType, OptimizationRule]:
+        self, rules: dict[OperationType, OptimizationRule], context_data: dict[str, Any]
+    ) -> dict[OperationType, OptimizationRule]:
         """
         Adjust optimization rules based on project context
         """
@@ -240,7 +240,7 @@ Only use read_file() for:
 
         return adjusted_rules
 
-    async def create_optimization_augmentation(self, role: str, context_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_optimization_augmentation(self, role: str, context_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create template augmentation with optimization rules
         """
@@ -263,8 +263,8 @@ Only use read_file() for:
                 "priority": 100,  # High priority for critical optimization rules
             }
 
-        except Exception as e:
-            logger.error(f"Failed to create optimization augmentation: {e}")
+        except (ValueError, KeyError, OSError):
+            logger.exception("Failed to create optimization augmentation")
             # Return safe fallback
             return {
                 "type": "inject",
@@ -274,7 +274,7 @@ Only use read_file() for:
             }
 
     def _generate_optimization_content(
-        self, rules: Dict[OperationType, OptimizationRule], context_data: Dict[str, Any]
+        self, rules: dict[OperationType, OptimizationRule], context_data: dict[str, Any]
     ) -> str:
         """Generate optimization guidance content"""
 
@@ -288,7 +288,7 @@ You MUST follow these rules to maintain system efficiency and avoid token exhaus
 **NEVER read entire files unless absolutely necessary.**
 
 ALWAYS prefer this workflow:
-1. `get_symbols_overview()` - Understand file structure 
+1. `get_symbols_overview()` - Understand file structure
 2. `find_symbol()` - Read specific functions/classes
 3. `find_referencing_symbols()` - Understand usage patterns
 4. Only use `read_file()` as last resort for small files
@@ -308,7 +308,7 @@ ALWAYS prefer this workflow:
             content += """
 ### 📊 LARGE CODEBASE - EXTRA RESTRICTIONS
 • Be extra aggressive with char limits
-• Use relative_path parameters to scope operations  
+• Use relative_path parameters to scope operations
 • Prefer targeted searches over broad exploration
 • Request handoff when approaching 70% context limit
 """
@@ -372,11 +372,11 @@ ALWAYS prefer this workflow:
 
                 logger.info(f"Recorded optimization: {operation_type.value} saved {tokens_saved} tokens")
 
-        except Exception as e:
-            logger.error(f"Failed to record optimization operation: {e}")
+        except (ValueError, KeyError, OSError):
+            logger.exception("Failed to record optimization operation")
             # Don't raise - tracking failures shouldn't break operations
 
-    async def generate_savings_report(self, agent_id: str) -> Dict[str, Any]:
+    async def generate_savings_report(self, agent_id: str) -> dict[str, Any]:
         """Generate comprehensive context-usage analytics report for agent"""
 
         try:
@@ -427,8 +427,8 @@ ALWAYS prefer this workflow:
                     else 0,
                 }
 
-        except Exception as e:
-            logger.error(f"Failed to generate savings report: {e}")
+        except (ValueError, KeyError, OSError) as e:
+            logger.exception("Failed to generate savings report")
             return {
                 "agent_id": agent_id,
                 "total_operations": 0,

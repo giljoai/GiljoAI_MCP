@@ -87,7 +87,6 @@ async def multi_tenant_setup(db_session, db_manager, tenant_manager):
         job_id=job_a.job_id,
         tenant_key=tenant_a,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
         started_at=datetime.now(timezone.utc),
         progress=50,
@@ -135,7 +134,6 @@ async def multi_tenant_setup(db_session, db_manager, tenant_manager):
         job_id=job_b.job_id,
         tenant_key=tenant_b,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
         started_at=datetime.now(timezone.utc),
         progress=25,
@@ -197,11 +195,13 @@ async def test_get_orchestrator_instructions_uses_job_id_not_orchestrator_id(db_
     params = list(sig.parameters.keys())
 
     # Assert: Should accept job_id (not orchestrator_id)
-    assert "job_id" in params, \
+    assert "job_id" in params, (
         f"get_orchestrator_instructions should use 'job_id' (not 'orchestrator_id'). Found params: {params}"
+    )
 
-    assert "orchestrator_id" not in params, \
+    assert "orchestrator_id" not in params, (
         f"get_orchestrator_instructions should NOT use legacy 'orchestrator_id'. Found params: {params}"
+    )
 
 
 @pytest.mark.asyncio
@@ -222,8 +222,9 @@ async def test_mcp_schema_has_no_orchestrator_id_references():
     content = mcp_http_path.read_text()
 
     # Assert: No orchestrator_id references
-    assert "orchestrator_id" not in content, \
+    assert "orchestrator_id" not in content, (
         "MCP schema should not use legacy 'orchestrator_id' - use 'job_id' or 'agent_id' per 0366 model"
+    )
 
 
 # ============================================================================
@@ -257,15 +258,15 @@ async def test_report_progress_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "report_progress schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "report_progress schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array (after job_id and progress)
     # This will fail because current schema only requires ["job_id", "progress"]
-    assert '"required": ["job_id", "progress", "tenant_key"]' in tool_def or \
-           '"required": ["job_id", "tenant_key", "progress"]' in tool_def or \
-           '"required": ["tenant_key", "job_id", "progress"]' in tool_def, \
-        "report_progress schema missing 'tenant_key' in required array"
+    assert (
+        '"required": ["job_id", "progress", "tenant_key"]' in tool_def
+        or '"required": ["job_id", "tenant_key", "progress"]' in tool_def
+        or '"required": ["tenant_key", "job_id", "progress"]' in tool_def
+    ), "report_progress schema missing 'tenant_key' in required array"
 
 
 @pytest.mark.asyncio
@@ -286,12 +287,12 @@ async def test_complete_job_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "complete_job schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "complete_job schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "complete_job schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -312,12 +313,12 @@ async def test_report_error_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "report_error schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "report_error schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "report_error schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -338,12 +339,12 @@ async def test_acknowledge_job_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "acknowledge_job schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "acknowledge_job schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "acknowledge_job schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -364,12 +365,12 @@ async def test_send_message_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "send_message schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "send_message schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "send_message schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -390,12 +391,12 @@ async def test_receive_messages_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "receive_messages schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "receive_messages schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "receive_messages schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -416,12 +417,12 @@ async def test_list_messages_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "list_messages schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "list_messages schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "list_messages schema missing 'tenant_key' in required array"
+    )
 
 
 @pytest.mark.asyncio
@@ -442,12 +443,12 @@ async def test_gil_handover_schema_requires_tenant_key():
     tool_def = content[start_idx:end_idx]
 
     # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, \
-        "gil_handover schema missing 'tenant_key' in properties"
+    assert '"tenant_key"' in tool_def, "gil_handover schema missing 'tenant_key' in properties"
 
     # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], \
+    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
         "gil_handover schema missing 'tenant_key' in required array"
+    )
 
 
 # ============================================================================
@@ -475,8 +476,7 @@ async def test_tool_accessor_passes_tenant_key_to_report_progress(db_manager):
     params = list(sig.parameters.keys())
 
     # Assert: Should accept tenant_key
-    assert "tenant_key" in params, \
-        f"ToolAccessor.report_progress should accept 'tenant_key'. Found params: {params}"
+    assert "tenant_key" in params, f"ToolAccessor.report_progress should accept 'tenant_key'. Found params: {params}"
 
 
 @pytest.mark.asyncio
@@ -499,8 +499,7 @@ async def test_tool_accessor_passes_tenant_key_to_complete_job(db_manager):
     params = list(sig.parameters.keys())
 
     # Assert: Should accept tenant_key
-    assert "tenant_key" in params, \
-        f"ToolAccessor.complete_job should accept 'tenant_key'. Found params: {params}"
+    assert "tenant_key" in params, f"ToolAccessor.complete_job should accept 'tenant_key'. Found params: {params}"
 
 
 @pytest.mark.asyncio
@@ -523,8 +522,7 @@ async def test_tool_accessor_passes_tenant_key_to_report_error(db_manager):
     params = list(sig.parameters.keys())
 
     # Assert: Should accept tenant_key
-    assert "tenant_key" in params, \
-        f"ToolAccessor.report_error should accept 'tenant_key'. Found params: {params}"
+    assert "tenant_key" in params, f"ToolAccessor.report_error should accept 'tenant_key'. Found params: {params}"
 
 
 # ============================================================================
@@ -557,10 +555,10 @@ async def test_report_progress_rejects_cross_tenant_access(multi_tenant_setup, d
     )
 
     # Assert: Access denied
-    assert result["status"] == "error", \
-        "Cross-tenant report_progress should be rejected"
-    assert "tenant" in result.get("error", "").lower() or "not found" in result.get("error", "").lower(), \
+    assert result["status"] == "error", "Cross-tenant report_progress should be rejected"
+    assert "tenant" in result.get("error", "").lower() or "not found" in result.get("error", "").lower(), (
         f"Error should mention tenant mismatch. Got: {result.get('error')}"
+    )
 
 
 @pytest.mark.asyncio
@@ -592,8 +590,9 @@ async def test_send_message_rejects_cross_tenant_access(multi_tenant_setup, db_s
 
     # Assert: Should fail (either explicit error or message not sent)
     # After fix, service should validate that to_agents belong to tenant_key
-    assert result.get("success") is False or result.get("sent_count", 0) == 0, \
+    assert result.get("success") is False or result.get("sent_count", 0) == 0, (
         "Cross-tenant send_message should be rejected"
+    )
 
 
 @pytest.mark.asyncio
@@ -632,8 +631,7 @@ async def test_receive_messages_rejects_cross_tenant_access(multi_tenant_setup, 
     )
 
     # Assert: No messages returned (cross-tenant access blocked)
-    assert len(messages) == 0, \
-        f"Cross-tenant receive_messages should return no messages. Got {len(messages)} messages."
+    assert len(messages) == 0, f"Cross-tenant receive_messages should return no messages. Got {len(messages)} messages."
 
 
 # ============================================================================
@@ -694,13 +692,11 @@ async def test_all_tenant_scoped_tools_have_tenant_key():
         tool_def = content[start_idx:end_idx]
 
         # Assert: tenant_key in properties
-        assert '"tenant_key"' in tool_def, \
-            f"Tool {tool_name} missing 'tenant_key' in properties"
+        assert '"tenant_key"' in tool_def, f"Tool {tool_name} missing 'tenant_key' in properties"
 
         # Assert: tenant_key in required array
         required_section = tool_def.split('"required":')[1].split("]")[0] if '"required":' in tool_def else ""
-        assert '"tenant_key"' in required_section, \
-            f"Tool {tool_name} missing 'tenant_key' in required array"
+        assert '"tenant_key"' in required_section, f"Tool {tool_name} missing 'tenant_key' in required array"
 
 
 @pytest.mark.asyncio
@@ -754,8 +750,7 @@ async def test_identity_parameter_consistency():
         tool_def = content[start_idx:end_idx]
 
         # Should have agent_id
-        assert '"agent_id"' in tool_def, \
-            f"Tool {tool_name} should use 'agent_id' (executor identifier)"
+        assert '"agent_id"' in tool_def, f"Tool {tool_name} should use 'agent_id' (executor identifier)"
 
     # Verify job_id tools
     for tool_name in job_id_tools:
@@ -769,12 +764,12 @@ async def test_identity_parameter_consistency():
         tool_def = content[start_idx:end_idx]
 
         # Should have job_id
-        assert '"job_id"' in tool_def, \
-            f"Tool {tool_name} should use 'job_id' (work order identifier)"
+        assert '"job_id"' in tool_def, f"Tool {tool_name} should use 'job_id' (work order identifier)"
 
         # Should NOT have orchestrator_id
-        assert '"orchestrator_id"' not in tool_def, \
+        assert '"orchestrator_id"' not in tool_def, (
             f"Tool {tool_name} should NOT use legacy 'orchestrator_id' - use 'job_id'"
+        )
 
 
 # ============================================================================
@@ -818,5 +813,6 @@ async def test_no_tools_rely_on_implicit_tenant_context(db_manager, tenant_manag
         params = list(sig.parameters.keys())
 
         # Assert: tenant_key is a parameter
-        assert "tenant_key" in params, \
+        assert "tenant_key" in params, (
             f"ToolAccessor.{method_name} must accept explicit 'tenant_key' (no implicit context). Found params: {params}"
+        )

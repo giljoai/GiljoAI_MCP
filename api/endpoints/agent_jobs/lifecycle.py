@@ -11,6 +11,7 @@ All operations use OrchestrationService (no direct DB access).
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
@@ -70,10 +71,7 @@ async def spawn_agent_job(
     # Permission check - only admins can spawn agents
     if current_user.role != "admin":
         logger.warning(f"User {current_user.username} (role={current_user.role}) attempted to spawn agent")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required to spawn agents"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required to spawn agents")
 
     try:
         result = await orchestration_service.spawn_agent_job(
@@ -83,19 +81,19 @@ async def spawn_agent_job(
             project_id=request.project_id,
             tenant_key=current_user.tenant_key,
             parent_job_id=request.parent_job_id,
-            context_chunks=request.context_chunks
+            context_chunks=request.context_chunks,
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error spawning agent: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("Unexpected error spawning agent")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
     # Broadcast WebSocket event for real-time UI
     # NOTE: OrchestrationService already broadcasts agent:created, but we broadcast again
@@ -113,9 +111,8 @@ async def spawn_agent_job(
                 "agent_display_name": request.agent_display_name,
                 "agent_name": request.agent_name or request.agent_display_name,
                 "status": "waiting",
-                "instance_number": result.get("instance_number", 1),  # Handover 0457
                 "mission": request.mission,  # Handover 0464: Include mission for UI display
-            }
+            },
         )
         logger.info(f"Agent spawn broadcasted: {result['job_id']}")
     except Exception:
@@ -129,7 +126,7 @@ async def spawn_agent_job(
         job_id=result["job_id"],
         agent_prompt=result.get("agent_prompt", ""),
         mission_stored=result.get("mission_stored", True),
-        thin_client=result.get("thin_client", True)
+        thin_client=result.get("thin_client", True),
     )
 
 
@@ -160,10 +157,7 @@ async def acknowledge_job(
     logger.debug(f"User {current_user.username} acknowledging job {job_id}")
 
     try:
-        result = await orchestration_service.acknowledge_job(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key
-        )
+        result = await orchestration_service.acknowledge_job(job_id=job_id, tenant_key=current_user.tenant_key)
 
         logger.info(f"Acknowledged job {job_id} for tenant {current_user.tenant_key}")
 
@@ -173,7 +167,7 @@ async def acknowledge_job(
             job_id=job_id,
             status=job_data.get("status", "active"),
             started_at=job_data.get("started_at"),
-            message=result.get("next_instructions", "Job acknowledged successfully")
+            message=result.get("next_instructions", "Job acknowledged successfully"),
         )
     except (ResourceNotFoundError, ValidationError, AuthorizationError):
         # Let domain exceptions propagate to global exception handler
@@ -181,8 +175,8 @@ async def acknowledge_job(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error acknowledging job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Unexpected error acknowledging job")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{job_id}/complete", response_model=JobCompleteResponse)
@@ -214,9 +208,7 @@ async def complete_job(
         # Service expects result as dict, wrap string result for compatibility
         result_dict = {"summary": complete_request.result} if complete_request.result else {"summary": "Job completed"}
         result = await orchestration_service.complete_job(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key,
-            result=result_dict
+            job_id=job_id, tenant_key=current_user.tenant_key, result=result_dict
         )
 
         logger.info(f"Completed job {job_id} for tenant {current_user.tenant_key}")
@@ -227,19 +219,19 @@ async def complete_job(
             job_id=job_id,
             status="completed",  # Fixed: execution status, not result status
             completed_at=None,  # Not returned by service
-            message=result.get("message", "Job completed successfully")
+            message=result.get("message", "Job completed successfully"),
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error completing job: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("Unexpected error completing job")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.post("/{job_id}/error", response_model=JobErrorResponse)
@@ -269,9 +261,7 @@ async def report_job_error(
 
     try:
         result = await orchestration_service.report_error(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key,
-            error=error_request.error
+            job_id=job_id, tenant_key=current_user.tenant_key, error=error_request.error
         )
 
         logger.info(f"Reported error for job {job_id} for tenant {current_user.tenant_key}")
@@ -282,16 +272,16 @@ async def report_job_error(
             job_id=job_id,
             status="blocked",  # Fixed: execution status, not result status
             completed_at=None,  # Not returned by service
-            message=result.get("message", "Job error reported")
+            message=result.get("message", "Job error reported"),
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error reporting job error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("Unexpected error reporting job error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

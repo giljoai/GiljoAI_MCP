@@ -7,6 +7,7 @@ This audit documents GiljoAI MCP's compliance with OWASP Top 10 (2021).
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 """
+
 import pytest
 
 
@@ -377,7 +378,7 @@ class TestSecurityIntegration:
             "Input validation",
             "Authentication",
             "CSRF protection (optional)",
-            "Database-level tenant isolation"
+            "Database-level tenant isolation",
         ]
 
         assert len(layers) == 7, "7 security layers implemented"

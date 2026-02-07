@@ -9,11 +9,13 @@ import json
 import logging
 import shutil
 import tempfile
-from datetime import datetime
+from contextlib import suppress
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from src.giljo_mcp.exceptions import ConfigurationError, FileSystemError
+
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,7 @@ class ClaudeConfigManager:
                     self._restore_backup(backup_path)
                 raise ConfigurationError(
                     message="Invalid Serena configuration generated",
-                    context={"operation": "inject_serena", "project_root": str(project_root)}
+                    context={"operation": "inject_serena", "project_root": str(project_root)},
                 )
 
             # Step 5: Write atomically
@@ -85,32 +87,31 @@ class ClaudeConfigManager:
             return {"backup_path": str(backup_path) if backup_path else None}
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {e}")
+            logger.exception("JSON decode error")
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Invalid JSON in config file: {e}",
-                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
-            )
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
+            ) from e
         except OSError as e:
-            logger.error(f"IO error during injection: {e}")
+            logger.exception("IO error during injection")
             if backup_path:
                 self._restore_backup(backup_path)
             raise FileSystemError(
                 message=f"IO error: {e}",
-                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
-            )
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
+            ) from e
         except (ConfigurationError, FileSystemError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
-            logger.error(f"Unexpected error during injection: {e}")
+        except (ValueError, RuntimeError) as e:
+            logger.exception("Unexpected error during injection")
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
-                message=f"Unexpected error: {e}",
-                context={"operation": "inject_serena", "error_type": type(e).__name__}
-            )
+                message=f"Unexpected error: {e}", context={"operation": "inject_serena", "error_type": type(e).__name__}
+            ) from e
 
     def remove_serena(self) -> dict[str, str]:
         """
@@ -153,21 +154,21 @@ class ClaudeConfigManager:
             return {"message": "Serena MCP removed successfully"}
 
         except OSError as e:
-            logger.error(f"IO error during removal: {e}")
+            logger.exception("IO error during removal")
             if backup_path:
                 self._restore_backup(backup_path)
             raise FileSystemError(
                 message=f"IO error during Serena removal: {e}",
-                context={"operation": "remove_serena", "config_path": str(self.claude_config_path)}
-            )
-        except Exception as e:
-            logger.error(f"Error during removal: {e}")
+                context={"operation": "remove_serena", "config_path": str(self.claude_config_path)},
+            ) from e
+        except (ValueError, RuntimeError) as e:
+            logger.exception("Error during removal")
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Error removing Serena: {e}",
-                context={"operation": "remove_serena", "error_type": type(e).__name__}
-            )
+                context={"operation": "remove_serena", "error_type": type(e).__name__},
+            ) from e
 
     def _load_config(self) -> dict[str, Any]:
         """
@@ -189,7 +190,7 @@ class ClaudeConfigManager:
 
             return config
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos)
+            raise json.JSONDecodeError(f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos) from e
 
     def _backup_claude_config(self) -> Path:
         """
@@ -202,7 +203,7 @@ class ClaudeConfigManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Create timestamped backup filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         backup_path = self.backup_dir / f"claude_config_backup_{timestamp}.json"
 
         # Copy the file
@@ -221,8 +222,8 @@ class ClaudeConfigManager:
         try:
             shutil.copy2(backup_path, self.claude_config_path)
             logger.info(f"Restored config from backup {backup_path}")
-        except Exception as e:
-            logger.error(f"Failed to restore backup: {e}")
+        except (OSError, RuntimeError):
+            logger.exception("Failed to restore backup")
 
     def _add_serena_config(self, config: dict[str, Any], project_root: Path) -> dict[str, Any]:
         """
@@ -278,13 +279,10 @@ class ClaudeConfigManager:
             if "env" not in serena_config:
                 return False
 
-            if "SERENA_PROJECT_ROOT" not in serena_config["env"]:
-                return False
+            return "SERENA_PROJECT_ROOT" in serena_config["env"]
 
-            return True
-
-        except Exception as e:
-            logger.error(f"Validation error: {e}")
+        except (ValueError, KeyError):
+            logger.exception("Validation error")
             return False
 
     def _atomic_write(self, config: dict[str, Any]) -> None:
@@ -316,10 +314,8 @@ class ClaudeConfigManager:
 
             logger.debug(f"Atomically wrote config to {self.claude_config_path}")
 
-        except Exception as e:
+        except Exception:
             # Clean up temp file on error
-            try:
+            with suppress(OSError, RuntimeError):
                 Path(temp_path).unlink(missing_ok=True)
-            except Exception:
-                pass  # nosec B110 - temp file cleanup
-            raise e
+            raise

@@ -311,7 +311,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
 
       // Initial state: agent-1 is "working"
       let rows = wrapper.findAll('.agents-table tbody tr')
-      let workingRow = rows.find((row) => row.find('.status-cell').text() === 'Working...')
+      const workingRow = rows.find((row) => row.find('.status-cell').text() === 'Working...')
       expect(workingRow).toBeTruthy()
 
       // Simulate WebSocket event - agent-1 changes from "working" to "complete"
@@ -326,7 +326,7 @@ describe('JobsTab Dynamic Status (Handover 0243c - CRITICAL)', () => {
 
       // Verify UI updated - now complete row should exist
       rows = wrapper.findAll('.agents-table tbody tr')
-      let completeRow = rows.find((row) => row.find('.status-cell').text() === 'Complete')
+      const completeRow = rows.find((row) => row.find('.status-cell').text() === 'Complete')
       expect(completeRow).toBeTruthy()
       const statusCell = completeRow.find('.status-cell')
       expect(statusCell.element.style.color).toBe('rgb(103, 189, 109)')

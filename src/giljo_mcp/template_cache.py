@@ -100,13 +100,13 @@ class TemplateCache:
             try:
                 redis_data = await self._get_from_redis(cache_key)
                 if redis_data:
-                    template = pickle.loads(redis_data)  # nosec B301
+                    template = pickle.loads(redis_data)
                     # Populate memory cache
                     self._memory_cache[cache_key] = template
                     self._cache_hits += 1
                     logger.debug(f"Redis cache HIT: {cache_key}")
                     return template
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache error: {e}")
                 # Continue to database if Redis fails
 
@@ -127,7 +127,7 @@ class TemplateCache:
             if self.redis:
                 try:
                     await self._set_in_redis(cache_key, template, ttl=3600)
-                except Exception as e:
+                except (ValueError, KeyError, RuntimeError) as e:
                     logger.warning(f"Redis cache write error: {e}")
 
             logger.debug(f"Database cache MISS → cached: {cache_key}")
@@ -188,7 +188,7 @@ class TemplateCache:
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.product_id == product_id,
             AgentTemplate.role == role,
-            AgentTemplate.is_active == True,
+            AgentTemplate.is_active,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -201,7 +201,7 @@ class TemplateCache:
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.product_id.is_(None),
             AgentTemplate.role == role,
-            AgentTemplate.is_active == True,
+            AgentTemplate.is_active,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -211,7 +211,7 @@ class TemplateCache:
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == "system",
             AgentTemplate.role == role,
-            AgentTemplate.is_default == True,
+            AgentTemplate.is_default,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -239,7 +239,7 @@ class TemplateCache:
             try:
                 await self._delete_from_redis(cache_key)
                 logger.info(f"Redis cache invalidated: {cache_key}")
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache invalidation error: {e}")
 
     async def invalidate_all(self, tenant_key: Optional[str] = None) -> None:
@@ -251,7 +251,7 @@ class TemplateCache:
         """
         if tenant_key:
             # Invalidate only templates for specific tenant
-            keys_to_remove = [k for k in self._memory_cache.keys() if f":{tenant_key}:" in k]
+            keys_to_remove = [k for k in self._memory_cache if f":{tenant_key}:" in k]
             for key in keys_to_remove:
                 del self._memory_cache[key]
             logger.info(f"Memory cache cleared for tenant: {tenant_key}")
@@ -266,7 +266,7 @@ class TemplateCache:
                 pattern = f"template:{tenant_key}:*" if tenant_key else "template:*"
                 await self._delete_redis_pattern(pattern)
                 logger.info(f"Redis cache cleared (pattern: {pattern})")
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache clear error: {e}")
 
     def get_cache_stats(self) -> dict:

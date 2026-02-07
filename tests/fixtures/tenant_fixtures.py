@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Message, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TenantFixture:

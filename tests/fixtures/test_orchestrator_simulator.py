@@ -7,12 +7,10 @@ Created: 2025-11-27
 Purpose: Verify orchestrator simulation for E2E testing without requiring actual AI
 """
 
-import json
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -167,12 +165,13 @@ Database: PostgreSQL 18
             call_count += 1
             if tool_name == "fetch_product_context":
                 return mock_product_context
-            elif tool_name == "fetch_tech_stack":
+            if tool_name == "fetch_tech_stack":
                 return mock_tech_stack
             return {"success": True}
 
         with patch(
-            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_call_side_effect
+            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
+            side_effect=mock_call_side_effect,
         ):
             result = await simulator.task5_context_and_mission()
 
@@ -204,7 +203,8 @@ Database: PostgreSQL 18
             }
 
         with patch(
-            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_spawn_side_effect
+            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
+            side_effect=mock_spawn_side_effect,
         ):
             result = await simulator.task6_spawn_agents()
 
@@ -247,7 +247,7 @@ Database: PostgreSQL 18
         def mock_call_side_effect(tool_name, params):
             if tool_name == "health_check":
                 return {"status": "healthy", "response_time_ms": 150}
-            elif tool_name == "get_available_agents":
+            if tool_name == "get_available_agents":
                 return {
                     "success": True,
                     "agents": [
@@ -256,18 +256,18 @@ Database: PostgreSQL 18
                         {"name": "reviewer", "version": "1.0.1"},
                     ],
                 }
-            elif tool_name == "fetch_product_context":
+            if tool_name == "fetch_product_context":
                 return {"success": True, "product_name": "Test Product"}
-            elif tool_name == "fetch_tech_stack":
+            if tool_name == "fetch_tech_stack":
                 return {"success": True, "languages": ["Python"]}
-            elif tool_name == "spawn_agent_job":
+            if tool_name == "spawn_agent_job":
                 return {
                     "success": True,
                     "job_id": str(uuid.uuid4()),
                     "agent_display_name": params.get("agent_display_name", "unknown"),
                     "status": "waiting",
                 }
-            elif tool_name == "get_workflow_status":
+            if tool_name == "get_workflow_status":
                 return {"success": True, "status": "active"}
             return {"success": True}
 
@@ -276,7 +276,10 @@ Database: PostgreSQL 18
                 "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
                 side_effect=mock_call_side_effect,
             ):
-                with patch("tests.fixtures.orchestrator_simulator.OrchestratorSimulator._verify_project_exists", return_value=True):
+                with patch(
+                    "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._verify_project_exists",
+                    return_value=True,
+                ):
                     result = await simulator.execute_staging()
 
                     assert result["success"] is True
@@ -335,10 +338,16 @@ Database: PostgreSQL 18
 
         def mock_spawn_side_effect(tool_name, params):
             idx = 0 if params["agent_display_name"] == "implementer" else 1
-            return {"success": True, "job_id": job_ids[idx], "agent_display_name": params["agent_display_name"], "status": "waiting"}
+            return {
+                "success": True,
+                "job_id": job_ids[idx],
+                "agent_display_name": params["agent_display_name"],
+                "status": "waiting",
+            }
 
         with patch(
-            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_spawn_side_effect
+            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
+            side_effect=mock_spawn_side_effect,
         ):
             await simulator.task6_spawn_agents()
 
@@ -364,12 +373,13 @@ Database: PostgreSQL 18
             call_count += 1
             if tool_name == "fetch_product_context":
                 return mock_product_context
-            elif tool_name == "fetch_tech_stack":
+            if tool_name == "fetch_tech_stack":
                 return mock_tech_stack
             return {"success": True}
 
         with patch(
-            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_call_side_effect
+            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
+            side_effect=mock_call_side_effect,
         ):
             await simulator.task5_context_and_mission()
 
@@ -426,20 +436,30 @@ class TestOrchestratorSimulatorIntegration:
         def mock_spawn_side_effect(tool_name, params):
             if tool_name == "health_check":
                 return {"status": "healthy", "response_time_ms": 150}
-            elif tool_name == "get_available_agents":
+            if tool_name == "get_available_agents":
                 return {"success": True, "agents": [{"name": "implementer", "version": "1.0.3"}]}
-            elif tool_name == "fetch_product_context":
+            if tool_name == "fetch_product_context":
                 return {"success": True, "product_name": "Test"}
-            elif tool_name == "fetch_tech_stack":
+            if tool_name == "fetch_tech_stack":
                 return {"success": True, "languages": ["Python"]}
-            elif tool_name == "spawn_agent_job":
-                return {"success": True, "job_id": str(uuid.uuid4()), "agent_display_name": params.get("agent_display_name"), "status": "waiting"}
-            elif tool_name == "get_workflow_status":
+            if tool_name == "spawn_agent_job":
+                return {
+                    "success": True,
+                    "job_id": str(uuid.uuid4()),
+                    "agent_display_name": params.get("agent_display_name"),
+                    "status": "waiting",
+                }
+            if tool_name == "get_workflow_status":
                 return {"success": True, "status": "active"}
             return {"success": True}
 
-        with patch("tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool", side_effect=mock_spawn_side_effect):
-            with patch("tests.fixtures.orchestrator_simulator.OrchestratorSimulator._verify_project_exists", return_value=True):
+        with patch(
+            "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool",
+            side_effect=mock_spawn_side_effect,
+        ):
+            with patch(
+                "tests.fixtures.orchestrator_simulator.OrchestratorSimulator._verify_project_exists", return_value=True
+            ):
                 with patch("tests.fixtures.orchestrator_simulator.Path.cwd", return_value=tmp_path):
                     result = await perf_simulator.execute_staging()
 

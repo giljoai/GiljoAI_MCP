@@ -35,7 +35,6 @@ Usage Example:
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict
 from uuid import UUID
 
 import jwt
@@ -125,7 +124,7 @@ class JWTManager:
         return jwt.encode(payload, secret_key, algorithm=cls.ALGORITHM)
 
     @classmethod
-    def verify_token(cls, token: str) -> Dict:
+    def verify_token(cls, token: str) -> dict:
         """
         Verify and decode JWT token.
 
@@ -155,7 +154,7 @@ class JWTManager:
         except RuntimeError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"JWT configuration error: {e}"
-            )
+            ) from e
 
         try:
             payload = jwt.decode(token, secret_key, algorithms=[cls.ALGORITHM])
@@ -166,17 +165,17 @@ class JWTManager:
 
             return payload
 
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired. Please login again."
-            )
+            ) from e
         except jwt.InvalidTokenError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials: {e!s}"
-            )
+            ) from e
 
     @classmethod
-    def decode_token_no_verify(cls, token: str) -> Dict:
+    def decode_token_no_verify(cls, token: str) -> dict:
         """
         Decode JWT token without verification (for debugging/testing only).
 

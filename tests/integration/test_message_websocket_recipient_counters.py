@@ -10,15 +10,13 @@ TDD Workflow:
 4. Verify test passes
 """
 
-import asyncio
-import json
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.giljo_mcp.services.message_service import MessageService
+import pytest
+
 from api.websocket import WebSocketManager
+from src.giljo_mcp.services.message_service import MessageService
 
 
 class TestMessageWebSocketRecipientCounters:
@@ -49,9 +47,7 @@ class TestMessageWebSocketRecipientCounters:
 
         tenant_manager = TenantManager()
         service = MessageService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            websocket_manager=mock_websocket_manager
+            db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=mock_websocket_manager
         )
 
         return service
@@ -88,12 +84,11 @@ class TestMessageWebSocketRecipientCounters:
                     project_id=project_id,
                     job_id=job_id,
                     agent_display_name="implementer",
-                    agent_name=f"implementer-{i+1}",
-                    mission=f"Test mission {i+1}",
+                    agent_name=f"implementer-{i + 1}",
+                    mission=f"Test mission {i + 1}",
                     status="waiting",
                     progress=0,
                     tool_type="claude-code",
-                    instance_number=i+1,
                     context_used=0,
                 )
                 session.add(agent)
@@ -227,7 +222,6 @@ class TestMessageWebSocketRecipientCounters:
                     status="waiting",
                     progress=0,
                     tool_type="claude-code",
-                    instance_number=i+1,
                     context_used=0,
                 )
                 session.add(agent)

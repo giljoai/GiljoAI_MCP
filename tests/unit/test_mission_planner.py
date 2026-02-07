@@ -81,10 +81,7 @@ class TestMissionPlanner:
             "guidelines": ["microservices", "event-driven", "TDD", "CI/CD"],
         }
         # Add product_memory for history extraction
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
         return product
 
     @pytest.fixture
@@ -105,21 +102,21 @@ class TestMissionPlanner:
             AgentConfig(
                 role="orchestrator",
                 template_id="template_orch",
-                template_content="You are an orchestrator...",
+                system_instructions="You are an orchestrator...",
                 priority="required",
                 mission_scope="Coordinate all agents",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="template_impl",
-                template_content="You are an implementer...",
+                system_instructions="You are an implementer...",
                 priority="high",
                 mission_scope="Implement backend features",
             ),
             AgentConfig(
                 role="tester",
                 template_id="template_test",
-                template_content="You are a tester...",
+                system_instructions="You are a tester...",
                 priority="high",
                 mission_scope="Create comprehensive tests",
             ),
@@ -485,7 +482,7 @@ class TestMissionPlanner:
         agent_config = AgentConfig(
             role="implementer",
             template_id="template_impl",
-            template_content="You are an implementer...",
+            system_instructions="You are an implementer...",
             priority="high",
             mission_scope="Implement backend API",
         )
@@ -527,7 +524,7 @@ class TestMissionPlanner:
         agent_config = AgentConfig(
             role="tester",
             template_id="template_test",
-            template_content="You are a tester...",
+            system_instructions="You are a tester...",
             priority="high",
             mission_scope="Create test suite",
         )
@@ -675,21 +672,21 @@ class TestMissionPlanner:
             AgentConfig(
                 role="orchestrator",
                 template_id="t1",
-                template_content="Template 1",
+                system_instructions="Template 1",
                 priority="required",
                 mission_scope="Scope 1",
             ),
             AgentConfig(
                 role="implementer",
                 template_id="t2",
-                template_content="Template 2",
+                system_instructions="Template 2",
                 priority="high",
                 mission_scope="Scope 2",
             ),
             AgentConfig(
                 role="documenter",
                 template_id="t3",
-                template_content="Template 3",
+                system_instructions="Template 3",
                 priority="low",
                 mission_scope="Scope 3",
             ),
@@ -752,9 +749,7 @@ class TestMissionPlanner:
     # === Fix #1: Default Field Priorities Tests ===
 
     @pytest.mark.asyncio
-    async def test_empty_field_priorities_uses_defaults(
-        self, mission_planner, sample_product, sample_project
-    ):
+    async def test_empty_field_priorities_uses_defaults(self, mission_planner, sample_product, sample_project):
         """When no user priorities configured, should use sensible defaults.
 
         Critical Issue: field_priorities defaulting to {} causes all optional fields
@@ -767,10 +762,7 @@ class TestMissionPlanner:
 
         # Act: Build context with empty priorities
         context = await mission_planner._build_context_with_priorities(
-            product=sample_product,
-            project=sample_project,
-            field_priorities=field_priorities,
-            user_id="test_user_123"
+            product=sample_product, project=sample_project, field_priorities=field_priorities, user_id="test_user_123"
         )
 
         # Assert: Default fields should be included
@@ -786,9 +778,7 @@ class TestMissionPlanner:
         assert "## Project Description" in context
 
     @pytest.mark.asyncio
-    async def test_user_field_priorities_override_defaults(
-        self, mission_planner, sample_product, sample_project
-    ):
+    async def test_user_field_priorities_override_defaults(self, mission_planner, sample_product, sample_project):
         """User-configured priorities should override defaults.
 
         When user explicitly sets field priorities, those should take precedence
@@ -799,10 +789,7 @@ class TestMissionPlanner:
 
         # Act: Build context with user priorities
         context = await mission_planner._build_context_with_priorities(
-            product=sample_product,
-            project=sample_project,
-            field_priorities=user_priorities,
-            user_id="test_user_123"
+            product=sample_product, project=sample_project, field_priorities=user_priorities, user_id="test_user_123"
         )
 
         # Assert: Codebase should be included at FULL detail
@@ -819,9 +806,7 @@ class TestMissionPlanner:
         assert len(codebase_content) > 100, "Codebase should have full detail with priority 10"
 
     @pytest.mark.asyncio
-    async def test_defaults_do_not_affect_mandatory_fields(
-        self, mission_planner, sample_product, sample_project
-    ):
+    async def test_defaults_do_not_affect_mandatory_fields(self, mission_planner, sample_product, sample_project):
         """Mandatory fields always included regardless of priorities.
 
         Product name, product vision, and project description are MANDATORY
@@ -832,10 +817,7 @@ class TestMissionPlanner:
 
         # Act: Build context
         context = await mission_planner._build_context_with_priorities(
-            product=sample_product,
-            project=sample_project,
-            field_priorities=field_priorities,
-            user_id="test_user_123"
+            product=sample_product, project=sample_project, field_priorities=field_priorities, user_id="test_user_123"
         )
 
         # Assert: All mandatory fields present at full detail
@@ -849,9 +831,7 @@ class TestMissionPlanner:
         assert sample_project.description in context
 
     @pytest.mark.asyncio
-    async def test_default_priority_values_are_reasonable(
-        self, mission_planner, sample_product, sample_project
-    ):
+    async def test_default_priority_values_are_reasonable(self, mission_planner, sample_product, sample_project):
         """Verify default priority values produce balanced context.
 
         Default priorities should be:
@@ -873,13 +853,13 @@ class TestMissionPlanner:
             detail_level_calls.append((priority, result))
             return result
 
-        with patch.object(mission_planner, '_get_detail_level', side_effect=mock_get_detail_level):
+        with patch.object(mission_planner, "_get_detail_level", side_effect=mock_get_detail_level):
             # Act: Build context
             context = await mission_planner._build_context_with_priorities(
                 product=sample_product,
                 project=sample_project,
                 field_priorities=field_priorities,
-                user_id="test_user_123"
+                user_id="test_user_123",
             )
 
         # Assert: Verify detail levels called with default priorities

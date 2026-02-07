@@ -45,15 +45,15 @@
 
         <v-card-actions v-if="isAdmin" class="gap-2">
           <v-spacer />
-          <v-btn variant="text" @click="resetForm" data-test="reset-btn">
+          <v-btn variant="text" data-test="reset-btn" @click="resetForm">
             Reset
           </v-btn>
           <v-btn
             color="primary"
             :loading="saving"
             :disabled="!isFormDirty"
-            @click="saveOrgDetails"
             data-test="save-org-btn"
+            @click="saveOrgDetails"
           >
             <v-icon start>mdi-content-save</v-icon>
             Save Changes

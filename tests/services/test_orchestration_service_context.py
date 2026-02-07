@@ -9,14 +9,12 @@ HANDOVER 0422: Removed tests for update_context_usage(), estimate_message_tokens
 which were methods testing dead token budget code (removed from OrchestrationService).
 """
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+import pytest
+
 from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.projects import Project
 
 
 @pytest.fixture
@@ -50,7 +48,6 @@ async def test_report_progress_todo_updates_job_metadata_steps(mock_db_manager, 
     The job_metadata.todo_steps field is still updated for backward compatibility,
     but tests should verify the new todo_items table instead.
     """
-    pass
 
 
 @pytest.mark.skip(reason="report_progress() functionality changed - uses TodoWriteRepository instead of job_metadata")
@@ -60,7 +57,6 @@ async def test_report_progress_non_todo_does_not_set_steps(mock_db_manager, mock
 
     NOTE: This functionality has been migrated to use TodoWriteRepository with todo_items table.
     """
-    pass
 
     mock_message_service = MagicMock()
     mock_message_service.send_message = AsyncMock(return_value={"success": True, "message_id": "msg-progress-001"})

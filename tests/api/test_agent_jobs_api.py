@@ -22,20 +22,22 @@ Test Coverage:
 Phase 2 Progress: API Layer Testing (5/10 groups)
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime, timezone
 
 
 # ============================================================================
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_admin(db_manager):
     """Create Tenant A admin user (required for spawning agents)."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -67,6 +69,7 @@ async def tenant_a_admin(db_manager):
 async def tenant_a_developer(db_manager):
     """Create Tenant A developer user (cannot spawn agents)."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -98,6 +101,7 @@ async def tenant_a_developer(db_manager):
 async def tenant_b_admin(db_manager):
     """Create Tenant B admin user for cross-tenant testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -129,8 +133,7 @@ async def tenant_b_admin(db_manager):
 async def tenant_a_admin_token(api_client: AsyncClient, tenant_a_admin):
     """Get JWT token for Tenant A admin."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_admin._test_username, "password": tenant_a_admin._test_password}
+        "/api/auth/login", json={"username": tenant_a_admin._test_username, "password": tenant_a_admin._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -143,7 +146,7 @@ async def tenant_a_dev_token(api_client: AsyncClient, tenant_a_developer):
     """Get JWT token for Tenant A developer."""
     response = await api_client.post(
         "/api/auth/login",
-        json={"username": tenant_a_developer._test_username, "password": tenant_a_developer._test_password}
+        json={"username": tenant_a_developer._test_username, "password": tenant_a_developer._test_password},
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -155,8 +158,7 @@ async def tenant_a_dev_token(api_client: AsyncClient, tenant_a_developer):
 async def tenant_b_admin_token(api_client: AsyncClient, tenant_b_admin):
     """Get JWT token for Tenant B admin."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_b_admin._test_username, "password": tenant_b_admin._test_password}
+        "/api/auth/login", json={"username": tenant_b_admin._test_username, "password": tenant_b_admin._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -172,9 +174,9 @@ async def tenant_a_product(api_client: AsyncClient, tenant_a_admin_token: str):
         json={
             "name": f"Test Product {uuid4().hex[:8]}",
             "description": "Test product for agent jobs",
-            "project_path": f"/test/product/{uuid4().hex[:8]}"
+            "project_path": f"/test/product/{uuid4().hex[:8]}",
         },
-        cookies={"access_token": tenant_a_admin_token}
+        cookies={"access_token": tenant_a_admin_token},
     )
     assert response.status_code == 200
     return response.json()
@@ -188,9 +190,9 @@ async def tenant_b_product(api_client: AsyncClient, tenant_b_admin_token: str):
         json={
             "name": f"Test Product {uuid4().hex[:8]}",
             "description": "Test product for tenant B",
-            "project_path": f"/test/product/{uuid4().hex[:8]}"
+            "project_path": f"/test/product/{uuid4().hex[:8]}",
         },
-        cookies={"access_token": tenant_b_admin_token}
+        cookies={"access_token": tenant_b_admin_token},
     )
     assert response.status_code == 200
     return response.json()
@@ -206,9 +208,9 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_admin_token: str, t
             "description": "Test project for agent jobs",
             "mission": "Test mission for agent coordination",
             "product_id": tenant_a_product["id"],
-            "status": "inactive"
+            "status": "inactive",
         },
-        cookies={"access_token": tenant_a_admin_token}
+        cookies={"access_token": tenant_a_admin_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -224,9 +226,9 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_admin_token: str, t
             "description": "Test project for tenant B",
             "mission": "Test mission for tenant B",
             "product_id": tenant_b_product["id"],
-            "status": "inactive"
+            "status": "inactive",
         },
-        cookies={"access_token": tenant_b_admin_token}
+        cookies={"access_token": tenant_b_admin_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -242,9 +244,9 @@ async def tenant_a_agent_job(api_client: AsyncClient, tenant_a_admin_token: str,
             "agent_name": "Test Orchestrator",
             "mission": "Test orchestration mission",
             "project_id": tenant_a_project["id"],
-            "context_chunks": []
+            "context_chunks": [],
         },
-        cookies={"access_token": tenant_a_admin_token}
+        cookies={"access_token": tenant_a_admin_token},
     )
     assert response.status_code == 201, f"Spawn failed: {response.json()}"
     return response.json()
@@ -260,9 +262,9 @@ async def tenant_b_agent_job(api_client: AsyncClient, tenant_b_admin_token: str,
             "agent_name": "Test Orchestrator B",
             "mission": "Test orchestration mission B",
             "project_id": tenant_b_project["id"],
-            "context_chunks": []
+            "context_chunks": [],
         },
-        cookies={"access_token": tenant_b_admin_token}
+        cookies={"access_token": tenant_b_admin_token},
     )
     assert response.status_code == 201, f"Spawn failed: {response.json()}"
     return response.json()
@@ -271,6 +273,7 @@ async def tenant_b_agent_job(api_client: AsyncClient, tenant_b_admin_token: str,
 # ============================================================================
 # LIFECYCLE ENDPOINTS TESTS
 # ============================================================================
+
 
 class TestAgentJobLifecycle:
     """Test lifecycle operations: spawn, acknowledge, complete, error"""
@@ -287,9 +290,9 @@ class TestAgentJobLifecycle:
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": ["chunk1", "chunk2"]
+                "context_chunks": ["chunk1", "chunk2"],
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 201
@@ -312,18 +315,16 @@ class TestAgentJobLifecycle:
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
+                "context_chunks": [],
             },
-            cookies={"access_token": tenant_a_dev_token}
+            cookies={"access_token": tenant_a_dev_token},
         )
 
         assert response.status_code == 403
         assert "Admin access required" in response.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_spawn_agent_job_requires_auth(
-        self, api_client: AsyncClient, tenant_a_project
-    ):
+    async def test_spawn_agent_job_requires_auth(self, api_client: AsyncClient, tenant_a_project):
         """Test that spawning requires authentication."""
         # Clear any existing cookies to ensure truly unauthenticated request
         api_client.cookies.clear()
@@ -335,8 +336,8 @@ class TestAgentJobLifecycle:
                 "agent_name": "Test Implementer",
                 "mission": "Implement feature X",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
-            }
+                "context_chunks": [],
+            },
         )
 
         assert response.status_code == 401
@@ -349,8 +350,7 @@ class TestAgentJobLifecycle:
         job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 200, f"Acknowledge failed: {response.text}"
@@ -363,15 +363,12 @@ class TestAgentJobLifecycle:
         assert "message" in data and len(data["message"]) > 0
 
     @pytest.mark.asyncio
-    async def test_acknowledge_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_acknowledge_job_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test acknowledging non-existent job returns error."""
         fake_job_id = str(uuid4())
 
         response = await api_client.post(
-            f"/api/agent-jobs/{fake_job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{fake_job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
 
         # Should return error (400 or 404 depending on implementation)
@@ -385,16 +382,13 @@ class TestAgentJobLifecycle:
         job_id = tenant_a_agent_job["job_id"]
 
         # First acknowledge
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        await api_client.post(f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token})
 
         # Then complete
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/complete",
             json={"result": "Task completed successfully"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 200, f"Complete failed: {response.text}"
@@ -406,16 +400,14 @@ class TestAgentJobLifecycle:
         assert "message" in data and len(data["message"]) > 0
 
     @pytest.mark.asyncio
-    async def test_complete_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_complete_job_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test completing non-existent job returns error."""
         fake_job_id = str(uuid4())
 
         response = await api_client.post(
             f"/api/agent-jobs/{fake_job_id}/complete",
             json={"result": "Done"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         # Should return error (400 or 404 depending on implementation)
@@ -429,16 +421,13 @@ class TestAgentJobLifecycle:
         job_id = tenant_a_agent_job["job_id"]
 
         # Acknowledge first
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        await api_client.post(f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token})
 
         # Report error
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/error",
             json={"error": "Failed to connect to database"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 200
@@ -450,16 +439,14 @@ class TestAgentJobLifecycle:
         assert "completed_at" in data
 
     @pytest.mark.asyncio
-    async def test_report_error_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_report_error_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test reporting error for non-existent job returns error."""
         fake_job_id = str(uuid4())
 
         response = await api_client.post(
             f"/api/agent-jobs/{fake_job_id}/error",
             json={"error": "Some error"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         # Should return error (400 or 404 depending on implementation)
@@ -470,18 +457,14 @@ class TestAgentJobLifecycle:
 # STATUS ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestAgentJobStatus:
     """Test status operations: list, get, pending, mission"""
 
     @pytest.mark.asyncio
-    async def test_list_jobs_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
+    async def test_list_jobs_happy_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job):
         """Test listing agent jobs."""
-        response = await api_client.get(
-            "/api/agent-jobs/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/agent-jobs/", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -503,7 +486,7 @@ class TestAgentJobStatus:
         """Test listing jobs with filters."""
         response = await api_client.get(
             f"/api/agent-jobs/?project_id={tenant_a_project['id']}&status=pending&limit=10",
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 200
@@ -512,13 +495,10 @@ class TestAgentJobStatus:
         assert data["limit"] == 10
 
     @pytest.mark.asyncio
-    async def test_list_jobs_pagination(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_list_jobs_pagination(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test job list pagination."""
         response = await api_client.get(
-            "/api/agent-jobs/?limit=5&offset=0",
-            cookies={"access_token": tenant_a_admin_token}
+            "/api/agent-jobs/?limit=5&offset=0", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 200
@@ -542,16 +522,15 @@ class TestAgentJobStatus:
           jobs endpoint returns steps: {"total": int, "completed": int}
         """
         from sqlalchemy import select
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+
+        from src.giljo_mcp.models.agent_identity import AgentJob
 
         job_id = tenant_a_agent_job["job_id"]
 
         # Populate todo_steps in job_metadata for the spawned job
         # Note: job_metadata is on AgentJob, not AgentExecution
         async with db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentJob).where(AgentJob.job_id == job_id)
-            )
+            result = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
             job = result.scalar_one()
 
             job.job_metadata = {
@@ -589,16 +568,11 @@ class TestAgentJobStatus:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
+    async def test_get_job_happy_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job):
         """Test getting job details by ID."""
         job_id = tenant_a_agent_job["job_id"]
 
-        response = await api_client.get(
-            f"/api/agent-jobs/{job_id}",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get(f"/api/agent-jobs/{job_id}", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -607,15 +581,12 @@ class TestAgentJobStatus:
         assert "status" in data
 
     @pytest.mark.asyncio
-    async def test_get_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_get_job_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test getting non-existent job returns error."""
         fake_job_id = str(uuid4())
 
         response = await api_client.get(
-            f"/api/agent-jobs/{fake_job_id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{fake_job_id}", cookies={"access_token": tenant_a_admin_token}
         )
 
         # Should return error (404 or 500 depending on implementation)
@@ -626,10 +597,7 @@ class TestAgentJobStatus:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
     ):
         """Test listing pending jobs."""
-        response = await api_client.get(
-            "/api/agent-jobs/pending",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/agent-jobs/pending", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -646,8 +614,7 @@ class TestAgentJobStatus:
         job_id = tenant_a_agent_job["job_id"]
 
         response = await api_client.get(
-            f"/api/agent-jobs/{job_id}/mission",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/mission", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 200
@@ -659,15 +626,12 @@ class TestAgentJobStatus:
         assert len(data["mission"]) > 0
 
     @pytest.mark.asyncio
-    async def test_get_job_mission_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_get_job_mission_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test getting mission for non-existent job returns error."""
         fake_job_id = str(uuid4())
 
         response = await api_client.get(
-            f"/api/agent-jobs/{fake_job_id}/mission",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{fake_job_id}/mission", cookies={"access_token": tenant_a_admin_token}
         )
 
         # Should return error (404 or 500 depending on implementation)
@@ -678,95 +642,9 @@ class TestAgentJobStatus:
 # OPERATIONS ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestAgentJobOperations:
     """Test operation controls: cancel, force-fail, health"""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture means agents only see cancellation on next poll")
-    async def test_cancel_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
-        """Test successful job cancellation."""
-        job_id = tenant_a_agent_job["job_id"]
-
-        # Acknowledge job first (can only cancel active jobs)
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        # Cancel job
-        response = await api_client.post(
-            f"/api/jobs/{job_id}/cancel",
-            json={"reason": "User requested cancellation"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["job_id"] == job_id
-        assert data["status"] in ["cancelling", "cancelled"]
-        assert "cancel" in data["message"].lower()
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture")
-    async def test_cancel_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
-        """Test cancelling non-existent job returns 404."""
-        fake_job_id = str(uuid4())
-
-        response = await api_client.post(
-            f"/api/jobs/{fake_job_id}/cancel",
-            json={"reason": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="force-fail endpoint removed - use project-level cancel or Ctrl+C in terminal")
-    async def test_force_fail_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
-        """Test successful force-fail operation."""
-        job_id = tenant_a_agent_job["job_id"]
-
-        # Acknowledge job first
-        await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        # Force-fail job
-        response = await api_client.post(
-            f"/api/jobs/{job_id}/force-fail",
-            json={"reason": "Job unresponsive"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is True
-        assert data["job_id"] == job_id
-        assert data["status"] == "failed"
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="force-fail endpoint removed - use project-level cancel or Ctrl+C in terminal")
-    async def test_force_fail_job_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
-        """Test force-failing non-existent job returns 404."""
-        fake_job_id = str(uuid4())
-
-        response = await api_client.post(
-            f"/api/jobs/{fake_job_id}/force-fail",
-            json={"reason": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_get_job_health_happy_path(
@@ -775,10 +653,7 @@ class TestAgentJobOperations:
         """Test getting job health metrics."""
         job_id = tenant_a_agent_job["job_id"]
 
-        response = await api_client.get(
-            f"/api/jobs/{job_id}/health",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get(f"/api/jobs/{job_id}/health", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -788,15 +663,12 @@ class TestAgentJobOperations:
         assert isinstance(data["is_stale"], bool)
 
     @pytest.mark.asyncio
-    async def test_get_job_health_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_get_job_health_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test getting health for non-existent job returns 404."""
         fake_job_id = str(uuid4())
 
         response = await api_client.get(
-            f"/api/jobs/{fake_job_id}/health",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/jobs/{fake_job_id}/health", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 404
@@ -805,6 +677,7 @@ class TestAgentJobOperations:
 # ============================================================================
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
+
 
 class TestAgentJobMultiTenantIsolation:
     """Test multi-tenant isolation - zero cross-tenant data leakage"""
@@ -816,10 +689,7 @@ class TestAgentJobMultiTenantIsolation:
         """Test that Tenant A cannot access Tenant B's jobs."""
         job_id = tenant_b_agent_job["job_id"]
 
-        response = await api_client.get(
-            f"/api/agent-jobs/{job_id}",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get(f"/api/agent-jobs/{job_id}", cookies={"access_token": tenant_a_admin_token})
 
         # Should return 404 (not found) for isolation
         assert response.status_code == 404
@@ -832,8 +702,7 @@ class TestAgentJobMultiTenantIsolation:
         job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 404
@@ -848,7 +717,7 @@ class TestAgentJobMultiTenantIsolation:
         response = await api_client.post(
             f"/api/agent-jobs/{job_id}/complete",
             json={"result": "Done"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 404
@@ -862,32 +731,28 @@ class TestAgentJobMultiTenantIsolation:
         job_id = tenant_b_agent_job["job_id"]
 
         response = await api_client.post(
-            f"/api/jobs/{job_id}/cancel",
-            json={"reason": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/jobs/{job_id}/cancel", json={"reason": "Test"}, cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_list_jobs_only_shows_own_tenant(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_admin_token: str,
-        tenant_a_agent_job, tenant_b_agent_job
+        self,
+        api_client: AsyncClient,
+        tenant_a_admin_token: str,
+        tenant_b_admin_token: str,
+        tenant_a_agent_job,
+        tenant_b_agent_job,
     ):
         """Test that listing jobs only shows jobs for the authenticated tenant."""
         # Tenant A lists jobs
-        response_a = await api_client.get(
-            "/api/agent-jobs/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response_a = await api_client.get("/api/agent-jobs/", cookies={"access_token": tenant_a_admin_token})
         assert response_a.status_code == 200
         data_a = response_a.json()
 
         # Tenant B lists jobs
-        response_b = await api_client.get(
-            "/api/agent-jobs/",
-            cookies={"access_token": tenant_b_admin_token}
-        )
+        response_b = await api_client.get("/api/agent-jobs/", cookies={"access_token": tenant_b_admin_token})
         assert response_b.status_code == 200
         data_b = response_b.json()
 
@@ -898,23 +763,21 @@ class TestAgentJobMultiTenantIsolation:
 
     @pytest.mark.asyncio
     async def test_pending_jobs_only_shows_own_tenant(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_admin_token: str,
-        tenant_a_agent_job, tenant_b_agent_job
+        self,
+        api_client: AsyncClient,
+        tenant_a_admin_token: str,
+        tenant_b_admin_token: str,
+        tenant_a_agent_job,
+        tenant_b_agent_job,
     ):
         """Test that pending jobs only shows jobs for the authenticated tenant."""
         # Tenant A gets pending jobs
-        response_a = await api_client.get(
-            "/api/agent-jobs/pending",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response_a = await api_client.get("/api/agent-jobs/pending", cookies={"access_token": tenant_a_admin_token})
         assert response_a.status_code == 200
         data_a = response_a.json()
 
         # Tenant B gets pending jobs
-        response_b = await api_client.get(
-            "/api/agent-jobs/pending",
-            cookies={"access_token": tenant_b_admin_token}
-        )
+        response_b = await api_client.get("/api/agent-jobs/pending", cookies={"access_token": tenant_b_admin_token})
         assert response_b.status_code == 200
         data_b = response_b.json()
 
@@ -927,6 +790,7 @@ class TestAgentJobMultiTenantIsolation:
 # ============================================================================
 # STATE TRANSITION TESTS
 # ============================================================================
+
 
 class TestAgentJobStateTransitions:
     """Test valid and invalid state transitions"""
@@ -944,17 +808,16 @@ class TestAgentJobStateTransitions:
                 "agent_name": "Lifecycle Test",
                 "mission": "Complete lifecycle test",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
+                "context_chunks": [],
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert spawn_response.status_code == 201
         job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
         assert ack_response.status_code == 200
         assert ack_response.json()["status"] in ["active", "working"]
@@ -963,15 +826,13 @@ class TestAgentJobStateTransitions:
         complete_response = await api_client.post(
             f"/api/agent-jobs/{job_id}/complete",
             json={"result": "All tasks completed"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert complete_response.status_code == 200
         assert complete_response.json()["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_error_lifecycle_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project
-    ):
+    async def test_error_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
         """Test error lifecycle: spawn -> acknowledge -> error."""
         # Spawn job
         spawn_response = await api_client.post(
@@ -981,17 +842,16 @@ class TestAgentJobStateTransitions:
                 "agent_name": "Error Test",
                 "mission": "Test error handling",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
+                "context_chunks": [],
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert spawn_response.status_code == 201
         job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
         assert ack_response.status_code == 200
 
@@ -999,7 +859,7 @@ class TestAgentJobStateTransitions:
         error_response = await api_client.post(
             f"/api/agent-jobs/{job_id}/error",
             json={"error": "Critical failure occurred"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert error_response.status_code == 200
         # Error endpoint returns "blocked" (agent blocked by error)
@@ -1007,9 +867,7 @@ class TestAgentJobStateTransitions:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture")
-    async def test_cancel_lifecycle_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project
-    ):
+    async def test_cancel_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
         """Test cancel lifecycle: spawn -> acknowledge -> cancel."""
         # Spawn job
         spawn_response = await api_client.post(
@@ -1019,17 +877,16 @@ class TestAgentJobStateTransitions:
                 "agent_name": "Cancel Test",
                 "mission": "Test cancellation",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
+                "context_chunks": [],
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert spawn_response.status_code == 201
         job_id = spawn_response.json()["job_id"]
 
         # Acknowledge job
         ack_response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
         )
         assert ack_response.status_code == 200
 
@@ -1037,7 +894,7 @@ class TestAgentJobStateTransitions:
         cancel_response = await api_client.post(
             f"/api/jobs/{job_id}/cancel",
             json={"reason": "No longer needed"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert cancel_response.status_code == 200
         assert cancel_response.json()["status"] in ["cancelling", "cancelled"]

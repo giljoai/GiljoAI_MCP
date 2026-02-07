@@ -4,9 +4,7 @@
       <div class="d-flex align-center mb-3">
         <v-avatar size="40" rounded="0" class="mr-2">
           <v-img
-            :src="
-              theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
-            "
+            src="/giljo_YW_Face.svg"
             alt="GiljoAI MCP"
           />
         </v-avatar>

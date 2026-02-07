@@ -386,7 +386,7 @@ class TestIntegration:
             assert config.server.mcp_port == 6001
             assert config.server.api_key == "test-key-123"
             assert config.database.type == "postgresql"
-            assert config.database.pg_database == "test_db"
+            assert config.database.database_name == "test_db"
             assert config.database.pg_pool_size == 10
 
     def test_full_config_load_from_v2_file_with_migration(self, skip_db_validation):

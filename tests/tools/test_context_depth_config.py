@@ -23,18 +23,7 @@ Test-Driven Development (TDD) Approach:
 """
 
 import pytest
-from datetime import datetime, timezone
-from typing import Dict, List, Any
-from uuid import uuid4
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.products import VisionDocument
-from src.giljo_mcp.models.context import MCPContextIndex
-from src.giljo_mcp.models.templates import AgentTemplate
-from src.giljo_mcp.database import DatabaseManager
 
 
 # ============================================================================
@@ -53,7 +42,6 @@ class TestVisionDocumentDepthControl:
         WHEN get_vision_document() is called with chunking="light"
         THEN exactly 2 chunks should be returned (light = 2 chunks)
         """
-        pass
 
     async def test_vision_chunking_medium_returns_exactly_4_chunks(self, db_session: AsyncSession):
         """
@@ -61,7 +49,6 @@ class TestVisionDocumentDepthControl:
         WHEN chunking="medium"
         THEN exactly 4 chunks should be returned
         """
-        pass
 
     async def test_vision_chunking_full_returns_exactly_6_chunks(self, db_session: AsyncSession):
         """
@@ -69,7 +56,6 @@ class TestVisionDocumentDepthControl:
         WHEN chunking="full"
         THEN return all 6 chunks
         """
-        pass
 
     async def test_vision_chunking_none_returns_empty_list(self, db_session: AsyncSession):
         """
@@ -77,7 +63,6 @@ class TestVisionDocumentDepthControl:
         WHEN chunking="none"
         THEN return empty list
         """
-        pass
 
 
 @pytest.mark.skip(reason="Refactored in Handover 0246b - internal functions removed, use public MCP tool APIs")
@@ -91,7 +76,6 @@ class TestMemoryPagination:
         WHEN depth=3
         THEN exactly 3 most recent projects returned in reverse chronological order
         """
-        pass
 
     async def test_memory_pagination_returns_exactly_1_project(self, db_session: AsyncSession):
         """
@@ -99,7 +83,6 @@ class TestMemoryPagination:
         WHEN depth=1
         THEN return exactly 1 most recent project
         """
-        pass
 
 
 @pytest.mark.skip(reason="Refactored in Handover 0246b - internal functions removed, use public MCP tool APIs")
@@ -113,7 +96,6 @@ class TestGitCommitLimiting:
         WHEN depth=5
         THEN exactly 5 most recent commits returned
         """
-        pass
 
     async def test_git_commit_limiting_returns_empty_when_disabled(self, db_session: AsyncSession):
         """
@@ -121,7 +103,6 @@ class TestGitCommitLimiting:
         WHEN depth=15
         THEN return empty list
         """
-        pass
 
 
 @pytest.mark.skip(reason="Refactored in Handover 0246b - internal functions removed, use public MCP tool APIs")
@@ -135,7 +116,6 @@ class TestAgentTemplateDetailControl:
         WHEN depth="minimal"
         THEN return only name + agent_display_name fields (~400 tokens)
         """
-        pass
 
     async def test_agent_template_detail_standard_includes_descriptions(self, db_session: AsyncSession):
         """
@@ -143,7 +123,6 @@ class TestAgentTemplateDetailControl:
         WHEN depth="standard"
         THEN return name + role + description (~1,200 tokens)
         """
-        pass
 
     async def test_agent_template_detail_full_includes_all_fields(self, db_session: AsyncSession):
         """
@@ -151,4 +130,3 @@ class TestAgentTemplateDetailControl:
         WHEN depth="full"
         THEN return complete template with all fields (~2,400 tokens)
         """
-        pass

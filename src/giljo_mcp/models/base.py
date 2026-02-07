@@ -7,18 +7,19 @@ This module provides the foundational elements used by all other model modules:
 """
 
 from uuid import uuid4
+
 from sqlalchemy.orm import declarative_base
 
 
 Base = declarative_base()
 
 
-def generate_uuid():
+def generate_uuid() -> str:
     """Generate a string UUID for cross-database compatibility."""
     return str(uuid4())
 
 
-def generate_project_alias():
+def generate_project_alias() -> str:
     """
     Generate a unique 6-character alphanumeric project alias.
 
@@ -34,4 +35,4 @@ def generate_project_alias():
     import string
 
     chars = string.ascii_uppercase + string.digits
-    return "".join(random.choices(chars, k=6))  # nosec B311 - non-crypto ID suffix
+    return "".join(random.choices(chars, k=6))

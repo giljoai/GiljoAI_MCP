@@ -5,13 +5,13 @@ Verifies that soft-delete uses ProductMemoryRepository instead of JSONB.
 Handover 0390b Phase 3.
 """
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from src.giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.mark.asyncio
@@ -48,7 +48,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
             source="test",
             timestamp=datetime.utcnow(),
             project_name=project.name,
-            summary=f"Test entry {i+1}",
+            summary=f"Test entry {i + 1}",
             deleted_by_user=False,
         )
         db_session.add(entry)
@@ -63,9 +63,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     entry_ids = [entry.id for entry in entries]
 
     # Act - Nuclear delete the project
-    result = await project_service_with_session.nuclear_delete_project(
-        project_id=project.id, websocket_manager=None
-    )
+    result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
 
     # Assert - Verify success
     assert result["success"] is True
@@ -77,9 +75,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     await db_session.commit()  # Refresh session after service commit
     from sqlalchemy import select
 
-    stmt = select(ProductMemoryEntry).where(
-        ProductMemoryEntry.id.in_(entry_ids)
-    )
+    stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id.in_(entry_ids))
     result = await db_session.execute(stmt)
     marked_entries = result.scalars().all()
 
@@ -113,9 +109,7 @@ async def test_nuclear_delete_with_no_memory_entries(
     await db_session.refresh(project)
 
     # Act - Nuclear delete
-    result = await project_service_with_session.nuclear_delete_project(
-        project_id=project.id, websocket_manager=None
-    )
+    result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
 
     # Assert - Success with 0 entries marked
     assert result["success"] is True
@@ -123,9 +117,7 @@ async def test_nuclear_delete_with_no_memory_entries(
 
 
 @pytest.mark.asyncio
-async def test_nuclear_delete_tenant_isolation(
-    db_session, test_tenant_key, test_product, project_service_with_session
-):
+async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test_product, project_service_with_session):
     """
     Test that nuclear_delete only marks entries for the correct tenant.
     """
@@ -163,9 +155,7 @@ async def test_nuclear_delete_tenant_isolation(
     await db_session.commit()
 
     # Act - Delete first project
-    result = await project_service_with_session.nuclear_delete_project(
-        project_id=project1.id, websocket_manager=None
-    )
+    result = await project_service_with_session.nuclear_delete_project(project_id=project1.id, websocket_manager=None)
 
     # Assert
     assert result["success"] is True

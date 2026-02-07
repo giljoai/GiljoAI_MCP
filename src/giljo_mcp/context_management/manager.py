@@ -11,7 +11,7 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.context_management.indexer import ContextIndexer
@@ -46,7 +46,7 @@ class ContextManagementSystem:
 
         logger.info(f"ContextManagementSystem initialized with chunk size {target_chunk_size}")
 
-    def process_vision_document(self, tenant_key: str, product_id: str, content: str) -> Dict[str, Any]:
+    def process_vision_document(self, tenant_key: str, product_id: str, content: str) -> dict[str, Any]:
         """
         Complete workflow: chunk and index vision document.
 
@@ -81,8 +81,8 @@ class ContextManagementSystem:
         }
 
     def load_context_for_agent(
-        self, tenant_key: str, product_id: str, query: str, role: Optional[str] = None, max_tokens: int = 10000
-    ) -> Dict[str, Any]:
+        self, tenant_key: str, product_id: str, query: str, role: str | None = None, max_tokens: int = 10000
+    ) -> dict[str, Any]:
         """
         Load relevant context chunks for an agent.
 
@@ -112,7 +112,7 @@ class ContextManagementSystem:
 
     def create_condensed_mission(
         self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create condensed mission and track context prioritization.
 
@@ -129,7 +129,7 @@ class ContextManagementSystem:
             tenant_key=tenant_key, product_id=product_id, full_content=full_content, condensed_mission=condensed_mission
         )
 
-    def get_token_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_token_reduction_stats(self, tenant_key: str, product_id: str | None = None) -> dict[str, Any]:
         """
         Get context prioritization statistics.
 
@@ -142,7 +142,7 @@ class ContextManagementSystem:
         """
         return self.summarizer.get_reduction_stats(tenant_key=tenant_key, product_id=product_id)
 
-    def get_all_chunks(self, tenant_key: str, product_id: str) -> List[Any]:
+    def get_all_chunks(self, tenant_key: str, product_id: str) -> list[Any]:
         """
         Get all chunks for a product.
 

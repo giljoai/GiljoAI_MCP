@@ -11,6 +11,7 @@ Test BEHAVIOR:
 
 TDD Phase: Test file created to verify Task 2 implementation.
 """
+
 import uuid
 
 import pytest
@@ -25,7 +26,12 @@ class TestCLIValidationSection:
     """Test suite for CLI validation section in staging prompt (Handover 0335)."""
 
     async def _generate_staging_prompt(
-        self, db_manager: DatabaseManager, tenant_key: str, project_id: str, orchestrator_id: str, claude_code_mode: bool
+        self,
+        db_manager: DatabaseManager,
+        tenant_key: str,
+        project_id: str,
+        orchestrator_id: str,
+        claude_code_mode: bool,
     ) -> str:
         """Helper to generate staging prompt within a session context."""
         async with db_manager.get_session_async() as session:
@@ -139,8 +145,9 @@ class TestCLIValidationSection:
         )
 
         # Should include template validation header
-        assert "TEMPLATE VALIDATION" in prompt or "Template Validation" in prompt.lower(), \
+        assert "TEMPLATE VALIDATION" in prompt or "Template Validation" in prompt.lower(), (
             "Should include template validation section"
+        )
 
     async def test_cli_mode_prompt_includes_resolution_priority(
         self,
@@ -159,8 +166,7 @@ class TestCLIValidationSection:
         )
 
         # Should explain template resolution priority
-        assert "Resolution Priority" in prompt or "priority" in prompt.lower(), \
-            "Should explain resolution priority"
+        assert "Resolution Priority" in prompt or "priority" in prompt.lower(), "Should explain resolution priority"
         assert ".claude/agents/" in prompt, "Should mention .claude/agents/ path"
         assert "project" in prompt.lower(), "Should mention project-level templates"
 
@@ -201,12 +207,11 @@ class TestCLIValidationSection:
         )
 
         # Should NOT include CLI-specific validation content
-        assert "AGENT SPAWNING RULES" not in prompt, \
-            "Multi-terminal mode should NOT include CLI spawning rules section"
-        assert "AGENT TEMPLATE VALIDATION" not in prompt, \
+        assert "AGENT SPAWNING RULES" not in prompt, "Multi-terminal mode should NOT include CLI spawning rules section"
+        assert "AGENT TEMPLATE VALIDATION" not in prompt, (
             "Multi-terminal mode should NOT include CLI template validation section"
-        assert "Resolution Priority" not in prompt, \
-            "Multi-terminal mode should NOT include resolution priority"
+        )
+        assert "Resolution Priority" not in prompt, "Multi-terminal mode should NOT include resolution priority"
 
     async def test_cli_mode_prompt_includes_example_spawn_calls(
         self,
@@ -245,5 +250,6 @@ class TestCLIValidationSection:
         )
 
         # Should explain the FILE NOT FOUND risk
-        assert "FILE NOT FOUND" in prompt or "not found" in prompt.lower(), \
+        assert "FILE NOT FOUND" in prompt or "not found" in prompt.lower(), (
             "Should explain FILE NOT FOUND risk for wrong agent_display_name"
+        )

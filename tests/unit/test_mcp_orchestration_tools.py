@@ -308,7 +308,6 @@ class TestOrchestrationTools:
             assert "error" in result
             assert "not found" in result["error"].lower()
 
-
     @pytest.mark.asyncio
     async def test_get_workflow_status_with_failed_jobs(self):
         """Test get_workflow_status with failed jobs"""
@@ -360,7 +359,6 @@ class TestOrchestrationTools:
             assert result["failed_agents"] == 1
             assert result["completed_agents"] == 1
 
-
     @pytest.mark.asyncio
     async def test_get_agent_mission_tenant_isolation(self):
         """Test get_agent_mission enforces tenant isolation"""
@@ -391,7 +389,6 @@ class TestOrchestrationTools:
             # Should return not found due to tenant mismatch
             assert isinstance(result, dict)
             assert "error" in result
-
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_calculates_progress(self):

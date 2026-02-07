@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Serve the Developer Panel static frontend on http://127.0.0.1:5173."""
 
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 

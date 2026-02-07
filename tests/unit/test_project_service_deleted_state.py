@@ -9,12 +9,13 @@ BEHAVIOR TESTS (Not Implementation):
 TDD RED Phase - These tests MUST FAIL initially
 """
 
-import pytest
-from unittest.mock import AsyncMock, Mock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock
 
-from src.giljo_mcp.services.project_service import ProjectService
+import pytest
+
 from src.giljo_mcp.models import Project
+from src.giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.fixture
@@ -68,8 +69,7 @@ class TestDeletedProjectStateHandling:
 
         # Assert - BEHAVIOR: Must fail with descriptive error
         assert result["success"] is False, "Should not allow activating deleted project"
-        assert "deleted" in result["error"].lower(), \
-            "Error message must mention project is deleted"
+        assert "deleted" in result["error"].lower(), "Error message must mention project is deleted"
 
     @pytest.mark.asyncio
     async def test_cannot_deactivate_deleted_project(self, mock_db_manager):
@@ -101,8 +101,7 @@ class TestDeletedProjectStateHandling:
 
         # Assert - BEHAVIOR: Must fail with descriptive error
         assert result["success"] is False, "Should not allow deactivating deleted project"
-        assert "deleted" in result["error"].lower(), \
-            "Error message must mention project is deleted"
+        assert "deleted" in result["error"].lower(), "Error message must mention project is deleted"
 
     @pytest.mark.asyncio
     async def test_delete_project_sets_status_deleted(self, mock_db_manager):
@@ -135,7 +134,5 @@ class TestDeletedProjectStateHandling:
 
         # Assert - BEHAVIOR: Status MUST be set to 'deleted'
         assert result["success"] is True
-        assert active_project.status == "deleted", \
-            "Project status must be set to 'deleted'"
-        assert active_project.deleted_at is not None, \
-            "deleted_at timestamp must be set"
+        assert active_project.status == "deleted", "Project status must be set to 'deleted'"
+        assert active_project.deleted_at is not None, "deleted_at timestamp must be set"

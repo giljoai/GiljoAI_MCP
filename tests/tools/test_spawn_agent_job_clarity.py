@@ -7,10 +7,11 @@ Validates that spawn_agent_job response includes:
 3. No warning when agent_name == agent_display_name
 """
 
-import pytest
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, AgentTemplate
+import pytest
+
+from src.giljo_mcp.models import AgentTemplate, Project
 
 
 @pytest.mark.asyncio
@@ -43,7 +44,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Frontend Implementer\n\nBuilds frontend."
+        system_instructions="# Frontend Implementer\n\nBuilds frontend.",
     )
     db_session.add(template)
     await db_session.commit()
@@ -64,8 +65,7 @@ async def test_spawn_response_includes_task_tool_usage(db_session, db_manager):
     # Verify it uses agent_name (not agent_display_name)
     expected_usage = "Task(subagent_type='implementer-frontend', ...)"
     assert result["task_tool_usage"] == expected_usage, (
-        f"task_tool_usage should use agent_name. "
-        f"Expected: {expected_usage}, Got: {result['task_tool_usage']}"
+        f"task_tool_usage should use agent_name. Expected: {expected_usage}, Got: {result['task_tool_usage']}"
     )
 
 
@@ -99,7 +99,7 @@ async def test_spawn_response_warning_when_names_differ(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Frontend Implementer\n\nBuilds frontend."
+        system_instructions="# Frontend Implementer\n\nBuilds frontend.",
     )
     db_session.add(template)
     await db_session.commit()
@@ -156,7 +156,7 @@ async def test_spawn_response_no_warning_when_names_match(db_session, db_manager
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Analyzer\n\nAnalyzes code."
+        system_instructions="# Analyzer\n\nAnalyzes code.",
     )
     db_session.add(template)
     await db_session.commit()
@@ -212,7 +212,7 @@ async def test_spawn_response_preserves_existing_fields(db_session, db_manager):
         product_id=None,
         is_active=True,
         version="1.0.0",
-        template_content="# Backend Tester\n\nTests backend."
+        system_instructions="# Backend Tester\n\nTests backend.",
     )
     db_session.add(template)
     await db_session.commit()
@@ -276,7 +276,7 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
             product_id=None,
             is_active=True,
             version="1.0.0",
-            template_content=f"# {agent_name}\n\nTest template."
+            system_instructions=f"# {agent_name}\n\nTest template.",
         )
         db_session.add(template)
         await db_session.commit()
@@ -293,8 +293,7 @@ async def test_task_tool_usage_format_is_correct(db_session, db_manager):
 
         # Verify task_tool_usage format
         assert result["task_tool_usage"] == expected_usage, (
-            f"For agent_name='{agent_name}', expected: {expected_usage}, "
-            f"got: {result['task_tool_usage']}"
+            f"For agent_name='{agent_name}', expected: {expected_usage}, got: {result['task_tool_usage']}"
         )
 
         # Verify warning presence

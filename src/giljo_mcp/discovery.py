@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 import yaml
 from sqlalchemy import select
@@ -29,7 +29,7 @@ class PathResolver:
     Resolution order: environment variables -> database -> config.yaml -> defaults
     """
 
-    DEFAULT_PATHS = {
+    DEFAULT_PATHS: ClassVar[dict[str, str]] = {
         "vision": "docs/vision",
         "sessions": "docs/sessions",
         "devlog": "docs/devlog",
@@ -120,7 +120,7 @@ class PathResolver:
 
                 if config and config.value:
                     return config.value
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to get database path for {path_key}: {e}")
 
         return None
@@ -140,7 +140,7 @@ class PathResolver:
                 paths = config.get("paths", {})
                 if path_key in paths:
                     return paths[path_key]
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to get config file path for {path_key}: {e}")
 
         return None
@@ -173,7 +173,7 @@ class DiscoveryManager:
     Implements role-based filtering and token optimization.
     """
 
-    PRIORITY_ORDER = [
+    PRIORITY_ORDER: ClassVar[list[str]] = [
         "vision",  # Priority 1: Product vision documents
         "config",  # Priority 2: Configuration (yaml + database)
         "docs",  # Priority 3: Documentation (CLAUDE.md, README)
@@ -181,7 +181,7 @@ class DiscoveryManager:
         "code",  # Priority 5: Code via Serena MCP
     ]
 
-    ROLE_PRIORITIES = {
+    ROLE_PRIORITIES: ClassVar[dict[str, list[str]]] = {
         "orchestrator": ["vision", "config", "docs", "memories"],
         "analyzer": ["vision", "docs", "code"],
         "implementer": ["docs", "code", "config"],
@@ -189,7 +189,7 @@ class DiscoveryManager:
         "default": ["config", "docs"],  # Fallback for unknown roles
     }
 
-    ROLE_TOKEN_LIMITS = {
+    ROLE_TOKEN_LIMITS: ClassVar[dict[str, int]] = {
         "orchestrator": 50000,  # Needs full vision
         "analyzer": 30000,  # Focused analysis
         "implementer": 40000,  # Technical details
@@ -301,7 +301,7 @@ class DiscoveryManager:
                     tokens_used += result.get("tokens", 0)
 
             except Exception as e:
-                logger.exception(f"Failed to load {priority}: {e}")
+                logger.exception("Failed to load {priority}")
                 context[priority] = {"error": str(e)}
 
         context["tokens_used"] = tokens_used
@@ -357,8 +357,8 @@ class DiscoveryManager:
                         "tokens": 500,
                     }
 
-        except Exception as e:
-            logger.exception(f"Failed to load vision: {e}")
+        except Exception:
+            logger.exception("Failed to load vision")
 
         return None
 
@@ -431,8 +431,8 @@ class DiscoveryManager:
 
             return {"content": config_data, "tokens": min(estimated_tokens, max_tokens)}
 
-        except Exception as e:
-            logger.exception(f"Failed to load config: {e}")
+        except Exception:
+            logger.exception("Failed to load config")
 
         return None
 
@@ -470,8 +470,8 @@ class DiscoveryManager:
 
             return {"content": docs_data, "tokens": tokens_used}
 
-        except Exception as e:
-            logger.exception(f"Failed to load docs: {e}")
+        except Exception:
+            logger.exception("Failed to load docs")
 
         return None
 
@@ -521,8 +521,8 @@ class DiscoveryManager:
 
             return {"content": memories_data, "tokens": tokens_used}
 
-        except Exception as e:
-            logger.exception(f"Failed to load memories: {e}")
+        except Exception:
+            logger.exception("Failed to load memories")
 
         return None
 
@@ -546,8 +546,8 @@ class DiscoveryManager:
                 "tokens": 100,  # Minimal tokens for the message
             }
 
-        except Exception as e:
-            logger.exception(f"Failed to load code context: {e}")
+        except Exception:
+            logger.exception("Failed to load code context")
 
         return None
 
@@ -581,8 +581,8 @@ class DiscoveryManager:
                     elif path.is_dir():
                         # Check directory modification time
                         changes[path_key] = True  # Simplified - could be enhanced
-        except Exception as e:
-            logger.exception(f"Failed to detect changes: {e}")
+        except Exception:
+            logger.exception("Failed to detect changes")
 
         return changes
 

@@ -20,30 +20,36 @@ Created/Updated in Handover 0129c - Security Hardening & OWASP Compliance
 
 # Existing middleware (migrated)
 from .auth import AuthMiddleware
+from .auth_rate_limiter import RateLimiter as AuthRateLimiter
+from .auth_rate_limiter import get_rate_limiter
+from .csrf import CSRFProtectionMiddleware, CSRFProtectionOptional, get_csrf_token
+from .input_validator import InputValidationMiddleware, RequestSanitizer, sanitize
 from .logging_middleware import LoggingMiddleware
 from .metrics import APIMetricsMiddleware
+from .rate_limiter import EndpointRateLimiter, RateLimiter, RateLimitMiddleware
 
 # New security middleware (Handover 0129c)
-from .security import SecurityHeadersMiddleware, CORSSecurityMiddleware
-from .rate_limiter import RateLimitMiddleware, EndpointRateLimiter, RateLimiter
-from .input_validator import InputValidationMiddleware, RequestSanitizer, sanitize
-from .csrf import CSRFProtectionMiddleware, CSRFProtectionOptional, get_csrf_token
+from .security import CORSSecurityMiddleware, SecurityHeadersMiddleware
+
 
 __all__ = [
+    "APIMetricsMiddleware",
     # Existing middleware
     "AuthMiddleware",
-    "LoggingMiddleware",
-    "APIMetricsMiddleware",
-    # New security middleware
-    "SecurityHeadersMiddleware",
+    "AuthRateLimiter",
     "CORSSecurityMiddleware",
-    "RateLimitMiddleware",
-    "EndpointRateLimiter",
-    "RateLimiter",
-    "InputValidationMiddleware",
-    "RequestSanitizer",
-    "sanitize",
     "CSRFProtectionMiddleware",
     "CSRFProtectionOptional",
+    "EndpointRateLimiter",
+    "InputValidationMiddleware",
+    "LoggingMiddleware",
+    "RateLimitMiddleware",
+    "RateLimiter",
+    "RequestSanitizer",
+    # New security middleware
+    "SecurityHeadersMiddleware",
     "get_csrf_token",
+    # Auth-specific rate limiting
+    "get_rate_limiter",
+    "sanitize",
 ]

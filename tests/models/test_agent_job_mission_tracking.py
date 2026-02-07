@@ -6,9 +6,11 @@ Tests verify that mission_acknowledged_at timestamp field exists and functions c
 Note: mission_read_at has been removed; only mission_acknowledged_at remains.
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
@@ -159,10 +161,9 @@ async def test_agent_job_mission_acknowledged_at_persists_across_sessions(db_ses
 
     # Create new session and verify timestamp persists
     from sqlalchemy import select
+
     async with db_session.begin():
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
         retrieved_job = result.scalar_one_or_none()
 
         assert retrieved_job is not None

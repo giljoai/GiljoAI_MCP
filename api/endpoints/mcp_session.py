@@ -20,7 +20,7 @@ Usage:
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +43,7 @@ class MCPSessionManager:
 
     async def authenticate_api_key(self, api_key_value: str):
         try:
-            stmt = select(APIKey).where(APIKey.is_active == True)
+            stmt = select(APIKey).where(APIKey.is_active)
             result = await self.db.execute(stmt)
             api_keys = result.scalars().all()
 
@@ -52,7 +52,7 @@ class MCPSessionManager:
                     key_record.last_used = datetime.now(timezone.utc)
                     await self.db.commit()
 
-                    stmt = select(User).where(User.id == key_record.user_id, User.is_active == True)
+                    stmt = select(User).where(User.id == key_record.user_id, User.is_active)
                     result = await self.db.execute(stmt)
                     user = result.scalar_one_or_none()
 
@@ -70,7 +70,7 @@ class MCPSessionManager:
             logger.error(f"API key authentication error: {e}", exc_info=True)
             return None
 
-    async def get_or_create_session(self, api_key_value: str, project_id: Optional[str] = None) -> Optional[MCPSession]:
+    async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:
         auth_result = await self.authenticate_api_key(api_key_value)
         if not auth_result:
             return None
@@ -100,8 +100,8 @@ class MCPSessionManager:
                     logger.warning(
                         f"[MCP Session] Deduplicated {len(stale_ids)} stale sessions for api_key={api_key.id} tenant={user.tenant_key}"
                     )
-            except Exception as cleanup_err:
-                logger.error(f"[MCP Session] Failed to cleanup duplicate sessions: {cleanup_err}")
+            except (ValueError, KeyError):
+                logger.exception("[MCP Session] Failed to cleanup duplicate sessions")
 
         if existing_session and not existing_session.is_expired:
             existing_session.last_accessed = datetime.now(timezone.utc)
@@ -134,7 +134,7 @@ class MCPSessionManager:
         logger.info(f"Created new MCP session: {new_session.session_id} (tenant: {user.tenant_key})")
         return new_session
 
-    async def get_session(self, session_id: str) -> Optional[MCPSession]:
+    async def get_session(self, session_id: str) -> MCPSession | None:
         stmt = select(MCPSession).where(MCPSession.session_id == session_id)
         result = await self.db.execute(stmt)
         session = result.scalar_one_or_none()
@@ -145,7 +145,7 @@ class MCPSessionManager:
 
         return session
 
-    async def update_session_data(self, session_id: str, data: Dict[str, Any], merge: bool = True) -> bool:
+    async def update_session_data(self, session_id: str, data: dict[str, Any], merge: bool = True) -> bool:
         session = await self.get_session(session_id)
         if not session:
             return False

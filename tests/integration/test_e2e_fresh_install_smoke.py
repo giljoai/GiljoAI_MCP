@@ -13,6 +13,7 @@ Test Coverage:
 - Migration uses proper patterns (CASE statement, text() wrapper)
 - Alembic configuration is valid
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -39,9 +40,9 @@ class TestFreshInstallSmoke:
         assert (project_root / "src" / "giljo_mcp" / "models.py").exists(), "models.py missing"
 
         # Package files
-        assert (project_root / "pyproject.toml").exists() or (project_root / "setup.py").exists(), \
+        assert (project_root / "pyproject.toml").exists() or (project_root / "setup.py").exists(), (
             "Package configuration missing"
-
+        )
 
     def test_install_py_has_migration_execution(self):
         """
@@ -53,20 +54,16 @@ class TestFreshInstallSmoke:
         install_content = (project_root / "install.py").read_text()
 
         # Verify migration execution exists
-        assert "run_database_migrations" in install_content, \
-            "Missing run_database_migrations method"
+        assert "run_database_migrations" in install_content, "Missing run_database_migrations method"
 
-        assert "alembic upgrade head" in install_content, \
-            "Missing 'alembic upgrade head' command"
+        assert "alembic upgrade head" in install_content, "Missing 'alembic upgrade head' command"
 
         # Verify proper subprocess usage
-        assert "subprocess.run" in install_content, \
-            "Missing subprocess.run for migration execution"
+        assert "subprocess.run" in install_content, "Missing subprocess.run for migration execution"
 
-        assert 'sys.executable, "-m", "alembic"' in install_content or \
-               "sys.executable, '-m', 'alembic'" in install_content, \
-            "Not using sys.executable for alembic (venv compatibility issue)"
-
+        assert (
+            'sys.executable, "-m", "alembic"' in install_content or "sys.executable, '-m', 'alembic'" in install_content
+        ), "Not using sys.executable for alembic (venv compatibility issue)"
 
     def test_migration_file_is_secure(self):
         """
@@ -76,9 +73,7 @@ class TestFreshInstallSmoke:
         dangerous f-string SQL interpolation.
         """
         project_root = Path.cwd()
-        migration_files = list(
-            (project_root / "migrations" / "versions").glob("6adac1467121_*.py")
-        )
+        migration_files = list((project_root / "migrations" / "versions").glob("6adac1467121_*.py"))
 
         assert len(migration_files) > 0, "Migration file 6adac1467121 not found"
 
@@ -92,7 +87,7 @@ class TestFreshInstallSmoke:
         assert migration_file is not None, "Could not find non-backup migration file"
 
         migration_content = migration_file.read_text()
-        
+
         # Remove docstring to avoid false positives from security comments
         # Extract only the code after the closing triple quotes of module docstring
         if '"""' in migration_content:
@@ -110,24 +105,19 @@ class TestFreshInstallSmoke:
             'f"INSERT',
             "f'INSERT",
             'f"DELETE',
-            "f'DELETE"
+            "f'DELETE",
         ]
 
         for pattern in dangerous_patterns:
-            assert pattern not in migration_content, \
+            assert pattern not in migration_content, (
                 f"Found dangerous pattern '{pattern}' in migration (SQL injection risk)"
+            )
 
         # Verify safe patterns (should exist)
-        safe_patterns = [
-            "CASE role",
-            "text(",
-            "WHERE background_color IS NULL"
-        ]
+        safe_patterns = ["CASE role", "text(", "WHERE background_color IS NULL"]
 
         for pattern in safe_patterns:
-            assert pattern in migration_content, \
-                f"Missing safe pattern '{pattern}' in migration"
-
+            assert pattern in migration_content, f"Missing safe pattern '{pattern}' in migration"
 
     def test_migration_uses_proper_backfill_pattern(self):
         """
@@ -136,9 +126,7 @@ class TestFreshInstallSmoke:
         Tests best practice: add column with server_default, then drop it.
         """
         project_root = Path.cwd()
-        migration_files = list(
-            (project_root / "migrations" / "versions").glob("6adac1467121_*.py")
-        )
+        migration_files = list((project_root / "migrations" / "versions").glob("6adac1467121_*.py"))
 
         migration_file = None
         for f in migration_files:
@@ -149,13 +137,11 @@ class TestFreshInstallSmoke:
         migration_content = migration_file.read_text()
 
         # Verify server_default pattern
-        assert 'server_default="claude"' in migration_content or \
-               "server_default='claude'" in migration_content, \
+        assert 'server_default="claude"' in migration_content or "server_default='claude'" in migration_content, (
             "Missing server_default for cli_tool backfill"
+        )
 
-        assert "server_default=None" in migration_content, \
-            "Missing server_default cleanup (should drop after backfill)"
-
+        assert "server_default=None" in migration_content, "Missing server_default cleanup (should drop after backfill)"
 
     def test_migration_has_check_constraint(self):
         """
@@ -164,9 +150,7 @@ class TestFreshInstallSmoke:
         Database-level validation is critical for data integrity.
         """
         project_root = Path.cwd()
-        migration_files = list(
-            (project_root / "migrations" / "versions").glob("6adac1467121_*.py")
-        )
+        migration_files = list((project_root / "migrations" / "versions").glob("6adac1467121_*.py"))
 
         migration_file = None
         for f in migration_files:
@@ -177,18 +161,14 @@ class TestFreshInstallSmoke:
         migration_content = migration_file.read_text()
 
         # Verify CHECK constraint
-        assert "create_check_constraint" in migration_content, \
-            "Missing CHECK constraint creation"
+        assert "create_check_constraint" in migration_content, "Missing CHECK constraint creation"
 
-        assert "check_cli_tool" in migration_content, \
-            "Missing constraint name 'check_cli_tool'"
+        assert "check_cli_tool" in migration_content, "Missing constraint name 'check_cli_tool'"
 
         # Verify valid values
         valid_values = ["claude", "codex", "gemini", "generic"]
         for value in valid_values:
-            assert value in migration_content, \
-                f"Missing valid CLI tool value '{value}' in constraint"
-
+            assert value in migration_content, f"Missing valid CLI tool value '{value}' in constraint"
 
     def test_migration_has_proper_downgrade(self):
         """
@@ -197,9 +177,7 @@ class TestFreshInstallSmoke:
         Downgrade must remove columns and constraints cleanly.
         """
         project_root = Path.cwd()
-        migration_files = list(
-            (project_root / "migrations" / "versions").glob("6adac1467121_*.py")
-        )
+        migration_files = list((project_root / "migrations" / "versions").glob("6adac1467121_*.py"))
 
         migration_file = None
         for f in migration_files:
@@ -210,23 +188,18 @@ class TestFreshInstallSmoke:
         migration_content = migration_file.read_text()
 
         # Verify downgrade exists
-        assert "def downgrade()" in migration_content, \
-            "Missing downgrade() function"
+        assert "def downgrade()" in migration_content, "Missing downgrade() function"
 
         # Verify drops constraints and columns
-        assert "drop_constraint" in migration_content, \
-            "downgrade() doesn't drop constraint"
+        assert "drop_constraint" in migration_content, "downgrade() doesn't drop constraint"
 
-        assert "drop_column" in migration_content, \
-            "downgrade() doesn't drop columns"
+        assert "drop_column" in migration_content, "downgrade() doesn't drop columns"
 
         # Verify correct order (constraints before columns)
         constraint_pos = migration_content.find("drop_constraint")
         column_pos = migration_content.find("drop_column")
 
-        assert constraint_pos < column_pos, \
-            "downgrade() must drop constraints BEFORE columns"
-
+        assert constraint_pos < column_pos, "downgrade() must drop constraints BEFORE columns"
 
     def test_alembic_configuration_valid(self):
         """
@@ -246,7 +219,6 @@ class TestFreshInstallSmoke:
         assert "script_location" in content, "Missing script_location"
         assert "migrations" in content, "script_location not pointing to migrations/"
 
-
     def test_can_list_alembic_revisions(self):
         """
         Verify Alembic can list revisions (smoke test for config).
@@ -254,19 +226,14 @@ class TestFreshInstallSmoke:
         This doesn't need a database - just validates Alembic setup.
         """
         result = subprocess.run(
-            [sys.executable, "-m", "alembic", "history"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            [sys.executable, "-m", "alembic", "history"], capture_output=True, text=True, timeout=10, check=False
         )
 
         # Should succeed even without database
         assert result.returncode == 0, f"Alembic history failed: {result.stderr}"
 
         # Should list migration 6adac1467121
-        assert "6adac1467121" in result.stdout, \
-            "Migration 6adac1467121 not in Alembic history"
-
+        assert "6adac1467121" in result.stdout, "Migration 6adac1467121 not in Alembic history"
 
     def test_models_have_required_columns(self):
         """
@@ -289,7 +256,6 @@ class TestFreshInstallSmoke:
         # Check for column name presence
         assert "cli_tool" in content, "cli_tool column not in AgentTemplate model"
         assert "background_color" in content, "background_color column not in AgentTemplate model"
-
 
     def test_template_seeder_uses_new_columns(self):
         """
@@ -326,27 +292,19 @@ class TestInstallationPrerequisites:
         assert version_info.major >= 3, f"Python 3.x required (got {version_info.major})"
         assert version_info.minor >= 11, f"Python 3.11+ required (got 3.{version_info.minor})"
 
-
     def test_required_packages_importable(self):
         """
         Verify critical packages can be imported.
 
         Tests that development environment has required dependencies.
         """
-        required_packages = [
-            "sqlalchemy",
-            "alembic",
-            "fastapi",
-            "pytest",
-            "httpx"
-        ]
+        required_packages = ["sqlalchemy", "alembic", "fastapi", "pytest", "httpx"]
 
         for package in required_packages:
             try:
                 __import__(package)
             except ImportError as e:
                 pytest.fail(f"Required package '{package}' not importable: {e}")
-
 
     def test_project_structure_valid(self):
         """
@@ -363,7 +321,7 @@ class TestInstallationPrerequisites:
             "migrations",
             "migrations/versions",
             "tests",
-            "tests/integration"
+            "tests/integration",
         ]
 
         for dir_path in required_dirs:
@@ -386,26 +344,18 @@ class TestSecurityValidation:
         install_content = (project_root / "install.py").read_text()
 
         # Check for suspicious patterns
-        suspicious_patterns = [
-            'password = "',
-            "password = '",
-            'api_key = "',
-            "api_key = '",
-            'secret = "',
-            "secret = '"
-        ]
+        suspicious_patterns = ['password = "', "password = '", 'api_key = "', "api_key = '", 'secret = "', "secret = '"]
 
         for pattern in suspicious_patterns:
             # Allow password_hash, password_prompt, etc.
             if pattern in install_content:
                 # Check if it's not part of a variable name or prompt
-                lines = [line for line in install_content.split('\n') if pattern in line]
+                lines = [line for line in install_content.split("\n") if pattern in line]
                 for line in lines:
                     # Filter out legitimate uses
-                    if 'getpass' not in line and 'input' not in line and 'prompt' not in line:
+                    if "getpass" not in line and "input" not in line and "prompt" not in line:
                         # This might be a hardcoded credential
                         assert False, f"Possible hardcoded credential found: {line.strip()}"
-
 
     def test_migration_uses_parameterized_queries(self):
         """
@@ -414,9 +364,7 @@ class TestSecurityValidation:
         Security check: all SQL uses SQLAlchemy text() for safety.
         """
         project_root = Path.cwd()
-        migration_files = list(
-            (project_root / "migrations" / "versions").glob("6adac1467121_*.py")
-        )
+        migration_files = list((project_root / "migrations" / "versions").glob("6adac1467121_*.py"))
 
         migration_file = None
         for f in migration_files:
@@ -429,16 +377,17 @@ class TestSecurityValidation:
         # If there's an UPDATE statement, it should use text()
         if "UPDATE" in migration_content:
             # Find all op.execute calls
-            lines = [line for line in migration_content.split('\n') if 'op.execute' in line]
+            lines = [line for line in migration_content.split("\n") if "op.execute" in line]
 
             for line in lines:
-                if "UPDATE" in line or "UPDATE" in migration_content[
-                    migration_content.find(line):migration_content.find(line) + 500
-                ]:
+                if (
+                    "UPDATE" in line
+                    or "UPDATE" in migration_content[migration_content.find(line) : migration_content.find(line) + 500]
+                ):
                     # Should use text() wrapper
-                    assert 'text(' in migration_content or 'text("' in migration_content, \
+                    assert "text(" in migration_content or 'text("' in migration_content, (
                         "op.execute should use text() wrapper for SQL safety"
-
+                    )
 
     def test_no_shell_injection_vulnerabilities(self):
         """
@@ -450,11 +399,9 @@ class TestSecurityValidation:
         install_content = (project_root / "install.py").read_text()
 
         # Check for dangerous patterns
-        assert "shell=True" not in install_content, \
-            "Found shell=True in subprocess call (security risk)"
+        assert "shell=True" not in install_content, "Found shell=True in subprocess call (security risk)"
 
         # Verify safe patterns
         if "subprocess.run" in install_content:
             # Should use array-style arguments
-            assert "[" in install_content, \
-                "subprocess.run should use array-style arguments for safety"
+            assert "[" in install_content, "subprocess.run should use array-style arguments for safety"

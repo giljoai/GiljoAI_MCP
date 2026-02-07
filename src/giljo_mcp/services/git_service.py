@@ -17,11 +17,10 @@ has been removed (Handover 013B). All git operations are performed via
 subprocess calls to local git installations.
 """
 
-import subprocess  # nosec B404
 import logging
-from datetime import datetime
+import subprocess  # nosec B404
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -38,9 +37,9 @@ class GitService:
         self,
         repo_path: str,
         limit: int = 20,
-        since: Optional[str] = None,
+        since: str | None = None,
         branch: str = "HEAD",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch git commit history from local repository.
 
@@ -83,7 +82,8 @@ class GitService:
             # Build git log command
             cmd = [
                 "git",
-                "-C", repo_path,
+                "-C",
+                repo_path,
                 "log",
                 f"--max-count={limit}",
                 "--format=%H|%an|%ae|%cI|%s",  # sha|author|email|iso_timestamp|subject
@@ -95,36 +95,32 @@ class GitService:
                 cmd.insert(4, f"--since={since}")
 
             # Execute git log
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 cmd,
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
 
             if result.returncode != 0:
-                self.logger.error(
-                    f"Git log failed for {repo_path}: {result.stderr}"
-                )
+                self.logger.error(f"Git log failed for {repo_path}: {result.stderr}")
                 return []
 
             # Parse git log output
             commits = self._parse_git_log(result.stdout)
-            self.logger.info(
-                f"Fetched {len(commits)} commits from {repo_path}"
-            )
+            self.logger.info(f"Fetched {len(commits)} commits from {repo_path}")
             return commits
 
         except FileNotFoundError:
-            self.logger.error(f"Git not found or path invalid: {repo_path}")
+            self.logger.exception(f"Git not found or path invalid: {repo_path}")
             return []
         except subprocess.TimeoutExpired:
-            self.logger.error(f"Git command timeout for {repo_path}")
+            self.logger.exception(f"Git command timeout for {repo_path}")
             return []
-        except Exception as e:
-            self.logger.exception(
-                f"Failed to fetch commits from {repo_path}: {e}"
-            )
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Failed to fetch commits from {repo_path}")
             return []
 
     async def validate_repository(self, repo_path: str) -> bool:
@@ -147,8 +143,10 @@ class GitService:
                 return False
 
             # Try to run git command to verify
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["git", "-C", repo_path, "rev-parse", "--git-dir"],
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -158,9 +156,7 @@ class GitService:
             if is_valid:
                 self.logger.debug(f"Valid git repository: {repo_path}")
             else:
-                self.logger.debug(
-                    f"Git validation failed for {repo_path}: {result.stderr}"
-                )
+                self.logger.debug(f"Git validation failed for {repo_path}: {result.stderr}")
             return is_valid
 
         except FileNotFoundError:
@@ -169,11 +165,11 @@ class GitService:
         except subprocess.TimeoutExpired:
             self.logger.debug(f"Git validation timeout: {repo_path}")
             return False
-        except Exception as e:
-            self.logger.exception(f"Validation error for {repo_path}: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Validation error for {repo_path}")
             return False
 
-    def _parse_git_log(self, log_output: str) -> List[Dict[str, Any]]:
+    def _parse_git_log(self, log_output: str) -> list[dict[str, Any]]:
         """
         Parse git log output in format: sha|author|email|timestamp|message
 
@@ -210,13 +206,13 @@ class GitService:
 
                 commits.append(commit)
 
-            except Exception as e:
+            except (ValueError, IndexError, KeyError) as e:
                 self.logger.warning(f"Failed to parse git log line: {line}, error: {e}")
                 continue
 
         return commits
 
-    async def get_current_branch(self, repo_path: str) -> Optional[str]:
+    async def get_current_branch(self, repo_path: str) -> str | None:
         """
         Get the current branch name of repository.
 
@@ -232,8 +228,10 @@ class GitService:
             "main"
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -242,16 +240,14 @@ class GitService:
             if result.returncode == 0:
                 return result.stdout.strip()
 
-            self.logger.warning(
-                f"Failed to get branch for {repo_path}: {result.stderr}"
-            )
+            self.logger.warning(f"Failed to get branch for {repo_path}: {result.stderr}")
             return None
 
-        except Exception as e:
-            self.logger.exception(f"Error getting current branch: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error getting current branch")
             return None
 
-    async def get_remote_url(self, repo_path: str) -> Optional[str]:
+    async def get_remote_url(self, repo_path: str) -> str | None:
         """
         Get the remote URL (origin) of repository.
 
@@ -267,8 +263,10 @@ class GitService:
             "https://github.com/user/repo.git"
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["git", "-C", repo_path, "config", "--get", "remote.origin.url"],
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -280,13 +278,11 @@ class GitService:
             self.logger.debug(f"No remote origin for {repo_path}")
             return None
 
-        except Exception as e:
-            self.logger.exception(f"Error getting remote URL: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error getting remote URL")
             return None
 
-    async def get_commit_count(
-        self, repo_path: str, branch: str = "HEAD"
-    ) -> int:
+    async def get_commit_count(self, repo_path: str, branch: str = "HEAD") -> int:
         """
         Get total commit count in branch.
 
@@ -303,8 +299,10 @@ class GitService:
             42
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["git", "-C", repo_path, "rev-list", "--count", branch],
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -313,11 +311,9 @@ class GitService:
             if result.returncode == 0:
                 return int(result.stdout.strip())
 
-            self.logger.warning(
-                f"Failed to count commits for {repo_path}: {result.stderr}"
-            )
+            self.logger.warning(f"Failed to count commits for {repo_path}: {result.stderr}")
             return 0
 
-        except Exception as e:
-            self.logger.exception(f"Error counting commits: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error counting commits")
             return 0

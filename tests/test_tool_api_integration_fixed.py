@@ -69,7 +69,7 @@ class ToolAPIIntegrationTester:
         try:
             # Close project if created
             if self.test_project_id and self.tool_accessor:
-                await self.tool_accessor.close_project(self.test_project_id, "Test completed")
+                await self.tool_accessor.complete_project(self.test_project_id, "Test completed")
         except Exception:
             pass
 

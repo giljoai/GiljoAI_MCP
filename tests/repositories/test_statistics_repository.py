@@ -124,7 +124,6 @@ async def test_agent_executions(db_session, test_tenant_key, test_project_with_d
             tenant_key=test_tenant_key,
             agent_display_name="worker",
             agent_name=f"Test Agent {i}",
-            instance_number=i + 1,
             status=status,
             progress=0,
             messages_sent_count=0,
@@ -245,9 +244,7 @@ class TestProjectStatisticsDomain:
         await db_session.commit()
 
         # Test pagination
-        projects = await stats_repo.get_projects_with_pagination(
-            db_session, test_tenant_key, limit=3, offset=0
-        )
+        projects = await stats_repo.get_projects_with_pagination(db_session, test_tenant_key, limit=3, offset=0)
         assert len(projects) == 3
 
         # Test status filter
@@ -261,9 +258,7 @@ class TestProjectStatisticsDomain:
         self, db_session, stats_repo, test_tenant_key, test_project_with_data, test_agent_executions
     ):
         """Test counting agents for a project"""
-        count = await stats_repo.count_agents_for_project(
-            db_session, test_tenant_key, test_project_with_data.id
-        )
+        count = await stats_repo.count_agents_for_project(db_session, test_tenant_key, test_project_with_data.id)
         assert count == 3  # Three agent executions created in fixture
 
     @pytest.mark.asyncio
@@ -271,9 +266,7 @@ class TestProjectStatisticsDomain:
         self, db_session, stats_repo, test_tenant_key, test_project_with_data, test_messages
     ):
         """Test counting messages for a project"""
-        count = await stats_repo.count_messages_for_project(
-            db_session, test_tenant_key, test_project_with_data.id
-        )
+        count = await stats_repo.count_messages_for_project(db_session, test_tenant_key, test_project_with_data.id)
         assert count == 4  # Four messages created in fixture
 
     @pytest.mark.asyncio
@@ -281,9 +274,7 @@ class TestProjectStatisticsDomain:
         self, db_session, stats_repo, test_tenant_key, test_project_with_data, test_tasks
     ):
         """Test counting tasks for a project"""
-        count = await stats_repo.count_tasks_for_project(
-            db_session, test_tenant_key, test_project_with_data.id
-        )
+        count = await stats_repo.count_tasks_for_project(db_session, test_tenant_key, test_project_with_data.id)
         assert count == 5  # Five tasks created in fixture
 
     @pytest.mark.asyncio
@@ -318,25 +309,19 @@ class TestAgentStatisticsDomain:
     """Test agent statistics operations"""
 
     @pytest.mark.asyncio
-    async def test_count_total_agents(
-        self, db_session, stats_repo, test_tenant_key, test_agent_executions
-    ):
+    async def test_count_total_agents(self, db_session, stats_repo, test_tenant_key, test_agent_executions):
         """Test counting total agents for tenant"""
         count = await stats_repo.count_total_agents(db_session, test_tenant_key)
         assert count == 3  # Three agent executions in fixture
 
     @pytest.mark.asyncio
-    async def test_count_active_agents(
-        self, db_session, stats_repo, test_tenant_key, test_agent_executions
-    ):
+    async def test_count_active_agents(self, db_session, stats_repo, test_tenant_key, test_agent_executions):
         """Test counting active agents (waiting or working status)"""
         count = await stats_repo.count_active_agents(db_session, test_tenant_key)
         assert count == 2  # Two agents with 'waiting' and 'working' status
 
     @pytest.mark.asyncio
-    async def test_count_completed_agents(
-        self, db_session, stats_repo, test_tenant_key, test_agent_executions
-    ):
+    async def test_count_completed_agents(self, db_session, stats_repo, test_tenant_key, test_agent_executions):
         """Test counting completed agents"""
         count = await stats_repo.count_completed_agents(db_session, test_tenant_key)
         assert count == 1  # One agent with 'complete' status
@@ -347,9 +332,7 @@ class TestAgentStatisticsDomain:
     ):
         """Test getting agent executions with various filters"""
         # Test without filters
-        all_agents = await stats_repo.get_agent_executions_with_filters(
-            db_session, test_tenant_key, limit=100
-        )
+        all_agents = await stats_repo.get_agent_executions_with_filters(db_session, test_tenant_key, limit=100)
         assert len(all_agents) == 3
 
         # Test with project filter
@@ -359,9 +342,7 @@ class TestAgentStatisticsDomain:
         assert len(project_agents) == 3
 
         # Test with status filter (active = waiting + working)
-        active_agents = await stats_repo.get_agent_executions_with_filters(
-            db_session, test_tenant_key, status="active"
-        )
+        active_agents = await stats_repo.get_agent_executions_with_filters(db_session, test_tenant_key, status="active")
         assert len(active_agents) == 2
 
         # Test with specific status
@@ -372,49 +353,33 @@ class TestAgentStatisticsDomain:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="BUG: Message model doesn't have from_agent field (removed in Handover 0116)")
-    async def test_count_messages_sent_by_agent(
-        self, db_session, stats_repo, test_tenant_key, test_messages
-    ):
+    async def test_count_messages_sent_by_agent(self, db_session, stats_repo, test_tenant_key, test_messages):
         """Test counting messages sent by an agent"""
         # NOTE: This test is skipped because the Message model no longer has from_agent field
         # The original statistics.py code queries this field but it doesn't exist!
-        count = await stats_repo.count_messages_sent_by_agent(
-            db_session, test_tenant_key, "test_agent"
-        )
+        count = await stats_repo.count_messages_sent_by_agent(db_session, test_tenant_key, "test_agent")
         assert count == 4  # All test messages are from 'test_agent'
 
     @pytest.mark.asyncio
-    async def test_count_messages_received_by_agent(
-        self, db_session, stats_repo, test_tenant_key, test_messages
-    ):
+    async def test_count_messages_received_by_agent(self, db_session, stats_repo, test_tenant_key, test_messages):
         """Test counting messages received by an agent"""
-        count = await stats_repo.count_messages_received_by_agent(
-            db_session, test_tenant_key, "test_agent_2"
-        )
+        count = await stats_repo.count_messages_received_by_agent(db_session, test_tenant_key, "test_agent_2")
         assert count == 4  # All test messages are to 'test_agent_2'
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="BUG: Message model doesn't have from_agent field (removed in Handover 0116)")
-    async def test_get_last_message_sent_by_agent(
-        self, db_session, stats_repo, test_tenant_key, test_messages
-    ):
+    async def test_get_last_message_sent_by_agent(self, db_session, stats_repo, test_tenant_key, test_messages):
         """Test getting last message timestamp for an agent"""
         # NOTE: This test is skipped because the Message model no longer has from_agent field
-        last_msg_time = await stats_repo.get_last_message_sent_by_agent(
-            db_session, test_tenant_key, "test_agent"
-        )
+        last_msg_time = await stats_repo.get_last_message_sent_by_agent(db_session, test_tenant_key, "test_agent")
         assert last_msg_time is not None
         assert isinstance(last_msg_time, datetime)
 
     @pytest.mark.asyncio
-    async def test_get_agent_job_by_job_id(
-        self, db_session, stats_repo, test_tenant_key, test_agent_executions
-    ):
+    async def test_get_agent_job_by_job_id(self, db_session, stats_repo, test_tenant_key, test_agent_executions):
         """Test getting AgentJob by job_id"""
         job, _ = test_agent_executions
-        retrieved_job = await stats_repo.get_agent_job_by_job_id(
-            db_session, test_tenant_key, job.job_id
-        )
+        retrieved_job = await stats_repo.get_agent_job_by_job_id(db_session, test_tenant_key, job.job_id)
         assert retrieved_job is not None
         assert retrieved_job.job_id == job.job_id
         assert retrieved_job.project_id == job.project_id
@@ -460,9 +425,7 @@ class TestMessageStatisticsDomain:
 
         # Test time filter (messages created in last 5 hours)
         since = datetime.now(timezone.utc) - timedelta(hours=5)
-        count = await stats_repo.count_messages_with_filters(
-            db_session, test_tenant_key, since=since
-        )
+        count = await stats_repo.count_messages_with_filters(db_session, test_tenant_key, since=since)
         assert count == 4  # All messages within 5 hours
 
     @pytest.mark.asyncio
@@ -637,7 +600,6 @@ class TestTenantIsolation:
             tenant_key="tenant_1",
             agent_display_name="worker",
             agent_name="Agent 1",
-            instance_number=1,
             status="waiting",
             progress=0,
             messages_sent_count=0,
@@ -652,7 +614,6 @@ class TestTenantIsolation:
             tenant_key="tenant_2",
             agent_display_name="worker",
             agent_name="Agent 2",
-            instance_number=1,
             status="waiting",
             progress=0,
             messages_sent_count=0,
@@ -695,9 +656,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_pagination_with_limit_zero(self, db_session, stats_repo, test_tenant_key):
         """Test pagination with limit=0 returns empty list"""
-        projects = await stats_repo.get_projects_with_pagination(
-            db_session, test_tenant_key, limit=0
-        )
+        projects = await stats_repo.get_projects_with_pagination(db_session, test_tenant_key, limit=0)
         assert len(projects) == 0
 
     @pytest.mark.asyncio

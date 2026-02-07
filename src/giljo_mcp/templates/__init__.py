@@ -7,4 +7,5 @@ Handover 0246b: Generic Agent Template Implementation
 
 from .generic_agent_template import GenericAgentTemplate
 
+
 __all__ = ["GenericAgentTemplate"]

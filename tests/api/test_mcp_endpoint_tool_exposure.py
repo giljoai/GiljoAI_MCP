@@ -17,6 +17,7 @@ LEGACY TOOLS (should NOT be exposed):
 import pytest
 from httpx import AsyncClient
 
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -35,14 +36,13 @@ class TestMCPEndpointToolExposure:
         assert "error" in result
         assert "Authentication required" in result["error"]["message"]
 
-    async def test_mcp_endpoint_lists_canonical_messaging_tools(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_mcp_endpoint_lists_canonical_messaging_tools(self, api_client: AsyncClient, auth_headers: dict):
         """MCP endpoint should list canonical messaging tools."""
         # Create API key for MCP authentication
-        from src.giljo_mcp.models import APIKey
-        from passlib.hash import bcrypt
         import jwt
+        from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models import APIKey
 
         # Extract tenant_key and user_id from auth_headers cookie
         cookie = auth_headers["Cookie"]
@@ -82,19 +82,16 @@ class TestMCPEndpointToolExposure:
 
         # Should have canonical messaging tools
         assert "send_message" in tool_names, "send_message should be exposed"
-        assert (
-            "receive_messages" in tool_names
-        ), "receive_messages should be exposed"
+        assert "receive_messages" in tool_names, "receive_messages should be exposed"
         assert "list_messages" in tool_names, "list_messages should be exposed"
 
-    async def test_mcp_endpoint_excludes_legacy_queue_tools(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_mcp_endpoint_excludes_legacy_queue_tools(self, api_client: AsyncClient, auth_headers: dict):
         """MCP endpoint should NOT expose legacy queue tools."""
         # Create API key for MCP authentication
-        from src.giljo_mcp.models import APIKey
-        from passlib.hash import bcrypt
         import jwt
+        from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models import APIKey
 
         # Extract tenant_key and user_id from auth_headers cookie
         cookie = auth_headers["Cookie"]
@@ -131,21 +128,16 @@ class TestMCPEndpointToolExposure:
         tool_names = [t["name"] for t in tools]
 
         # Should NOT have legacy tools
-        assert (
-            "send_mcp_message" not in tool_names
-        ), "send_mcp_message should NOT be exposed (legacy tool)"
-        assert (
-            "read_mcp_messages" not in tool_names
-        ), "read_mcp_messages should NOT be exposed (legacy tool)"
+        assert "send_mcp_message" not in tool_names, "send_mcp_message should NOT be exposed (legacy tool)"
+        assert "read_mcp_messages" not in tool_names, "read_mcp_messages should NOT be exposed (legacy tool)"
 
-    async def test_mcp_endpoint_canonical_tool_schemas(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_mcp_endpoint_canonical_tool_schemas(self, api_client: AsyncClient, auth_headers: dict):
         """Verify canonical messaging tools have correct schemas."""
         # Create API key
-        from src.giljo_mcp.models import APIKey
-        from passlib.hash import bcrypt
         import jwt
+        from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models import APIKey
 
         cookie = auth_headers["Cookie"]
         token = cookie.split("=")[1]
@@ -199,35 +191,29 @@ class TestMCPEndpointToolExposure:
         """Verify tool_map in mcp_http.py does not include legacy tools."""
         # This is a code inspection test - verifies the tool_map dictionary
         # in api/endpoints/mcp_http.py handle_tools_call() function
-        from api.endpoints.mcp_http import handle_tools_call
         import inspect
+
+        from api.endpoints.mcp_http import handle_tools_call
 
         # Get the source code of handle_tools_call
         source = inspect.getsource(handle_tools_call)
 
         # Verify tool_map does not contain legacy tools
-        assert (
-            '"send_mcp_message"' not in source
-        ), "tool_map should not contain send_mcp_message"
-        assert (
-            '"read_mcp_messages"' not in source
-        ), "tool_map should not contain read_mcp_messages"
+        assert '"send_mcp_message"' not in source, "tool_map should not contain send_mcp_message"
+        assert '"read_mcp_messages"' not in source, "tool_map should not contain read_mcp_messages"
 
         # Verify it contains canonical tools
         assert '"send_message"' in source, "tool_map should contain send_message"
-        assert (
-            '"receive_messages"' in source
-        ), "tool_map should contain receive_messages"
+        assert '"receive_messages"' in source, "tool_map should contain receive_messages"
         assert '"list_messages"' in source, "tool_map should contain list_messages"
 
-    async def test_legacy_tools_not_callable_via_mcp(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_legacy_tools_not_callable_via_mcp(self, api_client: AsyncClient, auth_headers: dict):
         """Attempting to call legacy tools via MCP should fail."""
         # Create API key
-        from src.giljo_mcp.models import APIKey
-        from passlib.hash import bcrypt
         import jwt
+        from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models import APIKey
 
         cookie = auth_headers["Cookie"]
         token = cookie.split("=")[1]

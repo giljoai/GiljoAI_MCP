@@ -10,6 +10,7 @@ import logging
 from typing import Any, Optional
 
 from fastapi import WebSocket, WebSocketException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -38,9 +39,7 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
         setup_state = result_default.scalar_one_or_none()
 
         if setup_state is not None:
-            return {
-                "database_initialized": bool(getattr(setup_state, "database_initialized", False))
-            }
+            return {"database_initialized": bool(getattr(setup_state, "database_initialized", False))}
 
         # Fallback: derive initialization from any SetupState row
         # Order by database_initialized desc so True wins
@@ -55,8 +54,8 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
         logger.warning("[WS SETUP DEBUG] No SetupState rows found; treating database as initialized")
         return {"database_initialized": True}
 
-    except Exception as e:
-        logger.error(f"Failed to get setup state: {e}")
+    except (SQLAlchemyError, ValueError):
+        logger.exception("Failed to get setup state")
         return {"database_initialized": False}
 
 
@@ -107,10 +106,10 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
         # Parse access_token from cookies (httpOnly cookie set by /api/auth/login)
         if cookie_header:
             cookies = {}
-            for cookie in cookie_header.split(";"):
-                cookie = cookie.strip()
-                if "=" in cookie:
-                    key, value = cookie.split("=", 1)
+            for cookie_str in cookie_header.split(";"):
+                cookie_clean = cookie_str.strip()
+                if "=" in cookie_clean:
+                    key, value = cookie_clean.split("=", 1)
                     cookies[key.strip()] = value.strip()
 
             # Get access_token from cookies
@@ -190,8 +189,8 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
             "permissions": ["*"],  # JWT users have full permissions
         }
 
-    except Exception as e:
-        logger.error(f"JWT validation failed: {e}")
+    except (ImportError, ValueError, KeyError):
+        logger.exception("JWT validation failed")
         return None
 
 
@@ -217,7 +216,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
         from src.giljo_mcp.models import APIKey
 
         # Hash the provided API key to match stored hash
-        stmt = select(APIKey).where(APIKey.is_active == True)
+        stmt = select(APIKey).where(APIKey.is_active)
         result = await db.execute(stmt)
         api_keys = result.scalars().all()
 
@@ -229,8 +228,8 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
         return None
 
-    except Exception as e:
-        logger.error(f"API key validation failed: {e}")
+    except (ImportError, SQLAlchemyError, ValueError):
+        logger.exception("API key validation failed")
         return None
 
 

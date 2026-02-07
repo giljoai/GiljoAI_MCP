@@ -13,7 +13,8 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.enums import AgentRole, AugmentationType, ProjectType
+from src.giljo_mcp.enums import AgentRole, ProjectType
+
 # NOTE: TemplateAugmentation removed (Handover 0423 - model deleted, using dicts only)
 from src.giljo_mcp.template_manager import apply_augmentation, extract_variables, process_template
 
@@ -212,54 +213,6 @@ class TestEnumConsolidation:
         """Test ProjectType enum is accessible"""
         types = [t.value for t in ProjectType]
         assert len(types) > 0  # Should have project types
-
-    def test_augmentation_type_enum(self):
-        """Test AugmentationType enum exists"""
-        types = [t.value for t in AugmentationType]
-        assert "append" in types
-        assert "prepend" in types
-        assert "replace" in types
-        assert "inject" in types
-
-
-class TestBackwardCompatibility:
-    """Test backward compatibility is maintained"""
-
-    def test_template_adapter_uses_unified_function(self):
-        """Verify template_adapter imports and uses unified function"""
-        import inspect
-
-        from src.giljo_mcp.template_adapter import TemplateAdapter
-
-        # Check the module imports apply_augmentation
-        adapter_module = sys.modules["src.giljo_mcp.template_adapter"]
-        assert hasattr(adapter_module, "apply_augmentation"), "template_adapter should import apply_augmentation"
-
-        # Verify no duplicate _apply_augmentation method
-        adapter_methods = inspect.getmembers(TemplateAdapter, predicate=inspect.ismethod)
-        method_names = [name for name, _ in adapter_methods]
-        assert "_apply_augmentation" not in method_names, (
-            "TemplateAdapter should not have its own _apply_augmentation method"
-        )
-
-    def test_mission_templates_uses_consolidated_enums(self):
-        """Verify template_adapter provides mission template compatibility"""
-        import src.giljo_mcp.template_adapter as ta_module
-        from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
-
-        # Check compatibility class exists
-        assert hasattr(ta_module, "MissionTemplateGeneratorV2"), (
-            "template_adapter should provide MissionTemplateGeneratorV2"
-        )
-
-        # Check it provides the same interface
-        generator = MissionTemplateGeneratorV2()
-        assert hasattr(generator, "generate_orchestrator_mission"), (
-            "MissionTemplateGeneratorV2 should have generate_orchestrator_mission method"
-        )
-        assert hasattr(generator, "generate_agent_mission"), (
-            "MissionTemplateGeneratorV2 should have generate_agent_mission method"
-        )
 
 
 class TestEdgeCases:

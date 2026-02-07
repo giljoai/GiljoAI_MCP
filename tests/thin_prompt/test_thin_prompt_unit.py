@@ -5,8 +5,10 @@ Simple unit tests that don't require full database schema.
 Tests the core logic of thin prompt generation.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from src.giljo_mcp.thin_prompt_generator import ThinPromptResponse
 
 
@@ -159,18 +161,18 @@ class TestStagingPromptStep7:
 
         # Build staging prompt
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id="test_orch_123",
-            project_id="test_proj_456"
+            orchestrator_id="test_orch_123", project_id="test_proj_456"
         )
 
         # EXPECTED: Step 7 should exist
-        assert "Step 7" in staging_prompt or "7." in staging_prompt, \
+        assert "Step 7" in staging_prompt or "7." in staging_prompt, (
             "Staging prompt should include Step 7 after Step 6 (SIGNAL COMPLETE)"
+        )
 
         # EXPECTED: Step 7 should reference execution monitoring
-        assert "EXECUTION PHASE MONITORING" in staging_prompt or \
-               "execution phase" in staging_prompt.lower(), \
+        assert "EXECUTION PHASE MONITORING" in staging_prompt or "execution phase" in staging_prompt.lower(), (
             "Step 7 should document execution phase monitoring"
+        )
 
     @pytest.mark.asyncio
     async def test_staging_prompt_step7_includes_sequential_pattern(self):
@@ -198,18 +200,18 @@ class TestStagingPromptStep7:
 
         # Build staging prompt
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id="test_orch_123",
-            project_id="test_proj_456"
+            orchestrator_id="test_orch_123", project_id="test_proj_456"
         )
 
         # EXPECTED: Sequential execution pattern should be documented
-        assert "sequential" in staging_prompt.lower() or "one at a time" in staging_prompt.lower(), \
+        assert "sequential" in staging_prompt.lower() or "one at a time" in staging_prompt.lower(), (
             "Step 7 should document sequential execution pattern"
+        )
 
         # EXPECTED: Spawn → Poll → Complete flow should be described
-        assert ("spawn" in staging_prompt.lower() and "poll" in staging_prompt.lower()) or \
-               "workflow_status" in staging_prompt, \
-            "Step 7 should describe spawn → poll → completion workflow"
+        assert (
+            "spawn" in staging_prompt.lower() and "poll" in staging_prompt.lower()
+        ) or "workflow_status" in staging_prompt, "Step 7 should describe spawn → poll → completion workflow"
 
     @pytest.mark.asyncio
     async def test_staging_prompt_step7_includes_parallel_pattern(self):
@@ -237,18 +239,18 @@ class TestStagingPromptStep7:
 
         # Build staging prompt
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id="test_orch_123",
-            project_id="test_proj_456"
+            orchestrator_id="test_orch_123", project_id="test_proj_456"
         )
 
         # EXPECTED: Parallel execution pattern should be documented
-        assert "parallel" in staging_prompt.lower() or "all agents" in staging_prompt.lower(), \
+        assert "parallel" in staging_prompt.lower() or "all agents" in staging_prompt.lower(), (
             "Step 7 should document parallel execution pattern"
+        )
 
         # EXPECTED: Poll all agents flow should be described
-        assert "poll all" in staging_prompt.lower() or \
-               ("get_workflow_status" in staging_prompt and "all" in staging_prompt.lower()), \
-            "Step 7 should describe polling all agents pattern"
+        assert "poll all" in staging_prompt.lower() or (
+            "get_workflow_status" in staging_prompt and "all" in staging_prompt.lower()
+        ), "Step 7 should describe polling all agents pattern"
 
     @pytest.mark.asyncio
     async def test_staging_prompt_step7_requires_message_check_before_completion(self):
@@ -277,21 +279,21 @@ class TestStagingPromptStep7:
 
         # Build staging prompt
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id="test_orch_123",
-            project_id="test_proj_456"
+            orchestrator_id="test_orch_123", project_id="test_proj_456"
         )
 
         # EXPECTED: receive_messages() should be mentioned
-        assert "receive_messages" in staging_prompt, \
-            "Step 7 should instruct orchestrator to call receive_messages()"
+        assert "receive_messages" in staging_prompt, "Step 7 should instruct orchestrator to call receive_messages()"
 
         # EXPECTED: Should emphasize this is mandatory/required before completion
-        assert ("mandatory" in staging_prompt.lower() or
-                "required" in staging_prompt.lower() or
-                "before complete" in staging_prompt.lower() or
-                "MUST" in staging_prompt), \
-            "Step 7 should emphasize message check is MANDATORY before completing job"
+        assert (
+            "mandatory" in staging_prompt.lower()
+            or "required" in staging_prompt.lower()
+            or "before complete" in staging_prompt.lower()
+            or "MUST" in staging_prompt
+        ), "Step 7 should emphasize message check is MANDATORY before completing job"
 
         # EXPECTED: Should mention complete_job() or completion
-        assert "complete_job" in staging_prompt or "completion" in staging_prompt.lower(), \
+        assert "complete_job" in staging_prompt or "completion" in staging_prompt.lower(), (
             "Step 7 should reference completing the orchestrator job"
+        )

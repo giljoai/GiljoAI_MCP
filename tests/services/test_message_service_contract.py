@@ -10,29 +10,30 @@ Tests that MessageService correctly implements the messaging contract:
 This is the RED phase of TDD - these tests validate the contract and may initially fail.
 """
 
-import pytest
 from datetime import datetime, timezone
-from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import models using modular imports (Post-Handover 0128a)
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+
+# Import models using modular imports (Post-Handover 0128a)
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError, MessageDeliveryError
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_websocket_manager():
@@ -113,7 +114,6 @@ async def test_project_with_agents(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             status="waiting",
-            instance_number=1,
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -136,7 +136,6 @@ async def message_service(
 ) -> MessageService:
     """Create MessageService instance with mocked WebSocket manager and test session."""
     from contextlib import asynccontextmanager
-    from unittest.mock import AsyncMock, patch
 
     tenant_manager = TenantManager()
 
@@ -162,6 +161,7 @@ async def message_service(
 # ============================================================================
 # Test Cases
 # ============================================================================
+
 
 class TestMessageCreationAndJSONBMirroring:
     """Test that messages create both database rows and JSONB mirrors."""
@@ -207,9 +207,7 @@ class TestMessageCreationAndJSONBMirroring:
         message_id = result["data"]["message_id"]
 
         # Assert: Message row exists in database
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None, "Message should exist in database"
         assert db_message.project_id == project.id
@@ -307,7 +305,9 @@ class TestMessageCompletion:
         )
         assert receive_result["success"] is True, f"receive_messages failed: {receive_result.get('error', 'unknown')}"
         # Handover 0480: Result structure is {"success": True, "data": {"messages": [...], "count": N}}
-        assert len(receive_result["data"]["messages"]) >= 1, f"Expected messages but got {receive_result['data']['count']}"
+        assert len(receive_result["data"]["messages"]) >= 1, (
+            f"Expected messages but got {receive_result['data']['count']}"
+        )
 
         # Act: Complete the message
         complete_result = await message_service.complete_message(
@@ -322,9 +322,7 @@ class TestMessageCompletion:
         assert complete_result["completed_by"] == recipient.agent_display_name
 
         # Assert: Message status is "completed"
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
         assert db_message.status == "completed"
@@ -334,8 +332,9 @@ class TestMessageCompletion:
 
         # Assert: acknowledged_by is PRESERVED (not overwritten)
         # Handover 0372: acknowledged_by now contains agent_id (executor), not job_id
-        assert recipient.agent_id in db_message.acknowledged_by, \
+        assert recipient.agent_id in db_message.acknowledged_by, (
             f"Acknowledgment should be preserved after completion. Expected {recipient.agent_id} in {db_message.acknowledged_by}"
+        )
 
 
 class TestBroadcastMessaging:
@@ -376,9 +375,7 @@ class TestBroadcastMessaging:
         message_id = result["data"]["message_id"]
 
         # Assert: Message row exists
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
         assert db_message.message_type == "broadcast"
@@ -395,8 +392,7 @@ class TestBroadcastMessaging:
                     found_msg = msg
                     break
 
-            assert found_msg is not None, \
-                f"Broadcast message should be in {agent.agent_display_name}'s JSONB"
+            assert found_msg is not None, f"Broadcast message should be in {agent.agent_display_name}'s JSONB"
             assert found_msg["from"] == orchestrator.agent_display_name
             assert found_msg["direction"] == "inbound"
             assert found_msg["status"] == "waiting"
@@ -407,7 +403,9 @@ class TestMultiTenantIsolation:
     """Test that multi-tenant isolation is enforced."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires integration test with real database sessions - covered in tests/api/test_messages_api.py")
+    @pytest.mark.skip(
+        reason="Requires integration test with real database sessions - covered in tests/api/test_messages_api.py"
+    )
     async def test_multi_tenant_message_isolation(
         self,
         db_session: AsyncSession,
@@ -523,31 +521,23 @@ class TestMultiTenantIsolation:
         await db_session.refresh(agent_b)
         assert agent_b.messages is not None
         for msg in agent_b.messages:
-            assert msg.get("id") != message_a_id, \
-                "Tenant A's message should NOT be in Tenant B's JSONB"
-            assert "Tenant A confidential" not in msg.get("text", ""), \
-                "Tenant A's content should NOT leak to Tenant B"
+            assert msg.get("id") != message_a_id, "Tenant A's message should NOT be in Tenant B's JSONB"
+            assert "Tenant A confidential" not in msg.get("text", ""), "Tenant A's content should NOT leak to Tenant B"
 
         # Assert: Tenant B's message is NOT visible to Tenant A's agent
         await db_session.refresh(agent_a)
         assert agent_a.messages is not None
         for msg in agent_a.messages:
-            assert msg.get("id") != message_b_id, \
-                "Tenant B's message should NOT be in Tenant A's JSONB"
-            assert "Tenant B confidential" not in msg.get("text", ""), \
-                "Tenant B's content should NOT leak to Tenant A"
+            assert msg.get("id") != message_b_id, "Tenant B's message should NOT be in Tenant A's JSONB"
+            assert "Tenant B confidential" not in msg.get("text", ""), "Tenant B's content should NOT leak to Tenant A"
 
         # Assert: Database messages have correct tenant isolation
-        msg_a_result = await db_session.execute(
-            select(Message).where(Message.id == message_a_id)
-        )
+        msg_a_result = await db_session.execute(select(Message).where(Message.id == message_a_id))
         db_message_a = msg_a_result.scalar_one_or_none()
         assert db_message_a is not None
         assert db_message_a.tenant_key == tenant_a_key
 
-        msg_b_result = await db_session.execute(
-            select(Message).where(Message.id == message_b_id)
-        )
+        msg_b_result = await db_session.execute(select(Message).where(Message.id == message_b_id))
         db_message_b = msg_b_result.scalar_one_or_none()
         assert db_message_b is not None
         assert db_message_b.tenant_key == tenant_b_key
@@ -610,7 +600,8 @@ class TestMessagePersistenceContract:
 
         # Assert: Counter can be recalculated
         waiting_count = sum(
-            1 for msg in refreshed_agent.messages
+            1
+            for msg in refreshed_agent.messages
             if msg.get("status") == "waiting" and msg.get("direction") == "inbound"
         )
         assert waiting_count >= 1, "Should be able to count waiting messages from JSONB"
@@ -619,6 +610,7 @@ class TestMessagePersistenceContract:
 # ============================================================================
 # Edge Cases and Error Handling
 # ============================================================================
+
 
 class TestMessageServiceErrorHandling:
     """Test error handling and edge cases."""

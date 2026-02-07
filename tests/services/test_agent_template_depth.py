@@ -9,14 +9,14 @@ Token Budget Impact:
 - full: ~2500 tokens per agent (~12,500 for 5 agents)
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.models import Product, Project, AgentTemplate
+from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
@@ -62,7 +62,7 @@ async def sample_agent_templates(db_manager: DatabaseManager, tenant_key: str):
                 name="backend-integration-tester",
                 role="Backend Integration Tester",
                 description="Specialist in backend integration testing with focus on API contracts and data flow validation",
-                template_content="""# Backend Integration Tester Agent
+                system_instructions="""# Backend Integration Tester Agent
 
 You are a specialist backend integration tester focused on API contracts and data flow validation.
 
@@ -94,7 +94,7 @@ You are a specialist backend integration tester focused on API contracts and dat
                 name="tdd-implementor",
                 role="TDD Implementor",
                 description="Master developer following strict test-driven development principles with production-grade code quality",
-                template_content="""# TDD Implementor Agent
+                system_instructions="""# TDD Implementor Agent
 
 You are a master developer who follows strict test-driven development principles.
 
@@ -136,7 +136,7 @@ You are a master developer who follows strict test-driven development principles
                 name="system-architect",
                 role="System Architect",
                 description="Expert in software architecture design, system patterns, and technical decision-making for scalable solutions",
-                template_content="""# System Architect Agent
+                system_instructions="""# System Architect Agent
 
 You are an expert system architect responsible for high-level design decisions.
 
@@ -169,7 +169,7 @@ You are an expert system architect responsible for high-level design decisions.
                 name="documentation-manager",
                 role="Documentation Manager",
                 description="Technical writer creating clear, comprehensive documentation for APIs, user guides, and architecture decisions",
-                template_content="""# Documentation Manager Agent
+                system_instructions="""# Documentation Manager Agent
 
 You are a technical writer specialized in developer documentation.
 
@@ -203,7 +203,7 @@ You are a technical writer specialized in developer documentation.
                 name="orchestrator-coordinator",
                 role="Orchestrator Coordinator",
                 description="Master coordinator managing agent workflows, dependencies, and project execution with context awareness",
-                template_content="""# Orchestrator Coordinator Agent
+                system_instructions="""# Orchestrator Coordinator Agent
 
 You are the master coordinator responsible for managing all agent activities.
 
@@ -298,9 +298,7 @@ class TestGetFullAgentTemplates:
     """Tests for MissionPlanner._get_full_agent_templates() helper method."""
 
     @pytest.mark.asyncio
-    async def test_get_full_agent_templates_returns_complete_data(
-        self, db_manager, tenant_key, sample_agent_templates
-    ):
+    async def test_get_full_agent_templates_returns_complete_data(self, db_manager, tenant_key, sample_agent_templates):
         """Test that _get_full_agent_templates returns all fields for enabled templates."""
         planner = MissionPlanner(db_manager)
 
@@ -322,7 +320,10 @@ class TestGetFullAgentTemplates:
 
         # Verify content is not truncated
         assert len(template["content"]) > 500
-        assert "# Backend Integration Tester Agent" in template["content"] or "# TDD Implementor Agent" in template["content"]
+        assert (
+            "# Backend Integration Tester Agent" in template["content"]
+            or "# TDD Implementor Agent" in template["content"]
+        )
 
     @pytest.mark.asyncio
     async def test_get_full_agent_templates_filters_by_tenant(self, db_manager, tenant_key, sample_agent_templates):
@@ -367,6 +368,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Create orchestrator job and execution
         from src.giljo_mcp.models.agent_identity import AgentJob
+
         async with db_manager.get_session_async() as session:
             job_id = str(uuid4())
             job = AgentJob(
@@ -416,6 +418,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Parse JSON portion from mission string (format: "text\n\n---\n\n{json}")
         import json
+
         json_start = mission_text.find("---") + 3
         mission_json = mission_text[json_start:].strip()
         mission = json.loads(mission_json)
@@ -449,9 +452,12 @@ class TestAgentTemplateDepthIntegration:
         # Estimated token count should be low (<500 tokens for agent_templates section)
         # Type only mode: ~50 tokens per agent * 5 = ~250 tokens
         import json
+
         agent_section_json = json.dumps(agent_templates_data)
         agent_section_tokens = len(agent_section_json) // 4
-        assert agent_section_tokens < 500, f"Agent templates section too large: {agent_section_tokens} tokens (expected <500)"
+        assert agent_section_tokens < 500, (
+            f"Agent templates section too large: {agent_section_tokens} tokens (expected <500)"
+        )
 
     @pytest.mark.asyncio
     async def test_full_mode_returns_complete_agent_prompts(
@@ -462,6 +468,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Create orchestrator job and execution
         from src.giljo_mcp.models.agent_identity import AgentJob
+
         async with db_manager.get_session_async() as session:
             job_id = str(uuid4())
             job = AgentJob(
@@ -511,6 +518,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Parse JSON portion from mission string (format: "text\n\n---\n\n{json}")
         import json
+
         json_start = mission_text.find("---") + 3
         mission_json = mission_text[json_start:].strip()
         mission = json.loads(mission_json)
@@ -543,9 +551,12 @@ class TestAgentTemplateDepthIntegration:
         # Estimated token count should be high (>10,000 tokens for all templates)
         # Full mode: ~2500 tokens per agent * 5 = ~12,500 tokens
         import json
+
         agent_section_json = json.dumps(agent_templates_data)
         agent_section_tokens = len(agent_section_json) // 4
-        assert agent_section_tokens > 10000, f"Agent templates section too small: {agent_section_tokens} tokens (expected >10,000)"
+        assert agent_section_tokens > 10000, (
+            f"Agent templates section too small: {agent_section_tokens} tokens (expected >10,000)"
+        )
 
     @pytest.mark.asyncio
     async def test_invalid_depth_defaults_to_type_only(
@@ -556,6 +567,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Create orchestrator job and execution
         from src.giljo_mcp.models.agent_identity import AgentJob
+
         async with db_manager.get_session_async() as session:
             job_id = str(uuid4())
             job = AgentJob(
@@ -606,6 +618,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Parse JSON portion from mission string
         import json
+
         json_start = mission_text.find("---") + 3
         mission_json = mission_text[json_start:].strip()
         mission = json.loads(mission_json)
@@ -628,6 +641,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Create orchestrator job and execution
         from src.giljo_mcp.models.agent_identity import AgentJob
+
         async with db_manager.get_session_async() as session:
             job_id = str(uuid4())
             job = AgentJob(
@@ -673,6 +687,7 @@ class TestAgentTemplateDepthIntegration:
 
         # Parse JSON portion from mission string
         import json
+
         json_start = mission_text.find("---") + 3
         mission_json = mission_text[json_start:].strip()
         mission = json.loads(mission_json)
@@ -704,4 +719,5 @@ def user_id():
 def test_database_url():
     """Provide test database URL (override in pytest.ini or conftest.py)."""
     import os
+
     return os.getenv("TEST_DATABASE_URL", "postgresql+asyncpg://postgres:***@localhost:5432/giljo_mcp_test")

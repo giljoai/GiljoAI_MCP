@@ -8,9 +8,9 @@ Tests the complete workflow:
 4. Multi-tenant isolation
 """
 
-import pytest
-from datetime import datetime
 from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
@@ -206,6 +206,7 @@ async def test_write_360_memory_author_info(db_manager: DatabaseManager, tenant_
     # Verify author info was stored in product_memory
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         product_stmt = select(Product).where(Product.id == data["product_id"])
         product_result = await session.execute(product_stmt)
         product = product_result.scalar_one()

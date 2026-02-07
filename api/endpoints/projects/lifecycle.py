@@ -13,10 +13,10 @@ All operations use ProjectService.
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
@@ -25,10 +25,9 @@ from src.giljo_mcp.services.project_service import ProjectService
 
 from .dependencies import get_project_service
 from .models import (
-    ProjectResponse,
-    StagingCancellationResponse,
     ProjectDeleteResponse,
     ProjectPurgeResponse,
+    ProjectResponse,
     PurgedProject,
 )
 
@@ -69,10 +68,7 @@ async def activate_project(
     logger.info(f"User {current_user.username} activating project {project_id} (force={force})")
 
     # Activate via ProjectService (raises exceptions on error)
-    await project_service.activate_project(
-        project_id=project_id,
-        force=force
-    )
+    await project_service.activate_project(project_id=project_id, force=force)
 
     logger.info(f"Activated project {project_id}")
 
@@ -90,18 +86,18 @@ async def activate_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
 async def deactivate_project(
     project_id: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectResponse:
@@ -126,10 +122,7 @@ async def deactivate_project(
     logger.info(f"User {current_user.username} deactivating project {project_id}")
 
     # Deactivate via ProjectService (raises exceptions on error)
-    await project_service.deactivate_project(
-        project_id=project_id,
-        reason=reason
-    )
+    await project_service.deactivate_project(project_id=project_id, reason=reason)
 
     logger.info(f"Deactivated project {project_id}")
 
@@ -147,18 +140,18 @@ async def deactivate_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
 @router.post("/{project_id}/cancel", response_model=ProjectResponse)
 async def cancel_project(
     project_id: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectResponse:
@@ -181,10 +174,7 @@ async def cancel_project(
     logger.info(f"User {current_user.username} cancelling project {project_id}")
 
     # Cancel via ProjectService (raises exceptions on error)
-    await project_service.cancel_project(
-        project_id=project_id,
-        reason=reason
-    )
+    await project_service.cancel_project(project_id=project_id, reason=reason)
 
     logger.info(f"Cancelled project {project_id}")
 
@@ -202,11 +192,11 @@ async def cancel_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
@@ -252,11 +242,11 @@ async def restore_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
@@ -307,11 +297,11 @@ async def cancel_project_staging(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
@@ -359,7 +349,7 @@ async def purge_deleted_project(
         "id": project_id,
         "name": result.get("project_name", "Unknown"),
         "tenant_key": result.get("tenant_key", ""),
-        "deleted_at": datetime.utcnow().isoformat()
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
     }
 
     return ProjectPurgeResponse(
@@ -403,15 +393,11 @@ async def archive_project(
 
     # Only deactivate if not already inactive/completed
     if current_status not in ("inactive", "completed", "archived"):
-        await project_service.deactivate_project(
-            project_id=project_id,
-            reason="User archived project after completion"
-        )
+        await project_service.deactivate_project(project_id=project_id, reason="User archived project after completion")
 
     # Set completed_at timestamp to mark as archived (raises exceptions on error)
     await project_service.update_project(
-        project_id=project_id,
-        updates={"status": "completed", "completed_at": datetime.utcnow()}
+        project_id=project_id, updates={"status": "completed", "completed_at": datetime.now(timezone.utc)}
     )
 
     logger.info(f"Archived project {project_id}")
@@ -430,11 +416,11 @@ async def archive_project(
         created_at=proj.get("created_at"),
         updated_at=proj.get("updated_at"),
         completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=proj.get("context_used", 0),
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
-        agents=[]
+        agents=[],
     )
 
 
@@ -465,7 +451,7 @@ async def delete_project(
 @router.post("/{project_id}/launch", response_model=ProjectLaunchResponse)
 async def launch_project(
     project_id: str,
-    launch_config: Optional[Dict[str, Any]] = None,
+    launch_config: dict[str, Any | None] = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectLaunchResponse:
@@ -492,9 +478,7 @@ async def launch_project(
 
     # Launch via ProjectService (raises exceptions on error)
     launch_data = await project_service.launch_project(
-        project_id=project_id,
-        user_id=str(current_user.id),
-        launch_config=launch_config
+        project_id=project_id, user_id=str(current_user.id), launch_config=launch_config
     )
 
     logger.info(f"Launched project {project_id}")
@@ -529,18 +513,13 @@ async def continue_project(
     logger.info(f"User {current_user.username} continuing project {project_id}")
 
     # Resume project via ProjectService (raises exceptions on error)
-    await project_service.continue_working(
-        project_id=project_id,
-        tenant_key=current_user.tenant_key
-    )
+    await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
 
     logger.info(f"Resumed project {project_id}, now launching new orchestrator")
 
     # Launch new orchestrator (raises exceptions on error)
     launch_data = await project_service.launch_project(
-        project_id=project_id,
-        user_id=str(current_user.id),
-        launch_config=None
+        project_id=project_id, user_id=str(current_user.id), launch_config=None
     )
 
     logger.info(f"Launched new orchestrator for project {project_id}")

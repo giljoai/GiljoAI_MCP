@@ -84,7 +84,7 @@ def ensure_project_virtualenv() -> None:
         # Cross-platform process replacement:
         # subprocess.run() waits for child and captures exit code
         # sys.exit() propagates the exit code to parent/shell
-        result = subprocess.run([str(venv_python)] + sys.argv)
+        result = subprocess.run([str(venv_python)] + sys.argv, check=False)
         sys.exit(result.returncode)
 
     except Exception as e:
@@ -907,14 +907,15 @@ def run_startup(
     print_header("Downloading NLTK Data")
     try:
         import nltk
+
         # Check if punkt_tab is already downloaded
         try:
-            nltk.data.find('tokenizers/punkt_tab')
+            nltk.data.find("tokenizers/punkt_tab")
             print_success("NLTK punkt tokenizer already downloaded")
         except LookupError:
             print_info("Downloading NLTK punkt tokenizer...")
-            nltk.download('punkt', quiet=True)
-            nltk.download('punkt_tab', quiet=True)
+            nltk.download("punkt", quiet=True)
+            nltk.download("punkt_tab", quiet=True)
             print_success("NLTK data downloaded successfully")
     except Exception as e:
         print_warning(f"Failed to download NLTK data: {e}")

@@ -10,27 +10,28 @@ Tests that MessageService correctly updates counter columns instead of JSONB:
 This is the TDD phase for counter-based message persistence.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+
+# Import models using modular imports
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_websocket_manager():
@@ -111,7 +112,6 @@ async def test_project_with_agents(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             status="waiting",
-            instance_number=1,
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -157,6 +157,7 @@ async def message_service(
 # ============================================================================
 # Counter Update Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_send_message_increments_sender_sent_count(
@@ -345,9 +346,7 @@ async def test_counters_survive_without_jsonb_persistence(
     )
     refreshed_orchestrator = orchestrator_result.scalar_one()
 
-    analyzer_result = await db_session.execute(
-        select(AgentExecution).where(AgentExecution.agent_id == analyzer_id)
-    )
+    analyzer_result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == analyzer_id))
     refreshed_analyzer = analyzer_result.scalar_one()
 
     # Verify counters persisted correctly
@@ -390,6 +389,7 @@ async def test_multiple_messages_accumulate_counters(
 # ============================================================================
 # WebSocket Event Counter Tests - Handover 0387g
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_message_sent_event_includes_sender_counter(

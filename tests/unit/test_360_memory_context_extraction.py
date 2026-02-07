@@ -15,9 +15,9 @@ Related Handovers:
 - 0311: Context integration (this handover)
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, AsyncMock
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models.products import Product
@@ -44,6 +44,7 @@ def mission_planner():
 @pytest.fixture
 def create_learning_entry():
     """Factory fixture to create learning entry with consistent structure."""
+
     def _create_entry(sequence: int, project_name: str = None) -> dict:
         """
         Create a learning entry matching 360 Memory schema.
@@ -76,12 +77,14 @@ def create_learning_entry():
                 f"Decision Y for learning {sequence}",
             ],
         }
+
     return _create_entry
 
 
 @pytest.fixture
 def product_with_learnings(create_learning_entry):
     """Create product with multiple learnings for testing."""
+
     def _create_product(learning_count: int = 10) -> Product:
         """Create Product instance with specified number of learnings."""
         product = Product(
@@ -89,19 +92,13 @@ def product_with_learnings(create_learning_entry):
             tenant_key="test-tenant",
             name="Test Product",
             product_memory={
-                "learnings": [
-                    create_learning_entry(i + 1, f"Project Alpha-{i+1}")
-                    for i in range(learning_count)
-                ],
-                "git_integration": {
-                    "enabled": False,
-                    "commit_limit": 20,
-                    "default_branch": "main"
-                },
-                "context": {}
-            }
+                "learnings": [create_learning_entry(i + 1, f"Project Alpha-{i + 1}") for i in range(learning_count)],
+                "git_integration": {"enabled": False, "commit_limit": 20, "default_branch": "main"},
+                "context": {},
+            },
         )
         return product
+
     return _create_product
 
 
@@ -109,9 +106,7 @@ def product_with_learnings(create_learning_entry):
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_full_detail_priority_10(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_full_detail_priority_10(mission_planner, product_with_learnings):
     """
     Priority 10 should include all learnings with full details.
 
@@ -122,9 +117,7 @@ async def test_extract_learnings_full_detail_priority_10(
     """
     product = product_with_learnings(10)
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=10, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=10, max_entries=10)
 
     # Verify header and structure
     assert "## Historical Context (360 Memory)" in result
@@ -133,7 +126,7 @@ async def test_extract_learnings_full_detail_priority_10(
 
     # Verify all learnings present (sorted by sequence descending)
     assert "### Learning #10" in result  # Most recent first
-    assert "### Learning #1" in result   # Oldest last
+    assert "### Learning #1" in result  # Oldest last
 
     # Verify full detail: summary + outcomes + decisions
     assert "This is learning #10" in result
@@ -147,9 +140,7 @@ async def test_extract_learnings_full_detail_priority_10(
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_moderate_detail_priority_7(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_moderate_detail_priority_7(mission_planner, product_with_learnings):
     """
     Priority 7 should include last 5 learnings with summary + outcomes.
 
@@ -160,14 +151,12 @@ async def test_extract_learnings_moderate_detail_priority_7(
     """
     product = product_with_learnings(10)
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=7, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=7, max_entries=10)
 
     # Verify showing last 5 only
     assert "Showing 5 most recent:" in result
     assert "### Learning #10" in result  # Most recent
-    assert "### Learning #6" in result   # 5th most recent
+    assert "### Learning #6" in result  # 5th most recent
     assert "### Learning #5" not in result  # Excluded (older)
 
     # Verify moderate detail: summary + outcomes, NO decisions
@@ -178,9 +167,7 @@ async def test_extract_learnings_moderate_detail_priority_7(
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_abbreviated_priority_5(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_abbreviated_priority_5(mission_planner, product_with_learnings):
     """
     Priority 5 should include last 3 learnings with summary only.
 
@@ -191,9 +178,7 @@ async def test_extract_learnings_abbreviated_priority_5(
     """
     product = product_with_learnings(10)
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=5, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=5, max_entries=10)
 
     # Verify showing last 3 only
     assert "Showing 3 most recent:" in result
@@ -208,9 +193,7 @@ async def test_extract_learnings_abbreviated_priority_5(
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_minimal_priority_2(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_minimal_priority_2(mission_planner, product_with_learnings):
     """
     Priority 2 should include only most recent learning with summary only.
 
@@ -221,9 +204,7 @@ async def test_extract_learnings_minimal_priority_2(
     """
     product = product_with_learnings(10)
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=2, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=2, max_entries=10)
 
     # Verify showing 1 only
     assert "Showing 1 most recent:" in result
@@ -237,9 +218,7 @@ async def test_extract_learnings_minimal_priority_2(
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_exclude_priority_0(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_exclude_priority_0(mission_planner, product_with_learnings):
     """
     Priority 0 should return empty string (exclude entirely).
 
@@ -249,9 +228,7 @@ async def test_extract_learnings_exclude_priority_0(
     """
     product = product_with_learnings(10)
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=0, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=0, max_entries=10)
 
     assert result == ""
 
@@ -272,21 +249,17 @@ async def test_extract_learnings_no_learnings(mission_planner):
         product_memory={
             "learnings": [],  # Empty array
             "git_integration": {},
-            "context": {}
-        }
+            "context": {},
+        },
     )
 
-    result = await mission_planner._extract_product_learnings(
-        product, priority=10, max_entries=10
-    )
+    result = await mission_planner._extract_product_learnings(product, priority=10, max_entries=10)
 
     assert result == ""
 
 
 @pytest.mark.asyncio
-async def test_extract_learnings_token_count_by_priority(
-    mission_planner, product_with_learnings
-):
+async def test_extract_learnings_token_count_by_priority(mission_planner, product_with_learnings):
     """
     Token count should vary significantly by priority level.
 
@@ -297,18 +270,10 @@ async def test_extract_learnings_token_count_by_priority(
     """
     product = product_with_learnings(10)
 
-    result_full = await mission_planner._extract_product_learnings(
-        product, priority=10, max_entries=10
-    )
-    result_moderate = await mission_planner._extract_product_learnings(
-        product, priority=7, max_entries=10
-    )
-    result_abbreviated = await mission_planner._extract_product_learnings(
-        product, priority=5, max_entries=10
-    )
-    result_minimal = await mission_planner._extract_product_learnings(
-        product, priority=2, max_entries=10
-    )
+    result_full = await mission_planner._extract_product_learnings(product, priority=10, max_entries=10)
+    result_moderate = await mission_planner._extract_product_learnings(product, priority=7, max_entries=10)
+    result_abbreviated = await mission_planner._extract_product_learnings(product, priority=5, max_entries=10)
+    result_minimal = await mission_planner._extract_product_learnings(product, priority=2, max_entries=10)
 
     tokens_full = mission_planner._count_tokens(result_full)
     tokens_moderate = mission_planner._count_tokens(result_moderate)
@@ -339,11 +304,7 @@ def test_inject_git_instructions(mission_planner):
     - Include guidance to combine with 360 Memory
     - Fixed token count (~250 tokens)
     """
-    git_config = {
-        "enabled": True,
-        "commit_limit": 30,
-        "default_branch": "develop"
-    }
+    git_config = {"enabled": True, "commit_limit": 30, "default_branch": "develop"}
 
     result = mission_planner._inject_git_instructions(git_config)
 

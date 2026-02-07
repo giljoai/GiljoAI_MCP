@@ -19,9 +19,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project, Product
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -92,8 +91,6 @@ async def test_orchestrator_metadata_new_creation(
     data = response.json()
     assert "orchestrator_id" in data
     assert "prompt" in data
-    assert "instance_number" in data
-    assert data["instance_number"] == 1  # First instance
 
     orchestrator_id = data["orchestrator_id"]
 
@@ -107,7 +104,6 @@ async def test_orchestrator_metadata_new_creation(
     assert orchestrator.status == "waiting"
     assert orchestrator.project_id == project.id
     assert orchestrator.tenant_key == test_user.tenant_key
-    assert orchestrator.instance_number == 1
 
     # CRITICAL: job_metadata must be populated (NOT empty {})
     assert orchestrator.job_metadata is not None, "job_metadata is None"
@@ -183,7 +179,6 @@ async def test_orchestrator_metadata_reuse_updates(
         agent_display_name="orchestrator",
         status="waiting",
         mission="Old orchestrator mission",
-        instance_number=1,
         context_budget=200000,
         context_used=0,
         tool_type="claude-code",
@@ -229,16 +224,13 @@ async def test_orchestrator_metadata_reuse_updates(
     assert response.status_code == 200, f"API failed: {response.text}"
     data = response.json()
     assert data["orchestrator_id"] == old_orchestrator.job_id  # Reused existing
-    assert data["instance_number"] == 1  # Same instance
 
     # ASSERT: Orchestrator metadata is NOW POPULATED (bug fix verification)
     await db_session.refresh(old_orchestrator)
 
     # CRITICAL BUG FIX: job_metadata must be UPDATED (not left as {})
     assert old_orchestrator.job_metadata is not None
-    assert old_orchestrator.job_metadata != {}, (
-        "BUG NOT FIXED: job_metadata still empty on reuse"
-    )
+    assert old_orchestrator.job_metadata != {}, "BUG NOT FIXED: job_metadata still empty on reuse"
 
     # CRITICAL: Updated field priorities match user's current settings
     assert "field_priorities" in old_orchestrator.job_metadata

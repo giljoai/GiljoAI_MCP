@@ -14,14 +14,15 @@ Handover: 0305 - Integrate Vision Document Chunking with Context Generation
 """
 
 import uuid
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
+from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Base
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
 
 @pytest.fixture
@@ -29,10 +30,8 @@ async def test_db_session():
     """Create temporary PostgreSQL test database session for integration testing."""
     # Use test database URL from environment or default
     import os
-    test_db_url = os.getenv(
-        "TEST_DATABASE_URL",
-        "postgresql+asyncpg://postgres:***@localhost/giljo_mcp_test"
-    )
+
+    test_db_url = os.getenv("TEST_DATABASE_URL", "postgresql+asyncpg://postgres:***@localhost/giljo_mcp_test")
 
     # Create async engine
     engine = create_async_engine(test_db_url, echo=False)
@@ -42,9 +41,7 @@ async def test_db_session():
         await conn.run_sync(Base.metadata.create_all)
 
     # Create session factory
-    async_session_maker = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     # Create session
     async with async_session_maker() as session:
@@ -138,9 +135,7 @@ Versioning uses URL-based approach (e.g., /api/v1/users) for backward compatibil
 
     # 3. Chunk the vision
     chunker = VisionDocumentChunker()
-    chunk_result = await chunker.chunk_vision_document(
-        test_db_session, tenant_key, str(doc.id)
-    )
+    chunk_result = await chunker.chunk_vision_document(test_db_session, tenant_key, str(doc.id))
 
     # Verify chunking succeeded
     assert chunk_result["success"] is True
@@ -388,14 +383,10 @@ Custom authorization rules for beta tenant use cases.
     # 5. Chunk both visions
     chunker = VisionDocumentChunker()
 
-    alpha_result = await chunker.chunk_vision_document(
-        test_db_session, tenant_alpha, str(doc_alpha.id)
-    )
+    alpha_result = await chunker.chunk_vision_document(test_db_session, tenant_alpha, str(doc_alpha.id))
     assert alpha_result["success"] is True
 
-    beta_result = await chunker.chunk_vision_document(
-        test_db_session, tenant_beta, str(doc_beta.id)
-    )
+    beta_result = await chunker.chunk_vision_document(test_db_session, tenant_beta, str(doc_beta.id))
     assert beta_result["success"] is True
     await test_db_session.commit()
 

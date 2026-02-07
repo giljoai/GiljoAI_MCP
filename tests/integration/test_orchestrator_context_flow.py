@@ -15,23 +15,24 @@ These tests will initially FAIL to confirm the bug exists.
 Handover: Field Priority Bug Fix - Phase 1
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
+
 # Use existing fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_tenant_key():
@@ -57,9 +58,9 @@ async def user_with_field_config(db_session, test_tenant_key):
                 "agent_templates": 3,
                 "project_description": 1,
                 "memory_360": 2,
-                "git_history": 4
-            }
-        }
+                "git_history": 4,
+            },
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -77,7 +78,7 @@ async def user_without_field_config(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         role="developer",
         password_hash="hashed_password",
-        field_priority_config=None  # Explicitly no config
+        field_priority_config=None,  # Explicitly no config
     )
     db_session.add(user)
     await db_session.commit()
@@ -93,7 +94,7 @@ async def test_product(db_session, user_with_field_config):
         name=f"Test Product {uuid4().hex[:8]}",
         description="Test product for field priority testing.",
         tenant_key=user_with_field_config.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -112,7 +113,7 @@ async def test_project(db_session, user_with_field_config, test_product):
         tenant_key=user_with_field_config.tenant_key,
         status="planning",
         mission="Test mission for orchestrator with field priorities.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -124,12 +125,9 @@ async def test_project(db_session, user_with_field_config, test_product):
 # TEST 2: Orchestrator Receives User Field Priorities
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_orchestrator_receives_user_field_priorities(
-    db_session,
-    user_with_field_config,
-    test_project
-):
+async def test_orchestrator_receives_user_field_priorities(db_session, user_with_field_config, test_project):
     """
     TEST 2a: Orchestrator job should receive user's field priorities in job_metadata.
 
@@ -156,7 +154,7 @@ async def test_orchestrator_receives_user_field_priorities(
         "agent_templates": 3,
         "project_description": 1,
         "memory_360": 2,
-        "git_history": 4
+        "git_history": 4,
     }
 
     # ACT: Simulate the endpoint behavior - this is where the bug occurs
@@ -174,8 +172,7 @@ async def test_orchestrator_receives_user_field_priorities(
 
     # CRITICAL ASSERTION: Demonstrate the bug
     assert field_priorities_buggy == {}, (
-        f"BUG DEMONSTRATION: Using 'fields' key returns empty dict. "
-        f"Got: {field_priorities_buggy}"
+        f"BUG DEMONSTRATION: Using 'fields' key returns empty dict. Got: {field_priorities_buggy}"
     )
 
     assert field_priorities_fixed == expected_priorities, (
@@ -184,17 +181,14 @@ async def test_orchestrator_receives_user_field_priorities(
     )
 
     # Now test with ThinClientPromptGenerator (simulating fixed endpoint)
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_with_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_with_field_config.tenant_key)
 
     # Pass FIXED field_priorities to generator
     result = await generator.generate(
         project_id=str(test_project.id),
         user_id=str(user_with_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities_fixed  # Using CORRECT priorities
+        field_priorities=field_priorities_fixed,  # Using CORRECT priorities
     )
 
     # ASSERT: Verify orchestrator job has field priorities in metadata
@@ -207,23 +201,17 @@ async def test_orchestrator_receives_user_field_priorities(
 
     assert orchestrator_job is not None, "Orchestrator job should exist"
     assert orchestrator_job.job_metadata is not None, "Job metadata should exist"
-    assert "field_priorities" in orchestrator_job.job_metadata, (
-        "field_priorities key should exist in job_metadata"
-    )
+    assert "field_priorities" in orchestrator_job.job_metadata, "field_priorities key should exist in job_metadata"
 
     # CRITICAL ASSERTION: field_priorities should match user's config
     actual_priorities = orchestrator_job.job_metadata["field_priorities"]
     assert actual_priorities == expected_priorities, (
-        f"Expected orchestrator to receive field_priorities {expected_priorities}, "
-        f"got {actual_priorities}"
+        f"Expected orchestrator to receive field_priorities {expected_priorities}, got {actual_priorities}"
     )
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_receives_empty_dict_when_no_user_config(
-    db_session,
-    user_without_field_config
-):
+async def test_orchestrator_receives_empty_dict_when_no_user_config(db_session, user_without_field_config):
     """
     TEST 2b: When user has NO field priority config, orchestrator gets empty dict.
 
@@ -240,7 +228,7 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(
         name=f"Test Product {uuid4().hex[:8]}",
         description="Test product.",
         tenant_key=user_without_field_config.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -253,7 +241,7 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(
         tenant_key=user_without_field_config.tenant_key,
         status="planning",
         mission="Test mission.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -269,16 +257,13 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(
     assert field_priorities == {}
 
     # Generate staging prompt with empty priorities
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_without_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_without_field_config.tenant_key)
 
     result = await generator.generate(
         project_id=str(project.id),
         user_id=str(user_without_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities  # Empty dict
+        field_priorities=field_priorities,  # Empty dict
     )
 
     # ASSERT: Verify orchestrator job has EMPTY field priorities
@@ -293,17 +278,11 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(
 
     # Should have empty dict when user has no config
     actual_priorities = orchestrator_job.job_metadata.get("field_priorities", {})
-    assert actual_priorities == {}, (
-        f"Expected empty field_priorities {{}}, got {actual_priorities}"
-    )
+    assert actual_priorities == {}, f"Expected empty field_priorities {{}}, got {actual_priorities}"
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_field_priorities_match_user_session(
-    db_session,
-    user_with_field_config,
-    test_project
-):
+async def test_orchestrator_field_priorities_match_user_session(db_session, user_with_field_config, test_project):
     """
     TEST 2c: Orchestrator field priorities should reflect current user session.
 
@@ -318,10 +297,7 @@ async def test_orchestrator_field_priorities_match_user_session(
     user_priorities = user_with_field_config.field_priority_config["priorities"]
 
     # ACT: Generate staging prompt for this user's project
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_with_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_with_field_config.tenant_key)
 
     # Extract priorities correctly (FIXED behavior)
     user_field_config = user_with_field_config.field_priority_config or {}
@@ -331,7 +307,7 @@ async def test_orchestrator_field_priorities_match_user_session(
         project_id=str(test_project.id),
         user_id=str(user_with_field_config.id),  # CRITICAL: Current user ID
         tool="claude-code",
-        field_priorities=field_priorities
+        field_priorities=field_priorities,
     )
 
     # ASSERT: Orchestrator should have THIS USER's priorities
@@ -345,17 +321,12 @@ async def test_orchestrator_field_priorities_match_user_session(
 
     # CRITICAL: Should match the user who staged the project
     assert actual_priorities == user_priorities, (
-        f"Orchestrator should receive current user's priorities. "
-        f"Expected: {user_priorities}, Got: {actual_priorities}"
+        f"Orchestrator should receive current user's priorities. Expected: {user_priorities}, Got: {actual_priorities}"
     )
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_field_priorities_stored_in_job_metadata(
-    db_session,
-    user_with_field_config,
-    test_project
-):
+async def test_orchestrator_field_priorities_stored_in_job_metadata(db_session, user_with_field_config, test_project):
     """
     TEST 2d: Field priorities should be stored in job_metadata (not elsewhere).
 
@@ -366,16 +337,13 @@ async def test_orchestrator_field_priorities_stored_in_job_metadata(
     field_priorities = user_field_config.get("priorities", {})
 
     # ACT: Generate orchestrator job
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_with_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_with_field_config.tenant_key)
 
     result = await generator.generate(
         project_id=str(test_project.id),
         user_id=str(user_with_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities
+        field_priorities=field_priorities,
     )
 
     orchestrator_id = result["orchestrator_id"]
@@ -386,29 +354,20 @@ async def test_orchestrator_field_priorities_stored_in_job_metadata(
     orchestrator_job = job_result.scalar_one_or_none()
 
     # CRITICAL ASSERTION 1: job_metadata should exist
-    assert orchestrator_job.job_metadata is not None, (
-        "job_metadata should be populated for orchestrator jobs"
-    )
+    assert orchestrator_job.job_metadata is not None, "job_metadata should be populated for orchestrator jobs"
 
     # CRITICAL ASSERTION 2: field_priorities should be in job_metadata
     assert "field_priorities" in orchestrator_job.job_metadata, (
-        f"field_priorities should be in job_metadata. "
-        f"Got metadata keys: {orchestrator_job.job_metadata.keys()}"
+        f"field_priorities should be in job_metadata. Got metadata keys: {orchestrator_job.job_metadata.keys()}"
     )
 
     # CRITICAL ASSERTION 3: field_priorities should be a dict
     priorities = orchestrator_job.job_metadata["field_priorities"]
-    assert isinstance(priorities, dict), (
-        f"field_priorities should be a dict, got {type(priorities)}"
-    )
+    assert isinstance(priorities, dict), f"field_priorities should be a dict, got {type(priorities)}"
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_field_priorities_available_in_mission(
-    db_session,
-    user_with_field_config,
-    test_project
-):
+async def test_orchestrator_field_priorities_available_in_mission(db_session, user_with_field_config, test_project):
     """
     TEST 2e: Field priorities should be accessible when orchestrator fetches mission.
 
@@ -424,24 +383,20 @@ async def test_orchestrator_field_priorities_available_in_mission(
     field_priorities = user_field_config.get("priorities", {})
 
     # ACT: Generate orchestrator job
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=user_with_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=user_with_field_config.tenant_key)
 
     result = await generator.generate(
         project_id=str(test_project.id),
         user_id=str(user_with_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities
+        field_priorities=field_priorities,
     )
 
     orchestrator_id = result["orchestrator_id"]
 
     # ASSERT: Verify field priorities can be retrieved from database
     stmt = select(AgentExecution).where(
-        AgentExecution.job_id == orchestrator_id,
-        AgentExecution.tenant_key == user_with_field_config.tenant_key
+        AgentExecution.job_id == orchestrator_id, AgentExecution.tenant_key == user_with_field_config.tenant_key
     )
     job_result = await db_session.execute(stmt)
     orchestrator_job = job_result.scalar_one_or_none()
@@ -449,11 +404,8 @@ async def test_orchestrator_field_priorities_available_in_mission(
     # CRITICAL: MCP tool should be able to extract field_priorities
     stored_priorities = orchestrator_job.job_metadata.get("field_priorities", {})
 
-    assert stored_priorities is not None, (
-        "field_priorities should be retrievable from job_metadata"
-    )
+    assert stored_priorities is not None, "field_priorities should be retrievable from job_metadata"
 
     assert stored_priorities == field_priorities, (
-        f"Stored priorities should match input. "
-        f"Expected: {field_priorities}, Got: {stored_priorities}"
+        f"Stored priorities should match input. Expected: {field_priorities}, Got: {stored_priorities}"
     )

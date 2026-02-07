@@ -1,5 +1,5 @@
 """
-Integration tests for Template Cache + TemplateManager workflow
+Integration tests for Template Cache + UnifiedTemplateManager workflow
 (Handover 0041 Phase 2)
 
 Tests the full workflow:
@@ -44,7 +44,7 @@ def orchestrator_template():
         name="Orchestrator",
         role="orchestrator",
         category="role",
-        template_content="You are the orchestrator for {project_name}. Mission: {project_mission}",
+        system_instructions="You are the orchestrator for {project_name}. Mission: {project_mission}",
         is_active=True,
         is_default=False,
         version="1.0.0",
@@ -146,7 +146,7 @@ async def test_template_edit_invalidates_cache(template_manager, orchestrator_te
         name="Orchestrator",
         role="orchestrator",
         category="role",
-        template_content="UPDATED: You are the NEW orchestrator for {project_name}",
+        system_instructions="UPDATED: You are the NEW orchestrator for {project_name}",
         is_active=True,
         is_default=False,
         version="1.1.0",

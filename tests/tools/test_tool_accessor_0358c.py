@@ -13,7 +13,7 @@ Semantic Contract (Phase C):
 - job_id = work order UUID (WHAT - persistent across succession)
 - agent_id = executor UUID (WHO - changes on succession)
 - AgentJob = work order (mission, job_type, status: active/completed/cancelled)
-- AgentExecution = executor (agent_display_name, instance_number, status: waiting/working/...)
+- AgentExecution = executor (agent_display_name, status: waiting/working/...)
 
 API Response Contract:
 - MCP tools MUST return BOTH job_id and agent_id for backward compatibility
@@ -31,16 +31,15 @@ Test Coverage:
 7. Multi-tenant isolation for all MCP tools
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
@@ -132,7 +131,6 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
         progress=0,
     )
@@ -147,6 +145,7 @@ async def tool_accessor(db_manager, db_session, tenant_key):
     """Create ToolAccessor instance with test session for transaction sharing."""
     # Create tenant manager for testing (no validation)
     from src.giljo_mcp.tenant import TenantManager
+
     tenant_manager = TenantManager()
     # Override get_current_tenant to return test tenant
     tenant_manager.get_current_tenant = lambda: tenant_key
@@ -295,73 +294,9 @@ async def test_get_agent_mission_via_agentjob_mission(
 
 
 # ========================================================================
-# Test 5: get_workflow_status() creates both AgentJob and AgentExecution
+# Test 5: REMOVED - test_get_workflow_status_creates_both_models (dep-030)
+# gil_activate() method has been removed as deprecated
 # ========================================================================
-
-
-@pytest.mark.asyncio
-async def test_get_workflow_status_creates_both_models(
-    tool_accessor, tenant_key, test_product, db_session
-):
-    """
-    Test that get_workflow_status() creates BOTH AgentJob and AgentExecution
-    when orchestrator doesn't exist yet.
-
-    Expected behavior:
-    1. Check if orchestrator exists (query AgentJob)
-    2. If not, create AgentJob (work order)
-    3. Also create AgentExecution (executor instance)
-    4. Return both job_id and agent_id
-
-    Will FAIL initially: tool_accessor.py creates only AgentExecution.
-    """
-    # Create inactive project for activation test
-    inactive_project = Project(
-        id=str(uuid4()),
-        tenant_key=tenant_key,
-        product_id=test_product.id,
-        name="Inactive Test Project",
-        description="Project to be activated",
-        mission="Test activation",
-        status="inactive",
-    )
-    db_session.add(inactive_project)
-    await db_session.commit()
-    await db_session.refresh(inactive_project)
-
-    result = await tool_accessor.gil_activate(
-        project_id=inactive_project.id,
-    )
-
-    # Verify success
-    assert result.get("success") is True
-
-    # Verify both models created in the same session (test transaction)
-    from sqlalchemy import select
-
-    # Verify AgentJob created
-    job_result = await db_session.execute(
-        select(AgentJob).where(
-            AgentJob.project_id == inactive_project.id,
-            AgentJob.tenant_key == tenant_key,
-            AgentJob.job_type == "orchestrator",
-        )
-    )
-    job = job_result.scalar_one_or_none()
-    assert job is not None, "AgentJob not created"
-
-    # Verify AgentExecution created
-    exec_result = await db_session.execute(
-        select(AgentExecution).where(
-            AgentExecution.job_id == job.job_id,
-            AgentExecution.tenant_key == tenant_key,
-        )
-    )
-    execution = exec_result.scalar_one_or_none()
-    assert execution is not None, "AgentExecution not created"
-
-    # Verify relationship
-    assert execution.job_id == job.job_id
 
 
 # ========================================================================
@@ -370,9 +305,7 @@ async def test_get_workflow_status_creates_both_models(
 
 
 @pytest.mark.asyncio
-async def test_get_pending_jobs_queries_agentjob_table(
-    db_session, tenant_key, test_project
-):
+async def test_get_pending_jobs_queries_agentjob_table(db_session, tenant_key, test_project):
     """
     Test that pending jobs query uses AgentJob table.
 
@@ -418,7 +351,6 @@ async def test_get_pending_jobs_queries_agentjob_table(
         job_id=job1.job_id,
         tenant_key=tenant_key,
         agent_display_name="analyzer",
-        instance_number=1,
         status="waiting",
     )
     exec2 = AgentExecution(
@@ -426,7 +358,6 @@ async def test_get_pending_jobs_queries_agentjob_table(
         job_id=job2.job_id,
         tenant_key=tenant_key,
         agent_display_name="implementer",
-        instance_number=1,
         status="working",
     )
 
@@ -437,8 +368,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
     from sqlalchemy import select
 
     result = await db_session.execute(
-        select(AgentJob)
-        .where(
+        select(AgentJob).where(
             AgentJob.project_id == test_project.id,
             AgentJob.tenant_key == tenant_key,
             AgentJob.status == "active",
@@ -457,9 +387,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_for_mcp_tools(
-    tool_accessor, db_session, test_project, test_product
-):
+async def test_multi_tenant_isolation_for_mcp_tools(tool_accessor, db_session, test_project, test_product):
     """
     Test that all MCP tools enforce multi-tenant isolation.
 
@@ -487,7 +415,6 @@ async def test_multi_tenant_isolation_for_mcp_tools(
         job_id=job_a.job_id,
         tenant_key=tenant_a,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="working",
     )
 
@@ -536,9 +463,8 @@ async def test_succession_preserves_job_id_changes_agent_id(
     # Verify success
     assert result.get("success") is True, f"Succession failed: {result.get('error')}"
 
-    # Verify response contains both IDs
+    # Verify response contains successor ID
     assert "successor_id" in result  # This might be agent_id
-    assert "instance_number" in result
 
     # Verify new execution created (use test session to see uncommitted changes)
     from sqlalchemy import select
@@ -546,12 +472,10 @@ async def test_succession_preserves_job_id_changes_agent_id(
     # Need to use tool_accessor's test session to see the changes
     # Query all executions for this job
     exec_result = await tool_accessor._test_session.execute(
-        select(AgentExecution)
-        .where(
+        select(AgentExecution).where(
             AgentExecution.job_id == orchestrator_job.job_id,
             AgentExecution.tenant_key == tenant_key,
         )
-        .order_by(AgentExecution.instance_number)
     )
     executions = exec_result.scalars().all()
 
@@ -563,8 +487,6 @@ async def test_succession_preserves_job_id_changes_agent_id(
     assert executions[0].agent_id != executions[1].agent_id
 
     # Verify instance numbers
-    assert executions[0].instance_number == 1
-    assert executions[1].instance_number == 2
 
     # Verify succession chain
     assert executions[1].spawned_by == executions[0].agent_id
@@ -576,9 +498,7 @@ async def test_succession_preserves_job_id_changes_agent_id(
 
 
 @pytest.mark.asyncio
-async def test_get_agent_mission_handles_succession(
-    tool_accessor, db_session, orchestrator_job, tenant_key
-):
+async def test_get_agent_mission_handles_succession(tool_accessor, db_session, orchestrator_job, tenant_key):
     """
     Test that get_agent_mission() returns correct mission across succession.
 
@@ -595,7 +515,6 @@ async def test_get_agent_mission_handles_succession(
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=1,
         status="decommissioned",
     )
     exec2 = AgentExecution(
@@ -603,7 +522,6 @@ async def test_get_agent_mission_handles_succession(
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        instance_number=2,
         status="working",
         spawned_by=exec1.agent_id,
     )

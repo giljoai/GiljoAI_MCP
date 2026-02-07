@@ -10,20 +10,22 @@ Following TDD principles: RED → GREEN → REFACTOR
 These tests MUST FAIL initially (RED phase) before implementing fixes.
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from unittest.mock import AsyncMock, patch
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 async def test_user_a(db_manager):
     """Create test user A with unique tenant."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -53,6 +55,7 @@ async def test_user_a(db_manager):
 async def test_user_b(db_manager):
     """Create test user B with DIFFERENT tenant (for cross-tenant attack tests)."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -81,9 +84,11 @@ async def test_user_b(db_manager):
 @pytest.fixture
 async def api_key_user_a(db_manager, test_user_a):
     """Create API key for user A."""
-    from passlib.hash import bcrypt
-    from src.giljo_mcp.models import APIKey
     import secrets
+
+    from passlib.hash import bcrypt
+
+    from src.giljo_mcp.models import APIKey
 
     raw_key = f"gk_{secrets.token_hex(32)}"
     key_prefix = raw_key[:12]
@@ -107,9 +112,11 @@ async def api_key_user_a(db_manager, test_user_a):
 @pytest.fixture
 async def api_key_user_b(db_manager, test_user_b):
     """Create API key for user B."""
-    from passlib.hash import bcrypt
-    from src.giljo_mcp.models import APIKey
     import secrets
+
+    from passlib.hash import bcrypt
+
+    from src.giljo_mcp.models import APIKey
 
     raw_key = f"gk_{secrets.token_hex(32)}"
     key_prefix = raw_key[:12]
@@ -216,12 +223,10 @@ async def project_tenant_b(db_manager, test_user_b, product_tenant_b):
 # FIX 1: MCP Tools Tenant Key Validation Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mcp_tenant_key_mismatch_is_overridden(
-    async_client: AsyncClient,
-    api_key_user_a,
-    test_user_a,
-    test_user_b
+    async_client: AsyncClient, api_key_user_a, test_user_a, test_user_b
 ):
     """
     SECURITY: Client-supplied tenant_key must be overridden with session tenant.
@@ -235,13 +240,8 @@ async def test_mcp_tenant_key_mismatch_is_overridden(
     # Initialize MCP session with user A's API key
     init_response = await async_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "security_test"}},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"client_info": {"name": "security_test"}}, "id": 1},
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
     assert init_response.status_code == 200, f"Initialize failed: {init_response.json()}"
 
@@ -253,11 +253,11 @@ async def test_mcp_tenant_key_mismatch_is_overridden(
             "method": "tools/call",
             "params": {
                 "name": "health_check",
-                "arguments": {"tenant_key": test_user_b._test_tenant_key}  # ATTACK: Wrong tenant!
+                "arguments": {"tenant_key": test_user_b._test_tenant_key},  # ATTACK: Wrong tenant!
             },
-            "id": 2
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Response should return (may be 200 even with error response in JSON-RPC)
@@ -270,20 +270,14 @@ async def test_mcp_tenant_key_mismatch_is_overridden(
     if "error" in result:
         # Test environment limitation - tool accessor not initialized
         # The security check still runs BEFORE tool execution (validated by logging test)
-        assert result["error"]["message"] == "Tool accessor not initialized", \
-            f"Unexpected error: {result['error']}"
+        assert result["error"]["message"] == "Tool accessor not initialized", f"Unexpected error: {result['error']}"
     else:
         # If tool accessor is available, verify result exists
         assert "result" in result
 
 
 @pytest.mark.asyncio
-async def test_mcp_tenant_key_mismatch_logged(
-    async_client: AsyncClient,
-    api_key_user_a,
-    test_user_b,
-    caplog
-):
+async def test_mcp_tenant_key_mismatch_logged(async_client: AsyncClient, api_key_user_a, test_user_b, caplog):
     """
     SECURITY: Tenant key mismatches must be logged as security warnings.
 
@@ -293,18 +287,14 @@ async def test_mcp_tenant_key_mismatch_logged(
     Current behavior (RED): No validation or logging exists (VULNERABLE).
     """
     import logging
+
     caplog.set_level(logging.WARNING)
 
     # Initialize session
     await async_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "security_test"}},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"client_info": {"name": "security_test"}}, "id": 1},
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Call tool with wrong tenant_key
@@ -313,13 +303,10 @@ async def test_mcp_tenant_key_mismatch_logged(
         json={
             "jsonrpc": "2.0",
             "method": "tools/call",
-            "params": {
-                "name": "health_check",
-                "arguments": {"tenant_key": test_user_b._test_tenant_key}
-            },
-            "id": 2
+            "params": {"name": "health_check", "arguments": {"tenant_key": test_user_b._test_tenant_key}},
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Verify security warning was logged
@@ -327,16 +314,13 @@ async def test_mcp_tenant_key_mismatch_logged(
     log_messages = [record.message for record in caplog.records if record.levelname == "WARNING"]
 
     # RED PHASE: This assertion will FAIL (no validation exists yet)
-    assert any("SECURITY" in msg and "Tenant key mismatch" in msg for msg in log_messages), \
+    assert any("SECURITY" in msg and "Tenant key mismatch" in msg for msg in log_messages), (
         "Security warning not logged for tenant key mismatch"
+    )
 
 
 @pytest.mark.asyncio
-async def test_mcp_missing_tenant_key_auto_added(
-    async_client: AsyncClient,
-    api_key_user_a,
-    test_user_a
-):
+async def test_mcp_missing_tenant_key_auto_added(async_client: AsyncClient, api_key_user_a, test_user_a):
     """
     SECURITY: Session tenant_key should be auto-added when client omits it.
 
@@ -348,13 +332,8 @@ async def test_mcp_missing_tenant_key_auto_added(
     # Initialize session
     await async_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "security_test"}},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"client_info": {"name": "security_test"}}, "id": 1},
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Call tool WITHOUT tenant_key parameter
@@ -365,11 +344,11 @@ async def test_mcp_missing_tenant_key_auto_added(
             "method": "tools/call",
             "params": {
                 "name": "health_check",
-                "arguments": {}  # No tenant_key provided
+                "arguments": {},  # No tenant_key provided
             },
-            "id": 2
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Response should return (may be 200 even with error response in JSON-RPC)
@@ -382,8 +361,7 @@ async def test_mcp_missing_tenant_key_auto_added(
     if "error" in result:
         # Test environment limitation - tool accessor not initialized
         # The security check still runs and adds tenant_key BEFORE tool execution
-        assert result["error"]["message"] == "Tool accessor not initialized", \
-            f"Unexpected error: {result['error']}"
+        assert result["error"]["message"] == "Tool accessor not initialized", f"Unexpected error: {result['error']}"
     else:
         # If tool accessor is available, verify result exists
         assert "result" in result
@@ -393,11 +371,9 @@ async def test_mcp_missing_tenant_key_auto_added(
 # FIX 2: Project Service Required tenant_key Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_project_service_get_projects_requires_tenant_key(
-    db_manager,
-    tenant_manager
-):
+async def test_project_service_get_projects_requires_tenant_key(db_manager, tenant_manager):
     """
     SECURITY: ProjectService methods should enforce tenant_key requirements.
 
@@ -409,10 +385,7 @@ async def test_project_service_get_projects_requires_tenant_key(
     """
     from src.giljo_mcp.services.project_service import ProjectService
 
-    service = ProjectService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager
-    )
+    service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
 
     # This test documents the vulnerability in get_project() method
     # After fix, tenant_key should be required (not optional)
@@ -421,10 +394,7 @@ async def test_project_service_get_projects_requires_tenant_key(
 
 
 @pytest.mark.asyncio
-async def test_project_service_get_projects_rejects_empty_tenant_key(
-    db_manager,
-    tenant_manager
-):
+async def test_project_service_get_projects_rejects_empty_tenant_key(db_manager, tenant_manager):
     """
     SECURITY: ProjectService methods should reject empty tenant_key.
 
@@ -432,21 +402,14 @@ async def test_project_service_get_projects_rejects_empty_tenant_key(
     """
     from src.giljo_mcp.services.project_service import ProjectService
 
-    service = ProjectService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager
-    )
+    service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
 
     # Skip for now - will be relevant after fix is implemented
     pytest.skip("get_projects() method doesn't exist; vulnerability is in get_project()")
 
 
 @pytest.mark.asyncio
-async def test_project_service_get_project_requires_tenant_key(
-    db_manager,
-    tenant_manager,
-    project_tenant_a
-):
+async def test_project_service_get_project_requires_tenant_key(db_manager, tenant_manager, project_tenant_a):
     """
     SECURITY: ProjectService.get_project() must require tenant_key.
 
@@ -458,27 +421,16 @@ async def test_project_service_get_project_requires_tenant_key(
     """
     from src.giljo_mcp.services.project_service import ProjectService
 
-    service = ProjectService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager
-    )
+    service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
 
     # Attempt to get project without tenant_key
     # RED PHASE: This will NOT raise error yet (vulnerable)
     with pytest.raises(ValueError, match="tenant_key is required"):
-        await service.get_project(
-            project_id=project_tenant_a.id,
-            tenant_key=None
-        )
+        await service.get_project(project_id=project_tenant_a.id, tenant_key=None)
 
 
 @pytest.mark.asyncio
-async def test_project_service_cross_tenant_access_blocked(
-    db_manager,
-    tenant_manager,
-    project_tenant_a,
-    test_user_b
-):
+async def test_project_service_cross_tenant_access_blocked(db_manager, tenant_manager, project_tenant_a, test_user_b):
     """
     SECURITY: Cannot access tenant A's project with tenant B's key.
 
@@ -490,33 +442,26 @@ async def test_project_service_cross_tenant_access_blocked(
     """
     from src.giljo_mcp.services.project_service import ProjectService
 
-    service = ProjectService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager
-    )
+    service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
 
     # Attempt to access tenant A's project with tenant B's key
     result = await service.get_project(
         project_id=project_tenant_a.id,
-        tenant_key=test_user_b._test_tenant_key  # WRONG tenant!
+        tenant_key=test_user_b._test_tenant_key,  # WRONG tenant!
     )
 
     # Should return None or error (not the actual project)
     # RED PHASE: May return project if tenant_key filtering not enforced
-    assert result is None or result.get("success") is False, \
-        "Cross-tenant project access should be blocked"
+    assert result is None or result.get("success") is False, "Cross-tenant project access should be blocked"
 
 
 # ============================================================================
 # FIX 3: Discovery Service Tenant Filtering Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_discovery_get_project_config_requires_tenant_key(
-    db_manager,
-    project_tenant_a,
-    tenant_manager
-):
+async def test_discovery_get_project_config_requires_tenant_key(db_manager, project_tenant_a, tenant_manager):
     """
     SECURITY: Discovery methods should require tenant_key.
 
@@ -539,12 +484,7 @@ async def test_discovery_get_project_config_requires_tenant_key(
 
 
 @pytest.mark.asyncio
-async def test_discovery_cross_tenant_config_access_blocked(
-    db_manager,
-    project_tenant_a,
-    test_user_b,
-    tenant_manager
-):
+async def test_discovery_cross_tenant_config_access_blocked(db_manager, project_tenant_a, test_user_b, tenant_manager):
     """
     SECURITY: Cannot access tenant A's project config with tenant B's key.
 
@@ -562,11 +502,7 @@ async def test_discovery_cross_tenant_config_access_blocked(
 
 
 @pytest.mark.asyncio
-async def test_discovery_get_project_config_validates_empty_tenant_key(
-    db_manager,
-    project_tenant_a,
-    tenant_manager
-):
+async def test_discovery_get_project_config_validates_empty_tenant_key(db_manager, project_tenant_a, tenant_manager):
     """
     SECURITY: Discovery methods should validate empty tenant_key.
 
@@ -587,14 +523,10 @@ async def test_discovery_get_project_config_validates_empty_tenant_key(
 # Integration Tests - End-to-End Security Validation
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_e2e_mcp_tools_cannot_bypass_tenant_isolation(
-    async_client: AsyncClient,
-    api_key_user_a,
-    project_tenant_a,
-    project_tenant_b,
-    test_user_a,
-    test_user_b
+    async_client: AsyncClient, api_key_user_a, project_tenant_a, project_tenant_b, test_user_a, test_user_b
 ):
     """
     End-to-end test: Verify MCP tools cannot bypass tenant isolation.
@@ -607,13 +539,8 @@ async def test_e2e_mcp_tools_cannot_bypass_tenant_isolation(
     # Initialize session with user A
     await async_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "security_test"}},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"client_info": {"name": "security_test"}}, "id": 1},
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Attempt to access tenant B's project with spoofed tenant_key
@@ -628,11 +555,11 @@ async def test_e2e_mcp_tools_cannot_bypass_tenant_isolation(
                 "name": "health_check",
                 "arguments": {
                     "tenant_key": test_user_b._test_tenant_key  # Attack: spoofed tenant
-                }
+                },
             },
-            "id": 2
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Should succeed but with session tenant (A), not spoofed tenant (B)
@@ -642,12 +569,7 @@ async def test_e2e_mcp_tools_cannot_bypass_tenant_isolation(
 
 @pytest.mark.asyncio
 async def test_e2e_project_service_enforces_tenant_isolation(
-    db_manager,
-    tenant_manager,
-    project_tenant_a,
-    project_tenant_b,
-    test_user_a,
-    test_user_b
+    db_manager, tenant_manager, project_tenant_a, project_tenant_b, test_user_a, test_user_b
 ):
     """
     End-to-end test: Verify ProjectService enforces tenant isolation.
@@ -657,32 +579,25 @@ async def test_e2e_project_service_enforces_tenant_isolation(
     """
     from src.giljo_mcp.services.project_service import ProjectService
 
-    service = ProjectService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager
-    )
+    service = ProjectService(db_manager=db_manager, tenant_manager=tenant_manager)
 
     # User A tries to get project belonging to tenant B
     result = await service.get_project(
         project_id=project_tenant_b.id,
-        tenant_key=test_user_a._test_tenant_key  # Wrong tenant
+        tenant_key=test_user_a._test_tenant_key,  # Wrong tenant
     )
 
     # Should return None or error (not the project)
-    assert result is None or result.get("success") is False, \
-        "Service layer should enforce tenant isolation"
+    assert result is None or result.get("success") is False, "Service layer should enforce tenant isolation"
 
 
 # ============================================================================
 # Additional Security Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_mcp_session_stores_user_id_for_audit(
-    db_manager,
-    api_key_user_a,
-    test_user_a
-):
+async def test_mcp_session_stores_user_id_for_audit(db_manager, api_key_user_a, test_user_a):
     """
     SECURITY: MCP sessions should store user_id for audit trail.
 
@@ -691,8 +606,9 @@ async def test_mcp_session_stores_user_id_for_audit(
 
     Current behavior (RED): user_id column doesn't exist yet.
     """
-    from src.giljo_mcp.models import MCPSession
     from sqlalchemy import select
+
+    from src.giljo_mcp.models import MCPSession
 
     # Create a session (simulating MCP session creation)
     async with db_manager.get_session_async() as session:
@@ -712,9 +628,7 @@ async def test_mcp_session_stores_user_id_for_audit(
             await session.commit()
 
             # Verify it was stored
-            result = await session.execute(
-                select(MCPSession).where(MCPSession.session_id == mcp_session.session_id)
-            )
+            result = await session.execute(select(MCPSession).where(MCPSession.session_id == mcp_session.session_id))
             stored = result.scalar_one_or_none()
             assert stored is not None
             assert stored.user_id == test_user_a.id
@@ -724,12 +638,7 @@ async def test_mcp_session_stores_user_id_for_audit(
 
 
 @pytest.mark.asyncio
-async def test_security_warning_includes_metadata(
-    async_client: AsyncClient,
-    api_key_user_a,
-    test_user_b,
-    caplog
-):
+async def test_security_warning_includes_metadata(async_client: AsyncClient, api_key_user_a, test_user_b, caplog):
     """
     SECURITY: Security warnings should include forensic metadata.
 
@@ -743,18 +652,14 @@ async def test_security_warning_includes_metadata(
     Current behavior (RED): No security logging exists.
     """
     import logging
+
     caplog.set_level(logging.WARNING)
 
     # Initialize session
     await async_client.post(
         "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {"client_info": {"name": "security_test"}},
-            "id": 1
-        },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        json={"jsonrpc": "2.0", "method": "initialize", "params": {"client_info": {"name": "security_test"}}, "id": 1},
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Trigger security event
@@ -763,13 +668,10 @@ async def test_security_warning_includes_metadata(
         json={
             "jsonrpc": "2.0",
             "method": "tools/call",
-            "params": {
-                "name": "health_check",
-                "arguments": {"tenant_key": test_user_b._test_tenant_key}
-            },
-            "id": 2
+            "params": {"name": "health_check", "arguments": {"tenant_key": test_user_b._test_tenant_key}},
+            "id": 2,
         },
-        headers={"X-API-Key": api_key_user_a._raw_key}
+        headers={"X-API-Key": api_key_user_a._raw_key},
     )
 
     # Verify security log includes metadata

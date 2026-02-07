@@ -18,15 +18,17 @@ field that tracks when an agent first fetches their mission.
 Backend Integration Testing - TDD Methodology
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -34,6 +36,7 @@ pytestmark = pytest.mark.asyncio
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 async def test_project_with_jobs_acknowledged(db_session: AsyncSession, tenant_manager: TenantManager):
@@ -181,6 +184,7 @@ async def test_multi_tenant_acknowledged(db_session: AsyncSession, tenant_manage
 # TEST CASES - API Endpoint Response Structure
 # ============================================================================
 
+
 class TestJobsEndpointMissionAcknowledged:
     """Test jobs endpoint includes mission_acknowledged_at field."""
 
@@ -221,9 +225,7 @@ class TestJobsEndpointMissionAcknowledged:
 
         # CRITICAL: Every job MUST have mission_acknowledged_at field
         for row in response.rows:
-            assert hasattr(row, "mission_acknowledged_at"), (
-                f"Job {row.job_id} missing mission_acknowledged_at field"
-            )
+            assert hasattr(row, "mission_acknowledged_at"), f"Job {row.job_id} missing mission_acknowledged_at field"
 
     async def test_jobs_endpoint_returns_null_when_not_acknowledged(
         self, db_session: AsyncSession, test_project_with_jobs_acknowledged
@@ -259,10 +261,7 @@ class TestJobsEndpointMissionAcknowledged:
         )
 
         # Find the unacknowledged job
-        unacknowledged_job = next(
-            (row for row in response.rows if row.job_id == "job-unacknowledged-001"),
-            None
-        )
+        unacknowledged_job = next((row for row in response.rows if row.job_id == "job-unacknowledged-001"), None)
 
         assert unacknowledged_job is not None, "Unacknowledged job should exist"
         assert unacknowledged_job.mission_acknowledged_at is None, (
@@ -304,8 +303,7 @@ class TestJobsEndpointMissionAcknowledged:
 
         # Find acknowledged jobs
         acknowledged_jobs = [
-            row for row in response.rows
-            if row.job_id in ["job-acknowledged-002", "job-acknowledged-recent-003"]
+            row for row in response.rows if row.job_id in ["job-acknowledged-002", "job-acknowledged-recent-003"]
         ]
 
         assert len(acknowledged_jobs) == 2, "Should have 2 acknowledged jobs"
@@ -319,9 +317,7 @@ class TestJobsEndpointMissionAcknowledged:
             )
             # Verify timestamp is in the past (within last hour for test)
             now = datetime.now(timezone.utc)
-            assert job.mission_acknowledged_at <= now, (
-                f"Job {job.job_id} mission_acknowledged_at should be in the past"
-            )
+            assert job.mission_acknowledged_at <= now, f"Job {job.job_id} mission_acknowledged_at should be in the past"
             time_diff = now - job.mission_acknowledged_at
             assert time_diff.total_seconds() < 3600, (
                 f"Job {job.job_id} mission_acknowledged_at should be recent (within 1 hour)"
@@ -382,12 +378,11 @@ class TestJobsEndpointMissionAcknowledged:
 # TEST CASES - Multi-Tenant Isolation
 # ============================================================================
 
+
 class TestMissionAcknowledgedMultiTenantIsolation:
     """Test multi-tenant isolation for mission acknowledged tracking."""
 
-    async def test_jobs_endpoint_multi_tenant_isolation(
-        self, db_session: AsyncSession, test_multi_tenant_acknowledged
-    ):
+    async def test_jobs_endpoint_multi_tenant_isolation(self, db_session: AsyncSession, test_multi_tenant_acknowledged):
         """Verify each tenant only sees their own jobs' acknowledged status."""
         from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
         from src.giljo_mcp.models import User
@@ -449,16 +444,12 @@ class TestMissionAcknowledgedMultiTenantIsolation:
         # Verify Tenant A sees only their job (acknowledged)
         assert response_a.total == 1, "Tenant A should see 1 job"
         assert response_a.rows[0].job_id == tenant_a["job_id"]
-        assert response_a.rows[0].mission_acknowledged_at is not None, (
-            "Tenant A job should be acknowledged"
-        )
+        assert response_a.rows[0].mission_acknowledged_at is not None, "Tenant A job should be acknowledged"
 
         # Verify Tenant B sees only their job (unacknowledged)
         assert response_b.total == 1, "Tenant B should see 1 job"
         assert response_b.rows[0].job_id == tenant_b["job_id"]
-        assert response_b.rows[0].mission_acknowledged_at is None, (
-            "Tenant B job should be unacknowledged"
-        )
+        assert response_b.rows[0].mission_acknowledged_at is None, "Tenant B job should be unacknowledged"
 
         # CRITICAL: Verify no cross-tenant data leakage
         tenant_a_job_ids = {row.job_id for row in response_a.rows}
@@ -472,6 +463,7 @@ class TestMissionAcknowledgedMultiTenantIsolation:
 # ============================================================================
 # TEST CASES - Database Direct Manipulation (MCP Tool Behavior)
 # ============================================================================
+
 
 class TestMissionAcknowledgedDatabaseBehavior:
     """
@@ -523,9 +515,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
         await db_session.commit()
 
         # Verify update persisted
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
         job_from_db = result.scalar_one()
 
         assert job_from_db.mission_acknowledged_at is not None
@@ -571,9 +561,7 @@ class TestMissionAcknowledgedDatabaseBehavior:
         await db_session.commit()
 
         # Verify mission_acknowledged_at was NOT changed
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
         job_from_db = result.scalar_one()
 
         assert job_from_db.mission_acknowledged_at == original_acknowledged
@@ -585,12 +573,11 @@ class TestMissionAcknowledgedDatabaseBehavior:
 # TEST CASES - Database Integrity
 # ============================================================================
 
+
 class TestMissionAcknowledgedDatabaseIntegrity:
     """Test database field constraints and integrity."""
 
-    async def test_mission_acknowledged_at_nullable(
-        self, db_session: AsyncSession, tenant_manager: TenantManager
-    ):
+    async def test_mission_acknowledged_at_nullable(self, db_session: AsyncSession, tenant_manager: TenantManager):
         """mission_acknowledged_at field should be nullable in database."""
         # Create job without mission_acknowledged_at
         tenant_key = tenant_manager.generate_tenant_key("test-nullable-0297a")
@@ -624,14 +611,10 @@ class TestMissionAcknowledgedDatabaseIntegrity:
         await db_session.commit()
 
         # Verify field is None in database
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
         job_from_db = result.scalar_one()
 
-        assert job_from_db.mission_acknowledged_at is None, (
-            "mission_acknowledged_at should be nullable"
-        )
+        assert job_from_db.mission_acknowledged_at is None, "mission_acknowledged_at should be nullable"
 
     async def test_mission_acknowledged_at_timezone_aware(
         self, db_session: AsyncSession, tenant_manager: TenantManager
@@ -668,9 +651,7 @@ class TestMissionAcknowledgedDatabaseIntegrity:
         await db_session.commit()
 
         # Verify timestamp is timezone-aware
-        result = await db_session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == job.job_id)
-        )
+        result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
         job_from_db = result.scalar_one()
 
         assert job_from_db.mission_acknowledged_at.tzinfo is not None, (

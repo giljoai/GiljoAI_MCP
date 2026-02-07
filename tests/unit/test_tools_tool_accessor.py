@@ -6,8 +6,6 @@ This suite intentionally tests behavior that should remain stable:
 - Legacy download flow tools are not present anymore
 """
 
-import pytest
-
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 

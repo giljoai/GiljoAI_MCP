@@ -9,7 +9,7 @@ Handover 0084: Agent Export Copy-Command Interface
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 async def export_agents_command(
     db_manager: DatabaseManager,
     tenant_key: str,
-    product_path: Optional[str] = None,
+    product_path: str | None = None,
     personal: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Export agent templates via MCP command.
 
@@ -76,13 +76,13 @@ async def export_agents_command(
         return {"success": False, "error": str(e)}
 
     except Exception as e:
-        logger.exception(f"Export failed: {e}")
+        logger.exception("Export failed")
         return {"success": False, "error": f"Export failed: {e!s}"}
 
 
 async def get_product_for_tenant(
-    db_manager: DatabaseManager, tenant_key: str, product_id: Optional[str] = None
-) -> Optional[Product]:
+    db_manager: DatabaseManager, tenant_key: str, product_id: str | None = None
+) -> Product | None:
     """
     Get product for tenant, optionally by product ID.
 
@@ -101,19 +101,19 @@ async def get_product_for_tenant(
                 query = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             else:
                 # Get active product for tenant
-                query = select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True).limit(1)
+                query = select(Product).where(Product.tenant_key == tenant_key, Product.is_active).limit(1)
 
             result = await session.execute(query)
             return result.scalar_one_or_none()
 
-    except Exception as e:
-        logger.exception(f"Failed to get product: {e}")
+    except Exception:
+        logger.exception("Failed to get product")
         return None
 
 
 async def validate_product_path(
     db_manager: DatabaseManager, tenant_key: str, product_id: str, project_path: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate and update product's project_path.
 
@@ -155,5 +155,5 @@ async def validate_product_path(
             }
 
     except Exception as e:
-        logger.exception(f"Failed to validate product path: {e}")
+        logger.exception("Failed to validate product path")
         return {"success": False, "error": f"Path validation failed: {e!s}"}

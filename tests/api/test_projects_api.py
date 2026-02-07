@@ -22,19 +22,22 @@ Test Coverage:
 Phase 2 Progress: API Layer Testing (2/10 groups)
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 # ============================================================================
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_user(db_manager):
     """Create Tenant A user for multi-tenant isolation testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -66,6 +69,7 @@ async def tenant_a_user(db_manager):
 async def tenant_b_user(db_manager):
     """Create Tenant B user for cross-tenant access testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -97,8 +101,7 @@ async def tenant_b_user(db_manager):
 async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
     """Get JWT token for Tenant A user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
+        "/api/auth/login", json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -110,8 +113,7 @@ async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
 async def tenant_b_token(api_client: AsyncClient, tenant_b_user):
     """Get JWT token for Tenant B user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
+        "/api/auth/login", json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -127,9 +129,9 @@ async def tenant_a_product(api_client: AsyncClient, tenant_a_token: str):
         json={
             "name": "Tenant A Product",
             "description": "Test product for Tenant A",
-            "project_path": "/path/to/tenant_a/product"
+            "project_path": "/path/to/tenant_a/product",
         },
-        cookies={"access_token": tenant_a_token}
+        cookies={"access_token": tenant_a_token},
     )
     assert response.status_code == 200
     return response.json()
@@ -143,9 +145,9 @@ async def tenant_b_product(api_client: AsyncClient, tenant_b_token: str):
         json={
             "name": "Tenant B Product",
             "description": "Test product for Tenant B",
-            "project_path": "/path/to/tenant_b/product"
+            "project_path": "/path/to/tenant_b/product",
         },
-        cookies={"access_token": tenant_b_token}
+        cookies={"access_token": tenant_b_token},
     )
     assert response.status_code == 200
     return response.json()
@@ -161,9 +163,9 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_token: str, tenant_
             "description": "Test project for Tenant A",
             "mission": "Test mission",
             "product_id": tenant_a_product["id"],
-            "status": "inactive"
+            "status": "inactive",
         },
-        cookies={"access_token": tenant_a_token}
+        cookies={"access_token": tenant_a_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -179,9 +181,9 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, tenant_
             "description": "Test project for Tenant B",
             "mission": "Test mission",
             "product_id": tenant_b_product["id"],
-            "status": "inactive"
+            "status": "inactive",
         },
-        cookies={"access_token": tenant_b_token}
+        cookies={"access_token": tenant_b_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -191,13 +193,12 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_token: str, tenant_
 # CRUD ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestProjectCRUD:
     """Test CRUD operations: create, list, get, update, list_deleted, get_active"""
 
     @pytest.mark.asyncio
-    async def test_create_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
-    ):
+    async def test_create_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product):
         """Test POST /api/v1/projects/ - Create project successfully."""
         response = await api_client.post(
             "/api/v1/projects/",
@@ -207,9 +208,9 @@ class TestProjectCRUD:
                 "mission": "Complete the mission",
                 "product_id": tenant_a_product["id"],
                 "status": "inactive",
-                "context_budget": 150000
+                "context_budget": 150000,
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 201
@@ -230,18 +231,16 @@ class TestProjectCRUD:
         assert "updated_at" in data
 
     @pytest.mark.asyncio
-    async def test_create_project_minimal_data(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
-    ):
+    async def test_create_project_minimal_data(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product):
         """Test POST /api/v1/projects/ - Create with minimal required data."""
         response = await api_client.post(
             "/api/v1/projects/",
             json={
                 "name": "Minimal Project",
                 "description": "Minimal description",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 201
@@ -259,37 +258,30 @@ class TestProjectCRUD:
             json={
                 "name": "Unauthorized Project",
                 "description": "Should fail",
-                "product_id": "00000000-0000-0000-0000-000000000000"
-            }
+                "product_id": "00000000-0000-0000-0000-000000000000",
+            },
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_create_project_invalid_product(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_create_project_invalid_product(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/ - 500 for non-existent product (FK violation)."""
         response = await api_client.post(
             "/api/v1/projects/",
             json={
                 "name": "Invalid Product Project",
                 "description": "Should fail",
-                "product_id": "00000000-0000-0000-0000-000000000000"
+                "product_id": "00000000-0000-0000-0000-000000000000",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         # Foreign key violation causes 500 error (production bug - should be caught and return 400)
         assert response.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_list_projects_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_list_projects_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test GET /api/v1/projects/ - List all projects."""
-        response = await api_client.get(
-            "/api/v1/projects/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/projects/", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -307,8 +299,7 @@ class TestProjectCRUD:
     ):
         """Test GET /api/v1/projects/?status_filter=inactive - Filter by status."""
         response = await api_client.get(
-            "/api/v1/projects/?status_filter=inactive",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/?status_filter=inactive", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -320,19 +311,11 @@ class TestProjectCRUD:
 
     @pytest.mark.asyncio
     async def test_list_projects_multi_tenant_isolation(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_b_token: str,
-        tenant_a_project,
-        tenant_b_project
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str, tenant_a_project, tenant_b_project
     ):
         """Test GET /api/v1/projects/ - Verify tenant isolation."""
         # Tenant A should only see their projects
-        response_a = await api_client.get(
-            "/api/v1/projects/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response_a = await api_client.get("/api/v1/projects/", cookies={"access_token": tenant_a_token})
         assert response_a.status_code == 200
         projects_a = response_a.json()
 
@@ -341,10 +324,7 @@ class TestProjectCRUD:
         assert tenant_b_project["id"] not in project_ids_a  # Isolation verified
 
         # Tenant B should only see their projects
-        response_b = await api_client.get(
-            "/api/v1/projects/",
-            cookies={"access_token": tenant_b_token}
-        )
+        response_b = await api_client.get("/api/v1/projects/", cookies={"access_token": tenant_b_token})
         assert response_b.status_code == 200
         projects_b = response_b.json()
 
@@ -359,13 +339,10 @@ class TestProjectCRUD:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_get_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test GET /api/v1/projects/{project_id} - Get project details."""
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_a_project['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -376,40 +353,29 @@ class TestProjectCRUD:
         assert "updated_at" in data
 
     @pytest.mark.asyncio
-    async def test_get_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/projects/{project_id} - 404 for non-existent project."""
         response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_get_project_cross_tenant_forbidden(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_b_project
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_project
     ):
         """Test GET /api/v1/projects/{project_id} - 404 for cross-tenant access."""
         # Tenant A tries to access Tenant B's project
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_b_project['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}", cookies={"access_token": tenant_a_token}
         )
         # Should return 404 (not found) to prevent information leakage
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_get_project_unauthorized(self, api_client: AsyncClient):
         """Test GET /api/v1/projects/{project_id} - 401 without authentication."""
-        response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000"
-        )
+        response = await api_client.get("/api/v1/projects/00000000-0000-0000-0000-000000000000")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
@@ -462,18 +428,12 @@ class TestProjectCRUD:
         assert project["id"] in deleted_ids
 
     @pytest.mark.asyncio
-    async def test_update_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_update_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test PATCH /api/v1/projects/{project_id} - Update project successfully."""
         response = await api_client.patch(
             f"/api/v1/projects/{tenant_a_project['id']}",
-            json={
-                "name": "Updated Project Name",
-                "description": "Updated description",
-                "mission": "Updated mission"
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"name": "Updated Project Name", "description": "Updated description", "mission": "Updated mission"},
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -484,14 +444,12 @@ class TestProjectCRUD:
         assert data["mission"] == "Updated mission"
 
     @pytest.mark.asyncio
-    async def test_update_project_partial(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_update_project_partial(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test PATCH /api/v1/projects/{project_id} - Partial update."""
         response = await api_client.patch(
             f"/api/v1/projects/{tenant_a_project['id']}",
             json={"name": "Partially Updated"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -501,52 +459,39 @@ class TestProjectCRUD:
         assert data["description"] == tenant_a_project["description"]
 
     @pytest.mark.asyncio
-    async def test_update_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_update_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test PATCH /api/v1/projects/{project_id} - 404 for non-existent project."""
         response = await api_client.patch(
             "/api/v1/projects/00000000-0000-0000-0000-000000000000",
             json={"name": "Updated"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_update_project_cross_tenant_forbidden(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_b_project
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_project
     ):
         """Test PATCH /api/v1/projects/{project_id} - 404 for cross-tenant update."""
         response = await api_client.patch(
             f"/api/v1/projects/{tenant_b_project['id']}",
             json={"name": "Hacked"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_update_project_unauthorized(self, api_client: AsyncClient):
         """Test PATCH /api/v1/projects/{project_id} - 401 without authentication."""
         response = await api_client.patch(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000",
-            json={"name": "Updated"}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000", json={"name": "Updated"}
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_list_deleted_projects_empty(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_list_deleted_projects_empty(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/projects/deleted - Empty list when no deleted projects."""
-        response = await api_client.get(
-            "/api/v1/projects/deleted",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/projects/deleted", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -559,14 +504,9 @@ class TestProjectCRUD:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_active_project_none(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_active_project_none(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/projects/active - None when no active project."""
-        response = await api_client.get(
-            "/api/v1/projects/active",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/projects/active", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         # Response can be null/None for no active project
@@ -584,17 +524,15 @@ class TestProjectCRUD:
 # LIFECYCLE ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestProjectLifecycle:
     """Test lifecycle operations: activate, deactivate, cancel, restore, cancel_staging, launch"""
 
     @pytest.mark.asyncio
-    async def test_activate_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_activate_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/activate - Activate successfully."""
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/activate",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/activate", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -610,36 +548,24 @@ class TestProjectLifecycle:
         # Create two projects in same product
         response1 = await api_client.post(
             "/api/v1/projects/",
-            json={
-                "name": "Project 1",
-                "description": "First project",
-                "product_id": tenant_a_product["id"]
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"name": "Project 1", "description": "First project", "product_id": tenant_a_product["id"]},
+            cookies={"access_token": tenant_a_token},
         )
         project1 = response1.json()
 
         response2 = await api_client.post(
             "/api/v1/projects/",
-            json={
-                "name": "Project 2",
-                "description": "Second project",
-                "product_id": tenant_a_product["id"]
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"name": "Project 2", "description": "Second project", "product_id": tenant_a_product["id"]},
+            cookies={"access_token": tenant_a_token},
         )
         project2 = response2.json()
 
         # Activate first project
-        await api_client.post(
-            f"/api/v1/projects/{project1['id']}/activate",
-            cookies={"access_token": tenant_a_token}
-        )
+        await api_client.post(f"/api/v1/projects/{project1['id']}/activate", cookies={"access_token": tenant_a_token})
 
         # Activate second project (should deactivate first)
         response = await api_client.post(
-            f"/api/v1/projects/{project2['id']}/activate",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{project2['id']}/activate", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -647,47 +573,35 @@ class TestProjectLifecycle:
 
         # Verify first project is deactivated (should be inactive, not paused)
         response1_check = await api_client.get(
-            f"/api/v1/projects/{project1['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{project1['id']}", cookies={"access_token": tenant_a_token}
         )
         assert response1_check.json()["status"] == "inactive"
 
     @pytest.mark.asyncio
-    async def test_activate_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_activate_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/activate - 404 for non-existent project."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/activate",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/activate", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_activate_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_activate_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/activate - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/activate"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/activate")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_deactivate_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_deactivate_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/deactivate - Deactivate successfully."""
         # First activate the project
         await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/activate",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/activate", cookies={"access_token": tenant_a_token}
         )
 
         # Then deactivate it
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/deactivate",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/deactivate", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -696,34 +610,24 @@ class TestProjectLifecycle:
         assert data["status"] == "inactive"
 
     @pytest.mark.asyncio
-    async def test_deactivate_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_deactivate_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/deactivate - 404 for non-existent project."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/deactivate",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/deactivate", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_deactivate_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_deactivate_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/deactivate - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/deactivate"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/deactivate")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_cancel_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_cancel_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/cancel - Cancel project successfully."""
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/cancel",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/cancel", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -732,41 +636,30 @@ class TestProjectLifecycle:
         assert data["status"] == "cancelled"
 
     @pytest.mark.asyncio
-    async def test_cancel_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_cancel_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/cancel - 404 for non-existent project."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/cancel",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/cancel", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_cancel_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_cancel_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/cancel - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/cancel"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/cancel")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_restore_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_restore_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/restore - Restore cancelled project."""
         # First cancel the project
         await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/cancel",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/cancel", cookies={"access_token": tenant_a_token}
         )
 
         # Then restore it
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/restore",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/restore", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -776,24 +669,17 @@ class TestProjectLifecycle:
         assert data["status"] != "cancelled"
 
     @pytest.mark.asyncio
-    async def test_restore_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_restore_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/restore - 404 for non-existent project."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/restore",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/restore", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_restore_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_restore_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/restore - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/restore"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/restore")
         assert response.status_code == 401
 
 
@@ -801,18 +687,16 @@ class TestProjectLifecycle:
 # STATUS ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestProjectStatus:
     """Test status operations: summary, orchestrator"""
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="Production bug: UnboundLocalError for 'total_jobs' in project_service.py:1545")
-    async def test_get_project_summary_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_get_project_summary_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test GET /api/v1/projects/{project_id}/summary - Get project summary."""
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_a_project['id']}/summary",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/summary", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -824,24 +708,17 @@ class TestProjectStatus:
         assert "messages" in data
 
     @pytest.mark.asyncio
-    async def test_get_project_summary_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_project_summary_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/projects/{project_id}/summary - 404 for non-existent project."""
         response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/summary",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/summary", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_project_summary_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_get_project_summary_unauthorized(self, api_client: AsyncClient):
         """Test GET /api/v1/projects/{project_id}/summary - 401 without authentication."""
-        response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/summary"
-        )
+        response = await api_client.get("/api/v1/projects/00000000-0000-0000-0000-000000000000/summary")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
@@ -851,8 +728,7 @@ class TestProjectStatus:
     ):
         """Test GET /api/v1/projects/{project_id}/orchestrator - Get orchestrator job."""
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_a_project['id']}/orchestrator",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/orchestrator", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -865,24 +741,18 @@ class TestProjectStatus:
         assert orch["agent_display_name"] == "orchestrator"
 
     @pytest.mark.asyncio
-    async def test_get_project_orchestrator_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_project_orchestrator_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/projects/{project_id}/orchestrator - 404 for non-existent project."""
         response = await api_client.get(
             "/api/v1/projects/00000000-0000-0000-0000-000000000000/orchestrator",
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_project_orchestrator_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_get_project_orchestrator_unauthorized(self, api_client: AsyncClient):
         """Test GET /api/v1/projects/{project_id}/orchestrator - 401 without authentication."""
-        response = await api_client.get(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/orchestrator"
-        )
+        response = await api_client.get("/api/v1/projects/00000000-0000-0000-0000-000000000000/orchestrator")
         assert response.status_code == 401
 
 
@@ -890,56 +760,52 @@ class TestProjectStatus:
 # COMPLETION ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestProjectCompletion:
     """Test completion operations: complete, close_out, continue_working"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: Complete endpoint validation causes 422 for valid projects")
-    async def test_complete_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_complete_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/complete - Complete project successfully."""
+        # Complete endpoint requires a request body with summary, key_outcomes, and confirm_closeout
+        request_body = {
+            "summary": "Project completed successfully with all objectives met. The team delivered high-quality code and documentation.",
+            "key_outcomes": ["Feature implementation", "Test coverage achieved", "Documentation updated"],
+            "decisions_made": ["Used microservices architecture", "Chose PostgreSQL for data storage"],
+            "confirm_closeout": True
+        }
         response = await api_client.post(
             f"/api/v1/projects/{tenant_a_project['id']}/complete",
+            json=request_body,
             cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == tenant_a_project["id"]
-        assert data["status"] == "completed"
+        assert data["success"] is True
         assert "completed_at" in data
+        assert "memory_updated" in data
 
     @pytest.mark.asyncio
-    async def test_complete_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_complete_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/complete - 422 for invalid UUID."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/complete",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/complete", cookies={"access_token": tenant_a_token}
         )
         # Zero UUID fails Pydantic validation before reaching endpoint
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_complete_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_complete_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/complete - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/complete"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/complete")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_close_out_project_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_close_out_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/close-out - Close out project."""
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/close-out",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/close-out", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -949,41 +815,30 @@ class TestProjectCompletion:
         assert "project_status" in data
 
     @pytest.mark.asyncio
-    async def test_close_out_project_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_close_out_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/close-out - 404 for non-existent project."""
         response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/close-out",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/projects/00000000-0000-0000-0000-000000000000/close-out", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_close_out_project_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_close_out_project_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/close-out - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/close-out"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/close-out")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_continue_working_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project
-    ):
+    async def test_continue_working_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/continue-working - Resume work."""
         # First close out the project
         await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/close-out",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/close-out", cookies={"access_token": tenant_a_token}
         )
 
         # Then resume work
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/continue-working",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/continue-working", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -993,24 +848,18 @@ class TestProjectCompletion:
         assert "project_status" in data
 
     @pytest.mark.asyncio
-    async def test_continue_working_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_continue_working_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/projects/{project_id}/continue-working - 404 for non-existent project."""
         response = await api_client.post(
             "/api/v1/projects/00000000-0000-0000-0000-000000000000/continue-working",
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_continue_working_unauthorized(
-        self, api_client: AsyncClient
-    ):
+    async def test_continue_working_unauthorized(self, api_client: AsyncClient):
         """Test POST /api/v1/projects/{project_id}/continue-working - 401 without authentication."""
-        response = await api_client.post(
-            "/api/v1/projects/00000000-0000-0000-0000-000000000000/continue-working"
-        )
+        response = await api_client.post("/api/v1/projects/00000000-0000-0000-0000-000000000000/continue-working")
         assert response.status_code == 401
 
 
@@ -1018,24 +867,19 @@ class TestProjectCompletion:
 # MULTI-TENANT ISOLATION TESTS (COMPREHENSIVE)
 # ============================================================================
 
+
 class TestMultiTenantIsolation:
     """Comprehensive multi-tenant isolation verification across all endpoints"""
 
     @pytest.mark.asyncio
     async def test_cross_tenant_project_access_blocked(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_b_token: str,
-        tenant_a_project,
-        tenant_b_project
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str, tenant_a_project, tenant_b_project
     ):
         """Verify complete tenant isolation - Tenant A cannot access Tenant B's projects."""
 
         # Test GET project
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_b_project['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404  # Not found (prevents info leakage)
 
@@ -1043,46 +887,37 @@ class TestMultiTenantIsolation:
         response = await api_client.patch(
             f"/api/v1/projects/{tenant_b_project['id']}",
             json={"name": "Hacked"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
         # Test ACTIVATE project
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_b_project['id']}/activate",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}/activate", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
         # Test CANCEL project
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_b_project['id']}/cancel",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}/cancel", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
         # Test STATUS
         response = await api_client.get(
-            f"/api/v1/projects/{tenant_b_project['id']}/status",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}/status", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
         # Test COMPLETE (returns 422 due to validation)
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_b_project['id']}/complete",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_b_project['id']}/complete", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code in [404, 422]  # Either not found or validation error
 
     @pytest.mark.asyncio
     async def test_product_association_enforced(
-        self,
-        api_client: AsyncClient,
-        tenant_a_token: str,
-        tenant_b_token: str,
-        tenant_a_product,
-        tenant_b_product
+        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str, tenant_a_product, tenant_b_product
     ):
         """Verify projects can be created (cross-tenant product association currently allowed)."""
         # Tenant A can create project with Tenant B's product (no tenant filtering on product lookup)
@@ -1091,9 +926,9 @@ class TestMultiTenantIsolation:
             json={
                 "name": "Cross-tenant Project",
                 "description": "Currently allowed",
-                "product_id": tenant_b_product["id"]
+                "product_id": tenant_b_product["id"],
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         # Currently succeeds - product validation does not enforce tenant isolation (potential production issue)
         assert response.status_code == 201

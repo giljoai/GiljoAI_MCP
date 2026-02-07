@@ -25,11 +25,11 @@ Production-grade implementation following industry best practices.
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
-from ..config_manager import ConfigManager
+from src.giljo_mcp.config_manager import ConfigManager
 
 
 logger = logging.getLogger(__name__)
@@ -53,8 +53,8 @@ class ExternalAgentCoordinationTools:
 
     def __init__(
         self,
-        session: Optional[aiohttp.ClientSession] = None,
-        config: Optional[ConfigManager] = None,
+        session: aiohttp.ClientSession | None = None,
+        config: ConfigManager | None = None,
         max_retries: int = 3,
         timeout: int = 30,
     ):
@@ -132,11 +132,11 @@ class ExternalAgentCoordinationTools:
                     logger.error(f"[_authenticate] Authentication failed: status={resp.status}, error={error_text}")
                     return False
 
-            except aiohttp.ClientConnectorError as e:
-                logger.error(f"[_authenticate] Connection error: {e}")
+            except aiohttp.ClientConnectorError:
+                logger.exception("[_authenticate] Connection error")
                 return False
             except asyncio.TimeoutError:
-                logger.error("[_authenticate] Authentication timeout")
+                logger.exception("[_authenticate] Authentication timeout")
                 return False
             except Exception as e:
                 logger.error(f"[_authenticate] Unexpected error during authentication: {e}", exc_info=True)
@@ -146,10 +146,10 @@ class ExternalAgentCoordinationTools:
         self,
         method: str,
         endpoint: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        json_data: dict[str, Any | None] = None,
+        params: dict[str, Any | None] = None,
         retry_count: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Make HTTP request with authentication and retry logic.
 
@@ -195,7 +195,7 @@ class ExternalAgentCoordinationTools:
             # Make request
             async with session.request(method=method, url=url, json=json_data, params=params) as resp:
                 # Handle different status codes
-                if resp.status == 200 or resp.status == 201:
+                if resp.status in {200, 201}:
                     return await resp.json()
 
                 if resp.status == 401:
@@ -253,7 +253,7 @@ class ExternalAgentCoordinationTools:
                 return {"status": "error", "error": f"HTTP {resp.status}: {error_detail}"}
 
         except aiohttp.ClientConnectorError as e:
-            logger.error(f"[_make_request] Connection error: {e}")
+            logger.exception("[_make_request] Connection error")
 
             # Retry transient connection errors
             if retry_count < self.max_retries:
@@ -269,7 +269,7 @@ class ExternalAgentCoordinationTools:
             return {"status": "error", "error": f"API server unavailable after {self.max_retries} retries: {e!s}"}
 
         except asyncio.TimeoutError:
-            logger.error(f"[_make_request] Request timeout after {self.timeout.total}s")
+            logger.exception(f"[_make_request] Request timeout after {self.timeout.total}s")
             return {"status": "error", "error": f"Request timeout after {self.timeout.total} seconds"}
 
         except Exception as e:
@@ -282,9 +282,9 @@ class ExternalAgentCoordinationTools:
         self,
         agent_display_name: str,
         mission: str,
-        context_chunks: Optional[List[str]] = None,
-        spawned_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        context_chunks: list[str | None] = None,
+        spawned_by: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new agent job via POST /api/agent-jobs.
 
@@ -324,7 +324,9 @@ class ExternalAgentCoordinationTools:
             "spawned_by": spawned_by,
         }
 
-        logger.info(f"[create_agent_job] Creating job for agent_display_name={agent_display_name}, mission_length={len(mission)}")
+        logger.info(
+            f"[create_agent_job] Creating job for agent_display_name={agent_display_name}, mission_length={len(mission)}"
+        )
 
         response = await self._make_request(method="POST", endpoint="/api/agent-jobs", json_data=payload)
 
@@ -337,8 +339,8 @@ class ExternalAgentCoordinationTools:
         return response
 
     async def send_agent_message(
-        self, job_id: str, role: str, message_type: str, content: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, job_id: str, role: str, message_type: str, content: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Send message to agent job via POST /api/agent-jobs/{job_id}/messages.
 
@@ -389,7 +391,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def get_agent_job_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_agent_job_status(self, job_id: str) -> dict[str, Any]:
         """
         Get agent job status via GET /api/agent-jobs/{job_id}.
 
@@ -429,7 +431,7 @@ class ExternalAgentCoordinationTools:
             return {"status": "success", "job": response}
         return response
 
-    async def acknowledge_agent_job(self, job_id: str) -> Dict[str, Any]:
+    async def acknowledge_agent_job(self, job_id: str) -> dict[str, Any]:
         """
         Acknowledge agent job via POST /api/agent-jobs/{job_id}/acknowledge.
 
@@ -472,7 +474,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def complete_agent_job(self, job_id: str, result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def complete_agent_job(self, job_id: str, result: dict[str, Any | None] = None) -> dict[str, Any]:
         """
         Complete agent job via POST /api/agent-jobs/{job_id}/complete.
 
@@ -519,7 +521,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def fail_agent_job(self, job_id: str, error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def fail_agent_job(self, job_id: str, error: dict[str, Any | None] = None) -> dict[str, Any]:
         """
         Fail agent job via POST /api/agent-jobs/{job_id}/fail.
 
@@ -562,8 +564,8 @@ class ExternalAgentCoordinationTools:
         return response
 
     async def list_active_agent_jobs(
-        self, status: Optional[str] = None, agent_display_name: Optional[str] = None, limit: int = 100
-    ) -> Dict[str, Any]:
+        self, status: str | None = None, agent_display_name: str | None = None, limit: int = 100
+    ) -> dict[str, Any]:
         """
         List active agent jobs via GET /api/agent-jobs.
 

@@ -174,7 +174,6 @@ export const useProductStore = defineStore('products', () => {
       const response = (await api.products?.create(productData)) || { data: null }
       if (response.data) {
         products.value.push(response.data)
-        await setCurrentProduct(response.data.id)
       }
       return response.data
     } catch (err) {

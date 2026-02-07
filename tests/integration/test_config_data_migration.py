@@ -12,7 +12,6 @@ SAFETY: Uses test database fixtures from conftest.py, NEVER production.
 """
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import inspect, text
 
 from src.giljo_mcp.models import Product
@@ -22,6 +21,7 @@ from tests.helpers.test_db_helper import PostgreSQLTestHelper
 # CRITICAL: These fixtures use the TEST database, not production
 # They override the base conftest fixtures to use synchronous connections
 # for these specific migration tests.
+
 
 @pytest.fixture
 def db_engine():
@@ -154,6 +154,7 @@ class TestDataIntegrity:
         # SAFETY: Use test database helper, never get_db_manager() which could hit production
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         test_url = PostgreSQLTestHelper.get_test_db_url(async_driver=False)
         test_engine = create_engine(test_url)
         TestSession = sessionmaker(bind=test_engine)

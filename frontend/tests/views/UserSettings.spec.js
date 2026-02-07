@@ -68,7 +68,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
 
   beforeEach(() => {
     setActivePinia(createPinia())
-    
+
     // Mock API responses
     api.users.getFieldPriorityConfig.mockResolvedValue({
       data: {
@@ -163,7 +163,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
 
       vi.spyOn(wrapper.vm, 'resetGeneralSettings')
       wrapper.vm.resetGeneralSettings()
-      
+
       expect(wrapper.vm.resetGeneralSettings).toHaveBeenCalled()
     })
   })
@@ -315,7 +315,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       await new Promise(resolve => setTimeout(resolve, 100))
 
       const fieldToMove = wrapper.vm.priority1Fields[0]
-      const totalFieldsBefore = wrapper.vm.priority1Fields.length + 
+      const totalFieldsBefore = wrapper.vm.priority1Fields.length +
                                wrapper.vm.priority2Fields.length +
                                wrapper.vm.priority3Fields.length +
                                wrapper.vm.unassignedFields.length
@@ -340,7 +340,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       const idx4 = wrapper.vm.unassignedFields.indexOf(fieldToMove)
       if (idx4 > -1) wrapper.vm.unassignedFields.splice(idx4, 1)
 
-      const totalFieldsAfter = wrapper.vm.priority1Fields.length + 
+      const totalFieldsAfter = wrapper.vm.priority1Fields.length +
                               wrapper.vm.priority2Fields.length +
                               wrapper.vm.priority3Fields.length +
                               wrapper.vm.unassignedFields.length

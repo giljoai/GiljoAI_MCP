@@ -6,13 +6,12 @@ Tests create, list, and get endpoints using TemplateService.
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
 
 from api.endpoints.templates import crud
-from api.endpoints.templates.models import TemplateCreate, TemplateResponse
+from api.endpoints.templates.models import TemplateResponse
 from src.giljo_mcp.models import AgentTemplate
 
 
@@ -34,7 +33,6 @@ class TestGetTemplate:
             role="developer",
             cli_tool="claude",
             description="Test template",
-            template_content="Test content",
             system_instructions="Test content",
             model="sonnet",
             is_active=True,
@@ -50,26 +48,18 @@ class TestGetTemplate:
         )
 
         mock_service = AsyncMock()
-        mock_service.get_template.return_value = {
-            "success": True,
-            "template": mock_template
-        }
+        mock_service.get_template.return_value = {"success": True, "template": mock_template}
 
         # Call endpoint
         response = await crud.get_template(
-            template_id="tmpl-123",
-            current_user=mock_user,
-            template_service=mock_service
+            template_id="tmpl-123", current_user=mock_user, template_service=mock_service
         )
 
         # Assertions
         assert isinstance(response, TemplateResponse)
         assert response.id == "tmpl-123"
         assert response.name == "test-agent"
-        mock_service.get_template.assert_called_once_with(
-            template_id="tmpl-123",
-            tenant_key="test_tenant"
-        )
+        mock_service.get_template.assert_called_once_with(template_id="tmpl-123", tenant_key="test_tenant")
 
     @pytest.mark.asyncio
     async def test_get_template_not_found(self):
@@ -78,17 +68,10 @@ class TestGetTemplate:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.get_template.return_value = {
-            "success": False,
-            "error": "Template not found"
-        }
+        mock_service.get_template.return_value = {"success": False, "error": "Template not found"}
 
         with pytest.raises(HTTPException) as exc_info:
-            await crud.get_template(
-                template_id="tmpl-123",
-                current_user=mock_user,
-                template_service=mock_service
-            )
+            await crud.get_template(template_id="tmpl-123", current_user=mock_user, template_service=mock_service)
 
         assert exc_info.value.status_code == 404
 
@@ -110,7 +93,6 @@ class TestListTemplates:
             role="developer",
             cli_tool="claude",
             description="Test template",
-            template_content="Test content",
             system_instructions="Test content",
             model="sonnet",
             is_active=True,
@@ -126,16 +108,10 @@ class TestListTemplates:
         )
 
         mock_service = AsyncMock()
-        mock_service.list_templates.return_value = {
-            "success": True,
-            "templates": [mock_template]
-        }
+        mock_service.list_templates.return_value = {"success": True, "templates": [mock_template]}
 
         response = await crud.list_templates(
-            current_user=mock_user,
-            template_service=mock_service,
-            role=None,
-            is_active=None
+            current_user=mock_user, template_service=mock_service, role=None, is_active=None
         )
 
         assert len(response) == 1
