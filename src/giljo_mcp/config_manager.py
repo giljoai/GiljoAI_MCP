@@ -49,12 +49,12 @@ class ServerConfig:
     debug: bool = False
 
     # MCP Server - always bind all interfaces
-    mcp_host: str = "0.0.0.0"
+    mcp_host: str = "0.0.0.0"  # noqa: S104 - Intentional for local network, firewall-controlled
     mcp_port: int = 6001
     mcp_transport: str = "http"
 
     # REST API - always bind all interfaces
-    api_host: str = "0.0.0.0"
+    api_host: str = "0.0.0.0"  # noqa: S104 - Intentional for local network, firewall-controlled
     api_port: int = 7272  # Production default (PortManager managed)
     api_cors_enabled: bool = True
     api_key: Optional[str] = None  # Generated on first run
@@ -65,7 +65,7 @@ class ServerConfig:
 
     # Dashboard - always bind all interfaces
     dashboard_enabled: bool = True
-    dashboard_host: str = "0.0.0.0"
+    dashboard_host: str = "0.0.0.0"  # noqa: S104 - Intentional for local network, firewall-controlled
     dashboard_port: int = 7274
     dashboard_dev_port: int = 5173
 
@@ -370,15 +370,15 @@ class ConfigManager:
         # Update network binding
         if "api" not in data["server"]:
             data["server"]["api"] = {}
-        data["server"]["api"]["host"] = "0.0.0.0"
+        data["server"]["api"]["host"] = "0.0.0.0"  # noqa: S104 - Migration to v3.0 network config
 
         if "dashboard" not in data["server"]:
             data["server"]["dashboard"] = {}
-        data["server"]["dashboard"]["host"] = "0.0.0.0"
+        data["server"]["dashboard"]["host"] = "0.0.0.0"  # noqa: S104 - Migration to v3.0 network config
 
         if "mcp" not in data["server"]:
             data["server"]["mcp"] = {}
-        data["server"]["mcp"]["host"] = "0.0.0.0"
+        data["server"]["mcp"]["host"] = "0.0.0.0"  # noqa: S104 - Migration to v3.0 network config
 
         logger.info(f"Config migrated from {old_mode} mode to v3.0")
 
@@ -887,12 +887,12 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
         "version": "3.0.0",
         "server": {
             "debug": False,
-            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "http"},
-            "api": {"host": "0.0.0.0", "port": 6002, "cors_enabled": True},
+            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "http"},  # noqa: S104 - Sample config
+            "api": {"host": "0.0.0.0", "port": 6002, "cors_enabled": True},  # noqa: S104 - Sample config
             "websocket": {"enabled": True, "port": 6003},
             "dashboard": {
                 "enabled": True,
-                "host": "0.0.0.0",
+                "host": "0.0.0.0",  # noqa: S104 - Sample config
                 "port": 7274,
                 "dev_server_port": 5173,
             },

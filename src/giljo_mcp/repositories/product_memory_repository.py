@@ -5,7 +5,7 @@ CRUD operations for 360 memory entries with tenant isolation.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -215,8 +215,8 @@ class ProductMemoryRepository:
             )
             .values(
                 deleted_by_user=True,
-                user_deleted_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                user_deleted_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
         )
         result = await session.execute(stmt)
@@ -257,7 +257,7 @@ class ProductMemoryRepository:
             if hasattr(entry, key):
                 setattr(entry, key, value)
 
-        entry.updated_at = datetime.utcnow()
+        entry.updated_at = datetime.now(timezone.utc)
         await session.flush()
         await session.refresh(entry)
         return entry
