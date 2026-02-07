@@ -26,7 +26,6 @@ try:
     from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
     from sqlalchemy import select, text
 
     logger.info("FastAPI and core dependencies loaded successfully")
@@ -54,7 +53,6 @@ logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
     from src.giljo_mcp.auth import AuthManager
-    from src.giljo_mcp.config_manager import get_config
     from src.giljo_mcp.database import DatabaseManager
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.system_prompts import SystemPromptService
@@ -336,6 +334,7 @@ def create_app() -> FastAPI:
             if current_ip:
                 # Add adapter IP to CORS origins (whether changed or not)
                 frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+                api_port = config.get("services", {}).get("api", {}).get("port", 7272)
                 adapter_origins = [
                     f"http://{current_ip}:{frontend_port}",
                     f"http://{current_ip}:{api_port}",  # API port for direct access
