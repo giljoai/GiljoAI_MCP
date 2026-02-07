@@ -78,8 +78,8 @@ class SerenaDetector:
             Tuple of (is_available, error_message)
         """
         try:
-            result = subprocess.run(  # noqa: S603 - uvx is standard Python tool installer
-                ["uvx", "--version"],  # noqa: S607 - uvx is standard Python tool installer
+            result = subprocess.run(
+                ["uvx", "--version"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -109,8 +109,8 @@ class SerenaDetector:
             Tuple of (is_installed, version, error_message)
         """
         try:
-            result = subprocess.run(  # noqa: S603 - uvx is standard Python tool installer
-                ["uvx", "serena", "--version"],  # noqa: S607 - uvx is standard Python tool installer
+            result = subprocess.run(
+                ["uvx", "serena", "--version"],
                 check=False,
                 capture_output=True,
                 text=True,

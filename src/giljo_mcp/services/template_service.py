@@ -490,7 +490,7 @@ class TemplateService:
             select(AgentTemplate.role)
             .where(
                 AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,  # noqa: E712
+                AgentTemplate.is_active == True,
                 AgentTemplate.id != template_id,
             )
             .where(AgentTemplate.role.notin_(system_roles))
@@ -977,7 +977,7 @@ class TemplateService:
         stmt = (
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
-            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.is_active == True)
             .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
             .order_by(AgentTemplate.role, AgentTemplate.name)
         )
@@ -1012,7 +1012,7 @@ class TemplateService:
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
             .where(AgentTemplate.role == role)
-            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.is_active == True)
         )
 
         result = await session.execute(stmt)

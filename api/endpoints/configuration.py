@@ -107,12 +107,12 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
         value = state.config.get(key, default)
 
         if value is None and default is None:
-            raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")  # noqa: TRY301
+            raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")
 
         # Determine source
         source = "default"
-        if hasattr(state.config, "_sources") and key in state.config._sources:  # noqa: SLF001
-            source = state.config._sources[key]  # noqa: SLF001
+        if hasattr(state.config, "_sources") and key in state.config._sources:
+            source = state.config._sources[key]
 
         return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
@@ -134,7 +134,7 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
 
         # Validate key format
         if not key or ".." in key:
-            raise HTTPException(status_code=400, detail="Invalid configuration key")  # noqa: TRY301
+            raise HTTPException(status_code=400, detail="Invalid configuration key")
 
         # Set configuration value
         state.config.set(key, config.value)
@@ -166,7 +166,7 @@ async def update_configurations(update: ConfigurationUpdate):
             try:
                 state.config.set(key, value)
                 updated.append(key)
-            except Exception as e:  # noqa: BLE001, PERF203
+            except Exception as e:
                 failed.append({"key": key, "error": str(e)})
 
         return {
@@ -192,7 +192,7 @@ async def reload_configuration():
         # Reload configuration
         state.config.reload()
 
-        return {"success": True, "message": "Configuration reloaded successfully"}  # noqa: TRY300
+        return {"success": True, "message": "Configuration reloaded successfully"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -250,7 +250,7 @@ async def get_tenant_configuration(tenant_key: str):
 @router.put("/tenant/{tenant_key}")
 async def set_tenant_configuration(
     tenant_key: str,
-    configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),  # noqa: B008
+    configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),
 ):
     """Set tenant-specific configuration"""
     from api.app import state
