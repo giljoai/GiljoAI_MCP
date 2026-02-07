@@ -5,6 +5,7 @@ Provides FastAPI dependencies for service layer access.
 """
 
 import logging
+
 from fastapi import Depends
 
 from api.dependencies import get_tenant_key

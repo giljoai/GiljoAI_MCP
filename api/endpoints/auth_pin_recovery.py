@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from passlib.hash import bcrypt
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,9 +26,9 @@ from api.endpoints.auth_models import (
     PinPasswordResetRequest,
     PinPasswordResetResponse,
 )
+from api.middleware.auth_rate_limiter import get_rate_limiter
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
-from api.middleware.auth_rate_limiter import get_rate_limiter
 
 
 logger = logging.getLogger(__name__)
@@ -40,9 +40,7 @@ router = APIRouter()
 
 @router.post("/verify-pin-and-reset-password", response_model=PinPasswordResetResponse, tags=["auth"])
 async def verify_pin_and_reset_password(
-    http_request: Request,
-    request_data: PinPasswordResetRequest = Body(...),
-    db: AsyncSession = Depends(get_db_session)
+    http_request: Request, request_data: PinPasswordResetRequest = Body(...), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Verify recovery PIN and reset password (Handover 0023).

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from src.giljo_mcp.auth.dependencies import require_admin
 from src.giljo_mcp.models import User
 
+
 router = APIRouter()
 
 
@@ -90,4 +91,3 @@ async def reset_orchestrator_prompt(current_user: User = Depends(require_admin))
         updated_at=prompt.updated_at,
         updated_by=prompt.updated_by,
     )
-

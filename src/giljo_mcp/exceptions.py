@@ -28,7 +28,7 @@ class BaseGiljoException(Exception):
             context: Optional dictionary with additional error context
         """
         from datetime import datetime, timezone
-        
+
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__.upper()
@@ -52,13 +52,14 @@ class BaseGiljoException(Exception):
             "message": self.message,
             "context": self.context,
             "timestamp": self.timestamp.isoformat(),
-            "status_code": self.default_status_code
+            "status_code": self.default_status_code,
         }
 
 
 # Configuration related exceptions
 class ConfigurationError(BaseGiljoException):
     """Raised when there are configuration issues."""
+
     default_status_code: int = 500
 
 
@@ -73,12 +74,14 @@ class TemplateError(BaseGiljoException):
 
 class TemplateNotFoundError(TemplateError):
     """Raised when a requested template cannot be found."""
+
     default_status_code: int = 404
 
 
 # Orchestration related exceptions
 class OrchestrationError(BaseGiljoException):
     """Base class for orchestration-related errors."""
+
     default_status_code: int = 500
 
 
@@ -101,6 +104,7 @@ class HandoffError(OrchestrationError):
 # Database related exceptions
 class DatabaseError(BaseGiljoException):
     """Base class for database-related errors."""
+
     default_status_code: int = 500
 
 
@@ -119,6 +123,7 @@ class DatabaseIntegrityError(DatabaseError):
 # Validation related exceptions
 class ValidationError(BaseGiljoException):
     """Base class for validation errors."""
+
     default_status_code: int = 400
 
 
@@ -150,16 +155,19 @@ class APIError(BaseGiljoException):
 
 class AuthenticationError(APIError):
     """Raised when API authentication fails."""
+
     default_status_code: int = 401
 
 
 class AuthorizationError(APIError):
     """Raised when API authorization fails."""
+
     default_status_code: int = 403
 
 
 class RateLimitError(APIError):
     """Raised when API rate limits are exceeded."""
+
     default_status_code: int = 429
 
 
@@ -170,6 +178,7 @@ class ResourceError(BaseGiljoException):
 
 class ResourceNotFoundError(ResourceError):
     """Raised when a requested resource cannot be found."""
+
     default_status_code: int = 404
 
 

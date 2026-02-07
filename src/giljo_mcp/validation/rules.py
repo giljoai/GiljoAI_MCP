@@ -10,15 +10,16 @@ Each rule implements a specific validation check:
 Rules are executed in order by TemplateValidator.
 """
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
-import re
 
 
 @dataclass
 class ValidationError:
     """Represents a validation error or warning."""
+
     rule_id: str
     severity: str  # "critical", "warning", "info"
     message: str
@@ -30,12 +31,13 @@ class ValidationError:
             "rule_id": self.rule_id,
             "severity": self.severity,
             "message": self.message,
-            "remediation": self.remediation
+            "remediation": self.remediation,
         }
 
 
 class ValidationRule(ABC):
     """Base class for all validation rules."""
+
     rule_id: str
     name: str
     severity: str
@@ -52,7 +54,6 @@ class ValidationRule(ABC):
         Returns:
             ValidationError if rule fails, None if passes
         """
-        pass
 
 
 class MCPToolsPresenceRule(ValidationRule):
@@ -71,13 +72,7 @@ class MCPToolsPresenceRule(ValidationRule):
     name = "MCP Tools Presence Check"
     severity = "critical"
 
-    REQUIRED_TOOLS = [
-        "acknowledge_job",
-        "report_progress",
-        "complete_job",
-        "send_message",
-        "receive_messages"
-    ]
+    REQUIRED_TOOLS = ["acknowledge_job", "report_progress", "complete_job", "send_message", "receive_messages"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
@@ -92,7 +87,7 @@ class MCPToolsPresenceRule(ValidationRule):
                 rule_id=self.rule_id,
                 severity=self.severity,
                 message=f"Missing required MCP tools: {', '.join(missing_tools)}",
-                remediation="Restore missing tools from system_instructions or reset template to defaults"
+                remediation="Restore missing tools from system_instructions or reset template to defaults",
             )
 
         return None
@@ -116,11 +111,7 @@ class PlaceholderVerificationRule(ValidationRule):
     name = "Placeholder Verification"
     severity = "critical"
 
-    REQUIRED_PLACEHOLDERS = [
-        "agent_id",
-        "tenant_key",
-        "job_id"
-    ]
+    REQUIRED_PLACEHOLDERS = ["agent_id", "tenant_key", "job_id"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check required placeholders are present and well-formed."""
@@ -137,7 +128,7 @@ class PlaceholderVerificationRule(ValidationRule):
                 rule_id=self.rule_id,
                 severity=self.severity,
                 message=f"Missing required placeholders: {', '.join(missing_placeholders)}",
-                remediation="Add required placeholders to template for runtime substitution"
+                remediation="Add required placeholders to template for runtime substitution",
             )
 
         # Check for malformed placeholders (optional warning)
@@ -177,7 +168,7 @@ class InjectionDetectionRule(ValidationRule):
         r"'\s*OR\s+'\d'\s*=\s*'\d",
         r"'\s*UNION\s+SELECT",
         r"--\s*$",
-        r"admin'--"
+        r"admin'--",
     ]
 
     # Command injection patterns
@@ -186,16 +177,11 @@ class InjectionDetectionRule(ValidationRule):
         r"\|\s*cat\s+/etc/passwd",
         r";\s*whoami",
         r"`[^`]+`(?!``)",  # Backticks not in code blocks
-        r"\$\([^)]+\)"
+        r"\$\([^)]+\)",
     ]
 
     # Script injection patterns
-    SCRIPT_INJECTION_PATTERNS = [
-        r"<script[^>]*>",
-        r"onerror\s*=",
-        r"javascript:",
-        r"<iframe[^>]*>"
-    ]
+    SCRIPT_INJECTION_PATTERNS = [r"<script[^>]*>", r"onerror\s*=", r"javascript:", r"<iframe[^>]*>"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Detect injection patterns in template content."""
@@ -224,7 +210,7 @@ class InjectionDetectionRule(ValidationRule):
                 rule_id=self.rule_id,
                 severity=self.severity,
                 message=f"Potential injection attack detected: {detected_patterns[0]}",
-                remediation="Remove malicious content or reset template to system defaults"
+                remediation="Remove malicious content or reset template to system defaults",
             )
 
         return None
@@ -260,27 +246,19 @@ class ToolUsageBestPracticesRule(ValidationRule):
     name = "Tool Usage Best Practices"
     severity = "warning"
 
-    BEST_PRACTICE_KEYWORDS = [
-        "error",
-        "report_error",
-        "handle errors",
-        "gracefully"
-    ]
+    BEST_PRACTICE_KEYWORDS = ["error", "report_error", "handle errors", "gracefully"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check for best practice mentions."""
         # Check if error handling is mentioned
-        error_handling_mentioned = any(
-            keyword in content.lower()
-            for keyword in self.BEST_PRACTICE_KEYWORDS
-        )
+        error_handling_mentioned = any(keyword in content.lower() for keyword in self.BEST_PRACTICE_KEYWORDS)
 
         if not error_handling_mentioned:
             return ValidationError(
                 rule_id=self.rule_id,
                 severity=self.severity,
                 message="Template does not mention error handling best practices",
-                remediation="Consider adding guidance on using report_error() and handling failures gracefully"
+                remediation="Consider adding guidance on using report_error() and handling failures gracefully",
             )
 
         return None

@@ -18,6 +18,7 @@ from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_PRIORITY_CATEGORIES = {
@@ -150,10 +151,7 @@ async def get_user_priority(
     Returns default priority if user not provided, not found, or config invalid.
     """
     if category not in ALLOWED_PRIORITY_CATEGORIES:
-        raise ValueError(
-            f"Invalid category '{category}'. "
-            f"Valid categories: {sorted(ALLOWED_PRIORITY_CATEGORIES)}"
-        )
+        raise ValueError(f"Invalid category '{category}'. Valid categories: {sorted(ALLOWED_PRIORITY_CATEGORIES)}")
 
     # Handle nested format: {"category": {"toggle": True, "priority": X}}
     category_config = DEFAULT_FIELD_PRIORITY["priorities"].get(category, {})
@@ -168,9 +166,7 @@ async def get_user_priority(
 
     try:
         async with db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(User).where(User.id == user_id, User.tenant_key == tenant_key)
-            )
+            result = await session.execute(select(User).where(User.id == user_id, User.tenant_key == tenant_key))
             user = result.scalar_one_or_none()
 
             if not user or not user.field_priority_config:
@@ -222,11 +218,7 @@ def inject_priority_framing(
 
     # CRITICAL items get primacy + recency via duplication
     if priority == 1:
-        framed_content = (
-            framed_content
-            + "\n\n"
-            + f"## {label} Recap: {field_label}\n\n{text}\n\n---"
-        )
+        framed_content = framed_content + "\n\n" + f"## {label} Recap: {field_label}\n\n{text}\n\n---"
 
     logger.info(
         "Applied priority framing",
@@ -279,12 +271,16 @@ async def build_framed_context_response(
     metadata.setdefault("tenant_key", tenant_key)
 
     try:
-        content_payload = content_formatter(raw_result) if content_formatter else {
-            "source": raw_result.get("source"),
-            "depth": raw_result.get("depth"),
-            "data": raw_result.get("data"),
-            "metadata": raw_result.get("metadata"),
-        }
+        content_payload = (
+            content_formatter(raw_result)
+            if content_formatter
+            else {
+                "source": raw_result.get("source"),
+                "depth": raw_result.get("depth"),
+                "data": raw_result.get("data"),
+                "metadata": raw_result.get("metadata"),
+            }
+        )
         framed_content = inject_priority_framing(content_payload, priority, category, user_id)
         metadata["framing_applied"] = bool(framed_content)
         response = dict(raw_result)

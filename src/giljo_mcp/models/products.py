@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy import (
     ARRAY,
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -17,7 +18,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -64,18 +64,14 @@ class Product(Base):
     )
 
     # Handover 0316: Quality standards for testing expectations
-    quality_standards = Column(
-        Text,
-        nullable=True,
-        comment="Quality standards and testing expectations"
-    )
+    quality_standards = Column(Text, nullable=True, comment="Quality standards and testing expectations")
 
     # Handover 0425: Target platforms for product deployment
     target_platforms = Column(
         ARRAY(String),
         nullable=False,
         server_default=text("'{all}'::text[]"),
-        comment="Target platforms: windows, linux, macos, or all"
+        comment="Target platforms: windows, linux, macos, or all",
     )
 
     # ✅ Handover 0128e Complete: Deprecated vision fields removed
@@ -118,41 +114,29 @@ class Product(Base):
     product_memory = Column(
         JSONB,
         nullable=False,
-        server_default=text("'{\"github\": {}, \"context\": {}}'::jsonb"),
+        server_default=text('\'{"github": {}, "context": {}}\'::jsonb'),
         comment="Product memory config storage. Contains git_integration settings only.",
     )
 
     # Consolidated vision summaries (Handover 0377)
     # These store pre-computed summaries aggregated from ALL active vision documents
     consolidated_vision_light = Column(
-        Text,
-        nullable=True,
-        comment="33% summary of all active vision documents (consolidated)"
+        Text, nullable=True, comment="33% summary of all active vision documents (consolidated)"
     )
     consolidated_vision_light_tokens = Column(
-        Integer,
-        nullable=True,
-        comment="Token count of consolidated light summary"
+        Integer, nullable=True, comment="Token count of consolidated light summary"
     )
     consolidated_vision_medium = Column(
-        Text,
-        nullable=True,
-        comment="66% summary of all active vision documents (consolidated)"
+        Text, nullable=True, comment="66% summary of all active vision documents (consolidated)"
     )
     consolidated_vision_medium_tokens = Column(
-        Integer,
-        nullable=True,
-        comment="Token count of consolidated medium summary"
+        Integer, nullable=True, comment="Token count of consolidated medium summary"
     )
     consolidated_vision_hash = Column(
-        String(64),
-        nullable=True,
-        comment="SHA-256 hash of aggregated vision documents (for change detection)"
+        String(64), nullable=True, comment="SHA-256 hash of aggregated vision documents (for change detection)"
     )
     consolidated_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp when consolidated summaries were last generated"
+        DateTime(timezone=True), nullable=True, comment="Timestamp when consolidated summaries were last generated"
     )
 
     # Relationships
@@ -176,7 +160,9 @@ class Product(Base):
         Index("idx_products_org", "org_id"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
-        Index("idx_product_memory_gin", "product_memory", postgresql_using="gin"),  # Handover 0135: GIN index for product_memory
+        Index(
+            "idx_product_memory_gin", "product_memory", postgresql_using="gin"
+        ),  # Handover 0135: GIN index for product_memory
         Index(
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
@@ -185,11 +171,11 @@ class Product(Base):
         # Handover 0425: Validate target_platforms field
         CheckConstraint(
             "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'all']::VARCHAR[]",
-            name="ck_product_target_platforms_valid"
+            name="ck_product_target_platforms_valid",
         ),
         CheckConstraint(
             "NOT ('all' = ANY(target_platforms) AND array_length(target_platforms, 1) > 1)",
-            name="ck_product_target_platforms_all_exclusive"
+            name="ck_product_target_platforms_all_exclusive",
         ),
         # Handover 0050: Enforce single active product per tenant (defense in depth)
         Index(
@@ -434,24 +420,14 @@ class VisionDocument(Base):
     is_summarized = Column(
         Boolean, default=False, nullable=False, comment="Has document been summarized using LSA algorithm"
     )
-    original_token_count = Column(
-        Integer, nullable=True, comment="Original document token count before summarization"
-    )
+    original_token_count = Column(Integer, nullable=True, comment="Original document token count before summarization")
 
     # Multi-level summaries (Handover 0345e, simplified in 0246b, cleaned in 0374)
     # Handover 0374: 3-tier system (light=33%, medium=66%, full=original)
-    summary_light = Column(
-        Text, nullable=True, comment="Light summary (~33% of original, ~13K tokens for 40K doc)"
-    )
-    summary_medium = Column(
-        Text, nullable=True, comment="Medium summary (~66% of original, ~26K tokens for 40K doc)"
-    )
-    summary_light_tokens = Column(
-        Integer, nullable=True, comment="Actual token count in light summary"
-    )
-    summary_medium_tokens = Column(
-        Integer, nullable=True, comment="Actual token count in medium summary"
-    )
+    summary_light = Column(Text, nullable=True, comment="Light summary (~33% of original, ~13K tokens for 40K doc)")
+    summary_medium = Column(Text, nullable=True, comment="Medium summary (~66% of original, ~26K tokens for 40K doc)")
+    summary_light_tokens = Column(Integer, nullable=True, comment="Actual token count in light summary")
+    summary_medium_tokens = Column(Integer, nullable=True, comment="Actual token count in medium summary")
 
     # Versioning and integrity
     version = Column(String(50), default="1.0.0", nullable=False, comment="Document version using semantic versioning")

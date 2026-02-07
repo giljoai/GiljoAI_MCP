@@ -22,7 +22,6 @@ import logging
 import time
 from typing import List
 
-from .services.agent_job_manager import AgentJobManager
 from .job_coordinator import JobCoordinator
 from .orchestration_types import (
     StageResult,
@@ -30,6 +29,7 @@ from .orchestration_types import (
     WorkflowStage,
 )
 from .repositories.agent_job_repository import AgentJobRepository
+from .services.agent_job_manager import AgentJobManager
 
 
 logger = logging.getLogger(__name__)

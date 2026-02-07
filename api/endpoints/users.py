@@ -190,7 +190,7 @@ class FieldPriorityConfig(BaseModel):
         # Validate category names
         invalid_categories = set(v.keys()) - valid_categories
         if invalid_categories:
-            raise ValueError(f"Invalid category names: {invalid_categories}. " f"Valid categories: {valid_categories}")
+            raise ValueError(f"Invalid category names: {invalid_categories}. Valid categories: {valid_categories}")
 
         # Ensure at least one CRITICAL category
         critical_categories = [cat for cat, pri in v.items() if pri == 1]
@@ -982,6 +982,7 @@ async def update_depth_config(
 
     return {"depth_config": get_result["config"]}
 
+
 # ---------------------------------------------------------------------------
 # Execution mode settings (0248c)
 # ---------------------------------------------------------------------------
@@ -1013,5 +1014,3 @@ async def update_execution_mode(
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
     return {"execution_mode": result["execution_mode"]}
-
-

@@ -14,7 +14,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from giljo_mcp.logging import get_logger, ErrorCode
+from giljo_mcp.logging import ErrorCode, get_logger
 
 
 logger = get_logger(__name__)

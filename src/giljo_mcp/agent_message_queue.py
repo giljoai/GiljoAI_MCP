@@ -32,7 +32,7 @@ from .database import DatabaseManager
 # Import from centralized exceptions
 from .exceptions import ConsistencyError, QueueException
 from .models import Message
-from .models.agent_identity import AgentJob, AgentExecution
+from .models.agent_identity import AgentExecution, AgentJob
 from .tenant import TenantManager
 
 
@@ -569,7 +569,7 @@ class AgentMessageQueue:
                 query = query.where(
                     or_(
                         Message.to_agents.contains([to_agent]),  # Direct messages
-                        Message.to_agents.contains(['all'])       # Broadcast messages
+                        Message.to_agents.contains(["all"]),  # Broadcast messages
                     )
                 )
 
@@ -645,11 +645,15 @@ class AgentMessageQueue:
                 return {"status": "error", "error": "Tenant key mismatch - access denied"}
 
             # Build query
-            query = select(func.count()).select_from(Message).where(
-                and_(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == job.project_id,
-                    Message.status == "pending",
+            query = (
+                select(func.count())
+                .select_from(Message)
+                .where(
+                    and_(
+                        Message.tenant_key == tenant_key,
+                        Message.project_id == job.project_id,
+                        Message.status == "pending",
+                    )
                 )
             )
 

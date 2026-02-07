@@ -15,6 +15,7 @@ from typing import Any
 
 from src.giljo_mcp.exceptions import ConfigurationError, FileSystemError
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,7 +76,7 @@ class ClaudeConfigManager:
                     self._restore_backup(backup_path)
                 raise ConfigurationError(
                     message="Invalid Serena configuration generated",
-                    context={"operation": "inject_serena", "project_root": str(project_root)}
+                    context={"operation": "inject_serena", "project_root": str(project_root)},
                 )
 
             # Step 5: Write atomically
@@ -90,7 +91,7 @@ class ClaudeConfigManager:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Invalid JSON in config file: {e}",
-                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
             )
         except OSError as e:
             logger.error(f"IO error during injection: {e}")
@@ -98,7 +99,7 @@ class ClaudeConfigManager:
                 self._restore_backup(backup_path)
             raise FileSystemError(
                 message=f"IO error: {e}",
-                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)}
+                context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
             )
         except (ConfigurationError, FileSystemError):
             # Re-raise our custom exceptions
@@ -108,8 +109,7 @@ class ClaudeConfigManager:
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
-                message=f"Unexpected error: {e}",
-                context={"operation": "inject_serena", "error_type": type(e).__name__}
+                message=f"Unexpected error: {e}", context={"operation": "inject_serena", "error_type": type(e).__name__}
             )
 
     def remove_serena(self) -> dict[str, str]:
@@ -158,7 +158,7 @@ class ClaudeConfigManager:
                 self._restore_backup(backup_path)
             raise FileSystemError(
                 message=f"IO error during Serena removal: {e}",
-                context={"operation": "remove_serena", "config_path": str(self.claude_config_path)}
+                context={"operation": "remove_serena", "config_path": str(self.claude_config_path)},
             )
         except Exception as e:
             logger.error(f"Error during removal: {e}")
@@ -166,7 +166,7 @@ class ClaudeConfigManager:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Error removing Serena: {e}",
-                context={"operation": "remove_serena", "error_type": type(e).__name__}
+                context={"operation": "remove_serena", "error_type": type(e).__name__},
             )
 
     def _load_config(self) -> dict[str, Any]:

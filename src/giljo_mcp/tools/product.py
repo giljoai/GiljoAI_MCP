@@ -14,9 +14,8 @@ from src.giljo_mcp.context_manager import (
     merge_config_updates,
     validate_config_data,
 )
-from src.giljo_mcp.database import DatabaseManager, get_db_manager
+from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +83,7 @@ async def _get_product_config_with_session(
     product_query = select(Product).where(
         and_(
             Product.id == project.product_id,
-            Product.tenant_key == project.tenant_key  # TENANT ISOLATION
+            Product.tenant_key == project.tenant_key,  # TENANT ISOLATION
         )
     )
     product_result = await session.execute(product_query)
@@ -195,7 +194,7 @@ async def _update_product_config_with_session(
     product_query = select(Product).where(
         and_(
             Product.id == project.product_id,
-            Product.tenant_key == project.tenant_key  # TENANT ISOLATION
+            Product.tenant_key == project.tenant_key,  # TENANT ISOLATION
         )
     )
     product_result = await session.execute(product_query)

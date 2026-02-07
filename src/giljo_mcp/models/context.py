@@ -7,14 +7,13 @@ and efficient context management for agents.
 """
 
 from sqlalchemy import (
-    BigInteger,
+    JSON,
     Column,
     DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,

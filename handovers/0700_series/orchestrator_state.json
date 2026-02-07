@@ -565,49 +565,123 @@
       }
     },
     {
-      "id": "0706",
-      "title": "Models Agents Cleanup",
+      "id": "0707-LINT",
+      "title": "Manual Lint Cleanup",
       "status": "pending",
-      "effort_hours": "6-8",
+      "effort_hours": "2-3",
       "priority": "HIGH",
       "dependencies": [
         "0706b"
+      ],
+      "scope": "Auto-fix 708 lint issues, then manual cleanup: ERA001 (commented code), BLE001 (blind except), B904 (raise from), T201 (prints)",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0707_LINT.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0707_LINT_kickoff.md",
+      "validation_required": true,
+      "lint_targets": {
+        "auto_fixable": 708,
+        "era001_commented_code": 277,
+        "ble001_blind_except": 233,
+        "b904_raise_from": 152,
+        "t201_print": 37
+      }
+    },
+    {
+      "id": "0708-TYPES",
+      "title": "Type Hint Modernization",
+      "status": "pending",
+      "effort_hours": "3-4",
+      "priority": "MEDIUM",
+      "dependencies": [
+        "0707-LINT"
+      ],
+      "scope": "PEP 585+ annotations (List->list), remove deprecated typing imports, add return types, mypy prep",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0708_TYPES.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0708_TYPES_kickoff.md",
+      "validation_required": true,
+      "type_targets": {
+        "up006_pep585": 470,
+        "up035_deprecated_imports": 122,
+        "up045_optional_style": 19
+      }
+    },
+    {
+      "id": "0709-SECURITY",
+      "title": "Security Hardening",
+      "status": "pending",
+      "effort_hours": "2-3",
+      "priority": "HIGH",
+      "dependencies": [
+        "0708-TYPES"
+      ],
+      "scope": "Timezone-aware datetimes, subprocess security, secrets audit, bandit scan",
+      "started_at": null,
+      "completed_at": null,
+      "worker_session_id": null,
+      "docs_updated": [],
+      "spec_file": "handovers/0700_series/0709_SECURITY.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0709_SECURITY_kickoff.md",
+      "validation_required": true,
+      "security_targets": {
+        "dtz_timezone": 59,
+        "subprocess_issues": 12,
+        "random_security": 7
+      }
+    },
+    {
+      "id": "0710",
+      "title": "Models Agents Cleanup",
+      "status": "pending",
+      "effort_hours": "6-8",
+      "priority": "MEDIUM",
+      "dependencies": [
+        "0709-SECURITY"
       ],
       "scope": "Type hints for AgentJob model, cascade verification - fills gaps not covered by 0700b-h",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "note": "Renumbered from 0706"
     },
     {
-      "id": "0707",
+      "id": "0714",
       "title": "Services Leaf Cleanup",
       "status": "pending",
       "effort_hours": "4-6",
       "priority": "MEDIUM",
       "dependencies": [
-        "0706"
+        "0710"
       ],
       "scope": "Clean up leaf services (settings, templates) - no upstream dependencies",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "note": "Renumbered from 0707"
     },
     {
-      "id": "0708",
+      "id": "0715",
       "title": "Services Core Cleanup",
       "status": "pending",
       "effort_hours": "6-8",
       "priority": "HIGH",
       "dependencies": [
-        "0707"
+        "0714"
       ],
       "scope": "Clean up core services (OrchestrationService, ProductService)",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
-      "docs_updated": []
+      "docs_updated": [],
+      "note": "Renumbered from 0708"
     },
     {
       "id": "0711",
@@ -616,7 +690,7 @@
       "effort_hours": "8-10",
       "priority": "CRITICAL",
       "dependencies": [
-        "0708"
+        "0715"
       ],
       "scope": "Consolidate MCP tool registration, standardize response formats, add deprecation warnings",
       "started_at": null,
@@ -669,5 +743,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "AUDIT RESET (2026-02-06): Comprehensive audit found gaps in 0702-0705. Original handovers marked SUPERSEDED. New execution chain: 0700-REMEDIATION \u00e2\u2020\u2019 0702-REVISED \u00e2\u2020\u2019 0703-REVISED \u00e2\u2020\u2019 0704-REVISED \u00e2\u2020\u2019 0706b \u00e2\u2020\u2019 0706 \u00e2\u2020\u2019 0707 \u00e2\u2020\u2019 0708 \u00e2\u2020\u2019 0711 \u00e2\u2020\u2019 0373. All revised handovers use VALIDATION-FIRST pattern (Phase 0 research before execution). Architecture intel: 271 orphan modules, 45 DEPRECATED markers, 49 circular deps. Hubs validated as healthy (don't refactor). agent_identity.py flagged for investigation (149 dependents)."
+  "notes": "AUDIT RESET + CODE QUALITY EXPANSION (2026-02-06): Original 0702-0705 marked SUPERSEDED. UPDATED CHAIN: 0700-REMEDIATION -> 0702-REVISED -> 0703-REVISED -> 0704-REVISED -> 0706b -> 0707-LINT -> 0708-TYPES -> 0709-SECURITY -> 0710 -> 0714 -> 0715 -> 0711 -> 0373. ADDED: 0707-LINT (4053 lint issues, 708 auto-fixable), 0708-TYPES (PEP 585+, mypy), 0709-SECURITY (DTZ, subprocess, secrets). RENUMBERED: 0706->0710, 0707->0714, 0708->0715. All use VALIDATION-FIRST pattern. 0706b verdict: HEALTHY."
 }

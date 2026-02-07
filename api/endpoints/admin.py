@@ -2,17 +2,19 @@
 Admin endpoints for system maintenance tasks.
 """
 
+import asyncio
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import subprocess
-from pathlib import Path
-import asyncio
+
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 class UpdateGraphResponse(BaseModel):
     """Response for dependency graph update."""
+
     success: bool
     message: str
     stats: dict | None = None
@@ -34,41 +36,25 @@ async def update_dependency_graph():
     script_path = Path(__file__).parent.parent.parent / "scripts" / "update_dependency_graph_full.py"
 
     if not script_path.exists():
-        raise HTTPException(
-            status_code=500,
-            detail=f"Update script not found at {script_path}"
-        )
+        raise HTTPException(status_code=500, detail=f"Update script not found at {script_path}")
 
     try:
         # Run the update script
         result = await asyncio.create_subprocess_exec(
-            "python",
-            str(script_path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            "python", str(script_path), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
         stdout, stderr = await result.communicate()
 
         if result.returncode != 0:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Script failed: {stderr.decode()}"
-            )
+            raise HTTPException(status_code=500, detail=f"Script failed: {stderr.decode()}")
 
         # Parse output for stats (simplified)
         output = stdout.decode()
 
         return UpdateGraphResponse(
-            success=True,
-            message="Dependency graph updated successfully",
-            stats={
-                "output": output
-            }
+            success=True, message="Dependency graph updated successfully", stats={"output": output}
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to update graph: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to update graph: {e!s}")

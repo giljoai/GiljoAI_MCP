@@ -95,47 +95,24 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
     "priorities": {
         # Priority 1 (CRITICAL): Orchestrator MUST call these MCP tools
         # These tools are mentioned with mandatory framing in instructions
-        "product_core": {
-            "toggle": True,
-            "priority": 1
-        },
+        "product_core": {"toggle": True, "priority": 1},
         "project_description": {  # Locked - always CRITICAL
             "toggle": True,
-            "priority": 1
+            "priority": 1,
         },
-        "memory_360": {
-            "toggle": True,
-            "priority": 1
-        },
-
+        "memory_360": {"toggle": True, "priority": 1},
         # Priority 2 (IMPORTANT): Orchestrator SHOULD call if budget allows
         # These tools are mentioned with strong recommendation in instructions
-        "tech_stack": {
-            "toggle": True,
-            "priority": 2
-        },
-        "testing": {
-            "toggle": True,
-            "priority": 2
-        },
-
+        "tech_stack": {"toggle": True, "priority": 2},
+        "testing": {"toggle": True, "priority": 2},
         # Priority 3 (REFERENCE): Orchestrator MAY call if project scope requires
         # These tools are mentioned as optional supplemental context
-        "vision_documents": {
-            "toggle": True,
-            "priority": 3
-        },
-        "architecture": {
-            "toggle": True,
-            "priority": 3
-        },
-        "agent_templates": {
-            "toggle": True,
-            "priority": 3
-        },
+        "vision_documents": {"toggle": True, "priority": 3},
+        "architecture": {"toggle": True, "priority": 3},
+        "agent_templates": {"toggle": True, "priority": 3},
         "git_history": {
             "toggle": False,  # OFF by default until Git Integration enabled
-            "priority": 3
+            "priority": 3,
         },
     },
 }
@@ -146,13 +123,10 @@ DEFAULT_DEPTH_CONFIG: Dict[str, Any] = {
     "depths": {
         # Vision documents: medium = 66% summary
         "vision_documents": "medium",
-
         # 360 Memory: last 3 projects
         "memory_360": 3,
-
         # Git history: last 5 commits (toggle OFF by default)
         "git_history": 5,
-
         # Agent templates: type_only = ~250 tokens (name, type, description only)
         "agent_templates": "type_only",
     },
@@ -271,8 +245,7 @@ def validate_priority_config() -> bool:
 
     # Ensure at least one category is CRITICAL (Priority 1) and toggled ON
     critical_categories = [
-        cat for cat, cfg in DEFAULT_FIELD_PRIORITY["priorities"].items()
-        if cfg["priority"] == 1 and cfg["toggle"]
+        cat for cat, cfg in DEFAULT_FIELD_PRIORITY["priorities"].items() if cfg["priority"] == 1 and cfg["toggle"]
     ]
     if not critical_categories:
         raise ValueError("At least one category must have Priority 1 (CRITICAL) with toggle=True")

@@ -17,11 +17,10 @@ has been removed (Handover 013B). All git operations are performed via
 subprocess calls to local git installations.
 """
 
-import subprocess  # nosec B404
 import logging
-from datetime import datetime
+import subprocess  # nosec B404
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +82,8 @@ class GitService:
             # Build git log command
             cmd = [
                 "git",
-                "-C", repo_path,
+                "-C",
+                repo_path,
                 "log",
                 f"--max-count={limit}",
                 "--format=%H|%an|%ae|%cI|%s",  # sha|author|email|iso_timestamp|subject
@@ -103,16 +103,12 @@ class GitService:
             )
 
             if result.returncode != 0:
-                self.logger.error(
-                    f"Git log failed for {repo_path}: {result.stderr}"
-                )
+                self.logger.error(f"Git log failed for {repo_path}: {result.stderr}")
                 return []
 
             # Parse git log output
             commits = self._parse_git_log(result.stdout)
-            self.logger.info(
-                f"Fetched {len(commits)} commits from {repo_path}"
-            )
+            self.logger.info(f"Fetched {len(commits)} commits from {repo_path}")
             return commits
 
         except FileNotFoundError:
@@ -122,9 +118,7 @@ class GitService:
             self.logger.error(f"Git command timeout for {repo_path}")
             return []
         except Exception as e:
-            self.logger.exception(
-                f"Failed to fetch commits from {repo_path}: {e}"
-            )
+            self.logger.exception(f"Failed to fetch commits from {repo_path}: {e}")
             return []
 
     async def validate_repository(self, repo_path: str) -> bool:
@@ -158,9 +152,7 @@ class GitService:
             if is_valid:
                 self.logger.debug(f"Valid git repository: {repo_path}")
             else:
-                self.logger.debug(
-                    f"Git validation failed for {repo_path}: {result.stderr}"
-                )
+                self.logger.debug(f"Git validation failed for {repo_path}: {result.stderr}")
             return is_valid
 
         except FileNotFoundError:
@@ -242,9 +234,7 @@ class GitService:
             if result.returncode == 0:
                 return result.stdout.strip()
 
-            self.logger.warning(
-                f"Failed to get branch for {repo_path}: {result.stderr}"
-            )
+            self.logger.warning(f"Failed to get branch for {repo_path}: {result.stderr}")
             return None
 
         except Exception as e:
@@ -284,9 +274,7 @@ class GitService:
             self.logger.exception(f"Error getting remote URL: {e}")
             return None
 
-    async def get_commit_count(
-        self, repo_path: str, branch: str = "HEAD"
-    ) -> int:
+    async def get_commit_count(self, repo_path: str, branch: str = "HEAD") -> int:
         """
         Get total commit count in branch.
 
@@ -313,9 +301,7 @@ class GitService:
             if result.returncode == 0:
                 return int(result.stdout.strip())
 
-            self.logger.warning(
-                f"Failed to count commits for {repo_path}: {result.stderr}"
-            )
+            self.logger.warning(f"Failed to count commits for {repo_path}: {result.stderr}")
             return 0
 
         except Exception as e:

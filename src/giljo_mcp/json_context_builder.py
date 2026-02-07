@@ -86,11 +86,7 @@ class JSONContextBuilder:
         Raises:
             ValueError: If field already exists in any tier
         """
-        all_fields = (
-            self.critical_fields +
-            self.important_fields +
-            self.reference_fields
-        )
+        all_fields = self.critical_fields + self.important_fields + self.reference_fields
         if field_name in all_fields:
             raise ValueError(f"Field '{field_name}' already exists in a priority tier")
 
@@ -245,11 +241,11 @@ class JSONContextBuilder:
             "priority_map": {
                 "critical": list(self.critical_fields),
                 "important": list(self.important_fields),
-                "reference": list(self.reference_fields)
+                "reference": list(self.reference_fields),
             },
             "critical": dict(self.critical_content),
             "important": dict(self.important_content),
-            "reference": dict(self.reference_content)
+            "reference": dict(self.reference_content),
         }
 
     def estimate_tokens(self) -> int:
