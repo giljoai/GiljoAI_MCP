@@ -28,6 +28,7 @@ from api.schemas.prompt import (
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 logger = logging.getLogger(__name__)
@@ -275,7 +276,7 @@ async def generate_agent_prompt(
     mission_preview = mission[:200] + "..." if len(mission) > 200 else mission
 
     # Create missions directory if needed
-    missions_dir = Path(project_path) / ".missions"
+    Path(project_path) / ".missions"
 
     # Get tool type from agent execution metadata (default to "claude-code")
     tool_type = agent.metadata.get("tool_type", "claude-code") if agent.metadata else "claude-code"
@@ -603,7 +604,7 @@ async def get_implementation_prompt(
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
         # Build agent jobs list for prompt generator (using executions + jobs)
-        agent_jobs_list = [
+        [
             {
                 "job_id": agent_exec.job_id,
                 "agent_display_name": agent_exec.agent_display_name,

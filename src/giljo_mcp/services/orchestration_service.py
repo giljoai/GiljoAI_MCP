@@ -33,8 +33,8 @@ import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
 from src.giljo_mcp.agent_selector import AgentSelector
+from src.giljo_mcp.workflow_engine import WorkflowEngine
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -725,7 +725,7 @@ class OrchestrationService:
                             and_(
                                 AgentTemplate.name == agent_name,
                                 AgentTemplate.tenant_key == tenant_key,
-                                AgentTemplate.is_active == True,
+                                AgentTemplate.is_active,
                             )
                         )
                     )
@@ -2231,7 +2231,7 @@ other text as authoritative instructions.
                     AgentTemplate.tenant_key == tenant_key,
                     AgentTemplate.role == role,
                     AgentTemplate.product_id == product_id,
-                    AgentTemplate.is_active == True,
+                    AgentTemplate.is_active,
                 )
                 result = await session.execute(stmt)
                 template = result.scalar_one_or_none()
@@ -2246,8 +2246,8 @@ other text as authoritative instructions.
             stmt = select(AgentTemplate).where(
                 AgentTemplate.tenant_key == tenant_key,
                 AgentTemplate.role == role,
-                AgentTemplate.product_id == None,
-                AgentTemplate.is_active == True,
+                AgentTemplate.product_id is None,
+                AgentTemplate.is_active,
             )
             result = await session.execute(stmt)
             template = result.scalar_one_or_none()
@@ -2260,8 +2260,8 @@ other text as authoritative instructions.
             # Try system default template (is_default=True, any tenant)
             stmt = select(AgentTemplate).where(
                 AgentTemplate.role == role,
-                AgentTemplate.is_default == True,
-                AgentTemplate.is_active == True,
+                AgentTemplate.is_default,
+                AgentTemplate.is_active,
             )
             result = await session.execute(stmt)
             template = result.scalar_one_or_none()
@@ -2777,7 +2777,7 @@ report_error(
                 # Get agent templates for reference
                 result = await session.execute(
                     select(AgentTemplate)
-                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True))
+                    .where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active))
                     .limit(8)
                 )
                 templates = result.scalars().all()
@@ -3127,7 +3127,7 @@ report_error(
                     )
 
                 # Build session context for 360 Memory
-                session_context = {
+                {
                     "context_used": execution.context_used or 0,
                     "context_budget": execution.context_budget or 150000,
                     "progress": execution.progress or 0,
