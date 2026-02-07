@@ -1,4 +1,5 @@
 """Smoke test: Settings persistence."""
+
 from __future__ import annotations
 
 import pytest
@@ -38,4 +39,3 @@ async def test_settings_persistence_smoke(authenticated_client) -> None:
     assert data.get("language") == "es"
 
     print("✓ Settings persistence: PASS")
-

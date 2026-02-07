@@ -3,10 +3,12 @@ Tests for ToolAccessor message methods to verify tenant_key parameter handling.
 
 Handover 0378 Bug 1: Fix receive_messages and list_messages to pass tenant_key.
 """
-import pytest
-import pytest_asyncio
+
 from unittest.mock import AsyncMock
 from uuid import uuid4
+
+import pytest
+import pytest_asyncio
 
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -48,20 +50,11 @@ async def test_receive_messages_with_tenant_key(tool_accessor):
     tenant_key = "tenant-abc"
 
     # Act
-    result = await tool_accessor.receive_messages(
-        agent_id=agent_id,
-        tenant_key=tenant_key,
-        limit=10
-    )
+    result = await tool_accessor.receive_messages(agent_id=agent_id, tenant_key=tenant_key, limit=10)
 
     # Assert
     tool_accessor._message_service.receive_messages.assert_called_once_with(
-        agent_id=agent_id,
-        tenant_key=tenant_key,
-        limit=10,
-        exclude_self=True,
-        exclude_progress=True,
-        message_types=None
+        agent_id=agent_id, tenant_key=tenant_key, limit=10, exclude_self=True, exclude_progress=True, message_types=None
     )
     assert result == {"messages": []}
 
@@ -79,18 +72,10 @@ async def test_list_messages_with_tenant_key(tool_accessor):
     tenant_key = "tenant-abc"
 
     # Act
-    result = await tool_accessor.list_messages(
-        project_id=project_id,
-        tenant_key=tenant_key,
-        limit=20
-    )
+    result = await tool_accessor.list_messages(project_id=project_id, tenant_key=tenant_key, limit=20)
 
     # Assert
     tool_accessor._message_service.list_messages.assert_called_once_with(
-        project_id=project_id,
-        tenant_key=tenant_key,
-        status=None,
-        agent_id=None,
-        limit=20
+        project_id=project_id, tenant_key=tenant_key, status=None, agent_id=None, limit=20
     )
     assert result == {"messages": []}

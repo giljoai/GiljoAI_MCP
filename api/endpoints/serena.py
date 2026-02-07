@@ -13,17 +13,21 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 class SerenaToggleRequest(BaseModel):
     """Request model for Serena toggle"""
 
     use_in_prompts: bool
 
+
 def get_config_path() -> Path:
     """Get path to config.yaml."""
     return Path.cwd() / "config.yaml"
+
 
 def read_config() -> dict[str, Any]:
     """Read config.yaml."""
@@ -38,6 +42,7 @@ def read_config() -> dict[str, Any]:
         logger.error(f"Failed to read config: {e}")
         return {}
 
+
 def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
@@ -47,6 +52,7 @@ def write_config(config: dict[str, Any]) -> None:
     except (OSError, ValueError) as e:
         logger.error(f"Failed to write config: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/settings")
 async def get_serena_settings():
@@ -63,6 +69,7 @@ async def get_serena_settings():
     except (OSError, ValueError) as e:
         logger.exception("Failed to get Serena settings")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/toggle")
 async def toggle_serena(request: SerenaToggleRequest):
@@ -98,6 +105,7 @@ async def toggle_serena(request: SerenaToggleRequest):
     except (OSError, ValueError) as e:
         logger.exception("Failed to toggle Serena")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/status")
 async def get_serena_status():

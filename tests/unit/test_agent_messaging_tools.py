@@ -18,7 +18,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from tests.utils.tools_helpers import ToolsTestHelper
 
 
@@ -246,8 +246,8 @@ class TestAgentMessagingTools:
                 status="working",
                 agent_name="agent-b",
                 messages_sent_count=0,
-            messages_waiting_count=0,
-            messages_read_count=0,
+                messages_waiting_count=0,
+                messages_read_count=0,
             )
             session.add(job_b)
             await session.commit()

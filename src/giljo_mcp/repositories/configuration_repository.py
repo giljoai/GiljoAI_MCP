@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Configuration
 from ..models.auth import User
 
+
 class ConfigurationRepository:
     """
     Repository for configuration and setup queries.

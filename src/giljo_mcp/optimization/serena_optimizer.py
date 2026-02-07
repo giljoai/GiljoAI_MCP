@@ -17,7 +17,9 @@ from typing import Any
 
 from sqlalchemy import select
 
+
 logger = logging.getLogger(__name__)
+
 
 class OperationType(Enum):
     """Types of Serena MCP operations that can be optimized"""
@@ -28,6 +30,7 @@ class OperationType(Enum):
     PATTERN_SEARCH = "pattern_search"
     DIRECTORY_LIST = "directory_list"
 
+
 @dataclass
 class OptimizationRule:
     """Rules for optimizing Serena MCP operations"""
@@ -37,6 +40,7 @@ class OptimizationRule:
     prefer_symbolic: bool
     guidance: str
     context_filter: str | None = None
+
 
 class TokenUsageTracker:
     """Track and estimate token usage for optimization operations"""
@@ -72,6 +76,7 @@ class TokenUsageTracker:
             return 0.0
         return ((unoptimized_tokens - optimized_tokens) / unoptimized_tokens) * 100.0
 
+
 class SerenaOptimizer:
     """
     Intelligent optimization layer for Serena MCP operations.
@@ -98,10 +103,10 @@ class SerenaOptimizer:
                 max_answer_chars=2000,
                 prefer_symbolic=True,
                 guidance="""CRITICAL: NEVER read entire files unless absolutely necessary.
-                
+
 ALWAYS prefer symbolic operations:
 • Use get_symbols_overview() to understand file structure first
-• Use find_symbol() to read specific functions/classes  
+• Use find_symbol() to read specific functions/classes
 • Use find_referencing_symbols() to understand usage
 • Set max_answer_chars=2000 to prevent massive responses
 
@@ -117,7 +122,7 @@ Only use read_file() for:
                 guidance="""Optimize symbol searches for efficiency:
 
 • Start with depth=0, increase only if needed
-• Use include_body=False initially, then get bodies selectively  
+• Use include_body=False initially, then get bodies selectively
 • Prefer find_symbol() over search_for_pattern() when name is known
 • Set max_answer_chars=5000 for symbol operations
 • Use substring_matching=True for discovery phases""",
@@ -283,7 +288,7 @@ You MUST follow these rules to maintain system efficiency and avoid token exhaus
 **NEVER read entire files unless absolutely necessary.**
 
 ALWAYS prefer this workflow:
-1. `get_symbols_overview()` - Understand file structure 
+1. `get_symbols_overview()` - Understand file structure
 2. `find_symbol()` - Read specific functions/classes
 3. `find_referencing_symbols()` - Understand usage patterns
 4. Only use `read_file()` as last resort for small files
@@ -303,7 +308,7 @@ ALWAYS prefer this workflow:
             content += """
 ### 📊 LARGE CODEBASE - EXTRA RESTRICTIONS
 • Be extra aggressive with char limits
-• Use relative_path parameters to scope operations  
+• Use relative_path parameters to scope operations
 • Prefer targeted searches over broad exploration
 • Request handoff when approaching 70% context limit
 """

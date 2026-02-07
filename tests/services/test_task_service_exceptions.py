@@ -7,34 +7,34 @@ Tests all error paths for ResourceNotFoundError, ValidationError, and BaseGiljoE
 Target: All 27 error return statements converted to exception raises.
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
+import pytest_asyncio
 from passlib.hash import bcrypt
-from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import (
+    AuthorizationError,
     BaseGiljoException,
     ResourceNotFoundError,
     ValidationError,
-    AuthorizationError,
 )
 from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.services.task_service import TaskService
 
+
 # Use existing fixtures from base_fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_tenant_key():
@@ -51,7 +51,7 @@ async def test_product(db_session, test_tenant_key):
         description="Test product for task service exception tests",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(product)
     await db_session.commit()
@@ -70,7 +70,7 @@ async def test_project(db_session, test_tenant_key, test_product):
         product_id=test_product.id,
         tenant_key=test_tenant_key,
         status="active",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
     await db_session.commit()
@@ -90,7 +90,7 @@ async def test_user(db_session, test_tenant_key):
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -110,7 +110,7 @@ async def admin_user(db_session, test_tenant_key):
         role="admin",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -131,7 +131,7 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
         description="Test task description",
         status="pending",
         priority="medium",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(task)
     await db_session.commit()
@@ -150,11 +150,7 @@ async def tenant_manager(test_tenant_key):
 @pytest_asyncio.fixture
 async def task_service(db_manager, tenant_manager, db_session):
     """Create TaskService instance with mocked dependencies"""
-    service = TaskService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager,
-        session=db_session
-    )
+    service = TaskService(db_manager=db_manager, tenant_manager=tenant_manager, session=db_session)
     return service
 
 
@@ -162,11 +158,12 @@ async def task_service(db_manager, tenant_manager, db_session):
 # EXCEPTION TESTS - log_task & _log_task_impl
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_log_task_raises_exception_on_database_error(task_service, tenant_manager):
     """Test log_task raises BaseGiljoException on database errors"""
     # Simulate database error
-    with patch.object(task_service, '_log_task_impl', side_effect=Exception("Database connection failed")):
+    with patch.object(task_service, "_log_task_impl", side_effect=Exception("Database connection failed")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.log_task(content="Test task")
 
@@ -175,18 +172,12 @@ async def test_log_task_raises_exception_on_database_error(task_service, tenant_
 
 
 @pytest.mark.asyncio
-async def test_log_task_impl_raises_not_found_on_nonexistent_project(
-    task_service, test_tenant_key
-):
+async def test_log_task_impl_raises_not_found_on_nonexistent_project(task_service, test_tenant_key):
     """Test _log_task_impl raises ResourceNotFoundError when project_id not found"""
     nonexistent_project_id = str(uuid4())
 
     with pytest.raises(ResourceNotFoundError) as exc_info:
-        await task_service.log_task(
-            content="Test task",
-            project_id=nonexistent_project_id,
-            tenant_key=test_tenant_key
-        )
+        await task_service.log_task(content="Test task", project_id=nonexistent_project_id, tenant_key=test_tenant_key)
 
     assert f"Project {nonexistent_project_id} not found" in str(exc_info.value)
 
@@ -194,6 +185,7 @@ async def test_log_task_impl_raises_not_found_on_nonexistent_project(
 # ============================================================================
 # EXCEPTION TESTS - list_tasks
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_list_tasks_raises_validation_error_no_tenant_context(db_manager):
@@ -214,7 +206,7 @@ async def test_list_tasks_raises_validation_error_no_tenant_context(db_manager):
 @pytest.mark.asyncio
 async def test_list_tasks_raises_exception_on_database_error(task_service):
     """Test list_tasks raises BaseGiljoException on database errors"""
-    with patch.object(task_service.db_manager, 'get_session_async', side_effect=Exception("DB error")):
+    with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.list_tasks()
 
@@ -224,6 +216,7 @@ async def test_list_tasks_raises_exception_on_database_error(task_service):
 # ============================================================================
 # EXCEPTION TESTS - update_task
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_update_task_raises_not_found_on_nonexistent_task(task_service):
@@ -239,7 +232,7 @@ async def test_update_task_raises_not_found_on_nonexistent_task(task_service):
 @pytest.mark.asyncio
 async def test_update_task_raises_exception_on_database_error(task_service):
     """Test update_task raises BaseGiljoException on database errors"""
-    with patch.object(task_service.db_manager, 'get_session_async', side_effect=Exception("DB error")):
+    with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.update_task(task_id=str(uuid4()), status="completed")
 
@@ -249,6 +242,7 @@ async def test_update_task_raises_exception_on_database_error(task_service):
 # ============================================================================
 # EXCEPTION TESTS - get_task & _get_task_impl
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_task_raises_validation_error_no_tenant_context(db_manager, db_session):
@@ -280,7 +274,7 @@ async def test_get_task_raises_not_found_on_nonexistent_task(task_service):
 @pytest.mark.asyncio
 async def test_get_task_raises_exception_on_database_error(task_service):
     """Test get_task raises BaseGiljoException on database errors"""
-    with patch.object(task_service, '_get_task_impl', side_effect=Exception("DB error")):
+    with patch.object(task_service, "_get_task_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.get_task(task_id=str(uuid4()))
 
@@ -290,6 +284,7 @@ async def test_get_task_raises_exception_on_database_error(task_service):
 # ============================================================================
 # EXCEPTION TESTS - delete_task & _delete_task_impl
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_delete_task_raises_validation_error_no_tenant_context(db_manager, db_session):
@@ -343,7 +338,7 @@ async def test_delete_task_raises_authorization_error_insufficient_permissions(
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -358,7 +353,7 @@ async def test_delete_task_raises_authorization_error_insufficient_permissions(
 @pytest.mark.asyncio
 async def test_delete_task_raises_exception_on_database_error(task_service):
     """Test delete_task raises BaseGiljoException on database errors"""
-    with patch.object(task_service, '_delete_task_impl', side_effect=Exception("DB error")):
+    with patch.object(task_service, "_delete_task_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.delete_task(task_id=str(uuid4()), user_id=str(uuid4()))
 
@@ -368,6 +363,7 @@ async def test_delete_task_raises_exception_on_database_error(task_service):
 # ============================================================================
 # EXCEPTION TESTS - convert_to_project & _convert_to_project_impl
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_convert_to_project_raises_validation_error_no_tenant_context(db_manager, db_session):
@@ -383,7 +379,7 @@ async def test_convert_to_project_raises_validation_error_no_tenant_context(db_m
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=str(uuid4())
+            user_id=str(uuid4()),
         )
 
     assert "No tenant context available" in str(exc_info.value)
@@ -401,7 +397,7 @@ async def test_convert_to_project_raises_not_found_on_nonexistent_task(task_serv
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=test_user.id
+            user_id=test_user.id,
         )
 
     assert "Task not found" in str(exc_info.value)
@@ -421,7 +417,7 @@ async def test_convert_to_project_raises_validation_error_already_converted(
         product_id=test_product.id,
         tenant_key=test_tenant_key,
         status="inactive",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(converted_project)
     await db_session.flush()
@@ -436,7 +432,7 @@ async def test_convert_to_project_raises_validation_error_already_converted(
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=test_user.id
+            user_id=test_user.id,
         )
 
     assert f"Task already converted to project {test_task.converted_to_project_id}" in str(exc_info.value)
@@ -453,7 +449,7 @@ async def test_convert_to_project_raises_not_found_on_nonexistent_user(task_serv
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=nonexistent_user_id
+            user_id=nonexistent_user_id,
         )
 
     assert "User not found" in str(exc_info.value)
@@ -474,7 +470,7 @@ async def test_convert_to_project_raises_authorization_error_insufficient_permis
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -486,7 +482,7 @@ async def test_convert_to_project_raises_authorization_error_insufficient_permis
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=other_user.id
+            user_id=other_user.id,
         )
 
     assert "Not authorized to convert this task" in str(exc_info.value)
@@ -506,7 +502,7 @@ async def test_convert_to_project_raises_validation_error_no_active_product(
             project_name="Test Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=test_user.id
+            user_id=test_user.id,
         )
 
     assert "No active product" in str(exc_info.value)
@@ -515,14 +511,14 @@ async def test_convert_to_project_raises_validation_error_no_active_product(
 @pytest.mark.asyncio
 async def test_convert_to_project_raises_exception_on_database_error(task_service):
     """Test convert_to_project raises BaseGiljoException on database errors"""
-    with patch.object(task_service, '_convert_to_project_impl', side_effect=Exception("DB error")):
+    with patch.object(task_service, "_convert_to_project_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.convert_to_project(
                 task_id=str(uuid4()),
                 project_name="Test",
                 strategy="create_new",
                 include_subtasks=False,
-                user_id=str(uuid4())
+                user_id=str(uuid4()),
             )
 
         assert "DB error" in str(exc_info.value)
@@ -531,6 +527,7 @@ async def test_convert_to_project_raises_exception_on_database_error(task_servic
 # ============================================================================
 # EXCEPTION TESTS - change_status & _change_status_impl
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_change_status_raises_validation_error_no_tenant_context(db_manager, db_session):
@@ -562,7 +559,7 @@ async def test_change_status_raises_not_found_on_nonexistent_task(task_service):
 @pytest.mark.asyncio
 async def test_change_status_raises_exception_on_database_error(task_service):
     """Test change_status raises BaseGiljoException on database errors"""
-    with patch.object(task_service, '_change_status_impl', side_effect=Exception("DB error")):
+    with patch.object(task_service, "_change_status_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.change_status(task_id=str(uuid4()), new_status="completed")
 
@@ -572,6 +569,7 @@ async def test_change_status_raises_exception_on_database_error(task_service):
 # ============================================================================
 # EXCEPTION TESTS - get_summary & _get_summary_impl
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_summary_raises_validation_error_no_tenant_context(db_manager, db_session):
@@ -591,7 +589,7 @@ async def test_get_summary_raises_validation_error_no_tenant_context(db_manager,
 @pytest.mark.asyncio
 async def test_get_summary_raises_exception_on_database_error(task_service):
     """Test get_summary raises BaseGiljoException on database errors"""
-    with patch.object(task_service, '_get_summary_impl', side_effect=Exception("DB error")):
+    with patch.object(task_service, "_get_summary_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoException) as exc_info:
             await task_service.get_summary()
 

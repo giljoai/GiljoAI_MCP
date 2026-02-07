@@ -9,15 +9,16 @@ Tests:
 TDD Status: GREEN ✅ - Tests verify new execution plan section
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from passlib.hash import bcrypt
 
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 @pytest_asyncio.fixture
@@ -38,7 +39,7 @@ async def test_user(db_manager):
             password_hash=bcrypt.hash("test_password"),
             tenant_key=tenant_key,
             role="developer",
-            is_active=True
+            is_active=True,
         )
         session.add(user)
         await session.commit()
@@ -46,13 +47,8 @@ async def test_user(db_manager):
         return user
 
 
-
-
 @pytest.mark.asyncio
-async def test_continuation_prompt_for_instance_greater_than_1(
-    db_manager,
-    test_user
-):
+async def test_continuation_prompt_for_instance_greater_than_1(db_manager, test_user):
     """
     Test: Instance > 1 should get continuation prompt, not staging prompt.
 
@@ -110,7 +106,8 @@ async def test_continuation_prompt_for_instance_greater_than_1(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="complete",  # Ran out of context
+            agent_name="orchestrator",
+            status="complete",  # Ran out of context
         )
         session.add(instance1)
 
@@ -120,7 +117,8 @@ async def test_continuation_prompt_for_instance_greater_than_1(
             job_id=orchestrator_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
         )
         session.add(instance2)
 
@@ -131,40 +129,38 @@ async def test_continuation_prompt_for_instance_greater_than_1(
         generator = ThinClientPromptGenerator(db=gen_session, tenant_key=test_user.tenant_key)
 
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id,
-            project_id=project_id,
-            agent_id=f"{agent_id}-inst1"
+            orchestrator_id=orchestrator_job_id, project_id=project_id, agent_id=f"{agent_id}-inst1"
         )
 
         # Staging prompt should have staging-specific content
-        assert "get_orchestrator_instructions" in staging_prompt.lower(), \
+        assert "get_orchestrator_instructions" in staging_prompt.lower(), (
             "Instance 1 should get staging prompt with get_orchestrator_instructions"
-        assert "fetch protocol" in staging_prompt.lower() or "orchestrator_protocol" in staging_prompt.lower(), \
+        )
+        assert "fetch protocol" in staging_prompt.lower() or "orchestrator_protocol" in staging_prompt.lower(), (
             "Instance 1 should be told to fetch protocol"
+        )
 
     # Test instance 2 (successor) - should get continuation prompt
     async with db_manager.get_session_async() as gen_session:
         generator = ThinClientPromptGenerator(db=gen_session, tenant_key=test_user.tenant_key)
 
         continuation_prompt = await generator.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id,
-            project_id=project_id,
-            agent_id=f"{agent_id}-inst2"
+            orchestrator_id=orchestrator_job_id, project_id=project_id, agent_id=f"{agent_id}-inst2"
         )
 
         # Continuation prompt should have continuation-specific content
-        assert "continuation" in continuation_prompt.lower(), \
-            "Instance 2 should get continuation prompt"
-        assert "do not re-stage" in continuation_prompt.lower() or \
-               "do not call get_orchestrator_instructions" in continuation_prompt.lower(), \
-            "Instance 2 should be told NOT to re-stage"
-        assert "receive_messages" in continuation_prompt.lower(), \
-            "Instance 2 should be told to check messages"
-        assert "get_workflow_status" in continuation_prompt.lower(), \
+        assert "continuation" in continuation_prompt.lower(), "Instance 2 should get continuation prompt"
+        assert (
+            "do not re-stage" in continuation_prompt.lower()
+            or "do not call get_orchestrator_instructions" in continuation_prompt.lower()
+        ), "Instance 2 should be told NOT to re-stage"
+        assert "receive_messages" in continuation_prompt.lower(), "Instance 2 should be told to check messages"
+        assert "get_workflow_status" in continuation_prompt.lower(), (
             "Instance 2 should be told to check workflow status"
-        assert "predecessor" in continuation_prompt.lower(), \
-            "Instance 2 should be told about predecessor"
+        )
+        assert "predecessor" in continuation_prompt.lower(), "Instance 2 should be told about predecessor"
 
         # Should NOT have staging workflow instructions
-        assert continuation_prompt.count("get_orchestrator_instructions") <= 1, \
+        assert continuation_prompt.count("get_orchestrator_instructions") <= 1, (
             "Continuation prompt should not emphasize get_orchestrator_instructions"
+        )

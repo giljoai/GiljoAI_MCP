@@ -7,16 +7,16 @@ Tests cover:
 - Proper error handling (project not found, tenant isolation)
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
+import pytest
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.projects import Project
 
 
 class TestLaunchImplementationEndpoint:
@@ -55,11 +55,7 @@ class TestLaunchImplementationEndpoint:
         from api.endpoints.agent_jobs.orchestration import launch_implementation
 
         # Call endpoint
-        response = await launch_implementation(
-            project_id=project_id,
-            current_user=mock_user,
-            db=mock_session
-        )
+        response = await launch_implementation(project_id=project_id, current_user=mock_user, db=mock_session)
 
         # Verify timestamp was set
         assert project.implementation_launched_at is not None, "implementation_launched_at should be set"
@@ -104,11 +100,7 @@ class TestLaunchImplementationEndpoint:
         from api.endpoints.agent_jobs.orchestration import launch_implementation
 
         # Call endpoint
-        response = await launch_implementation(
-            project_id=project_id,
-            current_user=mock_user,
-            db=mock_session
-        )
+        response = await launch_implementation(project_id=project_id, current_user=mock_user, db=mock_session)
 
         # Verify timestamp unchanged
         assert project.implementation_launched_at == original_timestamp, "Timestamp should not change on repeat call"
@@ -141,11 +133,7 @@ class TestLaunchImplementationEndpoint:
 
         # Call endpoint and expect HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await launch_implementation(
-                project_id=project_id,
-                current_user=mock_user,
-                db=mock_session
-            )
+            await launch_implementation(project_id=project_id, current_user=mock_user, db=mock_session)
 
         # Verify 404 error
         assert exc_info.value.status_code == 404
@@ -183,11 +171,7 @@ class TestLaunchImplementationEndpoint:
 
         # Call endpoint with different tenant_key
         with pytest.raises(HTTPException) as exc_info:
-            await launch_implementation(
-                project_id=project_id,
-                current_user=mock_user,
-                db=mock_session
-            )
+            await launch_implementation(project_id=project_id, current_user=mock_user, db=mock_session)
 
         # Verify 404 error (tenant isolation)
         assert exc_info.value.status_code == 404

@@ -214,6 +214,7 @@ class APITestRunner:
 
         try:
             from fastapi.testclient import TestClient
+
             from src.giljo_mcp.api.app import create_app
 
             app = create_app()

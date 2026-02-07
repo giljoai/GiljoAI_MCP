@@ -3,19 +3,21 @@
 
 from pathlib import Path
 
+
 PROJECT_ROOT = Path(__file__).parent.parent
 HTML_FILE = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.html"
 
+
 def main():
     print(f"Reading HTML from {HTML_FILE}...")
-    html = HTML_FILE.read_text(encoding='utf-8')
+    html = HTML_FILE.read_text(encoding="utf-8")
 
     # Remove existing misplaced button if present
     if 'id="update-graph"' in html:
         print("Removing misplaced update button...")
         # Remove button HTML
         start_marker = '<button id="update-graph"'
-        end_marker = '</button>'
+        end_marker = "</button>"
 
         start_idx = html.find(start_marker)
         if start_idx != -1:
@@ -23,32 +25,32 @@ def main():
             html = html[:start_idx] + html[end_idx:]
 
         # Remove button styles (we'll re-add them properly)
-        style_start = html.find('#update-graph')
+        style_start = html.find("#update-graph")
         if style_start != -1:
             # Find the start of this rule
-            brace_start = html.rfind('{', 0, style_start)
+            brace_start = html.rfind("{", 0, style_start)
             # Find closing of the animation
-            anim_end = html.find('}', html.find('@keyframes spin'))
+            anim_end = html.find("}", html.find("@keyframes spin"))
             if brace_start != -1 and anim_end != -1:
                 # Remove from #update-graph to end of keyframes
-                html = html[:style_start] + html[anim_end + 1:]
+                html = html[:style_start] + html[anim_end + 1 :]
 
         # Remove button script
-        script_start = html.find('async function updateGraph')
+        script_start = html.find("async function updateGraph")
         if script_start != -1:
             script_end = html.find("document.getElementById('update-graph')", script_start)
-            script_end = html.find(';', script_end) + 1
+            script_end = html.find(";", script_end) + 1
             if script_end > script_start:
                 html = html[:script_start] + html[script_end:]
 
     # Find the correct insertion point - inside controls div, after reset-view
     # Pattern: <button id="reset-view">Reset View</button> followed by more content
-    reset_button_end = html.find('</button>', html.find('id="reset-view"'))
+    reset_button_end = html.find("</button>", html.find('id="reset-view"'))
     if reset_button_end == -1:
         print("ERROR: Could not find reset-view button")
         return 1
 
-    insert_point = reset_button_end + len('</button>')
+    insert_point = reset_button_end + len("</button>")
 
     # Build button HTML (no emoji to avoid encoding issues)
     button_html = '\n<button id="update-graph" title="Regenerate dependency graph from current codebase">\n  <span id="update-icon">[UPDATE]</span> Update Graph\n</button>\n'
@@ -57,7 +59,7 @@ def main():
     html = html[:insert_point] + button_html + html[insert_point:]
 
     # Add styles before closing style tag
-    style_end_idx = html.find('</style>')
+    style_end_idx = html.find("</style>")
     if style_end_idx == -1:
         print("ERROR: Could not find closing style tag")
         return 1
@@ -113,7 +115,7 @@ def main():
     html = html[:style_end_idx] + button_styles + html[style_end_idx:]
 
     # Add script before closing script tag
-    last_script_close = html.rfind('</script>')
+    last_script_close = html.rfind("</script>")
     if last_script_close == -1:
         print("ERROR: Could not find closing script tag")
         return 1
@@ -172,13 +174,14 @@ if (updateBtn) {
 
     # Write back
     print(f"Writing fixed HTML to {HTML_FILE}...")
-    HTML_FILE.write_text(html, encoding='utf-8')
+    HTML_FILE.write_text(html, encoding="utf-8")
 
     print("[SUCCESS] Update button fixed and properly placed")
     print("\nButton is now inside the controls div (left sidebar)")
     print("Refresh your browser to see it!")
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

@@ -13,9 +13,8 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from installer.core.database_network import DatabaseNetworkConfig
-
 from installer.core.database import DatabaseInstaller
+from installer.core.database_network import DatabaseNetworkConfig
 
 
 # Configure logging

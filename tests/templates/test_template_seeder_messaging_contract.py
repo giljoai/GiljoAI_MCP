@@ -4,12 +4,13 @@ Tests for template seeder messaging contract compliance (Handover 0296).
 Verifies that all agent templates use ONLY the canonical messaging tools
 and do NOT reference legacy queue-style tools.
 """
-import pytest
+
 from src.giljo_mcp.template_seeder import (
     _get_agent_messaging_protocol_section,
-    _get_orchestrator_messaging_protocol_section,
     _get_default_templates_v103,
+    _get_orchestrator_messaging_protocol_section,
 )
+
 
 # Canonical messaging tools that SHOULD be referenced
 CANONICAL_TOOLS = [
@@ -48,8 +49,9 @@ class TestAgentMessagingProtocolSection:
         assert "send_mcp_message" not in section, "Should not reference legacy send_mcp_message"
         assert "read_mcp_messages" not in section, "Should not reference legacy read_mcp_messages"
         # get_messages is the wrong tool name
-        assert "get_messages" not in section or "receive_messages" in section, \
+        assert "get_messages" not in section or "receive_messages" in section, (
             "Should use receive_messages not get_messages"
+        )
 
     def test_agent_messaging_describes_acknowledge_behavior(self):
         """Agent messaging should instruct agents to acknowledge messages."""
@@ -86,8 +88,7 @@ class TestOrchestratorMessagingProtocolSection:
         # Should NOT use separate broadcast_message tool
         # Instead should use send_message with to_agents=['all'] or to_agent='all'
         if "broadcast" in section.lower():
-            assert "send_message" in section, \
-                "Broadcasts should use send_message with to_agents=['all']"
+            assert "send_message" in section, "Broadcasts should use send_message with to_agents=['all']"
 
 
 class TestDefaultTemplatesMessagingContract:

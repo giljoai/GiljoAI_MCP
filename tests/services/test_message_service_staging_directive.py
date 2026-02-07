@@ -14,29 +14,27 @@ Conditions for directive:
 This is the RED phase of TDD - tests written before implementation.
 """
 
-import pytest
 from datetime import datetime, timezone
-from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from sqlalchemy import select
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+
+# Import models using modular imports
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.exceptions import ResourceNotFoundError
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_websocket_manager():
@@ -141,7 +139,8 @@ async def test_project_staging(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_display_name,
-            status="waiting",            messages_sent_count=0,
+            status="waiting",
+            messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
         )
@@ -227,7 +226,8 @@ async def test_project_implementation(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_display_name,
-            status="waiting",            messages_sent_count=0,
+            status="waiting",
+            messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
         )
@@ -250,7 +250,6 @@ async def message_service(
 ) -> MessageService:
     """Create MessageService instance with mocked WebSocket manager and test session."""
     from contextlib import asynccontextmanager
-    from unittest.mock import AsyncMock, patch
 
     tenant_manager = TenantManager()
 
@@ -276,6 +275,7 @@ async def message_service(
 # ============================================================================
 # Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_staging_orchestrator_broadcast_includes_directive(
@@ -388,7 +388,9 @@ async def test_implementation_orchestrator_broadcast_no_directive(
 
     # Assert response does NOT contain staging_directive
     assert result["success"] is True
-    assert "staging_directive" not in result, "Implementation orchestrator broadcasts should not include staging_directive"
+    assert "staging_directive" not in result, (
+        "Implementation orchestrator broadcasts should not include staging_directive"
+    )
 
 
 @pytest.mark.asyncio

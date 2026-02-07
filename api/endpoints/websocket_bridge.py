@@ -17,8 +17,10 @@ from pydantic import BaseModel
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket-bridge"])
+
 
 class WebSocketEventRequest(BaseModel):
     """Request model for triggering WebSocket events from MCP tools."""
@@ -27,6 +29,7 @@ class WebSocketEventRequest(BaseModel):
     tenant_key: str
     data: dict[str, Any]
 
+
 class WebSocketEventResponse(BaseModel):
     """Response model for WebSocket event emissions."""
 
@@ -34,6 +37,7 @@ class WebSocketEventResponse(BaseModel):
     event_type: str
     clients_notified: int
     message: str | None = None
+
 
 @router.post("/emit", response_model=WebSocketEventResponse)
 async def emit_websocket_event(

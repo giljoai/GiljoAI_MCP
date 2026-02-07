@@ -22,7 +22,7 @@ import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.models import Message, Product, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.models.products import Vision
 from src.giljo_mcp.services.project_service import ProjectService
@@ -161,9 +161,7 @@ class TestPurgeProjectRecordsCascade:
     TDD RED PHASE: These tests should FAIL until implementation is fixed.
     """
 
-    async def test_purge_deletes_context_index(
-        self, db_session, cascade_test_tenant_key, project_with_all_relations
-    ):
+    async def test_purge_deletes_context_index(self, db_session, cascade_test_tenant_key, project_with_all_relations):
         """
         Test that _purge_project_records() deletes ContextIndex records.
 
@@ -235,9 +233,7 @@ class TestPurgeProjectRecordsCascade:
 
     # NOTE: test_purge_deletes_project_session removed (Handover 0423 - Session model deleted)
 
-    async def test_purge_deletes_vision(
-        self, db_session, cascade_test_tenant_key, project_with_all_relations
-    ):
+    async def test_purge_deletes_vision(self, db_session, cascade_test_tenant_key, project_with_all_relations):
         """
         Test that _purge_project_records() deletes Vision records.
 
@@ -285,28 +281,28 @@ class TestPurgeProjectRecordsCascade:
 
         # Verify all records exist before purge
         records_before = {
-            "project": (await db_session.execute(
-                select(Project).where(Project.id == project.id)
-            )).scalar_one_or_none(),
-            "agent_job": (await db_session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
-            )).scalar_one_or_none(),
-            "task": (await db_session.execute(
-                select(Task).where(Task.id == data["task"].id)
-            )).scalar_one_or_none(),
-            "message": (await db_session.execute(
-                select(Message).where(Message.id == data["message"].id)
-            )).scalar_one_or_none(),
-            "context_index": (await db_session.execute(
-                select(ContextIndex).where(ContextIndex.id == data["context_index"].id)
-            )).scalar_one_or_none(),
-            "doc_index": (await db_session.execute(
-                select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
-            )).scalar_one_or_none(),
+            "project": (await db_session.execute(select(Project).where(Project.id == project.id))).scalar_one_or_none(),
+            "agent_job": (
+                await db_session.execute(
+                    select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
+                )
+            ).scalar_one_or_none(),
+            "task": (await db_session.execute(select(Task).where(Task.id == data["task"].id))).scalar_one_or_none(),
+            "message": (
+                await db_session.execute(select(Message).where(Message.id == data["message"].id))
+            ).scalar_one_or_none(),
+            "context_index": (
+                await db_session.execute(select(ContextIndex).where(ContextIndex.id == data["context_index"].id))
+            ).scalar_one_or_none(),
+            "doc_index": (
+                await db_session.execute(
+                    select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
+                )
+            ).scalar_one_or_none(),
             # NOTE: "session" removed (Handover 0423 - Session model deleted)
-            "vision": (await db_session.execute(
-                select(Vision).where(Vision.id == data["vision"].id)
-            )).scalar_one_or_none(),
+            "vision": (
+                await db_session.execute(select(Vision).where(Vision.id == data["vision"].id))
+            ).scalar_one_or_none(),
         }
 
         # Assert all exist before purge
@@ -330,28 +326,28 @@ class TestPurgeProjectRecordsCascade:
 
         # BEHAVIOR: ALL records should be deleted after purge
         records_after = {
-            "project": (await db_session.execute(
-                select(Project).where(Project.id == project.id)
-            )).scalar_one_or_none(),
-            "agent_job": (await db_session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
-            )).scalar_one_or_none(),
-            "task": (await db_session.execute(
-                select(Task).where(Task.id == data["task"].id)
-            )).scalar_one_or_none(),
-            "message": (await db_session.execute(
-                select(Message).where(Message.id == data["message"].id)
-            )).scalar_one_or_none(),
-            "context_index": (await db_session.execute(
-                select(ContextIndex).where(ContextIndex.id == data["context_index"].id)
-            )).scalar_one_or_none(),
-            "doc_index": (await db_session.execute(
-                select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
-            )).scalar_one_or_none(),
+            "project": (await db_session.execute(select(Project).where(Project.id == project.id))).scalar_one_or_none(),
+            "agent_job": (
+                await db_session.execute(
+                    select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
+                )
+            ).scalar_one_or_none(),
+            "task": (await db_session.execute(select(Task).where(Task.id == data["task"].id))).scalar_one_or_none(),
+            "message": (
+                await db_session.execute(select(Message).where(Message.id == data["message"].id))
+            ).scalar_one_or_none(),
+            "context_index": (
+                await db_session.execute(select(ContextIndex).where(ContextIndex.id == data["context_index"].id))
+            ).scalar_one_or_none(),
+            "doc_index": (
+                await db_session.execute(
+                    select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
+                )
+            ).scalar_one_or_none(),
             # NOTE: "session" removed (Handover 0423 - Session model deleted)
-            "vision": (await db_session.execute(
-                select(Vision).where(Vision.id == data["vision"].id)
-            )).scalar_one_or_none(),
+            "vision": (
+                await db_session.execute(select(Vision).where(Vision.id == data["vision"].id))
+            ).scalar_one_or_none(),
         }
 
         # Assert all deleted after purge
@@ -397,19 +393,19 @@ class TestPurgeExpiredProjectsCascade:
 
         # BEHAVIOR: ALL records should be deleted
         records_after = {
-            "project": (await db_session.execute(
-                select(Project).where(Project.id == project.id)
-            )).scalar_one_or_none(),
-            "context_index": (await db_session.execute(
-                select(ContextIndex).where(ContextIndex.id == data["context_index"].id)
-            )).scalar_one_or_none(),
-            "doc_index": (await db_session.execute(
-                select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
-            )).scalar_one_or_none(),
+            "project": (await db_session.execute(select(Project).where(Project.id == project.id))).scalar_one_or_none(),
+            "context_index": (
+                await db_session.execute(select(ContextIndex).where(ContextIndex.id == data["context_index"].id))
+            ).scalar_one_or_none(),
+            "doc_index": (
+                await db_session.execute(
+                    select(LargeDocumentIndex).where(LargeDocumentIndex.id == data["doc_index"].id)
+                )
+            ).scalar_one_or_none(),
             # NOTE: "session" removed (Handover 0423 - Session model deleted)
-            "vision": (await db_session.execute(
-                select(Vision).where(Vision.id == data["vision"].id)
-            )).scalar_one_or_none(),
+            "vision": (
+                await db_session.execute(select(Vision).where(Vision.id == data["vision"].id))
+            ).scalar_one_or_none(),
         }
 
         for name, record in records_after.items():
@@ -513,32 +509,32 @@ class TestNuclearDeleteConsistency:
         assert result["success"] is True, f"Nuclear delete should succeed: {result.get('error')}"
 
         # BEHAVIOR: ALL records should be deleted
-        assert (await db_session.execute(
-            select(Project).where(Project.id == project_id)
-        )).scalar_one_or_none() is None, "Project should be deleted"
+        assert (
+            await db_session.execute(select(Project).where(Project.id == project_id))
+        ).scalar_one_or_none() is None, "Project should be deleted"
 
-        assert (await db_session.execute(
-            select(AgentExecution).where(AgentExecution.agent_id == job_id)
-        )).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
+        assert (
+            await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == job_id))
+        ).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
 
-        assert (await db_session.execute(
-            select(Task).where(Task.id == task_id)
-        )).scalar_one_or_none() is None, "Task should be deleted"
+        assert (await db_session.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none() is None, (
+            "Task should be deleted"
+        )
 
-        assert (await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )).scalar_one_or_none() is None, "Message should be deleted"
+        assert (
+            await db_session.execute(select(Message).where(Message.id == message_id))
+        ).scalar_one_or_none() is None, "Message should be deleted"
 
-        assert (await db_session.execute(
-            select(ContextIndex).where(ContextIndex.id == context_index_id)
-        )).scalar_one_or_none() is None, "ContextIndex should be deleted"
+        assert (
+            await db_session.execute(select(ContextIndex).where(ContextIndex.id == context_index_id))
+        ).scalar_one_or_none() is None, "ContextIndex should be deleted"
 
-        assert (await db_session.execute(
-            select(LargeDocumentIndex).where(LargeDocumentIndex.id == doc_index_id)
-        )).scalar_one_or_none() is None, "LargeDocumentIndex should be deleted"
+        assert (
+            await db_session.execute(select(LargeDocumentIndex).where(LargeDocumentIndex.id == doc_index_id))
+        ).scalar_one_or_none() is None, "LargeDocumentIndex should be deleted"
 
         # NOTE: ProjectSession assertion removed (Handover 0423 - Session model deleted)
 
-        assert (await db_session.execute(
-            select(Vision).where(Vision.id == vision_id)
-        )).scalar_one_or_none() is None, "Vision should be deleted"
+        assert (await db_session.execute(select(Vision).where(Vision.id == vision_id))).scalar_one_or_none() is None, (
+            "Vision should be deleted"
+        )

@@ -11,10 +11,9 @@ Tests cover:
 - complete_job() - ResourceNotFoundError and generic exceptions
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
@@ -40,19 +39,14 @@ def mock_tenant_manager():
 @pytest.fixture
 def agent_job_manager(mock_db_manager, mock_tenant_manager):
     """Create an AgentJobManager instance with mocked dependencies."""
-    return AgentJobManager(
-        db_manager=mock_db_manager,
-        tenant_manager=mock_tenant_manager
-    )
+    return AgentJobManager(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager)
 
 
 class TestSpawnAgentExceptions:
     """Test spawn_agent() exception handling."""
 
     @pytest.mark.asyncio
-    async def test_spawn_agent_raises_exception_on_database_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_spawn_agent_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
         """Test that spawn_agent raises BaseGiljoException on database errors."""
         # Mock session to raise an exception during commit
         mock_session = AsyncMock(spec=AsyncSession)
@@ -68,7 +62,7 @@ class TestSpawnAgentExceptions:
                 project_id="test-project",
                 agent_display_name="Test Agent",
                 mission="Test mission",
-                tenant_key="test-tenant"
+                tenant_key="test-tenant",
             )
 
         # Verify exception details
@@ -80,9 +74,7 @@ class TestUpdateAgentStatusExceptions:
     """Test update_agent_status() exception handling."""
 
     @pytest.mark.asyncio
-    async def test_update_agent_status_raises_not_found_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_update_agent_status_raises_not_found_error(self, agent_job_manager, mock_db_manager):
         """Test that update_agent_status raises ResourceNotFoundError when execution not found."""
         # Mock session that returns no execution
         mock_session = AsyncMock(spec=AsyncSession)
@@ -97,9 +89,7 @@ class TestUpdateAgentStatusExceptions:
         # Verify ResourceNotFoundError is raised
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await agent_job_manager.update_agent_status(
-                agent_id="nonexistent-agent",
-                status="working",
-                tenant_key="test-tenant"
+                agent_id="nonexistent-agent", status="working", tenant_key="test-tenant"
             )
 
         # Verify exception details
@@ -108,9 +98,7 @@ class TestUpdateAgentStatusExceptions:
         assert exc_info.value.context.get("agent_id") == "nonexistent-agent"
 
     @pytest.mark.asyncio
-    async def test_update_agent_status_raises_exception_on_database_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_update_agent_status_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
         """Test that update_agent_status raises BaseGiljoException on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
@@ -123,9 +111,7 @@ class TestUpdateAgentStatusExceptions:
         # Verify exception is raised
         with pytest.raises(BaseGiljoException) as exc_info:
             await agent_job_manager.update_agent_status(
-                agent_id="test-agent",
-                status="working",
-                tenant_key="test-tenant"
+                agent_id="test-agent", status="working", tenant_key="test-tenant"
             )
 
         # Verify exception details
@@ -137,9 +123,7 @@ class TestUpdateAgentProgressExceptions:
     """Test update_agent_progress() exception handling."""
 
     @pytest.mark.asyncio
-    async def test_update_agent_progress_raises_not_found_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_update_agent_progress_raises_not_found_error(self, agent_job_manager, mock_db_manager):
         """Test that update_agent_progress raises ResourceNotFoundError when execution not found."""
         # Mock session that returns no execution
         mock_session = AsyncMock(spec=AsyncSession)
@@ -154,9 +138,7 @@ class TestUpdateAgentProgressExceptions:
         # Verify ResourceNotFoundError is raised
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await agent_job_manager.update_agent_progress(
-                agent_id="nonexistent-agent",
-                progress=50,
-                tenant_key="test-tenant"
+                agent_id="nonexistent-agent", progress=50, tenant_key="test-tenant"
             )
 
         # Verify exception details
@@ -165,9 +147,7 @@ class TestUpdateAgentProgressExceptions:
         assert exc_info.value.context.get("agent_id") == "nonexistent-agent"
 
     @pytest.mark.asyncio
-    async def test_update_agent_progress_raises_exception_on_database_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_update_agent_progress_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
         """Test that update_agent_progress raises BaseGiljoException on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
@@ -179,11 +159,7 @@ class TestUpdateAgentProgressExceptions:
 
         # Verify exception is raised
         with pytest.raises(BaseGiljoException) as exc_info:
-            await agent_job_manager.update_agent_progress(
-                agent_id="test-agent",
-                progress=50,
-                tenant_key="test-tenant"
-            )
+            await agent_job_manager.update_agent_progress(agent_id="test-agent", progress=50, tenant_key="test-tenant")
 
         # Verify exception details
         assert "Database error during progress update" in str(exc_info.value)
@@ -194,9 +170,7 @@ class TestCompleteJobExceptions:
     """Test complete_job() exception handling."""
 
     @pytest.mark.asyncio
-    async def test_complete_job_raises_not_found_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_complete_job_raises_not_found_error(self, agent_job_manager, mock_db_manager):
         """Test that complete_job raises ResourceNotFoundError when job not found."""
         # Mock session that returns no job
         mock_session = AsyncMock(spec=AsyncSession)
@@ -210,10 +184,7 @@ class TestCompleteJobExceptions:
 
         # Verify ResourceNotFoundError is raised
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await agent_job_manager.complete_job(
-                job_id="nonexistent-job",
-                tenant_key="test-tenant"
-            )
+            await agent_job_manager.complete_job(job_id="nonexistent-job", tenant_key="test-tenant")
 
         # Verify exception details
         assert "Job" in str(exc_info.value)
@@ -221,9 +192,7 @@ class TestCompleteJobExceptions:
         assert exc_info.value.context.get("job_id") == "nonexistent-job"
 
     @pytest.mark.asyncio
-    async def test_complete_job_raises_exception_on_database_error(
-        self, agent_job_manager, mock_db_manager
-    ):
+    async def test_complete_job_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
         """Test that complete_job raises BaseGiljoException on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
@@ -235,10 +204,7 @@ class TestCompleteJobExceptions:
 
         # Verify exception is raised
         with pytest.raises(BaseGiljoException) as exc_info:
-            await agent_job_manager.complete_job(
-                job_id="test-job",
-                tenant_key="test-tenant"
-            )
+            await agent_job_manager.complete_job(job_id="test-job", tenant_key="test-tenant")
 
         # Verify exception details
         assert "Database error during job completion" in str(exc_info.value)

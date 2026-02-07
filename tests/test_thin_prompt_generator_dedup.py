@@ -5,15 +5,17 @@ Verifies that ThinClientPromptGenerator.generate() uses the same expanded
 status filter as _ensure_orchestrator_fixture().
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution, Product, User
+
+from src.giljo_mcp.models import AgentExecution, AgentJob, Product, Project, User
 from src.giljo_mcp.models.organizations import Organization
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 @pytest_asyncio.fixture
@@ -27,7 +29,7 @@ async def test_user(db_session: AsyncSession):
         name=f"Test User Org {unique_suffix}",
         slug=f"test-user-org-{unique_suffix}",
         tenant_key=tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(org)
     await db_session.flush()
@@ -50,9 +52,7 @@ class TestThinPromptGeneratorDeduplication:
     """Test ThinClientPromptGenerator orchestrator deduplication"""
 
     @pytest.mark.asyncio
-    async def test_generate_finds_completed_orchestrator(
-        self, db_session, test_user
-    ):
+    async def test_generate_finds_completed_orchestrator(self, db_session, test_user):
         """
         Test that ThinClientPromptGenerator.generate() finds a "complete" orchestrator
         and reuses it (Fix 2).
@@ -95,15 +95,16 @@ class TestThinPromptGeneratorDeduplication:
             job_id=complete_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="complete",  # COMPLETE status - should be found
+            agent_name="orchestrator",
+            status="complete",  # COMPLETE status - should be found
             progress=100,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
         # Create ThinClientPromptGenerator
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         @asynccontextmanager
         async def mock_get_session():
@@ -145,9 +146,7 @@ class TestThinPromptGeneratorDeduplication:
         assert executions[0].job_id == complete_job_id
 
     @pytest.mark.asyncio
-    async def test_generate_finds_blocked_orchestrator(
-        self, db_session, test_user
-    ):
+    async def test_generate_finds_blocked_orchestrator(self, db_session, test_user):
         """
         Test that ThinClientPromptGenerator.generate() finds a "blocked" orchestrator
         and reuses it (Fix 2).
@@ -190,7 +189,8 @@ class TestThinPromptGeneratorDeduplication:
             job_id=blocked_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="blocked",  # BLOCKED status - should be found
+            agent_name="orchestrator",
+            status="blocked",  # BLOCKED status - should be found
             progress=50,
         )
         db_session.add(agent_execution)
@@ -229,9 +229,7 @@ class TestThinPromptGeneratorDeduplication:
         assert executions[0].status == "blocked"
 
     @pytest.mark.asyncio
-    async def test_generate_creates_when_failed(
-        self, db_session, test_user
-    ):
+    async def test_generate_creates_when_failed(self, db_session, test_user):
         """
         Test that ThinClientPromptGenerator.generate() creates a NEW orchestrator
         when the existing one has "failed" status (Fix 2).
@@ -274,7 +272,8 @@ class TestThinPromptGeneratorDeduplication:
             job_id=failed_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="failed",  # FAILED status - should NOT be found
+            agent_name="orchestrator",
+            status="failed",  # FAILED status - should NOT be found
             progress=25,
         )
         db_session.add(agent_execution)

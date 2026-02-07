@@ -13,16 +13,17 @@ Note: These tests use mocked WebSocketManager since real WebSocket connections
 require async client setup. Integration testing will verify real behavior.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch
-from uuid import uuid4
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
+
+import pytest
 from httpx import AsyncClient
 
 
 # ============================================================================
 # WEBSOCKET BROADCAST STRUCTURE TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_websocket_broadcast_on_job_cancel(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -104,6 +105,7 @@ async def test_websocket_broadcast_event_structure():
 # TENANT ISOLATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_websocket_broadcast_tenant_isolation():
     """Test that WebSocket broadcasts are tenant-isolated."""
@@ -147,6 +149,7 @@ async def test_websocket_broadcast_tenant_isolation():
 # EVENT TYPE VARIATIONS TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_websocket_event_types():
     """Test different event_type values for job:table_update."""
@@ -168,6 +171,7 @@ async def test_websocket_event_types():
 # ============================================================================
 # BATCH UPDATE TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_websocket_batch_updates():
@@ -194,8 +198,11 @@ async def test_websocket_batch_updates():
 # INTEGRATION WITH EXISTING OPERATIONS
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_cancel_job_triggers_websocket_broadcast(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
+async def test_cancel_job_triggers_websocket_broadcast(
+    async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin
+):
     """
     Test that POST /api/jobs/{job_id}/cancel triggers job:table_update broadcast.
 
@@ -235,7 +242,9 @@ async def test_cancel_job_triggers_websocket_broadcast(async_client: AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_progress_update_triggers_websocket_broadcast(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
+async def test_progress_update_triggers_websocket_broadcast(
+    async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin
+):
     """
     Test that progress updates could trigger job:table_update broadcast.
 
@@ -243,12 +252,12 @@ async def test_progress_update_triggers_websocket_broadcast(async_client: AsyncC
     """
     # This test documents future behavior
     # Progress updates COULD trigger WebSocket events for real-time UI updates
-    pass
 
 
 # ============================================================================
 # PERFORMANCE TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_websocket_broadcast_does_not_block_api_response():
@@ -260,12 +269,12 @@ async def test_websocket_broadcast_does_not_block_api_response():
     # This test documents expected performance behavior
     # WebSocket broadcasts should use asyncio.create_task() to avoid blocking
     # API response times should remain <100ms even with broadcasts
-    pass
 
 
 # ============================================================================
 # ERROR HANDLING TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_websocket_broadcast_failure_does_not_fail_operation():
@@ -278,4 +287,3 @@ async def test_websocket_broadcast_failure_does_not_fail_operation():
     # This test documents error handling behavior
     # WebSocket failures should be logged but not raise exceptions
     # Primary operations should complete successfully regardless
-    pass

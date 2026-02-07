@@ -7,11 +7,13 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+
 
 async def create_tables():
     # Test database URL
@@ -21,7 +23,8 @@ async def create_tables():
 
     async with engine.begin() as conn:
         # Create organizations table
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS organizations (
                 id VARCHAR(36) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -31,11 +34,13 @@ async def create_tables():
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 settings JSONB NOT NULL DEFAULT '{}'::jsonb
             )
-        """))
+        """)
+        )
         print("Created organizations table")
 
         # Create org_memberships table
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS org_memberships (
                 id VARCHAR(36) PRIMARY KEY,
                 org_id VARCHAR(36) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -47,25 +52,32 @@ async def create_tables():
                 CONSTRAINT uq_org_membership_user UNIQUE (org_id, user_id),
                 CONSTRAINT ck_org_membership_role CHECK (role IN ('owner', 'admin', 'member', 'viewer'))
             )
-        """))
+        """)
+        )
         print("Created org_memberships table")
 
         # Add org_id to products
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE products ADD COLUMN IF NOT EXISTS org_id VARCHAR(36) REFERENCES organizations(id) ON DELETE SET NULL
-        """))
+        """)
+        )
         print("Added org_id to products")
 
         # Add org_id to agent_templates
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS org_id VARCHAR(36) REFERENCES organizations(id) ON DELETE SET NULL
-        """))
+        """)
+        )
         print("Added org_id to agent_templates")
 
         # Add org_id to tasks
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS org_id VARCHAR(36) REFERENCES organizations(id) ON DELETE SET NULL
-        """))
+        """)
+        )
         print("Added org_id to tasks")
 
         # Create indexes
@@ -82,6 +94,7 @@ async def create_tables():
 
     await engine.dispose()
     print("Done!")
+
 
 if __name__ == "__main__":
     asyncio.run(create_tables())

@@ -15,11 +15,12 @@ Usage:
     locust -f tests/load/locustfile.py --host=http://localhost:7272 \
            --headless -u 10 -r 2 -t 5m --tags normal_load
 """
-from locust import HttpUser, TaskSet, task, between, tag
-from locust.contrib.fasthttp import FastHttpUser
-import json
+
 import random
-from typing import Dict, Any, List
+from typing import Dict
+
+from locust import TaskSet, between, tag, task
+from locust.contrib.fasthttp import FastHttpUser
 
 
 class AuthenticatedUser(FastHttpUser):
@@ -29,6 +30,7 @@ class AuthenticatedUser(FastHttpUser):
     Handles login and maintains session state.
     Uses FastHttpUser for better performance compared to HttpUser.
     """
+
     wait_time = between(1, 3)  # Wait 1-3 seconds between tasks
     abstract = True  # Don't instantiate directly
 
@@ -49,11 +51,8 @@ class AuthenticatedUser(FastHttpUser):
         # Use test credentials
         response = self.client.post(
             "/api/auth/login",
-            json={
-                "email": f"loadtest_user_{random.randint(1, 1000)}@example.com",
-                "password": "TestPassword123"
-            },
-            catch_response=True
+            json={"email": f"loadtest_user_{random.randint(1, 1000)}@example.com", "password": "TestPassword123"},
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -87,10 +86,7 @@ class ProductManagementTasks(TaskSet):
     def list_products(self):
         """List all products - common operation."""
         response = self.client.get(
-            "/api/products",
-            headers=self.user.get_headers(),
-            name="/api/products [LIST]",
-            catch_response=True
+            "/api/products", headers=self.user.get_headers(), name="/api/products [LIST]", catch_response=True
         )
 
         if response.status_code == 200:
@@ -107,13 +103,9 @@ class ProductManagementTasks(TaskSet):
         response = self.client.post(
             "/api/products",
             headers=self.user.get_headers(),
-            json={
-                "name": product_name,
-                "description": "Created during load testing",
-                "status": "active"
-            },
+            json={"name": product_name, "description": "Created during load testing", "status": "active"},
             name="/api/products [CREATE]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -138,7 +130,7 @@ class ProductManagementTasks(TaskSet):
             f"/api/products/{product['id']}",
             headers=self.user.get_headers(),
             name="/api/products/{id} [GET]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -157,12 +149,9 @@ class ProductManagementTasks(TaskSet):
         response = self.client.put(
             f"/api/products/{product['id']}",
             headers=self.user.get_headers(),
-            json={
-                "name": f"{product['name']} (Updated)",
-                "status": "active"
-            },
+            json={"name": f"{product['name']} (Updated)", "status": "active"},
             name="/api/products/{id} [UPDATE]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -183,10 +172,7 @@ class ProjectManagementTasks(TaskSet):
     def list_projects(self):
         """List all projects - common operation."""
         response = self.client.get(
-            "/api/projects",
-            headers=self.user.get_headers(),
-            name="/api/projects [LIST]",
-            catch_response=True
+            "/api/projects", headers=self.user.get_headers(), name="/api/projects [LIST]", catch_response=True
         )
 
         if response.status_code == 200:
@@ -212,10 +198,10 @@ class ProjectManagementTasks(TaskSet):
                 "product_id": product["id"],
                 "name": project_name,
                 "description": "Created during load testing",
-                "status": "active"
+                "status": "active",
             },
             name="/api/projects [CREATE]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -240,7 +226,7 @@ class ProjectManagementTasks(TaskSet):
             f"/api/projects/{project['id']}",
             headers=self.user.get_headers(),
             name="/api/projects/{id} [GET]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -261,10 +247,7 @@ class AgentJobTasks(TaskSet):
     def list_agent_jobs(self):
         """List all agent jobs - common operation."""
         response = self.client.get(
-            "/api/agent-jobs",
-            headers=self.user.get_headers(),
-            name="/api/agent-jobs [LIST]",
-            catch_response=True
+            "/api/agent-jobs", headers=self.user.get_headers(), name="/api/agent-jobs [LIST]", catch_response=True
         )
 
         if response.status_code == 200:
@@ -288,10 +271,10 @@ class AgentJobTasks(TaskSet):
                 "project_id": project["id"],
                 "agent_name": f"load_test_agent_{random.randint(1, 1000)}",
                 "agent_display_name": random.choice(["implementer", "tester", "reviewer"]),
-                "mission": "Load testing mission"
+                "mission": "Load testing mission",
             },
             name="/api/agent-jobs [CREATE]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 201:
@@ -313,7 +296,7 @@ class AgentJobTasks(TaskSet):
             f"/api/agent-jobs/{agent_job['id']}",
             headers=self.user.get_headers(),
             name="/api/agent-jobs/{id} [GET]",
-            catch_response=True
+            catch_response=True,
         )
 
         if response.status_code == 200:
@@ -334,10 +317,7 @@ class TemplateManagementTasks(TaskSet):
     def list_templates(self):
         """List all templates."""
         response = self.client.get(
-            "/api/templates",
-            headers=self.user.get_headers(),
-            name="/api/templates [LIST]",
-            catch_response=True
+            "/api/templates", headers=self.user.get_headers(), name="/api/templates [LIST]", catch_response=True
         )
 
         if response.status_code == 200:
@@ -350,11 +330,7 @@ class TemplateManagementTasks(TaskSet):
     def view_template(self):
         """View a specific template."""
         # Use known template ID or list first
-        response = self.client.get(
-            "/api/templates",
-            headers=self.user.get_headers(),
-            catch_response=True
-        )
+        response = self.client.get("/api/templates", headers=self.user.get_headers(), catch_response=True)
 
         if response.status_code == 200:
             templates = response.json()
@@ -363,7 +339,7 @@ class TemplateManagementTasks(TaskSet):
                 self.client.get(
                     f"/api/templates/{template['id']}",
                     headers=self.user.get_headers(),
-                    name="/api/templates/{id} [GET]"
+                    name="/api/templates/{id} [GET]",
                 )
 
 
@@ -374,11 +350,8 @@ class NormalLoadUser(AuthenticatedUser):
     Weight: 60% product management, 30% project management, 10% agent jobs
     Simulates typical user browsing products, occasionally creating new items.
     """
-    tasks = {
-        ProductManagementTasks: 6,
-        ProjectManagementTasks: 3,
-        AgentJobTasks: 1
-    }
+
+    tasks = {ProductManagementTasks: 6, ProjectManagementTasks: 3, AgentJobTasks: 1}
     wait_time = between(2, 5)  # More realistic wait times
     tags = ["normal_load"]
 
@@ -390,12 +363,8 @@ class PeakLoadUser(AuthenticatedUser):
     Weight: 50% product, 30% project, 10% agents, 10% templates
     Faster interactions, more create operations.
     """
-    tasks = {
-        ProductManagementTasks: 5,
-        ProjectManagementTasks: 3,
-        AgentJobTasks: 1,
-        TemplateManagementTasks: 1
-    }
+
+    tasks = {ProductManagementTasks: 5, ProjectManagementTasks: 3, AgentJobTasks: 1, TemplateManagementTasks: 1}
     wait_time = between(1, 3)
     tags = ["peak_load"]
 
@@ -407,10 +376,7 @@ class StressTestUser(AuthenticatedUser):
     Weight: 40% product, 40% project, 20% agents
     Minimal wait times, aggressive operations.
     """
-    tasks = {
-        ProductManagementTasks: 4,
-        ProjectManagementTasks: 4,
-        AgentJobTasks: 2
-    }
+
+    tasks = {ProductManagementTasks: 4, ProjectManagementTasks: 4, AgentJobTasks: 2}
     wait_time = between(0.5, 1.5)  # Aggressive
     tags = ["stress_test"]

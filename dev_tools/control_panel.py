@@ -181,12 +181,7 @@ class GiljoDevControlPanel:
 
         # Status bar at bottom (5 rows high)
         self.status_label = ttk.Label(
-            main_frame,
-            text="Ready",
-            relief="sunken",
-            anchor="nw",
-            justify="left",
-            padding=(5, 5)
+            main_frame, text="Ready", relief="sunken", anchor="nw", justify="left", padding=(5, 5)
         )
         self.status_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0), ipady=40)
 
@@ -265,19 +260,13 @@ class GiljoDevControlPanel:
         db_section = ttk.LabelFrame(tab, text="Database Operations", padding="5")
         db_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=3)
 
-        ttk.Button(
-            db_section,
-            text="Backup Database",
-            command=self.backup_database,
-            width=20
-        ).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Button(db_section, text="Backup Database", command=self.backup_database, width=20).grid(
+            row=0, column=0, padx=5, pady=5
+        )
 
-        ttk.Button(
-            db_section,
-            text="Delete Database",
-            command=self.delete_database,
-            width=20
-        ).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(db_section, text="Delete Database", command=self.delete_database, width=20).grid(
+            row=0, column=1, padx=5, pady=5
+        )
 
         row += 1
 
@@ -307,7 +296,7 @@ class GiljoDevControlPanel:
         ttk.Label(
             colors_section,
             text="Terminal logs use colors to help you quickly identify message severity:",
-            wraplength=400
+            wraplength=400,
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
 
         # Color table
@@ -317,25 +306,19 @@ class GiljoDevControlPanel:
             indicator.grid(row=idx, column=0, sticky="w", padx=(0, 10))
 
             # Color name and meaning
-            ttk.Label(
-                colors_section,
-                text=f"{color_name}: {meaning}",
-                font=("Arial", 10, "bold")
-            ).grid(row=idx, column=1, sticky="w", padx=(0, 10))
+            ttk.Label(colors_section, text=f"{color_name}: {meaning}", font=("Arial", 10, "bold")).grid(
+                row=idx, column=1, sticky="w", padx=(0, 10)
+            )
 
             # Description
-            ttk.Label(
-                colors_section,
-                text=description,
-                foreground="gray"
-            ).grid(row=idx, column=2, sticky="w")
+            ttk.Label(colors_section, text=description, foreground="gray").grid(row=idx, column=2, sticky="w")
 
         # Tip at bottom
         tip_label = ttk.Label(
             colors_section,
             text="Tip: Red and yellow messages need your attention first!",
             font=("Arial", 9, "italic"),
-            foreground="#6C757D"
+            foreground="#6C757D",
         )
         tip_label.grid(row=len(log_colors) + 1, column=0, columnspan=3, sticky="w", pady=(15, 0))
 
@@ -627,7 +610,6 @@ class GiljoDevControlPanel:
             FileNotFoundError: If no suitable terminal emulator is found (Linux)
             OSError: If terminal launch fails
         """
-        import shutil
 
         system = platform.system()
         work_dir = str(cwd if cwd else self.project_root)
@@ -1520,7 +1502,7 @@ class GiljoDevControlPanel:
                             WHERE pg_stat_activity.datname = %s
                               AND pid <> pg_backend_pid()
                             """,
-                            (db_name,)
+                            (db_name,),
                         )
                     except Exception as e:
                         self.logger.warning(f"Could not terminate connections to {db_name}: {e}")
@@ -1584,7 +1566,9 @@ class GiljoDevControlPanel:
 
             # Build detailed success message
             db_list = "\n".join(f"- {db}" for db in dropped_dbs) if dropped_dbs else "- (none found)"
-            role_list = "\n".join(f"- {r}" for r in dropped_roles) if dropped_roles else "- (none found or could not drop)"
+            role_list = (
+                "\n".join(f"- {r}" for r in dropped_roles) if dropped_roles else "- (none found or could not drop)"
+            )
 
             messagebox.showinfo(
                 "Success",
@@ -1614,7 +1598,6 @@ class GiljoDevControlPanel:
         Returns:
             Path to psql.exe if found, None otherwise
         """
-        import shutil
 
         # Method 1: Check PATH
         psql_in_path = shutil.which("psql")
@@ -1652,7 +1635,6 @@ class GiljoDevControlPanel:
         Returns:
             Path to pg_dump.exe if found, None otherwise
         """
-        import shutil
 
         # Method 1: Check PATH
         pg_dump_in_path = shutil.which("pg_dump")
@@ -1841,8 +1823,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                         "- All projects, agents, tasks, and data",
                     )
                     return True
-                else:
-                    raise Exception(f"psql.exe failed: {result.stderr}")
+                raise Exception(f"psql.exe failed: {result.stderr}")
 
             finally:
                 # Ensure temp file is cleaned up
@@ -2141,20 +2122,50 @@ pg_restore -l {backup_file.name} | head -20
 
                     # Check if database exists
                     db_result = subprocess.run(
-                        [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432",
-                         "-d", "postgres", "-t", "-c",
-                         "SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'"],
-                        capture_output=True, text=True, env=env, timeout=10
+                        [
+                            psql_path,
+                            "-U",
+                            "postgres",
+                            "-h",
+                            "localhost",
+                            "-p",
+                            "5432",
+                            "-d",
+                            "postgres",
+                            "-t",
+                            "-c",
+                            "SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                        timeout=10,
+                        check=False,
                     )
                     # If output is empty (just whitespace), database doesn't exist
                     checks["database"] = db_result.stdout.strip() == ""
 
                     # Check if roles exist
                     roles_result = subprocess.run(
-                        [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432",
-                         "-d", "postgres", "-t", "-c",
-                         "SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')"],
-                        capture_output=True, text=True, env=env, timeout=10
+                        [
+                            psql_path,
+                            "-U",
+                            "postgres",
+                            "-h",
+                            "localhost",
+                            "-p",
+                            "5432",
+                            "-d",
+                            "postgres",
+                            "-t",
+                            "-c",
+                            "SELECT 1 FROM pg_roles WHERE rolname IN ('giljo_user', 'giljo_owner')",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                        timeout=10,
+                        check=False,
                     )
                     checks["roles"] = roles_result.stdout.strip() == ""
                     db_verified = True
@@ -2168,8 +2179,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Check Python cache deleted
         cache_clean = True
-        cache_dirs = [".pytest_cache", ".ruff_cache", ".mypy_cache", "htmlcov",
-                      ".hypothesis", ".tox", ".nox"]
+        cache_dirs = [".pytest_cache", ".ruff_cache", ".mypy_cache", "htmlcov", ".hypothesis", ".tox", ".nox"]
         for cache_dir in cache_dirs:
             if (self.project_root / cache_dir).exists():
                 cache_clean = False
@@ -2636,7 +2646,6 @@ pg_restore -l {backup_file.name} | head -20
         Returns:
             True if successful, False otherwise
         """
-        import shutil
         import time
 
         system = platform.system()
@@ -2875,8 +2884,7 @@ pg_restore -l {backup_file.name} | head -20
         # Validate UUID format (basic check)
         if len(project_uuid) != 36 or project_uuid.count("-") != 4:
             messagebox.showwarning(
-                "Invalid UUID",
-                "Invalid UUID format. Expected format:\nce9015f5-d521-449c-9a89-66a9055436c8"
+                "Invalid UUID", "Invalid UUID format. Expected format:\nce9015f5-d521-449c-9a89-66a9055436c8"
             )
             return
 
@@ -2939,10 +2947,13 @@ pg_restore -l {backup_file.name} | head -20
 
                 # Step 2: Count ALL agent jobs to delete
                 self.update_status_message("Counting agent jobs to delete...")
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT COUNT(*) FROM agent_jobs
                     WHERE project_id = %s
-                """, (project_uuid,))
+                """,
+                    (project_uuid,),
+                )
                 agent_count = cur.fetchone()[0]
 
                 # Step 3: Count tasks to delete
@@ -2980,17 +2991,23 @@ pg_restore -l {backup_file.name} | head -20
                 # Step 11: Delete ALL agent jobs and executions (any status)
                 self.update_status_message(f"Deleting {agent_count} agent jobs and their executions...")
                 # First delete agent_executions (referencing agent_jobs via agent_id)
-                cur.execute("""
+                cur.execute(
+                    """
                     DELETE FROM agent_executions
                     WHERE agent_id IN (
                         SELECT id FROM agent_jobs WHERE project_id = %s
                     )
-                """, (project_uuid,))
+                """,
+                    (project_uuid,),
+                )
                 # Then delete agent_jobs (work orders)
-                cur.execute("""
+                cur.execute(
+                    """
                     DELETE FROM agent_jobs
                     WHERE project_id = %s
-                """, (project_uuid,))
+                """,
+                    (project_uuid,),
+                )
 
                 # Step 12: Delete context indexes
                 self.update_status_message(f"Deleting {context_index_count} context indexes...")
@@ -3010,7 +3027,8 @@ pg_restore -l {backup_file.name} | head -20
 
                 # Step 16: Clear project to pristine pre-staged state
                 self.update_status_message("Resetting project to pre-staged state...")
-                cur.execute("""
+                cur.execute(
+                    """
                     UPDATE projects
                     SET mission = '',
                         staging_status = NULL,
@@ -3026,7 +3044,9 @@ pg_restore -l {backup_file.name} | head -20
                         meta_data = '{}',
                         updated_at = NOW()
                     WHERE id = %s
-                """, (project_uuid,))
+                """,
+                    (project_uuid,),
+                )
 
                 # Commit transaction
                 conn.commit()
@@ -3055,11 +3075,11 @@ pg_restore -l {backup_file.name} | head -20
                 f"Kept:\n"
                 f"✓ Project name: {project_name}\n"
                 f"✓ Description: {project_description[:50]}{'...' if len(project_description) > 50 else ''}\n\n"
-                f"Project is now ready for fresh staging."
+                f"Project is now ready for fresh staging.",
             )
 
             # Clear the UUID entry field
-            self.project_uuid_entry.delete(0, 'end')
+            self.project_uuid_entry.delete(0, "end")
 
         except Exception as e:
             if conn:
@@ -3072,7 +3092,7 @@ pg_restore -l {backup_file.name} | head -20
                 "Make sure:\n"
                 "1. PostgreSQL is running\n"
                 "2. giljo_mcp database exists\n"
-                "3. UUID is correct"
+                "3. UUID is correct",
             )
 
     def run(self):

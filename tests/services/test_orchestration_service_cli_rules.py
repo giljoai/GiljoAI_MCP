@@ -9,12 +9,13 @@ Test BEHAVIOR:
 
 TDD Phase: RED - These tests should FAIL initially.
 """
+
 import uuid
 
 import pytest
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import AgentTemplate, AgentExecution, AgentJob, Product, Project
+from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
 
 
 @pytest.mark.asyncio
@@ -341,8 +342,9 @@ class TestCLIModeRules:
 
         # Should mention template name requirement
         assert "template" in agent_display_name_usage.lower(), "agent_display_name_usage should mention template"
-        assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), \
+        assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), (
             "agent_display_name_usage should emphasize exact matching"
+        )
 
     async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_type(
         self,
@@ -367,8 +369,9 @@ class TestCLIModeRules:
         task_mapping = cli_rules.get("task_tool_mapping", "")
 
         # Should mention subagent_type
-        assert "subagent_type" in task_mapping or "Task" in task_mapping, \
+        assert "subagent_type" in task_mapping or "Task" in task_mapping, (
             "task_tool_mapping should mention Task tool or subagent_type"
+        )
 
     @pytest.mark.skip(reason="Fields agent_display_name_is_ui_label, forbidden_patterns, lifecycle_flow don't exist")
     async def test_cli_mode_rules_contains_new_fields(
@@ -409,14 +412,15 @@ class TestCLIModeRules:
             assert field in cli_rules, f"cli_mode_rules missing new field: {field}"
 
         # Verify field types
-        assert isinstance(cli_rules["agent_display_name_is_ui_label"], dict), \
+        assert isinstance(cli_rules["agent_display_name_is_ui_label"], dict), (
             "agent_display_name_is_ui_label should be a dict"
-        assert isinstance(cli_rules["forbidden_patterns"], list), \
-            "forbidden_patterns should be a list"
-        assert isinstance(cli_rules["lifecycle_flow"], list), \
-            "lifecycle_flow should be a list"
+        )
+        assert isinstance(cli_rules["forbidden_patterns"], list), "forbidden_patterns should be a list"
+        assert isinstance(cli_rules["lifecycle_flow"], list), "lifecycle_flow should be a list"
 
-    @pytest.mark.skip(reason="Field agent_display_name_is_ui_label doesn't exist - replaced with agent_display_name_usage")
+    @pytest.mark.skip(
+        reason="Field agent_display_name_is_ui_label doesn't exist - replaced with agent_display_name_usage"
+    )
     async def test_cli_mode_rules_agent_display_name_is_ui_label_structure(
         self,
         db_manager: DatabaseManager,
@@ -442,13 +446,11 @@ class TestCLIModeRules:
         # Should have required sub-fields
         required_sub_fields = ["statement", "usage", "agent_name_purpose"]
         for field in required_sub_fields:
-            assert field in agent_display_name_is_ui_label, \
-                f"agent_display_name_is_ui_label missing sub-field: {field}"
+            assert field in agent_display_name_is_ui_label, f"agent_display_name_is_ui_label missing sub-field: {field}"
 
         # Verify statement content
         statement = agent_display_name_is_ui_label["statement"]
-        assert "SINGLE SOURCE OF TRUTH" in statement, \
-            "statement should mention 'SINGLE SOURCE OF TRUTH'"
+        assert "SINGLE SOURCE OF TRUTH" in statement, "statement should mention 'SINGLE SOURCE OF TRUTH'"
 
     @pytest.mark.skip(reason="forbidden_patterns field was never implemented")
     async def test_cli_mode_rules_forbidden_patterns_structure(
@@ -474,8 +476,9 @@ class TestCLIModeRules:
         forbidden_patterns = cli_rules.get("forbidden_patterns", [])
 
         # Should have at least 5 forbidden patterns
-        assert len(forbidden_patterns) >= 5, \
+        assert len(forbidden_patterns) >= 5, (
             f"forbidden_patterns should have at least 5 patterns, found {len(forbidden_patterns)}"
+        )
 
         # Each pattern should have pattern and reason
         for pattern_obj in forbidden_patterns:
@@ -506,20 +509,17 @@ class TestCLIModeRules:
         lifecycle_flow = cli_rules.get("lifecycle_flow", [])
 
         # Should have exactly 4 phases
-        assert len(lifecycle_flow) == 4, \
-            f"lifecycle_flow should have exactly 4 phases, found {len(lifecycle_flow)}"
+        assert len(lifecycle_flow) == 4, f"lifecycle_flow should have exactly 4 phases, found {len(lifecycle_flow)}"
 
         # Each phase should have required fields
         required_phase_fields = ["phase", "name", "operation", "param"]
         for phase_obj in lifecycle_flow:
             for field in required_phase_fields:
-                assert field in phase_obj, \
-                    f"Lifecycle phase missing field: {field}"
+                assert field in phase_obj, f"Lifecycle phase missing field: {field}"
 
         # Verify phase numbers are 1-4
         phase_numbers = [phase["phase"] for phase in lifecycle_flow]
-        assert phase_numbers == [1, 2, 3, 4], \
-            f"Lifecycle phases should be numbered 1-4, got {phase_numbers}"
+        assert phase_numbers == [1, 2, 3, 4], f"Lifecycle phases should be numbered 1-4, got {phase_numbers}"
 
 
 @pytest.mark.asyncio
@@ -628,10 +628,10 @@ class TestCLIModeRulesBackwardCompatibility:
         )
 
         # Both should be present for CLI mode
-        assert "agent_spawning_constraint" in result, \
+        assert "agent_spawning_constraint" in result, (
             "CLI mode should still include agent_spawning_constraint (Handover 0260)"
-        assert "cli_mode_rules" in result, \
-            "CLI mode should also include cli_mode_rules (Handover 0335)"
+        )
+        assert "cli_mode_rules" in result, "CLI mode should also include cli_mode_rules (Handover 0335)"
 
     @pytest.mark.skip(reason="Field structure changed in implementation")
     async def test_core_response_fields_unchanged(

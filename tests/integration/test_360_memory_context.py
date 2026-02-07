@@ -18,9 +18,9 @@ Related Handovers:
 - 0268: 360 Memory Context Implementation (this handover)
 """
 
-import pytest
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models.products import Product
@@ -33,6 +33,7 @@ from src.giljo_mcp.models.projects import Project
 @pytest.fixture
 def sample_product_with_history():
     """Create sample product with sequential_history data."""
+
     def _create_history_entry(seq: int) -> dict:
         return {
             "sequence": seq,
@@ -42,20 +43,20 @@ def sample_product_with_history():
             "timestamp": f"2025-11-{seq:02d}T18:00:00Z",
             "summary": f"Completed authentication module {seq} with JWT tokens and refresh mechanism.",
             "key_outcomes": [
-                f"JWT-based authentication working in prod",
-                f"Password reset via email implemented",
-                f"Session management tested"
+                "JWT-based authentication working in prod",
+                "Password reset via email implemented",
+                "Session management tested",
             ],
             "decisions_made": [
-                f"Chose bcrypt over argon2 for compatibility",
-                f"Selected Redis for session storage",
-                f"Implemented 24h token expiry"
+                "Chose bcrypt over argon2 for compatibility",
+                "Selected Redis for session storage",
+                "Implemented 24h token expiry",
             ],
             "git_commits": [
                 "a1b2c3d: Add JWT middleware",
                 "b2c3d4e: Implement password reset flow",
-                "c3d4e5f: Add session management tests"
-            ]
+                "c3d4e5f: Add session management tests",
+            ],
         }
 
     product = Product(
@@ -65,13 +66,9 @@ def sample_product_with_history():
         description="Multi-tenant SaaS application",
         product_memory={
             "sequential_history": [_create_history_entry(i) for i in range(1, 6)],  # 5 entries
-            "git_integration": {
-                "enabled": False,
-                "commit_limit": 20,
-                "default_branch": "main"
-            },
-            "context": {}
-        }
+            "git_integration": {"enabled": False, "commit_limit": 20, "default_branch": "main"},
+            "context": {},
+        },
     )
     return product
 
@@ -87,8 +84,8 @@ def sample_product_no_history():
         product_memory={
             "sequential_history": [],  # Empty history
             "git_integration": {"enabled": False},
-            "context": {}
-        }
+            "context": {},
+        },
     )
     return product
 
@@ -101,7 +98,7 @@ def sample_project():
         product_id="test-product-123",
         tenant_key="test-tenant",
         name="New Feature Development",
-        description="Implementing new features based on past learnings"
+        description="Implementing new features based on past learnings",
     )
 
 
@@ -121,6 +118,7 @@ def mission_planner_with_db():
     # Mock Serena context fetching
     async def mock_fetch_serena(*args, **kwargs):
         return ""
+
     planner._fetch_serena_codebase_context = mock_fetch_serena
 
     return planner
@@ -158,36 +156,34 @@ async def test_orchestrator_receives_memory_with_instructions(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Phase 1: Memory context exists
-    assert "## Historical Context (360 Memory)" in context, \
-        "Memory context section must exist in orchestrator context"
+    assert "## Historical Context (360 Memory)" in context, "Memory context section must exist in orchestrator context"
 
     # Phase 2: Instructions for READING memory
-    assert "How Future Projects Benefit" in context or \
-           "Use this project history to inform your decisions" in context or \
-           "project summary" in context.lower(), \
-        "Must include guidance on interpreting memory"
+    assert (
+        "How Future Projects Benefit" in context
+        or "Use this project history to inform your decisions" in context
+        or "project summary" in context.lower()
+    ), "Must include guidance on interpreting memory"
 
     # Phase 3: Instructions for UPDATING memory - CRITICAL for Handover 0268
     # Should mention when/how to call the MCP tool
-    assert "close_project_and_update_memory" in context or \
-           "project completion" in context.lower() or \
-           "update 360 Memory" in context, \
-        "Must include instructions on updating memory at project completion"
+    assert (
+        "close_project_and_update_memory" in context
+        or "project completion" in context.lower()
+        or "update 360 Memory" in context
+    ), "Must include instructions on updating memory at project completion"
 
     # Phase 4: Git integration documented
-    assert "git" in context.lower() or \
-           "GitHub" in context, \
-        "Must document git integration status when enabled"
+    assert "git" in context.lower() or "GitHub" in context, "Must document git integration status when enabled"
 
     # Phase 5: Example usage of the MCP tool (in code blocks or text)
-    assert "close_project_and_update_memory" in context or \
-           "project_id" in context or \
-           "summary=" in context, \
+    assert "close_project_and_update_memory" in context or "project_id" in context or "summary=" in context, (
         "Must show MCP tool usage example"
+    )
 
 
 @pytest.mark.asyncio
@@ -215,7 +211,7 @@ async def test_first_project_receives_memory_instructions(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # CRITICAL: Even with empty history, should include memory instructions
@@ -225,18 +221,16 @@ async def test_first_project_receives_memory_instructions(
 
     # Should either have memory section OR mention that this is first project
     memory_mentioned = (
-        "## Historical Context (360 Memory)" in context or
-        "first project" in context.lower() or
-        "no history" in context.lower() or
-        "new product" in context.lower()
+        "## Historical Context (360 Memory)" in context
+        or "first project" in context.lower()
+        or "no history" in context.lower()
+        or "new product" in context.lower()
     )
     # Note: This assertion may be lenient for now, will be stricter after implementation
 
 
 @pytest.mark.asyncio
-async def test_memory_respects_priority_levels(
-    mission_planner_with_db, sample_product_with_history, sample_project
-):
+async def test_memory_respects_priority_levels(mission_planner_with_db, sample_product_with_history, sample_project):
     """
     Memory instructions and detail level must respect priority settings.
 
@@ -255,10 +249,11 @@ async def test_memory_respects_priority_levels(
         project=sample_project,
         field_priorities={"product_memory.sequential_history": 0},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
-    assert "## Historical Context (360 Memory)" not in context_priority_0, \
+    assert "## Historical Context (360 Memory)" not in context_priority_0, (
         "Priority 0 should exclude all memory context"
+    )
 
     # Test Priority 7: Should include outcomes + instructions
     context_priority_7 = await mission_planner_with_db._build_context_with_priorities(
@@ -266,12 +261,12 @@ async def test_memory_respects_priority_levels(
         project=sample_project,
         field_priorities={"product_memory.sequential_history": 7},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
-    assert "## Historical Context (360 Memory)" in context_priority_7, \
-        "Priority 7 should include memory context"
-    assert "Key Outcomes" in context_priority_7 or "outcomes" in context_priority_7.lower(), \
+    assert "## Historical Context (360 Memory)" in context_priority_7, "Priority 7 should include memory context"
+    assert "Key Outcomes" in context_priority_7 or "outcomes" in context_priority_7.lower(), (
         "Priority 7 (moderate) should include outcomes"
+    )
 
     # Test Priority 10: Should include decisions
     context_priority_10 = await mission_planner_with_db._build_context_with_priorities(
@@ -279,12 +274,12 @@ async def test_memory_respects_priority_levels(
         project=sample_project,
         field_priorities={"product_memory.sequential_history": 10},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
-    assert "## Historical Context (360 Memory)" in context_priority_10, \
-        "Priority 10 should include memory context"
-    assert "Decisions" in context_priority_10 or "decisions" in context_priority_10.lower(), \
+    assert "## Historical Context (360 Memory)" in context_priority_10, "Priority 10 should include memory context"
+    assert "Decisions" in context_priority_10 or "decisions" in context_priority_10.lower(), (
         "Priority 10 (full) should include decisions"
+    )
 
 
 @pytest.mark.asyncio
@@ -314,19 +309,14 @@ async def test_git_commits_included_when_github_enabled(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # When GitHub enabled, should mention git or commits
-    assert "## Historical Context (360 Memory)" in context, \
-        "Memory section must exist"
+    assert "## Historical Context (360 Memory)" in context, "Memory section must exist"
 
     # Check if git information is accessible (commits are in history entries)
-    has_git_info = (
-        "git" in context.lower() or
-        "commit" in context.lower() or
-        "GitHub" in context
-    )
+    has_git_info = "git" in context.lower() or "commit" in context.lower() or "GitHub" in context
     # For now, lenient - just verify context builds without error
     assert isinstance(context, str), "Context should be valid"
 
@@ -366,23 +356,19 @@ async def test_memory_instructions_include_mcp_tool_example(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Should mention the MCP tool name (exact or similar)
     mcp_mentioned = (
-        "close_project_and_update_memory" in context or
-        "project_closeout" in context or
-        "update_memory" in context
+        "close_project_and_update_memory" in context or "project_closeout" in context or "update_memory" in context
     )
     # For now, lenient check - will be more specific after implementation
     assert isinstance(context, str), "Context must be valid string"
 
 
 @pytest.mark.asyncio
-async def test_memory_instructions_explain_system(
-    mission_planner_with_db, sample_product_with_history, sample_project
-):
+async def test_memory_instructions_explain_system(mission_planner_with_db, sample_product_with_history, sample_project):
     """
     Memory instructions must explain the 360 Memory system.
 
@@ -404,17 +390,12 @@ async def test_memory_instructions_explain_system(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Should explain memory system
-    explanation_present = (
-        "history" in context.lower() or
-        "project" in context.lower() or
-        "memory" in context.lower()
-    )
-    assert explanation_present, \
-        "Memory section should explain what the system is"
+    explanation_present = "history" in context.lower() or "project" in context.lower() or "memory" in context.lower()
+    assert explanation_present, "Memory section should explain what the system is"
 
 
 # ==================== Phase 3: Token Budget Tests ====================
@@ -438,7 +419,7 @@ async def test_memory_instructions_count_toward_token_budget(
         project=sample_project,
         field_priorities={"product_memory.sequential_history": 7},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     tokens = mission_planner_with_db._count_tokens(context)
@@ -481,16 +462,14 @@ async def test_memory_gracefully_handles_malformed_history(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     assert isinstance(context, str), "Should return valid string despite malformed data"
 
 
 @pytest.mark.asyncio
-async def test_memory_handles_null_product_memory(
-    mission_planner_with_db, sample_project
-):
+async def test_memory_handles_null_product_memory(mission_planner_with_db, sample_project):
     """
     If product_memory is NULL, should handle gracefully.
 
@@ -504,7 +483,7 @@ async def test_memory_handles_null_product_memory(
         tenant_key="test-tenant",
         name="Test Product",
         description="No memory field",
-        product_memory=None  # NULL memory
+        product_memory=None,  # NULL memory
     )
 
     field_priorities = {
@@ -517,7 +496,7 @@ async def test_memory_handles_null_product_memory(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     assert isinstance(context, str), "Should return valid string with null memory"
@@ -556,7 +535,7 @@ async def test_orchestrator_can_read_memory_and_understand_updates(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Verify complete integration

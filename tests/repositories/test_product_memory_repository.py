@@ -4,10 +4,12 @@ TDD tests for ProductMemoryEntry repository (Handover 0390a).
 Run with: pytest tests/repositories/test_product_memory_repository.py -v
 """
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
@@ -26,18 +28,18 @@ class TestProductMemoryRepository:
             source="test_v1",
             timestamp=datetime.utcnow(),
         )
-        assert hasattr(entry, 'id')
-        assert hasattr(entry, 'tenant_key')
-        assert hasattr(entry, 'product_id')
-        assert hasattr(entry, 'project_id')
-        assert hasattr(entry, 'sequence')
-        assert hasattr(entry, 'entry_type')
-        assert hasattr(entry, 'source')
-        assert hasattr(entry, 'summary')
-        assert hasattr(entry, 'key_outcomes')
-        assert hasattr(entry, 'decisions_made')
-        assert hasattr(entry, 'git_commits')
-        assert hasattr(entry, 'deleted_by_user')
+        assert hasattr(entry, "id")
+        assert hasattr(entry, "tenant_key")
+        assert hasattr(entry, "product_id")
+        assert hasattr(entry, "project_id")
+        assert hasattr(entry, "sequence")
+        assert hasattr(entry, "entry_type")
+        assert hasattr(entry, "source")
+        assert hasattr(entry, "summary")
+        assert hasattr(entry, "key_outcomes")
+        assert hasattr(entry, "decisions_made")
+        assert hasattr(entry, "git_commits")
+        assert hasattr(entry, "deleted_by_user")
 
     @pytest.mark.asyncio
     async def test_create_entry(self, db_session: AsyncSession, test_product):
@@ -190,14 +192,12 @@ class TestProductMemoryRepository:
         """Entries should be deleted when product is deleted (CASCADE)."""
         # This test requires creating and deleting a product
         # Implementation depends on test fixtures
-        pass
 
     @pytest.mark.asyncio
     async def test_set_null_on_project_delete(self, db_session: AsyncSession):
         """project_id should become NULL when project is deleted (SET NULL)."""
         # This test requires creating and deleting a project
         # Implementation depends on test fixtures
-        pass
 
     @pytest.mark.asyncio
     async def test_entries_ordered_by_sequence_desc(self, db_session: AsyncSession, test_product):

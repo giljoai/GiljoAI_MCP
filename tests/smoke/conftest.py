@@ -4,21 +4,17 @@ Smoke test fixtures with authentication support.
 This module provides fixtures for smoke tests that properly initialize
 the authentication middleware and provide authenticated clients.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
 from sqlalchemy import select
-
-if TYPE_CHECKING:
-    from src.giljo_mcp.models import User
 
 
 @pytest_asyncio.fixture
@@ -97,7 +93,6 @@ async def authenticated_client(api_client, db_manager):
             response = await client.post("/api/v1/products/", json={...})
             assert response.status_code == 200
     """
-    from api.app import app, state
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
 

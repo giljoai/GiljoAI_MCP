@@ -18,22 +18,20 @@ Test Coverage:
 - ZIP files contain correct Claude YAML format
 - Install scripts have correct URL templating
 """
+
 import io
 import os
 import subprocess
 import sys
 import zipfile
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session
+from sqlalchemy import inspect, text
 
-from src.giljo_mcp.models import AgentTemplate, Base
+from src.giljo_mcp.models import Base
 
 
 # ========================================
@@ -68,11 +66,13 @@ async def auth_headers_fixture(async_client: AsyncClient, test_db):
 
     Creates admin user and API key for authenticated endpoints.
     """
-    from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
-    from src.giljo_mcp.models import APIKey, User
-    from passlib.hash import bcrypt
     import uuid
     from datetime import datetime, timezone
+
+    from passlib.hash import bcrypt
+
+    from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
+    from src.giljo_mcp.models import APIKey, User
 
     manager = test_db  # test_db is db_manager from conftest
 
@@ -86,7 +86,7 @@ async def auth_headers_fixture(async_client: AsyncClient, test_db):
             is_active=True,
             role="admin",
             password_hash=bcrypt.hash("Test@Pass123"),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(admin)
         await session.commit()
@@ -101,7 +101,7 @@ async def auth_headers_fixture(async_client: AsyncClient, test_db):
             user_id=admin.id,
             key_hash=key_hash,
             name="test_key",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(api_key_obj)
         await session.commit()
@@ -128,7 +128,6 @@ class TestFreshInstallFlow:
         1. Base.metadata.create_all() - creates tables
         2. alembic upgrade head - applies migrations (CHECK constraints, backfills)
         """
-        from src.giljo_mcp.models import Base
 
         # Step 1: Create tables (what install.py does at line 751)
         async with fresh_db_engine.begin() as conn:
@@ -138,11 +137,12 @@ class TestFreshInstallFlow:
         async with fresh_db_engine.connect() as conn:
             inspector = await conn.run_sync(lambda sync_conn: inspect(sync_conn))
             tables = await conn.run_sync(lambda sync_conn: inspector.get_table_names())
-            assert 'agent_templates' in tables
+            assert "agent_templates" in tables
 
         # Step 2: Run migrations (what install.py now does at line 1770)
         # Set DATABASE_URL for Alembic subprocess
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
         test_db_url = PostgreSQLTestHelper.get_test_db_url(async_driver=False)
 
         env = os.environ.copy()
@@ -153,7 +153,8 @@ class TestFreshInstallFlow:
             capture_output=True,
             text=True,
             timeout=60,
-            env=env
+            env=env,
+            check=False,
         )
 
         assert result.returncode == 0, f"Migration failed: {result.stderr}"
@@ -164,18 +165,15 @@ class TestFreshInstallFlow:
 
             # Check columns exist
             columns = await conn.run_sync(
-                lambda sync_conn: {col['name'] for col in inspector.get_columns('agent_templates')}
+                lambda sync_conn: {col["name"] for col in inspector.get_columns("agent_templates")}
             )
-            assert 'cli_tool' in columns, "cli_tool column not created"
-            assert 'background_color' in columns, "background_color column not created"
+            assert "cli_tool" in columns, "cli_tool column not created"
+            assert "background_color" in columns, "background_color column not created"
 
             # Check CHECK constraint exists
-            constraints = await conn.run_sync(
-                lambda sync_conn: inspector.get_check_constraints('agent_templates')
-            )
-            constraint_names = {c['name'] for c in constraints}
-            assert 'check_cli_tool' in constraint_names, "CHECK constraint not created"
-
+            constraints = await conn.run_sync(lambda sync_conn: inspector.get_check_constraints("agent_templates"))
+            constraint_names = {c["name"] for c in constraints}
+            assert "check_cli_tool" in constraint_names, "CHECK constraint not created"
 
     @pytest.mark.asyncio
     async def test_template_seeding_after_migrations(self, test_db):
@@ -196,7 +194,7 @@ class TestFreshInstallFlow:
             # Verify templates have new columns with correct values
             result = await session.execute(
                 text("SELECT name, role, cli_tool, background_color FROM agent_templates WHERE tenant_key = :tk"),
-                {"tk": "test-tenant"}
+                {"tk": "test-tenant"},
             )
             templates = result.fetchall()
 
@@ -204,12 +202,11 @@ class TestFreshInstallFlow:
 
             for name, role, cli_tool, background_color in templates:
                 # Verify cli_tool is valid
-                assert cli_tool in ('claude', 'codex', 'gemini', 'generic'), \
-                    f"Invalid cli_tool '{cli_tool}' for {name}"
+                assert cli_tool in ("claude", "codex", "gemini", "generic"), f"Invalid cli_tool '{cli_tool}' for {name}"
 
                 # Verify background_color format
                 assert background_color is not None, f"background_color is NULL for {name}"
-                assert background_color.startswith('#'), f"Invalid color format for {name}"
+                assert background_color.startswith("#"), f"Invalid color format for {name}"
                 assert len(background_color) == 7, f"Invalid color length for {name}"
 
         # Note: Don't close manager as it's shared from test_db fixture
@@ -237,7 +234,8 @@ class TestExistingInstallUpgrade:
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            check=False,
         )
         assert result1.returncode == 0, f"First migration failed: {result1.stderr}"
 
@@ -246,21 +244,19 @@ class TestExistingInstallUpgrade:
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            check=False,
         )
         assert result2.returncode == 0, f"Second migration failed: {result2.stderr}"
 
         # Verify database still works
         async with manager.get_session_async() as session:
-            result = await session.execute(
-                text("SELECT COUNT(*) FROM agent_templates")
-            )
+            result = await session.execute(text("SELECT COUNT(*) FROM agent_templates"))
             count = result.scalar()
             # Count might be 0 or more, just verify query works
             assert count >= 0
 
         # Note: Don't close manager as it's shared from test_db fixture
-
 
     @pytest.mark.asyncio
     async def test_migration_preserves_existing_data(self, test_db):
@@ -292,15 +288,14 @@ class TestExistingInstallUpgrade:
                     "role": "orchestrator",
                     "content": "Test content",
                     "cli": "claude",
-                    "color": "#D4A574"
-                }
+                    "color": "#D4A574",
+                },
             )
             await session.commit()
 
             # Verify template exists
             result = await session.execute(
-                text("SELECT name, cli_tool, background_color FROM agent_templates WHERE id = :id"),
-                {"id": template_id}
+                text("SELECT name, cli_tool, background_color FROM agent_templates WHERE id = :id"), {"id": template_id}
             )
             row = result.fetchone()
 
@@ -325,9 +320,7 @@ class TestDownloadTokenSystem:
     async def test_generate_token_for_agent_templates(self, async_client: AsyncClient, auth_headers_fixture):
         """Verify token generation for agent templates."""
         response = await async_client.post(
-            "/api/download/generate-token",
-            json={"content_type": "agent_templates"},
-            headers=auth_headers_fixture
+            "/api/download/generate-token", json={"content_type": "agent_templates"}, headers=auth_headers_fixture
         )
 
         assert response.status_code == 200
@@ -336,7 +329,6 @@ class TestDownloadTokenSystem:
         assert "download_url" in data
         assert "expires_at" in data
         assert "agent_templates" in data["download_url"]
-
 
     @pytest.mark.asyncio
     async def test_download_agent_templates_via_token(self, async_client: AsyncClient, auth_headers_fixture, test_db):
@@ -356,15 +348,13 @@ class TestDownloadTokenSystem:
 
         # Generate token
         token_response = await async_client.post(
-            "/api/download/generate-token",
-            json={"content_type": "agent_templates"},
-            headers=auth_headers_fixture
+            "/api/download/generate-token", json={"content_type": "agent_templates"}, headers=auth_headers_fixture
         )
         assert token_response.status_code == 200, f"Token generation failed: {token_response.text}"
 
         download_url = token_response.json()["download_url"]
         # Extract token from URL: /api/download/temp/{token}/{filename}
-        parts = download_url.split('/')
+        parts = download_url.split("/")
         token = parts[-2]
         filename = parts[-1]
 
@@ -375,7 +365,7 @@ class TestDownloadTokenSystem:
 
         # Verify ZIP contents
         zip_bytes = io.BytesIO(download_response.content)
-        with zipfile.ZipFile(zip_bytes, 'r') as zf:
+        with zipfile.ZipFile(zip_bytes, "r") as zf:
             files = zf.namelist()
 
             # Should have at least one template
@@ -386,21 +376,20 @@ class TestDownloadTokenSystem:
 
             # Verify file structure (claude_code/*.md)
             for file in files:
-                assert file.startswith('claude_code/'), f"Invalid path: {file}"
-                assert file.endswith('.md'), f"Invalid extension: {file}"
+                assert file.startswith("claude_code/"), f"Invalid path: {file}"
+                assert file.endswith(".md"), f"Invalid extension: {file}"
 
             # Read one template and verify YAML frontmatter
             if len(files) > 0:
-                content = zf.read(files[0]).decode('utf-8')
+                content = zf.read(files[0]).decode("utf-8")
 
                 # Verify YAML frontmatter structure
-                assert content.startswith('---\n'), "Missing YAML frontmatter"
+                assert content.startswith("---\n"), "Missing YAML frontmatter"
 
                 # Verify required fields
-                assert 'name:' in content, "Missing 'name' field"
-                assert 'description:' in content, "Missing 'description' field"
-                assert 'model:' in content or 'modelId:' in content, "Missing model field"
-
+                assert "name:" in content, "Missing 'name' field"
+                assert "description:" in content, "Missing 'description' field"
+                assert "model:" in content or "modelId:" in content, "Missing model field"
 
     @pytest.mark.asyncio
     async def test_agent_templates_have_cli_tool_field(self, async_client: AsyncClient, auth_headers_fixture, test_db):
@@ -409,8 +398,8 @@ class TestDownloadTokenSystem:
 
         Tests that new cli_tool field is included in export.
         """
-        from src.giljo_mcp.template_seeder import seed_tenant_templates
         from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.template_seeder import seed_tenant_templates
 
         # Seed templates
         manager = DatabaseManager()
@@ -421,13 +410,11 @@ class TestDownloadTokenSystem:
 
         # Generate token and download
         token_response = await async_client.post(
-            "/api/download/generate-token",
-            json={"content_type": "agent_templates"},
-            headers=auth_headers_fixture
+            "/api/download/generate-token", json={"content_type": "agent_templates"}, headers=auth_headers_fixture
         )
 
         download_url = token_response.json()["download_url"]
-        parts = download_url.split('/')
+        parts = download_url.split("/")
         token = parts[-2]
         filename = parts[-1]
 
@@ -435,15 +422,16 @@ class TestDownloadTokenSystem:
 
         # Verify cli_tool in metadata
         zip_bytes = io.BytesIO(download_response.content)
-        with zipfile.ZipFile(zip_bytes, 'r') as zf:
+        with zipfile.ZipFile(zip_bytes, "r") as zf:
             if len(zf.namelist()) > 0:
-                content = zf.read(zf.namelist()[0]).decode('utf-8')
+                content = zf.read(zf.namelist()[0]).decode("utf-8")
 
                 # Verify cli_tool field exists in frontmatter
                 # Note: Actual field name depends on export implementation
                 # Could be 'cli_tool:', 'tool:', or embedded in description
-                assert 'claude' in content.lower() or 'codex' in content.lower() or 'gemini' in content.lower(), \
+                assert "claude" in content.lower() or "codex" in content.lower() or "gemini" in content.lower(), (
                     "CLI tool not mentioned in template"
+                )
 
 
 # ========================================
@@ -457,9 +445,7 @@ class TestInstallScripts:
     @pytest.mark.asyncio
     async def test_get_agent_templates_install_script_ps1(self, async_client: AsyncClient):
         """Verify PowerShell install script for agent templates."""
-        response = await async_client.get(
-            "/api/download/install-script.ps1?script_type=agent-templates"
-        )
+        response = await async_client.get("/api/download/install-script.ps1?script_type=agent-templates")
 
         assert response.status_code == 200
         assert "text/plain" in response.headers["content-type"]
@@ -467,37 +453,28 @@ class TestInstallScripts:
         script = response.text
 
         # Verify script content
-        assert "$env:GILJO_API_KEY" in script or "$GILJO_API_KEY" in script, \
-            "Missing API key placeholder"
+        assert "$env:GILJO_API_KEY" in script or "$GILJO_API_KEY" in script, "Missing API key placeholder"
         assert "agent-templates.zip" in script, "Missing agent-templates.zip reference"
-        assert "Invoke-WebRequest" in script or "Invoke-RestMethod" in script, \
-            "Missing PowerShell HTTP command"
-
+        assert "Invoke-WebRequest" in script or "Invoke-RestMethod" in script, "Missing PowerShell HTTP command"
 
     @pytest.mark.asyncio
     async def test_get_slash_commands_install_script_sh(self, async_client: AsyncClient):
         """Verify Bash install script for slash commands."""
-        response = await async_client.get(
-            "/api/download/install-script.sh?script_type=slash-commands"
-        )
+        response = await async_client.get("/api/download/install-script.sh?script_type=slash-commands")
 
         assert response.status_code == 200
 
         script = response.text
 
         # Verify script content
-        assert "$GILJO_API_KEY" in script or "${GILJO_API_KEY}" in script, \
-            "Missing API key placeholder"
+        assert "$GILJO_API_KEY" in script or "${GILJO_API_KEY}" in script, "Missing API key placeholder"
         assert "slash-commands.zip" in script, "Missing slash-commands.zip reference"
         assert "curl" in script or "wget" in script, "Missing HTTP command"
-
 
     @pytest.mark.asyncio
     async def test_install_script_has_server_url_placeholder(self, async_client: AsyncClient):
         """Verify install scripts use {{SERVER_URL}} placeholder."""
-        response = await async_client.get(
-            "/api/download/install-script.ps1?script_type=agent-templates"
-        )
+        response = await async_client.get("/api/download/install-script.ps1?script_type=agent-templates")
 
         script = response.text
 
@@ -527,7 +504,7 @@ class TestMigrationSafety:
         assert migration_file.exists(), f"Migration file not found: {migration_file}"
 
         content = migration_file.read_text()
-        
+
         # Remove docstring to avoid false positives from security comments
         if '"""' in content:
             parts = content.split('"""')
@@ -546,7 +523,6 @@ class TestMigrationSafety:
         assert "text(" in content, "Missing text() wrapper for query safety"
         assert "WHERE background_color IS NULL" in content, "Missing idempotency check"
 
-
     def test_migration_uses_server_default_for_backfill(self):
         """
         Verify migration uses server_default for automatic backfill.
@@ -559,8 +535,7 @@ class TestMigrationSafety:
 
         # Verify server_default pattern
         assert 'server_default="claude"' in content, "Missing server_default for cli_tool"
-        assert 'server_default=None' in content, "Missing server_default cleanup"
-
+        assert "server_default=None" in content, "Missing server_default cleanup"
 
     def test_migration_has_check_constraint(self):
         """
@@ -574,9 +549,7 @@ class TestMigrationSafety:
         # Verify CHECK constraint
         assert "create_check_constraint" in content, "Missing CHECK constraint creation"
         assert "check_cli_tool" in content, "Missing constraint name"
-        assert "claude" in content and "codex" in content and "gemini" in content, \
-            "Missing valid CLI tool values"
-
+        assert "claude" in content and "codex" in content and "gemini" in content, "Missing valid CLI tool values"
 
     @pytest.mark.asyncio
     async def test_migration_rollback_works(self, test_db):
@@ -589,10 +562,7 @@ class TestMigrationSafety:
 
         # First, ensure we're at head
         subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=True,
-            capture_output=True,
-            timeout=60
+            [sys.executable, "-m", "alembic", "upgrade", "head"], check=True, capture_output=True, timeout=60
         )
 
         # Downgrade one step
@@ -600,7 +570,8 @@ class TestMigrationSafety:
             [sys.executable, "-m", "alembic", "downgrade", "-1"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            check=False,
         )
 
         assert result.returncode == 0, f"Downgrade failed: {result.stderr}"
@@ -609,23 +580,18 @@ class TestMigrationSafety:
         manager = DatabaseManager()
         async with manager.get_session_async() as session:
             async with session.begin():
-                inspector = await session.run_sync(
-                    lambda sync_session: inspect(sync_session.connection())
-                )
-                columns = {col['name'] for col in inspector.get_columns('agent_templates')}
+                inspector = await session.run_sync(lambda sync_session: inspect(sync_session.connection()))
+                columns = {col["name"] for col in inspector.get_columns("agent_templates")}
 
                 # After downgrade, new columns should be gone
-                assert 'cli_tool' not in columns, "cli_tool column not removed"
-                assert 'background_color' not in columns, "background_color column not removed"
+                assert "cli_tool" not in columns, "cli_tool column not removed"
+                assert "background_color" not in columns, "background_color column not removed"
 
         await manager.close()
 
         # Upgrade back to head for other tests
         subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=True,
-            capture_output=True,
-            timeout=60
+            [sys.executable, "-m", "alembic", "upgrade", "head"], check=True, capture_output=True, timeout=60
         )
 
 
@@ -653,7 +619,6 @@ class TestInstallPyIntegration:
         assert "alembic upgrade head" in content, "Missing alembic upgrade head"
         assert "run_database_migrations" in content, "run_database_migrations not called"
 
-
     def test_install_py_runs_migrations_after_create_all(self):
         """
         Verify install.py has both table creation and migration execution.
@@ -665,13 +630,9 @@ class TestInstallPyIntegration:
 
         # Verify both key methods exist
         assert "run_database_migrations" in content, "run_database_migrations method missing"
-        
+
         # Verify database setup happens (either via SQLAlchemy or Alembic)
-        has_database_setup = (
-            "create_engine" in content or
-            "DatabaseManager" in content or
-            "Base.metadata" in content
-        )
+        has_database_setup = "create_engine" in content or "DatabaseManager" in content or "Base.metadata" in content
         assert has_database_setup, "Database setup code missing"
 
         # Migration should come after create_all
@@ -704,7 +665,8 @@ class TestEndToEndSmoke:
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            check=False,
         )
         assert result.returncode == 0, f"Migration failed: {result.stderr}"
 
@@ -723,7 +685,7 @@ class TestEndToEndSmoke:
                     AND cli_tool IN ('claude', 'codex', 'gemini', 'generic')
                     AND background_color IS NOT NULL
                 """),
-                {"tk": "test-tenant"}
+                {"tk": "test-tenant"},
             )
             count = result.scalar()
 

@@ -10,7 +10,7 @@ fetch_context() tools on-demand.
 Following TDD principles: Tests written BEFORE implementation.
 """
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -66,9 +66,7 @@ class TestBuildFetchInstructions:
     # Test: Tier Assignment Based on Priority
     # =========================================================================
 
-    def test_build_fetch_instructions_returns_three_tiers(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_build_fetch_instructions_returns_three_tiers(self, mission_planner, sample_product, sample_project):
         """Test that _build_fetch_instructions returns critical/important/reference tiers."""
         field_priorities = {
             "product_core": 1,
@@ -91,9 +89,7 @@ class TestBuildFetchInstructions:
         assert isinstance(result["important"], list)
         assert isinstance(result["reference"], list)
 
-    def test_priority_1_maps_to_critical_tier(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_priority_1_maps_to_critical_tier(self, mission_planner, sample_product, sample_project):
         """Test that priority 1 fields go to critical tier."""
         field_priorities = {"product_core": 1}
         depth_config = {}
@@ -108,9 +104,7 @@ class TestBuildFetchInstructions:
         critical_fields = [item["field"] for item in result["critical"]]
         assert "product_core" in critical_fields
 
-    def test_priority_2_maps_to_important_tier(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_priority_2_maps_to_important_tier(self, mission_planner, sample_product, sample_project):
         """Test that priority 2 fields go to important tier."""
         field_priorities = {"tech_stack": 2}
         depth_config = {}
@@ -125,9 +119,7 @@ class TestBuildFetchInstructions:
         important_fields = [item["field"] for item in result["important"]]
         assert "tech_stack" in important_fields
 
-    def test_priority_3_maps_to_reference_tier(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_priority_3_maps_to_reference_tier(self, mission_planner, sample_product, sample_project):
         """Test that priority 3 fields go to reference tier."""
         field_priorities = {"memory_360": 3}
         depth_config = {}
@@ -142,9 +134,7 @@ class TestBuildFetchInstructions:
         reference_fields = [item["field"] for item in result["reference"]]
         assert "memory_360" in reference_fields
 
-    def test_priority_4_excluded_from_all_tiers(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_priority_4_excluded_from_all_tiers(self, mission_planner, sample_product, sample_project):
         """Test that priority 4 (EXCLUDED) fields are not in any tier."""
         field_priorities = {
             "product_core": 1,
@@ -169,9 +159,7 @@ class TestBuildFetchInstructions:
     # Test: Instruction Structure
     # =========================================================================
 
-    def test_instruction_contains_required_fields(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_instruction_contains_required_fields(self, mission_planner, sample_product, sample_project):
         """Test that each instruction has field, tool, params, framing, estimated_tokens."""
         field_priorities = {"product_core": 1}
         depth_config = {}
@@ -192,9 +180,7 @@ class TestBuildFetchInstructions:
         assert "framing" in instruction
         assert "estimated_tokens" in instruction
 
-    def test_instruction_tool_is_fetch_context(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_instruction_tool_is_fetch_context(self, mission_planner, sample_product, sample_project):
         """Test that all instructions use fetch_context tool."""
         field_priorities = {
             "product_core": 1,
@@ -238,9 +224,7 @@ class TestBuildFetchInstructions:
     # Test: Tier-Specific Framing
     # =========================================================================
 
-    def test_critical_tier_framing_starts_with_required(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_critical_tier_framing_starts_with_required(self, mission_planner, sample_product, sample_project):
         """Test that critical tier framing starts with 'REQUIRED:'."""
         field_priorities = {"product_core": 1}
         depth_config = {}
@@ -255,9 +239,7 @@ class TestBuildFetchInstructions:
         instruction = result["critical"][0]
         assert instruction["framing"].startswith("REQUIRED:")
 
-    def test_important_tier_framing_starts_with_recommended(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_important_tier_framing_starts_with_recommended(self, mission_planner, sample_product, sample_project):
         """Test that important tier framing starts with 'RECOMMENDED:'."""
         field_priorities = {"tech_stack": 2}
         depth_config = {}
@@ -272,9 +254,7 @@ class TestBuildFetchInstructions:
         instruction = result["important"][0]
         assert instruction["framing"].startswith("RECOMMENDED:")
 
-    def test_reference_tier_framing_starts_with_optional(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_reference_tier_framing_starts_with_optional(self, mission_planner, sample_product, sample_project):
         """Test that reference tier framing starts with 'OPTIONAL:'."""
         field_priorities = {"memory_360": 3}
         depth_config = {}
@@ -293,9 +273,7 @@ class TestBuildFetchInstructions:
     # Test: Depth Configuration
     # =========================================================================
 
-    def test_depth_config_applied_to_vision_documents(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_depth_config_applied_to_vision_documents(self, mission_planner, sample_product, sample_project):
         """Test that depth_config is applied to vision_documents instruction."""
         field_priorities = {"vision_documents": 2}
         depth_config = {"vision_documents": 20}
@@ -319,9 +297,7 @@ class TestBuildFetchInstructions:
         assert vision_instr["params"]["limit"] == 20
         assert vision_instr.get("supports_pagination") is True
 
-    def test_depth_config_applied_to_memory_360(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_depth_config_applied_to_memory_360(self, mission_planner, sample_product, sample_project):
         """Test that depth_config is applied to memory_360 instruction."""
         field_priorities = {"memory_360": 3}
         depth_config = {"memory_360": 10}
@@ -343,14 +319,10 @@ class TestBuildFetchInstructions:
         assert memory_instr is not None
         assert memory_instr["params"]["limit"] == 10
 
-    def test_depth_config_applied_to_git_history(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_depth_config_applied_to_git_history(self, mission_planner, sample_product, sample_project):
         """Test that depth_config is applied to git_history instruction."""
         # Enable git integration
-        sample_product.product_memory = {
-            "git_integration": {"enabled": True, "repository": "test/repo"}
-        }
+        sample_product.product_memory = {"git_integration": {"enabled": True, "repository": "test/repo"}}
         field_priorities = {"git_history": 2}
         depth_config = {"git_history": 50}
 
@@ -372,9 +344,7 @@ class TestBuildFetchInstructions:
         assert git_instr is not None
         assert git_instr["params"]["limit"] == 50
 
-    def test_depth_config_applied_to_agent_templates(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_depth_config_applied_to_agent_templates(self, mission_planner, sample_product, sample_project):
         """Test that depth_config is applied to agent_templates instruction."""
         field_priorities = {"agent_templates": 2}
         depth_config = {"agent_templates": "full"}
@@ -401,14 +371,10 @@ class TestBuildFetchInstructions:
     # Test: All Known Fields
     # =========================================================================
 
-    def test_all_known_fields_generate_instructions(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_all_known_fields_generate_instructions(self, mission_planner, sample_product, sample_project):
         """Test that all known context fields generate valid instructions."""
         # Enable git integration for git_history
-        sample_product.product_memory = {
-            "git_integration": {"enabled": True, "repository": "test/repo"}
-        }
+        sample_product.product_memory = {"git_integration": {"enabled": True, "repository": "test/repo"}}
 
         field_priorities = {
             "product_core": 1,
@@ -443,9 +409,7 @@ class TestBuildFetchInstructions:
     # Test: Token Estimation
     # =========================================================================
 
-    def test_total_response_under_1000_tokens(
-        self, mission_planner, sample_product, sample_project
-    ):
+    def test_total_response_under_1000_tokens(self, mission_planner, sample_product, sample_project):
         """Test that the framing response is under 1000 tokens (target: ~500)."""
         import json
 

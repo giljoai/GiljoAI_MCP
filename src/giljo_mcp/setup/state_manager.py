@@ -25,7 +25,9 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+
 logger = logging.getLogger(__name__)
+
 
 class SetupStateManager:
     """
@@ -490,7 +492,9 @@ class SetupStateManager:
         failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
 
         self.update_state(
-            validation_failures=failures, validation_passed=False, last_validation_at=datetime.now(timezone.utc).isoformat()
+            validation_failures=failures,
+            validation_passed=False,
+            last_validation_at=datetime.now(timezone.utc).isoformat(),
         )
 
     def add_validation_warning(self, message: str) -> None:

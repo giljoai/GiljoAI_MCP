@@ -17,22 +17,19 @@ Test scenarios:
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select
-from datetime import datetime, timezone
-import json
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import (
-    Project, AgentExecution, User, Product
-)
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentExecution, Product, Project, User
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
-from src.giljo_mcp.database import DatabaseManager
 
 
 # ============================================================================
 # FIXTURE: Test Data Setup
 # ============================================================================
+
 
 @pytest.fixture
 async def test_product(db_session: AsyncSession, test_tenant_key: str):
@@ -47,8 +44,8 @@ async def test_product(db_session: AsyncSession, test_tenant_key: str):
             "decisions": [],
             "context": {},
             "knowledge_base": {},
-            "sequential_history": []
-        }
+            "sequential_history": [],
+        },
     )
     db_session.add(product)
     await db_session.commit()
@@ -68,7 +65,7 @@ async def test_project(db_session: AsyncSession, test_tenant_key: str, test_prod
         mission="",  # Will be compiled later
         status="waiting",
         context_budget=150000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(project)
     await db_session.commit()
@@ -89,15 +86,15 @@ async def test_user_with_priorities(db_session: AsyncSession, test_tenant_key: s
         field_priority_config={
             "version": "2.0",
             "priorities": {
-                "product_core": 1,           # CRITICAL
-                "vision_documents": 2,       # IMPORTANT
-                "tech_stack": 2,             # IMPORTANT
-                "architecture": 2,           # IMPORTANT
-                "testing": 3,                # NICE_TO_HAVE
-                "memory_360": 1,             # CRITICAL
-                "git_history": 2,            # IMPORTANT
-                "agent_templates": 2         # IMPORTANT
-            }
+                "product_core": 1,  # CRITICAL
+                "vision_documents": 2,  # IMPORTANT
+                "tech_stack": 2,  # IMPORTANT
+                "architecture": 2,  # IMPORTANT
+                "testing": 3,  # NICE_TO_HAVE
+                "memory_360": 1,  # CRITICAL
+                "git_history": 2,  # IMPORTANT
+                "agent_templates": 2,  # IMPORTANT
+            },
         },
         depth_config={
             "vision_chunking": "medium",
@@ -105,8 +102,8 @@ async def test_user_with_priorities(db_session: AsyncSession, test_tenant_key: s
             "git_commits": 25,
             "agent_template_detail": "standard",
             "tech_stack_sections": "all",
-            "architecture_depth": "overview"
-        }
+            "architecture_depth": "overview",
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -118,13 +115,10 @@ async def test_user_with_priorities(db_session: AsyncSession, test_tenant_key: s
 # TEST 1: Activation Does NOT Compile Instructions
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_activate_project_does_not_compile_instructions(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Project activation should NOT compile instructions.
@@ -141,18 +135,15 @@ async def test_activate_project_does_not_compile_instructions(
         "/api/auth/login",
         json={
             "username": test_user_with_priorities.username,
-            "password": "testpass"  # From fixture setup
-        }
+            "password": "testpass",  # From fixture setup
+        },
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # ACTIVATE project
-    response = await async_client.post(
-        f"/api/projects/{test_project.id}/activate",
-        headers=headers
-    )
+    response = await async_client.post(f"/api/projects/{test_project.id}/activate", headers=headers)
     assert response.status_code == 200
     assert response.json()["status"] == "active"
 
@@ -161,27 +152,23 @@ async def test_activate_project_does_not_compile_instructions(
         and_(
             AgentExecution.project_id == test_project.id,
             AgentExecution.agent_display_name == "orchestrator",
-            AgentExecution.tenant_key == test_tenant_key
+            AgentExecution.tenant_key == test_tenant_key,
         )
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrators = orch_result.scalars().all()
 
-    assert len(orchestrators) == 0, \
-        f"Expected NO orchestrators after activation, found {len(orchestrators)}"
+    assert len(orchestrators) == 0, f"Expected NO orchestrators after activation, found {len(orchestrators)}"
 
 
 # ============================================================================
 # TEST 2: Stage Project Button Compiles Instructions
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_stage_project_compiles_orchestrator_prompt(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: "Stage Project" button should compile thin prompt and create orchestrator.
@@ -195,11 +182,7 @@ async def test_stage_project_compiles_orchestrator_prompt(
     """
     # Get auth token
     auth_response = await async_client.post(
-        "/api/auth/login",
-        json={
-            "username": test_user_with_priorities.username,
-            "password": "testpass"
-        }
+        "/api/auth/login", json={"username": test_user_with_priorities.username, "password": "testpass"}
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
@@ -212,7 +195,7 @@ async def test_stage_project_compiles_orchestrator_prompt(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -225,7 +208,7 @@ async def test_stage_project_compiles_orchestrator_prompt(
         and_(
             AgentExecution.job_id == orchestrator_id,
             AgentExecution.agent_display_name == "orchestrator",
-            AgentExecution.tenant_key == test_tenant_key
+            AgentExecution.tenant_key == test_tenant_key,
         )
     )
     orch_result = await db_session.execute(orch_stmt)
@@ -239,27 +222,25 @@ async def test_stage_project_compiles_orchestrator_prompt(
     metadata = orchestrator.job_metadata or {}
     stored_priorities = metadata.get("field_priorities", {})
 
-    assert stored_priorities == test_user_with_priorities.field_priority_config["priorities"], \
+    assert stored_priorities == test_user_with_priorities.field_priority_config["priorities"], (
         "Field priorities not stored in orchestrator metadata"
+    )
 
     # VERIFY: Thin prompt contains MCP tool references (not fat prompt)
-    assert "get_orchestrator_instructions" in thin_prompt or "mcp__giljo-mcp" in thin_prompt, \
+    assert "get_orchestrator_instructions" in thin_prompt or "mcp__giljo-mcp" in thin_prompt, (
         "Thin prompt should reference MCP tools"
-    assert len(thin_prompt) < 5000, \
-        f"Thin prompt is too large ({len(thin_prompt)} chars), should be ~600 tokens"
+    )
+    assert len(thin_prompt) < 5000, f"Thin prompt is too large ({len(thin_prompt)} chars), should be ~600 tokens"
 
 
 # ============================================================================
 # TEST 3: Settings Change BEFORE Stage Project
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_settings_change_before_stage_project(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Settings changed BEFORE staging should be reflected in orchestrator.
@@ -272,11 +253,7 @@ async def test_settings_change_before_stage_project(
     """
     # Get auth token
     auth_response = await async_client.post(
-        "/api/auth/login",
-        json={
-            "username": test_user_with_priorities.username,
-            "password": "testpass"
-        }
+        "/api/auth/login", json={"username": test_user_with_priorities.username, "password": "testpass"}
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
@@ -285,7 +262,7 @@ async def test_settings_change_before_stage_project(
     # CHANGE priorities - set memory to CRITICAL, testing to EXCLUDED
     new_priorities = test_user_with_priorities.field_priority_config["priorities"].copy()
     new_priorities["memory_360"] = 1  # CRITICAL
-    new_priorities["testing"] = 4     # EXCLUDED
+    new_priorities["testing"] = 4  # EXCLUDED
 
     # Update user config in database
     test_user_with_priorities.field_priority_config["priorities"] = new_priorities
@@ -299,17 +276,14 @@ async def test_settings_change_before_stage_project(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert response.status_code == 200
     orchestrator_id = response.json()["orchestrator_id"]
 
     # VERIFY: Orchestrator has updated priorities
     orch_stmt = select(AgentExecution).where(
-        and_(
-            AgentExecution.job_id == orchestrator_id,
-            AgentExecution.tenant_key == test_tenant_key
-        )
+        and_(AgentExecution.job_id == orchestrator_id, AgentExecution.tenant_key == test_tenant_key)
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -325,13 +299,10 @@ async def test_settings_change_before_stage_project(
 # TEST 4: Settings Change AFTER Activation, BEFORE Stage
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_settings_change_after_activation_before_stage(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Settings changed AFTER activation but BEFORE stage should apply.
@@ -344,21 +315,14 @@ async def test_settings_change_after_activation_before_stage(
     """
     # Get auth token
     auth_response = await async_client.post(
-        "/api/auth/login",
-        json={
-            "username": test_user_with_priorities.username,
-            "password": "testpass"
-        }
+        "/api/auth/login", json={"username": test_user_with_priorities.username, "password": "testpass"}
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # STEP 1: Activate project
-    activate_response = await async_client.post(
-        f"/api/projects/{test_project.id}/activate",
-        headers=headers
-    )
+    activate_response = await async_client.post(f"/api/projects/{test_project.id}/activate", headers=headers)
     assert activate_response.status_code == 200
 
     # STEP 2: Change settings
@@ -376,17 +340,14 @@ async def test_settings_change_after_activation_before_stage(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert stage_response.status_code == 200
     orchestrator_id = stage_response.json()["orchestrator_id"]
 
     # VERIFY: Orchestrator has MODIFIED priorities (not activation-time priorities)
     orch_stmt = select(AgentExecution).where(
-        and_(
-            AgentExecution.job_id == orchestrator_id,
-            AgentExecution.tenant_key == test_tenant_key
-        )
+        and_(AgentExecution.job_id == orchestrator_id, AgentExecution.tenant_key == test_tenant_key)
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
@@ -394,21 +355,17 @@ async def test_settings_change_after_activation_before_stage(
     metadata = orchestrator.job_metadata or {}
     stored_priorities = metadata.get("field_priorities", {})
 
-    assert stored_priorities["git_history"] == 4, \
-        "Git history should be EXCLUDED (settings after activation)"
+    assert stored_priorities["git_history"] == 4, "Git history should be EXCLUDED (settings after activation)"
 
 
 # ============================================================================
 # TEST 5: Repeated Stage Project Button Clicks (Idempotency)
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_repeated_stage_project_reuses_orchestrator(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Repeated "Stage Project" clicks should reuse orchestrator.
@@ -423,11 +380,7 @@ async def test_repeated_stage_project_reuses_orchestrator(
     """
     # Get auth token
     auth_response = await async_client.post(
-        "/api/auth/login",
-        json={
-            "username": test_user_with_priorities.username,
-            "password": "testpass"
-        }
+        "/api/auth/login", json={"username": test_user_with_priorities.username, "password": "testpass"}
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
@@ -440,7 +393,7 @@ async def test_repeated_stage_project_reuses_orchestrator(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert response1.status_code == 200
     orch_id_1 = response1.json()["orchestrator_id"]
@@ -452,41 +405,36 @@ async def test_repeated_stage_project_reuses_orchestrator(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert response2.status_code == 200
     orch_id_2 = response2.json()["orchestrator_id"]
 
     # VERIFY: Same orchestrator returned
-    assert orch_id_1 == orch_id_2, \
-        f"Expected same orchestrator on repeated clicks, got {orch_id_1} vs {orch_id_2}"
+    assert orch_id_1 == orch_id_2, f"Expected same orchestrator on repeated clicks, got {orch_id_1} vs {orch_id_2}"
 
     # VERIFY: Only ONE orchestrator in database
     orch_stmt = select(AgentExecution).where(
         and_(
             AgentExecution.project_id == test_project.id,
             AgentExecution.agent_display_name == "orchestrator",
-            AgentExecution.tenant_key == test_tenant_key
+            AgentExecution.tenant_key == test_tenant_key,
         )
     )
     orch_result = await db_session.execute(orch_stmt)
     orchestrators = orch_result.scalars().all()
 
-    assert len(orchestrators) == 1, \
-        f"Expected 1 orchestrator, found {len(orchestrators)}"
+    assert len(orchestrators) == 1, f"Expected 1 orchestrator, found {len(orchestrators)}"
 
 
 # ============================================================================
 # TEST 6: MCP Tool Compiles Instructions Fresh Each Time
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_orchestrator_instructions_compiles_fresh(
-    test_user_with_priorities,
-    test_project,
-    test_product,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    test_user_with_priorities, test_project, test_product, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: get_orchestrator_instructions() should compile fresh instructions EACH time.
@@ -510,17 +458,16 @@ async def test_get_orchestrator_instructions_compiles_fresh(
     result = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
-        depth_config=test_user_with_priorities.depth_config
+        tool="claude-code",
+        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
+        depth_config=test_user_with_priorities.depth_config,
     )
 
     orchestrator_id = result["orchestrator_id"]
 
     # FIRST MCP tool call
     instructions1 = await get_orchestrator_instructions(
-        orchestrator_id=orchestrator_id,
-        tenant_key=test_tenant_key,
-        db_manager=db_manager
+        orchestrator_id=orchestrator_id, tenant_key=test_tenant_key, db_manager=db_manager
     )
     assert "error" not in instructions1, f"Error: {instructions1}"
     mission1 = instructions1.get("mission", "")
@@ -528,9 +475,7 @@ async def test_get_orchestrator_instructions_compiles_fresh(
 
     # SECOND MCP tool call (same orchestrator)
     instructions2 = await get_orchestrator_instructions(
-        orchestrator_id=orchestrator_id,
-        tenant_key=test_tenant_key,
-        db_manager=db_manager
+        orchestrator_id=orchestrator_id, tenant_key=test_tenant_key, db_manager=db_manager
     )
     assert "error" not in instructions2, f"Error: {instructions2}"
     mission2 = instructions2.get("mission", "")
@@ -539,21 +484,17 @@ async def test_get_orchestrator_instructions_compiles_fresh(
     # VERIFY: Mission content is identical (compiled same way)
     # Token count should be VERY close (within 5% - minor rounding differences)
     assert mission1 == mission2, "Mission content should be identical on repeated calls"
-    assert abs(tokens1 - tokens2) <= max(tokens1 // 20, 10), \
-        f"Token counts differ too much: {tokens1} vs {tokens2}"
+    assert abs(tokens1 - tokens2) <= max(tokens1 // 20, 10), f"Token counts differ too much: {tokens1} vs {tokens2}"
 
 
 # ============================================================================
 # TEST 7: Field Priorities Persist Through Pipeline
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_field_priorities_persist_through_pipeline(
-    async_client: AsyncClient,
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    async_client: AsyncClient, test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Field priorities should persist through entire pipeline:
@@ -570,11 +511,7 @@ async def test_field_priorities_persist_through_pipeline(
 
     # Get auth token
     auth_response = await async_client.post(
-        "/api/auth/login",
-        json={
-            "username": test_user_with_priorities.username,
-            "password": "testpass"
-        }
+        "/api/auth/login", json={"username": test_user_with_priorities.username, "password": "testpass"}
     )
     assert auth_response.status_code == 200
     token = auth_response.json()["access_token"]
@@ -587,15 +524,13 @@ async def test_field_priorities_persist_through_pipeline(
             "project_id": test_project.id,
             "tool": "claude-code",
         },
-        headers=headers
+        headers=headers,
     )
     assert response.status_code == 200
     orchestrator_id = response.json()["orchestrator_id"]
 
     # STEP 1: Verify stored in job_metadata
-    orch_stmt = select(AgentExecution).where(
-        AgentExecution.job_id == orchestrator_id
-    )
+    orch_stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
 
@@ -603,20 +538,16 @@ async def test_field_priorities_persist_through_pipeline(
     stored_priorities = metadata.get("field_priorities", {})
 
     expected_priorities = test_user_with_priorities.field_priority_config["priorities"]
-    assert stored_priorities == expected_priorities, \
-        "Priorities not stored correctly in job_metadata"
+    assert stored_priorities == expected_priorities, "Priorities not stored correctly in job_metadata"
 
     # STEP 2: Verify retrieved in MCP tool call
     instructions = await get_orchestrator_instructions(
-        orchestrator_id=orchestrator_id,
-        tenant_key=test_tenant_key,
-        db_manager=db_manager
+        orchestrator_id=orchestrator_id, tenant_key=test_tenant_key, db_manager=db_manager
     )
     assert "error" not in instructions
 
     returned_priorities = instructions.get("field_priorities", {})
-    assert returned_priorities == expected_priorities, \
-        "Priorities not retrieved correctly from job_metadata"
+    assert returned_priorities == expected_priorities, "Priorities not retrieved correctly from job_metadata"
 
     # STEP 3: Verify applied in mission (field priorities should limit context scope)
     mission = instructions.get("mission", "")
@@ -626,21 +557,19 @@ async def test_field_priorities_persist_through_pipeline(
     # With EXCLUDED priorities, should exclude those sections
     # Check that CRITICAL (priority 1) items are more likely to appear
     if stored_priorities.get("product_core") == 1:  # CRITICAL
-        assert "product" in mission.lower() or "system" in mission.lower(), \
+        assert "product" in mission.lower() or "system" in mission.lower(), (
             "Product core context not included despite CRITICAL priority"
+        )
 
 
 # ============================================================================
 # TEST 8: Settings Changes Impact Mission Content
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_settings_changes_impact_mission_content(
-    test_user_with_priorities,
-    test_project,
-    test_product,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    test_user_with_priorities, test_project, test_product, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Changing field priorities should change mission content.
@@ -669,20 +598,19 @@ async def test_settings_changes_impact_mission_content(
         "testing": 1,
         "memory_360": 1,
         "git_history": 1,
-        "agent_templates": 1
+        "agent_templates": 1,
     }
 
     result1 = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",        field_priorities=full_priorities
+        tool="claude-code",
+        field_priorities=full_priorities,
     )
     orch_id_1 = result1["orchestrator_id"]
 
     instructions1 = await get_orchestrator_instructions(
-        orchestrator_id=orch_id_1,
-        tenant_key=test_tenant_key,
-        db_manager=db_manager
+        orchestrator_id=orch_id_1, tenant_key=test_tenant_key, db_manager=db_manager
     )
     mission1 = instructions1.get("mission", "")
     len1 = len(mission1)
@@ -693,10 +621,10 @@ async def test_settings_changes_impact_mission_content(
         "vision_documents": 2,
         "tech_stack": 1,
         "architecture": 1,
-        "testing": 4,        # EXCLUDED
+        "testing": 4,  # EXCLUDED
         "memory_360": 1,
-        "git_history": 4,    # EXCLUDED
-        "agent_templates": 1
+        "git_history": 4,  # EXCLUDED
+        "agent_templates": 1,
     }
 
     # Need new orchestrator to test different priorities
@@ -704,38 +632,32 @@ async def test_settings_changes_impact_mission_content(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
         tool="claude-code",  # Different instance
-        field_priorities=excluded_priorities
+        field_priorities=excluded_priorities,
     )
     orch_id_2 = result2["orchestrator_id"]
 
     instructions2 = await get_orchestrator_instructions(
-        orchestrator_id=orch_id_2,
-        tenant_key=test_tenant_key,
-        db_manager=db_manager
+        orchestrator_id=orch_id_2, tenant_key=test_tenant_key, db_manager=db_manager
     )
     mission2 = instructions2.get("mission", "")
     len2 = len(mission2)
 
     # VERIFY: Missions differ due to field priority exclusions
     # Mission with excluded fields should be shorter
-    assert len2 < len1, \
-        f"Reduced priorities should result in shorter mission: {len2} vs {len1}"
+    assert len2 < len1, f"Reduced priorities should result in shorter mission: {len2} vs {len1}"
 
     # Missions should have different content
-    assert mission1 != mission2, \
-        "Different priorities should produce different mission content"
+    assert mission1 != mission2, "Different priorities should produce different mission content"
 
 
 # ============================================================================
 # TEST 9: Depth Config Applied on Fresh MCP Calls
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_depth_config_persists_and_applies(
-    test_user_with_priorities,
-    test_project,
-    db_session: AsyncSession,
-    test_tenant_key: str
+    test_user_with_priorities, test_project, db_session: AsyncSession, test_tenant_key: str
 ):
     """
     BEHAVIOR TEST: Depth config should persist in job_metadata and apply on MCP calls.
@@ -761,42 +683,38 @@ async def test_depth_config_persists_and_applies(
         "git_commits": 10,
         "agent_template_detail": "minimal",
         "tech_stack_sections": "required",
-        "architecture_depth": "overview"
+        "architecture_depth": "overview",
     }
 
     result = await generator.generate(
         project_id=test_project.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
-        depth_config=custom_depth
+        tool="claude-code",
+        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
+        depth_config=custom_depth,
     )
 
     orchestrator_id = result["orchestrator_id"]
 
     # VERIFY: Depth config stored in metadata
-    orch_stmt = select(AgentExecution).where(
-        AgentExecution.job_id == orchestrator_id
-    )
+    orch_stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
     orch_result = await db_session.execute(orch_stmt)
     orchestrator = orch_result.scalar_one_or_none()
 
     metadata = orchestrator.job_metadata or {}
     stored_depth = metadata.get("depth_config", {})
 
-    assert stored_depth == custom_depth, \
-        "Depth config not stored correctly in job_metadata"
+    assert stored_depth == custom_depth, "Depth config not stored correctly in job_metadata"
 
 
 # ============================================================================
 # TEST 10: Multiple Projects with Different Settings
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_multiple_projects_independent_orchestrators(
-    db_session: AsyncSession,
-    test_user_with_priorities,
-    test_tenant_key: str,
-    test_product
+    db_session: AsyncSession, test_user_with_priorities, test_tenant_key: str, test_product
 ):
     """
     BEHAVIOR TEST: Different projects should have independent orchestrators.
@@ -816,7 +734,7 @@ async def test_multiple_projects_independent_orchestrators(
         mission="",
         status="waiting",
         context_budget=150000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(project1)
     await db_session.commit()
@@ -830,7 +748,7 @@ async def test_multiple_projects_independent_orchestrators(
         mission="",
         status="waiting",
         context_budget=150000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(project2)
     await db_session.commit()
@@ -839,14 +757,16 @@ async def test_multiple_projects_independent_orchestrators(
     result1 = await generator.generate(
         project_id=project1.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
+        tool="claude-code",
+        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
     )
     orch_id_1 = result1["orchestrator_id"]
 
     result2 = await generator.generate(
         project_id=project2.id,
         user_id=str(test_user_with_priorities.id),
-        tool="claude-code",        field_priorities=test_user_with_priorities.field_priority_config["priorities"]
+        tool="claude-code",
+        field_priorities=test_user_with_priorities.field_priority_config["priorities"],
     )
     orch_id_2 = result2["orchestrator_id"]
 

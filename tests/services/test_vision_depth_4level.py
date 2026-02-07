@@ -11,7 +11,6 @@ TDD Implementation: Tests written FIRST, before implementation.
 """
 
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -53,7 +52,7 @@ def sample_product():
         description="Test product description",
         tenant_key="test-tenant",
         config_data={"tech_stack": {"languages": ["Python"]}},
-        product_memory={}
+        product_memory={},
     )
     return product
 
@@ -70,7 +69,7 @@ def sample_vision_doc():
         chunked=True,
         chunk_count=5,
         original_token_count=40000,
-        display_order=1
+        display_order=1,
     )
     return vision_doc
 
@@ -83,7 +82,7 @@ def sample_project():
         name="Test Project",
         description="Test project description",
         tenant_key="test-tenant",
-        product_id="test-product-id"
+        product_id="test-product-id",
     )
     return project
 
@@ -106,12 +105,11 @@ class TestVisionDepth4Level:
         """
         # Mock _get_active_vision_doc to return vision doc
         # Mock _get_full_agent_templates to avoid DB calls
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             # Call with optional depth
             context = await mission_planner._build_context_with_priorities(
@@ -120,7 +118,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},  # Reference tier
                 depth_config={"vision_documents": "optional"},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # Verify structure
@@ -163,12 +161,11 @@ class TestVisionDepth4Level:
         sample_vision_doc.content = full_vision_content
 
         # Mock _get_active_vision_doc and _get_full_agent_templates
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await mission_planner._build_context_with_priorities(
                 product=sample_product,
@@ -176,7 +173,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},
                 depth_config={"vision_documents": "light"},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -211,12 +208,11 @@ class TestVisionDepth4Level:
         full_vision_content = "Test vision content. " * 8000  # ~160K chars
         sample_vision_doc.content = full_vision_content
 
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await mission_planner._build_context_with_priorities(
                 product=sample_product,
@@ -224,7 +220,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},
                 depth_config={"vision_documents": "medium"},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -255,12 +251,11 @@ class TestVisionDepth4Level:
         - Includes strong compliance language
         - Token count ~200 tokens (instruction only, no content)
         """
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await mission_planner._build_context_with_priorities(
                 product=sample_product,
@@ -268,7 +263,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},
                 depth_config={"vision_documents": "full"},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -303,12 +298,11 @@ class TestVisionDepth4Level:
         Verifies presence of strong prohibition language:
         - "MUST", "NOT optional", "violates"
         """
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await mission_planner._build_context_with_priorities(
                 product=sample_product,
@@ -316,7 +310,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},
                 depth_config={"vision_documents": "full"},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -328,9 +322,7 @@ class TestVisionDepth4Level:
             assert any(phrase in instruction_upper for phrase in ["NOT OPTIONAL", "CANNOT SKIP", "REQUIRED"])
             assert "VIOLATE" in instruction_upper or "VIOLATES" in instruction
 
-    async def test_token_budgets_per_level(
-        self, mission_planner, sample_product, sample_project, sample_vision_doc
-    ):
+    async def test_token_budgets_per_level(self, mission_planner, sample_product, sample_project, sample_vision_doc):
         """
         Test that token budgets match spec for each level.
 
@@ -354,12 +346,11 @@ class TestVisionDepth4Level:
         ]
 
         for depth_level, expected_tokens, min_tokens, max_tokens in test_cases:
-            with patch.object(
-                mission_planner, "_get_active_vision_doc",
-                new_callable=AsyncMock, return_value=sample_vision_doc
-            ), patch.object(
-                mission_planner, '_get_full_agent_templates',
-                new_callable=AsyncMock, return_value=[]
+            with (
+                patch.object(
+                    mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+                ),
+                patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
             ):
                 context = await mission_planner._build_context_with_priorities(
                     product=sample_product,
@@ -367,7 +358,7 @@ class TestVisionDepth4Level:
                     field_priorities={"vision_documents": 3},
                     depth_config={"vision_documents": depth_level},
                     user_id=None,
-                    include_serena=False
+                    include_serena=False,
                 )
 
                 vision_data = context["reference"]["vision_documents"]
@@ -381,21 +372,19 @@ class TestVisionDepth4Level:
                     # Inline content
                     actual_tokens = mission_planner._count_tokens(vision_data["inline_content"])
 
-                assert min_tokens <= actual_tokens <= max_tokens, \
+                assert min_tokens <= actual_tokens <= max_tokens, (
                     f"{depth_level}: Expected {min_tokens}-{max_tokens} tokens, got {actual_tokens}"
+                )
 
-    async def test_default_depth_is_optional(
-        self, mission_planner, sample_product, sample_project, sample_vision_doc
-    ):
+    async def test_default_depth_is_optional(self, mission_planner, sample_product, sample_project, sample_vision_doc):
         """
         Test that default vision depth is 'optional' for backward compatibility.
         """
-        with patch.object(
-            mission_planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            mission_planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                mission_planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc
+            ),
+            patch.object(mission_planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             # Call without depth_config (should default to optional)
             context = await mission_planner._build_context_with_priorities(
@@ -404,7 +393,7 @@ class TestVisionDepth4Level:
                 field_priorities={"vision_documents": 3},
                 depth_config={},  # Empty depth config
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -419,8 +408,7 @@ class TestVisionDepth4Level:
         Test _generate_mandatory_read_instruction() helper method.
         """
         instruction = mission_planner._generate_mandatory_read_instruction(
-            product=sample_product,
-            vision_doc=sample_vision_doc
+            product=sample_product, vision_doc=sample_vision_doc
         )
 
         # Verify instruction structure
@@ -436,15 +424,12 @@ class TestVisionDepth4Level:
         assert sample_product.name in instruction or "product" in instruction.lower()
         assert "vision" in instruction.lower()
 
-    async def test_helper_method_generate_fetch_commands(
-        self, mission_planner, sample_product, sample_vision_doc
-    ):
+    async def test_helper_method_generate_fetch_commands(self, mission_planner, sample_product, sample_vision_doc):
         """
         Test _generate_fetch_commands() helper method.
         """
         commands = mission_planner._generate_fetch_commands(
-            product_id=sample_product.id,
-            chunk_count=sample_vision_doc.chunk_count
+            product_id=sample_product.id, chunk_count=sample_vision_doc.chunk_count
         )
 
         # Verify list of commands
@@ -454,12 +439,10 @@ class TestVisionDepth4Level:
         # Verify command format
         for i, cmd in enumerate(commands):
             assert f"offset={i}" in cmd
-            assert f"product_id=\"{sample_product.id}\"" in cmd
+            assert f'product_id="{sample_product.id}"' in cmd
             assert "fetch_vision_document" in cmd
 
-    async def test_helper_method_summarize_vision_content(
-        self, mission_planner
-    ):
+    async def test_helper_method_summarize_vision_content(self, mission_planner):
         """
         Test _summarize_vision_content() helper method (MVP: simple truncation).
         """
@@ -467,17 +450,11 @@ class TestVisionDepth4Level:
         test_content = "A" * 10000  # 10K chars
 
         # Test 33% summarization (light)
-        summary_33 = mission_planner._summarize_vision_content(
-            vision_content=test_content,
-            ratio=0.33
-        )
+        summary_33 = mission_planner._summarize_vision_content(vision_content=test_content, ratio=0.33)
         assert len(summary_33) == int(10000 * 0.33)
 
         # Test 66% summarization (medium)
-        summary_66 = mission_planner._summarize_vision_content(
-            vision_content=test_content,
-            ratio=0.66
-        )
+        summary_66 = mission_planner._summarize_vision_content(vision_content=test_content, ratio=0.66)
         assert len(summary_66) == int(10000 * 0.66)
 
 

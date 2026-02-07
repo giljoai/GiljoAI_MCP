@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.settings import Settings
 
+
 class SettingsService:
     """
     SettingsService - Manages tenant-scoped system settings (general, network, database).

@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -191,7 +190,11 @@ class TestDatabaseTenantIsolation:
         # Try to access from tenant2 context
         with db_manager.get_tenant_session(tenant2) as session:
             # Direct query should not find it
-            found = session.execute(select(Project).where(Project.tenant_key == tenant2, Project.id == project_id)).scalars().first()
+            found = (
+                session.execute(select(Project).where(Project.tenant_key == tenant2, Project.id == project_id))
+                .scalars()
+                .first()
+            )
             assert found is None
 
             # Even without filter, ensure_tenant_isolation should catch it

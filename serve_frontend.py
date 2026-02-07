@@ -5,12 +5,14 @@ Serves files from frontend/dist/ directory with SPA routing support.
 """
 
 import http.server
+import os
 import socketserver
 from pathlib import Path
-import os
+
 
 PORT = 7274
 DIRECTORY = Path(__file__).parent / "frontend" / "dist"
+
 
 class SPAHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -23,17 +25,18 @@ class SPAHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         # If the path is a directory or file doesn't exist, serve index.html (SPA routing)
         if os.path.isdir(path) or not os.path.exists(path):
             # Ignore API calls and WebSocket upgrades
-            if not self.path.startswith('/api/') and not self.path.startswith('/ws/'):
-                self.path = '/index.html'
+            if not self.path.startswith("/api/") and not self.path.startswith("/ws/"):
+                self.path = "/index.html"
 
         return super().do_GET()
 
     def end_headers(self):
         # Add CORS headers
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         super().end_headers()
+
 
 if __name__ == "__main__":
     with socketserver.TCPServer(("0.0.0.0", PORT), SPAHTTPRequestHandler) as httpd:

@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from .repositories.agent_job_repository import AgentJobRepository
 
+
 class JobCoordinator:
     """
     Coordinates agent job lifecycle including spawning, dependencies, and aggregation.

@@ -31,7 +31,7 @@ async def auth_service(db_manager, db_session):
     return AuthService(
         db_manager=db_manager,
         websocket_manager=None,  # No WebSocket in tests
-        session=db_session  # SHARED SESSION for test transaction isolation
+        session=db_session,  # SHARED SESSION for test transaction isolation
     )
 
 
@@ -65,7 +65,7 @@ async def test_fresh_install_creates_org_first(db_session, auth_service):
         username="firstadmin",
         email="firstadmin@example.com",
         password="FirstAdmin1234!@#$",
-        full_name="First Administrator"
+        full_name="First Administrator",
     )
 
     # Verify user was created
@@ -95,9 +95,7 @@ async def test_fresh_install_creates_org_first(db_session, auth_service):
 
     # Verify owner membership exists
     membership_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == user.org_id)
-        .where(OrgMembership.user_id == user.id)
+        select(OrgMembership).where(OrgMembership.org_id == user.org_id).where(OrgMembership.user_id == user.id)
     )
     membership_result = await db_session.execute(membership_stmt)
     membership = membership_result.scalar_one_or_none()
@@ -129,9 +127,7 @@ async def test_admin_creates_user_in_org(db_session, auth_service):
     """
     # Create organization first
     org_id = await auth_service._create_default_organization(
-        session=db_session,
-        tenant_key="test_tenant_admin",
-        org_name="Admin Test Organization"
+        session=db_session, tenant_key="test_tenant_admin", org_name="Admin Test Organization"
     )
 
     # Create admin user with org_id
@@ -143,7 +139,7 @@ async def test_admin_creates_user_in_org(db_session, auth_service):
         role="admin",
         requesting_admin_id=None,  # No requesting admin for first user
         org_id=org_id,
-        org_role="owner"
+        org_role="owner",
     )
 
     admin_id = admin_result["id"]
@@ -162,7 +158,7 @@ async def test_admin_creates_user_in_org(db_session, auth_service):
         username="neworguser",
         email="neworguser@example.com",
         role="member",
-        initial_password="NewOrgUser1234!@#$"
+        initial_password="NewOrgUser1234!@#$",
     )
 
     # Verify new user created
@@ -183,9 +179,7 @@ async def test_admin_creates_user_in_org(db_session, auth_service):
 
     # Verify membership created with correct role
     membership_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == org_id)
-        .where(OrgMembership.user_id == new_user_id)
+        select(OrgMembership).where(OrgMembership.org_id == org_id).where(OrgMembership.user_id == new_user_id)
     )
     membership_result = await db_session.execute(membership_stmt)
     membership = membership_result.scalar_one_or_none()
@@ -195,10 +189,7 @@ async def test_admin_creates_user_in_org(db_session, auth_service):
     assert membership.is_active is True, "Membership must be active"
 
     # Verify both users are in same organization
-    org_members_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == org_id)
-    )
+    org_members_stmt = select(OrgMembership).where(OrgMembership.org_id == org_id)
     org_members_result = await db_session.execute(org_members_stmt)
     org_members = org_members_result.scalars().all()
 

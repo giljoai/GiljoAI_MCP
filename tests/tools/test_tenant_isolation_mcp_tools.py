@@ -21,10 +21,9 @@ from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -171,10 +170,10 @@ async def test_get_project_by_alias_blocks_cross_tenant_access(db_session, two_t
 
     # If result is found, it should be Tenant A's project, NOT Tenant B's
     if result and "project" in result:
-        assert result["project"]["tenant_key"] == tenant_a, \
+        assert result["project"]["tenant_key"] == tenant_a, (
             "Cross-tenant access detected! Tenant A found Tenant B's project"
-        assert result["project"]["id"] != project_b.id, \
-            "Cross-tenant access detected! Returned Tenant B's project ID"
+        )
+        assert result["project"]["id"] != project_b.id, "Cross-tenant access detected! Returned Tenant B's project ID"
 
 
 @pytest.mark.tenant_isolation
@@ -200,10 +199,8 @@ async def test_get_project_by_alias_product_lookup_blocks_cross_tenant(db_sessio
 
     # If product info is returned, verify it's tenant A's product
     if result and "product" in result and result["product"]:
-        assert result["product"]["tenant_key"] == tenant_a, \
-            "Cross-tenant product access detected!"
-        assert result["product"]["id"] == product_a.id, \
-            "Wrong product returned - tenant isolation failed"
+        assert result["product"]["tenant_key"] == tenant_a, "Cross-tenant product access detected!"
+        assert result["product"]["id"] == product_a.id, "Wrong product returned - tenant isolation failed"
 
 
 # ============================================================================
@@ -237,8 +234,7 @@ async def test_activate_project_blocks_cross_tenant_product_access(db_session, t
     )
 
     # Should succeed for same-tenant access
-    assert result.get("success") is True, \
-        f"Same-tenant activation failed: {result.get('error')}"
+    assert result.get("success") is True, f"Same-tenant activation failed: {result.get('error')}"
 
 
 @pytest.mark.tenant_isolation
@@ -261,13 +257,14 @@ async def test_activate_project_rejects_cross_tenant_project(db_session, two_ten
     # Tenant A tries to activate Tenant B's project - should fail
     result = await activate_project(
         project_id=project_b.id,  # Tenant B's project!
-        tenant_key=tenant_a,      # Tenant A's key!
+        tenant_key=tenant_a,  # Tenant A's key!
         session=db_session,
     )
 
     # Should either return None/error or reject the request
-    assert result is None or result.get("success") is False or result.get("error"), \
+    assert result is None or result.get("success") is False or result.get("error"), (
         "Cross-tenant project activation allowed! Security vulnerability."
+    )
 
 
 # ============================================================================
@@ -299,8 +296,7 @@ async def test_get_product_config_validates_tenant_mismatch(db_session, two_tena
         # The config should only contain tenant A's data
         config = result.get("config", {})
         # Verify no cross-tenant data leakage in config
-        assert "tenant_b" not in str(config).lower(), \
-            "Cross-tenant data detected in product config!"
+        assert "tenant_b" not in str(config).lower(), "Cross-tenant data detected in product config!"
 
 
 @pytest.mark.tenant_isolation
@@ -384,8 +380,9 @@ async def test_launch_agent_blocks_cross_tenant_access(db_session, two_tenant_se
     )
 
     # Should fail - cannot access cross-tenant agent
-    assert result is None or result.get("success") is False or "error" in str(result).lower(), \
+    assert result is None or result.get("success") is False or "error" in str(result).lower(), (
         "Cross-tenant agent launch allowed! Security vulnerability."
+    )
 
 
 @pytest.mark.tenant_isolation
@@ -455,8 +452,9 @@ async def test_log_interaction_legacy_blocks_cross_tenant_project_lookup(db_sess
     )
 
     # Should reject cross-tenant project access
-    assert result is None or result.get("success") is False or "error" in str(result).lower(), \
+    assert result is None or result.get("success") is False or "error" in str(result).lower(), (
         "Cross-tenant project access in log_interaction allowed! Security vulnerability."
+    )
 
 
 # ============================================================================
@@ -486,10 +484,8 @@ async def test_same_tenant_project_access_succeeds(db_session, two_tenant_setup)
     # Should find the project (it exists for tenant A)
     assert result is not None, "Same-tenant project access failed!"
     if "project" in result:
-        assert result["project"]["id"] == project_a.id, \
-            "Wrong project returned for same-tenant access"
-        assert result["project"]["tenant_key"] == tenant_a, \
-            "Tenant key mismatch in same-tenant access"
+        assert result["project"]["id"] == project_a.id, "Wrong project returned for same-tenant access"
+        assert result["project"]["tenant_key"] == tenant_a, "Tenant key mismatch in same-tenant access"
 
 
 @pytest.mark.tenant_isolation

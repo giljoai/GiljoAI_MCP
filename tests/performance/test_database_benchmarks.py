@@ -26,12 +26,13 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.database import DatabaseManager
+
 # TODO(0127a-2): Comprehensive refactoring needed - Agent → MCPAgentJob throughout
 # from src.giljo_mcp.models import Agent, Message, Project, Task
 # from src.giljo_mcp.models import AgentExecution, Message, Project, Task  # Use this instead
 from tests.benchmark_tools import PerformanceBenchmark
 
-import pytest
+
 pytest.skip("TODO(0127a-2): Performance tests need MCPAgentJob refactoring", allow_module_level=True)
 
 

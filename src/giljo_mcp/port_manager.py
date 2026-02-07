@@ -17,7 +17,9 @@ from pathlib import Path
 
 import yaml
 
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PortConfiguration:
@@ -42,6 +44,7 @@ class PortConfiguration:
             self.api_alternatives = [7273, 7274, 8747, 8823, 9456, 9789]
         if self.frontend_alternatives is None:
             self.frontend_alternatives = [6001, 6002, 6003, 5173, 5174]
+
 
 class PortManager:
     """
@@ -381,6 +384,7 @@ class PortManager:
             "VITE_API_PORT": str(self.config.api_port),  # For frontend build
         }
 
+
 # Convenience functions
 def get_port_manager(config_path: Path | None = None) -> PortManager:
     """
@@ -396,6 +400,7 @@ def get_port_manager(config_path: Path | None = None) -> PortManager:
     manager.load_configuration()
     return manager
 
+
 def get_api_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """
     Convenience function to get API port.
@@ -409,6 +414,7 @@ def get_api_port(config_path: Path | None = None, check_availability: bool = Fal
     """
     manager = get_port_manager(config_path)
     return manager.get_api_port(check_availability)
+
 
 def get_frontend_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """

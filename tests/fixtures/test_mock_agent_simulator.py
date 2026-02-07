@@ -11,14 +11,12 @@ Tests cover:
 
 import asyncio
 import json
-from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
-from aiohttp import ClientError, ClientSession, ClientTimeout
-from aiohttp.web import Application, Response, json_response, run_app
+from aiohttp import ClientError
 
 
 @pytest.fixture
@@ -355,21 +353,18 @@ class TestMockAgentSimulatorExecution:
 
             if "get_agent_mission" in method:
                 return mock_mission_response
-            elif "receive_messages" in method:
+            if "receive_messages" in method:
                 # Return empty messages to avoid infinite loops
                 return {
                     "jsonrpc": "2.0",
                     "id": call_count["count"],
-                    "result": {
-                        "content": [{"type": "text", "text": json.dumps({"success": True, "messages": []})}]
-                    },
+                    "result": {"content": [{"type": "text", "text": json.dumps({"success": True, "messages": []})}]},
                 }
-            elif "report_progress" in method:
+            if "report_progress" in method:
                 return mock_report_progress_response
-            elif "complete_job" in method:
+            if "complete_job" in method:
                 return mock_complete_job_response
-            else:
-                return {"jsonrpc": "2.0", "id": call_count["count"], "result": {"content": []}}
+            return {"jsonrpc": "2.0", "id": call_count["count"], "result": {"content": []}}
 
         with patch.object(mock_agent_simulator, "_make_mcp_request", new_callable=AsyncMock) as mock_request:
             mock_request.side_effect = mock_mcp_request
@@ -526,10 +521,10 @@ class TestMockAgentSimulatorCrossPlatform:
     @pytest.mark.asyncio
     async def test_path_handling_uses_pathlib(self):
         """Test that all file operations use pathlib.Path"""
-        from tests.fixtures.mock_agent_simulator import MockAgentSimulator
-
         # Verify class doesn't use hardcoded paths
         import inspect
+
+        from tests.fixtures.mock_agent_simulator import MockAgentSimulator
 
         source = inspect.getsource(MockAgentSimulator)
 
@@ -588,7 +583,13 @@ class TestMockAgentSimulatorAgentTypes:
         ],
     )
     async def test_agent_display_name_simulation(
-        self, agent_display_name, expected_duration_min, expected_duration_max, mock_api_key, mock_tenant_key, mock_job_id
+        self,
+        agent_display_name,
+        expected_duration_min,
+        expected_duration_max,
+        mock_api_key,
+        mock_tenant_key,
+        mock_job_id,
     ):
         """Test simulation for different agent types"""
         from tests.fixtures.mock_agent_simulator import MockAgentSimulator
@@ -612,9 +613,9 @@ class TestMockAgentSimulatorAgentTypes:
         await simulator.execute_work(mission_data)
         elapsed_time = time.time() - start_time
 
-        assert (
-            expected_duration_min - 1 <= elapsed_time <= expected_duration_max + 2
-        ), f"{agent_display_name} work took {elapsed_time:.2f}s"
+        assert expected_duration_min - 1 <= elapsed_time <= expected_duration_max + 2, (
+            f"{agent_display_name} work took {elapsed_time:.2f}s"
+        )
 
         # Cleanup
         if simulator._session and not simulator._session.closed:

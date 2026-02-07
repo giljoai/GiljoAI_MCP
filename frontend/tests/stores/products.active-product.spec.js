@@ -58,4 +58,3 @@ describe('Product Store - Active Product Behavior', () => {
     expect(store.activeProduct).toBeNull()
   })
 })
-

@@ -31,7 +31,9 @@ import aiohttp
 
 from ..config_manager import ConfigManager
 
+
 logger = logging.getLogger(__name__)
+
 
 class ExternalAgentCoordinationTools:
     """
@@ -615,6 +617,7 @@ class ExternalAgentCoordinationTools:
         if self.session:
             await self.session.close()
             logger.info("[ExternalAgentCoordinationTools] HTTP session closed")
+
 
 def register_external_agent_coordination_tools(tools: dict, config: dict) -> None:
     """

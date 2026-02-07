@@ -22,7 +22,7 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 # ========================================================================
@@ -110,7 +110,8 @@ async def test_orchestrator_job(db_session, tenant_key, test_project_with_produc
         mission="Condensed mission content with priorities applied",
         status="waiting",
         context_budget=150000,
-        context_used=0,        metadata={
+        context_used=0,
+        metadata={
             "field_priorities": test_user.config_data["field_priorities"],
             "user_id": str(test_user.id),
             "created_via": "thin_client_test",

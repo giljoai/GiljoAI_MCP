@@ -89,6 +89,7 @@ Related:
 
 from typing import Any
 
+
 DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
     "version": "2.1",
     "priorities": {
@@ -130,6 +131,7 @@ DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     },
 }
 
+
 def get_categories_by_priority(priority_level: int, include_toggled_off: bool = False) -> list[str]:
     """
     Get all categories matching the specified priority level.
@@ -153,6 +155,7 @@ def get_categories_by_priority(priority_level: int, include_toggled_off: bool = 
                 result.append(category)
     return result
 
+
 def get_priority_for_category(category: str) -> int | None:
     """
     Get the priority level for a specific category.
@@ -170,6 +173,7 @@ def get_priority_for_category(category: str) -> int | None:
     """
     config = DEFAULT_FIELD_PRIORITY["priorities"].get(category)
     return config["priority"] if config else None
+
 
 def get_toggle_for_category(category: str) -> bool:
     """
@@ -189,6 +193,7 @@ def get_toggle_for_category(category: str) -> bool:
     config = DEFAULT_FIELD_PRIORITY["priorities"].get(category)
     return config["toggle"] if config else True
 
+
 def get_depth_for_category(category: str) -> Any:
     """
     Get the depth configuration for a specific category.
@@ -205,6 +210,7 @@ def get_depth_for_category(category: str) -> Any:
         'medium'
     """
     return DEFAULT_DEPTH_CONFIG["depths"].get(category)
+
 
 def validate_priority_config() -> bool:
     """
@@ -244,6 +250,7 @@ def validate_priority_config() -> bool:
         raise ValueError("At least one category must have Priority 1 (CRITICAL) with toggle=True")
 
     return True
+
 
 # Validate on module import to catch configuration errors early
 validate_priority_config()

@@ -101,7 +101,7 @@ async def activate_product(
             previous_active_product_id=previous_active_id,
             product=product_response,
             message=f"Product '{product_data['name']}' activated successfully",
-            deactivated_projects=deactivated_projects
+            deactivated_projects=deactivated_projects,
         )
 
     except ResourceNotFoundError as e:
@@ -114,14 +114,12 @@ async def activate_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error activating product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
     finally:
         # Publish WS event via EventBus (tenant-scoped)
         try:
             from api.app import state
+
             if getattr(state, "event_bus", None):
                 await state.event_bus.publish(
                     "product:status:changed",
@@ -194,14 +192,12 @@ async def deactivate_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error deactivating product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
     finally:
         # Publish WS event via EventBus (tenant-scoped)
         try:
             from api.app import state
+
             if getattr(state, "event_bus", None):
                 await state.event_bus.publish(
                     "product:status:changed",
@@ -250,7 +246,7 @@ async def delete_product(
             deleted_product_id=product_id,
             was_active=was_active,
             remaining_products_count=remaining_count,
-            new_active_product=None  # Could auto-activate another product if needed
+            new_active_product=None,  # Could auto-activate another product if needed
         )
 
     except ResourceNotFoundError as e:
@@ -263,10 +259,7 @@ async def delete_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error deleting product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.post("/{product_id}/restore", response_model=ProductResponse)
@@ -328,10 +321,7 @@ async def restore_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error restoring product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/{product_id}/cascade-impact", response_model=CascadeImpact)
@@ -363,7 +353,7 @@ async def get_cascade_impact(
             total_projects=impact_data["total_projects"],
             total_tasks=impact_data["total_tasks"],
             total_vision_documents=impact_data["total_vision_documents"],
-            warning=impact_data["warning"]
+            warning=impact_data["warning"],
         )
 
     except ResourceNotFoundError as e:
@@ -376,10 +366,7 @@ async def get_cascade_impact(
         raise
     except Exception as e:
         logger.error(f"Unexpected error getting cascade impact: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/refresh-active", response_model=ActiveProductRefreshResponse)
@@ -403,10 +390,7 @@ async def refresh_active_product(
         product_data = result.get("product")
 
         if not product_data:
-            return ActiveProductRefreshResponse(
-                has_active_product=False,
-                product=None
-            )
+            return ActiveProductRefreshResponse(has_active_product=False, product=None)
 
         return ActiveProductRefreshResponse(
             has_active_product=True,
@@ -427,7 +411,7 @@ async def refresh_active_product(
                 config_data=product_data.get("config_data"),
                 has_config_data=product_data.get("has_config_data", False),
                 is_active=True,
-            )
+            ),
         )
 
     except ResourceNotFoundError as e:
@@ -440,10 +424,7 @@ async def refresh_active_product(
         raise
     except Exception as e:
         logger.error(f"Unexpected error refreshing active product: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/active/vision-stats", response_model=VisionDocumentStatsResponse)
@@ -473,10 +454,7 @@ async def get_vision_document_stats(
         product_data = result.get("product")
 
         if not product_data:
-            raise HTTPException(
-                status_code=404,
-                detail="No active product found"
-            )
+            raise HTTPException(status_code=404, detail="No active product found")
 
         product_id = product_data["id"]
         product_name = product_data["name"]
@@ -486,13 +464,17 @@ async def get_vision_document_stats(
 
         from src.giljo_mcp.models import VisionDocument
 
-        stmt = select(VisionDocument).where(
-            and_(
-                VisionDocument.tenant_key == tenant_key,
-                VisionDocument.product_id == product_id,
-                VisionDocument.is_active == True  # noqa: E712
+        stmt = (
+            select(VisionDocument)
+            .where(
+                and_(
+                    VisionDocument.tenant_key == tenant_key,
+                    VisionDocument.product_id == product_id,
+                    VisionDocument.is_active == True,  # noqa: E712
+                )
             )
-        ).order_by(VisionDocument.created_at.desc())
+            .order_by(VisionDocument.created_at.desc())
+        )
 
         result_db = await db.execute(stmt)
         vision_doc = result_db.scalar_one_or_none()
@@ -506,7 +488,7 @@ async def get_vision_document_stats(
                 total_tokens=0,
                 chunk_count=0,
                 is_summarized=False,
-                summary_tokens=0
+                summary_tokens=0,
             )
 
         # Vision document exists, return its stats
@@ -518,7 +500,7 @@ async def get_vision_document_stats(
             total_tokens=vision_doc.total_tokens or 0,
             chunk_count=vision_doc.chunk_count or 0,
             is_summarized=meta_data.get("is_summarized", False),
-            summary_tokens=meta_data.get("summary_tokens", 0)
+            summary_tokens=meta_data.get("summary_tokens", 0),
         )
 
     except ResourceNotFoundError as e:
@@ -531,7 +513,4 @@ async def get_vision_document_stats(
         raise
     except Exception as e:
         logger.error(f"Unexpected error getting vision document stats: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

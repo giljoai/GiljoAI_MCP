@@ -310,8 +310,11 @@ class TestPostgreSQLDiscovery:
         custom_path = "/custom/postgres/bin/psql"
 
         # Mock Path.exists and version detection
-        with patch("pathlib.Path.exists", return_value=True), patch.object(
-            discovery, "get_postgresql_version", return_value={"version": 18, "version_string": "PostgreSQL 18.0"}
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch.object(
+                discovery, "get_postgresql_version", return_value={"version": 18, "version_string": "PostgreSQL 18.0"}
+            ),
         ):
             result = discovery.validate_custom_path(custom_path)
 

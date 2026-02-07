@@ -32,8 +32,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Message, Project, User, APIKey
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import APIKey, Message, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 # ============================================================================
@@ -41,11 +41,7 @@ from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 # ============================================================================
 
 
-def make_mcp_request(
-    method: str,
-    params: dict[str, Any] | None = None,
-    request_id: int = 1
-) -> dict[str, Any]:
+def make_mcp_request(method: str, params: dict[str, Any] | None = None, request_id: int = 1) -> dict[str, Any]:
     """
     Create a JSON-RPC 2.0 MCP request structure.
 
@@ -65,11 +61,7 @@ def make_mcp_request(
     }
 
 
-def make_tool_call_request(
-    tool_name: str,
-    arguments: dict[str, Any],
-    request_id: int = 1
-) -> dict[str, Any]:
+def make_tool_call_request(tool_name: str, arguments: dict[str, Any], request_id: int = 1) -> dict[str, Any]:
     """
     Create an MCP tools/call request.
 
@@ -91,10 +83,7 @@ def make_tool_call_request(
     )
 
 
-async def initialize_mcp_session(
-    api_client: AsyncClient,
-    api_key_value: str
-) -> dict[str, Any]:
+async def initialize_mcp_session(api_client: AsyncClient, api_key_value: str) -> dict[str, Any]:
     """
     Initialize an MCP session via the initialize method.
 
@@ -130,7 +119,7 @@ async def initialize_mcp_session(
 async def test_user(db_session: AsyncSession):
     """Create test user for API key authentication"""
     from passlib.hash import bcrypt
-    from src.giljo_mcp.models import User
+
     from src.giljo_mcp.tenant import TenantManager
 
     tenant_key = TenantManager.generate_tenant_key()
@@ -159,7 +148,6 @@ async def test_user(db_session: AsyncSession):
 async def test_api_key(db_session: AsyncSession, test_user):
     """Create test API key for authentication"""
     from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
-    from src.giljo_mcp.models import APIKey
 
     # Generate API key
     api_key_value = generate_api_key()
@@ -216,10 +204,7 @@ async def test_project(db_session: AsyncSession, test_user) -> Project:
 
 
 @pytest_asyncio.fixture
-async def test_agents(
-    db_session: AsyncSession,
-    test_project: Project
-) -> list[AgentExecution]:
+async def test_agents(db_session: AsyncSession, test_project: Project) -> list[AgentExecution]:
     """
     Create test agents for messaging tests.
 

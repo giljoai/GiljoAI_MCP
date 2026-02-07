@@ -22,17 +22,18 @@ import json
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Message
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from src.giljo_mcp.config_manager import ConfigManager
+from src.giljo_mcp.models import Message
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 async def get_async_session() -> AsyncSession:
@@ -69,10 +70,7 @@ def extract_progress_from_content(content: str) -> tuple[int, str]:
         return (0, str(content)[:255] if content else "")
 
 
-async def find_agent_job_for_message(
-    session: AsyncSession,
-    message: Message
-) -> AgentExecution | None:
+async def find_agent_job_for_message(session: AsyncSession, message: Message) -> AgentExecution | None:
     """
     Find the agent execution that should receive this progress update.
 
@@ -85,8 +83,7 @@ async def find_agent_job_for_message(
     if job_id:
         result = await session.execute(
             select(AgentExecution).where(
-                AgentExecution.job_id == job_id,
-                AgentExecution.tenant_key == message.tenant_key
+                AgentExecution.job_id == job_id, AgentExecution.tenant_key == message.tenant_key
             )
         )
         return result.scalar_one_or_none()
@@ -96,13 +93,15 @@ async def find_agent_job_for_message(
 
     if from_agent and message.project_id:
         result = await session.execute(
-            select(AgentExecution).join(
-                AgentJob, AgentExecution.job_id == AgentJob.job_id
-            ).where(
+            select(AgentExecution)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
                 AgentExecution.agent_display_name == from_agent,
                 AgentJob.project_id == message.project_id,
-                AgentExecution.tenant_key == message.tenant_key
-            ).order_by(AgentExecution.started_at.desc()).limit(1)
+                AgentExecution.tenant_key == message.tenant_key,
+            )
+            .order_by(AgentExecution.started_at.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
 
@@ -126,14 +125,12 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
         "migrated": 0,
         "deleted": 0,
         "orphaned": 0,  # Progress messages without matching agent execution
-        "errors": []
+        "errors": [],
     }
 
     async with await get_async_session() as session:
         # Find all progress messages
-        result = await session.execute(
-            select(Message).where(Message.message_type == "progress")
-        )
+        result = await session.execute(select(Message).where(Message.message_type == "progress"))
         progress_messages = result.scalars().all()
         stats["found"] = len(progress_messages)
 
@@ -169,7 +166,7 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
                     stats["deleted"] += 1
                     print(f"  {'Would migrate' if dry_run else 'Migrated'} to agent execution")
                 else:
-                    print(f"  WARNING: No matching agent execution found (orphaned)")
+                    print("  WARNING: No matching agent execution found (orphaned)")
                     stats["orphaned"] += 1
 
                     if not dry_run:
@@ -177,12 +174,12 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
                         await session.delete(message)
                         await session.commit()
                         stats["deleted"] += 1
-                        print(f"  Deleted orphaned message")
+                        print("  Deleted orphaned message")
                     else:
-                        print(f"  Would delete orphaned message")
+                        print("  Would delete orphaned message")
 
             except Exception as e:
-                error_msg = f"Error processing message {message.id}: {str(e)}"
+                error_msg = f"Error processing message {message.id}: {e!s}"
                 print(f"  ERROR: {error_msg}")
                 stats["errors"].append(error_msg)
 
@@ -200,14 +197,8 @@ async def cleanup_progress_messages(dry_run: bool = False) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Cleanup stale progress messages from messages table"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without modifying database"
-    )
+    parser = argparse.ArgumentParser(description="Cleanup stale progress messages from messages table")
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without modifying database")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -219,7 +210,7 @@ def main():
     else:
         print("\n*** LIVE MODE - Database will be modified ***")
         response = input("Continue? [y/N]: ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("Aborted.")
             sys.exit(0)
 

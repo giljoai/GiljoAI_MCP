@@ -8,9 +8,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+
 # ============================================================================
 # CRUD Models
 # ============================================================================
+
 
 class ProjectCreate(BaseModel):
     """Request model for project creation."""
@@ -28,6 +30,7 @@ class ProjectCreate(BaseModel):
         description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
 
+
 class ProjectUpdate(BaseModel):
     """Request model for project updates."""
 
@@ -41,6 +44,7 @@ class ProjectUpdate(BaseModel):
         description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
 
+
 class AgentSimple(BaseModel):
     """Simple agent schema for project response."""
 
@@ -50,6 +54,7 @@ class AgentSimple(BaseModel):
     agent_name: str | None = None
     status: str
     thin_client: bool = True
+
 
 class ProjectResponse(BaseModel):
     """Response model for project details."""
@@ -73,6 +78,7 @@ class ProjectResponse(BaseModel):
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = "multi_terminal"
 
+
 class DeletedProjectResponse(BaseModel):
     """Response model for deleted project listing."""
 
@@ -85,6 +91,7 @@ class DeletedProjectResponse(BaseModel):
     days_until_purge: int
     purge_date: datetime
 
+
 class ProjectDeleteResponse(BaseModel):
     """Response model for project soft delete."""
 
@@ -95,6 +102,7 @@ class ProjectDeleteResponse(BaseModel):
         description="Timestamp when project was marked as deleted (soft delete)",
     )
 
+
 class PurgedProject(BaseModel):
     """Response model for a purged project entry."""
 
@@ -102,6 +110,7 @@ class PurgedProject(BaseModel):
     name: str
     tenant_key: str
     deleted_at: datetime | None = None
+
 
 class ProjectPurgeResponse(BaseModel):
     """Response model for project purge operations."""
@@ -111,9 +120,11 @@ class ProjectPurgeResponse(BaseModel):
     projects: list[PurgedProject] = []
     message: str | None = None
 
+
 # ============================================================================
 # Summary/Status Models
 # ============================================================================
+
 
 class AgentSummary(BaseModel):
     """Summary of an agent used in the project (Handover 0062)."""
@@ -125,6 +136,7 @@ class AgentSummary(BaseModel):
     job_mission: str | None = None
     job_id: str | None = None
 
+
 class MessageSummary(BaseModel):
     """Summary of a message in the project (Handover 0062)."""
 
@@ -133,6 +145,7 @@ class MessageSummary(BaseModel):
     to_agents: list[str]
     content: str
     timestamp: str
+
 
 class ProjectSummaryResponse(BaseModel):
     """Comprehensive project summary for after-action review (Handover 0062)."""
@@ -147,9 +160,11 @@ class ProjectSummaryResponse(BaseModel):
     created_at: str
     completed_at: str | None = None
 
+
 # ============================================================================
 # Lifecycle Models
 # ============================================================================
+
 
 class StagingCancellationResponse(BaseModel):
     """Response model for staging cancellation (Handover 0108)."""
@@ -161,9 +176,11 @@ class StagingCancellationResponse(BaseModel):
     message: str = Field(..., description="User-readable result message")
     rollback_timestamp: str | None = Field(None, description="ISO timestamp of rollback")
 
+
 # ============================================================================
 # Completion Models
 # ============================================================================
+
 
 class ProjectCloseOutResponse(BaseModel):
     """Response for project close-out operation (Handover 0113)."""
@@ -174,6 +191,7 @@ class ProjectCloseOutResponse(BaseModel):
     decommissioned_agent_ids: list[str]
     project_status: str
 
+
 class ContinueWorkingResponse(BaseModel):
     """Response for continue working operation (Handover 0113)."""
 
@@ -183,9 +201,11 @@ class ContinueWorkingResponse(BaseModel):
     resumed_agent_ids: list[str]
     project_status: str
 
+
 # ============================================================================
 # Orchestrator Models (Handover 0135)
 # ============================================================================
+
 
 class OrchestratorJobResponse(BaseModel):
     """Orchestrator job details for project."""
@@ -201,6 +221,7 @@ class OrchestratorJobResponse(BaseModel):
     created_at: datetime | None
     started_at: datetime | None
     completed_at: datetime | None
+
 
 class OrchestratorResponse(BaseModel):
     """Response for GET /{project_id}/orchestrator."""

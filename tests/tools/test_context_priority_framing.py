@@ -1,5 +1,6 @@
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.context import MCPContextIndex

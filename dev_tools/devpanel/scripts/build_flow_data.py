@@ -8,6 +8,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FLOWS_DIR = REPO_ROOT / "dev_tools" / "devpanel" / "flows"
 LEGACY_FLOW_JSON = REPO_ROOT / "dev_tools" / "devpanel" / "frontend" / "start_to_finish_flow.json"
@@ -46,10 +47,7 @@ def parse_steps(markdown: str) -> list[dict[str, str]]:
 
 
 def build_graph(steps: list[dict[str, str]]) -> dict:
-    nodes = [
-        {"data": {"id": step["id"], "label": step["label"], "details": step["details"]}}
-        for step in steps
-    ]
+    nodes = [{"data": {"id": step["id"], "label": step["label"], "details": step["details"]}} for step in steps]
     edges = []
     for idx in range(len(steps) - 1):
         edges.append({"data": {"id": f"e{idx}", "source": steps[idx]["id"], "target": steps[idx + 1]["id"]}})

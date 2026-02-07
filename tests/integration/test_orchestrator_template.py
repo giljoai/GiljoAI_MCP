@@ -10,10 +10,13 @@ Tests complete workflow:
 """
 
 import pytest
+
+
 pytest.skip("TODO(0127a-2): Comprehensive refactoring needed for MCPAgentJob model", allow_module_level=True)
 import pytest
 
 from src.giljo_mcp.context_manager import get_filtered_config, get_full_config
+
 # TODO(0127a): from src.giljo_mcp.models import Agent, AgentTemplate, Product, Project
 # from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 from src.giljo_mcp.template_manager import get_template_manager

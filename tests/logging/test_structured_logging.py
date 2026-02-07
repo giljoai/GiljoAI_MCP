@@ -14,7 +14,6 @@ import logging
 from io import StringIO
 
 import pytest
-import structlog
 
 from src.giljo_mcp.logging import (
     ErrorCode,
