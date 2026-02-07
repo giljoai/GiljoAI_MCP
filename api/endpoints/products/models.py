@@ -208,3 +208,42 @@ class GitIntegrationResponse(BaseModel):
     enabled: bool = Field(..., description="Whether Git integration is enabled")
     commit_limit: int = Field(..., description="Max commits to include in prompts")
     default_branch: str = Field(..., description="Default branch name")
+
+
+# ============================================================================
+# 360 Memory Entries (Handover 0490)
+# ============================================================================
+
+
+class MemoryEntryResponse(BaseModel):
+    """Response model for a single 360 memory entry"""
+
+    id: str = Field(..., description="Entry UUID")
+    sequence: int = Field(..., description="Sequence number within product")
+    entry_type: str = Field(..., description="Entry type (project_closeout, session_handover, etc.)")
+    source: str = Field(..., description="Source tool identifier")
+    timestamp: str = Field(..., description="ISO timestamp of entry creation")
+    project_id: Optional[str] = Field(None, description="Source project UUID (if applicable)")
+    project_name: Optional[str] = Field(None, description="Project name at time of entry")
+    summary: Optional[str] = Field(None, description="2-3 paragraph summary")
+    key_outcomes: list[str] = Field(default_factory=list, description="Key achievements")
+    decisions_made: list[str] = Field(default_factory=list, description="Architectural/design decisions")
+    git_commits: list[dict[str, Any]] = Field(default_factory=list, description="Git commit objects")
+    deliverables: list[Any] = Field(default_factory=list, description="Deliverables/artifacts")
+    metrics: dict[str, Any] = Field(default_factory=dict, description="Metrics dictionary")
+    priority: int = Field(default=3, description="Priority level 1-5")
+    significance_score: float = Field(default=0.5, description="Significance score 0.0-1.0")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
+    author_job_id: Optional[str] = Field(None, description="Job ID of authoring agent")
+    author_name: Optional[str] = Field(None, description="Name of authoring agent")
+    author_type: Optional[str] = Field(None, description="Type of authoring agent")
+    deleted_by_user: bool = Field(default=False, description="Whether entry was soft-deleted")
+
+
+class MemoryEntriesResponse(BaseModel):
+    """Response model for memory entries list endpoint"""
+
+    success: bool = Field(default=True, description="Operation success status")
+    entries: list[MemoryEntryResponse] = Field(default_factory=list, description="Memory entries array")
+    total_count: int = Field(..., description="Total entries for product (including deleted)")
+    filtered_count: int = Field(..., description="Count of entries returned (after filters)")
