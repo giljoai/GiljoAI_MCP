@@ -14,8 +14,11 @@ This session orchestrated the **0700 Code Cleanup Series** for GiljoAI MCP v1.0 
 - **0700-0709**: All COMPLETE (deprecated code removal, lint, types, security)
 - **0710-0715**: SKIPPED (pre-completed by earlier handovers)
 - **0720**: COMPLETE - Zero lint errors achieved
-- **0725**: COMPLETE - Code Health Audit finished with findings
-- **0726+**: PENDING - Follow-up work based on 0725 findings
+- **0725**: INVALIDATED - Flawed audit with 75%+ false positives
+- **0725b**: COMPLETE - Proper AST-based re-audit (architecture HEALTHY)
+- **0727**: COMPLETE - Test fixes and production bug remediation
+- **0433**: 9/10 phases COMPLETE - Task product binding (final commit pending)
+- **Orphan Cleanup**: COMPLETE - 2 confirmed orphans deleted (627 lines)
 
 ---
 
@@ -26,14 +29,18 @@ This session orchestrated the **0700 Code Cleanup Series** for GiljoAI MCP v1.0 
 handovers/0700_series/orchestrator_state.json  # Master state - READ IN CHUNKS (large file)
 ```
 
-### 0725 Audit Results
+### 0725b Re-Audit Results (Replaces Flawed 0725)
 ```
-handovers/0725_AUDIT_REPORT.md                 # Main audit report
-handovers/0725_findings_orphans.md             # Orphan code findings
-handovers/0725_findings_naming.md              # Naming convention findings
-handovers/0725_findings_coverage.md            # Test coverage findings (large)
-handovers/0725_findings_architecture.md        # Architecture findings
-handovers/0725_findings_deprecation.md         # Deprecation findings
+handovers/0725b_COMPLETE.md                    # Re-audit completion report
+handovers/0725b_AUDIT_REPORT.md                # Accurate findings
+handovers/0725b_findings_real_issues.md        # Validated issues only
+handovers/0725_INVALIDATED_README.md           # Why 0725 was wrong
+```
+
+### Remediation Completion Reports
+```
+handovers/0727_COMPLETE.md                     # Test fixes and production bugs
+handovers/0433_PHASE3_COMPLETE.md              # Task product binding MCP tool update
 ```
 
 ### Other JSON Logs
@@ -84,10 +91,29 @@ code_style_conventions           # Coding standards
 - 8 commits, 131 files modified
 - Pre-commit hooks now active and enforced
 
-### Phase 5: Code Health Audit (0725)
-- Research-only audit with 5 parallel agents
-- Generated findings in 5 categories
-- Identified follow-up work needed
+### Phase 5: Code Health Audit (0725 → 0725b)
+- **0725**: INVALIDATED - Naive static analysis with 75%+ false positives
+  - Claimed 129 orphan files (actually 2)
+  - Claimed 25 tenant isolation issues (actually 1, fixed in 0433)
+  - Methodology flawed: no FastAPI awareness, no frontend integration checks
+- **0725b**: COMPLETE - Proper AST-based re-audit
+  - Architecture declared HEALTHY ✅
+  - Real findings: 6 test imports, 3 production bugs, 2 orphans, 122 dict returns
+  - False positive rate: <5% (vs 0725's 75%+)
+
+### Phase 6: Remediation & Completion (0727, 0433, Orphan Cleanup)
+- **0727**: COMPLETE - Fixed all test import errors and production bugs
+  - 6 test files: BaseGiljoException → BaseGiljoError
+  - 3 production bugs: complete endpoint, summary endpoint, WebSocket imports
+- **0433**: 9/10 phases COMPLETE - Task product binding and tenant isolation
+  - Eliminated unassigned tasks pattern
+  - Task.product_id now NOT NULL
+  - 100% tenant isolation vulnerability eliminated
+  - Final commit pending
+- **Orphan Cleanup**: COMPLETE - Deleted 2 confirmed orphans
+  - mcp_http_stdin_proxy.py (127 lines)
+  - cleanup/visualizer.py (~500 lines)
+  - Total: 627 lines removed
 
 ---
 
@@ -142,21 +168,22 @@ ruff check src/ api/
 
 ---
 
-## Pending Work (From 0725 Findings)
+## Pending Work (From 0725b Validated Findings)
 
-The 0725 audit identified issues that need follow-up handovers. Read the findings files for details:
+### Completed Follow-ups
+- ✅ **0727**: Test Import Fixes & Production Bugs (COMPLETE)
+- ✅ **0433**: Task Product Binding (9/10 phases COMPLETE, final commit pending)
+- ✅ **Orphan Cleanup**: 2 files deleted (COMPLETE)
 
-### Potential Follow-up Handovers
-- **0726**: Orphan Cleanup (if orphans found)
-- **0727**: Naming Convention Fixes (if naming issues)
-- **0728**: API Standardization (if API inconsistencies)
-- **0729**: Test Coverage Improvement (if coverage gaps)
+### Remaining Follow-ups
+- ⏳ **0730**: Service Response Models (122 dict returns across 15 services)
+  - Priority: P2 (architectural improvement, not critical)
+  - Effort: 24-32 hours
+  - Status: Validated by 0725b, ready for execution
 
-### Priority Assessment Needed
-Review `handovers/0725_AUDIT_REPORT.md` to determine:
-1. What's critical for v1.0?
-2. What can be deferred to post-v1.0?
-3. What needs immediate action?
+### Deferred to Post-v1.0
+- Skipped tests review (92 tests, mostly intentional)
+- Commented code cleanup (ERA001: 20 instances, acceptable)
 
 ---
 

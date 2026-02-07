@@ -28,7 +28,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.giljo_mcp.exceptions import (
-    BaseGiljoException,
+    BaseGiljoError,
     DatabaseError,
     ResourceNotFoundError,
     ValidationError,
@@ -109,7 +109,7 @@ class TestCreateProductExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.create_product(name="Test Product", description="Test")
 
         assert "Connection failed" in str(exc_info.value)
@@ -150,7 +150,7 @@ class TestGetProductExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.get_product("some-id")
 
         assert "Query failed" in str(exc_info.value)
@@ -201,7 +201,7 @@ class TestUpdateProductExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.update_product("some-id", name="New Name")
 
         assert "Update failed" in str(exc_info.value)
@@ -292,7 +292,7 @@ class TestQueryMethodExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.list_products()
 
         assert "List failed" in str(exc_info.value)
@@ -309,7 +309,7 @@ class TestQueryMethodExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.list_deleted_products()
 
         assert "List failed" in str(exc_info.value)
@@ -326,7 +326,7 @@ class TestQueryMethodExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.get_active_product()
 
         assert "Query failed" in str(exc_info.value)
@@ -433,7 +433,7 @@ class TestMaintenanceMethodExceptions:
 
         service = ProductService(db_manager, "test-tenant")
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.purge_expired_deleted_products(days_before_purge=30)
 
         assert "Purge failed" in str(exc_info.value)
