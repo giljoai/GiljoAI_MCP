@@ -182,7 +182,7 @@ class MessageService:
                         sender_ref = from_agent or "orchestrator"
                         for execution in executions:
                             # Skip sender - compare both agent_display_name and agent_id
-                            if execution.agent_display_name == sender_ref or execution.agent_id == sender_ref:
+                            if sender_ref in (execution.agent_display_name, execution.agent_id):
                                 continue
                             resolved_to_agents.append(execution.agent_id)
                             self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
@@ -334,7 +334,7 @@ class MessageService:
                             recipient_agent_ids = [
                                 execution.agent_id
                                 for execution in all_executions
-                                if execution.agent_display_name != sender_ref and execution.agent_id != sender_ref
+                                if sender_ref not in (execution.agent_display_name, execution.agent_id)
                             ]
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
@@ -406,7 +406,7 @@ class MessageService:
                                 f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
                             )
 
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
                 else:
@@ -546,7 +546,7 @@ class MessageService:
                             message_type="broadcast",
                             content_preview=content[:100] if content else "",
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001
                         # Log WebSocket errors but don't fail the broadcast
                         self._logger.warning(f"Failed to emit WebSocket broadcast event: {ws_error}")
 
@@ -675,20 +675,18 @@ class MessageService:
                 messages = result.scalars().all()
 
                 # Filter messages for this agent
-                agent_messages = []
-                for msg in messages:
-                    # Include if agent is in to_agents list or if broadcast (empty to_agents)
-                    if agent_name in msg.to_agents or not msg.to_agents:
-                        agent_messages.append(
-                            {
-                                "id": str(msg.id),
-                                "from": msg.meta_data.get("_from_agent", "unknown"),
-                                "content": msg.content,
-                                "type": msg.message_type,
-                                "priority": msg.priority,
-                                "created": msg.created_at.isoformat() if msg.created_at else None,
-                            }
-                        )
+                agent_messages = [
+                    {
+                        "id": str(msg.id),
+                        "from": msg.meta_data.get("_from_agent", "unknown"),
+                        "content": msg.content,
+                        "type": msg.message_type,
+                        "priority": msg.priority,
+                        "created": msg.created_at.isoformat() if msg.created_at else None,
+                    }
+                    for msg in messages
+                    if agent_name in msg.to_agents or not msg.to_agents
+                ]
 
                 return {
                     "success": True,
@@ -804,7 +802,7 @@ class MessageService:
                 if message_types is not None:
                     if len(message_types) == 0:
                         # Empty allow-list means no messages should pass
-                        conditions.append(Message.id == None)
+                        conditions.append(Message.id is None)
                     else:
                         # Only allow specified message types
                         conditions.append(Message.message_type.in_(message_types))
@@ -1147,7 +1145,7 @@ class MessageService:
                                 "result": result[:100] if result else "",
                             },
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001
                         # Log WebSocket errors but don't fail the completion
                         self._logger.warning(
                             f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
@@ -1262,7 +1260,7 @@ class MessageService:
                             waiting_count=waiting_count,
                             read_count=read_count,
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
 
                 return {
