@@ -1090,7 +1090,7 @@ async def get_orchestrator_instructions(
                                 "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                             },
                         )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
@@ -1229,7 +1229,7 @@ async def get_orchestrator_instructions(
                     select(AgentTemplate.name).where(
                         and_(
                             AgentTemplate.tenant_key == tenant_key,
-                            AgentTemplate.is_active == True,
+                            AgentTemplate.is_active,
                         )
                     )
                 )
@@ -1470,9 +1470,9 @@ async def spawn_agent_job(
         db_url = config.database.database_url
         db_manager = DatabaseManager(database_url=db_url, is_async=True)
 
-    async with db_manager.get_session_async() as session:
+    async with db_manager.get_session_async() as db_session:
         return await _spawn_agent_job_impl(
-            session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
+            db_session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
 
@@ -1510,7 +1510,7 @@ async def _spawn_agent_job_impl(
                 select(AgentTemplate.name).where(
                     and_(
                         AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active == True,
+                        AgentTemplate.is_active,
                     )
                 )
             )
@@ -1713,7 +1713,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "mission": mission,  # Handover 0464: Include mission for UI display
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001
             logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
         # Build base response
