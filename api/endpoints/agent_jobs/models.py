@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 # Spawn Agent Models
 # ============================================================================
 
+
 class SpawnAgentRequest(BaseModel):
     """Request model for spawning a new agent job."""
 
@@ -39,6 +40,7 @@ class SpawnAgentResponse(BaseModel):
 # ============================================================================
 # Job Lifecycle Models
 # ============================================================================
+
 
 class JobAcknowledgeResponse(BaseModel):
     """Response model for job acknowledgment."""
@@ -82,6 +84,7 @@ class JobErrorResponse(BaseModel):
 # ============================================================================
 # Job Status Models
 # ============================================================================
+
 
 class TodoItemResponse(BaseModel):
     """Response model for individual TODO item - Handover 0423."""
@@ -143,6 +146,7 @@ class JobMissionResponse(BaseModel):
 # Progress Reporting Models
 # ============================================================================
 
+
 class ProgressReportRequest(BaseModel):
     """Request model for progress reporting."""
 
@@ -162,6 +166,7 @@ class ProgressReportResponse(BaseModel):
 # ============================================================================
 # Orchestration Models
 # ============================================================================
+
 
 class OrchestrateProjectRequest(BaseModel):
     """Request model for project orchestration."""
@@ -203,6 +208,7 @@ class JobListResponse(BaseModel):
 # Job Operations Models (Handover 0107)
 # ============================================================================
 
+
 class ForceFailJobRequest(BaseModel):
     """Request model for force-failing a job."""
 
@@ -233,15 +239,11 @@ class JobHealthResponse(BaseModel):
 # Mission Update Models (Handover 0244b)
 # ============================================================================
 
+
 class UpdateMissionRequest(BaseModel):
     """Request model for updating agent mission."""
 
-    mission: str = Field(
-        ...,
-        min_length=1,
-        max_length=50000,
-        description="Updated mission/instructions for the agent"
-    )
+    mission: str = Field(..., min_length=1, max_length=50000, description="Updated mission/instructions for the agent")
 
 
 class UpdateMissionResponse(BaseModel):
@@ -255,6 +257,7 @@ class UpdateMissionResponse(BaseModel):
 # ============================================================================
 # Agent Execution Models (Handover 0366d-1)
 # ============================================================================
+
 
 class AgentExecutionResponse(BaseModel):
     """Response model for agent execution instance (Handover 0366d-1)."""

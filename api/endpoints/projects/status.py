@@ -96,26 +96,19 @@ async def get_project_orchestrator(
     """
     from sqlalchemy import select
     from sqlalchemy.orm import joinedload
-    from src.giljo_mcp.models import Project
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
-    logger.debug(
-        f"User {current_user.username} getting orchestrator for project {project_id}"
-    )
+    from src.giljo_mcp.models import Project
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
+    logger.debug(f"User {current_user.username} getting orchestrator for project {project_id}")
 
     # Verify project exists and user has access
-    project_stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     project_result = await db.execute(project_stmt)
     project = project_result.scalar_one_or_none()
 
     if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project not found: {project_id}"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project not found: {project_id}")
 
     # Find orchestrator - get latest ACTIVE instance
     # FIX: Filter by active statuses to avoid returning cancelled/failed orchestrators
@@ -142,10 +135,7 @@ async def get_project_orchestrator(
         # Handover 0506: No auto-creation - return null orchestrator
         # Frontend shows "Re-launch Orchestrator" button when orchestrator is null
         logger.info(f"No orchestrator found for project {project_id} (user: {current_user.username})")
-        return OrchestratorResponse(
-            success=True,
-            orchestrator=None
-        )
+        return OrchestratorResponse(success=True, orchestrator=None)
 
     logger.info(
         f"Retrieved orchestrator execution {orchestrator_execution.agent_id} "

@@ -85,9 +85,8 @@ class AdapterIPDetector:
                         logger.info(f"IP changed from initial: {initial_ip} -> {current_ip}")
                         return True, current_ip, adapter_id
                     return False, current_ip, adapter_id
-                else:
-                    logger.warning("Auto-detect mode but no suitable adapters found")
-                    return False, None, None
+                logger.warning("Auto-detect mode but no suitable adapters found")
+                return False, None, None
 
             if not adapter_id:
                 logger.debug("No network adapter configured in security.network section")

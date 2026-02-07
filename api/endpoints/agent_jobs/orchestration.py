@@ -24,7 +24,7 @@ from sqlalchemy.orm import joinedload
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
@@ -39,8 +39,10 @@ router = APIRouter()
 # Orchestration Models (from old orchestration.py)
 # ============================================================================
 
+
 class RegenerateMissionRequest(BaseModel):
     """Request model for mission regeneration."""
+
     project_id: UUID
     override_field_priorities: Optional[dict[str, int]] = None
     override_serena_enabled: Optional[bool] = None
@@ -48,6 +50,7 @@ class RegenerateMissionRequest(BaseModel):
 
 class RegenerateMissionResponse(BaseModel):
     """Response model for mission regeneration."""
+
     mission: str
     user_config_applied: bool
     serena_enabled: bool
@@ -56,11 +59,13 @@ class RegenerateMissionResponse(BaseModel):
 
 class LaunchProjectRequest(BaseModel):
     """Request model for project launch."""
+
     project_id: UUID
 
 
 class AgentInfo(BaseModel):
     """Agent information for launch response."""
+
     agent_id: str
     job_id: str
     agent_display_name: str
@@ -73,6 +78,7 @@ class AgentInfo(BaseModel):
 
 class LaunchProjectResponse(BaseModel):
     """Response model for project launch."""
+
     success: bool
     project_id: str
     staging_status: str
@@ -85,6 +91,7 @@ class LaunchProjectResponse(BaseModel):
 # Core Orchestration Endpoints (OrchestrationService)
 # ============================================================================
 # Note: orchestrate_project endpoint removed - use manual orchestration workflow
+
 
 @router.get("/workflow/{project_id}", response_model=WorkflowStatusResponse)
 async def get_workflow_status(
@@ -108,15 +115,14 @@ async def get_workflow_status(
     Raises:
         HTTPException 404: Project not found
     """
-    from src.giljo_mcp.exceptions import ResourceNotFoundError, DatabaseError
+    from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError
 
     logger.debug(f"User {current_user.username} getting workflow status for project {project_id}")
 
     try:
         # Get workflow status via OrchestrationService
         result = await orchestration_service.get_workflow_status(
-            project_id=project_id,
-            tenant_key=current_user.tenant_key
+            project_id=project_id, tenant_key=current_user.tenant_key
         )
 
         logger.info(f"Retrieved workflow status for project {project_id}")
@@ -128,7 +134,7 @@ async def get_workflow_status(
             completed_count=result.get("completed_agents", 0),
             failed_count=result.get("failed_agents", 0),
             active_count=result.get("active_agents", 0),
-            progress_percent=int(result.get("progress_percent", 0))
+            progress_percent=int(result.get("progress_percent", 0)),
         )
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
@@ -140,6 +146,7 @@ async def get_workflow_status(
 # ============================================================================
 # Mission & Launch Endpoints (from old orchestration.py)
 # ============================================================================
+
 
 async def _get_user_config_with_overrides(
     user_id: UUID,
@@ -208,18 +215,14 @@ async def regenerate_mission(
     logger.info(f"Mission regeneration requested for project {request.project_id}")
 
     # Get project with tenant isolation
-    result = await db.execute(
-        select(Project).filter_by(id=request.project_id, tenant_key=current_user.tenant_key)
-    )
+    result = await db.execute(select(Project).filter_by(id=request.project_id, tenant_key=current_user.tenant_key))
     project = result.scalar_one_or_none()
 
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Get product
-    result = await db.execute(
-        select(Product).filter_by(id=project.product_id, tenant_key=current_user.tenant_key)
-    )
+    result = await db.execute(select(Product).filter_by(id=project.product_id, tenant_key=current_user.tenant_key))
     product = result.scalar_one_or_none()
 
     if not product:
@@ -309,7 +312,7 @@ async def launch_project(
         logger.error(f"Project {project_id_str} has no mission")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Project mission has not been created. Please complete staging first."
+            detail="Project mission has not been created. Please complete staging first.",
         )
 
     # Fetch spawned agents (executions with job data)
@@ -329,7 +332,7 @@ async def launch_project(
         logger.error(f"Project {project_id_str} has no spawned agents")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No agents have been spawned for this project. Please complete staging first."
+            detail="No agents have been spawned for this project. Please complete staging first.",
         )
 
     # Update project status
@@ -345,8 +348,7 @@ async def launch_project(
         await db.rollback()
         logger.exception("Failed to update project status")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to launch project due to database error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to launch project due to database error"
         ) from e
 
     # Build agent info response
@@ -387,7 +389,7 @@ async def launch_project(
         staging_status=project.staging_status,
         agent_count=len(agents),
         agents=agent_info_list,
-        message=f"Project launched successfully with {len(agents)} agents"
+        message=f"Project launched successfully with {len(agents)} agents",
     )
 
 
@@ -395,8 +397,10 @@ async def launch_project(
 # Implementation Phase Gate (Handover 0709)
 # ============================================================================
 
+
 class LaunchImplementationResponse(BaseModel):
     """Response model for launch implementation."""
+
     success: bool = True
     implementation_launched_at: Optional[str] = None
     already_launched: Optional[bool] = None
@@ -434,17 +438,13 @@ async def launch_implementation(
     project = await db.get(Project, project_id)
 
     if not project or project.tenant_key != current_user.tenant_key:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Check if already launched (idempotent)
     if project.implementation_launched_at is not None:
         logger.info(f"Project {project_id} already launched at {project.implementation_launched_at}")
         return LaunchImplementationResponse(
-            already_launched=True,
-            launched_at=project.implementation_launched_at.isoformat()
+            already_launched=True, launched_at=project.implementation_launched_at.isoformat()
         )
 
     # Set timestamp
@@ -455,6 +455,5 @@ async def launch_implementation(
     logger.info(f"Implementation launched for project {project_id} at {project.implementation_launched_at}")
 
     return LaunchImplementationResponse(
-        success=True,
-        implementation_launched_at=project.implementation_launched_at.isoformat()
+        success=True, implementation_launched_at=project.implementation_launched_at.isoformat()
     )

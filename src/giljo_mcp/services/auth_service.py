@@ -21,29 +21,27 @@ Design Principles:
 """
 
 import logging
-import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from passlib.hash import bcrypt
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.auth import APIKey, User
-from src.giljo_mcp.models.config import SetupState
-from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
+    BaseGiljoException,
     ResourceNotFoundError,
     ValidationError,
-    BaseGiljoException
 )
+from src.giljo_mcp.models.auth import APIKey, User
+from src.giljo_mcp.models.config import SetupState
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -65,12 +63,7 @@ class AuthService:
     NO tenant_key: Auth operations span tenants (login can be any tenant).
     """
 
-    def __init__(
-        self,
-        db_manager: DatabaseManager,
-        websocket_manager=None,
-        session: AsyncSession | None = None
-    ):
+    def __init__(self, db_manager: DatabaseManager, websocket_manager=None, session: AsyncSession | None = None):
         """
         Initialize AuthService with database manager.
 
@@ -126,14 +119,9 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to authenticate user: {e}")
-            raise BaseGiljoException(
-                message=f"Authentication failed: {str(e)}",
-                context={"username": username}
-            )
+            raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username})
 
-    async def _authenticate_user_impl(
-        self, session: AsyncSession, username: str, password: str
-    ) -> Dict[str, Any]:
+    async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Find user by username
         stmt = select(User).where(User.username == username)
@@ -144,35 +132,28 @@ class AuthService:
         if not user or not bcrypt.verify(password, user.password_hash):
             self._logger.warning(
                 f"Authentication failed for username: {username}",
-                extra={"username": username, "reason": "invalid_credentials"}
+                extra={"username": username, "reason": "invalid_credentials"},
             )
-            raise AuthenticationError(
-                message="Invalid credentials",
-                context={"username": username}
-            )
+            raise AuthenticationError(message="Invalid credentials", context={"username": username})
 
         # Check if user account is active
         if not user.is_active:
             self._logger.warning(
                 f"Authentication failed for username: {username} (inactive account)",
-                extra={"username": username, "user_id": user.id, "reason": "inactive_account"}
+                extra={"username": username, "user_id": user.id, "reason": "inactive_account"},
             )
             raise AuthorizationError(
-                message="User account is inactive",
-                context={"username": username, "user_id": user.id}
+                message="User account is inactive", context={"username": username, "user_id": user.id}
             )
 
         # Generate JWT token
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
         self._logger.info(
             f"User authenticated successfully: {username}",
-            extra={"username": username, "user_id": user.id, "role": user.role}
+            extra={"username": username, "user_id": user.id, "role": user.role},
         )
 
         # Convert user to dict for response
@@ -188,10 +169,7 @@ class AuthService:
             "last_login": user.last_login.isoformat() if user.last_login else None,
         }
 
-        return {
-            "user": user_dict,
-            "token": token
-        }
+        return {"user": user_dict, "token": token}
 
     async def update_last_login(self, user_id: str, timestamp: datetime) -> None:
         """
@@ -221,31 +199,22 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to update last login: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to update last login: {str(e)}",
-                context={"user_id": user_id}
-            )
+            raise BaseGiljoException(message=f"Failed to update last login: {e!s}", context={"user_id": user_id})
 
-    async def _update_last_login_impl(
-        self, session: AsyncSession, user_id: str, timestamp: datetime
-    ) -> None:
+    async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
         """Implementation that uses provided session"""
         stmt = select(User).where(User.id == user_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         user.last_login = timestamp
         await session.commit()
 
         self._logger.debug(
-            f"Updated last login for user {user_id}",
-            extra={"user_id": user_id, "timestamp": timestamp.isoformat()}
+            f"Updated last login for user {user_id}", extra={"user_id": user_id, "timestamp": timestamp.isoformat()}
         )
 
     # ============================================================================
@@ -284,14 +253,9 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to check setup state: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to check setup state: {str(e)}",
-                context={"tenant_key": tenant_key}
-            )
+            raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key})
 
-    async def _check_setup_state_impl(
-        self, session: AsyncSession, tenant_key: str
-    ) -> Optional[Dict[str, Any]]:
+    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> Optional[Dict[str, Any]]:
         """Implementation that uses provided session"""
         stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         result = await session.execute(stmt)
@@ -342,10 +306,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list API keys: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to list API keys: {str(e)}",
-                context={"user_id": user_id}
-            )
+            raise BaseGiljoException(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id})
 
     async def _list_api_keys_impl(
         self, session: AsyncSession, user_id: str, include_revoked: bool
@@ -379,9 +340,7 @@ class AuthService:
 
         return keys_list
 
-    async def create_api_key(
-        self, user_id: str, tenant_key: str, name: str, permissions: List[str]
-    ) -> Dict[str, Any]:
+    async def create_api_key(self, user_id: str, tenant_key: str, name: str, permissions: List[str]) -> Dict[str, Any]:
         """
         Create new API key for user.
 
@@ -411,9 +370,7 @@ class AuthService:
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._create_api_key_impl(
-                    self._session, user_id, tenant_key, name, permissions
-                )
+                return await self._create_api_key_impl(self._session, user_id, tenant_key, name, permissions)
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
@@ -422,17 +379,11 @@ class AuthService:
         except Exception as e:
             self._logger.exception(f"Failed to create API key: {e}")
             raise BaseGiljoException(
-                message=f"Failed to create API key: {str(e)}",
-                context={"user_id": user_id, "name": name}
+                message=f"Failed to create API key: {e!s}", context={"user_id": user_id, "name": name}
             )
 
     async def _create_api_key_impl(
-        self,
-        session: AsyncSession,
-        user_id: str,
-        tenant_key: str,
-        name: str,
-        permissions: List[str]
+        self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: List[str]
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Generate new API key
@@ -459,7 +410,7 @@ class AuthService:
 
         self._logger.info(
             f"API key created: {name} (user: {user_id})",
-            extra={"user_id": user_id, "key_name": name, "key_prefix": key_prefix}
+            extra={"user_id": user_id, "key_name": name, "key_prefix": key_prefix},
         )
 
         return {
@@ -500,13 +451,10 @@ class AuthService:
         except Exception as e:
             self._logger.exception(f"Failed to revoke API key: {e}")
             raise BaseGiljoException(
-                message=f"Failed to revoke API key: {str(e)}",
-                context={"key_id": key_id, "user_id": user_id}
+                message=f"Failed to revoke API key: {e!s}", context={"key_id": key_id, "user_id": user_id}
             )
 
-    async def _revoke_api_key_impl(
-        self, session: AsyncSession, key_id: str, user_id: str
-    ) -> None:
+    async def _revoke_api_key_impl(self, session: AsyncSession, key_id: str, user_id: str) -> None:
         """Implementation that uses provided session"""
         stmt = select(APIKey).where(APIKey.id == key_id, APIKey.user_id == user_id)
         result = await session.execute(stmt)
@@ -514,8 +462,7 @@ class AuthService:
 
         if not api_key:
             raise ResourceNotFoundError(
-                message="API key not found or access denied",
-                context={"key_id": key_id, "user_id": user_id}
+                message="API key not found or access denied", context={"key_id": key_id, "user_id": user_id}
             )
 
         # Revoke key
@@ -525,7 +472,7 @@ class AuthService:
 
         self._logger.info(
             f"API key revoked: {api_key.name} (user: {user_id})",
-            extra={"user_id": user_id, "key_id": key_id, "key_name": api_key.name}
+            extra={"user_id": user_id, "key_id": key_id, "key_name": api_key.name},
         )
 
     # ============================================================================
@@ -578,18 +525,13 @@ class AuthService:
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._register_user_impl(
-                    session, username, email, password, role, requesting_admin_id
-                )
+                return await self._register_user_impl(session, username, email, password, role, requesting_admin_id)
 
         except ValidationError:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to register user: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to register user: {str(e)}",
-                context={"username": username}
-            )
+            raise BaseGiljoException(message=f"Failed to register user: {e!s}", context={"username": username})
 
     async def _register_user_impl(
         self,
@@ -600,7 +542,7 @@ class AuthService:
         role: str,
         requesting_admin_id: str,
         org_id: Optional[str] = None,
-        org_role: str = "member"
+        org_role: str = "member",
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Check for duplicate username
@@ -608,8 +550,7 @@ class AuthService:
         result = await session.execute(stmt)
         if result.scalar_one_or_none():
             raise ValidationError(
-                message=f"Username '{username}' already exists",
-                context={"username": username, "field": "username"}
+                message=f"Username '{username}' already exists", context={"username": username, "field": "username"}
             )
 
         # Check for duplicate email if provided
@@ -618,8 +559,7 @@ class AuthService:
             result = await session.execute(stmt)
             if result.scalar_one_or_none():
                 raise ValidationError(
-                    message=f"Email '{email}' already exists",
-                    context={"email": email, "field": "email"}
+                    message=f"Email '{email}' already exists", context={"email": email, "field": "email"}
                 )
 
         # Hash password
@@ -647,30 +587,22 @@ class AuthService:
         # Create organization membership if org_id provided (Handover 0424g)
         if org_id:
             from src.giljo_mcp.models.organizations import OrgMembership
+
             membership = OrgMembership(
-                org_id=org_id,
-                user_id=str(new_user.id),
-                tenant_key=tenant_key,
-                role=org_role,
-                is_active=True
+                org_id=org_id, user_id=str(new_user.id), tenant_key=tenant_key, role=org_role, is_active=True
             )
             session.add(membership)
         else:
             # Create default organization for user without org_id (backward compatibility)
             created_org_id = await self._create_default_organization(
-                session=session,
-                tenant_key=tenant_key,
-                org_name=f"{username}'s Workspace"
+                session=session, tenant_key=tenant_key, org_name=f"{username}'s Workspace"
             )
             new_user.org_id = created_org_id
             # Create owner membership for their own org
             from src.giljo_mcp.models.organizations import OrgMembership
+
             membership = OrgMembership(
-                org_id=created_org_id,
-                user_id=str(new_user.id),
-                tenant_key=tenant_key,
-                role="owner",
-                is_active=True
+                org_id=created_org_id, user_id=str(new_user.id), tenant_key=tenant_key, role="owner", is_active=True
             )
             session.add(membership)
 
@@ -679,7 +611,7 @@ class AuthService:
 
         self._logger.info(
             f"User registered: {username} (role: {role}, org_role: {org_role}, by admin: {requesting_admin_id})",
-            extra={"username": username, "role": role, "org_role": org_role, "admin_id": requesting_admin_id}
+            extra={"username": username, "role": role, "org_role": org_role, "admin_id": requesting_admin_id},
         )
 
         return {
@@ -691,13 +623,7 @@ class AuthService:
         }
 
     async def create_user_in_org(
-        self,
-        session: AsyncSession,
-        admin_user_id: str,
-        username: str,
-        email: str,
-        role: str,
-        initial_password: str
+        self, session: AsyncSession, admin_user_id: str, username: str, email: str, role: str, initial_password: str
     ) -> Dict[str, Any]:
         """
         Create user within admin's organization (Handover 0424g).
@@ -725,22 +651,19 @@ class AuthService:
             ...     session, admin_id, "newuser", "new@example.com", "member", "TempPass123!"
             ... )
         """
-        from src.giljo_mcp.models.organizations import OrgMembership
         from sqlalchemy.orm import selectinload
 
+        from src.giljo_mcp.models.organizations import OrgMembership
+
         # Verify admin has owner/admin role in their organization
-        admin_stmt = (
-            select(User)
-            .where(User.id == admin_user_id)
-            .options(selectinload(User.organization))
-        )
+        admin_stmt = select(User).where(User.id == admin_user_id).options(selectinload(User.organization))
         admin_result = await session.execute(admin_stmt)
         admin = admin_result.scalar_one_or_none()
 
         if not admin or not admin.org_id:
             raise AuthorizationError(
                 message="Admin user not found or not member of any organization",
-                context={"admin_user_id": admin_user_id}
+                context={"admin_user_id": admin_user_id},
             )
 
         # Check admin's membership role (must be owner or admin)
@@ -758,8 +681,8 @@ class AuthService:
                 context={
                     "admin_user_id": admin_user_id,
                     "org_id": admin.org_id,
-                    "current_role": membership.role if membership else None
-                }
+                    "current_role": membership.role if membership else None,
+                },
             )
 
         # Create user in admin's organization
@@ -771,12 +694,16 @@ class AuthService:
             role="developer",  # User.role (system role, not org role)
             requesting_admin_id=admin_user_id,
             org_id=admin.org_id,  # Inherit admin's org_id
-            org_role=role  # OrgMembership.role (owner/admin/member/viewer)
+            org_role=role,  # OrgMembership.role (owner/admin/member/viewer)
         )
 
     async def create_first_admin(
-        self, username: str, email: Optional[str], password: str, full_name: Optional[str],
-        org_name: Optional[str] = "My Organization"
+        self,
+        username: str,
+        email: Optional[str],
+        password: str,
+        full_name: Optional[str],
+        org_name: Optional[str] = "My Organization",
     ) -> Dict[str, Any]:
         """
         Create first administrator account (fresh install only).
@@ -825,10 +752,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to create first admin: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to create first admin: {str(e)}",
-                context={"username": username}
-            )
+            raise BaseGiljoException(message=f"Failed to create first admin: {e!s}", context={"username": username})
 
     async def _create_first_admin_impl(
         self,
@@ -837,7 +761,7 @@ class AuthService:
         email: Optional[str],
         password: str,
         full_name: Optional[str],
-        org_name: Optional[str] = "My Organization"
+        org_name: Optional[str] = "My Organization",
     ) -> Dict[str, Any]:
         """Implementation that uses provided session (Handover 0424h: accepts org_name)"""
         # Check if users already exist (must be fresh install)
@@ -847,15 +771,14 @@ class AuthService:
 
         if total_users > 0:
             raise ValidationError(
-                message="Administrator account already exists",
-                context={"reason": "users_exist", "count": total_users}
+                message="Administrator account already exists", context={"reason": "users_exist", "count": total_users}
             )
 
         # Validate password strength (12+ chars, complexity)
         if len(password) < 12:
             raise ValidationError(
                 message="Password must be at least 12 characters",
-                context={"password_length": len(password), "required": 12}
+                context={"password_length": len(password), "required": 12},
             )
 
         has_upper = any(c.isupper() for c in password)
@@ -870,8 +793,8 @@ class AuthService:
                     "has_uppercase": has_upper,
                     "has_lowercase": has_lower,
                     "has_digit": has_digit,
-                    "has_special": has_special
-                }
+                    "has_special": has_special,
+                },
             )
 
         # Hash password
@@ -883,9 +806,7 @@ class AuthService:
         # Create organization FIRST (Handover 0424g: org-first pattern)
         # Handover 0424h: Use provided org_name instead of username-based default
         org_id = await self._create_default_organization(
-            session=session,
-            tenant_key=tenant_key,
-            org_name=org_name or "My Organization"
+            session=session, tenant_key=tenant_key, org_name=org_name or "My Organization"
         )
 
         # Create first admin user WITH org_id set
@@ -907,12 +828,9 @@ class AuthService:
 
         # Create owner membership (Handover 0424g)
         from src.giljo_mcp.models.organizations import OrgMembership
+
         owner_membership = OrgMembership(
-            org_id=org_id,
-            user_id=str(admin_user.id),
-            tenant_key=tenant_key,
-            role="owner",
-            is_active=True
+            org_id=org_id, user_id=str(admin_user.id), tenant_key=tenant_key, role="owner", is_active=True
         )
         session.add(owner_membership)
         await session.commit()
@@ -941,15 +859,11 @@ class AuthService:
 
         # Generate JWT token for immediate login
         token = JWTManager.create_access_token(
-            user_id=admin_user.id,
-            username=admin_user.username,
-            role=admin_user.role,
-            tenant_key=admin_user.tenant_key
+            user_id=admin_user.id, username=admin_user.username, role=admin_user.role, tenant_key=admin_user.tenant_key
         )
 
         self._logger.info(
-            f"First administrator account created: {username}",
-            extra={"username": username, "tenant_key": tenant_key}
+            f"First administrator account created: {username}", extra={"username": username, "tenant_key": tenant_key}
         )
 
         return {
@@ -968,10 +882,7 @@ class AuthService:
     # ============================================================================
 
     async def _create_default_organization(
-        self,
-        session: AsyncSession,
-        tenant_key: str,
-        org_name: str = "My Workspace"
+        self, session: AsyncSession, tenant_key: str, org_name: str = "My Workspace"
     ) -> str:
         """
         Create default organization (Handover 0424g: org-first pattern).
@@ -990,28 +901,23 @@ class AuthService:
         Note: This method adds org to session without committing.
         Parent methods (_register_user_impl, _create_first_admin_impl) handle commit.
         """
-        from src.giljo_mcp.models.organizations import Organization
-        from uuid import uuid4
         import re
+        from uuid import uuid4
+
+        from src.giljo_mcp.models.organizations import Organization
 
         # Generate slug from org_name (sanitize and make URL-friendly)
-        slug_base = re.sub(r'[^a-z0-9]+', '-', org_name.lower()).strip('-')
+        slug_base = re.sub(r"[^a-z0-9]+", "-", org_name.lower()).strip("-")
         slug = f"{slug_base}-{str(uuid4())[:8]}"  # Add UUID suffix for uniqueness
 
         # Create organization
-        org = Organization(
-            name=org_name,
-            tenant_key=tenant_key,
-            slug=slug,
-            settings={}
-        )
+        org = Organization(name=org_name, tenant_key=tenant_key, slug=slug, settings={})
         session.add(org)
         await session.flush()  # Get org.id
 
         # No commit here - parent method handles it
         self._logger.info(
-            f"Organization created: {org_name}",
-            extra={"tenant_key": tenant_key, "org_id": org.id, "slug": slug}
+            f"Organization created: {org_name}", extra={"tenant_key": tenant_key, "org_id": org.id, "slug": slug}
         )
 
         return str(org.id)

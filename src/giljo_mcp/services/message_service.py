@@ -20,27 +20,24 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
-from uuid import uuid4
-
-from contextlib import asynccontextmanager
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.exceptions import (
     BaseGiljoException,
+    MessageDeliveryError,
     ResourceNotFoundError,
     ValidationError,
-    MessageDeliveryError,
-    DatabaseError,
 )
+from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.repositories.message_repository import MessageRepository
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -96,6 +93,7 @@ class MessageService:
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
 
         # Return the context manager directly (no double-wrapping)
@@ -148,32 +146,29 @@ class MessageService:
                 # Get project with tenant isolation filter (Handover 0325)
                 if tenant_key:
                     result = await session.execute(
-                        select(Project).where(
-                            Project.tenant_key == tenant_key,
-                            Project.id == project_id
-                        )
+                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
-                    result = await session.execute(
-                        select(Project).where(Project.id == project_id)
-                    )
+                    result = await session.execute(select(Project).where(Project.id == project_id))
                 project = result.scalar_one_or_none()
 
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Resolve agent_display_name strings to agent_id UUIDs (executor, not work order)
                 # Handover 0372: This enables succession - messages route to NEW executor after handover
                 resolved_to_agents = []
                 for agent_ref in to_agents:
-                    if agent_ref == 'all':
+                    if agent_ref == "all":
                         # FAN-OUT: Query active agents in project (Handover 0387)
                         exec_result = await session.execute(
-                            select(AgentExecution).join(AgentJob).where(
+                            select(AgentExecution)
+                            .join(AgentJob)
+                            .where(
                                 and_(
                                     AgentJob.project_id == project_id,
                                     AgentExecution.status.in_(["waiting", "working", "blocked"]),
@@ -187,25 +182,28 @@ class MessageService:
                         sender_ref = from_agent or "orchestrator"
                         for execution in executions:
                             # Skip sender - compare both agent_display_name and agent_id
-                            if (execution.agent_display_name == sender_ref or
-                                    execution.agent_id == sender_ref):
+                            if execution.agent_display_name == sender_ref or execution.agent_id == sender_ref:
                                 continue
                             resolved_to_agents.append(execution.agent_id)
                             self._logger.info(f"[FANOUT] Expanded broadcast to agent_id '{execution.agent_id}'")
-                    elif len(agent_ref) == 36 and '-' in agent_ref:
+                    elif len(agent_ref) == 36 and "-" in agent_ref:
                         # Already a UUID (agent_id) - use directly
                         resolved_to_agents.append(agent_ref)
                     else:
                         # Agent display name string (e.g., "Orchestrator") - resolve to active execution agent_id
                         exec_result = await session.execute(
-                            select(AgentExecution).join(AgentJob).where(
+                            select(AgentExecution)
+                            .join(AgentJob)
+                            .where(
                                 and_(
                                     AgentJob.project_id == project_id,
                                     AgentExecution.agent_display_name == agent_ref,
                                     AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Active statuses
-                                    AgentExecution.tenant_key == tenant_key
+                                    AgentExecution.tenant_key == tenant_key,
                                 )
-                            ).order_by(AgentExecution.started_at.desc()).limit(1)  # Latest instance
+                            )
+                            .order_by(AgentExecution.started_at.desc())
+                            .limit(1)  # Latest instance
                         )
                         execution = exec_result.scalar_one_or_none()
                         if execution:
@@ -247,8 +245,7 @@ class MessageService:
                     message_id = None
 
                 self._logger.info(
-                    f"Sent {message_type} message {message_id} "
-                    f"from {from_agent or 'orchestrator'} to {to_agents}"
+                    f"Sent {message_type} message {message_id} from {from_agent or 'orchestrator'} to {to_agents}"
                 )
 
                 # DIAGNOSTIC: Check WebSocket manager availability
@@ -266,14 +263,18 @@ class MessageService:
                         # Resolve sender to agent_id for counter update
                         # Handover 0429: Get latest instance when matching by agent_id
                         sender_result = await session.execute(
-                            select(AgentExecution).join(AgentJob).where(
+                            select(AgentExecution)
+                            .join(AgentJob)
+                            .where(
                                 and_(
                                     AgentJob.project_id == project.id,
                                     AgentExecution.tenant_key == project.tenant_key,
-                                    (AgentExecution.agent_display_name == sender_ref) |
-                                    (AgentExecution.agent_id == sender_ref)
+                                    (AgentExecution.agent_display_name == sender_ref)
+                                    | (AgentExecution.agent_id == sender_ref),
                                 )
-                            ).order_by(AgentExecution.started_at.desc()).limit(1)
+                            )
+                            .order_by(AgentExecution.started_at.desc())
+                            .limit(1)
                         )
                         sender_execution = sender_result.scalar_one_or_none()
 
@@ -283,9 +284,7 @@ class MessageService:
                                 agent_id=sender_execution.agent_id,
                                 tenant_key=project.tenant_key,
                             )
-                            self._logger.info(
-                                f"[COUNTER] Incremented sent_count for {sender_ref}"
-                            )
+                            self._logger.info(f"[COUNTER] Incremented sent_count for {sender_ref}")
 
                         # Step 2: Increment each recipient's waiting_count by 1
                         for msg in messages:
@@ -312,18 +311,20 @@ class MessageService:
                     try:
                         # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
                         to_agent_value = None
-                        if len(to_agents) == 1 and to_agents[0] != 'all':
+                        if len(to_agents) == 1 and to_agents[0] != "all":
                             to_agent_value = to_agents[0]
 
                         # Determine recipient agent IDs (agent_ids) for explicit job identifiers in event payloads
                         recipient_agent_ids = []
-                        if to_agents and to_agents[0] == 'all':
+                        if to_agents and to_agents[0] == "all":
                             # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
                             result = await session.execute(
-                                select(AgentExecution).join(AgentJob).where(
+                                select(AgentExecution)
+                                .join(AgentJob)
+                                .where(
                                     and_(
                                         AgentJob.project_id == project.id,
-                                        AgentExecution.status.in_(["waiting", "working", "blocked"])
+                                        AgentExecution.status.in_(["waiting", "working", "blocked"]),
                                     )
                                 )
                             )
@@ -331,7 +332,8 @@ class MessageService:
                             # Exclude sender from recipients to prevent self-notification
                             sender_ref = from_agent or "orchestrator"
                             recipient_agent_ids = [
-                                exec.agent_id for exec in all_executions
+                                exec.agent_id
+                                for exec in all_executions
                                 if exec.agent_display_name != sender_ref and exec.agent_id != sender_ref
                             ]
                             self._logger.info(
@@ -355,9 +357,10 @@ class MessageService:
                         recipient_waiting_count = None
                         if recipient_agent_ids:
                             recipient_result = await session.execute(
-                                select(AgentExecution).where(
-                                    AgentExecution.agent_id == recipient_agent_ids[0]
-                                ).order_by(AgentExecution.started_at.desc()).limit(1)
+                                select(AgentExecution)
+                                .where(AgentExecution.agent_id == recipient_agent_ids[0])
+                                .order_by(AgentExecution.started_at.desc())
+                                .limit(1)
                             )
                             first_recipient = recipient_result.scalar_one_or_none()
                             if first_recipient:
@@ -399,13 +402,13 @@ class MessageService:
                                 priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
                                 waiting_count=recipient_waiting_count,
                             )
-                            self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)")
+                            self._logger.info(
+                                f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
+                            )
 
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the message send
-                        self._logger.warning(
-                            f"Failed to emit WebSocket event for message {message_id}: {ws_error}"
-                        )
+                        self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
                 else:
                     self._logger.debug(
                         f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
@@ -418,7 +421,7 @@ class MessageService:
                         "message_id": message_id,
                         "to_agents": resolved_to_agents,
                         "type": message_type,
-                    }
+                    },
                 }
 
                 # Handover 0709b: Detect staging orchestrator broadcast and enrich response
@@ -427,17 +430,15 @@ class MessageService:
                 # 1. Sender is an orchestrator (agent_name == "orchestrator")
                 # 2. Job is in staging phase (status == "waiting")
                 # 3. Message is a broadcast (to_agents resolved to multiple agents or was ['all'])
-                is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == 'all')
+                is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all")
 
                 if is_broadcast and from_agent:
                     # Look up sender's execution to check if this is a staging orchestrator
                     sender_result = await session.execute(
-                        select(AgentExecution).where(
-                            and_(
-                                AgentExecution.agent_id == from_agent,
-                                AgentExecution.tenant_key == tenant_key
-                            )
-                        ).order_by(AgentExecution.started_at.desc()).limit(1)
+                        select(AgentExecution)
+                        .where(and_(AgentExecution.agent_id == from_agent, AgentExecution.tenant_key == tenant_key))
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
                     )
                     sender_execution = sender_result.scalar_one_or_none()
 
@@ -468,7 +469,7 @@ class MessageService:
                                         "a new implementation session with a fresh orchestrator."
                                     ),
                                     "implementation_gate": "LOCKED",
-                                    "next_step": "Report staging complete to user and stop."
+                                    "next_step": "Report staging complete to user and stop.",
                                 }
                                 self._logger.info(
                                     f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
@@ -482,16 +483,11 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to send message: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "send_message", "project_id": project_id}
+                message=str(e), context={"operation": "send_message", "project_id": project_id}
             ) from e
 
     async def broadcast(
-        self,
-        content: str,
-        project_id: str,
-        priority: str = "normal",
-        from_agent: str = "orchestrator"
+        self, content: str, project_id: str, priority: str = "normal", from_agent: str = "orchestrator"
     ) -> dict[str, Any]:
         """
         Broadcast a message to all agents in a project.
@@ -515,15 +511,12 @@ class MessageService:
         try:
             async with self.db_manager.get_session_async() as session:
                 # Get all agent jobs in project
-                result = await session.execute(
-                    select(AgentJob).where(AgentJob.project_id == project_id)
-                )
+                result = await session.execute(select(AgentJob).where(AgentJob.project_id == project_id))
                 agent_jobs = result.scalars().all()
 
                 if not agent_jobs:
                     raise ResourceNotFoundError(
-                        message="No agent jobs found in project",
-                        context={"project_id": project_id}
+                        message="No agent jobs found in project", context={"project_id": project_id}
                     )
 
                 agent_display_names = [job.job_type for job in agent_jobs]
@@ -555,9 +548,7 @@ class MessageService:
                         )
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the broadcast
-                        self._logger.warning(
-                            f"Failed to emit WebSocket broadcast event: {ws_error}"
-                        )
+                        self._logger.warning(f"Failed to emit WebSocket broadcast event: {ws_error}")
 
                 return result
 
@@ -566,8 +557,7 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to broadcast message: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "broadcast", "project_id": project_id}
+                message=str(e), context={"operation": "broadcast", "project_id": project_id}
             ) from e
 
     async def broadcast_to_project(
@@ -603,11 +593,13 @@ class MessageService:
             async with self._get_session() as session:
                 # Get all active executions in project
                 result = await session.execute(
-                    select(AgentExecution).join(AgentJob).where(
+                    select(AgentExecution)
+                    .join(AgentJob)
+                    .where(
                         and_(
                             AgentJob.project_id == project_id,
                             AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                            AgentExecution.tenant_key == tenant_key
+                            AgentExecution.tenant_key == tenant_key,
                         )
                     )
                 )
@@ -616,7 +608,7 @@ class MessageService:
                 if not executions:
                     raise ResourceNotFoundError(
                         message="No active executions found in project",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 agent_ids = [exec.agent_id for exec in executions]
@@ -642,8 +634,7 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to broadcast message to project: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "broadcast_to_project", "project_id": project_id}
+                message=str(e), context={"operation": "broadcast_to_project", "project_id": project_id}
             ) from e
 
     # ============================================================================
@@ -651,10 +642,7 @@ class MessageService:
     # ============================================================================
 
     async def get_messages(
-        self,
-        agent_name: str,
-        project_id: Optional[str] = None,
-        status: str = "pending"
+        self, agent_name: str, project_id: Optional[str] = None, status: str = "pending"
     ) -> dict[str, Any]:
         """
         Retrieve messages for a specific agent.
@@ -691,14 +679,16 @@ class MessageService:
                 for msg in messages:
                     # Include if agent is in to_agents list or if broadcast (empty to_agents)
                     if agent_name in msg.to_agents or not msg.to_agents:
-                        agent_messages.append({
-                            "id": str(msg.id),
-                            "from": msg.meta_data.get("_from_agent", "unknown"),
-                            "content": msg.content,
-                            "type": msg.message_type,
-                            "priority": msg.priority,
-                            "created": msg.created_at.isoformat() if msg.created_at else None,
-                        })
+                        agent_messages.append(
+                            {
+                                "id": str(msg.id),
+                                "from": msg.meta_data.get("_from_agent", "unknown"),
+                                "content": msg.content,
+                                "type": msg.message_type,
+                                "priority": msg.priority,
+                                "created": msg.created_at.isoformat() if msg.created_at else None,
+                            }
+                        )
 
                 return {
                     "success": True,
@@ -713,7 +703,7 @@ class MessageService:
             self._logger.exception(f"Failed to get messages: {e}")
             raise BaseGiljoException(
                 message=str(e),
-                context={"operation": "get_messages", "agent_name": agent_name, "project_id": project_id}
+                context={"operation": "get_messages", "agent_name": agent_name, "project_id": project_id},
             ) from e
 
     async def receive_messages(
@@ -723,7 +713,7 @@ class MessageService:
         tenant_key: Optional[str] = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
-        message_types: Optional[list[str]] = None
+        message_types: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """
         Receive pending messages for an agent executor with optional filtering.
@@ -755,40 +745,33 @@ class MessageService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "receive_messages"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "receive_messages"})
 
             async with self._get_session() as session:
                 # Handover 0372: Look up AgentExecution by agent_id, then get job
                 # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.agent_id == agent_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at.desc()).limit(1)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"Agent execution {agent_id} not found",
-                        context={"agent_id": agent_id, "tenant_key": tenant_key}
+                        context={"agent_id": agent_id, "tenant_key": tenant_key},
                     )
 
                 # Get the job to access project_id
-                job_result = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == execution.job_id)
-                )
+                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == execution.job_id))
                 job = job_result.scalar_one_or_none()
 
                 if not job:
                     raise ResourceNotFoundError(
                         message=f"Job not found for execution {agent_id}",
-                        context={"agent_id": agent_id, "job_id": execution.job_id}
+                        context={"agent_id": agent_id, "job_id": execution.job_id},
                     )
 
                 # Query messages using native SQLAlchemy queries
@@ -803,7 +786,7 @@ class MessageService:
                     Message.project_id == job.project_id,
                     Message.status == "pending",  # Only unread messages
                     # Direct match: JSONB array contains agent_id (no broadcast OR clause needed)
-                    func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB))
+                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
                 ]
 
                 # HANDOVER 0372: Apply filtering conditions from 0366b
@@ -811,12 +794,7 @@ class MessageService:
                 # Filter: exclude_self - Filter out messages from the same agent
                 if exclude_self:
                     # Meta_data._from_agent should not equal current agent_id
-                    conditions.append(
-                        func.coalesce(
-                            Message.meta_data.op('->>')('_from_agent'),
-                            ''
-                        ) != agent_id
-                    )
+                    conditions.append(func.coalesce(Message.meta_data.op("->>")("_from_agent"), "") != agent_id)
 
                 # Filter: exclude_progress - Filter out progress-type messages
                 if exclude_progress:
@@ -866,9 +844,7 @@ class MessageService:
                             tenant_key=tenant_key,
                         )
                     await session.commit()
-                    self._logger.info(
-                        f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}"
-                    )
+                    self._logger.info(f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}")
 
                     # Emit WebSocket event for UI update (Handover 0326)
                     # Use broadcast_message_acknowledged for real-time counter updates
@@ -892,7 +868,9 @@ class MessageService:
                                 waiting_count=waiting_count,
                                 read_count=read_count,
                             )
-                            self._logger.info(f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})")
+                            self._logger.info(
+                                f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})"
+                            )
                         except Exception as e:
                             self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 
@@ -903,37 +881,32 @@ class MessageService:
                     priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
                     priority_int = priority_reverse_map.get(msg.priority, 1)
 
-                    messages_list.append({
-                        "id": str(msg.id),
-                        "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
-                        "to_agent": msg.to_agents[0] if msg.to_agents else None,
-                        "type": msg.message_type,
-                        "content": msg.content,
-                        "priority": priority_int,
-                        "acknowledged": msg.status in ["acknowledged", "completed"],
-                        "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
-                        "acknowledged_by": msg.acknowledged_by[0] if msg.acknowledged_by else None,
-                        "timestamp": msg.created_at.isoformat(),
-                        "metadata": msg.meta_data or {},
-                    })
+                    messages_list.append(
+                        {
+                            "id": str(msg.id),
+                            "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
+                            "to_agent": msg.to_agents[0] if msg.to_agents else None,
+                            "type": msg.message_type,
+                            "content": msg.content,
+                            "priority": priority_int,
+                            "acknowledged": msg.status in ["acknowledged", "completed"],
+                            "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
+                            "acknowledged_by": msg.acknowledged_by[0] if msg.acknowledged_by else None,
+                            "timestamp": msg.created_at.isoformat(),
+                            "metadata": msg.meta_data or {},
+                        }
+                    )
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
-                return {
-                    "success": True,
-                    "data": {
-                        "messages": messages_list,
-                        "count": len(messages_list)
-                    }
-                }
+                return {"success": True, "data": {"messages": messages_list, "count": len(messages_list)}}
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to receive messages: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "receive_messages", "agent_id": agent_id}
+                message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}
             ) from e
 
     async def list_messages(
@@ -942,7 +915,7 @@ class MessageService:
         status: Optional[str] = None,
         agent_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> dict[str, Any]:
         """
         List messages in a project or for a specific agent.
@@ -973,8 +946,7 @@ class MessageService:
 
             if not tenant_key and not project_id:
                 raise ValidationError(
-                    message="No active project or tenant context",
-                    context={"operation": "list_messages"}
+                    message="No active project or tenant context", context={"operation": "list_messages"}
                 )
 
             async with self.db_manager.get_session_async() as session:
@@ -986,34 +958,36 @@ class MessageService:
                     if tenant_key:
                         conditions.append(AgentJob.tenant_key == tenant_key)
 
-                    result = await session.execute(
-                        select(AgentJob).where(and_(*conditions))
-                    )
+                    result = await session.execute(select(AgentJob).where(and_(*conditions)))
                     job = result.scalar_one_or_none()
 
                     if not job:
                         raise ResourceNotFoundError(
                             message=f"Job {agent_id} not found",
-                            context={"agent_id": agent_id, "tenant_key": tenant_key}
+                            context={"agent_id": agent_id, "tenant_key": tenant_key},
                         )
 
                     # Query messages for this agent using native queries
-                    from sqlalchemy import or_, func
+                    from sqlalchemy import func, or_
                     from sqlalchemy.dialects.postgresql import JSONB
 
-                    query = select(Message).where(
-                        and_(
-                            Message.tenant_key == job.tenant_key,
-                            Message.project_id == job.project_id,
-                            or_(
-                                # Direct message: JSONB array contains agent_id
-                                # Cast both sides to JSONB to avoid type mismatch
-                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast([agent_id], JSONB)),
-                                # Broadcast: JSONB array contains 'all'
-                                func.cast(Message.to_agents, JSONB).op('@>')(func.cast(['all'], JSONB))
+                    query = (
+                        select(Message)
+                        .where(
+                            and_(
+                                Message.tenant_key == job.tenant_key,
+                                Message.project_id == job.project_id,
+                                or_(
+                                    # Direct message: JSONB array contains agent_id
+                                    # Cast both sides to JSONB to avoid type mismatch
+                                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
+                                    # Broadcast: JSONB array contains 'all'
+                                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast(["all"], JSONB)),
+                                ),
                             )
                         )
-                    ).order_by(Message.created_at)
+                        .order_by(Message.created_at)
+                    )
 
                     # Apply limit if provided
                     if limit:
@@ -1029,23 +1003,21 @@ class MessageService:
                         to_agents = msg.to_agents if msg.to_agents else []
                         to_agent = to_agents[0] if to_agents else None
 
-                        message_list.append({
-                            "id": str(msg.id),
-                            "from_agent": from_agent,
-                            "to_agent": to_agent,
-                            "to_agents": to_agents,
-                            "type": msg.message_type,
-                            "content": msg.content,
-                            "status": msg.status,
-                            "priority": msg.priority,
-                            "created_at": msg.created_at.isoformat() if msg.created_at else None,
-                        })
+                        message_list.append(
+                            {
+                                "id": str(msg.id),
+                                "from_agent": from_agent,
+                                "to_agent": to_agent,
+                                "to_agents": to_agents,
+                                "type": msg.message_type,
+                                "content": msg.content,
+                                "status": msg.status,
+                                "priority": msg.priority,
+                                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                            }
+                        )
 
-                    return {
-                        "success": True,
-                        "messages": message_list,
-                        "count": len(message_list)
-                    }
+                    return {"success": True, "messages": message_list, "count": len(message_list)}
 
                 # Otherwise, list by project
                 if project_id:
@@ -1071,11 +1043,7 @@ class MessageService:
 
                     if not project:
                         # No project = no messages - return empty list, not error (Handover 0464)
-                        return {
-                            "success": True,
-                            "messages": [],
-                            "count": 0
-                        }
+                        return {"success": True, "messages": [], "count": 0}
 
                     query = select(Message).where(Message.project_id == project.id)
 
@@ -1101,43 +1069,35 @@ class MessageService:
                     # For backward compatibility, provide to_agent as first recipient
                     to_agent = to_agents[0] if to_agents else None
 
-                    message_list.append({
-                        "id": str(msg.id),
-                        "from_agent": from_agent,
-                        "to_agent": to_agent,  # Single recipient for backward compatibility
-                        "to_agents": to_agents,  # Full list
-                        "type": msg.message_type,  # Database field is message_type, not type
-                        "content": msg.content,
-                        "status": msg.status,
-                        "priority": msg.priority,
-                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
-                    })
+                    message_list.append(
+                        {
+                            "id": str(msg.id),
+                            "from_agent": from_agent,
+                            "to_agent": to_agent,  # Single recipient for backward compatibility
+                            "to_agents": to_agents,  # Full list
+                            "type": msg.message_type,  # Database field is message_type, not type
+                            "content": msg.content,
+                            "status": msg.status,
+                            "priority": msg.priority,
+                            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                        }
+                    )
 
-                return {
-                    "success": True,
-                    "messages": message_list,
-                    "count": len(message_list)
-                }
+                return {"success": True, "messages": message_list, "count": len(message_list)}
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to list messages: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
+                message=str(e), context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
             ) from e
 
     # ============================================================================
     # Message Status Updates
     # ============================================================================
 
-    async def complete_message(
-        self,
-        message_id: str,
-        agent_name: str,
-        result: str
-    ) -> dict[str, Any]:
+    async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
         """
         Mark a message as completed with a result.
 
@@ -1158,16 +1118,11 @@ class MessageService:
         """
         try:
             async with self.db_manager.get_session_async() as session:
-                msg_result = await session.execute(
-                    select(Message).where(Message.id == message_id)
-                )
+                msg_result = await session.execute(select(Message).where(Message.id == message_id))
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
-                    raise ResourceNotFoundError(
-                        message="Message not found",
-                        context={"message_id": message_id}
-                    )
+                    raise ResourceNotFoundError(message="Message not found", context={"message_id": message_id})
 
                 # Update message
                 message.status = "completed"
@@ -1177,9 +1132,7 @@ class MessageService:
 
                 await session.commit()
 
-                self._logger.info(
-                    f"Message {message_id} completed by {agent_name}"
-                )
+                self._logger.info(f"Message {message_id} completed by {agent_name}")
 
                 # Emit WebSocket event if manager is available
                 if self._websocket_manager:
@@ -1188,7 +1141,11 @@ class MessageService:
                             message_id=message_id,
                             project_id=message.project_id or "",
                             update_type="completed",
-                            message_data={"completed_by": agent_name, "status": "completed", "result": result[:100] if result else ""},
+                            message_data={
+                                "completed_by": agent_name,
+                                "status": "completed",
+                                "result": result[:100] if result else "",
+                            },
                         )
                     except Exception as ws_error:
                         # Log WebSocket errors but don't fail the completion
@@ -1207,8 +1164,7 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to complete message: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "complete_message", "message_id": message_id}
+                message=str(e), context={"operation": "complete_message", "message_id": message_id}
             ) from e
 
     async def acknowledge_message(
@@ -1245,26 +1201,20 @@ class MessageService:
 
             if not tenant_key:
                 raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "acknowledge_message"}
+                    message="No tenant context available", context={"operation": "acknowledge_message"}
                 )
 
             async with self._get_session() as session:
                 # Get message
                 msg_result = await session.execute(
-                    select(Message).where(
-                        and_(
-                            Message.id == message_id,
-                            Message.tenant_key == tenant_key
-                        )
-                    )
+                    select(Message).where(and_(Message.id == message_id, Message.tenant_key == tenant_key))
                 )
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
                     raise ResourceNotFoundError(
                         message="Message not found or access denied",
-                        context={"message_id": message_id, "tenant_key": tenant_key}
+                        context={"message_id": message_id, "tenant_key": tenant_key},
                     )
 
                 # Update message
@@ -1277,9 +1227,7 @@ class MessageService:
 
                 await session.commit()
 
-                self._logger.info(
-                    f"Message {message_id} acknowledged by agent {agent_id}"
-                )
+                self._logger.info(f"Message {message_id} acknowledged by agent {agent_id}")
 
                 # Handover 0387f: Update counters instead of JSONB
                 await self._repo.decrement_waiting_increment_read(
@@ -1288,19 +1236,15 @@ class MessageService:
                     tenant_key=tenant_key,
                 )
                 await session.commit()
-                self._logger.info(
-                    f"[COUNTER] Decremented waiting_count and incremented read_count for {agent_id}"
-                )
+                self._logger.info(f"[COUNTER] Decremented waiting_count and incremented read_count for {agent_id}")
 
                 # Handover 0387g: Fetch updated counter values after commit
                 # Handover 0429: Get latest instance by agent_id
                 exec_result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.agent_id == agent_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at.desc()).limit(1)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
                 )
                 execution = exec_result.scalar_one_or_none()
                 waiting_count = execution.messages_waiting_count if execution else None
@@ -1332,7 +1276,5 @@ class MessageService:
         except Exception as e:
             self._logger.exception(f"Failed to acknowledge message: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "acknowledge_message", "message_id": message_id}
+                message=str(e), context={"operation": "acknowledge_message", "message_id": message_id}
             ) from e
-

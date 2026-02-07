@@ -130,6 +130,7 @@ async def set_agent_status(
         # Use module-level db_manager (injected by tests or register function)
         if _db_manager is None:
             from ..database import DatabaseManager
+
             db_manager = DatabaseManager()
         else:
             db_manager = _db_manager
@@ -137,8 +138,7 @@ async def set_agent_status(
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)
             stmt = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key
+                AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             execution = result.scalar_one_or_none()
@@ -275,6 +275,7 @@ async def report_progress(
         # Use module-level db_manager (injected by tests or register function)
         if _db_manager is None:
             from ..database import DatabaseManager
+
             db_manager = DatabaseManager()
         else:
             db_manager = _db_manager
@@ -282,8 +283,7 @@ async def report_progress(
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)
             stmt = select(AgentExecution).where(
-                AgentExecution.agent_id == agent_id,
-                AgentExecution.tenant_key == tenant_key
+                AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             execution = result.scalar_one_or_none()
@@ -324,9 +324,7 @@ async def report_progress(
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
-            logger.info(
-                f"[report_progress] Execution {agent_id} progress updated, tenant={tenant_key}"
-            )
+            logger.info(f"[report_progress] Execution {agent_id} progress updated, tenant={tenant_key}")
 
             return {
                 "success": True,

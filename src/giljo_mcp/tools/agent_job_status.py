@@ -22,9 +22,9 @@ from typing import Any, Optional
 
 from sqlalchemy import select
 
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -133,9 +133,8 @@ async def get_job_status(
             session = _test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_job_status_impl(session, job_id, tenant_key)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _get_job_status_impl(session, job_id, tenant_key)
+        async with db_mgr.get_session_async() as session:
+            return await _get_job_status_impl(session, job_id, tenant_key)
 
     except Exception as e:
         logger.exception(f"Failed to get status for job {job_id}")
@@ -203,18 +202,14 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
                 "status": exec.status,
                 "progress": exec.progress,
                 "started_at": exec.started_at.isoformat() if exec.started_at else None,
-                "completed_at": exec.completed_at.isoformat()
-                if exec.completed_at
-                else None,
+                "completed_at": exec.completed_at.isoformat() if exec.completed_at else None,
             }
             for exec in executions
         ]
 
         # Find current agent (most recent by started_at)
         if executions:
-            current_exec = max(
-                executions, key=lambda e: e.started_at or datetime.min.replace(tzinfo=timezone.utc)
-            )
+            current_exec = max(executions, key=lambda e: e.started_at or datetime.min.replace(tzinfo=timezone.utc))
             response["current_agent_id"] = current_exec.agent_id
 
     logger.info(f"Retrieved status for job {job_id} (tenant: {tenant_key})")
@@ -292,9 +287,8 @@ async def get_agent_status(
             session = _test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_agent_status_impl(session, agent_id, tenant_key)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _get_agent_status_impl(session, agent_id, tenant_key)
+        async with db_mgr.get_session_async() as session:
+            return await _get_agent_status_impl(session, agent_id, tenant_key)
 
     except Exception as e:
         logger.exception(f"Failed to get status for agent {agent_id}")
@@ -357,9 +351,7 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
     if execution.block_reason:
         response["block_reason"] = execution.block_reason
 
-    logger.info(
-        f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})"
-    )
+    logger.info(f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})")
     return response
 
 
@@ -468,9 +460,8 @@ async def update_job_status(
             session = _test_session
             # Process query directly without context manager (test session managed externally)
             return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
+        async with db_mgr.get_session_async() as session:
+            return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
 
     except ValueError as ve:
         # Handle invalid status transitions

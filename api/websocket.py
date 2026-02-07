@@ -10,10 +10,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException, WebSocket
 
-from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.auth_utils import check_subscription_permission
+from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.events.schemas import EventFactory
-from src.giljo_mcp.logging import get_logger, ErrorCode
+from src.giljo_mcp.logging import ErrorCode, get_logger
 
 
 logger = get_logger(__name__)
@@ -36,9 +36,9 @@ class WebSocketManager:
         self.active_connections: dict[str, WebSocket] = {}
         self.auth_contexts: dict[str, dict[str, Any]] = {}  # NEW: Store auth context
         self.subscriptions: dict[str, set[str]] = {}  # client_id -> set of subscriptions
-        self.entity_subscribers: dict[str, set[str]] = (
-            {}
-        )  # entity_key -> set of client_ids  # entity_key -> set of client_ids
+        self.entity_subscribers: dict[
+            str, set[str]
+        ] = {}  # entity_key -> set of client_ids  # entity_key -> set of client_ids
         self._event_broker: Optional[WebSocketEventBroker] = None
         self._broker_unsubscribe = None
         self._broker_origin = uuid4().hex

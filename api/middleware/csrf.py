@@ -8,11 +8,14 @@ from making unauthorized requests on behalf of authenticated users.
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 """
-import secrets
-from fastapi import Request, HTTPException, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable
+
 import logging
+import secrets
+from typing import Callable
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +36,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(
-        self,
-        app,
-        exempt_paths: list = None,
-        cookie_name: str = "csrf_token",
-        header_name: str = "X-CSRF-Token"
+        self, app, exempt_paths: list = None, cookie_name: str = "csrf_token", header_name: str = "X-CSRF-Token"
     ):
         """
         Initialize CSRF protection middleware.
@@ -49,12 +48,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             header_name: Name of CSRF header (default: X-CSRF-Token)
         """
         super().__init__(app)
-        self.exempt_paths = exempt_paths or [
-            "/api/auth/login",
-            "/api/auth/signup",
-            "/api/health",
-            "/api/metrics"
-        ]
+        self.exempt_paths = exempt_paths or ["/api/auth/login", "/api/auth/signup", "/api/health", "/api/metrics"]
         self.cookie_name = cookie_name
         self.header_name = header_name
         logger.info(
@@ -140,7 +134,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 raise HTTPException(
                     status_code=403,
                     detail="CSRF validation failed - missing token. "
-                           "Include X-CSRF-Token header in state-changing requests."
+                    "Include X-CSRF-Token header in state-changing requests.",
                 )
 
             if request_token != cookie_token:
@@ -149,10 +143,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                     f"path={request.url.path}, method={request.method}, "
                     f"IP={request.client.host if request.client else 'unknown'}"
                 )
-                raise HTTPException(
-                    status_code=403,
-                    detail="CSRF validation failed - invalid token"
-                )
+                raise HTTPException(status_code=403, detail="CSRF validation failed - invalid token")
 
         # Process request
         response = await call_next(request)
@@ -164,10 +155,10 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             response.set_cookie(
                 key=self.cookie_name,
                 value=token,
-                httponly=True,        # Prevent JavaScript access (XSS protection)
-                secure=True,          # HTTPS only (set to False for local dev)
-                samesite="strict",    # Strict same-site policy
-                max_age=3600          # 1 hour expiry
+                httponly=True,  # Prevent JavaScript access (XSS protection)
+                secure=True,  # HTTPS only (set to False for local dev)
+                samesite="strict",  # Strict same-site policy
+                max_age=3600,  # 1 hour expiry
             )
             logger.debug(f"Generated new CSRF token for IP: {request.client.host if request.client else 'unknown'}")
 
@@ -238,6 +229,7 @@ class CSRFProtectionOptional:
         Returns:
             Wrapped function with CSRF validation
         """
+
         async def wrapper(*args, **kwargs):
             # Extract request
             request = kwargs.get("request") or (args[0] if args else None)
@@ -256,10 +248,7 @@ class CSRFProtectionOptional:
                     f"CSRF validation failed in decorator: "
                     f"path={request.url.path}, IP={request.client.host if request.client else 'unknown'}"
                 )
-                raise HTTPException(
-                    status_code=403,
-                    detail="CSRF validation failed"
-                )
+                raise HTTPException(status_code=403, detail="CSRF validation failed")
 
             return await func(*args, **kwargs)
 

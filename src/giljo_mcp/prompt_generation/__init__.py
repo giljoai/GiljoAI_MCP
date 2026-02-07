@@ -6,7 +6,8 @@ Exports:
 - MCPToolCatalogGenerator: Generate comprehensive MCP tool catalog for orchestrators and agents
 """
 
-from .serena_instructions import generate_serena_instructions
 from .mcp_tool_catalog import MCPToolCatalogGenerator
+from .serena_instructions import generate_serena_instructions
 
-__all__ = ["generate_serena_instructions", "MCPToolCatalogGenerator"]
+
+__all__ = ["MCPToolCatalogGenerator", "generate_serena_instructions"]

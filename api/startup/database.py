@@ -9,7 +9,7 @@ import os
 from api.app import APIState
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.logging import get_logger, ErrorCode
+from src.giljo_mcp.logging import ErrorCode, get_logger
 from src.giljo_mcp.system_prompts import SystemPromptService
 
 
@@ -74,9 +74,7 @@ async def init_database(state: APIState) -> None:
         )
         raise ValueError("Database URL not configured. PostgreSQL is required.")
 
-    logger.info(
-        f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}"
-    )
+    logger.info(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
 
     try:
         state.db_manager = DatabaseManager(db_url, is_async=True)

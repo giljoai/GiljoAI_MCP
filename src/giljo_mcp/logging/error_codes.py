@@ -123,7 +123,6 @@ ERROR_CODE_DESCRIPTIONS = {
     ErrorCode.AUTH_USER_NOT_FOUND: "User account not found",
     ErrorCode.AUTH_TENANT_MISMATCH: "Tenant isolation violation detected",
     ErrorCode.AUTH_CSRF_VALIDATION_FAILED: "CSRF token validation failed",
-
     # DB
     ErrorCode.DB_CONNECTION_FAILED: "Failed to connect to database",
     ErrorCode.DB_QUERY_TIMEOUT: "Database query execution timeout",
@@ -135,7 +134,6 @@ ERROR_CODE_DESCRIPTIONS = {
     ErrorCode.DB_POOL_EXHAUSTED: "Database connection pool exhausted",
     ErrorCode.DB_DEADLOCK_DETECTED: "Database deadlock detected",
     ErrorCode.DB_INTEGRITY_ERROR: "Data integrity violation",
-
     # WS
     ErrorCode.WS_CONNECTION_FAILED: "WebSocket connection failed",
     ErrorCode.WS_MESSAGE_SEND_FAILED: "Failed to send WebSocket message",
@@ -146,7 +144,6 @@ ERROR_CODE_DESCRIPTIONS = {
     ErrorCode.WS_DISCONNECTED_UNEXPECTEDLY: "Client disconnected unexpectedly",
     ErrorCode.WS_SUBSCRIPTION_FAILED: "Failed to subscribe to events",
     ErrorCode.WS_HEARTBEAT_TIMEOUT: "Client heartbeat timeout",
-
     # MCP
     ErrorCode.MCP_TOOL_EXECUTION_ERROR: "MCP tool execution failed",
     ErrorCode.MCP_AGENT_SPAWN_FAILED: "Failed to spawn MCP agent job",
@@ -159,7 +156,6 @@ ERROR_CODE_DESCRIPTIONS = {
     ErrorCode.MCP_TOOL_SCHEMA_INVALID: "MCP tool schema validation failed",
     ErrorCode.MCP_SESSION_EXPIRED: "MCP session expired",
     ErrorCode.MCP_HTTP_TRANSPORT_ERROR: "MCP-over-HTTP transport error",
-
     # API
     ErrorCode.API_VALIDATION_ERROR: "Request validation failed",
     ErrorCode.API_RATE_LIMIT_EXCEEDED: "API rate limit exceeded",

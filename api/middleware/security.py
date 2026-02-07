@@ -6,11 +6,14 @@ Adds production-grade security headers to all responses.
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 Updated in Handover 1007 - Hash-Based CSP Implementation
 """
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable
+
 import logging
 import os
+from typing import Callable
+
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +105,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # HSTS: Only add for HTTPS connections (meaningless for HTTP)
         if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = (
-                f"max-age={self.hsts_max_age}; includeSubDomains; preload"
-            )
+            response.headers["Strict-Transport-Security"] = f"max-age={self.hsts_max_age}; includeSubDomains; preload"
 
         # CSP: Hash-based policy preventing XSS
         # Production: Strict hashes only
@@ -202,10 +203,9 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
                 )
                 response.headers["Access-Control-Max-Age"] = "3600"
                 return response
-            else:
-                # Reject unknown origins
-                logger.warning(f"CORS: Rejected preflight from unknown origin: {origin}")
-                return Response(status_code=403, content="Origin not allowed")
+            # Reject unknown origins
+            logger.warning(f"CORS: Rejected preflight from unknown origin: {origin}")
+            return Response(status_code=403, content="Origin not allowed")
 
         # Process normal request
         response = await call_next(request)
@@ -215,12 +215,9 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = (
-                "Content-Type, X-Tenant-Key, Authorization, X-CSRF-Token"
-            )
-        else:
-            # Reject unknown origins by not setting CORS headers
-            if origin:
-                logger.warning(f"CORS: Rejected request from unknown origin: {origin}")
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Tenant-Key, Authorization, X-CSRF-Token"
+        # Reject unknown origins by not setting CORS headers
+        elif origin:
+            logger.warning(f"CORS: Rejected request from unknown origin: {origin}")
 
         return response

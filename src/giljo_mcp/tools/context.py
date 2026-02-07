@@ -5,32 +5,17 @@ Handles vision documents, context retrieval, and product settings
 
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Optional
 
-import yaml
-from sqlalchemy import delete, select
-
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.discovery import DiscoveryManager, PathResolver
-from src.giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
-from src.giljo_mcp.tenant import TenantManager
-
-from .chunking import EnhancedChunker
-from .context_tools.framing_helpers import (
-    apply_rich_entry_framing,
-    build_framed_context_response,
-    build_priority_excluded_response,
-    get_user_priority,
-)
+from sqlalchemy import select
 
 
 logger = logging.getLogger(__name__)
 
+
 # Expose MCP tools as importable async functions for API endpoints
 async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
     """Wrapper for MCP tool - Get the context index for intelligent querying"""
-    from sqlalchemy import select
 
     from giljo_mcp.database import DatabaseManager
     from giljo_mcp.discovery import DiscoveryManager, PathResolver
@@ -96,7 +81,6 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
 
 async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
     """Wrapper for MCP tool - Get the vision document for the active product"""
-    from sqlalchemy import select
 
     from giljo_mcp.database import DatabaseManager
     from giljo_mcp.discovery import PathResolver
@@ -172,7 +156,6 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
 
 async def get_vision_index() -> dict[str, Any]:
     """Wrapper for MCP tool - Get the vision document index"""
-    from sqlalchemy import select
 
     from giljo_mcp.database import DatabaseManager
     from giljo_mcp.discovery import PathResolver
@@ -262,11 +245,12 @@ async def fetch_context(
         for the requested categories (memory_360, git_history, testing, etc.).
     """
     try:
+        from sqlalchemy import select
+
         import giljo_mcp.database as db_module
         from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-        from giljo_mcp.models.projects import Project
         from giljo_mcp.models.products import Product
-        from sqlalchemy import select
+        from giljo_mcp.models.projects import Project
 
         from .context_tools.fetch_context import fetch_context as fetch_product_context
 
@@ -346,9 +330,10 @@ async def get_context_history(
         Context history with agent and job metadata
     """
     try:
+        from sqlalchemy import select
+
         import giljo_mcp.database as db_module
         from giljo_mcp.models.agent_identity import AgentExecution
-        from sqlalchemy import select
 
         # Use existing database manager (NO hardcoded test URL!)
         if db_module._db_manager is None:
@@ -409,9 +394,10 @@ async def get_succession_context(
         Succession chain with all executor context windows
     """
     try:
+        from sqlalchemy import select
+
         import giljo_mcp.database as db_module
         from giljo_mcp.models.agent_identity import AgentExecution
-        from sqlalchemy import select
 
         # Use existing database manager (NO hardcoded test URL!)
         if db_module._db_manager is None:
@@ -437,24 +423,30 @@ async def get_succession_context(
             succession_chain = []
 
             # Get all executions for this job
-            all_executions_query = select(AgentExecution).where(
-                AgentExecution.job_id == current_execution.job_id,
-                AgentExecution.tenant_key == tenant_key,
-            ).order_by(AgentExecution.started_at)
+            all_executions_query = (
+                select(AgentExecution)
+                .where(
+                    AgentExecution.job_id == current_execution.job_id,
+                    AgentExecution.tenant_key == tenant_key,
+                )
+                .order_by(AgentExecution.started_at)
+            )
 
             all_result = await session.execute(all_executions_query)
             all_executions = all_result.scalars().all()
 
             # Build chain in order
             for execution in all_executions:
-                succession_chain.append({
-                    "agent_id": execution.agent_id,
-                    "agent_display_name": execution.agent_display_name,
-                    "status": execution.status,
-                    "context_used": execution.context_used,
-                    "context_budget": execution.context_budget,
-                    "spawned_by": execution.spawned_by,
-                })
+                succession_chain.append(
+                    {
+                        "agent_id": execution.agent_id,
+                        "agent_display_name": execution.agent_display_name,
+                        "status": execution.status,
+                        "context_used": execution.context_used,
+                        "context_budget": execution.context_budget,
+                        "spawned_by": execution.spawned_by,
+                    }
+                )
 
             return {
                 "success": True,

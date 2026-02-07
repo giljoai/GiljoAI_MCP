@@ -17,15 +17,16 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.dependencies import get_db
 from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from sqlalchemy.orm import joinedload, selectinload
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 router = APIRouter()
 
@@ -34,8 +35,10 @@ router = APIRouter()
 # RESPONSE MODELS
 # ============================================================================
 
+
 class TodoItemData(BaseModel):
     """Individual TODO item for Plan tab display - Handover 0423"""
+
     content: str
     status: str  # pending, in_progress, completed
 
@@ -103,6 +106,7 @@ class TableViewResponse(BaseModel):
 # ENDPOINT
 # ============================================================================
 
+
 @router.get("/table-view", response_model=TableViewResponse)
 async def get_agent_jobs_table_view(
     project_id: str = Query(..., description="Project ID to fetch jobs for"),
@@ -140,9 +144,7 @@ async def get_agent_jobs_table_view(
     # Handover 0423: Load todo_items relationship for Plan tab display
     query = (
         select(AgentExecution)
-        .options(
-            joinedload(AgentExecution.job).selectinload(AgentJob.todo_items)
-        )
+        .options(joinedload(AgentExecution.job).selectinload(AgentJob.todo_items))
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(
             and_(
@@ -208,7 +210,9 @@ async def get_agent_jobs_table_view(
         # Use counter fields instead of iterating messages
         unread_count = execution.messages_waiting_count
         acknowledged_count = execution.messages_read_count
-        total_messages = execution.messages_sent_count + execution.messages_waiting_count + execution.messages_read_count
+        total_messages = (
+            execution.messages_sent_count + execution.messages_waiting_count + execution.messages_read_count
+        )
 
         # Calculate staleness
         minutes_since_progress = None
@@ -276,10 +280,7 @@ async def get_agent_jobs_table_view(
                 # Handover 0423: Include todo_items for Plan tab display
                 todo_items=[
                     TodoItemData(content=item.content, status=item.status)
-                    for item in sorted(
-                        execution.job.todo_items if execution.job else [],
-                        key=lambda x: x.sequence
-                    )
+                    for item in sorted(execution.job.todo_items if execution.job else [], key=lambda x: x.sequence)
                 ],
             )
         )
