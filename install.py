@@ -59,7 +59,7 @@ import platform
 import shutil
 import socket
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -576,7 +576,7 @@ class UnifiedInstaller:
             self.settings["postgresql_installation_path"] = (
                 str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == "bin" else str(psql_path_obj.parent)
             )
-            self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+            self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
             self.settings["postgresql_custom_path"] = False
             self.settings["postgresql_discovery_method"] = "PATH"
 
@@ -604,7 +604,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(bin_dir.parent) if bin_dir.name == "bin" else str(bin_dir)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
                 self.settings["postgresql_custom_path"] = False
                 self.settings["postgresql_discovery_method"] = "COMMON_LOCATION"
 
@@ -659,7 +659,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(custom_path_obj.parent) if custom_path_obj.name == "bin" else str(custom_path_obj)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
                 self.settings["postgresql_custom_path"] = True
                 self.settings["postgresql_discovery_method"] = "CUSTOM"
 
@@ -1389,7 +1389,7 @@ class UnifiedInstaller:
             # Log attempt
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n{'=' * 70}\n")
-                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now().isoformat()}\n")
+                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now(timezone.utc).isoformat()}\n")
                 f.write(f"Command: {' '.join(npm_cmd)}\n")
                 f.write(f"{'=' * 70}\n\n")
 

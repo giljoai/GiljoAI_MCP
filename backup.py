@@ -14,7 +14,7 @@ import argparse
 import os
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -63,7 +63,7 @@ QUICK_EXCLUDE_FILES = [
 
 def get_backup_folder_name():
     """Generate timestamped backup folder name"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     return now.strftime("%Y-%m-%d_%H-%M-%S") + "_Backup"
 
 

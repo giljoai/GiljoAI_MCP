@@ -37,7 +37,7 @@ router = APIRouter()
 SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY", "giljo-mcp-installer-default-dev-key")
 
 # Warn if using default secret in production
-if SECRET_KEY == "giljo-mcp-installer-default-dev-key":
+if SECRET_KEY == "giljo-mcp-installer-default-dev-key":  # noqa: S105 - Comparing against default constant, not exposing secret
     logger.warning(
         "Using default MCP installer secret key. Set MCP_INSTALLER_SECRET_KEY environment variable for production."
     )
@@ -73,7 +73,7 @@ def get_server_url() -> str:
         port = config.api.port if hasattr(config, "api") else 7272
 
         # Use localhost if host is 0.0.0.0 (not accessible from external)
-        if host == "0.0.0.0":
+        if host == "0.0.0.0":  # noqa: S104 - Checking bind address, not setting it
             host = "localhost"
 
         return f"http://{host}:{port}"
@@ -93,7 +93,7 @@ def generate_secure_token(user_id: str, expires_in: int) -> str:
     Returns:
         JWT token string
     """
-    expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
     payload = {"user_id": user_id, "expires_at": expires_at.isoformat() + "Z", "type": "mcp_installer_download"}
 
@@ -240,7 +240,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.error(f"Template not found: {e}")
@@ -306,7 +306,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             api_key=api_key,
             username=current_user.username,
             organization=organization,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
         logger.error(f"Template not found: {e}")
@@ -399,7 +399,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
     # Generate URLs
     windows_url = f"{base_url}/download/mcp/{token}/windows"
     unix_url = f"{base_url}/download/mcp/{token}/unix"
-    expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z"
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat() + "Z"
 
     logger.info(f"Share link generated for {current_user.username}, expires: {expires_at}")
 

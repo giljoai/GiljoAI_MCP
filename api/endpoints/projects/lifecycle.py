@@ -13,7 +13,7 @@ All operations use ProjectService.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -341,7 +341,7 @@ async def purge_deleted_project(
         "id": project_id,
         "name": result.get("project_name", "Unknown"),
         "tenant_key": result.get("tenant_key", ""),
-        "deleted_at": datetime.utcnow().isoformat(),
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
     }
 
     return ProjectPurgeResponse(
@@ -388,7 +388,7 @@ async def archive_project(
 
     # Set completed_at timestamp to mark as archived (raises exceptions on error)
     await project_service.update_project(
-        project_id=project_id, updates={"status": "completed", "completed_at": datetime.utcnow()}
+        project_id=project_id, updates={"status": "completed", "completed_at": datetime.now(timezone.utc)}
     )
 
     logger.info(f"Archived project {project_id}")
