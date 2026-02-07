@@ -35,7 +35,9 @@ def write_env_file(path: Path, panel_db_url: str, source_ro_url: str | None) -> 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install Developer Panel tooling (isolated from main app)")
-    parser.add_argument("--panel-db-url", default="sqlite:///devpanel.db", help="Database URL for Dev Panel data (default: sqlite)")
+    parser.add_argument(
+        "--panel-db-url", default="sqlite:///devpanel.db", help="Database URL for Dev Panel data (default: sqlite)"
+    )
     parser.add_argument("--source-db-url", default=os.getenv("DATABASE_URL"), help="Main DB URL for read-only access")
     parser.add_argument("--create-ro-user", action="store_true", help="Print SQL to create a read-only PostgreSQL user")
     parser.add_argument("--ro-username", default="devpanel_ro", help="RO username to create/use")
@@ -62,14 +64,16 @@ def main() -> int:
             if not args.ro_password:
                 print("[WARN] No --ro-password provided; supplying template password CHANGEME")
             print("\nSQL to run on PostgreSQL (manual, for safety):\n")
-            print(dedent(f"""
+            print(
+                dedent(f"""
                 -- Create RO role for Dev Panel (adjust schema name as needed)
-                CREATE ROLE {args.ro_username} LOGIN PASSWORD '{args.ro_password or 'CHANGEME'}';
+                CREATE ROLE {args.ro_username} LOGIN PASSWORD '{args.ro_password or "CHANGEME"}';
                 GRANT CONNECT ON DATABASE current_database() TO {args.ro_username};
                 GRANT USAGE ON SCHEMA public TO {args.ro_username};
                 GRANT SELECT ON ALL TABLES IN SCHEMA public TO {args.ro_username};
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {args.ro_username};
-            """))
+            """)
+            )
             print("\nApply the SQL using an admin account, then set DEVPANEL_READONLY_DB_URL accordingly.\n")
 
             if args.ro_password:
@@ -94,4 +98,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

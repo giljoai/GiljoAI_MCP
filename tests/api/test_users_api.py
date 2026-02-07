@@ -28,7 +28,6 @@ Phase 2 Progress: API Layer Testing (7/10 groups)
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.hash import bcrypt
 
 
@@ -36,12 +35,14 @@ from passlib.hash import bcrypt
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_admin(db_manager):
     """Create Tenant A admin user."""
+    from uuid import uuid4
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
 
     unique_id = uuid4().hex[:8]
     username = f"admin_a_{unique_id}"
@@ -68,8 +69,9 @@ async def tenant_a_admin(db_manager):
 @pytest.fixture
 async def tenant_a_developer(db_manager, tenant_a_admin):
     """Create Tenant A developer user (same tenant as admin)."""
-    from src.giljo_mcp.models import User
     from uuid import uuid4
+
+    from src.giljo_mcp.models import User
 
     unique_id = uuid4().hex[:8]
     username = f"dev_a_{unique_id}"
@@ -95,9 +97,10 @@ async def tenant_a_developer(db_manager, tenant_a_admin):
 @pytest.fixture
 async def tenant_b_admin(db_manager):
     """Create Tenant B admin user (different tenant)."""
+    from uuid import uuid4
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
 
     unique_id = uuid4().hex[:8]
     username = f"admin_b_{unique_id}"
@@ -125,8 +128,7 @@ async def tenant_b_admin(db_manager):
 async def tenant_a_admin_token(api_client: AsyncClient, tenant_a_admin):
     """Get JWT token for Tenant A admin."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_admin._test_username, "password": tenant_a_admin._test_password}
+        "/api/auth/login", json={"username": tenant_a_admin._test_username, "password": tenant_a_admin._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -139,7 +141,7 @@ async def tenant_a_developer_token(api_client: AsyncClient, tenant_a_developer):
     """Get JWT token for Tenant A developer."""
     response = await api_client.post(
         "/api/auth/login",
-        json={"username": tenant_a_developer._test_username, "password": tenant_a_developer._test_password}
+        json={"username": tenant_a_developer._test_username, "password": tenant_a_developer._test_password},
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -151,8 +153,7 @@ async def tenant_a_developer_token(api_client: AsyncClient, tenant_a_developer):
 async def tenant_b_admin_token(api_client: AsyncClient, tenant_b_admin):
     """Get JWT token for Tenant B admin."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_b_admin._test_username, "password": tenant_b_admin._test_password}
+        "/api/auth/login", json={"username": tenant_b_admin._test_username, "password": tenant_b_admin._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -164,6 +165,7 @@ async def tenant_b_admin_token(api_client: AsyncClient, tenant_b_admin):
 # USER LIST TESTS - GET /users (admin-only)
 # ============================================================================
 
+
 class TestListUsers:
     """Test GET /users - List all users in tenant (admin-only)"""
 
@@ -172,10 +174,7 @@ class TestListUsers:
         self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_admin, tenant_a_developer
     ):
         """Test GET /users - List users successfully (admin)."""
-        response = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -206,7 +205,7 @@ class TestListUsers:
         tenant_a_admin_token: str,
         tenant_b_admin_token: str,
         tenant_a_admin,
-        tenant_b_admin
+        tenant_b_admin,
     ):
         """Test GET /users - Admins see all users (per-user tenancy design).
 
@@ -215,10 +214,7 @@ class TestListUsers:
         This is intentional - see api/endpoints/users.py docstring.
         """
         # Tenant A admin should see ALL users (including Tenant B)
-        response_a = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response_a = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_a_admin_token})
         assert response_a.status_code == 200
         users_a = response_a.json()
         usernames_a = [u["username"] for u in users_a]
@@ -229,10 +225,7 @@ class TestListUsers:
         assert tenant_b_admin.username in usernames_a
 
         # Tenant B admin also sees ALL users
-        response_b = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_b_admin_token}
-        )
+        response_b = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_b_admin_token})
         assert response_b.status_code == 200
         users_b = response_b.json()
         usernames_b = [u["username"] for u in users_b]
@@ -247,14 +240,9 @@ class TestListUsers:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_list_users_forbidden_non_admin(
-        self, api_client: AsyncClient, tenant_a_developer_token: str
-    ):
+    async def test_list_users_forbidden_non_admin(self, api_client: AsyncClient, tenant_a_developer_token: str):
         """Test GET /users - 403 for non-admin users."""
-        response = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_a_developer_token}
-        )
+        response = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_a_developer_token})
         assert response.status_code == 403
 
 
@@ -262,15 +250,15 @@ class TestListUsers:
 # USER CREATE TESTS - POST /users (admin-only)
 # ============================================================================
 
+
 class TestCreateUser:
     """Test POST /users - Create new user (admin-only)"""
 
     @pytest.mark.asyncio
-    async def test_create_user_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_admin
-    ):
+    async def test_create_user_happy_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_admin):
         """Test POST /users - Create user successfully."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
         username = f"newuser_{unique_id}"
         email = f"newuser_{unique_id}@test.com"
@@ -283,9 +271,9 @@ class TestCreateUser:
                 "full_name": "New User",
                 "password": "password123",
                 "role": "developer",
-                "is_active": True
+                "is_active": True,
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 201
@@ -306,21 +294,17 @@ class TestCreateUser:
         assert "password_hash" not in data
 
     @pytest.mark.asyncio
-    async def test_create_user_minimal_data(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_create_user_minimal_data(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test POST /users - Create with minimal required data."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
         username = f"minimaluser_{unique_id}"
 
         response = await api_client.post(
             "/api/v1/users/",
-            json={
-                "username": username,
-                "password": "password123"
-            },
-            cookies={"access_token": tenant_a_admin_token}
+            json={"username": username, "password": "password123"},
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 201
@@ -339,9 +323,9 @@ class TestCreateUser:
             "/api/v1/users/",
             json={
                 "username": tenant_a_developer.username,  # Duplicate
-                "password": "password123"
+                "password": "password123",
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 400
@@ -357,20 +341,19 @@ class TestCreateUser:
             json={
                 "username": "uniqueusername",
                 "email": tenant_a_developer.email,  # Duplicate
-                "password": "password123"
+                "password": "password123",
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 400
         assert "already exists" in response.json()["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_create_user_invalid_role(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_create_user_invalid_role(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test POST /users - 422 for invalid role."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
 
         response = await api_client.post(
@@ -378,9 +361,9 @@ class TestCreateUser:
             json={
                 "username": f"testuser_{unique_id}",
                 "password": "password123",
-                "role": "superadmin"  # Invalid role
+                "role": "superadmin",  # Invalid role
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 422  # Validation error
@@ -389,26 +372,25 @@ class TestCreateUser:
     async def test_create_user_unauthorized(self, api_client: AsyncClient):
         """Test POST /users - 401 without authentication."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
 
         response = await api_client.post(
-            "/api/v1/users/",
-            json={"username": f"testuser_{unique_id}", "password": "password123"}
+            "/api/v1/users/", json={"username": f"testuser_{unique_id}", "password": "password123"}
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_create_user_forbidden_non_admin(
-        self, api_client: AsyncClient, tenant_a_developer_token: str
-    ):
+    async def test_create_user_forbidden_non_admin(self, api_client: AsyncClient, tenant_a_developer_token: str):
         """Test POST /users - 403 for non-admin users."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
 
         response = await api_client.post(
             "/api/v1/users/",
             json={"username": f"testuser_{unique_id}", "password": "password123"},
-            cookies={"access_token": tenant_a_developer_token}
+            cookies={"access_token": tenant_a_developer_token},
         )
         assert response.status_code == 403
 
@@ -417,17 +399,15 @@ class TestCreateUser:
 # USER GET TESTS - GET /users/{user_id} (admin or self)
 # ============================================================================
 
+
 class TestGetUser:
     """Test GET /users/{user_id} - Get user details"""
 
     @pytest.mark.asyncio
-    async def test_get_user_self(
-        self, api_client: AsyncClient, tenant_a_developer_token: str, tenant_a_developer
-    ):
+    async def test_get_user_self(self, api_client: AsyncClient, tenant_a_developer_token: str, tenant_a_developer):
         """Test GET /users/{user_id} - Users can view their own profile."""
         response = await api_client.get(
-            f"/api/v1/users/{tenant_a_developer.id}",
-            cookies={"access_token": tenant_a_developer_token}
+            f"/api/v1/users/{tenant_a_developer.id}", cookies={"access_token": tenant_a_developer_token}
         )
 
         assert response.status_code == 200
@@ -442,8 +422,7 @@ class TestGetUser:
     ):
         """Test GET /users/{user_id} - Admin can view any user in their tenant."""
         response = await api_client.get(
-            f"/api/v1/users/{tenant_a_developer.id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_a_developer.id}", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 200
@@ -457,8 +436,7 @@ class TestGetUser:
     ):
         """Test GET /users/{user_id} - 403 when non-admin tries to view other users."""
         response = await api_client.get(
-            f"/api/v1/users/{tenant_a_admin.id}",
-            cookies={"access_token": tenant_a_developer_token}
+            f"/api/v1/users/{tenant_a_admin.id}", cookies={"access_token": tenant_a_developer_token}
         )
 
         assert response.status_code == 403
@@ -470,8 +448,7 @@ class TestGetUser:
     ):
         """Test GET /users/{user_id} - Admin can access cross-tenant users (per-user tenancy design)."""
         response = await api_client.get(
-            f"/api/v1/users/{tenant_b_admin.id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_b_admin.id}", cookies={"access_token": tenant_a_admin_token}
         )
 
         # Per-user tenancy: admins can view ALL users for management
@@ -480,20 +457,15 @@ class TestGetUser:
         assert data["username"] == tenant_b_admin.username
 
     @pytest.mark.asyncio
-    async def test_get_user_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_get_user_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test GET /users/{user_id} - 404 for non-existent user."""
         response = await api_client.get(
-            "/api/v1/users/00000000-0000-0000-0000-000000000000",
-            cookies={"access_token": tenant_a_admin_token}
+            "/api/v1/users/00000000-0000-0000-0000-000000000000", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_user_unauthorized(
-        self, api_client: AsyncClient, tenant_a_developer
-    ):
+    async def test_get_user_unauthorized(self, api_client: AsyncClient, tenant_a_developer):
         """Test GET /users/{user_id} - 401 without authentication."""
         response = await api_client.get(f"/api/v1/users/{tenant_a_developer.id}")
         assert response.status_code == 401
@@ -503,24 +475,21 @@ class TestGetUser:
 # USER UPDATE TESTS - PUT /users/{user_id} (admin or self)
 # ============================================================================
 
+
 class TestUpdateUser:
     """Test PUT /users/{user_id} - Update user profile"""
 
     @pytest.mark.asyncio
-    async def test_update_user_self(
-        self, api_client: AsyncClient, tenant_a_developer_token: str, tenant_a_developer
-    ):
+    async def test_update_user_self(self, api_client: AsyncClient, tenant_a_developer_token: str, tenant_a_developer):
         """Test PUT /users/{user_id} - Users can update their own profile."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
 
         response = await api_client.put(
             f"/api/v1/users/{tenant_a_developer.id}",
-            json={
-                "email": f"newemail_{unique_id}@test.com",
-                "full_name": "Updated Name"
-            },
-            cookies={"access_token": tenant_a_developer_token}
+            json={"email": f"newemail_{unique_id}@test.com", "full_name": "Updated Name"},
+            cookies={"access_token": tenant_a_developer_token},
         )
 
         assert response.status_code == 200
@@ -535,11 +504,8 @@ class TestUpdateUser:
         """Test PUT /users/{user_id} - Admin can update any user in their tenant."""
         response = await api_client.put(
             f"/api/v1/users/{tenant_a_developer.id}",
-            json={
-                "full_name": "Admin Updated Name",
-                "is_active": False
-            },
-            cookies={"access_token": tenant_a_admin_token}
+            json={"full_name": "Admin Updated Name", "is_active": False},
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 200
@@ -553,13 +519,14 @@ class TestUpdateUser:
     ):
         """Test PUT /users/{user_id} - Partial update (only email)."""
         from uuid import uuid4
+
         unique_id = uuid4().hex[:8]
         original_full_name = tenant_a_developer.full_name
 
         response = await api_client.put(
             f"/api/v1/users/{tenant_a_developer.id}",
             json={"email": f"partial_{unique_id}@test.com"},
-            cookies={"access_token": tenant_a_developer_token}
+            cookies={"access_token": tenant_a_developer_token},
         )
 
         assert response.status_code == 200
@@ -576,7 +543,7 @@ class TestUpdateUser:
         response = await api_client.put(
             f"/api/v1/users/{tenant_a_developer.id}",
             json={"email": tenant_a_admin.email},  # Duplicate
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 400
@@ -590,7 +557,7 @@ class TestUpdateUser:
         response = await api_client.put(
             f"/api/v1/users/{tenant_a_admin.id}",
             json={"full_name": "Hacked"},
-            cookies={"access_token": tenant_a_developer_token}
+            cookies={"access_token": tenant_a_developer_token},
         )
 
         assert response.status_code == 403
@@ -603,7 +570,7 @@ class TestUpdateUser:
         response = await api_client.put(
             f"/api/v1/users/{tenant_b_admin.id}",
             json={"full_name": "Cross-tenant admin update"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         # Per-user tenancy: admins can manage ALL users across tenants
@@ -612,32 +579,26 @@ class TestUpdateUser:
         assert data["full_name"] == "Cross-tenant admin update"
 
     @pytest.mark.asyncio
-    async def test_update_user_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_update_user_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test PUT /users/{user_id} - 404 for non-existent user."""
         response = await api_client.put(
             "/api/v1/users/00000000-0000-0000-0000-000000000000",
             json={"full_name": "Test"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_user_unauthorized(
-        self, api_client: AsyncClient, tenant_a_developer
-    ):
+    async def test_update_user_unauthorized(self, api_client: AsyncClient, tenant_a_developer):
         """Test PUT /users/{user_id} - 401 without authentication."""
-        response = await api_client.put(
-            f"/api/v1/users/{tenant_a_developer.id}",
-            json={"full_name": "Test"}
-        )
+        response = await api_client.put(f"/api/v1/users/{tenant_a_developer.id}", json={"full_name": "Test"})
         assert response.status_code == 401
 
 
 # ============================================================================
 # USER DELETE TESTS - DELETE /users/{user_id} (admin-only)
 # ============================================================================
+
 
 class TestDeleteUser:
     """Test DELETE /users/{user_id} - Soft-delete user (admin-only)"""
@@ -648,8 +609,9 @@ class TestDeleteUser:
     ):
         """Test DELETE /users/{user_id} - Soft-delete user successfully."""
         # Create a user to delete
-        from src.giljo_mcp.models import User
         from uuid import uuid4
+
+        from src.giljo_mcp.models import User
 
         unique_id = uuid4().hex[:8]
         username = f"to_delete_{unique_id}"
@@ -669,10 +631,7 @@ class TestDeleteUser:
             user_id = user_to_delete.id
 
         # Delete the user
-        response = await api_client.delete(
-            f"/api/v1/users/{user_id}",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.delete(f"/api/v1/users/{user_id}", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -683,6 +642,7 @@ class TestDeleteUser:
         # Verify user is soft-deleted (is_active=False)
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(User).where(User.id == user_id)
             result = await session.execute(stmt)
             deleted_user = result.scalar_one_or_none()
@@ -690,13 +650,10 @@ class TestDeleteUser:
             assert deleted_user.is_active is False  # Soft delete
 
     @pytest.mark.asyncio
-    async def test_delete_user_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_delete_user_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test DELETE /users/{user_id} - 404 for non-existent user."""
         response = await api_client.delete(
-            "/api/v1/users/00000000-0000-0000-0000-000000000000",
-            cookies={"access_token": tenant_a_admin_token}
+            "/api/v1/users/00000000-0000-0000-0000-000000000000", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 404
 
@@ -706,15 +663,12 @@ class TestDeleteUser:
     ):
         """Test DELETE /users/{user_id} - 404 for cross-tenant deletion."""
         response = await api_client.delete(
-            f"/api/v1/users/{tenant_b_admin.id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_b_admin.id}", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_user_unauthorized(
-        self, api_client: AsyncClient, tenant_a_developer
-    ):
+    async def test_delete_user_unauthorized(self, api_client: AsyncClient, tenant_a_developer):
         """Test DELETE /users/{user_id} - 401 without authentication."""
         response = await api_client.delete(f"/api/v1/users/{tenant_a_developer.id}")
         assert response.status_code == 401
@@ -725,8 +679,7 @@ class TestDeleteUser:
     ):
         """Test DELETE /users/{user_id} - 403 for non-admin users."""
         response = await api_client.delete(
-            f"/api/v1/users/{tenant_a_developer.id}",
-            cookies={"access_token": tenant_a_developer_token}
+            f"/api/v1/users/{tenant_a_developer.id}", cookies={"access_token": tenant_a_developer_token}
         )
         assert response.status_code == 403
 
@@ -734,6 +687,7 @@ class TestDeleteUser:
 # ============================================================================
 # PASSWORD RESET TESTS - POST /users/{user_id}/reset-password (admin-only)
 # ============================================================================
+
 
 class TestResetPassword:
     """Test POST /users/{user_id}/reset-password - Reset password to default"""
@@ -744,8 +698,7 @@ class TestResetPassword:
     ):
         """Test POST /users/{user_id}/reset-password - Reset password successfully."""
         response = await api_client.post(
-            f"/api/v1/users/{tenant_a_developer.id}/reset-password",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_a_developer.id}/reset-password", cookies={"access_token": tenant_a_admin_token}
         )
 
         assert response.status_code == 200
@@ -755,6 +708,7 @@ class TestResetPassword:
         # Verify password was reset to 'GiljoMCP' and must_change_password set
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             stmt = select(User).where(User.id == tenant_a_developer.id)
@@ -766,13 +720,11 @@ class TestResetPassword:
             assert user.must_change_password is True
 
     @pytest.mark.asyncio
-    async def test_reset_password_not_found(
-        self, api_client: AsyncClient, tenant_a_admin_token: str
-    ):
+    async def test_reset_password_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
         """Test POST /users/{user_id}/reset-password - 404 for non-existent user."""
         response = await api_client.post(
             "/api/v1/users/00000000-0000-0000-0000-000000000000/reset-password",
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert response.status_code == 404
 
@@ -782,19 +734,14 @@ class TestResetPassword:
     ):
         """Test POST /users/{user_id}/reset-password - 404 for cross-tenant reset."""
         response = await api_client.post(
-            f"/api/v1/users/{tenant_b_admin.id}/reset-password",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_b_admin.id}/reset-password", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_reset_password_unauthorized(
-        self, api_client: AsyncClient, tenant_a_developer
-    ):
+    async def test_reset_password_unauthorized(self, api_client: AsyncClient, tenant_a_developer):
         """Test POST /users/{user_id}/reset-password - 401 without authentication."""
-        response = await api_client.post(
-            f"/api/v1/users/{tenant_a_developer.id}/reset-password"
-        )
+        response = await api_client.post(f"/api/v1/users/{tenant_a_developer.id}/reset-password")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
@@ -803,8 +750,7 @@ class TestResetPassword:
     ):
         """Test POST /users/{user_id}/reset-password - 403 for non-admin users."""
         response = await api_client.post(
-            f"/api/v1/users/{tenant_a_admin.id}/reset-password",
-            cookies={"access_token": tenant_a_developer_token}
+            f"/api/v1/users/{tenant_a_admin.id}/reset-password", cookies={"access_token": tenant_a_developer_token}
         )
         assert response.status_code == 403
 
@@ -812,6 +758,7 @@ class TestResetPassword:
 # ============================================================================
 # PASSWORD SECURITY TESTS
 # ============================================================================
+
 
 class TestPasswordSecurity:
     """Comprehensive password security validation"""
@@ -824,10 +771,7 @@ class TestPasswordSecurity:
         from uuid import uuid4
 
         # List users
-        response = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_a_admin_token})
         assert response.status_code == 200
         for user in response.json():
             assert "password" not in user
@@ -835,8 +779,7 @@ class TestPasswordSecurity:
 
         # Get user
         response = await api_client.get(
-            f"/api/v1/users/{tenant_a_developer.id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_a_developer.id}", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 200
         data = response.json()
@@ -847,11 +790,8 @@ class TestPasswordSecurity:
         unique_id = uuid4().hex[:8]
         response = await api_client.post(
             "/api/v1/users/",
-            json={
-                "username": f"securetest_{unique_id}",
-                "password": "test123456"
-            },
-            cookies={"access_token": tenant_a_admin_token}
+            json={"username": f"securetest_{unique_id}", "password": "test123456"},
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert response.status_code == 201
         data = response.json()
@@ -859,9 +799,7 @@ class TestPasswordSecurity:
         assert "password_hash" not in data
 
     @pytest.mark.asyncio
-    async def test_password_hashed_in_database(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, db_manager
-    ):
+    async def test_password_hashed_in_database(self, api_client: AsyncClient, tenant_a_admin_token: str, db_manager):
         """Test that passwords are hashed in the database."""
         from uuid import uuid4
 
@@ -871,9 +809,9 @@ class TestPasswordSecurity:
             "/api/v1/users/",
             json={
                 "username": f"hashtest_{unique_id}",
-                "password": "plaintext123"  # This is ignored, default is used
+                "password": "plaintext123",  # This is ignored, default is used
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert response.status_code == 201
         user_id = response.json()["id"]
@@ -881,6 +819,7 @@ class TestPasswordSecurity:
         # Verify password is hashed in database
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             stmt = select(User).where(User.id == user_id)
@@ -901,6 +840,7 @@ class TestPasswordSecurity:
 # MULTI-TENANT ADMIN ACCESS TESTS (Per-User Tenancy Design)
 # ============================================================================
 
+
 class TestMultiTenantIsolation:
     """Per-user tenancy admin access verification.
 
@@ -917,15 +857,12 @@ class TestMultiTenantIsolation:
         tenant_b_admin_token: str,
         tenant_a_admin,
         tenant_a_developer,
-        tenant_b_admin
+        tenant_b_admin,
     ):
         """Test admin cross-tenant access (per-user tenancy design allows this)."""
 
         # Tenant A admin can list ALL users (including Tenant B)
-        response = await api_client.get(
-            "/api/v1/users/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/v1/users/", cookies={"access_token": tenant_a_admin_token})
         assert response.status_code == 200
         usernames = [u["username"] for u in response.json()]
         assert tenant_a_admin.username in usernames
@@ -934,8 +871,7 @@ class TestMultiTenantIsolation:
 
         # Tenant A admin can get Tenant B user
         response = await api_client.get(
-            f"/api/v1/users/{tenant_b_admin.id}",
-            cookies={"access_token": tenant_a_admin_token}
+            f"/api/v1/users/{tenant_b_admin.id}", cookies={"access_token": tenant_a_admin_token}
         )
         assert response.status_code == 200
 
@@ -943,6 +879,6 @@ class TestMultiTenantIsolation:
         response = await api_client.put(
             f"/api/v1/users/{tenant_b_admin.id}",
             json={"full_name": "Admin Cross-Tenant Update"},
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
         assert response.status_code == 200

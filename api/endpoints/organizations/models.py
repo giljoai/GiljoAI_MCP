@@ -11,9 +11,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+
 # ============================================================================
 # Organization Schemas
 # ============================================================================
+
 
 class OrganizationCreate(BaseModel):
     """Schema for creating organization."""
@@ -24,11 +26,13 @@ class OrganizationCreate(BaseModel):
     )
     settings: dict | None = Field(default_factory=dict, description="Organization-level settings")
 
+
 class OrganizationUpdate(BaseModel):
     """Schema for updating organization."""
 
     name: str | None = Field(None, max_length=255, description="Organization display name")
     settings: dict | None = Field(None, description="Organization-level settings")
+
 
 class MemberResponse(BaseModel):
     """Schema for membership in response."""
@@ -41,6 +45,7 @@ class MemberResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class OrganizationResponse(BaseModel):
     """Schema for organization response."""
@@ -57,9 +62,11 @@ class OrganizationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ============================================================================
 # Membership Schemas
 # ============================================================================
+
 
 class MemberInvite(BaseModel):
     """Schema for inviting member."""
@@ -67,10 +74,12 @@ class MemberInvite(BaseModel):
     user_id: str = Field(..., description="User ID to invite")
     role: str = Field(..., pattern="^(admin|member|viewer)$", description="Role to assign (admin, member, viewer)")
 
+
 class MemberRoleUpdate(BaseModel):
     """Schema for updating member role."""
 
     role: str = Field(..., pattern="^(admin|member|viewer)$", description="New role (admin, member, viewer)")
+
 
 class OwnershipTransfer(BaseModel):
     """Schema for transferring ownership."""

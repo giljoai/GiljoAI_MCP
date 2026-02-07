@@ -14,6 +14,7 @@ from ..models import Message, Project, Task
 from ..models.agent_identity import AgentExecution, AgentJob
 from ..models.config import ApiMetrics
 
+
 class StatisticsRepository:
     """
     Repository for statistics and monitoring queries.

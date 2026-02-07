@@ -15,9 +15,9 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.enums import AgentStatus, ProjectStatus
+from src.giljo_mcp.enums import ProjectStatus
 from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 
 
@@ -28,6 +28,7 @@ class TestData:
     def generate_tenant_key() -> str:
         """Generate a test tenant key"""
         from src.giljo_mcp.tenant import TenantManager
+
         return TenantManager.generate_tenant_key()
 
     @staticmethod
@@ -44,7 +45,9 @@ class TestData:
         }
 
     @staticmethod
-    def generate_agent_job_data(project_id: str, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
+    def generate_agent_job_data(
+        project_id: str, tenant_key: str, agent_display_name: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Generate test AgentJob data (work order - the WHAT).
 

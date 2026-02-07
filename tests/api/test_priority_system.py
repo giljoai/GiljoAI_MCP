@@ -162,10 +162,12 @@ class TestFieldPriorityConfigValidation:
 @pytest.fixture
 async def test_user(db_manager):
     """Create test user for priority configuration tests"""
+    from uuid import uuid4
+
+    from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
-    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     username = f"priority_test_{unique_id}"
@@ -205,10 +207,12 @@ async def test_user_token(api_client: AsyncClient, test_user):
 @pytest.fixture
 async def another_tenant_user(db_manager):
     """Create user from different tenant for isolation testing"""
+    from uuid import uuid4
+
+    from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
-    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     username = f"other_tenant_{unique_id}"
@@ -331,6 +335,7 @@ class TestPriorityConfigurationAPI:
         # Verify other tenant's user was NOT affected
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             stmt = select(User).where(User.id == another_tenant_user.id)
@@ -341,9 +346,10 @@ class TestPriorityConfigurationAPI:
             assert other_user.tenant_key != test_user.tenant_key
             if other_user.field_priority_config is not None:
                 # If has config, it should be default, not test_user's config
-                assert other_user.field_priority_config.get("priorities", {}).get("product_core") != 1 or (
-                    other_user.field_priority_config == config
-                ) is False
+                assert (
+                    other_user.field_priority_config.get("priorities", {}).get("product_core") != 1
+                    or (other_user.field_priority_config == config) is False
+                )
 
     async def test_get_current_priority_config(self, api_client: AsyncClient, test_user, test_user_token):
         """Test GET /api/users/me/field-priority returns current configuration"""
@@ -402,11 +408,13 @@ class TestDefaultPrioritySeeding:
 
     async def test_new_user_default_priorities_seeded(self, db_manager):
         """Test that new users automatically get v2.0 default priorities"""
+        from uuid import uuid4
+
+        from passlib.hash import bcrypt
+
+        from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
         from src.giljo_mcp.models import User
         from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-        from uuid import uuid4
-        from passlib.hash import bcrypt
 
         unique_id = uuid4().hex[:8]
         username = f"new_user_{unique_id}"
@@ -443,6 +451,7 @@ class TestDefaultPrioritySeeding:
         # Verify no automatic migration occurred
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models import User
 
             stmt = select(User).where(User.id == test_user.id)

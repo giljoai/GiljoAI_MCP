@@ -7,9 +7,6 @@ columns to AgentExecution model, along with atomic increment/decrement operation
 Run with: pytest tests/unit/test_message_counters.py -v
 """
 
-import uuid
-from datetime import datetime, timezone
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,26 +75,17 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because counter columns don't exist yet.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_001"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_001")
 
         # Assert columns exist with default values
-        assert hasattr(execution, 'messages_sent_count'), \
-            "AgentExecution missing messages_sent_count column"
-        assert hasattr(execution, 'messages_waiting_count'), \
-            "AgentExecution missing messages_waiting_count column"
-        assert hasattr(execution, 'messages_read_count'), \
-            "AgentExecution missing messages_read_count column"
+        assert hasattr(execution, "messages_sent_count"), "AgentExecution missing messages_sent_count column"
+        assert hasattr(execution, "messages_waiting_count"), "AgentExecution missing messages_waiting_count column"
+        assert hasattr(execution, "messages_read_count"), "AgentExecution missing messages_read_count column"
 
         # Assert default values are 0
-        assert execution.messages_sent_count == 0, \
-            "messages_sent_count should default to 0"
-        assert execution.messages_waiting_count == 0, \
-            "messages_waiting_count should default to 0"
-        assert execution.messages_read_count == 0, \
-            "messages_read_count should default to 0"
+        assert execution.messages_sent_count == 0, "messages_sent_count should default to 0"
+        assert execution.messages_waiting_count == 0, "messages_waiting_count should default to 0"
+        assert execution.messages_read_count == 0, "messages_read_count should default to 0"
 
     @pytest.mark.asyncio
     async def test_increment_sent_count(self, db_session: AsyncSession):
@@ -107,31 +95,21 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because increment_sent_count method doesn't exist.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_002"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_002")
 
         # Get repository
         repo = AgentJobRepository(None)
 
         # Increment sent count
-        await repo.increment_sent_count(
-            session=db_session,
-            agent_id=execution.agent_id,
-            tenant_key="test_tenant_002"
-        )
+        await repo.increment_sent_count(session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_002")
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Assert counter incremented
-        assert execution.messages_sent_count == 1, \
-            "messages_sent_count should be 1 after increment"
-        assert execution.messages_waiting_count == 0, \
-            "Other counters should not be affected"
-        assert execution.messages_read_count == 0, \
-            "Other counters should not be affected"
+        assert execution.messages_sent_count == 1, "messages_sent_count should be 1 after increment"
+        assert execution.messages_waiting_count == 0, "Other counters should not be affected"
+        assert execution.messages_read_count == 0, "Other counters should not be affected"
 
     @pytest.mark.asyncio
     async def test_increment_waiting_count(self, db_session: AsyncSession):
@@ -141,31 +119,23 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because increment_waiting_count method doesn't exist.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_003"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_003")
 
         # Get repository
         repo = AgentJobRepository(None)
 
         # Increment waiting count
         await repo.increment_waiting_count(
-            session=db_session,
-            agent_id=execution.agent_id,
-            tenant_key="test_tenant_003"
+            session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_003"
         )
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Assert counter incremented
-        assert execution.messages_waiting_count == 1, \
-            "messages_waiting_count should be 1 after increment"
-        assert execution.messages_sent_count == 0, \
-            "Other counters should not be affected"
-        assert execution.messages_read_count == 0, \
-            "Other counters should not be affected"
+        assert execution.messages_waiting_count == 1, "messages_waiting_count should be 1 after increment"
+        assert execution.messages_sent_count == 0, "Other counters should not be affected"
+        assert execution.messages_read_count == 0, "Other counters should not be affected"
 
     @pytest.mark.asyncio
     async def test_decrement_waiting_increment_read(self, db_session: AsyncSession):
@@ -175,19 +145,14 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because decrement_waiting_increment_read method doesn't exist.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_004"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_004")
 
         # Get repository
         repo = AgentJobRepository(None)
 
         # First, receive a message (increment waiting)
         await repo.increment_waiting_count(
-            session=db_session,
-            agent_id=execution.agent_id,
-            tenant_key="test_tenant_004"
+            session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_004"
         )
 
         # Refresh to verify waiting count
@@ -196,21 +161,16 @@ class TestMessageCounterColumns:
 
         # Then acknowledge it (decrement waiting, increment read)
         await repo.decrement_waiting_increment_read(
-            session=db_session,
-            agent_id=execution.agent_id,
-            tenant_key="test_tenant_004"
+            session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_004"
         )
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Assert dual update occurred atomically
-        assert execution.messages_waiting_count == 0, \
-            "messages_waiting_count should be 0 after ack"
-        assert execution.messages_read_count == 1, \
-            "messages_read_count should be 1 after ack"
-        assert execution.messages_sent_count == 0, \
-            "Sent counter should not be affected"
+        assert execution.messages_waiting_count == 0, "messages_waiting_count should be 0 after ack"
+        assert execution.messages_read_count == 1, "messages_read_count should be 1 after ack"
+        assert execution.messages_sent_count == 0, "Sent counter should not be affected"
 
     @pytest.mark.asyncio
     async def test_counters_are_atomic(self, db_session: AsyncSession):
@@ -222,10 +182,7 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because increment methods don't exist.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_005"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_005")
 
         # Get repository
         repo = AgentJobRepository(None)
@@ -233,32 +190,26 @@ class TestMessageCounterColumns:
         # Increment sent 5 times
         for _ in range(5):
             await repo.increment_sent_count(
-                session=db_session,
-                agent_id=execution.agent_id,
-                tenant_key="test_tenant_005"
+                session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_005"
             )
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Assert all increments registered
-        assert execution.messages_sent_count == 5, \
-            "All 5 increments should be registered atomically"
+        assert execution.messages_sent_count == 5, "All 5 increments should be registered atomically"
 
         # Increment waiting 3 times
         for _ in range(3):
             await repo.increment_waiting_count(
-                session=db_session,
-                agent_id=execution.agent_id,
-                tenant_key="test_tenant_005"
+                session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_005"
             )
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Assert all increments registered
-        assert execution.messages_waiting_count == 3, \
-            "All 3 increments should be registered atomically"
+        assert execution.messages_waiting_count == 3, "All 3 increments should be registered atomically"
 
     @pytest.mark.asyncio
     async def test_counters_respect_tenant_isolation(self, db_session: AsyncSession):
@@ -270,34 +221,22 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because increment methods don't exist.
         """
         # Create executions in different tenants
-        exec_a = await create_test_execution(
-            db_session,
-            tenant_key="tenant_a"
-        )
-        exec_b = await create_test_execution(
-            db_session,
-            tenant_key="tenant_b"
-        )
+        exec_a = await create_test_execution(db_session, tenant_key="tenant_a")
+        exec_b = await create_test_execution(db_session, tenant_key="tenant_b")
 
         # Get repository
         repo = AgentJobRepository(None)
 
         # Increment only tenant_a
-        await repo.increment_sent_count(
-            session=db_session,
-            agent_id=exec_a.agent_id,
-            tenant_key="tenant_a"
-        )
+        await repo.increment_sent_count(session=db_session, agent_id=exec_a.agent_id, tenant_key="tenant_a")
 
         # Refresh both executions
         await db_session.refresh(exec_a)
         await db_session.refresh(exec_b)
 
         # Assert only tenant_a was affected
-        assert exec_a.messages_sent_count == 1, \
-            "Tenant A counter should be incremented"
-        assert exec_b.messages_sent_count == 0, \
-            "Tenant B counter should be unchanged (tenant isolation)"
+        assert exec_a.messages_sent_count == 1, "Tenant A counter should be incremented"
+        assert exec_b.messages_sent_count == 0, "Tenant B counter should be unchanged (tenant isolation)"
 
     @pytest.mark.asyncio
     async def test_waiting_count_cannot_go_negative(self, db_session: AsyncSession):
@@ -309,10 +248,7 @@ class TestMessageCounterColumns:
         RED PHASE: This test will FAIL because decrement_waiting_increment_read doesn't exist.
         """
         # Create a test execution
-        execution = await create_test_execution(
-            db_session,
-            tenant_key="test_tenant_007"
-        )
+        execution = await create_test_execution(db_session, tenant_key="test_tenant_007")
 
         # Get repository
         repo = AgentJobRepository(None)
@@ -323,16 +259,12 @@ class TestMessageCounterColumns:
 
         # Try to decrement when count is 0
         await repo.decrement_waiting_increment_read(
-            session=db_session,
-            agent_id=execution.agent_id,
-            tenant_key="test_tenant_007"
+            session=db_session, agent_id=execution.agent_id, tenant_key="test_tenant_007"
         )
 
         # Refresh to get updated values
         await db_session.refresh(execution)
 
         # Should either stay at 0 or raise an error, not go negative
-        assert execution.messages_waiting_count >= 0, \
-            "Waiting count should never be negative"
-        assert execution.messages_read_count == 1, \
-            "Read count should still increment"
+        assert execution.messages_waiting_count >= 0, "Waiting count should never be negative"
+        assert execution.messages_read_count == 1, "Read count should still increment"

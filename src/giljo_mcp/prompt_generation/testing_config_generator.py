@@ -10,7 +10,9 @@ Handover 0271: Testing Configuration Context Integration
 import logging
 from typing import Any
 
+
 logger = logging.getLogger(__name__)
+
 
 class TestingConfigGenerator:
     """Generate testing configuration context based on priority and agent type."""
@@ -228,6 +230,7 @@ Apply TDD approach: Write tests first, then implement code.
             return cls.generate_context(testing_config, priority=2)
         # Summary for others (architect, documenter, etc.)
         return cls.generate_context(testing_config, priority=3)
+
 
 class TestingConfigValidator:
     """Validate testing configuration structure."""

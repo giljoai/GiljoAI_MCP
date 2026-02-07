@@ -17,7 +17,6 @@ Priority: P2 - MEDIUM
 """
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project, User
@@ -38,12 +37,7 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
     tenant_key = "test_tenant"
 
     # Create product
-    product = Product(
-        id="prod-001",
-        name="Test Product",
-        tenant_key=tenant_key,
-        config_data={}
-    )
+    product = Product(id="prod-001", name="Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user with field priority config
@@ -54,8 +48,8 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
         field_priority_config={
             "agent_templates": 2,  # High Priority
             "tech_stack.languages": 1,
-            "codebase_summary": 2
-        }
+            "codebase_summary": 2,
+        },
     )
     db_session.add(user)
 
@@ -67,7 +61,7 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
         tenant_key=tenant_key,
         description="Test project description",
         mission="Test project mission",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project)
 
@@ -80,8 +74,8 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
             "meta_data": {
                 "capabilities": ["Python", "FastAPI", "SQLAlchemy"],
                 "expertise": ["API design", "database schema"],
-                "typical_tasks": ["Implement features", "write service methods"]
-            }
+                "typical_tasks": ["Implement features", "write service methods"],
+            },
         },
         {
             "name": "tester",
@@ -90,8 +84,8 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
             "meta_data": {
                 "capabilities": ["pytest", "integration testing"],
                 "expertise": ["Test suite design", "coverage analysis"],
-                "typical_tasks": ["Write unit tests", "create integration tests"]
-            }
+                "typical_tasks": ["Write unit tests", "create integration tests"],
+            },
         },
         {
             "name": "documenter",
@@ -100,9 +94,9 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
             "meta_data": {
                 "capabilities": ["Markdown", "technical writing"],
                 "expertise": ["User guides", "API documentation"],
-                "typical_tasks": ["Write docs", "create tutorials"]
-            }
-        }
+                "typical_tasks": ["Write docs", "create tutorials"],
+            },
+        },
     ]
 
     for template_data in templates_data:
@@ -114,7 +108,7 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
             category="role",
             description=template_data["description"],
             system_instructions=f"System instructions for {template_data['name']}",
-            meta_data=template_data["meta_data"]
+            meta_data=template_data["meta_data"],
         )
         db_session.add(template)
 
@@ -123,9 +117,7 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
     # ACT
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     result = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     thin_prompt = result["thin_prompt"]
 
@@ -167,21 +159,11 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
     tenant_key = "test_tenant_priority"
 
     # Create product
-    product = Product(
-        id="prod-priority",
-        name="Priority Test Product",
-        tenant_key=tenant_key,
-        config_data={}
-    )
+    product = Product(id="prod-priority", name="Priority Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user (will update field_priority_config for each test case)
-    user = User(
-        id="user-priority",
-        username="priorityuser",
-        tenant_key=tenant_key,
-        field_priority_config={}
-    )
+    user = User(id="user-priority", username="priorityuser", tenant_key=tenant_key, field_priority_config={})
     db_session.add(user)
 
     # Create project
@@ -192,7 +174,7 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
         tenant_key=tenant_key,
         description="Priority test description",
         mission="Priority test mission",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project)
 
@@ -208,8 +190,8 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
         meta_data={
             "capabilities": ["Python", "FastAPI"],
             "expertise": ["API design", "database schema"],
-            "typical_tasks": ["Implement features", "write service methods"]
-        }
+            "typical_tasks": ["Implement features", "write service methods"],
+        },
     )
     db_session.add(template)
     await db_session.commit()
@@ -221,69 +203,63 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
     await db_session.commit()
 
     result_p1 = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_p1 = result_p1["thin_prompt"]
 
     # Priority 1 should include ALL details
-    assert "**Capabilities**:" in context_p1 or "Capabilities:" in context_p1, \
-        "Priority 1 should include capabilities"
-    assert "**Expertise**:" in context_p1 or "Expertise:" in context_p1, \
-        "Priority 1 should include expertise"
-    assert "**Typical Tasks**:" in context_p1 or "Typical Tasks:" in context_p1, \
+    assert "**Capabilities**:" in context_p1 or "Capabilities:" in context_p1, "Priority 1 should include capabilities"
+    assert "**Expertise**:" in context_p1 or "Expertise:" in context_p1, "Priority 1 should include expertise"
+    assert "**Typical Tasks**:" in context_p1 or "Typical Tasks:" in context_p1, (
         "Priority 1 should include typical tasks"
+    )
 
     # TEST CASE 2: Priority 2 (Summary - Capabilities Only)
     user.field_priority_config = {"agent_templates": 2}
     await db_session.commit()
 
     result_p2 = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_p2 = result_p2["thin_prompt"]
 
     # Priority 2 should include capabilities but NOT expertise or typical tasks
-    assert "**Capabilities**:" in context_p2 or "Capabilities:" in context_p2, \
-        "Priority 2 should include capabilities"
-    assert "**Expertise**:" not in context_p2 and "Expertise:" not in context_p2, \
+    assert "**Capabilities**:" in context_p2 or "Capabilities:" in context_p2, "Priority 2 should include capabilities"
+    assert "**Expertise**:" not in context_p2 and "Expertise:" not in context_p2, (
         "Priority 2 should NOT include expertise"
-    assert "**Typical Tasks**:" not in context_p2 and "Typical Tasks:" not in context_p2, \
+    )
+    assert "**Typical Tasks**:" not in context_p2 and "Typical Tasks:" not in context_p2, (
         "Priority 2 should NOT include typical tasks"
+    )
 
     # TEST CASE 3: Priority 3 (Names and Roles Only)
     user.field_priority_config = {"agent_templates": 3}
     await db_session.commit()
 
     result_p3 = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_p3 = result_p3["thin_prompt"]
 
     # Priority 3 should show agent name/role but NO detailed metadata
     assert "implementer" in context_p3.lower(), "Priority 3 should include agent name"
-    assert "**Capabilities**:" not in context_p3 and "Capabilities:" not in context_p3, \
+    assert "**Capabilities**:" not in context_p3 and "Capabilities:" not in context_p3, (
         "Priority 3 should NOT include capabilities"
+    )
 
     # TEST CASE 4: Unassigned (Excluded)
     user.field_priority_config = {"agent_templates": None}
     await db_session.commit()
 
     result_unassigned = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_unassigned = result_unassigned["thin_prompt"]
 
     # Unassigned priority should completely exclude the section
-    assert "## Available Agents" not in context_unassigned, \
+    assert "## Available Agents" not in context_unassigned, (
         "Unassigned priority should exclude agent templates section entirely"
+    )
 
 
 @pytest.mark.asyncio
@@ -300,21 +276,11 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
     tenant_key = "test_tenant_tokens"
 
     # Create product
-    product = Product(
-        id="prod-tokens",
-        name="Token Test Product",
-        tenant_key=tenant_key,
-        config_data={}
-    )
+    product = Product(id="prod-tokens", name="Token Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user
-    user = User(
-        id="user-tokens",
-        username="tokenuser",
-        tenant_key=tenant_key,
-        field_priority_config={}
-    )
+    user = User(id="user-tokens", username="tokenuser", tenant_key=tenant_key, field_priority_config={})
     db_session.add(user)
 
     # Create project
@@ -325,7 +291,7 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Token test description",
         mission="Token test mission",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project)
 
@@ -341,8 +307,8 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
         meta_data={
             "capabilities": ["Python", "FastAPI", "SQLAlchemy", "PostgreSQL"],
             "expertise": ["API design", "database schema", "service layer architecture"],
-            "typical_tasks": ["Implement features", "write service methods", "create endpoints"]
-        }
+            "typical_tasks": ["Implement features", "write service methods", "create endpoints"],
+        },
     )
     db_session.add(template)
     await db_session.commit()
@@ -354,9 +320,7 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
     await db_session.commit()
 
     result_with_agents = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_with_agents = result_with_agents["thin_prompt"]
     tokens_with = result_with_agents["estimated_prompt_tokens"]
@@ -366,30 +330,30 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
     await db_session.commit()
 
     result_without_agents = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
     context_without_agents = result_without_agents["thin_prompt"]
     tokens_without = result_without_agents["estimated_prompt_tokens"]
 
     # ASSERT
     # Context with agents should have more tokens
-    assert tokens_with > tokens_without, \
+    assert tokens_with > tokens_without, (
         f"Context with agents ({tokens_with} tokens) should exceed context without agents ({tokens_without} tokens)"
+    )
 
     # Difference should be meaningful (at least 50 tokens for full detail agent template)
     token_difference = tokens_with - tokens_without
-    assert token_difference >= 50, \
+    assert token_difference >= 50, (
         f"Agent template should add at least 50 tokens (actual difference: {token_difference} tokens)"
+    )
 
     # Verify agent section is present in with-agents context
-    assert "## Available Agents" in context_with_agents, \
-        "Context with agents should contain agent section"
+    assert "## Available Agents" in context_with_agents, "Context with agents should contain agent section"
 
     # Verify agent section is absent in without-agents context
-    assert "## Available Agents" not in context_without_agents, \
+    assert "## Available Agents" not in context_without_agents, (
         "Context without agents should not contain agent section"
+    )
 
 
 @pytest.mark.asyncio
@@ -404,19 +368,11 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
     # ARRANGE
     # Tenant A setup
     tenant_a_key = "tenant_a"
-    product_a = Product(
-        id="prod-a",
-        name="Tenant A Product",
-        tenant_key=tenant_a_key,
-        config_data={}
-    )
+    product_a = Product(id="prod-a", name="Tenant A Product", tenant_key=tenant_a_key, config_data={})
     db_session.add(product_a)
 
     user_a = User(
-        id="user-a",
-        username="tenant_a_user",
-        tenant_key=tenant_a_key,
-        field_priority_config={"agent_templates": 2}
+        id="user-a", username="tenant_a_user", tenant_key=tenant_a_key, field_priority_config={"agent_templates": 2}
     )
     db_session.add(user_a)
 
@@ -427,7 +383,7 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         tenant_key=tenant_a_key,
         description="Tenant A description",
         mission="Tenant A mission",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project_a)
 
@@ -440,18 +396,13 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         category="role",
         description="Tenant A exclusive agent",
         system_instructions="Tenant A system instructions",
-        meta_data={"capabilities": ["Tenant A Skill"]}
+        meta_data={"capabilities": ["Tenant A Skill"]},
     )
     db_session.add(template_a)
 
     # Tenant B setup
     tenant_b_key = "tenant_b"
-    product_b = Product(
-        id="prod-b",
-        name="Tenant B Product",
-        tenant_key=tenant_b_key,
-        config_data={}
-    )
+    product_b = Product(id="prod-b", name="Tenant B Product", tenant_key=tenant_b_key, config_data={})
     db_session.add(product_b)
 
     # Tenant B agent template (should NOT appear in Tenant A's context)
@@ -463,7 +414,7 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         category="role",
         description="Tenant B exclusive agent",
         system_instructions="Tenant B system instructions",
-        meta_data={"capabilities": ["Tenant B Skill"]}
+        meta_data={"capabilities": ["Tenant B Skill"]},
     )
     db_session.add(template_b)
 
@@ -472,22 +423,21 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
     # ACT - Generate context for Tenant A
     generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
     result_a = await generator_a.generate(
-        project_id=project_a.id,
-        user_id=user_a.id,
-        field_priorities=user_a.field_priority_config
+        project_id=project_a.id, user_id=user_a.id, field_priorities=user_a.field_priority_config
     )
     context_a = result_a["thin_prompt"]
 
     # ASSERT
     # Tenant A's agent should be present
-    assert "tenant_a_agent" in context_a.lower() or "Tenant A Specialist" in context_a, \
+    assert "tenant_a_agent" in context_a.lower() or "Tenant A Specialist" in context_a, (
         "Tenant A's agent template should appear in Tenant A's context"
+    )
 
     # Tenant B's agent should NOT be present (multi-tenant isolation)
-    assert "tenant_b_agent" not in context_a.lower(), \
+    assert "tenant_b_agent" not in context_a.lower(), (
         "Tenant B's agent should NOT appear in Tenant A's context (tenant isolation violated)"
-    assert "Tenant B Specialist" not in context_a, \
-        "Tenant B's agent role should NOT appear in Tenant A's context"
+    )
+    assert "Tenant B Specialist" not in context_a, "Tenant B's agent role should NOT appear in Tenant A's context"
 
 
 @pytest.mark.asyncio
@@ -504,12 +454,7 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
     tenant_key = "test_tenant_default"
 
     # Create product
-    product = Product(
-        id="prod-default",
-        name="Default Priority Product",
-        tenant_key=tenant_key,
-        config_data={}
-    )
+    product = Product(id="prod-default", name="Default Priority Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user with NO field_priority_config (should use defaults)
@@ -517,7 +462,7 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         id="user-default",
         username="defaultuser",
         tenant_key=tenant_key,
-        field_priority_config=None  # No custom config
+        field_priority_config=None,  # No custom config
     )
     db_session.add(user)
 
@@ -529,7 +474,7 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Default priority test description",
         mission="Default priority test mission",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project)
 
@@ -545,8 +490,8 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         meta_data={
             "capabilities": ["Python", "FastAPI"],
             "expertise": ["API design", "database schema"],
-            "typical_tasks": ["Implement features", "write service methods"]
-        }
+            "typical_tasks": ["Implement features", "write service methods"],
+        },
     )
     db_session.add(template)
     await db_session.commit()
@@ -556,38 +501,40 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
     result = await generator.generate(
         project_id=project.id,
         user_id=user.id,
-        field_priorities=None  # No custom priorities - should use defaults
+        field_priorities=None,  # No custom priorities - should use defaults
     )
     context = result["thin_prompt"]
 
     # ASSERT
     # Agent templates should be included (not excluded)
-    assert "## Available Agents" in context, \
-        "Agent templates should be included by default (not excluded)"
+    assert "## Available Agents" in context, "Agent templates should be included by default (not excluded)"
 
     # Default is Priority 2 (summary) - should include role and capabilities
-    assert "implementer" in context.lower() or "Backend implementation specialist" in context, \
+    assert "implementer" in context.lower() or "Backend implementation specialist" in context, (
         "Default priority should show agent name/role"
+    )
 
     # Priority 2 should include capabilities
-    assert "**Capabilities**:" in context or "Capabilities:" in context or \
-           "Python" in context or "FastAPI" in context, \
-        "Default Priority 2 should include capabilities"
+    assert (
+        "**Capabilities**:" in context or "Capabilities:" in context or "Python" in context or "FastAPI" in context
+    ), "Default Priority 2 should include capabilities"
 
     # Priority 2 should NOT include expertise or typical tasks (full detail)
-    assert "**Expertise**:" not in context and "Expertise:" not in context, \
+    assert "**Expertise**:" not in context and "Expertise:" not in context, (
         "Default Priority 2 should NOT include expertise (full detail)"
-    assert "**Typical Tasks**:" not in context and "Typical Tasks:" not in context, \
+    )
+    assert "**Typical Tasks**:" not in context and "Typical Tasks:" not in context, (
         "Default Priority 2 should NOT include typical tasks (full detail)"
+    )
 
 
 @pytest.mark.asyncio
 async def test_project_description_not_notes_in_context_string(db_session: AsyncSession):
     """
     BEHAVIOR: Thin prompt generator should use project.description not project.notes
-    
+
     REGRESSION TEST for Bug #1: AttributeError 'Project' object has no attribute 'notes'
-    
+
     GIVEN: A project with a description field
     WHEN: Generating orchestrator context
     THEN: Context string includes project description (NOT project.notes which doesn't exist)
@@ -595,25 +542,15 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
     """
     # ARRANGE
     tenant_key = "test_tenant_notes_bug"
-    
+
     # Create product
-    product = Product(
-        id="prod-notes-bug",
-        name="Notes Bug Test Product",
-        tenant_key=tenant_key,
-        config_data={}
-    )
+    product = Product(id="prod-notes-bug", name="Notes Bug Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
-    
+
     # Create user
-    user = User(
-        id="user-notes-bug",
-        username="notesbuguser",
-        tenant_key=tenant_key,
-        field_priority_config={}
-    )
+    user = User(id="user-notes-bug", username="notesbuguser", tenant_key=tenant_key, field_priority_config={})
     db_session.add(user)
-    
+
     # Create project with description
     project_description = "This is the project description field that should appear in context"
     project = Project(
@@ -623,27 +560,24 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
         tenant_key=tenant_key,
         description=project_description,
         mission="Test mission for notes bug",
-        context_budget=100000
+        context_budget=100000,
     )
     db_session.add(project)
     await db_session.commit()
-    
+
     # ACT - Generate context (should NOT raise AttributeError on project.notes)
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
-    result = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities={}
-    )
+    result = await generator.generate(project_id=project.id, user_id=user.id, field_priorities={})
     thin_prompt = result["thin_prompt"]
-    
+
     # ASSERT
     # Should not raise AttributeError (test passes if we get here)
     assert thin_prompt is not None, "Thin prompt should be generated without errors"
-    
+
     # Project description should appear in context
-    assert project_description in thin_prompt or "project description" in thin_prompt.lower(), \
+    assert project_description in thin_prompt or "project description" in thin_prompt.lower(), (
         "Project description should appear in context string"
-    
+    )
+
     # Should contain PROJECT CONTEXT section
     assert "PROJECT CONTEXT" in thin_prompt, "Context should contain PROJECT CONTEXT section"

@@ -10,12 +10,13 @@ TDD Phase: RED (Tests written BEFORE optimization complete)
 Expected: Tests MAY FAIL initially if token reduction not achieved
 """
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, Product, User, AgentTemplate
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest
+import pytest_asyncio
+
+from src.giljo_mcp.models import AgentTemplate, Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -27,7 +28,7 @@ async def test_user(db_session):
         email=f"token_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         role="developer",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db_session.add(user)
     await db_session.commit()
@@ -42,7 +43,7 @@ async def test_product(db_session, test_user):
         name=f"Token Test Product {uuid4().hex[:8]}",
         description="Token reduction test product",
         tenant_key=test_user.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -60,7 +61,7 @@ async def test_project(db_session, test_user, test_product):
         product_id=test_product.id,
         status="active",
         mission="Test token reduction",
-        meta_data={"execution_mode": "claude-code"}
+        meta_data={"execution_mode": "claude-code"},
     )
     db_session.add(project)
     await db_session.commit()
@@ -79,7 +80,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.1.0",
-            system_instructions="Implementation template"
+            system_instructions="Implementation template",
         ),
         AgentTemplate(
             name="tester",
@@ -88,7 +89,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Testing template"
+            system_instructions="Testing template",
         ),
         AgentTemplate(
             name="reviewer",
@@ -97,7 +98,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Review template"
+            system_instructions="Review template",
         ),
         AgentTemplate(
             name="documenter",
@@ -106,7 +107,7 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Documentation template"
+            system_instructions="Documentation template",
         ),
         AgentTemplate(
             name="architect",
@@ -115,8 +116,8 @@ async def populate_agent_templates(db_session, test_user):
             tenant_key=test_user.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Architecture template"
-        )
+            system_instructions="Architecture template",
+        ),
     ]
 
     for template in templates:
@@ -130,9 +131,7 @@ async def populate_agent_templates(db_session, test_user):
 class TestTokenReductionInRealPrompts:
     """Tests for token reduction in real orchestrator prompts."""
 
-    async def test_staging_prompt_token_count(
-        self, db_session, test_user, test_project, populate_agent_templates
-    ):
+    async def test_staging_prompt_token_count(self, db_session, test_user, test_project, populate_agent_templates):
         """
         Test staging prompt token count.
         Target: <1200 tokens
@@ -145,40 +144,34 @@ class TestTokenReductionInRealPrompts:
             agent_display_name="orchestrator",
             status="waiting",
             mission="Test staging prompt",
-            job_metadata={
-                "user_id": test_user.id,
-                "execution_mode": "claude-code"
-            }
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=test_user.tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
         # Generate staging prompt
-        from unittest.mock import patch, MagicMock
-        with patch.object(generator, '_fetch_project', return_value=test_project), \
-             patch.object(generator, '_fetch_product', return_value=MagicMock(id=test_project.product_id, name="Test")):
+        from unittest.mock import MagicMock, patch
 
+        with (
+            patch.object(generator, "_fetch_project", return_value=test_project),
+            patch.object(generator, "_fetch_product", return_value=MagicMock(id=test_project.product_id, name="Test")),
+        ):
             prompt = await generator.generate_staging_prompt(
-                orchestrator_id=str(orchestrator.job_id),
-                project_id=str(test_project.id)
+                orchestrator_id=str(orchestrator.job_id), project_id=str(test_project.id)
             )
 
         # Token estimation (chars ÷ 4)
         token_count = len(prompt) // 4
 
-        assert token_count < 1200, \
-            f"Staging prompt token count ({token_count}) exceeds budget (1200)"
+        assert token_count < 1200, f"Staging prompt token count ({token_count}) exceeds budget (1200)"
 
         is_ideal = 800 <= token_count <= 1000
 
-        print(f"\n✓ Staging prompt token count:")
+        print("\n✓ Staging prompt token count:")
         print(f"  - Token count: ~{token_count} tokens")
-        print(f"  - Budget: <1200 tokens")
+        print("  - Budget: <1200 tokens")
         print(f"  - Ideal range (800-1000): {is_ideal}")
         print(f"  - Status: {'OPTIMAL' if is_ideal else 'ACCEPTABLE'}")
 
@@ -204,23 +197,16 @@ class TestTokenReductionInRealPrompts:
                 "field_priorities": {
                     "product_core": 1,
                     "agent_templates": 2,  # IMPORTANT
-                    "project_description": 1
-                }
-            }
+                    "project_description": 1,
+                },
+            },
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=test_user.tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
-        result = await generator.generate(
-            project_id=str(test_project.id),
-            user_id=test_user.id,
-            tool="claude-code"
-        )
+        result = await generator.generate(project_id=str(test_project.id), user_id=test_user.id, tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Token estimation
@@ -231,22 +217,19 @@ class TestTokenReductionInRealPrompts:
         reduction_tokens = baseline - token_count
         reduction_percent = (reduction_tokens / baseline) * 100
 
-        assert token_count < 600, \
-            f"Token count ({token_count}) exceeds acceptance threshold (600)"
+        assert token_count < 600, f"Token count ({token_count}) exceeds acceptance threshold (600)"
 
         # Target is 25% reduction (594 → 450)
         is_optimal = token_count <= 473  # 450 + 5% tolerance
 
-        print(f"\n✓ Execution prompt token reduction:")
+        print("\n✓ Execution prompt token reduction:")
         print(f"  - Baseline (old): ~{baseline} tokens")
         print(f"  - Current: ~{token_count} tokens")
         print(f"  - Reduction: {reduction_tokens} tokens ({reduction_percent:.1f}%)")
-        print(f"  - Target: 25% reduction (594 → 450)")
+        print("  - Target: 25% reduction (594 → 450)")
         print(f"  - Status: {'OPTIMAL (25%+ reduction)' if reduction_percent >= 25 else 'ACCEPTABLE'}")
 
-    async def test_no_embedded_templates_in_prompt(
-        self, db_session, test_user, test_project, populate_agent_templates
-    ):
+    async def test_no_embedded_templates_in_prompt(self, db_session, test_user, test_project, populate_agent_templates):
         """
         Test that prompts no longer embed agent templates inline.
         This is the source of token reduction.
@@ -258,24 +241,14 @@ class TestTokenReductionInRealPrompts:
             agent_display_name="orchestrator",
             status="active",
             mission="Test no embedded templates",
-            job_metadata={
-                "user_id": test_user.id,
-                "execution_mode": "claude-code"
-            }
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=test_user.tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
-        result = await generator.generate(
-            project_id=str(test_project.id),
-            user_id=test_user.id,
-            tool="claude-code"
-        )
+        result = await generator.generate(project_id=str(test_project.id), user_id=test_user.id, tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Should NOT contain embedded template sections
@@ -284,22 +257,22 @@ class TestTokenReductionInRealPrompts:
             "### Tester",
             "### Reviewer",
             "**Capabilities:**",  # Was in embedded templates
-            "**Responsibilities:**"  # Was in embedded templates
+            "**Responsibilities:**",  # Was in embedded templates
         ]
 
         found_embedded = [indicator for indicator in embedded_indicators if indicator in prompt]
 
-        assert len(found_embedded) == 0, \
-            f"Prompt contains embedded template indicators: {found_embedded}"
+        assert len(found_embedded) == 0, f"Prompt contains embedded template indicators: {found_embedded}"
 
         # Should reference get_available_agents() instead
-        assert "get_available_agents" in prompt.lower(), \
+        assert "get_available_agents" in prompt.lower(), (
             "Prompt must reference get_available_agents() for dynamic discovery"
+        )
 
-        print(f"\n✓ No embedded templates validation:")
+        print("\n✓ No embedded templates validation:")
         print(f"  - Embedded template indicators found: {len(found_embedded)}")
-        print(f"  - References get_available_agents(): ✓")
-        print(f"  - Token reduction achieved via dynamic discovery: ✓")
+        print("  - References get_available_agents(): ✓")
+        print("  - Token reduction achieved via dynamic discovery: ✓")
 
     async def test_token_reduction_consistent_across_modes(
         self, db_session, test_user, test_project, populate_agent_templates
@@ -322,38 +295,28 @@ class TestTokenReductionInRealPrompts:
                 agent_display_name="orchestrator",
                 status="active",
                 mission=f"Test {mode}",
-                job_metadata={
-                    "user_id": test_user.id,
-                    "execution_mode": mode
-                }
+                job_metadata={"user_id": test_user.id, "execution_mode": mode},
             )
             db_session.add(orchestrator)
             await db_session.commit()
 
-            generator = ThinClientPromptGenerator(
-                db=db_session,
-                tenant_key=test_user.tenant_key
-            )
+            generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
-            result = await generator.generate(
-                project_id=str(test_project.id),
-                user_id=test_user.id,
-                tool=mode)
+            result = await generator.generate(project_id=str(test_project.id), user_id=test_user.id, tool=mode)
             prompt = result["thin_prompt"]
 
             token_counts[mode] = len(prompt) // 4
 
         # Both modes should be under 600 tokens
         for mode, count in token_counts.items():
-            assert count < 600, \
-                f"{mode} mode token count ({count}) exceeds threshold (600)"
+            assert count < 600, f"{mode} mode token count ({count}) exceeds threshold (600)"
 
         # Token counts should be similar (within 20% of each other)
         max_count = max(token_counts.values())
         min_count = min(token_counts.values())
         variance = ((max_count - min_count) / min_count) * 100
 
-        print(f"\n✓ Token reduction consistency across modes:")
+        print("\n✓ Token reduction consistency across modes:")
         for mode, count in token_counts.items():
             reduction_pct = ((880 - count) / 880) * 100
             print(f"  - {mode}: ~{count} tokens ({reduction_pct:.1f}% reduction)")
@@ -378,7 +341,7 @@ class TestTokenReductionInRealPrompts:
                 tenant_key=test_user.tenant_key,
                 is_active=True,
                 version="1.0.0",
-                system_instructions="Scale test"
+                system_instructions="Scale test",
             )
             db_session.add(agent)
 
@@ -391,35 +354,24 @@ class TestTokenReductionInRealPrompts:
             agent_display_name="orchestrator",
             status="active",
             mission="Scale test",
-            job_metadata={
-                "user_id": test_user.id,
-                "execution_mode": "claude-code"
-            }
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=test_user.tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user.tenant_key)
 
-        result = await generator.generate(
-            project_id=str(test_project.id),
-            user_id=test_user.id,
-            tool="claude-code"
-        )
+        result = await generator.generate(project_id=str(test_project.id), user_id=test_user.id, tool="claude-code")
         prompt = result["thin_prompt"]
 
         token_count = len(prompt) // 4
 
         # Token count should still be under 600 despite 15 agents
-        assert token_count < 600, \
-            f"Token count ({token_count}) grew with agent count (should stay constant)"
+        assert token_count < 600, f"Token count ({token_count}) grew with agent count (should stay constant)"
 
-        print(f"\n✓ Token reduction scales with agent count:")
-        print(f"  - Agent count: 15 agents")
+        print("\n✓ Token reduction scales with agent count:")
+        print("  - Agent count: 15 agents")
         print(f"  - Token count: ~{token_count} tokens")
-        print(f"  - Still under budget: ✓")
-        print(f"  - Old approach would be: ~1200+ tokens (15 agents × 80 tokens)")
-        print(f"  - Scaling improvement: ~50-75% reduction")
+        print("  - Still under budget: ✓")
+        print("  - Old approach would be: ~1200+ tokens (15 agents × 80 tokens)")
+        print("  - Scaling improvement: ~50-75% reduction")

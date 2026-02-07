@@ -20,13 +20,12 @@ Expected Failures:
 """
 
 import pytest
-from datetime import datetime, timezone
+from sqlalchemy import inspect, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select, inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import models - these tests will FAIL until GREEN phase
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 class TestAgentDisplayNameModelAttribute:
@@ -47,7 +46,7 @@ class TestAgentDisplayNameModelAttribute:
             project_id="project-456",
             mission="Test migration",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -81,7 +80,7 @@ class TestAgentDisplayNameModelAttribute:
             project_id="project-456",
             mission="Test migration",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -114,7 +113,7 @@ class TestAgentDisplayNameModelAttribute:
             project_id="project-456",
             mission="Test agent_name preservation",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -155,7 +154,7 @@ class TestAgentDisplayNameDatabaseColumn:
             project_id="project-456",
             mission="Test column name",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -165,7 +164,8 @@ class TestAgentDisplayNameDatabaseColumn:
             agent_id="agent-column-001",
             job_id="job-column-001",
             tenant_key="tenant-abc",
-            agent_display_name="TDD Implementor",            status="waiting"
+            agent_display_name="TDD Implementor",
+            status="waiting",
         )
         db_session.add(execution)
         await db_session.commit()
@@ -192,7 +192,7 @@ class TestAgentDisplayNameDatabaseColumn:
             project_id="project-456",
             mission="Test NOT NULL",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -226,7 +226,7 @@ class TestAgentDisplayNameDatabaseColumn:
             project_id="project-456",
             mission="Test max length",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -262,7 +262,7 @@ class TestAgentDisplayNameQueryOperations:
             project_id="project-456",
             mission="Test filtering",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -272,13 +272,15 @@ class TestAgentDisplayNameQueryOperations:
             agent_id="agent-filter-001",
             job_id="job-filter-001",
             tenant_key="tenant-abc",
-            agent_display_name="Orchestrator",            status="complete"
+            agent_display_name="Orchestrator",
+            status="complete",
         )
         exec2 = AgentExecution(
             agent_id="agent-filter-002",
             job_id="job-filter-001",
             tenant_key="tenant-abc",
-            agent_display_name="Implementor",            status="working"
+            agent_display_name="Implementor",
+            status="working",
         )
         db_session.add_all([exec1, exec2])
         await db_session.commit()
@@ -307,7 +309,7 @@ class TestAgentDisplayNameQueryOperations:
             project_id="project-456",
             mission="Test ordering",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -317,13 +319,15 @@ class TestAgentDisplayNameQueryOperations:
             agent_id="agent-order-b",
             job_id="job-order-001",
             tenant_key="tenant-abc",
-            agent_display_name="Beta Agent",            status="waiting"
+            agent_display_name="Beta Agent",
+            status="waiting",
         )
         exec_a = AgentExecution(
             agent_id="agent-order-a",
             job_id="job-order-001",
             tenant_key="tenant-abc",
-            agent_display_name="Alpha Agent",            status="waiting"
+            agent_display_name="Alpha Agent",
+            status="waiting",
         )
         db_session.add_all([exec_b, exec_a])
         await db_session.commit()
@@ -361,7 +365,7 @@ class TestAgentDisplayNameReprMethod:
             project_id="project-456",
             mission="Test repr",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -371,7 +375,8 @@ class TestAgentDisplayNameReprMethod:
             agent_id="agent-repr-001",
             job_id="job-repr-001",
             tenant_key="tenant-abc",
-            agent_display_name="Documentation Manager",            status="waiting"
+            agent_display_name="Documentation Manager",
+            status="waiting",
         )
         db_session.add(execution)
         await db_session.commit()

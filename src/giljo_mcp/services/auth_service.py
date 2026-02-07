@@ -43,7 +43,9 @@ from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.config import SetupState
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
+
 
 class AuthService:
     """
@@ -251,7 +253,9 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to check setup state: {e}")
-            raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}) from e
+            raise BaseGiljoException(
+                message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}
+            ) from e
 
     async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> dict[str, Any | None]:
         """Implementation that uses provided session"""
@@ -750,7 +754,9 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to create first admin: {e}")
-            raise BaseGiljoException(message=f"Failed to create first admin: {e!s}", context={"username": username}) from e
+            raise BaseGiljoException(
+                message=f"Failed to create first admin: {e!s}", context={"username": username}
+            ) from e
 
     async def _create_first_admin_impl(
         self,

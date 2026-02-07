@@ -210,8 +210,9 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": true}
         """
-        from api.endpoints.setup import check_first_run
         from fastapi import Request
+
+        from api.endpoints.setup import check_first_run
 
         # Create mock request with db_manager in app state
         mock_app = MagicMock()
@@ -241,8 +242,9 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": false}
         """
-        from api.endpoints.setup import check_first_run
         from fastapi import Request
+
+        from api.endpoints.setup import check_first_run
 
         # Create mock request with db_manager in app state
         mock_app = MagicMock()
@@ -272,8 +274,9 @@ class TestFirstRunAPIEndpoint:
 
         Expected: {"first_run": false} (safe default on error)
         """
-        from api.endpoints.setup import check_first_run
         from fastapi import Request
+
+        from api.endpoints.setup import check_first_run
 
         # Create mock request that raises an error
         mock_app = MagicMock()
@@ -305,8 +308,9 @@ class TestFirstRunAPIEndpoint:
 
         Expected: Uses cached value instead of querying database
         """
-        from api.endpoints.setup import check_first_run
         from fastapi import Request
+
+        from api.endpoints.setup import check_first_run
 
         # Create mock request with cached first_run state
         mock_app = MagicMock()
@@ -327,8 +331,9 @@ class TestFirstRunAPIEndpoint:
 
         Expected: Queries database when app.state.first_run is None
         """
-        from api.endpoints.setup import check_first_run
         from fastapi import Request
+
+        from api.endpoints.setup import check_first_run
 
         # Create mock request without cached first_run state
         mock_app = MagicMock()

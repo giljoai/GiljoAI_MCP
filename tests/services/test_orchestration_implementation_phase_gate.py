@@ -8,14 +8,15 @@ Tests cover:
 - acknowledge_job succeeds when implementation_launched_at is set
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+import pytest
+
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest.fixture
@@ -46,10 +47,7 @@ def mock_tenant_manager():
 def orchestration_service(mock_db_manager, mock_tenant_manager):
     """Create OrchestrationService with mocked dependencies."""
     db_manager, _ = mock_db_manager
-    service = OrchestrationService(
-        db_manager=db_manager,
-        tenant_manager=mock_tenant_manager
-    )
+    service = OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
     return service
 
 
@@ -107,7 +105,8 @@ def mock_agent_job_and_execution():
         tenant_key="tenant-test",
         agent_display_name="implementer",
         agent_name="implementer-1",
-        status="waiting",        mission_acknowledged_at=None,
+        status="waiting",
+        mission_acknowledged_at=None,
         started_at=None,
     )
 
@@ -141,10 +140,7 @@ class TestGetAgentMissionImplementationGate:
         session.execute = AsyncMock(side_effect=[job_result, exec_result])
 
         # Call get_agent_mission
-        response = await orchestration_service.get_agent_mission(
-            job_id=job.job_id,
-            tenant_key="tenant-test"
-        )
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify blocked response
         assert response.get("blocked") is True, "Mission should be blocked when implementation not launched"
@@ -191,10 +187,7 @@ class TestGetAgentMissionImplementationGate:
             MockHttpxClient.return_value = mock_client
 
             # Call get_agent_mission
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify successful response (not blocked)
         assert response.get("blocked") is not True, "Mission should not be blocked when implementation launched"
@@ -231,10 +224,7 @@ class TestAcknowledgeJobImplementationGate:
         session.execute = AsyncMock(side_effect=[exec_result, job_result])
 
         # Call acknowledge_job
-        response = await orchestration_service.acknowledge_job(
-            job_id=job.job_id,
-            tenant_key="tenant-test"
-        )
+        response = await orchestration_service.acknowledge_job(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify blocked response
         assert response.get("success") is False, "Acknowledge should fail when implementation not launched"
@@ -276,10 +266,7 @@ class TestAcknowledgeJobImplementationGate:
             MockHttpxClient.return_value = mock_client
 
             # Call acknowledge_job
-            response = await orchestration_service.acknowledge_job(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.acknowledge_job(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify successful response (not blocked)
         assert response.get("success") is not False, "Acknowledge should succeed when implementation launched"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """
 Base repository with automatic tenant filtering.
 
@@ -15,7 +16,9 @@ from sqlalchemy.orm import Session
 
 from ..database import DatabaseManager
 
+
 T = TypeVar("T")
+
 
 class BaseRepository(Generic[T]):
     """

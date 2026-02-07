@@ -5,19 +5,19 @@ These tests verify that the orchestrator deduplication logic uses the correct
 status filter: ~status.in_(["failed", "cancelled"]) instead of status.in_(["waiting", "working"])
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 from sqlalchemy import select
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution
+
+from src.giljo_mcp.models import AgentExecution, AgentJob
 
 
 class TestOrchestratorStatusFilterFix:
     """Test that orchestrator status filter finds non-failed orchestrators"""
 
     @pytest.mark.asyncio
-    async def test_complete_orchestrator_should_be_found(
-        self, db_session, test_project
-    ):
+    async def test_complete_orchestrator_should_be_found(self, db_session, test_project):
         """
         Test that an orchestrator with "complete" status is found by the filter.
 
@@ -43,7 +43,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="complete",  # COMPLETE status
+            agent_name="orchestrator",
+            status="complete",  # COMPLETE status
             progress=100,
         )
         db_session.add(agent_execution)
@@ -85,9 +86,7 @@ class TestOrchestratorStatusFilterFix:
         assert old_found is None
 
     @pytest.mark.asyncio
-    async def test_blocked_orchestrator_should_be_found(
-        self, db_session, test_project
-    ):
+    async def test_blocked_orchestrator_should_be_found(self, db_session, test_project):
         """
         Test that an orchestrator with "blocked" status is found by the new filter.
         """
@@ -110,7 +109,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="blocked",  # BLOCKED status
+            agent_name="orchestrator",
+            status="blocked",  # BLOCKED status
             progress=50,
         )
         db_session.add(agent_execution)
@@ -135,9 +135,7 @@ class TestOrchestratorStatusFilterFix:
         assert found.status == "blocked"
 
     @pytest.mark.asyncio
-    async def test_failed_orchestrator_should_not_be_found(
-        self, db_session, test_project
-    ):
+    async def test_failed_orchestrator_should_not_be_found(self, db_session, test_project):
         """
         Test that an orchestrator with "failed" status is NOT found by the new filter.
         """
@@ -160,7 +158,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="failed",  # FAILED status
+            agent_name="orchestrator",
+            status="failed",  # FAILED status
             progress=25,
         )
         db_session.add(agent_execution)
@@ -184,9 +183,7 @@ class TestOrchestratorStatusFilterFix:
         assert found is None
 
     @pytest.mark.asyncio
-    async def test_cancelled_orchestrator_should_not_be_found(
-        self, db_session, test_project
-    ):
+    async def test_cancelled_orchestrator_should_not_be_found(self, db_session, test_project):
         """
         Test that an orchestrator with "cancelled" status is NOT found by the new filter.
         """
@@ -209,7 +206,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="cancelled",  # CANCELLED status
+            agent_name="orchestrator",
+            status="cancelled",  # CANCELLED status
             progress=10,
         )
         db_session.add(agent_execution)
@@ -233,9 +231,7 @@ class TestOrchestratorStatusFilterFix:
         assert found is None
 
     @pytest.mark.asyncio
-    async def test_waiting_and_working_still_found(
-        self, db_session, test_project
-    ):
+    async def test_waiting_and_working_still_found(self, db_session, test_project):
         """
         Test that "waiting" and "working" statuses are still found by the new filter.
         (These were the only statuses found by the old filter - we still want them)
@@ -248,7 +244,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=waiting_job_id,
             tenant_key=test_project.tenant_key,
             project_id=test_project.id,
-            mission=f"Waiting Orchestrator",
+            mission="Waiting Orchestrator",
             job_type="orchestrator",
             status="active",
         )
@@ -259,7 +255,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=waiting_job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",  # WAITING status
+            agent_name="orchestrator",
+            status="waiting",  # WAITING status
             progress=0,
         )
         db_session.add(agent_execution_waiting)
@@ -272,7 +269,7 @@ class TestOrchestratorStatusFilterFix:
             job_id=working_job_id,
             tenant_key=test_project.tenant_key,
             project_id=test_project.id,
-            mission=f"Working Orchestrator",
+            mission="Working Orchestrator",
             job_type="orchestrator",
             status="active",
         )
@@ -283,7 +280,8 @@ class TestOrchestratorStatusFilterFix:
             job_id=working_job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="working",  # WORKING status
+            agent_name="orchestrator",
+            status="working",  # WORKING status
             progress=75,
         )
         db_session.add(agent_execution_working)
@@ -300,7 +298,6 @@ class TestOrchestratorStatusFilterFix:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
             )
-            
         )
         result = await db_session.execute(stmt)
         found = result.scalars().all()

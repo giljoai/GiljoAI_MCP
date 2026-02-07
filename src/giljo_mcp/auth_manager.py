@@ -11,7 +11,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-import bcrypt
 import jwt
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Request

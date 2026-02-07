@@ -8,11 +8,11 @@ These tests use real database connections to verify:
 - WebSocket events emitted (if configured)
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.models.products import Product
 
 
 @pytest.mark.asyncio
@@ -27,17 +27,14 @@ class TestQualityStandardsIntegration:
 
         # Create product
         create_result = await service.create_product(
-            name="Test Product",
-            description="Test product for quality standards"
+            name="Test Product", description="Test product for quality standards"
         )
         assert create_result["success"] is True
         product_id = create_result["product_id"]
 
         # Update quality_standards
         update_result = await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards="80% coverage, TDD required, zero P0 bugs",
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards="80% coverage, TDD required, zero P0 bugs", tenant_key=tenant_key
         )
 
         # Verify result
@@ -64,9 +61,7 @@ class TestQualityStandardsIntegration:
         # Try to update quality_standards from tenant2 - should fail
         with pytest.raises(ValueError, match="Product .* not found"):
             await service2.update_quality_standards(
-                product_id=product_id,
-                quality_standards="Hacked standards",
-                tenant_key=tenant2_key
+                product_id=product_id, quality_standards="Hacked standards", tenant_key=tenant2_key
             )
 
         # Verify quality_standards unchanged (still None)
@@ -84,16 +79,12 @@ class TestQualityStandardsIntegration:
 
         # Set initial quality_standards
         await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards="Initial: 70% coverage",
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards="Initial: 70% coverage", tenant_key=tenant_key
         )
 
         # Update quality_standards with new value
         update_result = await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards="Updated: 90% coverage, TDD required",
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards="Updated: 90% coverage, TDD required", tenant_key=tenant_key
         )
 
         # Verify new value
@@ -112,9 +103,7 @@ class TestQualityStandardsIntegration:
         nonexistent_id = str(uuid4())
         with pytest.raises(ValueError, match="Product .* not found"):
             await service.update_quality_standards(
-                product_id=nonexistent_id,
-                quality_standards="Standards",
-                tenant_key=tenant_key
+                product_id=nonexistent_id, quality_standards="Standards", tenant_key=tenant_key
             )
 
     async def test_update_quality_standards_empty_string(self, db_manager):
@@ -127,16 +116,12 @@ class TestQualityStandardsIntegration:
         product_id = create_result["product_id"]
 
         await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards="Initial standards",
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards="Initial standards", tenant_key=tenant_key
         )
 
         # Clear quality_standards with empty string
         update_result = await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards="",
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards="", tenant_key=tenant_key
         )
 
         # Verify empty string stored
@@ -187,9 +172,7 @@ class TestQualityStandardsIntegration:
         """
 
         update_result = await service.update_quality_standards(
-            product_id=product_id,
-            quality_standards=long_standards,
-            tenant_key=tenant_key
+            product_id=product_id, quality_standards=long_standards, tenant_key=tenant_key
         )
 
         # Verify long text stored

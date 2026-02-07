@@ -9,7 +9,7 @@
     :color="color"
     v-bind="$attrs"
   >
-    <!-- 
+    <!--
       Icon handling: Vuetify v-alert automatically shows icons for typed alerts.
       We do NOT add duplicate icons here - let Vuetify handle it.
       For custom icons, use the 'icon' prop on v-alert itself.
@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <style scoped>
-/* 
+/*
   No custom styles needed - rely on Vuetify's design system.
   If application-wide alert customization is needed, add it here.
 */

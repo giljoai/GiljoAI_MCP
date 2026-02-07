@@ -10,12 +10,13 @@ Usage:
     POST /api/admin/update-dependency-graph
 """
 
-import json
 import ast
+import json
 import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 
 PROJECT_ROOT = Path(__file__).parent.parent
 GRAPH_JSON = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.json"
@@ -23,34 +24,34 @@ GRAPH_HTML = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.html"
 
 # Exclusion patterns (archive folders, libraries, etc)
 EXCLUDED_PATTERNS = [
-    '**/Archive/**',
-    '**/archive/**',
-    '**/__pycache__/**',
-    '**/node_modules/**',
-    '**/.git/**',
-    '**/venv/**',
-    '**/.pytest_cache/**',
-    '**/.vscode/**',
-    '**/.idea/**',
+    "**/Archive/**",
+    "**/archive/**",
+    "**/__pycache__/**",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/venv/**",
+    "**/.pytest_cache/**",
+    "**/.vscode/**",
+    "**/.idea/**",
 ]
 
 # Excluded file extensions (assets, type definitions)
 EXCLUDED_EXTENSIONS = {
-    '.d.ts',      # TypeScript definitions
-    '.png',       # Images
-    '.jpg',       # Images
-    '.jpeg',      # Images
-    '.svg',       # Images
-    '.gif',       # Images
-    '.ico',       # Icons
-    '.css',       # Stylesheets
-    '.scss',      # Stylesheets
-    '.sass',      # Stylesheets
-    '.less',      # Stylesheets
-    '.woff',      # Fonts
-    '.woff2',     # Fonts
-    '.ttf',       # Fonts
-    '.eot',       # Fonts
+    ".d.ts",  # TypeScript definitions
+    ".png",  # Images
+    ".jpg",  # Images
+    ".jpeg",  # Images
+    ".svg",  # Images
+    ".gif",  # Images
+    ".ico",  # Icons
+    ".css",  # Stylesheets
+    ".scss",  # Stylesheets
+    ".sass",  # Stylesheets
+    ".less",  # Stylesheets
+    ".woff",  # Fonts
+    ".woff2",  # Fonts
+    ".ttf",  # Fonts
+    ".eot",  # Fonts
 }
 
 
@@ -70,25 +71,25 @@ class DependencyGraphBuilder:
             return True
 
         # Get path string for checking
-        path_str = str(path.relative_to(self.root)).replace('\\', '/')
+        path_str = str(path.relative_to(self.root)).replace("\\", "/")
 
         # Check for common exclusions directly (more reliable than glob)
         exclusion_keywords = [
-            'node_modules',
-            'Archive',
-            'archive',
-            '__pycache__',
-            '.git',
-            'venv',
-            '.pytest_cache',
-            '.vscode',
-            '.idea',
-            'htmlcov',         # Coverage HTML reports
-            '.coverage',       # Coverage data files
-            'dist',            # Build distributions
-            'build',           # Build artifacts
-            '.eggs',           # Egg build artifacts
-            '*.egg-info',      # Package metadata
+            "node_modules",
+            "Archive",
+            "archive",
+            "__pycache__",
+            ".git",
+            "venv",
+            ".pytest_cache",
+            ".vscode",
+            ".idea",
+            "htmlcov",  # Coverage HTML reports
+            ".coverage",  # Coverage data files
+            "dist",  # Build distributions
+            "build",  # Build artifacts
+            ".eggs",  # Egg build artifacts
+            "*.egg-info",  # Package metadata
         ]
 
         for keyword in exclusion_keywords:
@@ -97,9 +98,9 @@ class DependencyGraphBuilder:
 
         # Exclude entire folders (dev tools, handovers, docs)
         exclusion_folders = [
-            'dev_tools/',
-            'handovers/',
-            'docs/',  # Documentation only, not runtime code
+            "dev_tools/",
+            "handovers/",
+            "docs/",  # Documentation only, not runtime code
         ]
 
         for folder in exclusion_folders:
@@ -107,12 +108,12 @@ class DependencyGraphBuilder:
                 return True
 
         # Exclude .md files EXCEPT runtime-loaded data
-        if path.suffix == '.md':
+        if path.suffix == ".md":
             # Keep these .md files (runtime data):
             runtime_md_patterns = [
-                'products/',          # Product vision documents
-                '.serena/memories/',  # Serena MCP memories
-                '.claude/agents/',    # Custom Claude agents
+                "products/",  # Product vision documents
+                ".serena/memories/",  # Serena MCP memories
+                ".claude/agents/",  # Custom Claude agents
             ]
 
             # Check if this .md is runtime data
@@ -130,38 +131,38 @@ class DependencyGraphBuilder:
 
     def classify_layer(self, rel_path: str) -> str:
         """Classify file into layer based on path."""
-        parts = rel_path.replace('\\', '/').split('/')
+        parts = rel_path.replace("\\", "/").split("/")
 
         # Test layer
-        if 'test' in rel_path.lower() or rel_path.startswith('tests/'):
-            return 'test'
+        if "test" in rel_path.lower() or rel_path.startswith("tests/"):
+            return "test"
 
         # Docs layer
-        if parts[0] in ['docs', 'handovers'] or rel_path.endswith('.md'):
-            return 'docs'
+        if parts[0] in ["docs", "handovers"] or rel_path.endswith(".md"):
+            return "docs"
 
         # Frontend layer
-        if parts[0] == 'frontend':
-            return 'frontend'
+        if parts[0] == "frontend":
+            return "frontend"
 
         # Backend layers
-        if parts[0] == 'api':
-            return 'api'
+        if parts[0] == "api":
+            return "api"
 
-        if parts[0] == 'src' and len(parts) > 2:
-            if 'models' in parts:
-                return 'model'
-            elif 'services' in parts:
-                return 'service'
-            elif 'config' in parts:
-                return 'config'
+        if parts[0] == "src" and len(parts) > 2:
+            if "models" in parts:
+                return "model"
+            if "services" in parts:
+                return "service"
+            if "config" in parts:
+                return "config"
 
-        return 'api'  # default
+        return "api"  # default
 
     def parse_python_imports(self, file_path: Path) -> List[str]:
         """Extract imports from Python file using AST."""
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             tree = ast.parse(content)
             imports = []
 
@@ -180,7 +181,7 @@ class DependencyGraphBuilder:
     def parse_js_imports(self, file_path: Path) -> List[str]:
         """Extract imports from JS/Vue file using regex."""
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             imports = []
 
             # Match: import X from 'path'
@@ -199,33 +200,33 @@ class DependencyGraphBuilder:
     def resolve_import_to_file(self, import_path: str, from_file: Path) -> str | None:
         """Resolve import path to actual file path in project."""
         # Handle Vue path alias (@/ -> frontend/src/)
-        if import_path.startswith('@/'):
-            resolved = import_path.replace('@/', 'frontend/src/')
+        if import_path.startswith("@/"):
+            resolved = import_path.replace("@/", "frontend/src/")
             # Try multiple extensions
-            for ext in ['.vue', '.js', '.ts', '.tsx', '']:
+            for ext in [".vue", ".js", ".ts", ".tsx", ""]:
                 candidate = self.root / f"{resolved}{ext}"
                 if candidate.exists() and candidate.is_file():
                     return str(candidate.relative_to(self.root))
             # Try as directory with index
-            for index_file in ['index.vue', 'index.js', 'index.ts']:
+            for index_file in ["index.vue", "index.js", "index.ts"]:
                 candidate = self.root / resolved / index_file
                 if candidate.exists():
                     return str(candidate.relative_to(self.root))
 
         # Handle relative imports (./ and ../)
-        elif import_path.startswith(('./', '../')):
+        elif import_path.startswith(("./", "../")):
             from_dir = from_file.parent
             # Resolve relative path
             try:
                 resolved = (from_dir / import_path).resolve()
                 if resolved.is_relative_to(self.root):
                     # Try multiple extensions
-                    for ext in ['.vue', '.js', '.ts', '.tsx', '.py', '']:
+                    for ext in [".vue", ".js", ".ts", ".tsx", ".py", ""]:
                         candidate = resolved.parent / f"{resolved.name}{ext}"
                         if candidate.exists() and candidate.is_file():
                             return str(candidate.relative_to(self.root))
                     # Try as directory with index or __init__
-                    for index_file in ['index.vue', 'index.js', 'index.ts', '__init__.py']:
+                    for index_file in ["index.vue", "index.js", "index.ts", "__init__.py"]:
                         candidate = resolved / index_file
                         if candidate.exists():
                             return str(candidate.relative_to(self.root))
@@ -233,8 +234,8 @@ class DependencyGraphBuilder:
                 pass
 
         # Handle Python absolute imports
-        elif import_path.startswith(('api.', 'src.giljo_mcp.', 'giljo_mcp.')):
-            module_path = import_path.replace('.', '/')
+        elif import_path.startswith(("api.", "src.giljo_mcp.", "giljo_mcp.")):
+            module_path = import_path.replace(".", "/")
             # Try direct file
             py_file = self.root / f"{module_path}.py"
             if py_file.exists():
@@ -245,14 +246,14 @@ class DependencyGraphBuilder:
                 return str(init_file.relative_to(self.root))
 
         # Handle common Python test patterns (pytest, unittest)
-        elif import_path.startswith(('tests.', 'test.')):
-            module_path = import_path.replace('.', '/')
+        elif import_path.startswith(("tests.", "test.")):
+            module_path = import_path.replace(".", "/")
             # Try direct file
             py_file = self.root / f"{module_path}.py"
             if py_file.exists():
                 return str(py_file.relative_to(self.root))
             # Try in tests directory
-            py_file = self.root / 'tests' / f"{module_path.replace('tests/', '')}.py"
+            py_file = self.root / "tests" / f"{module_path.replace('tests/', '')}.py"
             if py_file.exists():
                 return str(py_file.relative_to(self.root))
 
@@ -261,10 +262,10 @@ class DependencyGraphBuilder:
     def count_code_markers(self, file_path: Path) -> Tuple[int, int, int]:
         """Count TODOs, deprecations, dead code markers."""
         try:
-            content = file_path.read_text(encoding='utf-8').lower()
-            todos = content.count('todo') + content.count('fixme')
-            deprecations = content.count('deprecated') + content.count('deprecation')
-            dead_code = content.count('# unused') + content.count('// unused')
+            content = file_path.read_text(encoding="utf-8").lower()
+            todos = content.count("todo") + content.count("fixme")
+            deprecations = content.count("deprecated") + content.count("deprecation")
+            dead_code = content.count("# unused") + content.count("// unused")
             return todos, deprecations, dead_code
         except:
             return 0, 0, 0
@@ -272,20 +273,19 @@ class DependencyGraphBuilder:
     def calculate_risk(self, dependents_count: int, todos: int, deprecations: int) -> str:
         """Calculate risk level."""
         if dependents_count >= 50 or deprecations >= 10:
-            return 'critical'
-        elif dependents_count >= 20 or deprecations >= 5:
-            return 'high'
-        elif dependents_count >= 5 or deprecations >= 2 or todos >= 5:
-            return 'medium'
-        else:
-            return 'low'
+            return "critical"
+        if dependents_count >= 20 or deprecations >= 5:
+            return "high"
+        if dependents_count >= 5 or deprecations >= 2 or todos >= 5:
+            return "medium"
+        return "low"
 
     def build(self) -> Dict:
         """Build complete dependency graph."""
         print("[*] Scanning codebase...")
 
         # Phase 1: Find all files and create nodes
-        file_extensions = {'.py', '.js', '.vue', '.ts', '.tsx', '.md', '.html'}
+        file_extensions = {".py", ".js", ".vue", ".ts", ".tsx", ".md", ".html"}
         all_files = []
 
         for ext in file_extensions:
@@ -303,18 +303,18 @@ class DependencyGraphBuilder:
             todos, deprecations, dead_code = self.count_code_markers(file_path)
 
             node = {
-                'id': idx,
-                'path': rel_path,
-                'name': file_path.name,
-                'layer': layer,
-                'dependents': [],
-                'dependencies': [],
-                'todos': todos,
-                'deprecations': deprecations,
-                'dead_code': dead_code,
-                'risk': 'low',  # Will calculate later
-                'production_dependents': 0,
-                'test_dependents': 0,
+                "id": idx,
+                "path": rel_path,
+                "name": file_path.name,
+                "layer": layer,
+                "dependents": [],
+                "dependencies": [],
+                "todos": todos,
+                "deprecations": deprecations,
+                "dead_code": dead_code,
+                "risk": "low",  # Will calculate later
+                "production_dependents": 0,
+                "test_dependents": 0,
             }
 
             self.nodes.append(node)
@@ -326,12 +326,12 @@ class DependencyGraphBuilder:
         links = []
 
         for node in self.nodes:
-            file_path = self.root / node['path']
+            file_path = self.root / node["path"]
 
             # Parse imports based on file type
-            if file_path.suffix == '.py':
+            if file_path.suffix == ".py":
                 imports = self.parse_python_imports(file_path)
-            elif file_path.suffix in {'.js', '.vue', '.ts', '.tsx'}:
+            elif file_path.suffix in {".js", ".vue", ".ts", ".tsx"}:
                 imports = self.parse_js_imports(file_path)
             else:
                 imports = []
@@ -341,44 +341,40 @@ class DependencyGraphBuilder:
                 target_file = self.resolve_import_to_file(import_path, file_path)
                 if target_file and target_file in self.node_map:
                     target_id = self.node_map[target_file]
-                    source_id = node['id']
+                    source_id = node["id"]
 
                     # Add dependency
-                    if target_id not in node['dependencies']:
-                        node['dependencies'].append(target_id)
-                        links.append({'source': source_id, 'target': target_id})
+                    if target_id not in node["dependencies"]:
+                        node["dependencies"].append(target_id)
+                        links.append({"source": source_id, "target": target_id})
 
                     # Add dependent (reverse)
                     target_node = self.nodes[target_id]
-                    if source_id not in target_node['dependents']:
-                        target_node['dependents'].append(source_id)
+                    if source_id not in target_node["dependents"]:
+                        target_node["dependents"].append(source_id)
 
                         # Classify as production or test
-                        if node['layer'] == 'test':
-                            target_node['test_dependents'] += 1
+                        if node["layer"] == "test":
+                            target_node["test_dependents"] += 1
                         else:
-                            target_node['production_dependents'] += 1
+                            target_node["production_dependents"] += 1
 
         # Phase 4: Calculate risk levels
         print("[!]  Calculating risk levels...")
         for node in self.nodes:
-            total_deps = len(node['dependents'])
-            node['risk'] = self.calculate_risk(
-                total_deps,
-                node['todos'],
-                node['deprecations']
-            )
+            total_deps = len(node["dependents"])
+            node["risk"] = self.calculate_risk(total_deps, node["todos"], node["deprecations"])
 
         print(f"[OK] Graph complete: {len(self.nodes)} nodes, {len(links)} edges")
 
         return {
-            'nodes': self.nodes,
-            'links': links,
-            'metadata': {
-                'generated_at': datetime.now().isoformat(),
-                'total_files': len(self.nodes),
-                'total_dependencies': len(links),
-            }
+            "nodes": self.nodes,
+            "links": links,
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "total_files": len(self.nodes),
+                "total_dependencies": len(links),
+            },
         }
 
 
@@ -386,7 +382,7 @@ def update_html_with_data(html_path: Path, graph_data: Dict):
     """Update HTML file with new graph data."""
     print("[EDIT] Updating HTML file...")
 
-    html_content = html_path.read_text(encoding='utf-8')
+    html_content = html_path.read_text(encoding="utf-8")
 
     # Find and replace graphData
     start_marker = "const graphData="
@@ -399,21 +395,14 @@ def update_html_with_data(html_path: Path, graph_data: Dict):
         raise ValueError("Could not find graphData section in HTML")
 
     # Build new data section (minified JSON)
-    graph_json = json.dumps({
-        'nodes': graph_data['nodes'],
-        'links': graph_data['links']
-    }, separators=(',', ':'))
+    graph_json = json.dumps({"nodes": graph_data["nodes"], "links": graph_data["links"]}, separators=(",", ":"))
 
     new_section = f"const graphData={graph_json};\n"
 
     # Replace
-    new_html = (
-        html_content[:start_idx] +
-        new_section +
-        html_content[end_idx:]
-    )
+    new_html = html_content[:start_idx] + new_section + html_content[end_idx:]
 
-    html_path.write_text(new_html, encoding='utf-8')
+    html_path.write_text(new_html, encoding="utf-8")
     print("[OK] HTML updated")
 
 
@@ -429,7 +418,7 @@ def main():
 
     # Save JSON
     print(f"[SAVE] Saving to {GRAPH_JSON}...")
-    with open(GRAPH_JSON, 'w', encoding='utf-8') as f:
+    with open(GRAPH_JSON, "w", encoding="utf-8") as f:
         json.dump(graph_data, f, indent=2)
 
     # Update HTML
@@ -442,9 +431,9 @@ def main():
 
     layers = {}
     risks = {}
-    for node in graph_data['nodes']:
-        layers[node['layer']] = layers.get(node['layer'], 0) + 1
-        risks[node['risk']] = risks.get(node['risk'], 0) + 1
+    for node in graph_data["nodes"]:
+        layers[node["layer"]] = layers.get(node["layer"], 0) + 1
+        risks[node["risk"]] = risks.get(node["risk"], 0) + 1
 
     print(f"Total Files: {len(graph_data['nodes'])}")
     print(f"Total Dependencies: {len(graph_data['links'])}")
@@ -452,10 +441,10 @@ def main():
     print(f"Risks: {dict(sorted(risks.items()))}")
 
     # Hub files
-    hub_files = [n for n in graph_data['nodes'] if len(n['dependents']) >= 50]
+    hub_files = [n for n in graph_data["nodes"] if len(n["dependents"]) >= 50]
     if hub_files:
         print(f"\nHub Files (50+ dependents): {len(hub_files)}")
-        for node in sorted(hub_files, key=lambda n: len(n['dependents']), reverse=True)[:5]:
+        for node in sorted(hub_files, key=lambda n: len(n["dependents"]), reverse=True)[:5]:
             print(f"  - {node['path']}: {len(node['dependents'])} deps")
 
     print("\n[OK] Dependency graph updated successfully!")

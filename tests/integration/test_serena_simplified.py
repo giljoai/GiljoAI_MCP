@@ -11,14 +11,14 @@ Tests the simplified Serena MCP implementation:
 Token reduction: 6,000 → 50 tokens (99% reduction)
 """
 
-from uuid import uuid4
 from unittest.mock import patch
+from uuid import uuid4
+
 import pytest
 import yaml
 
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -28,9 +28,7 @@ class TestSimplifiedSerenaInstructions:
     async def test_serena_instructions_are_50_tokens(self, tmp_path):
         """Verify Serena instructions are ~50 tokens (simple notice)"""
         config_file = tmp_path / "config.yaml"
-        config_data = {
-            "features": {"serena_mcp": {"use_in_prompts": True}}
-        }
+        config_data = {"features": {"serena_mcp": {"use_in_prompts": True}}}
         config_file.write_text(yaml.dump(config_data))
 
         with patch("pathlib.Path.cwd") as mock_cwd:
@@ -56,9 +54,7 @@ class TestSimplifiedSerenaInstructions:
     async def test_serena_disabled_returns_empty_string(self, tmp_path):
         """Verify empty string when Serena is disabled"""
         config_file = tmp_path / "config.yaml"
-        config_data = {
-            "features": {"serena_mcp": {"use_in_prompts": False}}
-        }
+        config_data = {"features": {"serena_mcp": {"use_in_prompts": False}}}
         config_file.write_text(yaml.dump(config_data))
 
         with patch("pathlib.Path.cwd") as mock_cwd:
@@ -76,9 +72,7 @@ class TestSimplifiedSerenaInstructions:
     async def test_serena_instructions_no_advanced_settings(self, tmp_path):
         """Verify no references to advanced settings in instructions"""
         config_file = tmp_path / "config.yaml"
-        config_data = {
-            "features": {"serena_mcp": {"use_in_prompts": True}}
-        }
+        config_data = {"features": {"serena_mcp": {"use_in_prompts": True}}}
         config_file.write_text(yaml.dump(config_data))
 
         with patch("pathlib.Path.cwd") as mock_cwd:
@@ -120,9 +114,7 @@ class TestSerenaAPIEndpoint:
 
             return {"tenant_key": tenant_key, "product": product}
 
-    async def test_get_serena_settings_returns_only_use_in_prompts(
-        self, async_client, tenant_context, auth_headers
-    ):
+    async def test_get_serena_settings_returns_only_use_in_prompts(self, async_client, tenant_context, auth_headers):
         """Verify GET /api/serena/settings returns only use_in_prompts field"""
         response = await async_client.get("/api/serena/settings", headers=auth_headers)
 
@@ -143,35 +135,23 @@ class TestSerenaAPIEndpoint:
         # Should have exactly 1 key
         assert len(data.keys()) == 1
 
-    async def test_post_serena_toggle_accepts_only_boolean(
-        self, async_client, tenant_context, auth_headers
-    ):
+    async def test_post_serena_toggle_accepts_only_boolean(self, async_client, tenant_context, auth_headers):
         """Verify POST /api/serena/toggle only accepts boolean"""
         # Valid boolean toggle
-        response = await async_client.post(
-            "/api/serena/toggle",
-            headers=auth_headers,
-            json={"use_in_prompts": True}
-        )
+        response = await async_client.post("/api/serena/toggle", headers=auth_headers, json={"use_in_prompts": True})
 
         assert response.status_code == 200
         data = response.json()
         assert data["use_in_prompts"] is True
 
         # Toggle off
-        response = await async_client.post(
-            "/api/serena/toggle",
-            headers=auth_headers,
-            json={"use_in_prompts": False}
-        )
+        response = await async_client.post("/api/serena/toggle", headers=auth_headers, json={"use_in_prompts": False})
 
         assert response.status_code == 200
         data = response.json()
         assert data["use_in_prompts"] is False
 
-    async def test_post_serena_rejects_advanced_settings(
-        self, async_client, tenant_context, auth_headers
-    ):
+    async def test_post_serena_rejects_advanced_settings(self, async_client, tenant_context, auth_headers):
         """Verify POST /api/serena/toggle rejects advanced settings"""
         # Attempt to send advanced settings
         response = await async_client.post(
@@ -181,7 +161,7 @@ class TestSerenaAPIEndpoint:
                 "use_in_prompts": True,
                 "tailor_by_mission": True,
                 "dynamic_catalog": False,
-            }
+            },
         )
 
         # Should either reject (422) or ignore extra fields
@@ -233,7 +213,8 @@ class TestOrchestratorSerenaIntegration:
                 mission="Test mission",
                 status="working",
                 context_budget=150000,
-                context_used=0,            )
+                context_used=0,
+            )
             session.add(orchestrator)
             await session.commit()
             await session.refresh(orchestrator)
@@ -243,9 +224,7 @@ class TestOrchestratorSerenaIntegration:
                 "orchestrator": orchestrator,
             }
 
-    async def test_orchestrator_includes_serena_when_enabled(
-        self, db_manager, orchestrator_context, tmp_path
-    ):
+    async def test_orchestrator_includes_serena_when_enabled(self, db_manager, orchestrator_context, tmp_path):
         """Verify orchestrator includes simple Serena notice when enabled"""
         config_file = tmp_path / "config.yaml"
         config_data = {
@@ -277,9 +256,7 @@ class TestOrchestratorSerenaIntegration:
             assert "dynamic_catalog" not in prompt
             assert "prefer_ranges" not in prompt
 
-    async def test_orchestrator_excludes_serena_when_disabled(
-        self, db_manager, orchestrator_context, tmp_path
-    ):
+    async def test_orchestrator_excludes_serena_when_disabled(self, db_manager, orchestrator_context, tmp_path):
         """Verify orchestrator excludes Serena when disabled"""
         config_file = tmp_path / "config.yaml"
         config_data = {

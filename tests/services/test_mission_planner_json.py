@@ -7,8 +7,9 @@ using JSONContextBuilder for priority-based organization.
 Part of Handover 0347b - MissionPlanner JSON Refactor.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project, VisionDocument
@@ -197,6 +198,7 @@ class TestMissionPlannerJSONRefactor:
 
         # Estimate token count (1 token ≈ 4 chars)
         import json
+
         json_str = json.dumps(result)
         token_count = len(json_str) // 4
 
@@ -260,6 +262,7 @@ class TestMissionPlannerJSONRefactor:
 
         # Should be able to serialize without errors
         import json
+
         try:
             json_str = json.dumps(result)
             assert len(json_str) > 0, "JSON output is empty"

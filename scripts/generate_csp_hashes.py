@@ -22,8 +22,8 @@ For CSP compliance:
 - Hash format: 'sha256-{base64_hash}'
 """
 
-import hashlib
 import base64
+import hashlib
 import re
 from pathlib import Path
 
@@ -39,9 +39,9 @@ def calculate_csp_hash(content: str) -> str:
         CSP-formatted hash: 'sha256-{base64_hash}'
     """
     # Calculate SHA-256 hash
-    hash_digest = hashlib.sha256(content.encode('utf-8')).digest()
+    hash_digest = hashlib.sha256(content.encode("utf-8")).digest()
     # Base64 encode
-    hash_b64 = base64.b64encode(hash_digest).decode('utf-8')
+    hash_b64 = base64.b64encode(hash_digest).decode("utf-8")
     return f"'sha256-{hash_b64}'"
 
 
@@ -55,21 +55,21 @@ def extract_inline_blocks(html_content: str):
     blocks = []
 
     # Pattern to match <style>...</style> (capturing content between tags)
-    style_pattern = r'<style>(.*?)</style>'
+    style_pattern = r"<style>(.*?)</style>"
     for match in re.finditer(style_pattern, html_content, re.DOTALL):
         content = match.group(1)
-        start_line = html_content[:match.start()].count('\n') + 1
-        end_line = html_content[:match.end()].count('\n') + 1
-        blocks.append(('style', content, f"{start_line}-{end_line}"))
+        start_line = html_content[: match.start()].count("\n") + 1
+        end_line = html_content[: match.end()].count("\n") + 1
+        blocks.append(("style", content, f"{start_line}-{end_line}"))
 
     # Pattern to match <script>...</script> (excluding <script src="...">)
     # This captures inline scripts only (no src attribute)
-    script_pattern = r'<script(?![^>]*\bsrc=)(?:[^>]*)>(.*?)</script>'
+    script_pattern = r"<script(?![^>]*\bsrc=)(?:[^>]*)>(.*?)</script>"
     for match in re.finditer(script_pattern, html_content, re.DOTALL):
         content = match.group(1)
-        start_line = html_content[:match.start()].count('\n') + 1
-        end_line = html_content[:match.end()].count('\n') + 1
-        blocks.append(('script', content, f"{start_line}-{end_line}"))
+        start_line = html_content[: match.start()].count("\n") + 1
+        end_line = html_content[: match.end()].count("\n") + 1
+        blocks.append(("script", content, f"{start_line}-{end_line}"))
 
     return blocks
 
@@ -77,14 +77,14 @@ def extract_inline_blocks(html_content: str):
 def main():
     """Generate CSP hashes for index.html inline blocks."""
     # Find index.html
-    index_html_path = Path(__file__).parent.parent / 'frontend' / 'index.html'
+    index_html_path = Path(__file__).parent.parent / "frontend" / "index.html"
 
     if not index_html_path.exists():
         print(f"ERROR: index.html not found at {index_html_path}")
         return 1
 
     print(f"Reading: {index_html_path}")
-    html_content = index_html_path.read_text(encoding='utf-8')
+    html_content = index_html_path.read_text(encoding="utf-8")
 
     # Extract inline blocks
     blocks = extract_inline_blocks(html_content)
@@ -107,9 +107,9 @@ def main():
         print(f"  Content length: {len(content)} bytes")
         print()
 
-        if tag_type == 'style':
+        if tag_type == "style":
             style_hashes.append(hash_value)
-        elif tag_type == 'script':
+        elif tag_type == "script":
             script_hashes.append(hash_value)
 
     # Generate CSP directives
@@ -135,5 +135,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())

@@ -15,12 +15,10 @@ Target: All tests should FAIL initially, then PASS after fixes
 """
 
 import pytest
-from datetime import datetime
 from httpx import AsyncClient
-from sqlalchemy import select
 
-from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
 
 
@@ -42,11 +40,7 @@ class TestMessageSchemaFix:
     """
 
     @pytest.mark.asyncio
-    async def test_list_messages_returns_correct_schema(
-        self,
-        db_manager,
-        tenant_manager
-    ):
+    async def test_list_messages_returns_correct_schema(self, db_manager, tenant_manager):
         """
         RED TEST: This should FAIL because list_messages tries to access
         non-existent fields (from_agent, to_agent, type)
@@ -54,8 +48,8 @@ class TestMessageSchemaFix:
         Expected failure: AttributeError: 'Message' object has no attribute 'from_agent'
         """
         from uuid import uuid4
+
         from src.giljo_mcp.models.products import Product
-        from src.giljo_mcp.models.projects import Project
 
         # Arrange: Create test data in real database (no transaction)
         async with db_manager.get_session_async() as session:
@@ -132,19 +126,15 @@ class TestMessageSchemaFix:
         assert "created_at" in msg
 
     @pytest.mark.asyncio
-    async def test_list_messages_with_multiple_messages(
-        self,
-        db_manager,
-        tenant_manager
-    ):
+    async def test_list_messages_with_multiple_messages(self, db_manager, tenant_manager):
         """
         RED TEST: List multiple messages with different from_agent values
 
         This exposes the schema mismatch when processing multiple messages
         """
         from uuid import uuid4
+
         from src.giljo_mcp.models.products import Product
-        from src.giljo_mcp.models.projects import Project
 
         # Arrange: Create test data and multiple messages in real database
         async with db_manager.get_session_async() as session:
@@ -244,12 +234,7 @@ class TestMessageCreationValidation:
     """
 
     @pytest.mark.asyncio
-    async def test_send_message_api_with_correct_schema(
-        self,
-        async_client: AsyncClient,
-        test_project,
-        auth_headers
-    ):
+    async def test_send_message_api_with_correct_schema(self, async_client: AsyncClient, test_project, auth_headers):
         """
         RED TEST: Verify API accepts correct schema (to_agents, content, project_id)
 
@@ -265,11 +250,7 @@ class TestMessageCreationValidation:
         }
 
         # Act
-        response = await async_client.post(
-            "/api/messages/",
-            json=payload,
-            headers=auth_headers
-        )
+        response = await async_client.post("/api/messages/", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -280,12 +261,7 @@ class TestMessageCreationValidation:
         assert data["priority"] == "high"
 
     @pytest.mark.asyncio
-    async def test_send_message_api_rejects_wrong_schema(
-        self,
-        async_client: AsyncClient,
-        test_project,
-        auth_headers
-    ):
+    async def test_send_message_api_rejects_wrong_schema(self, async_client: AsyncClient, test_project, auth_headers):
         """
         RED TEST: Verify API rejects incorrect schema (to_agent singular, message instead of content)
 
@@ -294,17 +270,13 @@ class TestMessageCreationValidation:
         # Arrange: Wrong schema (singular to_agent, message instead of content)
         wrong_payload = {
             "to_agent": "implementer",  # Wrong: should be to_agents (plural)
-            "message": "Test message",   # Wrong: should be content
+            "message": "Test message",  # Wrong: should be content
             "project_id": test_project.id,
             "priority": "normal",
         }
 
         # Act
-        response = await async_client.post(
-            "/api/messages/",
-            json=wrong_payload,
-            headers=auth_headers
-        )
+        response = await async_client.post("/api/messages/", json=wrong_payload, headers=auth_headers)
 
         # Assert: Should return 422 validation error
         assert response.status_code == 422, f"Expected 422 validation error, got {response.status_code}"
@@ -312,15 +284,13 @@ class TestMessageCreationValidation:
 
         # Verify error mentions missing required fields
         error_fields = [err["loc"][-1] for err in error_detail]
-        assert "to_agents" in error_fields or "content" in error_fields, \
+        assert "to_agents" in error_fields or "content" in error_fields, (
             f"Expected validation error for to_agents or content, got {error_fields}"
+        )
 
     @pytest.mark.asyncio
     async def test_send_message_api_missing_required_fields(
-        self,
-        async_client: AsyncClient,
-        test_project,
-        auth_headers
+        self, async_client: AsyncClient, test_project, auth_headers
     ):
         """
         RED TEST: Verify API rejects payload missing required fields
@@ -333,11 +303,7 @@ class TestMessageCreationValidation:
         }
 
         # Act
-        response = await async_client.post(
-            "/api/messages/",
-            json=incomplete_payload,
-            headers=auth_headers
-        )
+        response = await async_client.post("/api/messages/", json=incomplete_payload, headers=auth_headers)
 
         # Assert: Should return 422 validation error
         assert response.status_code == 422, f"Expected 422 validation error, got {response.status_code}"
@@ -357,11 +323,7 @@ class TestSessionCleanup:
 
     @pytest.mark.asyncio
     async def test_concurrent_message_operations_no_session_error(
-        self,
-        db_manager,
-        tenant_manager,
-        test_project,
-        test_tenant_key
+        self, db_manager, tenant_manager, test_project, test_tenant_key
     ):
         """
         RED TEST: Run concurrent message operations to expose session cleanup race condition
@@ -402,9 +364,7 @@ class TestSessionCleanup:
             if isinstance(result, Exception):
                 # Check if it's the specific session error
                 if "IllegalStateChangeError" in str(type(result)) or "close()" in str(result):
-                    pytest.fail(
-                        f"Session cleanup error in task {i}: {type(result).__name__}: {result}"
-                    )
+                    pytest.fail(f"Session cleanup error in task {i}: {type(result).__name__}: {result}")
                 # Other exceptions might be acceptable (e.g., validation errors)
                 # but session errors are NOT
 
@@ -415,12 +375,7 @@ class TestSessionCleanup:
                 assert result.get("success") is True, f"Create operation failed: {result}"
 
     @pytest.mark.asyncio
-    async def test_session_cleanup_after_exception(
-        self,
-        db_manager,
-        tenant_manager,
-        test_tenant_key
-    ):
+    async def test_session_cleanup_after_exception(self, db_manager, tenant_manager, test_tenant_key):
         """
         RED TEST: Verify sessions cleanup properly even when exceptions occur
 

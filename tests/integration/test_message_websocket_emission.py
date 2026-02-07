@@ -6,15 +6,11 @@ via MCP tools, ensuring real-time UI updates.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 
 @pytest.mark.asyncio
 async def test_mcp_send_message_emits_websocket_event(
-    test_client,
-    auth_headers,
-    test_project_with_orchestrator,
-    mock_websocket_manager
+    test_client, auth_headers, test_project_with_orchestrator, mock_websocket_manager
 ):
     """
     BEHAVIOR: When orchestrator sends a message via MCP send_message tool,
@@ -38,19 +34,15 @@ async def test_mcp_send_message_emits_websocket_event(
                 "content": "STAGING_COMPLETE: Mission created, 3 agents spawned",
                 "project_id": str(project_id),
                 "message_type": "broadcast",
-                "from_agent": "orchestrator"
-            }
+                "from_agent": "orchestrator",
+            },
         },
-        "id": 1
+        "id": 1,
     }
 
     # Execute MCP tool call with API key
     mcp_headers = {"X-API-Key": test_client.api_key}
-    response = await test_client.post(
-        "/mcp",
-        json=mcp_request,
-        headers=mcp_headers
-    )
+    response = await test_client.post("/mcp", json=mcp_request, headers=mcp_headers)
     assert response.status_code == 200
     result = response.json()
 
@@ -58,6 +50,7 @@ async def test_mcp_send_message_emits_websocket_event(
     result_content = result.get("result", {})
     if "content" in result_content:
         import json
+
         text_content = result_content["content"][0]["text"]
         # Handle both JSON and plain text responses
         try:
@@ -88,10 +81,7 @@ async def test_mcp_send_message_emits_websocket_event(
 
 @pytest.mark.asyncio
 async def test_rest_send_message_emits_websocket_event(
-    test_client,
-    auth_headers,
-    test_project_with_orchestrator,
-    mock_websocket_manager
+    test_client, auth_headers, test_project_with_orchestrator, mock_websocket_manager
 ):
     """
     BEHAVIOR: When a message is sent via REST API, a 'message:sent'
@@ -107,15 +97,11 @@ async def test_rest_send_message_emits_websocket_event(
         "content": "Test message via REST",
         "project_id": str(project_id),
         "message_type": "broadcast",
-        "from_agent": "test_agent"
+        "from_agent": "test_agent",
     }
 
     # Execute REST API call
-    response = await test_client.post(
-        "/api/messages/send",
-        json=message_data,
-        headers=auth_headers
-    )
+    response = await test_client.post("/api/messages/send", json=message_data, headers=auth_headers)
     assert response.status_code == 200
     result = response.json()
     assert result.get("success") is True

@@ -5,8 +5,6 @@ Verifies that _generate_agent_protocol() produces protocol strings
 that match the backend's expected progress format.
 """
 
-import pytest
-
 from src.giljo_mcp.services.orchestration_service import _generate_agent_protocol
 
 
@@ -16,70 +14,43 @@ class TestAgentProtocolFormat:
     def test_protocol_includes_mode_todo(self):
         """Verify protocol instructs agents to use todo_items array format (Handover 0392)."""
         # Generate protocol
-        protocol = _generate_agent_protocol(
-            job_id="test-job-123",
-            tenant_key="tenant-abc",
-            agent_name="test-agent"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job-123", tenant_key="tenant-abc", agent_name="test-agent")
 
         # Assert protocol contains new todo_items array format (Handover 0392)
-        assert 'todo_items=' in protocol, \
-            "Protocol must instruct agents to use todo_items array in report_progress"
-        assert '"content":' in protocol, \
-            "Protocol must show todo_items with 'content' field"
-        assert '"status":' in protocol, \
-            "Protocol must show todo_items with 'status' field"
+        assert "todo_items=" in protocol, "Protocol must instruct agents to use todo_items array in report_progress"
+        assert '"content":' in protocol, "Protocol must show todo_items with 'content' field"
+        assert '"status":' in protocol, "Protocol must show todo_items with 'status' field"
 
         # Assert protocol does NOT contain old formats
-        assert '"mode": "todo"' not in protocol, \
-            "Protocol should NOT use deprecated mode='todo' format"
-        assert '"steps_completed"' not in protocol, \
-            "Protocol must NOT use old format 'steps_completed'"
-        assert '"steps_total"' not in protocol, \
-            "Protocol must NOT use old format 'steps_total'"
+        assert '"mode": "todo"' not in protocol, "Protocol should NOT use deprecated mode='todo' format"
+        assert '"steps_completed"' not in protocol, "Protocol must NOT use old format 'steps_completed'"
+        assert '"steps_total"' not in protocol, "Protocol must NOT use old format 'steps_total'"
 
     def test_protocol_includes_current_step(self):
         """Verify protocol includes todo_items content field for task descriptions (Handover 0392)."""
-        protocol = _generate_agent_protocol(
-            job_id="test-job-456",
-            tenant_key="tenant-xyz",
-            agent_name="another-agent"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job-456", tenant_key="tenant-xyz", agent_name="another-agent")
 
         # New format uses todo_items array with content field for task descriptions
-        assert 'todo_items' in protocol, \
-            "Protocol should include todo_items array"
-        assert '"content"' in protocol, \
-            "Protocol should show content field for task descriptions in todo_items"
+        assert "todo_items" in protocol, "Protocol should include todo_items array"
+        assert '"content"' in protocol, "Protocol should show content field for task descriptions in todo_items"
 
     def test_protocol_backward_compatibility(self):
         """Verify protocol supports optional agent_id parameter and uses todo_items format."""
         # Test with agent_id provided
         protocol_with_id = _generate_agent_protocol(
-            job_id="job-123",
-            tenant_key="tenant-abc",
-            agent_name="agent-1",
-            agent_id="executor-456"
+            job_id="job-123", tenant_key="tenant-abc", agent_name="agent-1", agent_id="executor-456"
         )
 
         # Test without agent_id (backwards compat)
-        protocol_without_id = _generate_agent_protocol(
-            job_id="job-123",
-            tenant_key="tenant-abc",
-            agent_name="agent-1"
-        )
+        protocol_without_id = _generate_agent_protocol(job_id="job-123", tenant_key="tenant-abc", agent_name="agent-1")
 
         # Both should contain todo_items array format (Handover 0392)
-        assert 'todo_items=' in protocol_with_id, "Protocol with agent_id should use todo_items format"
-        assert 'todo_items=' in protocol_without_id, "Protocol without agent_id should use todo_items format"
+        assert "todo_items=" in protocol_with_id, "Protocol with agent_id should use todo_items format"
+        assert "todo_items=" in protocol_without_id, "Protocol without agent_id should use todo_items format"
 
     def test_protocol_phase_3_order(self):
         """Verify Phase 3 contains correct progress reporting format with todo_items array (Handover 0392)."""
-        protocol = _generate_agent_protocol(
-            job_id="test-job-789",
-            tenant_key="tenant-def",
-            agent_name="test-agent"
-        )
+        protocol = _generate_agent_protocol(job_id="test-job-789", tenant_key="tenant-def", agent_name="test-agent")
 
         # Find Phase 3 section
         assert "### Phase 3: PROGRESS REPORTING" in protocol
@@ -99,10 +70,7 @@ class TestAgentProtocolFormat:
         """Verify protocol shows different values for job_id and agent_id (Bug 2)."""
         # When agent_id is provided, it should differ from job_id
         protocol = _generate_agent_protocol(
-            job_id="job-123",
-            tenant_key="tenant-abc",
-            agent_name="test-agent",
-            agent_id="executor-456"
+            job_id="job-123", tenant_key="tenant-abc", agent_name="test-agent", agent_id="executor-456"
         )
 
         # Extract the "Your Identifiers" section
@@ -121,43 +89,34 @@ class TestAgentProtocolFormat:
     def test_protocol_receive_messages_includes_tenant_key(self):
         """Verify all receive_messages examples include tenant_key parameter (Bug 3)."""
         protocol = _generate_agent_protocol(
-            job_id="job-abc",
-            tenant_key="tenant-xyz",
-            agent_name="test-agent",
-            agent_id="executor-def"
+            job_id="job-abc", tenant_key="tenant-xyz", agent_name="test-agent", agent_id="executor-def"
         )
 
         # Find all receive_messages calls in the protocol
         # There should be examples in Phase 1, 2, 3, and 4
         import re
-        receive_messages_calls = re.findall(
-            r'receive_messages\([^)]+\)',
-            protocol
-        )
+
+        receive_messages_calls = re.findall(r"receive_messages\([^)]+\)", protocol)
 
         # Verify we found multiple examples
-        assert len(receive_messages_calls) >= 4, \
+        assert len(receive_messages_calls) >= 4, (
             f"Expected at least 4 receive_messages examples, found {len(receive_messages_calls)}"
+        )
 
         # Verify NONE of them are missing tenant_key
         # The old broken format would be: receive_messages(agent_id="...")
         # The correct format is: receive_messages(agent_id="...", tenant_key="...")
         for call in receive_messages_calls:
             # Skip short-form examples that just show the tool name
-            if 'agent_id=' not in call:
+            if "agent_id=" not in call:
                 continue
 
             # Full-form examples MUST include tenant_key
-            assert 'tenant_key=' in call, \
-                f"receive_messages call missing tenant_key: {call}"
+            assert "tenant_key=" in call, f"receive_messages call missing tenant_key: {call}"
 
     def test_protocol_includes_todowrite_sync_instructions(self):
         """Verify protocol includes instructions to sync TodoWrite with report_progress (Bug 4)."""
-        protocol = _generate_agent_protocol(
-            job_id="job-123",
-            tenant_key="tenant-abc",
-            agent_name="test-agent"
-        )
+        protocol = _generate_agent_protocol(job_id="job-123", tenant_key="tenant-abc", agent_name="test-agent")
 
         # Verify protocol mentions syncing TodoWrite with progress reporting
         assert "TodoWrite" in protocol, "Protocol should mention TodoWrite tool"
@@ -166,20 +125,20 @@ class TestAgentProtocolFormat:
         # Look for explicit sync instructions (should be near each other)
         # Check for keywords that indicate the sync relationship
         protocol_lower = protocol.lower()
-        assert "sync" in protocol_lower or "immediately" in protocol_lower or "every time" in protocol_lower, \
+        assert "sync" in protocol_lower or "immediately" in protocol_lower or "every time" in protocol_lower, (
             "Protocol should include instructions to sync TodoWrite status with progress reporting"
+        )
 
         # Verify the sync section mentions both tools together
         # Find sections that mention both TodoWrite and report_progress
-        lines = protocol.split('\n')
+        lines = protocol.split("\n")
         todowrite_section_found = False
         for i, line in enumerate(lines):
-            if 'todowrite' in line.lower() and 'sync' in line.lower():
+            if "todowrite" in line.lower() and "sync" in line.lower():
                 # Look in surrounding lines for report_progress mention
-                context = '\n'.join(lines[max(0, i-5):min(len(lines), i+15)])
-                if 'report_progress' in context.lower():
+                context = "\n".join(lines[max(0, i - 5) : min(len(lines), i + 15)])
+                if "report_progress" in context.lower():
                     todowrite_section_found = True
                     break
 
-        assert todowrite_section_found, \
-            "Protocol should have a section explaining TodoWrite sync with report_progress"
+        assert todowrite_section_found, "Protocol should have a section explaining TodoWrite sync with report_progress"

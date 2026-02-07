@@ -16,7 +16,6 @@ import re
 from typing import Any, ClassVar, Optional
 
 import tiktoken
-import yaml
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession

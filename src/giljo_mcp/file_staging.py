@@ -40,7 +40,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import AgentTemplate
 from .tools.slash_command_templates import get_all_templates
 
+
 logger = logging.getLogger(__name__)
+
 
 class FileStaging:
     """
@@ -262,7 +264,9 @@ class FileStaging:
 
         except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error saving metadata: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata") from e
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata"
+            ) from e
 
     async def cleanup(self, tenant_key: str, token: str) -> bool:
         """

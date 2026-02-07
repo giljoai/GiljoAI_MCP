@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from api.app import create_app, state
 from src.giljo_mcp.models import Product, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 from tests.helpers.websocket_test_utils import PerformanceMonitor
 

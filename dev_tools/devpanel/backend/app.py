@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-import re
 from typing import Any, Dict
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request

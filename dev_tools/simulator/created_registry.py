@@ -8,13 +8,15 @@ from typing import Dict, List
 class CreatedRegistry:
     base_dir: Path
     filename: str = "created.json"
-    items: Dict[str, List[str]] = field(default_factory=lambda: {
-        "products": [],
-        "projects": [],
-        "tasks": [],
-        "messages": [],
-        "agent_jobs": [],
-    })
+    items: Dict[str, List[str]] = field(
+        default_factory=lambda: {
+            "products": [],
+            "projects": [],
+            "tasks": [],
+            "messages": [],
+            "agent_jobs": [],
+        }
+    )
 
     def __post_init__(self) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -51,4 +53,3 @@ class CreatedRegistry:
         for k in list(self.items.keys()):
             self.items[k] = []
         self.save()
-

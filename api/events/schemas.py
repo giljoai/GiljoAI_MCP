@@ -35,9 +35,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+
 # ============================================================================
 # Base Event Structures
 # ============================================================================
+
 
 class EventMetadata(BaseModel):
     """
@@ -77,9 +79,11 @@ class EventMetadata(BaseModel):
         except ValueError as e:
             raise ValueError(f"Invalid ISO 8601 timestamp: {v}") from e
 
+
 # ============================================================================
 # Project Events
 # ============================================================================
+
 
 class ProjectMissionUpdatedData(BaseModel):
     """
@@ -96,9 +100,8 @@ class ProjectMissionUpdatedData(BaseModel):
         default="orchestrator", description="Source of mission generation"
     )
     user_config_applied: bool = Field(default=False, description="Whether user configuration was applied")
-    field_priorities: dict[str, int | None] = Field(
-        None, description="Field priorities used in generation (1-5 scale)"
-    )
+    field_priorities: dict[str, int | None] = Field(None, description="Field priorities used in generation (1-5 scale)")
+
 
 class ProjectMissionUpdatedEvent(BaseModel):
     """
@@ -131,9 +134,11 @@ class ProjectMissionUpdatedEvent(BaseModel):
         }
     }
 
+
 # ============================================================================
 # Agent Events
 # ============================================================================
+
 
 class AgentCreatedData(BaseModel):
     """
@@ -168,6 +173,7 @@ class AgentCreatedData(BaseModel):
             raise ValueError(f"Agent data missing required fields: {missing}")
         return v
 
+
 class AgentCreatedEvent(BaseModel):
     """
     Complete event structure for agent:created.
@@ -201,6 +207,7 @@ class AgentCreatedEvent(BaseModel):
             }
         }
     }
+
 
 class AgentStatusChangedData(BaseModel):
     """
@@ -239,6 +246,7 @@ class AgentStatusChangedData(BaseModel):
             raise ValueError(f"Invalid agent status: {v}. Must be one of {valid_statuses}")
         return v
 
+
 class AgentStatusChangedEvent(BaseModel):
     """
     Complete event structure for agent:status_changed.
@@ -271,9 +279,11 @@ class AgentStatusChangedEvent(BaseModel):
         }
     }
 
+
 # ============================================================================
 # Message Events
 # ============================================================================
+
 
 class MessageSentData(BaseModel):
     """Data payload for message:sent event."""
@@ -302,6 +312,7 @@ class MessageSentData(BaseModel):
     from_job_id: str = Field(..., description="Sender agent job ID")
     to_job_ids: list[str] = Field(default_factory=list, description="Recipient agent job IDs")
 
+
 class MessageSentEvent(BaseModel):
     """Complete event structure for message:sent."""
 
@@ -309,6 +320,7 @@ class MessageSentEvent(BaseModel):
     timestamp: str = Field(..., description="ISO 8601 timestamp")
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: MessageSentData
+
 
 class MessageReceivedData(BaseModel):
     """Data payload for message:received event."""
@@ -336,6 +348,7 @@ class MessageReceivedData(BaseModel):
     from_job_id: str = Field(..., description="Sender agent job ID")
     to_job_ids: list[str] = Field(default_factory=list, description="Recipient agent job IDs")
 
+
 class MessageReceivedEvent(BaseModel):
     """Complete event structure for message:received."""
 
@@ -343,6 +356,7 @@ class MessageReceivedEvent(BaseModel):
     timestamp: str = Field(..., description="ISO 8601 timestamp")
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: MessageReceivedData
+
 
 class MessageAcknowledgedData(BaseModel):
     """Data payload for message:acknowledged event."""
@@ -362,6 +376,7 @@ class MessageAcknowledgedData(BaseModel):
     waiting_count: int | None = Field(default=None, description="Acknowledging agent's messages waiting count")
     read_count: int | None = Field(default=None, description="Acknowledging agent's messages read count")
 
+
 class MessageAcknowledgedEvent(BaseModel):
     """Complete event structure for message:acknowledged."""
 
@@ -370,11 +385,19 @@ class MessageAcknowledgedEvent(BaseModel):
     schema_version: str = Field(default="1.0", description="Event schema version")
     data: MessageAcknowledgedData
 
+
 # ============================================================================
 # Event Type Union
 # ============================================================================
 
-WebSocketEvent = ProjectMissionUpdatedEvent | AgentCreatedEvent | AgentStatusChangedEvent | MessageSentEvent | MessageReceivedEvent | MessageAcknowledgedEvent
+WebSocketEvent = (
+    ProjectMissionUpdatedEvent
+    | AgentCreatedEvent
+    | AgentStatusChangedEvent
+    | MessageSentEvent
+    | MessageReceivedEvent
+    | MessageAcknowledgedEvent
+)
 # Union type of all WebSocket events for validation.
 #
 # Use this for type hints when accepting any WebSocket event.
@@ -382,6 +405,7 @@ WebSocketEvent = ProjectMissionUpdatedEvent | AgentCreatedEvent | AgentStatusCha
 # ============================================================================
 # Event Factory
 # ============================================================================
+
 
 class EventFactory:
     """
@@ -688,6 +712,7 @@ class EventFactory:
             ),
         )
         return event.model_dump(mode="json")
+
 
 # ============================================================================
 # Public API

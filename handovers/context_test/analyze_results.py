@@ -9,7 +9,7 @@ Usage:
 
 import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict
 
 
 class ResultsAnalyzer:
@@ -24,12 +24,11 @@ class ResultsAnalyzer:
     def load_summary(self):
         """Load summary file."""
         if self.summary_file.exists():
-            with open(self.summary_file, "r", encoding="utf-8") as f:
+            with open(self.summary_file, encoding="utf-8") as f:
                 self.summary = json.load(f)
         else:
             raise FileNotFoundError(
-                f"Summary file not found: {self.summary_file}\n"
-                "Please run run_context_tests.py first."
+                f"Summary file not found: {self.summary_file}\nPlease run run_context_tests.py first."
             )
 
     def print_overview(self):
@@ -43,9 +42,7 @@ class ResultsAnalyzer:
         print(f"Successful: {self.summary['successful_tests']}")
         print(f"Failed: {self.summary['failed_tests']}")
 
-        success_rate = (
-            self.summary["successful_tests"] / self.summary["total_tests"] * 100
-        )
+        success_rate = self.summary["successful_tests"] / self.summary["total_tests"] * 100
         print(f"Success Rate: {success_rate:.1f}%")
 
     def print_token_statistics(self):
@@ -72,10 +69,10 @@ class ResultsAnalyzer:
         min_result = min(successful_results, key=lambda r: r["estimated_tokens"])
         max_result = max(successful_results, key=lambda r: r["estimated_tokens"])
 
-        print(f"\nLowest Token Configuration:")
+        print("\nLowest Token Configuration:")
         print(f"  {min_result['test_name']}: {min_result['estimated_tokens']} tokens")
 
-        print(f"\nHighest Token Configuration:")
+        print("\nHighest Token Configuration:")
         print(f"  {max_result['test_name']}: {max_result['estimated_tokens']} tokens")
 
     def print_priority_impact(self):
@@ -87,9 +84,7 @@ class ResultsAnalyzer:
         results = self.summary["results"]
 
         # Find priority sweep tests
-        priority_tests = [
-            r for r in results if r["test_name"].startswith("Priority Sweep")
-        ]
+        priority_tests = [r for r in results if r["test_name"].startswith("Priority Sweep")]
 
         if not priority_tests:
             print("\nNo priority sweep tests found.")
@@ -112,44 +107,26 @@ class ResultsAnalyzer:
         print("-" * 60)
 
         for field in fields:
-            field_tests = [
-                r for r in priority_tests if field in r["test_name"].lower()
-            ]
+            field_tests = [r for r in priority_tests if field in r["test_name"].lower()]
 
             if not field_tests:
                 continue
 
             # Extract token counts by priority level
             off = next(
-                (
-                    r["estimated_tokens"]
-                    for r in field_tests
-                    if "OFF" in r["test_name"]
-                ),
+                (r["estimated_tokens"] for r in field_tests if "OFF" in r["test_name"]),
                 0,
             )
             critical = next(
-                (
-                    r["estimated_tokens"]
-                    for r in field_tests
-                    if "Critical" in r["test_name"]
-                ),
+                (r["estimated_tokens"] for r in field_tests if "Critical" in r["test_name"]),
                 0,
             )
             important = next(
-                (
-                    r["estimated_tokens"]
-                    for r in field_tests
-                    if "Important" in r["test_name"]
-                ),
+                (r["estimated_tokens"] for r in field_tests if "Important" in r["test_name"]),
                 0,
             )
             reference = next(
-                (
-                    r["estimated_tokens"]
-                    for r in field_tests
-                    if "Reference" in r["test_name"]
-                ),
+                (r["estimated_tokens"] for r in field_tests if "Reference" in r["test_name"]),
                 0,
             )
 
@@ -181,9 +158,7 @@ class ResultsAnalyzer:
         print("\nToken count by depth level:")
 
         for field, levels in depth_fields.items():
-            field_tests = [
-                r for r in depth_tests if field in r["test_name"].lower()
-            ]
+            field_tests = [r for r in depth_tests if field in r["test_name"].lower()]
 
             if not field_tests:
                 continue
@@ -194,11 +169,7 @@ class ResultsAnalyzer:
 
             for level in levels:
                 test = next(
-                    (
-                        r
-                        for r in field_tests
-                        if str(level) in r["test_name"]
-                    ),
+                    (r for r in field_tests if str(level) in r["test_name"]),
                     None,
                 )
                 if test:
@@ -244,11 +215,9 @@ class ResultsAnalyzer:
             print(f"\n✗ {test['test_name']}")
 
             # Load individual result file for error details
-            result_file = (
-                self.results_dir / f"combo_{test['combo_id']:03d}.json"
-            )
+            result_file = self.results_dir / f"combo_{test['combo_id']:03d}.json"
             if result_file.exists():
-                with open(result_file, "r", encoding="utf-8") as f:
+                with open(result_file, encoding="utf-8") as f:
                     details = json.load(f)
                     print(f"  Error: {details.get('error', 'Unknown error')}")
 

@@ -96,10 +96,7 @@ class TestMissionPlannerPriority:
         }
 
         # Add product_memory for history extraction
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
 
         return product
 
@@ -130,10 +127,7 @@ class TestMissionPlannerPriority:
         }
 
         # Add product_memory for history extraction
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
 
         return product
 
@@ -158,10 +152,7 @@ class TestMissionPlannerPriority:
         product.config_data = None
 
         # Add product_memory for history extraction
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
 
         return product
 

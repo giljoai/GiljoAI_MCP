@@ -10,15 +10,14 @@ TESTING STRATEGY:
 - Test error handling and validation
 """
 
-import pytest
 from datetime import datetime, timezone
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.services.product_service import ProductService
 
 
 def create_mock_db_session(project_mock, product_mock):
@@ -33,17 +32,17 @@ def create_mock_db_session(project_mock, product_mock):
     mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
 
     # Mock database queries to return actual objects (not coroutines)
-    call_counter = {'count': 0}
+    call_counter = {"count": 0}
 
     async def mock_execute_side_effect(*args, **kwargs):
         mock_result = MagicMock()  # Use MagicMock not AsyncMock for result
         # Track which call this is (project, then product)
-        if call_counter['count'] == 0:
+        if call_counter["count"] == 0:
             mock_result.scalar_one_or_none.return_value = project_mock
         else:
             mock_result.scalar_one_or_none.return_value = product_mock
 
-        call_counter['count'] += 1
+        call_counter["count"] += 1
         return mock_result
 
     mock_session.execute.side_effect = mock_execute_side_effect
@@ -78,12 +77,7 @@ def mock_product(sample_product_id, tenant_key):
     product.id = sample_product_id
     product.tenant_key = tenant_key
     product.name = "Test Product"
-    product.product_memory = {
-        "github": {},
-        "learnings": [],
-        "sequential_history": [],
-        "context": {}
-    }
+    product.product_memory = {"github": {}, "learnings": [], "sequential_history": [], "context": {}}
     product.updated_at = datetime.now(timezone.utc)
     return product
 
@@ -107,9 +101,7 @@ class TestProjectCloseoutBasics:
     """Test basic project closeout functionality"""
 
     @pytest.mark.asyncio
-    async def test_close_project_stores_learning_in_memory(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_close_project_stores_learning_in_memory(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Project closeout stores rich entry in product_memory.sequential_history (and legacy learnings)
 
@@ -158,9 +150,7 @@ class TestProjectCloseoutBasics:
         assert entry["summary"] == learning["summary"]
 
     @pytest.mark.asyncio
-    async def test_sequential_numbering_increments(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_sequential_numbering_increments(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Sequential numbering auto-increments for each new learning entry
 
@@ -198,9 +188,7 @@ class TestGitHubIntegration:
     """Test GitHub commit fetching functionality"""
 
     @pytest.mark.asyncio
-    async def test_fetch_github_commits_when_enabled(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_fetch_github_commits_when_enabled(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Fetches GitHub commits when integration is enabled
 
@@ -225,12 +213,8 @@ class TestGitHubIntegration:
                 "sha": "abc123",
                 "commit": {
                     "message": "feat: Add authentication",
-                    "author": {
-                        "name": "Dev User",
-                        "email": "dev@example.com",
-                        "date": "2025-11-15T10:00:00Z"
-                    }
-                }
+                    "author": {"name": "Dev User", "email": "dev@example.com", "date": "2025-11-15T10:00:00Z"},
+                },
             }
         ]
 
@@ -253,9 +237,7 @@ class TestGitHubIntegration:
         assert learning["git_commits"][0]["message"] == "feat: Add authentication"
 
     @pytest.mark.asyncio
-    async def test_manual_summary_when_github_disabled(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_manual_summary_when_github_disabled(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Uses manual summary when GitHub integration is disabled
 
@@ -378,9 +360,7 @@ class TestMultiTenantIsolation:
     """Test multi-tenant data isolation"""
 
     @pytest.mark.asyncio
-    async def test_tenant_isolation_enforced(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_tenant_isolation_enforced(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Enforces tenant isolation for projects and products
 
@@ -418,9 +398,7 @@ class TestWebSocketEvents:
     """Test WebSocket event emission"""
 
     @pytest.mark.asyncio
-    async def test_emits_websocket_event_on_success(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_emits_websocket_event_on_success(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Emits WebSocket event when memory is updated
 
@@ -454,9 +432,7 @@ class TestErrorHandlingAndEdgeCases:
     """Test error handling paths and edge cases for coverage"""
 
     @pytest.mark.asyncio
-    async def test_github_api_failure_doesnt_block_closeout(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_github_api_failure_doesnt_block_closeout(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: GitHub API failure should not prevent closeout
 
@@ -476,7 +452,7 @@ class TestErrorHandlingAndEdgeCases:
         mock_session, mock_db_manager = create_mock_db_session(mock_project, mock_product)
 
         # Mock fetch_github_commits to raise exception
-        with patch('giljo_mcp.tools.project_closeout.fetch_github_commits') as mock_fetch:
+        with patch("giljo_mcp.tools.project_closeout.fetch_github_commits") as mock_fetch:
             mock_fetch.side_effect = Exception("GitHub API Error")
 
             result = await close_project_and_update_memory(
@@ -497,9 +473,7 @@ class TestErrorHandlingAndEdgeCases:
             assert memory["sequential_history"][0]["git_commits"] == []  # Empty due to error
 
     @pytest.mark.asyncio
-    async def test_database_error_rolls_back_transaction(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_database_error_rolls_back_transaction(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Database error should rollback entire transaction
 
@@ -528,9 +502,7 @@ class TestErrorHandlingAndEdgeCases:
         assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_closeout_with_empty_arrays(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_closeout_with_empty_arrays(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Empty arrays for outcomes/decisions should be valid
 
@@ -558,9 +530,7 @@ class TestErrorHandlingAndEdgeCases:
         assert entry["decisions_made"] == []
 
     @pytest.mark.asyncio
-    async def test_closeout_with_non_list_arrays(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_closeout_with_non_list_arrays(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Non-list arrays should be normalized to empty lists
 
@@ -611,9 +581,7 @@ class TestErrorHandlingAndEdgeCases:
         assert "db_manager" in result["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_product_not_found_for_project(
-        self, mock_project, tenant_key
-    ):
+    async def test_product_not_found_for_project(self, mock_project, tenant_key):
         """
         BEHAVIOR: Missing product for project should fail
 
@@ -628,18 +596,18 @@ class TestErrorHandlingAndEdgeCases:
         mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
 
         # Project found, but product not found
-        call_counter = {'count': 0}
+        call_counter = {"count": 0}
 
         async def mock_execute_side_effect(*args, **kwargs):
             mock_result = MagicMock()
-            if call_counter['count'] == 0:
+            if call_counter["count"] == 0:
                 # First call: return project
                 mock_result.scalar_one_or_none.return_value = mock_project
             else:
                 # Second call: product not found
                 mock_result.scalar_one_or_none.return_value = None
 
-            call_counter['count'] += 1
+            call_counter["count"] += 1
             return mock_result
 
         mock_session.execute.side_effect = mock_execute_side_effect
@@ -657,9 +625,7 @@ class TestErrorHandlingAndEdgeCases:
         assert "product not found" in result["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_normalized_git_commits_with_invalid_format(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_normalized_git_commits_with_invalid_format(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Git commits with invalid format should be normalized
 
@@ -713,9 +679,11 @@ class TestErrorHandlingAndEdgeCases:
         WHEN: close_project_and_update_memory_wrapper() is called
         THEN: It delegates to close_project_and_update_memory with db_manager
         """
-        from giljo_mcp.tools.project_closeout import register_project_closeout_tools
-        from fastmcp import FastMCP
         from unittest.mock import MagicMock
+
+        from fastmcp import FastMCP
+
+        from giljo_mcp.tools.project_closeout import register_project_closeout_tools
 
         # Create mock MCP and db_manager
         mock_mcp = MagicMock(spec=FastMCP)
@@ -735,6 +703,7 @@ class TestErrorHandlingAndEdgeCases:
                 nonlocal registered_tool
                 registered_tool = f
                 return f
+
             return decorator
 
         mock_mcp.tool = capture_tool
@@ -746,7 +715,7 @@ class TestErrorHandlingAndEdgeCases:
         assert registered_tool is not None
 
         # Test that wrapper correctly passes db_manager
-        with patch('giljo_mcp.tools.project_closeout.close_project_and_update_memory') as mock_close:
+        with patch("giljo_mcp.tools.project_closeout.close_project_and_update_memory") as mock_close:
             mock_close.return_value = {"success": True}
 
             await registered_tool(

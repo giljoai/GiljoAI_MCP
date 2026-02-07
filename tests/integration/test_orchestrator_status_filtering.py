@@ -9,23 +9,21 @@ TDD: RED phase - tests should FAIL before fix is applied.
 Handover: Bug fix for "Project not ready to launch" error
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestOrchestratorStatusFiltering:
     """Tests for orchestrator status filtering behavior."""
 
     @pytest.mark.asyncio
-    async def test_get_orchestrator_excludes_cancelled(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_get_orchestrator_excludes_cancelled(self, db_session: AsyncSession, test_project):
         """
         BEHAVIOR: When multiple orchestrators exist, return active one (not cancelled).
         """
@@ -36,7 +34,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
-            status="cancelled",            decommissioned_at=datetime.now(timezone.utc),
+            status="cancelled",
+            decommissioned_at=datetime.now(timezone.utc),
             mission="Cancelled mission",
         )
         db_session.add(cancelled_orch)
@@ -48,7 +47,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #2",
-            status="waiting",            mission="Active mission",
+            status="waiting",
+            mission="Active mission",
         )
         db_session.add(active_orch)
         await db_session.commit()
@@ -89,9 +89,7 @@ class TestOrchestratorStatusFiltering:
         assert fixed_orchestrator.job_id == active_orch.job_id
 
     @pytest.mark.asyncio
-    async def test_get_orchestrator_returns_none_when_all_terminal(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_get_orchestrator_returns_none_when_all_terminal(self, db_session: AsyncSession, test_project):
         """
         BEHAVIOR: Return None when all orchestrators are in terminal states.
         """
@@ -102,7 +100,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Cancelled Orchestrator",
-            status="cancelled",            mission="Cancelled",
+            status="cancelled",
+            mission="Cancelled",
         )
         db_session.add(cancelled_orch)
 
@@ -112,7 +111,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Failed Orchestrator",
-            status="failed",            mission="Failed",
+            status="failed",
+            mission="Failed",
         )
         db_session.add(failed_orch)
         await db_session.commit()

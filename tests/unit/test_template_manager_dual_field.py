@@ -6,13 +6,15 @@ when retrieving agent templates.
 
 Handover 0106: Dual-Field System
 """
-import pytest
+
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
-from src.giljo_mcp.database import DatabaseManager
 
 
 @pytest.mark.asyncio
@@ -51,7 +53,11 @@ class TestTemplateManagerDualFieldMerging:
         result = await manager.get_template(
             role="orchestrator",
             tenant_key=tenant_key,
-            variables={"project_name": "Test Project", "product_name": "Test Product", "project_mission": "Test Mission"},
+            variables={
+                "project_name": "Test Project",
+                "product_name": "Test Product",
+                "project_mission": "Test Mission",
+            },
         )
 
         # Verify merging
@@ -100,7 +106,9 @@ class TestTemplateManagerDualFieldMerging:
 
         # Verify only system instructions returned
         assert "## SYSTEM INSTRUCTIONS" in result, "Should contain system instructions"
-        assert result.strip() == "## SYSTEM INSTRUCTIONS\nUse MCP tools properly.", "Should only contain system instructions"
+        assert result.strip() == "## SYSTEM INSTRUCTIONS\nUse MCP tools properly.", (
+            "Should only contain system instructions"
+        )
 
     async def test_fallback_to_legacy_content(self, db_session: AsyncSession, db_manager: DatabaseManager):
         """Fallback to legacy content if system_instructions NULL (backward compatibility)."""

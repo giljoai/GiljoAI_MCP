@@ -15,22 +15,22 @@ These tests will initially FAIL to confirm the bug exists.
 Handover: Field Priority Bug Fix - Phase 1
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services.user_service import UserService
 
+
 # Use existing fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_tenant_key():
@@ -45,7 +45,7 @@ async def user_service(db_manager, db_session, test_tenant_key):
         db_manager=db_manager,
         tenant_key=test_tenant_key,
         websocket_manager=None,  # No WebSocket in tests
-        session=db_session  # SHARED SESSION for test transaction isolation
+        session=db_session,  # SHARED SESSION for test transaction isolation
     )
 
 
@@ -61,7 +61,7 @@ async def test_user(db_session, test_tenant_key):
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        field_priority_config=None  # Start with no config
+        field_priority_config=None,  # Start with no config
     )
     db_session.add(user)
     await db_session.commit()
@@ -89,9 +89,9 @@ async def user_with_priorities(db_session, test_tenant_key):
                 "agent_templates": 3,
                 "project_description": 1,
                 "memory_360": 2,
-                "git_history": 4
-            }
-        }
+                "git_history": 4,
+            },
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -103,12 +103,9 @@ async def user_with_priorities(db_session, test_tenant_key):
 # TEST 1: Field Priorities Persist with Correct Structure
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_field_priorities_persist_with_priorities_key(
-    user_service,
-    test_user,
-    db_session
-):
+async def test_field_priorities_persist_with_priorities_key(user_service, test_user, db_session):
     """
     TEST 1: Field priorities should persist to database with 'priorities' key.
 
@@ -140,15 +137,12 @@ async def test_field_priorities_persist_with_priorities_key(
             "agent_templates": 2,
             "project_description": 1,
             "memory_360": 3,
-            "git_history": 4
-        }
+            "git_history": 4,
+        },
     }
 
     # ACT: Update user's field priority configuration
-    result = await user_service.update_field_priority_config(
-        user_id=test_user.id,
-        config=new_config
-    )
+    result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
     # ASSERT: Configuration should be saved successfully
     assert result["success"] is True, "Failed to update field priority config"
@@ -157,14 +151,11 @@ async def test_field_priorities_persist_with_priorities_key(
     await db_session.refresh(test_user)
 
     # CRITICAL ASSERTION 1: Config should exist in database
-    assert test_user.field_priority_config is not None, (
-        "field_priority_config should not be None after update"
-    )
+    assert test_user.field_priority_config is not None, "field_priority_config should not be None after update"
 
     # CRITICAL ASSERTION 2: Config should have "priorities" key, not "fields"
     assert "priorities" in test_user.field_priority_config, (
-        f"Config should have 'priorities' key. "
-        f"Got keys: {test_user.field_priority_config.keys()}"
+        f"Config should have 'priorities' key. Got keys: {test_user.field_priority_config.keys()}"
     )
 
     # CRITICAL ASSERTION 3: Config should NOT have "fields" key
@@ -174,17 +165,12 @@ async def test_field_priorities_persist_with_priorities_key(
 
     # CRITICAL ASSERTION 4: Priorities should match saved config
     assert test_user.field_priority_config["priorities"] == new_config["priorities"], (
-        f"Expected priorities {new_config['priorities']}, "
-        f"got {test_user.field_priority_config.get('priorities')}"
+        f"Expected priorities {new_config['priorities']}, got {test_user.field_priority_config.get('priorities')}"
     )
 
 
 @pytest.mark.asyncio
-async def test_field_priorities_retrieved_with_correct_structure(
-    user_service,
-    user_with_priorities,
-    db_session
-):
+async def test_field_priorities_retrieved_with_correct_structure(user_service, user_with_priorities, db_session):
     """
     TEST 1b: Field priorities should be retrieved with 'priorities' key.
 
@@ -208,14 +194,10 @@ async def test_field_priorities_retrieved_with_correct_structure(
     config = result["config"]
 
     # CRITICAL ASSERTION 2: Config should have "priorities" key
-    assert "priorities" in config, (
-        f"Config should have 'priorities' key. Got keys: {config.keys()}"
-    )
+    assert "priorities" in config, f"Config should have 'priorities' key. Got keys: {config.keys()}"
 
     # CRITICAL ASSERTION 3: Config should NOT have "fields" key
-    assert "fields" not in config, (
-        "Config should NOT have 'fields' key - should be 'priorities'"
-    )
+    assert "fields" not in config, "Config should NOT have 'fields' key - should be 'priorities'"
 
     # CRITICAL ASSERTION 4: Priorities should match database
     expected_priorities = {
@@ -224,7 +206,7 @@ async def test_field_priorities_retrieved_with_correct_structure(
         "agent_templates": 3,
         "project_description": 1,
         "memory_360": 2,
-        "git_history": 4
+        "git_history": 4,
     }
     assert config["priorities"] == expected_priorities, (
         f"Expected priorities {expected_priorities}, got {config.get('priorities')}"
@@ -232,10 +214,7 @@ async def test_field_priorities_retrieved_with_correct_structure(
 
 
 @pytest.mark.asyncio
-async def test_default_field_priorities_use_priorities_key(
-    user_service,
-    test_user
-):
+async def test_default_field_priorities_use_priorities_key(user_service, test_user):
     """
     TEST 1c: Default field priorities should also use 'priorities' key.
 
@@ -257,14 +236,10 @@ async def test_default_field_priorities_use_priorities_key(
     config = result["config"]
 
     # CRITICAL ASSERTION 1: Default config should have "priorities" key
-    assert "priorities" in config, (
-        f"Default config should have 'priorities' key. Got keys: {config.keys()}"
-    )
+    assert "priorities" in config, f"Default config should have 'priorities' key. Got keys: {config.keys()}"
 
     # CRITICAL ASSERTION 2: Default config should NOT have "fields" key
-    assert "fields" not in config, (
-        "Default config should NOT have 'fields' key - should be 'priorities'"
-    )
+    assert "fields" not in config, "Default config should NOT have 'fields' key - should be 'priorities'"
 
     # CRITICAL ASSERTION 3: Default priorities should be valid
     priorities = config["priorities"]
@@ -273,16 +248,11 @@ async def test_default_field_priorities_use_priorities_key(
 
     # Verify all priorities are valid values (1-4)
     for category, priority in priorities.items():
-        assert priority in {1, 2, 3, 4}, (
-            f"Invalid priority {priority} for category '{category}'"
-        )
+        assert priority in {1, 2, 3, 4}, f"Invalid priority {priority} for category '{category}'"
 
 
 @pytest.mark.asyncio
-async def test_field_priorities_version_is_2_0(
-    user_service,
-    test_user
-):
+async def test_field_priorities_version_is_2_0(user_service, test_user):
     """
     TEST 1d: Field priority config should always have version 2.0.
 
@@ -291,39 +261,26 @@ async def test_field_priorities_version_is_2_0(
     # ARRANGE: Create config with version 2.0
     new_config = {
         "version": "2.0",
-        "priorities": {
-            "product_core": 1,
-            "vision_documents": 2,
-            "agent_templates": 3,
-            "project_description": 1
-        }
+        "priorities": {"product_core": 1, "vision_documents": 2, "agent_templates": 3, "project_description": 1},
     }
 
     # ACT: Update config
-    await user_service.update_field_priority_config(
-        user_id=test_user.id,
-        config=new_config
-    )
+    await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
     # ASSERT: Retrieved config should have version 2.0
     result = await user_service.get_field_priority_config(test_user.id)
 
     assert result["success"] is True
-    assert result["config"]["version"] == "2.0", (
-        f"Expected version 2.0, got {result['config'].get('version')}"
-    )
+    assert result["config"]["version"] == "2.0", f"Expected version 2.0, got {result['config'].get('version')}"
 
 
 # ============================================================================
 # EDGE CASES
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_field_priorities_handles_none_gracefully(
-    user_service,
-    test_user,
-    db_session
-):
+async def test_field_priorities_handles_none_gracefully(user_service, test_user, db_session):
     """
     TEST 1e: When user has field_priority_config=None, should return defaults.
 
@@ -342,10 +299,7 @@ async def test_field_priorities_handles_none_gracefully(
 
 
 @pytest.mark.asyncio
-async def test_field_priorities_validates_structure(
-    user_service,
-    test_user
-):
+async def test_field_priorities_validates_structure(user_service, test_user):
     """
     TEST 1f: Invalid config structure should be rejected.
 
@@ -356,19 +310,14 @@ async def test_field_priorities_validates_structure(
         "version": "2.0",
         "fields": {  # WRONG KEY - should be "priorities"
             "product_core": 1
-        }
+        },
     }
 
     # ACT: Try to update with invalid config
-    result = await user_service.update_field_priority_config(
-        user_id=test_user.id,
-        config=invalid_config
-    )
+    result = await user_service.update_field_priority_config(user_id=test_user.id, config=invalid_config)
 
     # ASSERT: Should be rejected
     # NOTE: This might pass if validation doesn't check for correct key
     # The test documents expected behavior
-    assert result["success"] is False, (
-        "Config with 'fields' key should be rejected - should use 'priorities'"
-    )
+    assert result["success"] is False, "Config with 'fields' key should be rejected - should use 'priorities'"
     assert "priorities" in result.get("error", "").lower() or "invalid" in result.get("error", "").lower()

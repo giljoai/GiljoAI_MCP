@@ -247,10 +247,9 @@ class TestHandover0034FreshInstall:
 
         This enables /api/auth/create-first-admin endpoint
         """
-        from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
         # Simulate what install.py does in setup_database()
         from src.giljo_mcp.models import Base, SetupState
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
         engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
@@ -476,9 +475,8 @@ class TestDatabaseCreation:
         20-22: SetupState, User, APIKey
         23-28: MCPSession, OptimizationRule, OptimizationMetric, MCPContextIndex, MCPContextSummary, MCPAgentJob
         """
-        from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
         from src.giljo_mcp.models import Base
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
         engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
@@ -519,9 +517,8 @@ class TestDatabaseCreation:
         """
         Verify SetupState is created with Handover 0035 security fields
         """
-        from tests.helpers.test_db_helper import PostgreSQLTestHelper
-
         from src.giljo_mcp.models import Base, SetupState
+        from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
         engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)

@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 
+
 logger = structlog.get_logger(__name__)
+
 
 def estimate_tokens(data: dict[str, Any]) -> int:
     """
@@ -33,6 +35,7 @@ def estimate_tokens(data: dict[str, Any]) -> int:
     """
     json_str = json.dumps(data, default=str)
     return len(json_str) // 4
+
 
 async def get_self_identity(
     agent_name: str,

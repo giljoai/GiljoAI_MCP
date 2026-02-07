@@ -24,7 +24,6 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -32,14 +31,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.templates import AgentTemplate
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.project_service import ProjectService
 from tests.fixtures.base_fixtures import TestData
 
 
@@ -331,11 +327,13 @@ class OrchestratorSimulator:
 
         agents = []
         for template in templates:
-            agents.append({
-                "agent_display_name": template.role,  # role is the agent type
-                "agent_name": template.name,
-                "template_id": template.id,
-            })
+            agents.append(
+                {
+                    "agent_display_name": template.role,  # role is the agent type
+                    "agent_name": template.name,
+                    "template_id": template.id,
+                }
+            )
 
         # If no templates, use defaults
         if not agents:
@@ -369,7 +367,8 @@ class OrchestratorSimulator:
                 status="waiting",
                 spawned_by=self.orchestrator_job_id,
                 template_id=config.get("template_id"),
-                tool_type="claude-code",                context_budget=150000,
+                tool_type="claude-code",
+                context_budget=150000,
                 context_used=0,
                 health_status="healthy",
                 created_at=datetime.now(timezone.utc),
@@ -471,7 +470,8 @@ async def orchestrator_job(db_session, test_project, test_user) -> AgentExecutio
         agent_name="Orchestrator",
         mission="Execute staging workflow and spawn agents",
         status="waiting",
-        tool_type="claude-code",        context_budget=150000,
+        tool_type="claude-code",
+        context_budget=150000,
         context_used=0,
         health_status="healthy",
         created_at=datetime.now(timezone.utc),
@@ -485,9 +485,7 @@ async def orchestrator_job(db_session, test_project, test_user) -> AgentExecutio
 
 
 @pytest_asyncio.fixture(scope="function")
-async def orchestrator_simulator(
-    db_session, orchestrator_job, test_project, test_user
-) -> OrchestratorSimulator:
+async def orchestrator_simulator(db_session, orchestrator_job, test_project, test_user) -> OrchestratorSimulator:
     """Create orchestrator simulator instance."""
     return OrchestratorSimulator(
         orchestrator_job_id=orchestrator_job.job_id,
@@ -621,9 +619,7 @@ class TestCompleteProjectLifecycle:
         assert len(spawned_job_ids) == 3
 
         # Verify agent jobs created in database
-        stmt = select(AgentExecution).where(
-            AgentExecution.job_id.in_(spawned_job_ids)
-        )
+        stmt = select(AgentExecution).where(AgentExecution.job_id.in_(spawned_job_ids))
         result = await db_session.execute(stmt)
         spawned_jobs = result.scalars().all()
 
@@ -676,9 +672,7 @@ class TestCompleteProjectLifecycle:
 
         # 3. Verify agents transitioned to 'complete' status
         db_session.expire_all()  # Refresh session (not async)
-        stmt = select(AgentExecution).where(
-            AgentExecution.job_id.in_(spawned_job_ids)
-        )
+        stmt = select(AgentExecution).where(AgentExecution.job_id.in_(spawned_job_ids))
         result = await db_session.execute(stmt)
         completed_jobs = result.scalars().all()
 
@@ -721,17 +715,13 @@ class TestCompleteProjectLifecycle:
 
         # 6. Verify database state consistent
         # - Orchestrator job exists
-        stmt = select(AgentExecution).where(
-            AgentExecution.job_id == orchestrator_simulator.orchestrator_job_id
-        )
+        stmt = select(AgentExecution).where(AgentExecution.job_id == orchestrator_simulator.orchestrator_job_id)
         result = await db_session.execute(stmt)
         orch_job = result.scalar_one()
         assert orch_job is not None
 
         # - All spawned agents exist and are complete
-        stmt = select(AgentExecution).where(
-            AgentExecution.spawned_by == orchestrator_simulator.orchestrator_job_id
-        )
+        stmt = select(AgentExecution).where(AgentExecution.spawned_by == orchestrator_simulator.orchestrator_job_id)
         result = await db_session.execute(stmt)
         spawned_by_orch = result.scalars().all()
         assert len(spawned_by_orch) == 3
@@ -747,11 +737,13 @@ class TestCompleteProjectLifecycle:
         # Mock Serena MCP HTTP endpoint responses
         mock_serena_responses = {
             "find_symbol": {
-                "result": [{
-                    "name_path": "ProductService",
-                    "kind": "Class",
-                    "location": {"line": 38, "column": 0},
-                }]
+                "result": [
+                    {
+                        "name_path": "ProductService",
+                        "kind": "Class",
+                        "location": {"line": 38, "column": 0},
+                    }
+                ]
             },
             "get_symbols_overview": {
                 "result": {
@@ -779,9 +771,7 @@ class TestCompleteProjectLifecycle:
         assert "symbols" in overview_result
         assert len(overview_result["symbols"]) > 0
 
-    async def test_github_toggle_enabled(
-        self, db_session, test_product, test_project
-    ):
+    async def test_github_toggle_enabled(self, db_session, test_product, test_project):
         """Test closeout with GitHub integration enabled"""
         # Enable GitHub integration (in-memory test)
         product_memory = test_product.product_memory or {}
@@ -821,9 +811,7 @@ class TestCompleteProjectLifecycle:
         assert len(history["git_commits"]) == 2
         assert history["git_commits"][0]["sha"] == "abc123"
 
-    async def test_github_toggle_disabled(
-        self, db_session, test_product, test_project
-    ):
+    async def test_github_toggle_disabled(self, db_session, test_product, test_project):
         """Test closeout with GitHub integration disabled"""
         # Disable GitHub integration (in-memory test)
         product_memory = test_product.product_memory or {}
@@ -849,9 +837,7 @@ class TestCompleteProjectLifecycle:
         assert "git_commits" not in history
         assert history["summary"] == "Manual summary without GitHub integration"
 
-    async def test_context_priority_settings(
-        self, db_session, test_user, test_product
-    ):
+    async def test_context_priority_settings(self, db_session, test_user, test_product):
         """Test field priorities are respected in context fetching"""
         # Set user priorities: vision_documents=EXCLUDED, tech_stack=CRITICAL
         # (In real system, this would be in User.settings or ContextSettings table)
@@ -876,7 +862,7 @@ class TestCompleteProjectLifecycle:
                 if priority == "EXCLUDED":
                     # Don't include excluded fields
                     continue
-                elif priority == "CRITICAL":
+                if priority == "CRITICAL":
                     # Always include critical fields
                     context[field] = f"{field.upper()} content (CRITICAL)"
                 elif priority == "IMPORTANT":
@@ -897,9 +883,7 @@ class TestCompleteProjectLifecycle:
         assert "architecture" in context
         assert "testing" in context
 
-    async def test_agent_template_manager_enabled_agents(
-        self, db_session, test_user, test_agent_templates
-    ):
+    async def test_agent_template_manager_enabled_agents(self, db_session, test_user, test_agent_templates):
         """Test active/inactive agents in discovery (active only)"""
         # Get active agents only
         stmt = select(AgentTemplate).where(
@@ -914,14 +898,10 @@ class TestCompleteProjectLifecycle:
         active_types = {t.role for t in active_templates}
         assert active_types == {"implementer", "tester", "reviewer"}
 
-    async def test_agent_template_manager_disabled_agents(
-        self, db_session, test_user, test_agent_templates
-    ):
+    async def test_agent_template_manager_disabled_agents(self, db_session, test_user, test_agent_templates):
         """Test inactive agents are excluded from discovery"""
         # Get ALL agents (active + inactive)
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == test_user.tenant_key
-        )
+        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == test_user.tenant_key)
         result = await db_session.execute(stmt)
         all_templates = result.scalars().all()
 
@@ -954,7 +934,8 @@ class TestCompleteProjectLifecycle:
                 agent_name=f"Test {agent_display_name}",
                 mission=f"Test mission for {agent_display_name}",
                 status="waiting",
-                tool_type="claude-code",                context_budget=150000,
+                tool_type="claude-code",
+                context_budget=150000,
                 context_used=0,
                 health_status="healthy",
                 created_at=datetime.now(timezone.utc),
@@ -1007,9 +988,7 @@ class TestCompleteProjectLifecycle:
             assert message.content is not None
             assert message.status == "waiting"
 
-    async def test_orchestrator_context_tracking(
-        self, db_session, orchestrator_job, test_project
-    ):
+    async def test_orchestrator_context_tracking(self, db_session, orchestrator_job, test_project):
         """Test orchestrator context budget monitored"""
         # Update orchestrator context usage
         orchestrator_job.context_used = 45000  # 30% of 150000 budget

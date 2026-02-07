@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.fixture
@@ -99,8 +99,8 @@ def sample_child_jobs():
             spawned_by="parent-job-001",
             context_chunks=["chunk-1"],
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
             started_at=base_time,
             completed_at=base_time + timedelta(seconds=30),
             created_at=base_time,
@@ -115,8 +115,8 @@ def sample_child_jobs():
             spawned_by="parent-job-001",
             context_chunks=["chunk-2"],
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
             started_at=base_time,
             completed_at=base_time + timedelta(seconds=45),
             created_at=base_time,
@@ -131,8 +131,8 @@ def sample_child_jobs():
             spawned_by="parent-job-001",
             context_chunks=["chunk-3"],
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
             started_at=base_time,
             completed_at=None,
             created_at=base_time,

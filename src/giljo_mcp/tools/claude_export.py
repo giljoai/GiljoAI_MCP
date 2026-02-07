@@ -17,7 +17,9 @@ from api.endpoints.claude_export import export_templates_to_claude_code
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, User
 
+
 logger = logging.getLogger(__name__)
+
 
 async def export_agents_command(
     db_manager: DatabaseManager,
@@ -77,6 +79,7 @@ async def export_agents_command(
         logger.exception(f"Export failed: {e}")
         return {"success": False, "error": f"Export failed: {e!s}"}
 
+
 async def get_product_for_tenant(
     db_manager: DatabaseManager, tenant_key: str, product_id: str | None = None
 ) -> Product | None:
@@ -106,6 +109,7 @@ async def get_product_for_tenant(
     except Exception as e:
         logger.exception(f"Failed to get product: {e}")
         return None
+
 
 async def validate_product_path(
     db_manager: DatabaseManager, tenant_key: str, product_id: str, project_path: str

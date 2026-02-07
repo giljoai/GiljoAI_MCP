@@ -38,7 +38,9 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
+
 logger = logging.getLogger(__name__)
+
 
 class ProductService:
     """
@@ -392,7 +394,9 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list products: {e}")
-            raise BaseGiljoException(message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}) from e
+            raise BaseGiljoException(
+                message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}
+            ) from e
 
     async def update_product(self, product_id: str, **updates) -> dict[str, Any]:
         """

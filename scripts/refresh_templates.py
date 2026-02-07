@@ -17,6 +17,7 @@ import os
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -25,7 +26,7 @@ import argparse
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ async def refresh_all_tenants():
     if not db_url:
         # Try loading from config.yaml
         import yaml
+
         config_path = project_root / "config.yaml"
         if config_path.exists():
             with open(config_path) as f:
@@ -87,6 +89,7 @@ async def refresh_single_tenant(tenant_key: str):
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         import yaml
+
         config_path = project_root / "config.yaml"
         if config_path.exists():
             with open(config_path) as f:

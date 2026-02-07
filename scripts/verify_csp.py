@@ -14,16 +14,11 @@ Usage:
 import sys
 from pathlib import Path
 
-# Add API directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'api'))
 
-from middleware.security import (
-    SecurityHeadersMiddleware,
-    is_development_mode,
-    CSP_STYLE_HASH,
-    CSP_SCRIPT_HASH_1,
-    CSP_SCRIPT_HASH_2
-)
+# Add API directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "api"))
+
+from middleware.security import CSP_SCRIPT_HASH_1, CSP_SCRIPT_HASH_2, CSP_STYLE_HASH, is_development_mode
 
 
 def main():
@@ -110,5 +105,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())

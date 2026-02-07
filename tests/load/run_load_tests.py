@@ -14,14 +14,15 @@ Usage:
     # Run against specific host
     python tests/load/run_load_tests.py --all --host http://192.168.1.100:7272
 """
-import subprocess
+
 import argparse
 import json
-import time
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional
+import subprocess
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
 
 
 class LoadTestRunner:
@@ -41,7 +42,7 @@ class LoadTestRunner:
         spawn_rate: int,
         duration: str,
         tags: Optional[List[str]] = None,
-        locustfile: str = "tests/load/locustfile.py"
+        locustfile: str = "tests/load/locustfile.py",
     ) -> Dict:
         """
         Run a single load test scenario.
@@ -57,30 +58,38 @@ class LoadTestRunner:
         Returns:
             Test results dictionary
         """
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Running: {name}")
         print(f"Users: {users}, Spawn Rate: {spawn_rate}/s, Duration: {duration}")
         if tags:
             print(f"Tags: {', '.join(tags)}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # Build locust command
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         html_report = str(self.results_dir / f"{name}_{timestamp}.html")
         csv_prefix = str(self.results_dir / f"{name}_{timestamp}")
 
         cmd = [
             "locust",
-            "-f", locustfile,
-            "--host", self.host,
+            "-f",
+            locustfile,
+            "--host",
+            self.host,
             "--headless",
-            "-u", str(users),
-            "-r", str(spawn_rate),
-            "-t", duration,
-            "--html", html_report,
-            "--csv", csv_prefix,
+            "-u",
+            str(users),
+            "-r",
+            str(spawn_rate),
+            "-t",
+            duration,
+            "--html",
+            html_report,
+            "--csv",
+            csv_prefix,
             "--csv-full-history",
-            "--logfile", str(self.results_dir / f"{name}_{timestamp}.log")
+            "--logfile",
+            str(self.results_dir / f"{name}_{timestamp}.log"),
         ]
 
         if tags:
@@ -93,7 +102,8 @@ class LoadTestRunner:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=self._parse_duration_to_seconds(duration) + 60  # Extra timeout buffer
+                timeout=self._parse_duration_to_seconds(duration) + 60,
+                check=False,  # Extra timeout buffer
             )
             duration_seconds = time.time() - start_time
             success = process.returncode == 0
@@ -101,11 +111,7 @@ class LoadTestRunner:
         except subprocess.TimeoutExpired:
             duration_seconds = time.time() - start_time
             success = False
-            process = type('obj', (object,), {
-                'returncode': -1,
-                'stdout': '',
-                'stderr': 'Test timed out'
-            })
+            process = type("obj", (object,), {"returncode": -1, "stdout": "", "stderr": "Test timed out"})
 
         # Parse results
         results = {
@@ -119,12 +125,12 @@ class LoadTestRunner:
             "html_report": html_report,
             "csv_prefix": csv_prefix,
             "stdout": process.stdout[-5000:] if process.stdout else "",  # Last 5000 chars
-            "stderr": process.stderr[-5000:] if process.stderr else ""
+            "stderr": process.stderr[-5000:] if process.stderr else "",
         }
 
         # Save results
         results_file = self.results_dir / f"{name}_{timestamp}.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(results, f, indent=2)
 
         status = "✅ SUCCESS" if success else "❌ FAILED"
@@ -138,14 +144,13 @@ class LoadTestRunner:
     def _parse_duration_to_seconds(self, duration: str) -> int:
         """Parse duration string (e.g., '5m', '2h') to seconds."""
         duration = duration.strip()
-        if duration.endswith('s'):
+        if duration.endswith("s"):
             return int(duration[:-1])
-        elif duration.endswith('m'):
+        if duration.endswith("m"):
             return int(duration[:-1]) * 60
-        elif duration.endswith('h'):
+        if duration.endswith("h"):
             return int(duration[:-1]) * 3600
-        else:
-            return 300  # Default 5 minutes
+        return 300  # Default 5 minutes
 
     def run_all_scenarios(self) -> List[Dict]:
         """
@@ -159,48 +164,24 @@ class LoadTestRunner:
         5. Soak Test: 20 users, 30 minutes
         """
         scenarios = [
-            {
-                "name": "normal_load",
-                "users": 10,
-                "spawn_rate": 2,
-                "duration": "5m",
-                "tags": ["normal_load"]
-            },
-            {
-                "name": "peak_load",
-                "users": 50,
-                "spawn_rate": 10,
-                "duration": "5m",
-                "tags": ["peak_load"]
-            },
-            {
-                "name": "stress_test",
-                "users": 100,
-                "spawn_rate": 10,
-                "duration": "2m",
-                "tags": ["stress_test"]
-            },
+            {"name": "normal_load", "users": 10, "spawn_rate": 2, "duration": "5m", "tags": ["normal_load"]},
+            {"name": "peak_load", "users": 50, "spawn_rate": 10, "duration": "5m", "tags": ["peak_load"]},
+            {"name": "stress_test", "users": 100, "spawn_rate": 10, "duration": "2m", "tags": ["stress_test"]},
             {
                 "name": "spike_test",
                 "users": 100,
                 "spawn_rate": 50,  # Rapid spawn
                 "duration": "1m",
-                "tags": ["stress_test"]
+                "tags": ["stress_test"],
             },
-            {
-                "name": "soak_test",
-                "users": 20,
-                "spawn_rate": 2,
-                "duration": "30m",
-                "tags": ["normal_load"]
-            }
+            {"name": "soak_test", "users": 20, "spawn_rate": 2, "duration": "30m", "tags": ["normal_load"]},
         ]
 
         results = []
         for i, scenario in enumerate(scenarios, 1):
-            print(f"\n{'#'*60}")
+            print(f"\n{'#' * 60}")
             print(f"Scenario {i}/{len(scenarios)}")
-            print(f"{'#'*60}")
+            print(f"{'#' * 60}")
 
             result = self.run_scenario(**scenario)
             results.append(result)
@@ -217,10 +198,10 @@ class LoadTestRunner:
         """Generate comprehensive summary report from all test results."""
         report = f"""# GiljoAI MCP Load Test Summary Report
 
-**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Generated**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Host**: {self.host}
 **Total Scenarios**: {len(results)}
-**Test Duration**: {sum(r['duration_seconds'] for r in results):.2f}s
+**Test Duration**: {sum(r["duration_seconds"] for r in results):.2f}s
 
 ---
 
@@ -230,7 +211,7 @@ class LoadTestRunner:
 
         # Calculate summary statistics
         total_tests = len(results)
-        passed_tests = sum(1 for r in results if r['success'])
+        passed_tests = sum(1 for r in results if r["success"])
         failed_tests = total_tests - passed_tests
 
         report += f"""
@@ -238,7 +219,7 @@ class LoadTestRunner:
 
 - **Total Tests**: {total_tests}
 - **Passed**: {passed_tests} ✅
-- **Failed**: {failed_tests} {'❌' if failed_tests > 0 else ''}
+- **Failed**: {failed_tests} {"❌" if failed_tests > 0 else ""}
 - **Success Rate**: {(passed_tests / total_tests * 100):.1f}%
 
 ---
@@ -250,14 +231,14 @@ class LoadTestRunner:
         for result in results:
             status = "✅ PASS" if result["success"] else "❌ FAIL"
             report += f"""
-### {result['name']} {status}
+### {result["name"]} {status}
 
-- **Users**: {result['users']} concurrent
-- **Spawn Rate**: {result['spawn_rate']} users/second
-- **Duration**: {result['duration']} (target)
-- **Actual Duration**: {result['duration_seconds']:.2f}s
-- **HTML Report**: `{result['html_report']}`
-- **CSV Data**: `{result['csv_prefix']}_*.csv`
+- **Users**: {result["users"]} concurrent
+- **Spawn Rate**: {result["spawn_rate"]} users/second
+- **Duration**: {result["duration"]} (target)
+- **Actual Duration**: {result["duration_seconds"]:.2f}s
+- **HTML Report**: `{result["html_report"]}`
+- **CSV Data**: `{result["csv_prefix"]}_*.csv`
 
 """
 
@@ -272,9 +253,9 @@ Based on load test results:
 """
 
         # Find maximum successful concurrent users
-        successful_tests = [r for r in results if r['success']]
+        successful_tests = [r for r in results if r["success"]]
         if successful_tests:
-            max_users = max(r['users'] for r in successful_tests)
+            max_users = max(r["users"] for r in successful_tests)
             report += f"✅ **Maximum Verified Capacity**: {max_users} concurrent users\n\n"
         else:
             report += "⚠️ **No successful tests** - system may be experiencing issues\n\n"
@@ -368,14 +349,14 @@ For detailed metrics, review the following files:
 
         # Save report
         report_file = self.results_dir / f"summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write(report)
 
-        print(f"\n{'='*60}")
-        print(f"📊 Summary Report Generated")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print("📊 Summary Report Generated")
+        print(f"{'=' * 60}")
         print(f"Report: {report_file}")
-        print(f"\nView HTML reports:")
+        print("\nView HTML reports:")
         for result in results:
             print(f"  - {result['name']}: {result['html_report']}")
 
@@ -385,68 +366,41 @@ For detailed metrics, review the following files:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Run load tests for GiljoAI MCP",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Run load tests for GiljoAI MCP", formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    parser.add_argument("--host", default="http://localhost:7272", help="Target host (default: http://localhost:7272)")
     parser.add_argument(
-        "--host",
-        default="http://localhost:7272",
-        help="Target host (default: http://localhost:7272)"
+        "--scenario", help="Run specific scenario (normal_load, peak_load, stress_test, spike_test, soak_test)"
     )
-    parser.add_argument(
-        "--scenario",
-        help="Run specific scenario (normal_load, peak_load, stress_test, spike_test, soak_test)"
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all scenarios"
-    )
-    parser.add_argument(
-        "--users",
-        type=int,
-        default=10,
-        help="Number of concurrent users (for --scenario)"
-    )
-    parser.add_argument(
-        "--spawn-rate",
-        type=int,
-        default=2,
-        help="User spawn rate per second (for --scenario)"
-    )
-    parser.add_argument(
-        "--duration",
-        default="5m",
-        help="Test duration (for --scenario, e.g., 5m, 2h)"
-    )
+    parser.add_argument("--all", action="store_true", help="Run all scenarios")
+    parser.add_argument("--users", type=int, default=10, help="Number of concurrent users (for --scenario)")
+    parser.add_argument("--spawn-rate", type=int, default=2, help="User spawn rate per second (for --scenario)")
+    parser.add_argument("--duration", default="5m", help="Test duration (for --scenario, e.g., 5m, 2h)")
 
     args = parser.parse_args()
 
     runner = LoadTestRunner(host=args.host)
 
     if args.all:
-        print(f"\n{'#'*60}")
+        print(f"\n{'#' * 60}")
         print("Running ALL Load Test Scenarios")
         print(f"Host: {args.host}")
-        print(f"{'#'*60}\n")
+        print(f"{'#' * 60}\n")
 
         results = runner.run_all_scenarios()
         runner.generate_summary_report(results)
 
     elif args.scenario:
-        print(f"\n{'#'*60}")
+        print(f"\n{'#' * 60}")
         print(f"Running Single Scenario: {args.scenario}")
         print(f"Host: {args.host}")
-        print(f"{'#'*60}\n")
+        print(f"{'#' * 60}\n")
 
         result = runner.run_scenario(
-            name=args.scenario,
-            users=args.users,
-            spawn_rate=args.spawn_rate,
-            duration=args.duration
+            name=args.scenario, users=args.users, spawn_rate=args.spawn_rate, duration=args.duration
         )
 
-        print(f"\n✅ Scenario complete")
+        print("\n✅ Scenario complete")
         print(f"View report: {result['html_report']}")
 
     else:

@@ -1,5 +1,5 @@
 """Tests for background tasks initialization module"""
-from datetime import datetime, timedelta, timezone
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,9 +16,10 @@ async def test_init_background_tasks_starts_cleanup_task():
     state.db_manager = MagicMock()
     state.tenant_manager = MagicMock()
 
-    with patch('api.startup.background_tasks.asyncio.create_task') as mock_create_task, \
-         patch('api.startup.background_tasks.purge_expired_deleted_items', new_callable=AsyncMock):
-
+    with (
+        patch("api.startup.background_tasks.asyncio.create_task") as mock_create_task,
+        patch("api.startup.background_tasks.purge_expired_deleted_items", new_callable=AsyncMock),
+    ):
         mock_cleanup_task = MagicMock()
         mock_metrics_task = MagicMock()
         mock_create_task.side_effect = [mock_cleanup_task, mock_metrics_task]
@@ -39,9 +40,10 @@ async def test_init_background_tasks_starts_metrics_sync_task():
     state.db_manager = MagicMock()
     state.tenant_manager = MagicMock()
 
-    with patch('api.startup.background_tasks.asyncio.create_task') as mock_create_task, \
-         patch('api.startup.background_tasks.purge_expired_deleted_items', new_callable=AsyncMock):
-
+    with (
+        patch("api.startup.background_tasks.asyncio.create_task") as mock_create_task,
+        patch("api.startup.background_tasks.purge_expired_deleted_items", new_callable=AsyncMock),
+    ):
         mock_cleanup_task = MagicMock()
         mock_metrics_task = MagicMock()
         mock_create_task.side_effect = [mock_cleanup_task, mock_metrics_task]
@@ -61,9 +63,10 @@ async def test_init_background_tasks_runs_one_time_purge():
     state.db_manager = MagicMock()
     state.tenant_manager = MagicMock()
 
-    with patch('api.startup.background_tasks.asyncio.create_task'), \
-         patch('api.startup.background_tasks.purge_expired_deleted_items', new_callable=AsyncMock) as mock_purge:
-
+    with (
+        patch("api.startup.background_tasks.asyncio.create_task"),
+        patch("api.startup.background_tasks.purge_expired_deleted_items", new_callable=AsyncMock) as mock_purge,
+    ):
         await init_background_tasks(state)
 
         # Verify purge was called once on startup
@@ -75,8 +78,9 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
     """Cleanup task should remove expired download tokens every 15 minutes"""
     # This test verifies the internal cleanup_expired_download_tokens function behavior
     # We'll test it by importing and calling it directly
-    from api.startup.background_tasks import cleanup_expired_download_tokens
     import asyncio
+
+    from api.startup.background_tasks import cleanup_expired_download_tokens
 
     state = APIState()
     mock_db_manager = MagicMock()
@@ -90,9 +94,10 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
     # TokenManager is imported inside the function, so patch at the import location
     # Implementation sleeps FIRST (900s), then runs cleanup
     # So we need: sleep(900) → cleanup → sleep(900) → CancelledError
-    with patch('src.giljo_mcp.download_tokens.TokenManager') as mock_token_manager, \
-         patch('api.startup.background_tasks.asyncio.sleep', side_effect=[None, asyncio.CancelledError]):
-
+    with (
+        patch("src.giljo_mcp.download_tokens.TokenManager") as mock_token_manager,
+        patch("api.startup.background_tasks.asyncio.sleep", side_effect=[None, asyncio.CancelledError]),
+    ):
         mock_tm_instance = MagicMock()
         mock_tm_instance.cleanup_expired_tokens = AsyncMock(return_value={"total": 5})
         mock_token_manager.return_value = mock_tm_instance
@@ -111,8 +116,9 @@ async def test_cleanup_expired_download_tokens_removes_expired_tokens():
 @pytest.mark.asyncio
 async def test_sync_api_metrics_to_db_syncs_counters():
     """Metrics sync task should sync api_call_count and mcp_call_count to database"""
-    from api.startup.background_tasks import sync_api_metrics_to_db
     import asyncio
+
+    from api.startup.background_tasks import sync_api_metrics_to_db
 
     state = APIState()
     state.api_call_count = {"tenant1": 100, "tenant2": 50}
@@ -130,7 +136,7 @@ async def test_sync_api_metrics_to_db_syncs_counters():
 
     # Implementation sleeps FIRST (300s), then syncs
     # So we need: sleep(300) → sync → sleep(300) → CancelledError
-    with patch('api.startup.background_tasks.asyncio.sleep', side_effect=[None, asyncio.CancelledError]):
+    with patch("api.startup.background_tasks.asyncio.sleep", side_effect=[None, asyncio.CancelledError]):
         try:
             await sync_api_metrics_to_db(state)
         except asyncio.CancelledError:
@@ -165,19 +171,16 @@ async def test_purge_expired_deleted_items_purges_projects_and_products():
     mock_session.execute = AsyncMock(side_effect=[mock_project_result, mock_product_result])
     mock_db_manager.get_session_async.return_value = mock_session
 
-    with patch('api.startup.background_tasks.ProjectService') as mock_project_service, \
-         patch('api.startup.background_tasks.ProductService') as mock_product_service:
-
+    with (
+        patch("api.startup.background_tasks.ProjectService") as mock_project_service,
+        patch("api.startup.background_tasks.ProductService") as mock_product_service,
+    ):
         mock_ps_instance = MagicMock()
-        mock_ps_instance.purge_expired_deleted_projects = AsyncMock(
-            return_value={"success": True, "purged_count": 3}
-        )
+        mock_ps_instance.purge_expired_deleted_projects = AsyncMock(return_value={"success": True, "purged_count": 3})
         mock_project_service.return_value = mock_ps_instance
 
         mock_prod_instance = MagicMock()
-        mock_prod_instance.purge_expired_deleted_products = AsyncMock(
-            return_value={"success": True, "purged_count": 1}
-        )
+        mock_prod_instance.purge_expired_deleted_products = AsyncMock(return_value={"success": True, "purged_count": 1})
         mock_product_service.return_value = mock_prod_instance
 
         await purge_expired_deleted_items(mock_db_manager, mock_tenant_manager)

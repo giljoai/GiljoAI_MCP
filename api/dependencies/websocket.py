@@ -15,7 +15,9 @@ from fastapi import Depends, Request
 
 from api.websocket import WebSocketManager
 
+
 logger = logging.getLogger(__name__)
+
 
 async def get_websocket_manager(request: Request) -> WebSocketManager | None:
     """
@@ -46,6 +48,7 @@ async def get_websocket_manager(request: Request) -> WebSocketManager | None:
         )
 
     return ws_manager
+
 
 class WebSocketDependency:
     """
@@ -166,6 +169,7 @@ class WebSocketDependency:
         """
         return self.manager is not None
 
+
 async def get_websocket_dependency(
     manager: WebSocketManager | None = Depends(get_websocket_manager),
 ) -> WebSocketDependency:
@@ -190,6 +194,7 @@ async def get_websocket_dependency(
         WebSocketDependency instance (always returns, even if manager is None)
     """
     return WebSocketDependency(manager)
+
 
 # Create __init__.py for the dependencies module
 __all__ = ["WebSocketDependency", "get_websocket_dependency", "get_websocket_manager"]

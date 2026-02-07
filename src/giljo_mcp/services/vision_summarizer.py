@@ -24,6 +24,7 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.utils import get_stop_words
 
+
 class VisionDocumentSummarizer:
     """
     CPU-based extractive summarizer using LSA algorithm.
