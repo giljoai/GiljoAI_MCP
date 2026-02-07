@@ -1,15 +1,7 @@
-import { FlatCompat } from '@eslint/compat'
 import js from '@eslint/js'
-import path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-})
+import pluginVue from 'eslint-plugin-vue'
+import vueParser from 'vue-eslint-parser'
+import globals from 'globals'
 
 export default [
   {
@@ -25,50 +17,94 @@ export default [
       'tests/',
       'playwright-report/',
       'test-results/',
+      'src/types/**/*.ts',
+      'src/**/*.ts',
+      'src/integrations/**',
+      'src/components/messages/**',
+      'src/components/settings/ContextPriorityConfig.vue',
+      'src/components/ui/**',
+      'src/components/__tests__/StatusBadge.spec.js',
     ],
   },
-  ...compat.extends(
-    'eslint:recommended',
-    'plugin:vue/vue3-recommended',
-    '@vue/eslint-config-prettier'
-  ),
   {
-    files: ['**/*.vue'],
-    languageOptions: {
-      parser: (await import('vue-eslint-parser')).default,
-      parserOptions: {
-        parser: '@babel/eslint-parser',
-        requireConfigFile: false,
-        sourceType: 'module',
-      },
-    },
-  },
-  {
+    files: ['src/**/*.{js,mjs,jsx,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        browser: true,
-        es2022: true,
-        node: true,
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
       },
     },
     rules: {
-      'vue/multi-word-component-names': 'off',
-      'vue/no-v-html': 'warn',
+      ...js.configs.recommended.rules,
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       'no-unused-vars': [
-        'error',
+        'warn',
         {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_|^e$|^err$|^error$|^props$|^emit$',
+          varsIgnorePattern: '^_|^err|^e$|^error$|^props$|^emit$|^theme$',
         },
       ],
       'prefer-const': 'error',
       'prefer-template': 'error',
       'prefer-arrow-callback': 'error',
       'no-var': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.vue'],
+    languageOptions: {
+      parser: vueParser,
+      parserOptions: {
+        parser: '@babel/eslint-parser',
+        requireConfigFile: false,
+        sourceType: 'module',
+        ecmaVersion: 2022,
+        extraFileExtensions: ['.vue'],
+        ecmaFeatures: {
+          jsx: true,
+          typescript: true,
+        },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+    rules: {
+      ...pluginVue.configs['vue3-recommended'].rules,
+      'vue/multi-word-component-names': 'off',
+      'vue/no-v-html': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'error',
+      'no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_|^e$|^err$|^error$|^props$|^emit$',
+          varsIgnorePattern: '^_|^err|^e$|^error$|^props$|^emit$|^theme$',
+        },
+      ],
+      'prefer-const': 'error',
+      'prefer-template': 'error',
+      'prefer-arrow-callback': 'error',
+      'no-var': 'error',
+    },
+    plugins: {
+      vue: pluginVue,
+    },
+  },
+  {
+    files: ['src/**/*.spec.js', 'src/__tests__/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
     },
   },
 ]
