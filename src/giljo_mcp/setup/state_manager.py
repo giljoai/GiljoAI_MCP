@@ -22,6 +22,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 
@@ -121,7 +122,7 @@ class SetupStateManager:
                 state_dict = self._get_state_from_database()
                 if state_dict is not None:
                     return state_dict
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to get state from database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -132,7 +133,7 @@ class SetupStateManager:
             state_dict = self._get_state_from_file()
             if state_dict is not None:
                 return state_dict
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             logger.warning(f"Failed to get state from file for tenant {self.tenant_key}: {e}. Returning default state.")
 
         # Return default state
@@ -215,7 +216,7 @@ class SetupStateManager:
                 self._mark_database_initialized_in_database(setup_version, config_snapshot)
                 logger.info(f"Marked database initialized in database for tenant {self.tenant_key}")
                 return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to mark database initialized in database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -291,7 +292,7 @@ class SetupStateManager:
             try:
                 self._update_state_in_database(**kwargs)
                 return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(
                     f"Failed to update state in database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
@@ -385,7 +386,7 @@ class SetupStateManager:
             logger.info(f"Successfully migrated file state to database for tenant {self.tenant_key}")
             return True
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to migrate file state to database: {e}")
             self.db_session.rollback()
             return False
@@ -482,7 +483,7 @@ class SetupStateManager:
                     state.add_validation_failure(message)
                     self.db_session.commit()
                     return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to add validation failure to database: {e}")
 
         # Fall back to file
@@ -510,7 +511,7 @@ class SetupStateManager:
                     state.add_validation_warning(message)
                     self.db_session.commit()
                     return
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to add validation warning to database: {e}")
 
         # Fall back to file
@@ -536,7 +537,7 @@ class SetupStateManager:
                     self.db_session.delete(state)
                     self.db_session.commit()
                     logger.info(f"Deleted setup state from database for tenant {self.tenant_key}")
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.error(f"Failed to delete state from database: {e}")
                 self.db_session.rollback()
 
@@ -548,7 +549,7 @@ class SetupStateManager:
                 if state and state.get("tenant_key") == self.tenant_key:
                     self.state_file.unlink()
                     logger.info(f"Deleted setup state file for tenant {self.tenant_key}")
-            except Exception as e:
+            except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
                 logger.error(f"Failed to delete state file: {e}")
 
     def add_configured_feature(self, feature_name: str, feature_config: Any = True) -> None:

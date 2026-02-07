@@ -147,19 +147,6 @@ async def list_agent_templates(
             session=session,
             tenant_key=current_user.tenant_key,
         )
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = (
-        #     select(AgentTemplate)
-        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
-        #     .where(AgentTemplate.is_active == True)
-        #     .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
-        #     .order_by(AgentTemplate.role, AgentTemplate.name)
-        # )
-        # result = await session.execute(stmt)
-        # templates = result.scalars().all()
-
-        # Build template metadata list
         files = []
         for template in templates:
             filename = format_filename(template.role or template.name)
@@ -180,7 +167,7 @@ async def list_agent_templates(
 
     except Exception as e:
         logger.error(f"Failed to list agent templates: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{filename}")
@@ -220,23 +207,12 @@ async def download_agent_template(
         raise HTTPException(status_code=404, detail=f"Template '{filename}' not found")
 
     try:
-        # Initialize service and get template by role
         template_service = TemplateService()
         template = await template_service.get_template_by_role(
             session=session,
             tenant_key=current_user.tenant_key,
             role=role,
         )
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = (
-        #     select(AgentTemplate)
-        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
-        #     .where(AgentTemplate.role == role)
-        #     .where(AgentTemplate.is_active == True)
-        # )
-        # result = await session.execute(stmt)
-        # template = result.scalar_one_or_none()
 
         if not template:
             logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")
@@ -256,4 +232,4 @@ async def download_agent_template(
 
     except Exception as e:
         logger.error(f"Failed to download template {filename}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

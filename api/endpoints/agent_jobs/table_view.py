@@ -243,7 +243,7 @@ async def get_agent_jobs_table_view(
             ):
                 steps_total = total_steps
                 steps_completed = completed_steps
-        except Exception:
+        except (ValueError, KeyError, TypeError):
             # Keep table view robust even if metadata is malformed
             steps_total = None
             steps_completed = None

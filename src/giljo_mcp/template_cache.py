@@ -106,7 +106,7 @@ class TemplateCache:
                     self._cache_hits += 1
                     logger.debug(f"Redis cache HIT: {cache_key}")
                     return template
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache error: {e}")
                 # Continue to database if Redis fails
 
@@ -127,7 +127,7 @@ class TemplateCache:
             if self.redis:
                 try:
                     await self._set_in_redis(cache_key, template, ttl=3600)
-                except Exception as e:
+                except (ValueError, KeyError, RuntimeError) as e:
                     logger.warning(f"Redis cache write error: {e}")
 
             logger.debug(f"Database cache MISS → cached: {cache_key}")
@@ -239,7 +239,7 @@ class TemplateCache:
             try:
                 await self._delete_from_redis(cache_key)
                 logger.info(f"Redis cache invalidated: {cache_key}")
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache invalidation error: {e}")
 
     async def invalidate_all(self, tenant_key: Optional[str] = None) -> None:
@@ -266,7 +266,7 @@ class TemplateCache:
                 pattern = f"template:{tenant_key}:*" if tenant_key else "template:*"
                 await self._delete_redis_pattern(pattern)
                 logger.info(f"Redis cache cleared (pattern: {pattern})")
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache clear error: {e}")
 
     def get_cache_stats(self) -> dict:

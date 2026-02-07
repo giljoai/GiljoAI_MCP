@@ -227,12 +227,12 @@ class ProductService:
         except ValidationError:
             # Re-raise validation errors as-is
             raise
-        except Exception as e:
+        except (ImportError, ValueError, KeyError) as e:
             self._logger.exception(f"Failed to create product: {e}")
             raise BaseGiljoException(
                 message=f"Failed to create product: {e!s}",
                 context={"product_name": name, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def get_product(self, product_id: str, include_metrics: bool = True) -> Dict[str, Any]:
         """
@@ -314,12 +314,12 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except (ImportError, ValueError, KeyError) as e:
             self._logger.exception(f"Failed to get product: {e}")
             raise BaseGiljoException(
                 message=f"Failed to get product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> Dict[str, Any]:
         """
@@ -394,7 +394,7 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list products: {e}")
-            raise BaseGiljoException(message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key})
+            raise BaseGiljoException(message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}) from e
 
     async def update_product(self, product_id: str, **updates) -> Dict[str, Any]:
         """
@@ -479,7 +479,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to update product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def update_quality_standards(
         self,
@@ -669,7 +669,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to activate product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def deactivate_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -726,7 +726,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to deactivate product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def delete_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -781,7 +781,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to delete product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def restore_product(self, product_id: str) -> Dict[str, Any]:
         """
@@ -843,7 +843,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to restore product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def list_deleted_products(self) -> Dict[str, Any]:
         """
@@ -906,7 +906,7 @@ class ProductService:
             self._logger.exception(f"Failed to list deleted products: {e}")
             raise BaseGiljoException(
                 message=f"Failed to list deleted products: {e!s}", context={"tenant_key": self.tenant_key}
-            )
+            ) from e
 
     # ============================================================================
     # Active Product Management
@@ -970,7 +970,7 @@ class ProductService:
             self._logger.exception(f"Failed to get active product: {e}")
             raise BaseGiljoException(
                 message=f"Failed to get active product: {e!s}", context={"tenant_key": self.tenant_key}
-            )
+            ) from e
 
     # ============================================================================
     # Metrics & Statistics
@@ -1030,7 +1030,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to get product statistics: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def get_cascade_impact(self, product_id: str) -> Dict[str, Any]:
         """
@@ -1101,7 +1101,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to get cascade impact: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def update_git_integration(
         self,
@@ -1207,7 +1207,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to update git integration: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     async def upload_vision_document(
         self,
@@ -1339,7 +1339,7 @@ class ProductService:
                             f"(from {summaries['original_tokens']} tokens) "
                             f"in {summaries['processing_time_ms']}ms"
                         )
-                    except Exception as e:
+                    except (ImportError, ValueError, KeyError) as e:
                         # Summarization failed but document created - log warning and continue
                         self._logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
@@ -1384,7 +1384,7 @@ class ProductService:
             raise ValidationError(
                 message=f"Validation error uploading vision document: {e!s}",
                 context={"product_id": product_id, "filename": filename},
-            )
+            ) from e
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
@@ -1393,7 +1393,7 @@ class ProductService:
             raise BaseGiljoException(
                 message=f"Failed to upload vision document: {e!s}",
                 context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key},
-            )
+            ) from e
 
     # ============================================================================
     # Validation Methods
@@ -1442,9 +1442,9 @@ class ProductService:
                 test_dir = path / ".claude_test_write"
                 test_dir.mkdir(exist_ok=True)
                 test_dir.rmdir()
-            except (PermissionError, OSError):
+            except (PermissionError, OSError) as e:
                 logger.warning(f"Project path validation failed - not writable: {path}")
-                raise HTTPException(status_code=400, detail="Project path is not writable")
+                raise HTTPException(status_code=400, detail="Project path is not writable") from e
 
             return True
 
@@ -1452,7 +1452,7 @@ class ProductService:
             raise
         except Exception as e:
             logger.warning(f"Project path validation failed - invalid path: {project_path}, error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid project path")
+            raise HTTPException(status_code=400, detail="Invalid project path") from e
 
     # ============================================================================
     # WebSocket Event Emission (Handover 0139a)
@@ -1499,7 +1499,7 @@ class ProductService:
 
             self._logger.debug(f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}")
 
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             # Log error but don't fail the operation
             self._logger.warning(f"Failed to emit WebSocket event {event_type}: {e}", exc_info=True)
 
@@ -1775,4 +1775,4 @@ class ProductService:
                     "tenant_key": self.tenant_key,
                     "days_before_purge": days_before_purge,
                 },
-            )
+            ) from e

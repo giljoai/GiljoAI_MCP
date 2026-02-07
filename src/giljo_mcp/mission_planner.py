@@ -16,7 +16,9 @@ import re
 from typing import Any, ClassVar, Optional
 
 import tiktoken
+import yaml
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config.defaults import DEFAULT_FIELD_PRIORITY
@@ -91,7 +93,7 @@ class MissionPlanner:
         # Initialize tokenizer (cl100k_base encoding for GPT-4/Claude)
         try:
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
+        except (KeyError, ValueError, OSError) as e:
             logger.warning(f"Failed to load tiktoken encoding: {e}. Using fallback.")
             self.tokenizer = None
 
@@ -275,7 +277,7 @@ class MissionPlanner:
         if self.tokenizer:
             try:
                 return len(self.tokenizer.encode(text))
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError) as e:
                 logger.warning(f"Token counting failed: {e}. Using fallback.")
 
         # Fallback: rough estimate (1 token ≈ 4 characters)
@@ -491,7 +493,7 @@ Success Criteria:
                     "token_budget": token_budget,
                     "serena_enabled": serena_enabled,
                 }
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Failed to fetch user configuration: {e}")
 
         return {"field_priority_config": None, "token_budget": 2000, "serena_enabled": False}
@@ -538,7 +540,7 @@ Success Criteria:
             #
             # return result.get("content", "")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - Placeholder for future MCP client calls
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
                 extra={"project_id": project_id, "tenant_key": tenant_key},
@@ -2501,7 +2503,7 @@ Partial reading defeats the purpose of this configuration."""
                 user = result.scalar_one_or_none()
                 if user and user.field_priority_config:
                     return user.field_priority_config
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Failed to load user field priority config: {e}")
 
         return DEFAULT_FIELD_PRIORITY
@@ -2985,7 +2987,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                             limit=10,
                         )
                         vision_chunks = [chunk.content for chunk in chunks]
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to fetch context chunks: {e}. Using vision document.")
                 vision_chunks = []
 
@@ -3014,7 +3016,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                 with open(config_path, encoding="utf-8") as f:
                     config_data = yaml.safe_load(f) or {}
                 serena_enabled = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-        except Exception as e:
+        except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Failed to read Serena config: {e}")
             serena_enabled = False
 
@@ -3154,5 +3156,5 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                         }
                         session.commit()
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Failed to store token metrics: {e}")

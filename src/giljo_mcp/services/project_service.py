@@ -1052,7 +1052,7 @@ class ProjectService:
                                 "mission": project.mission,
                             },
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                         self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
                 # Handover 0431: Create orchestrator fixture on project activation
@@ -1203,7 +1203,7 @@ class ProjectService:
                     },
                 )
                 self._logger.info(f"[ORCHESTRATOR FIXTURE] Broadcast agent:created for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                 self._logger.warning(f"[ORCHESTRATOR FIXTURE] WebSocket broadcast failed: {ws_error}")
 
         return {
@@ -1283,7 +1283,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -1364,7 +1364,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -1838,7 +1838,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -2048,7 +2048,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             "orchestrator_job_id": orchestrator_job_id,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -2373,7 +2373,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             "deleted_counts": deleted_counts,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -2572,7 +2572,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                         "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
                     }
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - Batch operation continues on individual errors
                 self._logger.error(f"Failed to nuclear delete project {project.id}: {e}")
 
         self._logger.info(
@@ -2658,7 +2658,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     f"[Nuclear Purge] Auto-purged expired project {project.id} "
                     f"(deleted {(datetime.now(timezone.utc) - project.deleted_at).days} days ago)"
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - Batch operation continues on individual errors
                 self._logger.error(f"Failed to nuclear delete expired project {project.id}: {e}")
 
         self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")

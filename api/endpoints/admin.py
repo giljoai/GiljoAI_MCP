@@ -57,4 +57,4 @@ async def update_dependency_graph():
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update graph: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to update graph: {e!s}") from e

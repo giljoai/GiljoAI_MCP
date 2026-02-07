@@ -7,6 +7,20 @@
 
 ---
 
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+Read(file_path, offset=400, limit=200)  # Lines 401-600
+# Continue until entire file is processed
+```
+
+---
+
 ## Mission Statement
 
 Add comprehensive type hints across the codebase. Modernize annotations to PEP 585+ standards and prepare for mypy strict mode.

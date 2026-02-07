@@ -21,6 +21,7 @@ from typing import List, Optional
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
@@ -68,7 +69,7 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
         else:
             # Not an error - could be "no_changes" which is expected
             logger.debug(f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}")
-    except Exception as e:
+    except (SQLAlchemyError, ValueError, KeyError) as e:
         # Don't fail the main operation if consolidation fails
         logger.error(f"consolidation_failed: product_id={product_id}, error={e!s}")
 
@@ -261,7 +262,7 @@ async def create_vision_document(
                     f"(from {summaries['original_tokens']} tokens) "
                     f"in {summaries['processing_time_ms']}ms"
                 )
-            except Exception as e:
+            except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
@@ -286,7 +287,7 @@ async def create_vision_document(
                     )
                 else:
                     logger.warning(f"Document {doc.id} created but chunking failed: {chunk_result.get('error')}")
-            except Exception as e:
+            except (ImportError, SQLAlchemyError, ValueError) as e:
                 # Chunking failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but chunking failed: {e}")
 
@@ -297,12 +298,15 @@ async def create_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (SQLAlchemyError, OSError, UnicodeDecodeError, ValueError) as e:
         await db.rollback()
         logger.error(f"Failed to create vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.get("/{document_id}", response_model=VisionDocumentResponse)
@@ -380,11 +384,11 @@ async def list_vision_documents(
 
         return [VisionDocumentResponse.model_validate(doc) for doc in docs]
 
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to list vision documents: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list vision documents: {e!s}"
-        )
+        ) from e
 
 
 @router.put("/{document_id}", response_model=VisionDocumentResponse)
@@ -456,7 +460,7 @@ async def update_vision_document(
                     f"Light={summaries['light']['tokens']} tokens, "
                     f"Medium={summaries['medium']['tokens']} tokens"
                 )
-            except Exception as e:
+            except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but content updated - log warning and continue
                 logger.warning(f"Document {document_id} updated but summarization failed: {e}")
 
@@ -468,12 +472,15 @@ async def update_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (SQLAlchemyError, ValueError) as e:
         await db.rollback()
         logger.error(f"Failed to update vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.delete("/{document_id}", response_model=DeleteResponse)
@@ -534,12 +541,15 @@ async def delete_vision_document(
 
         return DeleteResponse(**delete_result)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except SQLAlchemyError as e:
         await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.post("/products/{product_id}/regenerate-consolidated", response_model=dict)
@@ -611,11 +621,11 @@ async def regenerate_consolidated_vision(
 
     except HTTPException:
         raise  # Re-raise HTTP exceptions
-    except Exception as e:
+    except (SQLAlchemyError, ValueError, KeyError) as e:
         logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate consolidated vision: {e!s}"
-        )
+        ) from e
 
 
 @router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)
@@ -694,9 +704,12 @@ async def regenerate_summaries(
             total_tokens=summaries["original_tokens"],
         )
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (ImportError, SQLAlchemyError, ValueError, KeyError) as e:
         await db.rollback()
         logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate summaries: {e!s}"
-        )
+        ) from e

@@ -10,6 +10,7 @@ import logging
 from typing import Any, Optional
 
 from fastapi import WebSocket, WebSocketException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -53,7 +54,7 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
         logger.warning("[WS SETUP DEBUG] No SetupState rows found; treating database as initialized")
         return {"database_initialized": True}
 
-    except Exception as e:
+    except (SQLAlchemyError, ValueError) as e:
         logger.error(f"Failed to get setup state: {e}")
         return {"database_initialized": False}
 
@@ -188,7 +189,7 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
             "permissions": ["*"],  # JWT users have full permissions
         }
 
-    except Exception as e:
+    except (ImportError, ValueError, KeyError) as e:
         logger.error(f"JWT validation failed: {e}")
         return None
 
@@ -227,7 +228,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
         return None
 
-    except Exception as e:
+    except (ImportError, SQLAlchemyError, ValueError) as e:
         logger.error(f"API key validation failed: {e}")
         return None
 

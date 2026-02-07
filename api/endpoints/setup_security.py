@@ -59,7 +59,7 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
             "requires_admin_creation": is_fresh_install,
         }
 
-    except Exception as e:
+    except (ValueError, KeyError) as e:
         logger.error(f"Failed to get setup status: {e}")
         # Conservative fallback - assume fresh install (allows account creation)
         return {"is_fresh_install": True, "total_users_count": 0, "requires_admin_creation": True}

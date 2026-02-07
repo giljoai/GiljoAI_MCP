@@ -829,8 +829,6 @@ class TemplateService:
             ...     session, template, "Update user instructions", "auto", "alice"
             ... )
         """
-        # ORIGINAL QUERIES: history.py lines 112-132, 175-195, 239-259
-        # (restore_template, reset_template, reset_system_instructions)
         archive = TemplateArchive(
             tenant_key=template.tenant_key,
             template_id=template.id,
