@@ -17,7 +17,8 @@ class TaskCreate(BaseModel):
     """
     Schema for creating a task (POST /tasks/).
 
-    Product and project are optional to allow unscoped tasks.
+    Product is required to ensure tasks are always bound to the active product
+    (Handover 0433 Phase 4). Project is optional.
     """
 
     title: str = Field(..., min_length=1, max_length=255, description="Task title")
@@ -27,7 +28,7 @@ class TaskCreate(BaseModel):
     )
     priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
     category: Optional[str] = Field(None, max_length=100, description="Task category")
-    product_id: Optional[str] = Field(None, description="Product ID for isolation")
+    product_id: str = Field(..., description="Product ID (required - Handover 0433)")
     project_id: Optional[str] = Field(None, description="Associated project ID")
     parent_task_id: Optional[str] = Field(None, description="Parent task ID for hierarchy")
     due_date: Optional[datetime] = Field(None, description="Task due date")

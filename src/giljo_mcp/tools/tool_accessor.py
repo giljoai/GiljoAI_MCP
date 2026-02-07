@@ -14,10 +14,12 @@ if TYPE_CHECKING:
 from sqlalchemy import and_, select
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.services.context_service import ContextService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.services.template_service import TemplateService
@@ -103,6 +105,8 @@ class ToolAccessor:
         self._test_session = test_session
 
         # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
+        # Note: ProductService requires tenant_key directly, we'll pass it when needed
+        self._product_service = None  # Lazy initialization per-request
         self._project_service = ProjectService(
             db_manager,
             tenant_manager,
@@ -305,9 +309,10 @@ class ToolAccessor:
         priority: str = "medium",
         category: str | None = None,
         assigned_to: str | None = None,
+        tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """
-        Create a new task with optional category support.
+        Create a new task bound to the active product.
 
         Args:
             title: Task title/summary
@@ -315,16 +320,54 @@ class ToolAccessor:
             priority: Task priority (default: "medium")
             category: Optional category (frontend, backend, database, infra, docs, general)
             assigned_to: Optional agent name to assign to (not implemented yet)
+            tenant_key: Tenant isolation key (injected by MCP security layer)
 
         Returns:
             Dict with success status and task_id or error
+
+        Raises:
+            ValidationError: If no active product is set for the tenant
+
+        Example:
+            >>> result = await tool_accessor.create_task(
+            ...     title="Fix login bug",
+            ...     description="Users cannot login with email",
+            ...     priority="high",
+            ...     tenant_key="tenant-abc"
+            ... )
+            >>> print(result["task_id"])
         """
-        # TaskService.create_task calls log_task which accepts category
-        # We need to call log_task directly to pass category
+        # Use tenant_key from parameter or fall back to tenant_manager
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Fetch active product for tenant (Handover 0433 Phase 3)
+        # ProductService requires tenant_key in constructor, instantiate per-request
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=self._websocket_manager,
+            test_session=self._test_session,
+        )
+        active_product_result = await product_service.get_active_product()
+
+        if not active_product_result.get("product"):
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={
+                    "tenant_key": effective_tenant_key,
+                    "operation": "create_task",
+                },
+            )
+
+        product_id = active_product_result["product"]["id"]
+
+        # Create task with product binding and tenant isolation
         return await self._task_service.log_task(
             content=description,
             category=category or title,  # Use category if provided, otherwise use title
             priority=priority,
+            product_id=product_id,  # Always bind to active product
+            tenant_key=effective_tenant_key,  # Ensure tenant isolation
         )
 
     # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
