@@ -476,7 +476,7 @@ class ThinClientPromptGenerator:
                 mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
             else:
                 mcp_host = config.server.api_host
-        except Exception:  # nosec B110
+        except (OSError, ValueError, KeyError):  # nosec B110
             # Fallback to api_host if YAML loading fails
             mcp_host = config.server.api_host
 
@@ -587,7 +587,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
                 mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
             else:
                 mcp_host = config.server.api_host
-        except Exception:  # nosec B110
+        except (OSError, ValueError, KeyError):  # nosec B110
             # Fallback to api_host if YAML loading fails
             mcp_host = config.server.api_host
 
@@ -939,7 +939,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
                 external_host = config_data.get("services", {}).get("external_host")
                 if external_host:
                     return external_host
-        except Exception:
+        except (OSError, ValueError, KeyError):
             pass  # nosec B110
 
         # Fallback to api_host from config

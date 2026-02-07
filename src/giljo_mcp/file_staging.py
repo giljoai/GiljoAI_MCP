@@ -149,7 +149,7 @@ class FileStaging:
             msg = f"Disk error creating slash commands ZIP: {e}"
             logger.error(msg)
             return (None, msg)
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             msg = f"Unexpected error creating slash commands ZIP: {e}"
             logger.error(msg)
             return (None, msg)
@@ -234,7 +234,7 @@ class FileStaging:
             msg = f"Disk error staging agent templates: {e}"
             logger.error(msg)
             return (None, msg)
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             msg = f"Unexpected error staging agent templates: {e}"
             logger.error(msg)
             # Rollback on error
@@ -263,9 +263,9 @@ class FileStaging:
             logger.debug(f"Saved metadata to: {metadata_path}")
             return metadata_path
 
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error saving metadata: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata") from e
 
     async def cleanup(self, tenant_key: str, token: str) -> bool:
         """
@@ -294,7 +294,7 @@ class FileStaging:
             logger.debug(f"Cleaned up staging directory: {staging_dir}")
             return True
 
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             # Best-effort cleanup - log but don't raise
             logger.warning(f"Error cleaning up staging directory: {e}")
             return False

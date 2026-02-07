@@ -301,7 +301,7 @@ class MessageService:
                         self._logger.info(
                             f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each"
                         )
-                    except Exception as counter_error:
+                    except (ValueError, KeyError) as counter_error:
                         self._logger.warning(f"Failed to update message counters: {counter_error}")
 
                 # Emit WebSocket events if manager is available
@@ -406,7 +406,7 @@ class MessageService:
                                 f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
                             )
 
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
                 else:
@@ -480,7 +480,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to send message: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "send_message", "project_id": project_id}
@@ -546,7 +546,7 @@ class MessageService:
                             message_type="broadcast",
                             content_preview=content[:100] if content else "",
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                         # Log WebSocket errors but don't fail the broadcast
                         self._logger.warning(f"Failed to emit WebSocket broadcast event: {ws_error}")
 
@@ -554,7 +554,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to broadcast message: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "broadcast", "project_id": project_id}
@@ -631,7 +631,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to broadcast message to project: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "broadcast_to_project", "project_id": project_id}
@@ -699,7 +699,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to get messages: {e}")
             raise BaseGiljoException(
                 message=str(e),
@@ -871,7 +871,7 @@ class MessageService:
                             self._logger.info(
                                 f"[WEBSOCKET] Broadcast message:acknowledged for {len(messages)} messages (waiting={waiting_count}, read={read_count})"
                             )
-                        except Exception as e:
+                        except (RuntimeError, ValueError) as e:
                             self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 
                 # Convert to AgentMessageQueue-compatible format
@@ -903,7 +903,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to receive messages: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}
@@ -1087,7 +1087,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to list messages: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
@@ -1147,7 +1147,7 @@ class MessageService:
                                 "result": result[:100] if result else "",
                             },
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                         # Log WebSocket errors but don't fail the completion
                         self._logger.warning(
                             f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
@@ -1161,7 +1161,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to complete message: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "complete_message", "message_id": message_id}
@@ -1262,7 +1262,7 @@ class MessageService:
                             waiting_count=waiting_count,
                             read_count=read_count,
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
 
                 return {
@@ -1273,7 +1273,7 @@ class MessageService:
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             self._logger.exception(f"Failed to acknowledge message: {e}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "acknowledge_message", "message_id": message_id}

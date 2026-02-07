@@ -151,5 +151,5 @@ class ConfigurationRepository:
         try:
             await session.execute(text("SELECT 1"))
             return True
-        except Exception:
+        except (RuntimeError, OSError):
             return False

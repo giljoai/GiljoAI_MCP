@@ -77,4 +77,4 @@ async def execute_slash_command(request: SlashCommandRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to execute slash command: {e!s}",
-        )
+        ) from e

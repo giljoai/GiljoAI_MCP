@@ -517,7 +517,7 @@ class VisionDocument(Base):
                 path = Path(self.vision_path)
                 if path.exists():
                     content = path.read_text(encoding="utf-8")
-            except Exception:
+            except (OSError, UnicodeDecodeError):
                 return True
         elif self.storage_type == "inline" and self.vision_document:
             content = self.vision_document
@@ -530,7 +530,7 @@ class VisionDocument(Base):
                     path = Path(self.vision_path)
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
-                except Exception:
+                except (OSError, UnicodeDecodeError):
                     pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document
@@ -556,7 +556,7 @@ class VisionDocument(Base):
                 path = Path(self.vision_path)
                 if path.exists():
                     content = path.read_text(encoding="utf-8")
-            except Exception:
+            except (OSError, UnicodeDecodeError):
                 pass  # nosec B110 - file read fallback
         elif self.storage_type == "inline" and self.vision_document:
             content = self.vision_document
@@ -569,7 +569,7 @@ class VisionDocument(Base):
                     path = Path(self.vision_path)
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
-                except Exception:
+                except (OSError, UnicodeDecodeError):
                     pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document

@@ -139,7 +139,7 @@ class VisionDocumentSummarizer:
                 parser = PlaintextParser.from_string(chunk, Tokenizer(self.language))
                 sentences = self.summarizer(parser.document, sentences_per_chunk)
                 summaries.append(" ".join(str(s) for s in sentences))
-            except Exception:
+            except (ValueError, ImportError, RuntimeError):
                 # If chunk summarization fails, skip it
                 # This handles edge cases like very short chunks
                 continue  # nosec B112
@@ -218,7 +218,7 @@ class VisionDocumentSummarizer:
             sentence_count = max(5, int(target_tokens / 25))  # ~25 tokens per sentence (more aggressive)
             sentences = self.summarizer(parser.document, sentence_count)
             return " ".join(str(s) for s in sentences)
-        except Exception:
+        except (ValueError, ImportError, RuntimeError):
             # If consolidation fails, return text as-is
             # Better to be slightly over target than lose content
             return text

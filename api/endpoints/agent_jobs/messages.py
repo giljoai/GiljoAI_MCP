@@ -171,4 +171,4 @@ async def get_job_messages(
         logger.error(f"Failed to retrieve messages for job {job_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve messages: {e!s}"
-        )
+        ) from e

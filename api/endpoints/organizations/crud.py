@@ -99,7 +99,7 @@ async def create_organization(
         raise
     except Exception as e:
         logger.error(f"Error creating organization: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.get("", response_model=List[OrganizationResponse])
@@ -133,7 +133,7 @@ async def list_organizations(
         raise
     except Exception as e:
         logger.error(f"Error listing organizations: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.get("/{org_id}", response_model=OrganizationResponse)
@@ -188,7 +188,7 @@ async def get_organization(
         raise
     except Exception as e:
         logger.error(f"Error getting organization: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.put("/{org_id}", response_model=OrganizationResponse)
@@ -236,7 +236,7 @@ async def update_organization(
         raise
     except Exception as e:
         logger.error(f"Error updating organization: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.delete("/{org_id}")
@@ -280,4 +280,4 @@ async def delete_organization(
         raise
     except Exception as e:
         logger.error(f"Error deleting organization: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e

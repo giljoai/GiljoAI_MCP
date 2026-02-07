@@ -248,8 +248,8 @@ async def chunk_vision_document(
                 )
             raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/search", response_model=SearchContextResponse)
@@ -300,8 +300,8 @@ async def search_context(
             query=query, chunks=context_chunks, total_chunks=len(context_chunks), total_tokens=total_tokens
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/load-for-agent", response_model=LoadContextResponse)
@@ -354,8 +354,8 @@ async def load_context_for_agent(
             reduction_percentage=None,
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
@@ -404,8 +404,8 @@ async def get_token_stats(
             chunks_count=stats.get("chunks_count", 0),
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/health", response_model=HealthCheckResponse)
@@ -445,7 +445,7 @@ async def health_check(
                 message="Context management system operational",
             )
 
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError) as e:
         return HealthCheckResponse(
             status="degraded", chunk_count=0, search_performance_ms=None, message=f"Error: {e!s}"
         )

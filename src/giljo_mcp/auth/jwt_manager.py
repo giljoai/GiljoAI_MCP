@@ -155,7 +155,7 @@ class JWTManager:
         except RuntimeError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"JWT configuration error: {e}"
-            )
+            ) from e
 
         try:
             payload = jwt.decode(token, secret_key, algorithms=[cls.ALGORITHM])
@@ -169,11 +169,11 @@ class JWTManager:
         except jwt.ExpiredSignatureError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired. Please login again."
-            )
+            ) from e
         except jwt.InvalidTokenError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials: {e!s}"
-            )
+            ) from e
 
     @classmethod
     def decode_token_no_verify(cls, token: str) -> Dict:

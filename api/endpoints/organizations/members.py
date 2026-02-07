@@ -73,7 +73,7 @@ async def list_members(
         raise
     except Exception as e:
         logger.error(f"Error listing members: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.post("/{org_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
@@ -136,7 +136,7 @@ async def invite_member(
         raise
     except Exception as e:
         logger.error(f"Error inviting member: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.put("/{org_id}/members/{user_id}", response_model=MemberResponse)
@@ -192,7 +192,7 @@ async def change_member_role(
         raise
     except Exception as e:
         logger.error(f"Error changing member role: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.delete("/{org_id}/members/{user_id}")
@@ -244,7 +244,7 @@ async def remove_member(
         raise
     except Exception as e:
         logger.error(f"Error removing member: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 # Separate router for transfer endpoint (different path pattern)
@@ -300,4 +300,4 @@ async def transfer_ownership(
         raise
     except Exception as e:
         logger.error(f"Error transferring ownership: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
