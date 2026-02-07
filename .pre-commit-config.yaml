@@ -1,36 +1,31 @@
 # Pre-commit hooks for GiljoAI MCP Coding Orchestrator
 # See https://pre-commit.com for more information
+#
+# Install: pip install pre-commit && pre-commit install
+# Bypass (if needed): git commit --no-verify
+# Update hooks: pre-commit autoupdate
+#
+# RE-ENABLED after 0700 cleanup series (2026-02-07)
 
 default_language_version:
   python: python3
 
 repos:
-  # TEMPORARILY DISABLED - Python linting and formatting
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.7.0
-  #   hooks:
-  #     - id: ruff
-  #       args: [--fix, --exit-non-zero-on-fix]
-  #       name: ruff (linter)
-  #     - id: ruff-format
-  #       name: ruff (formatter)
+  # Python linting and formatting - RE-ENABLED after 0707-LINT cleanup
+  # Excludes: tests (lint in CI), installer scripts (use print), dev tools
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.1
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        name: ruff (linter)
+        exclude: ^(tests/|Linux_Installer/|installers/|install\.py|uninstall\.py|startup\.py|scripts/|dev_tools/|monitor.*\.py|fix_.*\.py)
+      - id: ruff-format
+        name: ruff (formatter)
+        exclude: ^(tests/|Linux_Installer/|installers/|install\.py|uninstall\.py|startup\.py|scripts/|dev_tools/|monitor.*\.py|fix_.*\.py)
 
-  # TEMPORARILY DISABLED - conflicts with ruff and too many issues
-  # - repo: https://github.com/psf/black
-  #   rev: 24.8.0
-  #   hooks:
-  #     - id: black
-  #       language_version: python3
-  #       exclude: ^(migrations/|tests/fixtures/|node_modules/)
-
-  # TEMPORARILY DISABLED - too many type checking issues
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.11.0
-  #   hooks:
-  #     - id: mypy
-  #       additional_dependencies: [types-PyYAML, types-requests]
-  #       args: [--ignore-missing-imports, --no-strict-optional]
-  #       exclude: ^(tests/|migrations/|examples/)
+  # Note: black removed - ruff-format handles formatting
+  # Note: mypy deferred to post-v1.0 (0708-TYPES modernized syntax, mypy strictness is future work)
 
   # General file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -61,15 +56,31 @@ repos:
       #   exclude: ^(tests/helpers/|tests/fixtures/)
       - id: requirements-txt-fixer
 
-  # Security checks - using --exit-zero for warning mode (reports but doesn't block)
+  # Security checks - RE-ENABLED after 0709-SECURITY cleanup (blocks on issues)
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.9
+    rev: 1.8.3
     hooks:
       - id: bandit
         name: bandit (security scan)
-        args: ["-c", "pyproject.toml", "-r", "src/", "api/", "--exit-zero"]
+        args: ["-c", "pyproject.toml", "-r", "src/", "api/", "-ll"] # Medium+ severity
         exclude: ^(tests/|examples/|installer/|installers/|scripts/|uninstall\.py|monitor.*\.py)
         pass_filenames: false
+
+  # Secret scanning - catches API keys, passwords in code
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scan)
+
+  # Dependency vulnerability scanning - Python
+  # Note: Run manually before releases: pip-audit -r requirements.txt
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.3
+    hooks:
+      - id: pip-audit
+        name: pip-audit (Python vulnerabilities)
+        args: ["-r", "requirements.txt", "--skip-editable"]
 
   # TEMPORARILY DISABLED - bash not found on Windows, causing failures
   # - repo: local
