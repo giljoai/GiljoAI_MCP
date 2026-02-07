@@ -1002,8 +1002,26 @@ Use Serena MCP tools for semantic code analysis:
         return default_criteria.get(role.lower(), ["Complete assigned tasks"])
 
 
-# Singleton instance for global use
-_template_manager_instance = None
+# Module-level template manager holder
+class _TemplateManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[UnifiedTemplateManager] = None
+
+    @classmethod
+    def get_instance(
+        cls, db_manager: Optional[DatabaseManager] = None, redis_client=None
+    ) -> UnifiedTemplateManager:
+        if cls._instance is None:
+            cls._instance = UnifiedTemplateManager(db_manager, redis_client)
+        elif db_manager and cls._instance.db_manager is None:
+            # Update with database manager if not previously set
+            cls._instance.db_manager = db_manager
+            # Re-initialize cache with new db_manager
+            if db_manager:
+                cls._instance.cache = TemplateCache(db_manager, redis_client)
+                logger.info("TemplateCache re-initialized with database manager")
+        return cls._instance
 
 
 def get_template_manager(
@@ -1020,16 +1038,4 @@ def get_template_manager(
     Returns:
         UnifiedTemplateManager instance
     """
-    global _template_manager_instance
-
-    if _template_manager_instance is None:
-        _template_manager_instance = UnifiedTemplateManager(db_manager, redis_client)
-    elif db_manager and _template_manager_instance.db_manager is None:
-        # Update with database manager if not previously set
-        _template_manager_instance.db_manager = db_manager
-        # Re-initialize cache with new db_manager
-        if db_manager:
-            _template_manager_instance.cache = TemplateCache(db_manager, redis_client)
-            logger.info("TemplateCache re-initialized with database manager")
-
-    return _template_manager_instance
+    return _TemplateManagerHolder.get_instance(db_manager, redis_client)

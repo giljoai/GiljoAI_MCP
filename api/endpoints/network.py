@@ -129,8 +129,6 @@ async def get_network_adapters():
         HTTPException: If adapter detection fails
     """
     try:
-        import platform
-
         import psutil
 
         adapters = []

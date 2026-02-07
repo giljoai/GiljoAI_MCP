@@ -294,7 +294,7 @@ class TaskService:
                         from src.giljo_mcp.models.products import Product
 
                         product_query = select(Product).where(
-                            and_(Product.tenant_key == tenant_key, Product.is_active == True)
+                            and_(Product.tenant_key == tenant_key, Product.is_active)
                         )
                         product_result = await session.execute(product_query)
                         active_product = product_result.scalar_one_or_none()
@@ -748,7 +748,7 @@ class TaskService:
         # Get active product (required for project creation per Handover 0050)
         from src.giljo_mcp.models.products import Product
 
-        product_stmt = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active == True))
+        product_stmt = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
         product_result = await session.execute(product_stmt)
         active_product = product_result.scalar_one_or_none()
 

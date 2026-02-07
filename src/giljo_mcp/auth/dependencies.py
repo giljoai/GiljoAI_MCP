@@ -135,7 +135,7 @@ async def get_current_user(
             # Query user from database
             from sqlalchemy import select
 
-            stmt = select(User).where(User.id == user_id, User.is_active == True)
+            stmt = select(User).where(User.id == user_id, User.is_active)
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
 
@@ -161,7 +161,7 @@ async def get_current_user(
             user_id = payload["sub"]
             from sqlalchemy import select
 
-            stmt = select(User).where(User.id == user_id, User.is_active == True)
+            stmt = select(User).where(User.id == user_id, User.is_active)
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
 
@@ -180,7 +180,7 @@ async def get_current_user(
             # Query all active API keys (optimized with index)
             from sqlalchemy import select
 
-            stmt = select(APIKey).where(APIKey.is_active == True)
+            stmt = select(APIKey).where(APIKey.is_active)
             result = await db.execute(stmt)
             api_keys = result.scalars().all()
 

@@ -23,8 +23,8 @@
           variant="text"
           class="ml-1"
           aria-label="What is GiljoAI MCP?"
-          @click.stop="openIntroTour"
           data-testid="startup-intro-help"
+          @click.stop="openIntroTour"
         >
           <v-icon size="18">mdi-help-circle-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
@@ -139,14 +139,14 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="text" @click="resetAppearanceSettings" data-test="reset-appearance-btn"
+            <v-btn variant="text" data-test="reset-appearance-btn" @click="resetAppearanceSettings"
               >Reset</v-btn
             >
             <v-btn
               color="primary"
               variant="flat"
-              @click="saveAppearanceSettings"
               data-test="save-appearance-btn"
+              @click="saveAppearanceSettings"
               >Save Changes</v-btn
             >
           </v-card-actions>
@@ -307,15 +307,15 @@
             <v-spacer />
             <v-btn
               variant="text"
-              @click="resetNotificationSettings"
               data-test="reset-notification-btn"
+              @click="resetNotificationSettings"
               >Reset</v-btn
             >
             <v-btn
               color="primary"
               variant="flat"
-              @click="saveNotificationSettings"
               data-test="save-notification-btn"
+              @click="saveNotificationSettings"
               >Save Changes</v-btn
             >
           </v-card-actions>

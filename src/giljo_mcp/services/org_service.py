@@ -315,7 +315,7 @@ class OrgService:
         try:
             stmt = (
                 select(OrgMembership)
-                .where(OrgMembership.org_id == org_id, OrgMembership.is_active == True)
+                .where(OrgMembership.org_id == org_id, OrgMembership.is_active)
                 .order_by(OrgMembership.joined_at)
             )
 
@@ -339,7 +339,7 @@ class OrgService:
                 select(Organization)
                 .join(OrgMembership, Organization.id == OrgMembership.org_id)
                 .where(
-                    OrgMembership.user_id == user_id, OrgMembership.is_active == True, Organization.is_active == True
+                    OrgMembership.user_id == user_id, OrgMembership.is_active, Organization.is_active
                 )
                 .options(selectinload(Organization.members))
             )
@@ -389,7 +389,7 @@ class OrgService:
     async def _get_membership(self, org_id: str, user_id: str) -> Optional[OrgMembership]:
         """Get membership for user in org."""
         stmt = select(OrgMembership).where(
-            OrgMembership.org_id == org_id, OrgMembership.user_id == user_id, OrgMembership.is_active == True
+            OrgMembership.org_id == org_id, OrgMembership.user_id == user_id, OrgMembership.is_active
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

@@ -20,7 +20,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -37,8 +37,8 @@ class SetupStateManager:
     Implements singleton pattern per tenant for consistency.
     """
 
-    _instances: dict[str, "SetupStateManager"] = {}
-    _lock = Lock()
+    _instances: ClassVar[dict[str, "SetupStateManager"]] = {}
+    _lock: ClassVar[Lock] = Lock()
 
     def __init__(
         self,
@@ -234,7 +234,7 @@ class SetupStateManager:
         """Mark database initialized in database."""
         from src.giljo_mcp.models import SetupState
 
-        state = SetupState.create_or_update(
+        SetupState.create_or_update(
             self.db_session,
             tenant_key=self.tenant_key,
             database_initialized=True,

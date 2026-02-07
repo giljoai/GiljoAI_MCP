@@ -528,7 +528,7 @@ export function initWebsocketEventRouter({
         storeRegistry,
         shouldRoute: resolvedShouldRoute,
       }).catch((error) => {
-        // eslint-disable-next-line no-console
+         
         console.error('[websocketEventRouter] Unhandled routing error:', error)
       }),
     ),

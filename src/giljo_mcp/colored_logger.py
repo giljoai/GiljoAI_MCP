@@ -13,7 +13,7 @@ Color scheme:
 
 import logging
 import sys
-from typing import Optional
+from typing import ClassVar, Optional
 
 
 try:
@@ -38,7 +38,7 @@ class ColoredFormatter(logging.Formatter):
     """Custom formatter that adds colors to log messages based on level."""
 
     # Color mapping for log levels
-    COLORS = {
+    COLORS: ClassVar[dict[int, str]] = {
         logging.DEBUG: Fore.WHITE,  # Trivial text in white
         logging.INFO: Fore.BLUE,  # General information in blue
         logging.WARNING: Fore.YELLOW,  # Warnings in yellow

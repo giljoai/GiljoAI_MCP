@@ -17,12 +17,12 @@
           </p>
 
           <!-- Contextual CTA: Get Started or Relaunch Tutorial -->
-          <div class="mb-6" v-if="showTutorialCta">
+          <div v-if="showTutorialCta" class="mb-6">
             <v-btn
               color="primary"
               size="large"
-              @click="handleTutorialCta"
               prepend-icon="mdi-play-circle"
+              @click="handleTutorialCta"
             >
               {{ tutorialCtaLabel }}
             </v-btn>

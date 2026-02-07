@@ -167,8 +167,17 @@ class RateLimiter:
             logger.debug(f"Cleaned up {len(expired_ips)} expired IP entries")
 
 
-# Global rate limiter instance (singleton)
-_rate_limiter: RateLimiter | None = None
+# Module-level rate limiter instance (initialized lazily)
+class _RateLimiterHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: RateLimiter | None = None
+
+    @classmethod
+    def get_instance(cls) -> RateLimiter:
+        if cls._instance is None:
+            cls._instance = RateLimiter()
+        return cls._instance
 
 
 def get_rate_limiter() -> RateLimiter:
@@ -178,7 +187,4 @@ def get_rate_limiter() -> RateLimiter:
     Returns:
         RateLimiter instance
     """
-    global _rate_limiter
-    if _rate_limiter is None:
-        _rate_limiter = RateLimiter()
-    return _rate_limiter
+    return _RateLimiterHolder.get_instance()

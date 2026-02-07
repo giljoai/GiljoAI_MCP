@@ -60,11 +60,11 @@
             <div class="text-subtitle-2 font-weight-medium mr-4">Enable Serena MCP</div>
             <v-switch
               :model-value="enabled"
-              @update:model-value="$emit('update:enabled', $event)"
               :loading="loading"
               hide-details
               density="compact"
               class="serena-toggle-inline"
+              @update:model-value="$emit('update:enabled', $event)"
             />
           </div>
         </v-card-text>

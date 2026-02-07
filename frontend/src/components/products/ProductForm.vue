@@ -55,7 +55,7 @@
           Error
         </v-chip>
 
-        <v-btn icon="mdi-close" variant="text" @click="closeDialog" aria-label="Close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeDialog" />
       </v-card-title>
 
       <v-divider></v-divider>
@@ -184,10 +184,10 @@
                   <v-btn
                     size="small"
                     variant="text"
-                    @click="copyProjectPath"
                     :icon="pathCopied ? 'mdi-check' : 'mdi-content-copy'"
                     :color="pathCopied ? 'success' : 'default'"
                     :title="pathCopied ? 'Copied!' : 'Copy path to clipboard'"
+                    @click="copyProjectPath"
                   />
                 </div>
                 <div class="text-caption mt-1">
@@ -202,8 +202,8 @@
                 variant="tonal"
                 density="compact"
                 dismissible
-                @click:close="visionUploadError = null"
                 class="mb-4"
+                @click:close="visionUploadError = null"
               >
                 {{ visionUploadError }}
               </v-alert>
@@ -730,13 +730,13 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="goPrevTab" :disabled="isFirstTab">Back</v-btn>
+        <v-btn variant="text" :disabled="isFirstTab" @click="goPrevTab">Back</v-btn>
         <v-btn
           color="primary"
           variant="flat"
-          @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
           :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving"
           :loading="isEdit ? saving : isLastTab ? saving : false"
+          @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
         >
           {{ isEdit ? 'Save Changes' : isLastTab ? 'Create Product' : 'Next' }}
         </v-btn>

@@ -114,7 +114,7 @@
         />
       </v-col>
       <v-col cols="12" md="2">
-        <v-btn variant="outlined" @click="clearFilters" block> Clear Filters </v-btn>
+        <v-btn variant="outlined" block @click="clearFilters"> Clear Filters </v-btn>
       </v-col>
     </v-row>
 
@@ -159,12 +159,12 @@
             <div class="d-flex justify-center">
               <v-select
                 :model-value="item.status"
-                @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
                 :items="statusOptions"
                 variant="plain"
                 density="compact"
                 hide-details
                 class="inline-select inline-select-no-arrow"
+                @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
               >
                 <template v-slot:selection="{ item: statusItem }">
                   <v-chip
@@ -194,12 +194,12 @@
           <template v-slot:item.priority="{ item }">
             <v-select
               :model-value="item.priority"
-              @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
               :items="priorityOptions"
               variant="plain"
               density="compact"
               hide-details
               class="inline-select inline-select-no-arrow"
+              @update:model-value="(newPriority) => updateTaskField(item, 'priority', newPriority)"
             >
               <template v-slot:selection="{ item: priorityItem }">
                 <v-chip :color="getPriorityColor(priorityItem.value)" size="small" label>
@@ -221,8 +221,8 @@
             <div
               class="task-row-content"
               :data-test="`task-row-${item.id}`"
-              @click="editTask(item)"
               style="cursor: pointer"
+              @click="editTask(item)"
             >
               <!-- Task Content -->
               <div class="task-content flex-grow-1">
@@ -241,14 +241,14 @@
             <div class="d-flex justify-center">
               <v-select
                 :model-value="item.category"
-                @update:model-value="
-                  (newCategory) => updateTaskField(item, 'category', newCategory)
-                "
                 :items="categoryOptions"
                 variant="plain"
                 density="compact"
                 hide-details
                 class="inline-select inline-select-no-arrow"
+                @update:model-value="
+                  (newCategory) => updateTaskField(item, 'category', newCategory)
+                "
               >
                 <template v-slot:selection="{ item: categoryItem }">
                   <span class="category-text">{{ categoryItem.value }}</span>
@@ -293,10 +293,10 @@
                 </v-card-title>
                 <v-date-picker
                   :model-value="item.due_date ? new Date(item.due_date) : null"
-                  @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
                   color="primary"
                   hide-header
                   width="280"
+                  @update:model-value="(newDate) => updateTaskDueDate(item, newDate)"
                 />
               </v-card>
             </v-menu>
@@ -385,7 +385,7 @@
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="cancelTask" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="cancelTask" />
         </v-card-title>
 
         <v-card-text>
@@ -446,7 +446,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="cancelTask"> Cancel </v-btn>
-          <v-btn color="primary" variant="flat" @click="saveTask" :loading="saving">
+          <v-btn color="primary" variant="flat" :loading="saving" @click="saveTask">
             {{ editingTask ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>

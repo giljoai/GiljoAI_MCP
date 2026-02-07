@@ -835,7 +835,7 @@ class ToolAccessor:
         categories: list[str] | None = None,
         depth_config: dict[str, Any] | None = None,
         apply_user_config: bool = True,
-        format: str = "structured",
+        output_format: str = "structured",
         agent_name: str | None = None,  # Handover 0430: Required for self_identity category
     ) -> dict[str, Any]:
         """
@@ -867,7 +867,7 @@ class ToolAccessor:
             categories=categories or ["all"],
             depth_config=depth_config,
             apply_user_config=apply_user_config,
-            format=format,
+            output_format=output_format,
             agent_name=agent_name,  # Handover 0430
             db_manager=self.db_manager,
         )

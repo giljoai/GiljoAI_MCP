@@ -5,7 +5,7 @@
         <v-icon start>mdi-robot-outline</v-icon>
         <span>Agent Execution Details</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="close" aria-label="Close">
+        <v-btn icon variant="text" aria-label="Close" @click="close">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -37,7 +37,7 @@
         </div>
 
         <!-- Mission Section (from job, not execution) -->
-        <div class="mission-section" v-if="job">
+        <div v-if="job" class="mission-section">
           <h4 class="text-subtitle-1 font-weight-bold mb-2">Mission</h4>
           <v-card variant="outlined" class="pa-3">
             <pre class="mission-text" data-testid="modal-mission">{{ job.mission || 'No mission assigned.' }}</pre>
@@ -45,7 +45,7 @@
         </div>
 
         <!-- Progress Section -->
-        <div class="progress-section mt-4" v-if="execution.progress">
+        <div v-if="execution.progress" class="progress-section mt-4">
           <h4 class="text-subtitle-1 font-weight-bold mb-2">Progress</h4>
           <v-card variant="outlined" class="pa-3">
             <pre class="progress-text">{{ execution.progress }}</pre>

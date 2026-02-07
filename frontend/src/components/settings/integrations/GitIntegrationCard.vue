@@ -62,12 +62,12 @@
               <div class="text-subtitle-2 font-weight-medium mr-4">Enable Git Integration</div>
               <v-switch
                 :model-value="enabled"
-                @update:model-value="$emit('update:enabled', $event)"
                 :loading="loading"
                 hide-details
                 density="compact"
                 data-testid="github-integration-toggle"
                 class="git-toggle-inline"
+                @update:model-value="$emit('update:enabled', $event)"
               />
             </div>
             <v-btn
@@ -75,8 +75,8 @@
               variant="flat"
               size="small"
               width="120"
-              @click="$emit('openAdvanced')"
               :disabled="loading"
+              @click="$emit('openAdvanced')"
             >
               Advanced
             </v-btn>

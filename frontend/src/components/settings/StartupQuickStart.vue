@@ -67,9 +67,9 @@
                 v-for="step in setupSteps"
                 :key="step.id"
                 :active="selectedStepId === step.id"
-                @click="selectedStepId = step.id"
                 class="rounded"
                 data-testid="quickstart-step"
+                @click="selectedStepId = step.id"
               >
                 <template #prepend>
                   <div class="d-flex align-center justify-center" style="width: 32px; height: 32px">
@@ -94,8 +94,8 @@
                     color="secondary"
                     rounded="pill"
                     class="quickstart-go-btn"
-                    @click.stop="runAction(step.primaryAction)"
                     data-testid="quickstart-primary-action"
+                    @click.stop="runAction(step.primaryAction)"
                   >
                     Go!
                     <v-tooltip activator="parent" location="top">{{ step.primaryAction.label }}</v-tooltip>
@@ -111,9 +111,9 @@
                 v-for="step in productSteps"
                 :key="step.id"
                 :active="selectedStepId === step.id"
-                @click="selectedStepId = step.id"
                 class="rounded"
                 data-testid="quickstart-step"
+                @click="selectedStepId = step.id"
               >
                 <template #prepend>
                   <div class="d-flex align-center justify-center" style="width: 32px; height: 32px">
@@ -138,8 +138,8 @@
                     color="secondary"
                     rounded="pill"
                     class="quickstart-go-btn"
-                    @click.stop="runAction(step.primaryAction)"
                     data-testid="quickstart-primary-action"
+                    @click.stop="runAction(step.primaryAction)"
                   >
                     Go!
                     <v-tooltip activator="parent" location="top">{{ step.primaryAction.label }}</v-tooltip>
