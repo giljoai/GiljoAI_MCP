@@ -43,10 +43,7 @@ async def test_update_execution_mode_allowed_before_staging(
 
     # Action: Update execution_mode (should succeed)
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
-    result = await service.update_project(
-        project.id,
-        {"execution_mode": "autonomous"}
-    )
+    result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
     # Assert: Success
     assert result["success"] is True, f"Expected success, got error: {result.get('error')}"
@@ -80,17 +77,15 @@ async def test_update_execution_mode_blocked_after_mission_generated(
 
     # Action: Try to update execution_mode (should fail)
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
-    result = await service.update_project(
-        project.id,
-        {"execution_mode": "autonomous"}
-    )
+    result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
     # Assert: Failure with specific error message
     assert result["success"] is False, "Expected failure when updating execution_mode after staging"
     assert "error" in result
     error_msg = result["error"].lower()
-    assert "mission" in error_msg or "staging" in error_msg, \
+    assert "mission" in error_msg or "staging" in error_msg, (
         f"Expected error about mission/staging, got: {result['error']}"
+    )
 
 
 @pytest.mark.asyncio
@@ -125,7 +120,7 @@ async def test_update_other_fields_still_allowed_after_staging(
         {
             "name": "Updated Name",
             "description": "Updated description",
-        }
+        },
     )
 
     # Assert: Success - other fields can still be updated
@@ -162,10 +157,7 @@ async def test_execution_mode_unlocked_with_whitespace_only_mission(
 
     # Action: Update execution_mode (should succeed - whitespace doesn't count)
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
-    result = await service.update_project(
-        project.id,
-        {"execution_mode": "autonomous"}
-    )
+    result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
     # Assert: Success
     assert result["success"] is True, f"Expected success with whitespace mission, got: {result.get('error')}"

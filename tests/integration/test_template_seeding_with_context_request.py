@@ -5,6 +5,7 @@ Verifies the complete template seeding workflow includes context request section
 in the correct locations (system_instructions for all agents, user_instructions
 for orchestrator only).
 """
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,9 +27,7 @@ class TestTemplateSeededWithContextRequest:
         assert count == 6, "Should seed all 6 agent templates"
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
         assert len(templates) == 6
 
@@ -59,10 +58,7 @@ class TestTemplateSeededWithContextRequest:
 
         # Fetch orchestrator template
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role == "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
         )
         orchestrator = result.scalar_one()
 
@@ -84,10 +80,7 @@ class TestTemplateSeededWithContextRequest:
 
         # Fetch non-orchestrator templates
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role != "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role != "orchestrator")
         )
         non_orchestrators = result.scalars().all()
 
@@ -112,9 +105,7 @@ class TestTemplateSeededWithContextRequest:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -132,9 +123,7 @@ class TestTemplateSeededWithContextRequest:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key).limit(1)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key).limit(1))
         template = result.scalar_one()
 
         sys_inst = template.system_instructions
@@ -154,9 +143,7 @@ class TestTemplateSeededWithContextRequest:
         assert count1 == 6
 
         # Fetch templates after first seeding
-        result1 = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result1 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates_first = {t.role: t.system_instructions for t in result1.scalars().all()}
 
         # Second seeding (should skip)
@@ -164,9 +151,7 @@ class TestTemplateSeededWithContextRequest:
         assert count2 == 0, "Should skip seeding (idempotent)"
 
         # Fetch templates after second seeding
-        result2 = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result2 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates_second = {t.role: t.system_instructions for t in result2.scalars().all()}
 
         # Verify templates unchanged

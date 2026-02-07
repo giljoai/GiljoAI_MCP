@@ -21,9 +21,7 @@ from giljo_mcp.services.task_service import TaskService
 class TestCreateTaskMCPTool:
     """Integration tests for create_task MCP tool backend"""
 
-    async def test_create_task_with_category_appears_in_database(
-        self, async_session: AsyncSession
-    ):
+    async def test_create_task_with_category_appears_in_database(self, async_session: AsyncSession):
         """Task created via create_task tool appears in database with category."""
         # Arrange
         task_service = TaskService(async_session)
@@ -49,9 +47,7 @@ class TestCreateTaskMCPTool:
         assert str(task.priority) == "high"
         assert str(task.status) == "pending"
 
-    async def test_create_task_without_category_uses_default(
-        self, async_session: AsyncSession
-    ):
+    async def test_create_task_without_category_uses_default(self, async_session: AsyncSession):
         """Task created without category gets None (or title as category)."""
         # Arrange
         task_service = TaskService(async_session)
@@ -74,9 +70,7 @@ class TestCreateTaskMCPTool:
         assert str(task.title) == "Fix bug in login flow"
         assert str(task.priority) == "medium"
 
-    async def test_create_task_validates_priority(
-        self, async_session: AsyncSession
-    ):
+    async def test_create_task_validates_priority(self, async_session: AsyncSession):
         """Task creation accepts valid priority values."""
         # Arrange
         task_service = TaskService(async_session)
@@ -99,9 +93,7 @@ class TestCreateTaskMCPTool:
 
             assert str(task.priority) == priority
 
-    async def test_create_task_with_all_categories(
-        self, async_session: AsyncSession
-    ):
+    async def test_create_task_with_all_categories(self, async_session: AsyncSession):
         """Task creation works with all valid categories."""
         # Arrange
         task_service = TaskService(async_session)
@@ -124,9 +116,7 @@ class TestCreateTaskMCPTool:
 
             assert str(task.category) == category
 
-    async def test_task_appears_with_correct_tenant_isolation(
-        self, async_session: AsyncSession
-    ):
+    async def test_task_appears_with_correct_tenant_isolation(self, async_session: AsyncSession):
         """Tasks are properly isolated by tenant_key."""
         # Arrange
         task_service = TaskService(async_session)
@@ -153,18 +143,12 @@ class TestCreateTaskMCPTool:
         assert result_2["success"] is True
 
         # Verify tenant isolation in database
-        stmt_1 = select(Task).where(
-            Task.id == result_1["task_id"],
-            Task.tenant_key == tenant_key_1
-        )
+        stmt_1 = select(Task).where(Task.id == result_1["task_id"], Task.tenant_key == tenant_key_1)
         db_result_1 = await async_session.execute(stmt_1)
         task_1 = db_result_1.scalar_one()
         assert str(task_1.tenant_key) == tenant_key_1
 
-        stmt_2 = select(Task).where(
-            Task.id == result_2["task_id"],
-            Task.tenant_key == tenant_key_2
-        )
+        stmt_2 = select(Task).where(Task.id == result_2["task_id"], Task.tenant_key == tenant_key_2)
         db_result_2 = await async_session.execute(stmt_2)
         task_2 = db_result_2.scalar_one()
         assert str(task_2.tenant_key) == tenant_key_2

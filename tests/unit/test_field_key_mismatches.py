@@ -122,9 +122,7 @@ class TestIndividualFieldExclusion:
         return project
 
     @pytest.mark.asyncio
-    async def test_vision_documents_priority_4_excluded(
-        self, mission_planner, mock_product_with_vision, mock_project
-    ):
+    async def test_vision_documents_priority_4_excluded(self, mission_planner, mock_product_with_vision, mock_project):
         """Vision set to 4 → NO vision content in response."""
         field_priorities = {
             "product_core": 1,  # Include product name/description
@@ -152,9 +150,7 @@ class TestIndividualFieldExclusion:
         assert len(result) < 5000
 
     @pytest.mark.asyncio
-    async def test_testing_priority_4_excluded(
-        self, mission_planner, mock_product_with_testing, mock_project
-    ):
+    async def test_testing_priority_4_excluded(self, mission_planner, mock_product_with_testing, mock_project):
         """Testing set to 4 → NO testing content."""
         field_priorities = {
             "product_core": 1,
@@ -185,9 +181,7 @@ class TestIndividualFieldExclusion:
         assert "TinyContacts" in result
 
     @pytest.mark.asyncio
-    async def test_memory_360_priority_4_excluded(
-        self, mission_planner, mock_product_with_memory, mock_project
-    ):
+    async def test_memory_360_priority_4_excluded(self, mission_planner, mock_product_with_memory, mock_project):
         """Memory set to 4 → NO 360 memory content."""
         field_priorities = {
             "product_core": 1,
@@ -292,9 +286,7 @@ class TestIndividualFieldInclusion:
         return project
 
     @pytest.mark.asyncio
-    async def test_vision_documents_priority_2_included(
-        self, mission_planner, mock_product_with_vision, mock_project
-    ):
+    async def test_vision_documents_priority_2_included(self, mission_planner, mock_product_with_vision, mock_project):
         """Vision set to 2 → vision content PRESENT."""
         field_priorities = {
             "product_core": 1,
@@ -317,9 +309,7 @@ class TestIndividualFieldInclusion:
         assert "**IMPORTANT:" in result or "Priority 2" in result
 
     @pytest.mark.asyncio
-    async def test_testing_priority_2_included(
-        self, mission_planner, mock_product_with_testing, mock_project
-    ):
+    async def test_testing_priority_2_included(self, mission_planner, mock_product_with_testing, mock_project):
         """Testing set to 2 → testing content PRESENT."""
         field_priorities = {
             "product_core": 1,
@@ -349,9 +339,7 @@ class TestIndividualFieldInclusion:
         assert "**IMPORTANT:" in result or "Priority 2" in result
 
     @pytest.mark.asyncio
-    async def test_memory_360_priority_3_included(
-        self, mission_planner, mock_product_with_memory, mock_project
-    ):
+    async def test_memory_360_priority_3_included(self, mission_planner, mock_product_with_memory, mock_project):
         """Memory set to 3 → 360 memory PRESENT."""
         field_priorities = {
             "product_core": 1,
@@ -461,9 +449,7 @@ class TestMixedPriorities:
         assert "sequential_history" not in result
 
     @pytest.mark.asyncio
-    async def test_all_excluded_minimal_response(
-        self, mission_planner, mock_product_all_fields, mock_project
-    ):
+    async def test_all_excluded_minimal_response(self, mission_planner, mock_product_all_fields, mock_project):
         """ALL 9 fields set to 4 → minimal response (~3.5k tokens)."""
         field_priorities = {
             "product_core": 4,  # EXCLUDED
@@ -477,9 +463,7 @@ class TestMixedPriorities:
             "git_history": 4,  # EXCLUDED
         }
 
-        with patch.object(
-            mission_planner, "_extract_testing_config", new_callable=AsyncMock, return_value=""
-        ):
+        with patch.object(mission_planner, "_extract_testing_config", new_callable=AsyncMock, return_value=""):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_all_fields,
                 project=mock_project,
@@ -542,16 +526,12 @@ class TestBackwardCompatibility:
         return project
 
     @pytest.mark.asyncio
-    async def test_no_user_config_uses_defaults(
-        self, mission_planner, mock_product, mock_project
-    ):
+    async def test_no_user_config_uses_defaults(self, mission_planner, mock_product, mock_project):
         """Empty field_priorities → uses DEFAULT_FIELD_PRIORITIES."""
         # Pass empty dict (new user with no config)
         field_priorities = {}
 
-        with patch.object(
-            mission_planner, "_extract_testing_config", new_callable=AsyncMock, return_value=""
-        ):
+        with patch.object(mission_planner, "_extract_testing_config", new_callable=AsyncMock, return_value=""):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product,
                 project=mock_project,
@@ -570,9 +550,7 @@ class TestBackwardCompatibility:
         assert len(result) > 400  # Adjusted threshold for minimal default context
 
     @pytest.mark.asyncio
-    async def test_missing_keys_default_to_excluded(
-        self, mission_planner, mock_product, mock_project
-    ):
+    async def test_missing_keys_default_to_excluded(self, mission_planner, mock_product, mock_project):
         """User config missing new fields → defaults to 4 (excluded)."""
         # User configured some fields but not others
         # New v2.0 fields (memory_360, testing) are missing
@@ -583,9 +561,7 @@ class TestBackwardCompatibility:
             # "memory_360": missing → should default to 4 (excluded)
         }
 
-        mock_product.product_memory = {
-            "sequential_history": [{"sequence": 1, "summary": "Test history"}]
-        }
+        mock_product.product_memory = {"sequential_history": [{"sequence": 1, "summary": "Test history"}]}
 
         testing_content = "## Testing\nTest content here"
         with patch.object(
@@ -666,9 +642,7 @@ class TestLoggingVerification:
         product.primary_vision_text = None
         product.vision_documents = []
         product.config_data = {}
-        product.product_memory = {
-            "sequential_history": [{"sequence": 1, "summary": "Test history"}]
-        }
+        product.product_memory = {"sequential_history": [{"sequence": 1, "summary": "Test history"}]}
         return product
 
     @pytest.fixture
@@ -682,9 +656,7 @@ class TestLoggingVerification:
         return project
 
     @pytest.mark.asyncio
-    async def test_vision_logs_use_v2_field_name(
-        self, mission_planner, mock_product_with_vision, mock_project, caplog
-    ):
+    async def test_vision_logs_use_v2_field_name(self, mission_planner, mock_product_with_vision, mock_project, caplog):
         """Logger.info uses "vision_documents" not "product_vision"."""
         import logging
 
@@ -701,22 +673,14 @@ class TestLoggingVerification:
         )
 
         # Check structured logging extra fields use v2.0 field name
-        debug_logs = [
-            record for record in caplog.records if record.levelname == "DEBUG"
-        ]
+        debug_logs = [record for record in caplog.records if record.levelname == "DEBUG"]
 
         # Should log "vision_documents" in structured extra fields
-        vision_logged = any(
-            hasattr(record, 'field') and record.field == "vision_documents"
-            for record in debug_logs
-        )
+        vision_logged = any(hasattr(record, "field") and record.field == "vision_documents" for record in debug_logs)
         assert vision_logged, "Expected 'vision_documents' in debug log extra fields"
 
         # Should NOT log old field name "product_vision"
-        old_name_logged = any(
-            hasattr(record, 'field') and record.field == "product_vision"
-            for record in debug_logs
-        )
+        old_name_logged = any(hasattr(record, "field") and record.field == "product_vision" for record in debug_logs)
         assert not old_name_logged, "Should NOT use legacy field name 'product_vision'"
 
     @pytest.mark.asyncio
@@ -744,28 +708,18 @@ class TestLoggingVerification:
                 include_serena=False,
             )
 
-        debug_logs = [
-            record for record in caplog.records if record.levelname == "DEBUG"
-        ]
+        debug_logs = [record for record in caplog.records if record.levelname == "DEBUG"]
 
         # Should log "testing" in structured extra fields
-        testing_logged = any(
-            hasattr(record, 'field') and record.field == "testing"
-            for record in debug_logs
-        )
+        testing_logged = any(hasattr(record, "field") and record.field == "testing" for record in debug_logs)
         assert testing_logged, "Expected 'testing' in debug log extra fields"
 
         # Should NOT log old field name "testing_config"
-        old_name_logged = any(
-            hasattr(record, 'field') and record.field == "testing_config"
-            for record in debug_logs
-        )
+        old_name_logged = any(hasattr(record, "field") and record.field == "testing_config" for record in debug_logs)
         assert not old_name_logged, "Should NOT use legacy field name 'testing_config'"
 
     @pytest.mark.asyncio
-    async def test_memory_logs_use_v2_field_name(
-        self, mission_planner, mock_product_with_memory, mock_project, caplog
-    ):
+    async def test_memory_logs_use_v2_field_name(self, mission_planner, mock_product_with_memory, mock_project, caplog):
         """Logger uses "memory_360" not "product_memory.sequential_history"."""
         import logging
 
@@ -781,21 +735,15 @@ class TestLoggingVerification:
             include_serena=False,
         )
 
-        debug_logs = [
-            record for record in caplog.records if record.levelname == "DEBUG"
-        ]
+        debug_logs = [record for record in caplog.records if record.levelname == "DEBUG"]
 
         # Should log "memory_360" in structured extra fields
-        memory_logged = any(
-            hasattr(record, 'field') and record.field == "memory_360"
-            for record in debug_logs
-        )
+        memory_logged = any(hasattr(record, "field") and record.field == "memory_360" for record in debug_logs)
         assert memory_logged, "Expected 'memory_360' in debug log extra fields"
 
         # Should NOT log old field name "product_memory.sequential_history"
         old_name_logged = any(
-            hasattr(record, 'field') and record.field == "product_memory.sequential_history"
-            for record in debug_logs
+            hasattr(record, "field") and record.field == "product_memory.sequential_history" for record in debug_logs
         )
         assert not old_name_logged, "Should NOT use legacy field name 'product_memory.sequential_history'"
 

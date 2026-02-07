@@ -9,10 +9,8 @@ REFACTOR Phase: Clean up and optimize
 """
 
 import uuid
-from typing import Dict, Any
 
 import pytest
-import pytest_asyncio
 
 from src.giljo_mcp.models import AgentTemplate
 
@@ -41,7 +39,7 @@ class TestGetSelfIdentityBasic:
             behavioral_rules=["Check-in after completing tasks", "Use thin-client prompts"],
             success_criteria=["All agents complete", "Project closed out"],
             is_active=True,
-            meta_data={"capabilities": ["orchestration", "coordination"]}
+            meta_data={"capabilities": ["orchestration", "coordination"]},
         )
         db_session.add(template)
         await db_session.flush()
@@ -53,7 +51,7 @@ class TestGetSelfIdentityBasic:
             agent_name="orchestrator-coordinator",
             tenant_key=tenant_key,
             db_manager=db_manager,
-            session=db_session  # Pass session for test isolation
+            session=db_session,  # Pass session for test isolation
         )
 
         # Verify response structure
@@ -86,10 +84,7 @@ class TestGetSelfIdentityBasic:
         from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 
         result = await get_self_identity(
-            agent_name="nonexistent-agent",
-            tenant_key=tenant_key,
-            db_manager=db_manager,
-            session=db_session
+            agent_name="nonexistent-agent", tenant_key=tenant_key, db_manager=db_manager, session=db_session
         )
 
         assert result["source"] == "self_identity"
@@ -114,7 +109,7 @@ class TestGetSelfIdentityBasic:
             role="Inactive Agent",
             description="This agent is inactive",
             system_instructions="Inactive template",
-            is_active=False  # INACTIVE
+            is_active=False,  # INACTIVE
         )
         db_session.add(template)
         await db_session.flush()
@@ -122,10 +117,7 @@ class TestGetSelfIdentityBasic:
         from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 
         result = await get_self_identity(
-            agent_name="inactive-agent",
-            tenant_key=tenant_key,
-            db_manager=db_manager,
-            session=db_session
+            agent_name="inactive-agent", tenant_key=tenant_key, db_manager=db_manager, session=db_session
         )
 
         assert result["source"] == "self_identity"
@@ -154,7 +146,7 @@ class TestGetSelfIdentityTenantIsolation:
             role="Agent Role",
             description="Template in tenant_a",
             system_instructions="Tenant A content",
-            is_active=True
+            is_active=True,
         )
         db_session.add(template)
         await db_session.flush()
@@ -166,7 +158,7 @@ class TestGetSelfIdentityTenantIsolation:
             agent_name="shared-agent-name",
             tenant_key=tenant_b,  # Different tenant!
             db_manager=db_manager,
-            session=db_session
+            session=db_session,
         )
 
         # Should not find the template (tenant isolation)
@@ -191,7 +183,7 @@ class TestGetSelfIdentityTenantIsolation:
             role="Orchestrator A",
             description="Tenant A orchestrator",
             system_instructions="Tenant A content",
-            is_active=True
+            is_active=True,
         )
 
         # Create template in tenant_b with same name
@@ -202,7 +194,7 @@ class TestGetSelfIdentityTenantIsolation:
             role="Orchestrator B",
             description="Tenant B orchestrator",
             system_instructions="Tenant B content",
-            is_active=True
+            is_active=True,
         )
 
         db_session.add_all([template_a, template_b])
@@ -212,18 +204,12 @@ class TestGetSelfIdentityTenantIsolation:
 
         # Fetch from tenant_a
         result_a = await get_self_identity(
-            agent_name="orchestrator",
-            tenant_key=tenant_a,
-            db_manager=db_manager,
-            session=db_session
+            agent_name="orchestrator", tenant_key=tenant_a, db_manager=db_manager, session=db_session
         )
 
         # Fetch from tenant_b
         result_b = await get_self_identity(
-            agent_name="orchestrator",
-            tenant_key=tenant_b,
-            db_manager=db_manager,
-            session=db_session
+            agent_name="orchestrator", tenant_key=tenant_b, db_manager=db_manager, session=db_session
         )
 
         # Each should get their own template
@@ -247,12 +233,7 @@ class TestGetSelfIdentityDBManager:
         from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 
         with pytest.raises(ValueError, match="db_manager.*session.*required"):
-            await get_self_identity(
-                agent_name="test-agent",
-                tenant_key="test-tenant",
-                db_manager=None,
-                session=None
-            )
+            await get_self_identity(agent_name="test-agent", tenant_key="test-tenant", db_manager=None, session=None)
 
 
 class TestGetSelfIdentityTokenEstimate:
@@ -279,7 +260,7 @@ class TestGetSelfIdentityTokenEstimate:
             behavioral_rules=["Rule " + str(i) for i in range(10)],  # Multiple rules
             success_criteria=["Criteria " + str(i) for i in range(5)],
             is_active=True,
-            meta_data={"capabilities": ["cap" + str(i) for i in range(20)]}
+            meta_data={"capabilities": ["cap" + str(i) for i in range(20)]},
         )
         db_session.add(template)
         await db_session.flush()
@@ -287,10 +268,7 @@ class TestGetSelfIdentityTokenEstimate:
         from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 
         result = await get_self_identity(
-            agent_name="full-agent",
-            tenant_key=tenant_key,
-            db_manager=db_manager,
-            session=db_session
+            agent_name="full-agent", tenant_key=tenant_key, db_manager=db_manager, session=db_session
         )
 
         # Should have token estimate

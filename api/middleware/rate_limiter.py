@@ -14,7 +14,9 @@ from typing import Callable
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+
 logger = logging.getLogger(__name__)
+
 
 class RateLimiter:
     """
@@ -93,6 +95,7 @@ class RateLimiter:
         if not requests:
             return time.time()
         return requests[0] + self.window_size
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
@@ -203,6 +206,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Reset"] = str(int(reset_time))
 
         return response
+
 
 class EndpointRateLimiter:
     """

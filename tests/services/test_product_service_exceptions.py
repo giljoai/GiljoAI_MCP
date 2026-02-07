@@ -23,23 +23,23 @@ Test Coverage:
 Created as part of Handover 0480b: ProductService Exception Migration
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock
 
-from src.giljo_mcp.services.product_service import ProductService
+import pytest
+
 from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    DatabaseError,
     ResourceNotFoundError,
     ValidationError,
-    AuthorizationError,
-    DatabaseError,
-    BaseGiljoException
 )
+from src.giljo_mcp.services.product_service import ProductService
 
 
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mock_db_manager():
@@ -61,6 +61,7 @@ def mock_db_manager():
 # TEST CLASS 1: create_product Exceptions
 # ============================================================================
 
+
 class TestCreateProductExceptions:
     """Test exception raising in create_product method."""
 
@@ -72,11 +73,7 @@ class TestCreateProductExceptions:
 
         # Invalid platform
         with pytest.raises(ValidationError) as exc_info:
-            await service.create_product(
-                name="Test Product",
-                description="Test",
-                target_platforms=["invalid_platform"]
-            )
+            await service.create_product(name="Test Product", description="Test", target_platforms=["invalid_platform"])
 
         assert "platform" in exc_info.value.message.lower()
 
@@ -86,17 +83,16 @@ class TestCreateProductExceptions:
         db_manager, session = mock_db_manager
 
         # Mock existing product
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=Mock())  # Product exists
-        ))
+        session.execute = AsyncMock(
+            return_value=Mock(
+                scalar_one_or_none=Mock(return_value=Mock())  # Product exists
+            )
+        )
 
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ValidationError) as exc_info:
-            await service.create_product(
-                name="Existing Product",
-                description="Test"
-            )
+            await service.create_product(name="Existing Product", description="Test")
 
         assert "already exists" in exc_info.value.message.lower()
 
@@ -114,10 +110,7 @@ class TestCreateProductExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(BaseGiljoException) as exc_info:
-            await service.create_product(
-                name="Test Product",
-                description="Test"
-            )
+            await service.create_product(name="Test Product", description="Test")
 
         assert "Connection failed" in str(exc_info.value)
 
@@ -125,6 +118,7 @@ class TestCreateProductExceptions:
 # ============================================================================
 # TEST CLASS 2: get_product Exceptions
 # ============================================================================
+
 
 class TestGetProductExceptions:
     """Test exception raising in get_product method."""
@@ -134,9 +128,7 @@ class TestGetProductExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -168,6 +160,7 @@ class TestGetProductExceptions:
 # TEST CLASS 3: update_product Exceptions
 # ============================================================================
 
+
 class TestUpdateProductExceptions:
     """Test exception raising in update_product method."""
 
@@ -176,9 +169,7 @@ class TestUpdateProductExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -194,10 +185,7 @@ class TestUpdateProductExceptions:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ValidationError) as exc_info:
-            await service.update_product(
-                "some-id",
-                target_platforms=["invalid_platform"]
-            )
+            await service.update_product("some-id", target_platforms=["invalid_platform"])
 
         assert "platform" in exc_info.value.message.lower()
 
@@ -223,6 +211,7 @@ class TestUpdateProductExceptions:
 # TEST CLASS 4: Lifecycle Method Exceptions
 # ============================================================================
 
+
 class TestLifecycleMethodExceptions:
     """Test exception raising in product lifecycle methods."""
 
@@ -231,9 +220,7 @@ class TestLifecycleMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -247,9 +234,7 @@ class TestLifecycleMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -263,9 +248,7 @@ class TestLifecycleMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -279,9 +262,7 @@ class TestLifecycleMethodExceptions:
         """Should raise ResourceNotFoundError when deleted product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -294,6 +275,7 @@ class TestLifecycleMethodExceptions:
 # ============================================================================
 # TEST CLASS 5: Query Method Exceptions
 # ============================================================================
+
 
 class TestQueryMethodExceptions:
     """Test exception raising in product query methods."""
@@ -354,9 +336,7 @@ class TestQueryMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -370,9 +350,7 @@ class TestQueryMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -386,6 +364,7 @@ class TestQueryMethodExceptions:
 # TEST CLASS 6: Integration Method Exceptions
 # ============================================================================
 
+
 class TestIntegrationMethodExceptions:
     """Test exception raising in integration-related methods."""
 
@@ -394,9 +373,7 @@ class TestIntegrationMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -410,17 +387,13 @@ class TestIntegrationMethodExceptions:
         """Should raise ResourceNotFoundError when product not found."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service.upload_vision_document(
-                product_id="nonexistent-id",
-                filename="Test Doc",
-                content="Test content"
+                product_id="nonexistent-id", filename="Test Doc", content="Test content"
             )
 
         assert "not found" in exc_info.value.message.lower() or "access denied" in exc_info.value.message.lower()
@@ -433,6 +406,7 @@ class TestIntegrationMethodExceptions:
 # ============================================================================
 # TEST CLASS 7: Maintenance Method Exceptions
 # ============================================================================
+
 
 class TestMaintenanceMethodExceptions:
     """Test exception raising in maintenance methods."""
@@ -469,6 +443,7 @@ class TestMaintenanceMethodExceptions:
 # TEST CLASS 8: Exception Context Verification
 # ============================================================================
 
+
 class TestExceptionContextVerification:
     """Verify that exceptions contain appropriate context."""
 
@@ -477,9 +452,7 @@ class TestExceptionContextVerification:
         """ResourceNotFoundError should include product_id in context."""
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -497,11 +470,7 @@ class TestExceptionContextVerification:
         service = ProductService(db_manager, "test-tenant")
 
         with pytest.raises(ValidationError) as exc_info:
-            await service.create_product(
-                name="Test",
-                description="Test",
-                target_platforms=["invalid_platform"]
-            )
+            await service.create_product(name="Test", description="Test", target_platforms=["invalid_platform"])
 
         # Context should ideally contain information about what failed validation
         assert exc_info.value.context is not None

@@ -5,13 +5,14 @@ Tests verify that stage_agent_templates() correctly updates last_exported_at
 timestamp for all exported templates to enable staleness detection.
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.templates import AgentTemplate
 from src.giljo_mcp.file_staging import FileStaging
+from src.giljo_mcp.models.templates import AgentTemplate
 
 
 @pytest.mark.asyncio
@@ -210,6 +211,7 @@ async def test_stage_agent_templates_multiple_exports_update_timestamp(db_sessio
 
     # Wait briefly to ensure timestamp difference
     import asyncio
+
     await asyncio.sleep(0.1)
 
     # Second export

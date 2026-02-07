@@ -14,13 +14,12 @@ Examples:
     python benchmark_report_generator.py --format html --output report.html
 """
 
-import sys
-import json
 import argparse
+import json
 import subprocess
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Any, Dict
 
 
 class BenchmarkReportGenerator:
@@ -34,19 +33,18 @@ class BenchmarkReportGenerator:
             "database": {},
             "api": {},
             "websocket": {},
-            "summary": {}
+            "summary": {},
         }
 
     def _default_output_path(self) -> str:
         """Get default output path based on format."""
         if self.output_format == "markdown":
             return "docs/performance_baseline.md"
-        elif self.output_format == "json":
+        if self.output_format == "json":
             return "performance_baseline.json"
-        elif self.output_format == "html":
+        if self.output_format == "html":
             return "performance_baseline.html"
-        else:
-            return "performance_baseline.txt"
+        return "performance_baseline.txt"
 
     def run_all_benchmarks(self) -> bool:
         """
@@ -98,7 +96,8 @@ class BenchmarkReportGenerator:
                 ["pytest", test_path, "-v", "-s"],
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,
+                check=False,  # 5 minute timeout
             )
             return result.returncode == 0
         except subprocess.TimeoutExpired:
@@ -120,9 +119,9 @@ class BenchmarkReportGenerator:
             "categories": {
                 "database": {"status": "PASS", "score": 100},
                 "api": {"status": "PASS", "score": 100},
-                "websocket": {"status": "PASS", "score": 100}
+                "websocket": {"status": "PASS", "score": 100},
             },
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Check if we have actual results (this is a placeholder for demo)
@@ -604,7 +603,7 @@ python tests/performance/benchmark_report_generator.py --format json --output ba
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write report
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         print(f"\n✅ Report generated: {self.output_path}\n")
@@ -612,24 +611,12 @@ python tests/performance/benchmark_report_generator.py --format json --output ba
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Run performance benchmarks and generate reports"
-    )
+    parser = argparse.ArgumentParser(description="Run performance benchmarks and generate reports")
     parser.add_argument(
-        "--format",
-        choices=["markdown", "json", "html"],
-        default="markdown",
-        help="Report format (default: markdown)"
+        "--format", choices=["markdown", "json", "html"], default="markdown", help="Report format (default: markdown)"
     )
-    parser.add_argument(
-        "--output",
-        help="Output path for report (default: auto-generated based on format)"
-    )
-    parser.add_argument(
-        "--skip-tests",
-        action="store_true",
-        help="Skip running tests, just generate report template"
-    )
+    parser.add_argument("--output", help="Output path for report (default: auto-generated based on format)")
+    parser.add_argument("--skip-tests", action="store_true", help="Skip running tests, just generate report template")
 
     args = parser.parse_args()
 

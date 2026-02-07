@@ -18,6 +18,7 @@ from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_PRIORITY_CATEGORIES = {
@@ -31,6 +32,7 @@ ALLOWED_PRIORITY_CATEGORIES = {
     "memory_360",
     "git_history",
 }
+
 
 def format_list_safely(items: Any) -> str:
     """Format list with graceful handling of empty or invalid data."""
@@ -46,6 +48,7 @@ def format_list_safely(items: Any) -> str:
     except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
         logger.error("Failed to format list", extra={"error": str(exc)})
         return "- (Error formatting data)"
+
 
 def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     """
@@ -90,6 +93,7 @@ def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     logger.debug("Applied rich entry framing", extra={"sequence": sequence, "priority": priority_label})
     return framing
 
+
 def _extract_priorities(config: Any) -> dict[str, int]:
     """Extract priority mapping from user config supporting legacy and nested formats."""
     if not isinstance(config, dict):
@@ -117,6 +121,7 @@ def _extract_priorities(config: Any) -> dict[str, int]:
     # Fallback: direct mapping at top-level
     return {k: v for k, v in config.items() if isinstance(v, int)}
 
+
 def _stringify_content(content: Any) -> str:
     """Convert content to a printable string with safe fallback."""
     if isinstance(content, str):
@@ -132,6 +137,7 @@ def _stringify_content(content: Any) -> str:
         raise ValueError("Content must be non-empty string")
 
     return text
+
 
 async def get_user_priority(
     category: str,
@@ -183,6 +189,7 @@ async def get_user_priority(
         )
         return default_priority
 
+
 def inject_priority_framing(
     content: Any,
     priority: int,
@@ -219,6 +226,7 @@ def inject_priority_framing(
     )
     return framed_content
 
+
 def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> dict[str, Any]:
     """Return a standardized response when a category is excluded (priority=4)."""
     return {
@@ -233,6 +241,7 @@ def build_priority_excluded_response(source: str, category: str, tenant_key: str
         "framed_content": "",
         "priority": priority,
     }
+
 
 async def build_framed_context_response(
     raw_result: dict[str, Any],

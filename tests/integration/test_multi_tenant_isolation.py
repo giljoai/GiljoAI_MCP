@@ -21,24 +21,20 @@ Tests validate:
 7. Testing configs don't cross tenant boundaries
 """
 
-import pytest
-import pytest_asyncio
-from uuid import uuid4
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import uuid4
 
-from src.giljo_mcp.models import (
-    User, Product, Project
-)
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest_asyncio
+
 from src.giljo_mcp.mission_planner import MissionPlanner
-
-from tests.fixtures.base_fixtures import db_manager, db_session
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def tenant_a():
@@ -68,7 +64,7 @@ async def user_in_tenant_a(db_session, tenant_a):
                 "product_core": 1,
                 "vision_documents": 2,
                 "git_history": 3,
-            }
+            },
         },
         serena_enabled=True,
     )
@@ -93,7 +89,7 @@ async def user_in_tenant_b(db_session, tenant_b):
                 "product_core": 1,
                 "vision_documents": 3,  # Different priority than user_a
                 "git_history": 4,
-            }
+            },
         },
         serena_enabled=False,
     )
@@ -123,8 +119,8 @@ async def product_in_tenant_a(db_session, tenant_a):
                     "summary": "Tenant A project history",
                     "timestamp": datetime.utcnow().isoformat(),
                 }
-            ]
-        }
+            ],
+        },
     )
     db_session.add(product)
     await db_session.flush()
@@ -142,10 +138,7 @@ async def product_in_tenant_b(db_session, tenant_b):
             "framework": "mocha",
             "coverage_target": 75,
         },
-        product_memory={
-            "git_integration": {"enabled": False},
-            "sequential_history": []
-        }
+        product_memory={"git_integration": {"enabled": False}, "sequential_history": []},
     )
     db_session.add(product)
     await db_session.flush()
@@ -155,6 +148,7 @@ async def product_in_tenant_b(db_session, tenant_b):
 # ============================================================================
 # TEST SUITE 1: User Settings Isolation
 # ============================================================================
+
 
 class TestUserSettingsIsolation:
     """
@@ -252,7 +246,6 @@ class TestUserSettingsIsolation:
         when building context for User A
         """
         # Create a project in tenant A
-        from src.giljo_mcp.models import Project
         project = Project(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
@@ -280,6 +273,7 @@ class TestUserSettingsIsolation:
 # ============================================================================
 # TEST SUITE 2: Product Settings Isolation
 # ============================================================================
+
 
 class TestProductSettingsIsolation:
     """
@@ -369,13 +363,15 @@ class TestProductSettingsIsolation:
         REQUIREMENT: Adding memory to Product A must not affect Product B
         """
         # Add memory entry to product_a
-        product_in_tenant_a.product_memory["sequential_history"].append({
-            "sequence": 2,
-            "type": "project_closeout",
-            "project_id": str(uuid4()),
-            "summary": "Another tenant A project",
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        product_in_tenant_a.product_memory["sequential_history"].append(
+            {
+                "sequence": 2,
+                "type": "project_closeout",
+                "project_id": str(uuid4()),
+                "summary": "Another tenant A project",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await db_session.flush()
 
         # Verify product_b unchanged
@@ -386,6 +382,7 @@ class TestProductSettingsIsolation:
 # ============================================================================
 # TEST SUITE 3: Context Generation Respects Tenant Boundaries
 # ============================================================================
+
 
 class TestContextGenerationTenantRespect:
     """
@@ -404,7 +401,6 @@ class TestContextGenerationTenantRespect:
         building context for User A
         """
         # Create project
-        from src.giljo_mcp.models import Project
         project = Project(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
@@ -440,7 +436,6 @@ class TestContextGenerationTenantRespect:
         REQUIREMENT: Agent job metadata MUST include tenant_key for isolation
         """
         # Create project
-        from src.giljo_mcp.models import Project
         project = Project(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
@@ -464,7 +459,7 @@ class TestContextGenerationTenantRespect:
                 "user_id": user_in_tenant_a.id,
                 "tenant_key": tenant_a,
                 "field_priorities": user_in_tenant_a.field_priority_config["priorities"],
-            }
+            },
         )
         db_session.add(job)
         await db_session.flush()
@@ -476,6 +471,7 @@ class TestContextGenerationTenantRespect:
 # ============================================================================
 # TEST SUITE 4: Query Isolation (Preventing Data Leakage)
 # ============================================================================
+
 
 class TestQueryIsolation:
     """
@@ -497,6 +493,7 @@ class TestQueryIsolation:
 
         # When querying by tenant, only get that tenant's users
         from sqlalchemy import select
+
         query_a = select(User).where(User.tenant_key == user_in_tenant_a.tenant_key)
         result_a = await db_session.scalars(query_a)
         users_a = result_a.all()
@@ -517,6 +514,7 @@ class TestQueryIsolation:
         REQUIREMENT: Queries for products must respect tenant boundaries
         """
         from sqlalchemy import select
+
         query_a = select(Product).where(Product.tenant_key == product_in_tenant_a.tenant_key)
         result_a = await db_session.scalars(query_a)
         products_a = result_a.all()
@@ -528,6 +526,7 @@ class TestQueryIsolation:
 # ============================================================================
 # TEST SUITE 5: MCP Tool Responses Are Tenant-Scoped
 # ============================================================================
+
 
 class TestMCPToolTenantScoping:
     """
@@ -547,7 +546,6 @@ class TestMCPToolTenantScoping:
         tenant_key to prevent data leakage
         """
         # Create project
-        from src.giljo_mcp.models import Project
         project = Project(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
@@ -570,7 +568,7 @@ class TestMCPToolTenantScoping:
             job_metadata={
                 "user_id": user_in_tenant_a.id,
                 "tenant_key": tenant_a,
-            }
+            },
         )
         db_session.add(job)
         await db_session.flush()
@@ -591,7 +589,6 @@ class TestMCPToolTenantScoping:
         from src.giljo_mcp.services.context_service import ContextService
 
         # Create project
-        from src.giljo_mcp.models import Project
         project = Project(
             id=str(uuid4()),
             product_id=product_in_tenant_a.id,
@@ -610,6 +607,7 @@ class TestMCPToolTenantScoping:
 # ============================================================================
 # TEST SUITE 6: Cross-Tenant Data Access Prevention
 # ============================================================================
+
 
 class TestCrossTenantAccessPrevention:
     """
@@ -656,6 +654,7 @@ class TestCrossTenantAccessPrevention:
 # TEST SUITE 7: 360 Memory Isolation
 # ============================================================================
 
+
 class TestMemoryIsolation:
     """
     Validate that 360 memory (sequential_history) is completely isolated
@@ -673,21 +672,25 @@ class TestMemoryIsolation:
         """
         # Add entries to both products
         for i in range(3):
-            product_in_tenant_a.product_memory["sequential_history"].append({
-                "sequence": i + 2,  # Starting from 2 (already has 1)
-                "type": "project_closeout",
-                "project_id": str(uuid4()),
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            product_in_tenant_a.product_memory["sequential_history"].append(
+                {
+                    "sequence": i + 2,  # Starting from 2 (already has 1)
+                    "type": "project_closeout",
+                    "project_id": str(uuid4()),
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
 
         # Add entries to product B (should have separate sequence)
         for i in range(2):
-            product_in_tenant_b.product_memory["sequential_history"].append({
-                "sequence": i + 1,  # Product B starts at 1
-                "type": "project_closeout",
-                "project_id": str(uuid4()),
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            product_in_tenant_b.product_memory["sequential_history"].append(
+                {
+                    "sequence": i + 1,  # Product B starts at 1
+                    "type": "project_closeout",
+                    "project_id": str(uuid4()),
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
 
         await db_session.flush()
 

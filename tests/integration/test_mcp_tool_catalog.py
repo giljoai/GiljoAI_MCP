@@ -15,9 +15,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.prompt_generation.mcp_tool_catalog import MCPToolCatalogGenerator
 
 
@@ -65,7 +64,8 @@ class TestMCPToolCatalog:
                 mission="Orchestrate test project",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {
                         "core_features": 10,
                         "tech_stack": 8,
@@ -324,8 +324,9 @@ class TestMCPToolCatalog:
         implementer_catalog = generator.generate_for_agent("implementer")
 
         # Implementer catalog should be smaller than full
-        assert len(implementer_catalog) < len(full_catalog), \
+        assert len(implementer_catalog) < len(full_catalog), (
             "Agent-specific catalog should be smaller than full catalog"
+        )
 
     async def test_catalog_markdown_validity(self, tenant_context):
         """
@@ -349,17 +350,10 @@ class TestMCPToolCatalog:
         generator = MCPToolCatalogGenerator()
         full_catalog = generator.generate_full_catalog()
 
-        required_categories = [
-            "orchestration",
-            "context",
-            "communication",
-            "tasks",
-            "project"
-        ]
+        required_categories = ["orchestration", "context", "communication", "tasks", "project"]
 
         for category in required_categories:
-            assert category in full_catalog.lower(), \
-                f"Required category '{category}' missing from catalog"
+            assert category in full_catalog.lower(), f"Required category '{category}' missing from catalog"
 
 
 @pytest.mark.asyncio
@@ -406,7 +400,8 @@ class TestMCPToolCatalogIntegration:
                 mission="Orchestrate integration test",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,                job_metadata={
+                context_used=0,
+                job_metadata={
                     "field_priorities": {
                         "mcp_tool_catalog": 9,
                     },

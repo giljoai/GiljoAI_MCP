@@ -20,24 +20,18 @@ Tests verify:
 """
 
 import json
-import pytest
-import pytest_asyncio
-from uuid import uuid4
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, patch, MagicMock
+from uuid import uuid4
 
-from src.giljo_mcp.models import User, Product, Project
-from api.websocket import WebSocketManager
-from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.services.context_service import ContextService
+import pytest_asyncio
 
-from tests.fixtures.base_fixtures import db_manager, db_session
+from src.giljo_mcp.models import Product, User
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def ws_tenant_key():
@@ -61,7 +55,7 @@ async def ws_user(db_session, ws_tenant_key):
                 "product_core": 1,
                 "vision_documents": 2,
                 "git_history": 3,
-            }
+            },
         },
         serena_enabled=False,
     )
@@ -88,6 +82,7 @@ async def ws_product(db_session, ws_tenant_key):
 # ============================================================================
 # TEST SUITE 1: Field Priority Change Events
 # ============================================================================
+
 
 class TestFieldPriorityChangeEvents:
     """
@@ -172,6 +167,7 @@ class TestFieldPriorityChangeEvents:
 # ============================================================================
 # TEST SUITE 2: Serena Toggle Events
 # ============================================================================
+
 
 class TestSerenaToggleEvents:
     """
@@ -266,6 +262,7 @@ class TestSerenaToggleEvents:
 # TEST SUITE 3: 360 Memory Update Events
 # ============================================================================
 
+
 class TestMemoryUpdateEvents:
     """
     Validate WebSocket events when 360 memory is updated (Handover 0268)
@@ -295,13 +292,15 @@ class TestMemoryUpdateEvents:
         await db_session.flush()
 
         # Add second memory entry
-        ws_product.product_memory["sequential_history"].append({
-            "sequence": 2,
-            "type": "project_closeout",
-            "project_id": str(uuid4()),
-            "summary": "Second project completed",
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        ws_product.product_memory["sequential_history"].append(
+            {
+                "sequence": 2,
+                "type": "project_closeout",
+                "project_id": str(uuid4()),
+                "summary": "Second project completed",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await db_session.flush()
 
         # Verify update
@@ -322,13 +321,15 @@ class TestMemoryUpdateEvents:
 
         # Add entries with proper sequence
         for i in range(3):
-            ws_product.product_memory["sequential_history"].append({
-                "sequence": i + 1,
-                "type": "project_closeout",
-                "project_id": str(uuid4()),
-                "summary": f"Project {i+1}",
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            ws_product.product_memory["sequential_history"].append(
+                {
+                    "sequence": i + 1,
+                    "type": "project_closeout",
+                    "project_id": str(uuid4()),
+                    "summary": f"Project {i + 1}",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
 
         await db_session.flush()
 
@@ -363,13 +364,15 @@ class TestMemoryUpdateEvents:
         await db_session.flush()
 
         # Update only product_a
-        product_a.product_memory["sequential_history"].append({
-            "sequence": 1,
-            "type": "project_closeout",
-            "project_id": str(uuid4()),
-            "summary": "Product A update",
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        product_a.product_memory["sequential_history"].append(
+            {
+                "sequence": 1,
+                "type": "project_closeout",
+                "project_id": str(uuid4()),
+                "summary": "Product A update",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await db_session.flush()
 
         # Verify isolation
@@ -383,6 +386,7 @@ class TestMemoryUpdateEvents:
 # ============================================================================
 # TEST SUITE 4: GitHub Integration Toggle Events
 # ============================================================================
+
 
 class TestGitHubToggleEvents:
     """
@@ -430,8 +434,7 @@ class TestGitHubToggleEvents:
 
         # Verify config preserved
         retrieved = await db_session.get(Product, ws_product.id)
-        assert retrieved.product_memory["git_integration"]["repository_url"] == \
-               "https://github.com/user/repo"
+        assert retrieved.product_memory["git_integration"]["repository_url"] == "https://github.com/user/repo"
         assert retrieved.product_memory["git_integration"]["enabled"] is True
 
     async def test_github_toggle_is_product_scoped(
@@ -470,6 +473,7 @@ class TestGitHubToggleEvents:
 # ============================================================================
 # TEST SUITE 5: Testing Configuration Change Events
 # ============================================================================
+
 
 class TestTestingConfigChangeEvents:
     """
@@ -560,6 +564,7 @@ class TestTestingConfigChangeEvents:
 # TEST SUITE 6: Event Structure and Validation
 # ============================================================================
 
+
 class TestEventStructureAndValidation:
     """
     Validate that WebSocket events have correct structure and required fields
@@ -630,6 +635,7 @@ class TestEventStructureAndValidation:
 # ============================================================================
 # TEST SUITE 7: Cross-Tenant Event Isolation
 # ============================================================================
+
 
 class TestCrossTenantEventIsolation:
     """
@@ -710,13 +716,16 @@ class TestCrossTenantEventIsolation:
 
         # Verify product_b unchanged
         retrieved_b = await db_session.get(Product, product_b.id)
-        assert "coverage_target" not in retrieved_b.testing_config or \
-               retrieved_b.testing_config.get("coverage_target") != 90
+        assert (
+            "coverage_target" not in retrieved_b.testing_config
+            or retrieved_b.testing_config.get("coverage_target") != 90
+        )
 
 
 # ============================================================================
 # TEST SUITE 8: Batch Event Handling
 # ============================================================================
+
 
 class TestBatchEventHandling:
     """

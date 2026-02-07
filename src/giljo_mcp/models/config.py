@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from .base import Base, generate_uuid
 
+
 class Configuration(Base):
     """
     Configuration model - stores system and project configuration.
@@ -55,6 +56,7 @@ class Configuration(Base):
 
     def __repr__(self) -> str:
         return f"<Configuration(id={self.id}, key='{self.key}', category='{self.category}')>"
+
 
 class DiscoveryConfig(Base):
     """
@@ -86,6 +88,7 @@ class DiscoveryConfig(Base):
 
     def __repr__(self) -> str:
         return f"<DiscoveryConfig(id={self.id}, path_key='{self.path_key}')>"
+
 
 class GitConfig(Base):
     """
@@ -168,6 +171,7 @@ class GitConfig(Base):
     def __repr__(self) -> str:
         return f"<GitConfig(id={self.id}, repo_url='{self.repo_url}')>"
 
+
 class GitCommit(Base):
     """
     Git Commit model - tracks commits made through the orchestrator.
@@ -229,6 +233,7 @@ class GitCommit(Base):
 
     def __repr__(self) -> str:
         return f"<GitCommit(id={self.id}, commit_hash='{self.commit_hash[:8] if self.commit_hash else None}')>"
+
 
 class SetupState(Base):
     """
@@ -493,6 +498,7 @@ class SetupState(Base):
     def __repr__(self) -> str:
         return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"
 
+
 class OptimizationRule(Base):
     """
     Optimization Rule model - stores custom optimization rules per tenant.
@@ -535,6 +541,7 @@ class OptimizationRule(Base):
 
     def __repr__(self) -> str:
         return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
+
 
 class OptimizationMetric(Base):
     """
@@ -582,6 +589,7 @@ class OptimizationMetric(Base):
 
     def __repr__(self) -> str:
         return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
+
 
 class DownloadToken(Base):
     """
@@ -659,6 +667,7 @@ class DownloadToken(Base):
     def is_valid(self) -> bool:
         """Check if token is valid (not expired and staging ready)."""
         return (not self.is_expired) and (self.staging_status == "ready")
+
 
 class ApiMetrics(Base):
     """API Metrics model - tracks API and MCP call counts per tenant."""

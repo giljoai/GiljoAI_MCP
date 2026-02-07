@@ -1,6 +1,7 @@
 """
 Test mission_acknowledged_at tracking in get_orchestrator_instructions() tool - Updated for simplified job signaling
 """
+
 import uuid
 from datetime import datetime, timezone
 
@@ -32,7 +33,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
             tenant_key=tenant_key,
             name="Test Product",
             description="Test product for mission read tracking",
-            is_active=True
+            is_active=True,
         )
         session.add(product)
         await session.flush()
@@ -45,7 +46,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
             name="Test Project",
             description="Test project requirements",
             mission="Test mission",
-            status="active"
+            status="active",
         )
         session.add(project)
         await session.flush()
@@ -61,10 +62,7 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
             mission="Test orchestrator mission",
             context_budget=150000,
             context_used=0,
-            job_metadata={
-                "field_priorities": {},
-                "user_id": str(uuid.uuid4())
-            }
+            job_metadata={"field_priorities": {}, "user_id": str(uuid.uuid4())},
         )
         session.add(orchestrator)
         await session.commit()
@@ -72,26 +70,21 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
         orchestrator_id = orchestrator.job_id
 
         # Verify mission_acknowledged_at is None before first call
-        result = await session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
-        )
+        result = await session.execute(select(AgentExecution).where(AgentExecution.job_id == orchestrator_id))
         job = result.scalar_one()
         assert job.mission_acknowledged_at is None, "mission_acknowledged_at should be None initially"
 
     # FIRST CALL: Should set mission_acknowledged_at
     first_call_time = datetime.now(timezone.utc)
-    result1 = await get_orchestrator_instructions(db_manager=db_manager,
-        orchestrator_id=orchestrator_id,
-        tenant_key=tenant_key
+    result1 = await get_orchestrator_instructions(
+        db_manager=db_manager, orchestrator_id=orchestrator_id, tenant_key=tenant_key
     )
 
     assert "error" not in result1, f"First call failed: {result1.get('message')}"
 
     # Verify mission_acknowledged_at was set
     async with db_manager.get_session_async() as session:
-        result = await session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
-        )
+        result = await session.execute(select(AgentExecution).where(AgentExecution.job_id == orchestrator_id))
         job = result.scalar_one()
         assert job.mission_acknowledged_at is not None, "mission_acknowledged_at should be set after first call"
         assert job.mission_acknowledged_at >= first_call_time, "mission_acknowledged_at should be recent"
@@ -99,18 +92,15 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
         first_ack_timestamp = job.mission_acknowledged_at
 
     # SECOND CALL: Should NOT update mission_acknowledged_at (idempotent)
-    result2 = await get_orchestrator_instructions(db_manager=db_manager,
-        orchestrator_id=orchestrator_id,
-        tenant_key=tenant_key
+    result2 = await get_orchestrator_instructions(
+        db_manager=db_manager, orchestrator_id=orchestrator_id, tenant_key=tenant_key
     )
 
     assert "error" not in result2, f"Second call failed: {result2.get('message')}"
 
     # Verify mission_acknowledged_at was NOT updated
     async with db_manager.get_session_async() as session:
-        result = await session.execute(
-            select(AgentExecution).where(AgentExecution.job_id == orchestrator_id)
-        )
+        result = await session.execute(select(AgentExecution).where(AgentExecution.job_id == orchestrator_id))
         job = result.scalar_one()
         assert job.mission_acknowledged_at == first_ack_timestamp, (
             "mission_acknowledged_at should NOT be updated on subsequent calls (idempotent)"
@@ -128,11 +118,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
     async with db_manager.get_session_async() as session:
         # Create orchestrator for tenant 1
         product1 = Product(
-            id=str(uuid.uuid4()),
-            tenant_key=tenant_key_1,
-            name="Product 1",
-            description="Product 1",
-            is_active=True
+            id=str(uuid.uuid4()), tenant_key=tenant_key_1, name="Product 1", description="Product 1", is_active=True
         )
         session.add(product1)
         await session.flush()
@@ -144,7 +130,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             name="Project 1",
             description="Project 1",
             mission="Test mission",
-            status="active"
+            status="active",
         )
         session.add(project1)
         await session.flush()
@@ -157,17 +143,13 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             agent_name="Orchestrator1",
             status="waiting",
             mission="Mission 1",
-            job_metadata={"field_priorities": {}}
+            job_metadata={"field_priorities": {}},
         )
         session.add(orchestrator1)
 
         # Create orchestrator for tenant 2 (same job_id, different tenant)
         product2 = Product(
-            id=str(uuid.uuid4()),
-            tenant_key=tenant_key_2,
-            name="Product 2",
-            description="Product 2",
-            is_active=True
+            id=str(uuid.uuid4()), tenant_key=tenant_key_2, name="Product 2", description="Product 2", is_active=True
         )
         session.add(product2)
         await session.flush()
@@ -179,7 +161,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             name="Project 2",
             description="Project 2",
             mission="Test mission",
-            status="active"
+            status="active",
         )
         session.add(project2)
         await session.flush()
@@ -192,7 +174,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
             agent_name="Orchestrator2",
             status="waiting",
             mission="Mission 2",
-            job_metadata={"field_priorities": {}}
+            job_metadata={"field_priorities": {}},
         )
         session.add(orchestrator2)
         await session.commit()
@@ -200,10 +182,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
         job_id = orchestrator1.job_id
 
     # Call with tenant_key_2
-    result = await get_orchestrator_instructions(db_manager=db_manager,
-        orchestrator_id=job_id,
-        tenant_key=tenant_key_2
-    )
+    result = await get_orchestrator_instructions(db_manager=db_manager, orchestrator_id=job_id, tenant_key=tenant_key_2)
 
     # Should succeed for tenant_key_2 (not tenant_key_1)
     assert "error" not in result, "Should succeed for correct tenant"
@@ -212,10 +191,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
     async with db_manager.get_session_async() as session:
         result = await session.execute(
             select(AgentExecution).where(
-                and_(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key_1
-                )
+                and_(AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key_1)
             )
         )
         job1 = result.scalar_one()
@@ -223,10 +199,7 @@ async def test_mission_acknowledged_at_multi_tenant_isolation(db_manager: Databa
 
         result = await session.execute(
             select(AgentExecution).where(
-                and_(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == tenant_key_2
-                )
+                and_(AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key_2)
             )
         )
         job2 = result.scalar_one()

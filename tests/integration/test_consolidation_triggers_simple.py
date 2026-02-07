@@ -6,7 +6,6 @@ Full E2E endpoint testing deferred to Phase 5.
 """
 
 import pytest
-import pytest_asyncio
 
 from src.giljo_mcp.models import Product, VisionDocument
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
@@ -51,10 +50,7 @@ async def test_consolidation_service_with_vision_docs(db_session, tenant_manager
     # WHEN: Run consolidation service
     consolidation_service = ConsolidatedVisionService()
     result = await consolidation_service.consolidate_vision_documents(
-        product_id=product.id,
-        session=db_session,
-        tenant_key=tenant_key,
-        force=True
+        product_id=product.id, session=db_session, tenant_key=tenant_key, force=True
     )
 
     # THEN: Consolidation succeeds
@@ -102,10 +98,7 @@ async def test_consolidation_skip_no_changes(db_session, tenant_manager):
     # Run initial consolidation
     consolidation_service = ConsolidatedVisionService()
     first_result = await consolidation_service.consolidate_vision_documents(
-        product_id=product.id,
-        session=db_session,
-        tenant_key=tenant_key,
-        force=True
+        product_id=product.id, session=db_session, tenant_key=tenant_key, force=True
     )
     assert first_result["success"] is True
 
@@ -114,7 +107,7 @@ async def test_consolidation_skip_no_changes(db_session, tenant_manager):
         product_id=product.id,
         session=db_session,
         tenant_key=tenant_key,
-        force=False  # Don't force
+        force=False,  # Don't force
     )
 
     # THEN: Second consolidation skipped
@@ -143,7 +136,7 @@ async def test_consolidation_multi_tenant_isolation(db_session, tenant_manager):
         product_id=product_a.id,
         session=db_session,
         tenant_key=tenant_b,  # Wrong tenant!
-        force=False
+        force=False,
     )
 
     # THEN: Consolidation fails (tenant isolation)

@@ -7,9 +7,9 @@ Following TDD principles:
 3. Refactor if needed
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
+
+import pytest
 
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
@@ -58,12 +58,11 @@ class TestToolAccessorMCPCatalog:
 
             if mock_execute.call_count == 1:
                 return orchestrator_result
-            elif mock_execute.call_count == 2:
+            if mock_execute.call_count == 2:
                 return project_result
-            elif mock_execute.call_count == 3:
+            if mock_execute.call_count == 3:
                 return product_result
-            else:
-                return templates_result
+            return templates_result
 
         session.execute = mock_execute
 
@@ -128,8 +127,7 @@ class TestToolAccessorMCPCatalog:
             with patch("builtins.open", side_effect=FileNotFoundError):
                 # Act
                 result = await tool_accessor.get_orchestrator_instructions(
-                    orchestrator_id="orch-123",
-                    tenant_key="tenant-abc"
+                    orchestrator_id="orch-123", tenant_key="tenant-abc"
                 )
 
         # Assert
@@ -207,8 +205,7 @@ class TestToolAccessorMCPCatalog:
             with patch("builtins.open", side_effect=FileNotFoundError):
                 # Act
                 result = await tool_accessor.get_orchestrator_instructions(
-                    orchestrator_id="orch-123",
-                    tenant_key="tenant-abc"
+                    orchestrator_id="orch-123", tenant_key="tenant-abc"
                 )
 
         # Assert
@@ -280,8 +277,7 @@ class TestToolAccessorMCPCatalog:
             with patch("builtins.open", side_effect=FileNotFoundError):
                 # Act
                 result = await tool_accessor.get_orchestrator_instructions(
-                    orchestrator_id="orch-123",
-                    tenant_key="tenant-abc"
+                    orchestrator_id="orch-123", tenant_key="tenant-abc"
                 )
 
         # Assert
@@ -352,14 +348,15 @@ class TestToolAccessorMCPCatalog:
 
             # Mock MCPToolCatalogGenerator to raise exception
             with patch("giljo_mcp.prompt_generation.mcp_tool_catalog.MCPToolCatalogGenerator") as mock_catalog_class:
-                mock_catalog_class.return_value.generate_full_catalog.side_effect = Exception("Catalog generation failed")
+                mock_catalog_class.return_value.generate_full_catalog.side_effect = Exception(
+                    "Catalog generation failed"
+                )
 
                 # Mock config.yaml
                 with patch("builtins.open", side_effect=FileNotFoundError):
                     # Act
                     result = await tool_accessor.get_orchestrator_instructions(
-                        orchestrator_id="orch-123",
-                        tenant_key="tenant-abc"
+                        orchestrator_id="orch-123", tenant_key="tenant-abc"
                     )
 
         # Assert

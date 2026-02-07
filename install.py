@@ -34,7 +34,7 @@ def _bootstrap_dependencies():
     This solves the bootstrap problem where install.py needs these packages
     to run, but is also responsible for installing them.
     """
-    required = ['click', 'colorama']
+    required = ["click", "colorama"]
     missing = []
     for pkg in required:
         try:
@@ -45,9 +45,9 @@ def _bootstrap_dependencies():
     if missing:
         print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
         subprocess.check_call(
-            [sys.executable, '-m', 'pip', 'install', '-q'] + missing,
+            [sys.executable, "-m", "pip", "install", "-q"] + missing,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
         )
 
 
@@ -98,37 +98,39 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
     Returns:
         The entered password as a string
     """
-    print(prompt, end='', flush=True)
+    print(prompt, end="", flush=True)
     password = []
 
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         import msvcrt
+
         while True:
             char = msvcrt.getch()
             # Enter key
-            if char in (b'\r', b'\n'):
+            if char in (b"\r", b"\n"):
                 print()
                 break
             # Backspace
-            elif char == b'\x08':
+            if char == b"\x08":
                 if password:
                     password.pop()
                     # Move cursor back, overwrite with space, move back again
-                    print('\b \b', end='', flush=True)
+                    print("\b \b", end="", flush=True)
             # Ctrl+C
-            elif char == b'\x03':
+            elif char == b"\x03":
                 raise KeyboardInterrupt
             # Regular character
             else:
                 try:
-                    password.append(char.decode('utf-8'))
-                    print('*', end='', flush=True)
+                    password.append(char.decode("utf-8"))
+                    print("*", end="", flush=True)
                 except UnicodeDecodeError:
                     pass  # Ignore non-UTF8 characters
     else:
         # Unix/Linux/Mac
         import termios
         import tty
+
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
@@ -136,25 +138,25 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
             while True:
                 char = sys.stdin.read(1)
                 # Enter key
-                if char in ('\r', '\n'):
+                if char in ("\r", "\n"):
                     print()
                     break
                 # Backspace (DEL or BS)
-                elif char in ('\x7f', '\x08'):
+                if char in ("\x7f", "\x08"):
                     if password:
                         password.pop()
-                        print('\b \b', end='', flush=True)
+                        print("\b \b", end="", flush=True)
                 # Ctrl+C
-                elif char == '\x03':
+                elif char == "\x03":
                     raise KeyboardInterrupt
                 # Regular character
                 else:
                     password.append(char)
-                    print('*', end='', flush=True)
+                    print("*", end="", flush=True)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-    return ''.join(password)
+    return "".join(password)
 
 
 class UnifiedInstaller:
@@ -383,6 +385,7 @@ class UnifiedInstaller:
 
         # Detect network adapters (with names for tracking)
         from installer.shared.network import get_network_adapters
+
         network_adapters = get_network_adapters()
 
         # Build options list
@@ -509,7 +512,7 @@ class UnifiedInstaller:
         if network_mode == "auto":
             adapter = self.settings.get("selected_adapter", "unknown")
             print(f"  • Network mode: {Fore.GREEN}Auto-detect{Style.RESET_ALL} ({adapter})")
-            print(f"    → IP will be re-detected on each startup")
+            print("    → IP will be re-detected on each startup")
         elif network_mode == "static":
             adapter = self.settings.get("selected_adapter", "")
             print(f"  • Network mode: Static [{adapter}]")
@@ -1034,17 +1037,16 @@ class UnifiedInstaller:
             # Add src to path
             sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+            # Get database URL from environment
+            import os
             from datetime import datetime, timedelta, timezone
             from uuid import uuid4
 
-            from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+            from dotenv import load_dotenv
             from sqlalchemy import select
 
-            # Get database URL from environment
-            import os
-
-            from dotenv import load_dotenv
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
             load_dotenv(override=True)
             db_url = os.getenv("DATABASE_URL")
@@ -1821,8 +1823,9 @@ class UnifiedInstaller:
             async def check_and_stamp_base():
                 """Check if alembic_version table exists, create and stamp if needed."""
                 try:
-                    from giljo_mcp.database import DatabaseManager
                     from sqlalchemy import text
+
+                    from giljo_mcp.database import DatabaseManager
 
                     db_url = os.getenv("DATABASE_URL")
                     if not db_url:
@@ -1876,7 +1879,8 @@ class UnifiedInstaller:
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout
-                cwd=str(cwd)  # Ensure correct working directory
+                cwd=str(cwd),
+                check=False,  # Ensure correct working directory
             )
 
             if proc.returncode == 0:
@@ -1885,8 +1889,8 @@ class UnifiedInstaller:
                 result["output"] = proc.stdout
 
                 # Parse output to see which migrations ran
-                for line in proc.stdout.split('\n'):
-                    if 'Running upgrade' in line:
+                for line in proc.stdout.split("\n"):
+                    if "Running upgrade" in line:
                         result["migrations_applied"].append(line.strip())
 
                 if result["migrations_applied"]:
@@ -1932,6 +1936,7 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_error(f"Database migration error: {e}")
             import traceback
+
             traceback.print_exc()
             result["error"] = str(e)
 
@@ -1970,8 +1975,9 @@ class UnifiedInstaller:
         try:
             import os
 
-            from giljo_mcp.database import DatabaseManager
             from sqlalchemy import text
+
+            from giljo_mcp.database import DatabaseManager
 
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
@@ -2069,7 +2075,8 @@ except Exception as e:
                 [str(python_executable), "-c", nltk_code],
                 capture_output=True,
                 text=True,
-                timeout=60,  # 1 minute timeout
+                timeout=60,
+                check=False,  # 1 minute timeout
             )
 
             if process_result.returncode == 0:

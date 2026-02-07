@@ -1,10 +1,11 @@
 """
 Tests for User.org_id migration from OrgMembership.
 """
+
 import pytest
 from sqlalchemy import select, text
 
-from src.giljo_mcp.models import User, Organization, OrgMembership
+from src.giljo_mcp.models import Organization, OrgMembership, User
 
 
 @pytest.mark.asyncio
@@ -20,7 +21,7 @@ async def test_user_org_id_relationship_works(db_session):
         name="Test Org",
         slug="test-org-migration-123",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(org)
     await db_session.flush()
@@ -30,7 +31,7 @@ async def test_user_org_id_relationship_works(db_session):
         username="testuser_migration",
         email="test_migration@example.com",
         tenant_key=tenant_key,
-        org_id=org.id  # Now required
+        org_id=org.id,  # Now required
     )
     db_session.add(user)
     await db_session.flush()
@@ -41,7 +42,7 @@ async def test_user_org_id_relationship_works(db_session):
         user_id=user.id,
         role="owner",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(membership)
     await db_session.commit()
@@ -63,7 +64,7 @@ async def test_migration_does_not_overwrite_existing_org_id(db_session):
         name="First Org",
         slug="first-org-123",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(first_org)
     await db_session.flush()
@@ -73,7 +74,7 @@ async def test_migration_does_not_overwrite_existing_org_id(db_session):
         name="Other Org",
         slug="other-org-456",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_org)
     await db_session.flush()
@@ -83,7 +84,7 @@ async def test_migration_does_not_overwrite_existing_org_id(db_session):
         username="existing",
         email="existing@example.com",
         tenant_key=tenant_key,
-        org_id=first_org.id  # Already set
+        org_id=first_org.id,  # Already set
     )
     db_session.add(user)
     await db_session.flush()
@@ -94,7 +95,7 @@ async def test_migration_does_not_overwrite_existing_org_id(db_session):
         user_id=user.id,
         role="member",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(membership)
     await db_session.commit()
@@ -139,7 +140,7 @@ async def test_nullable_org_id_allows_creation_without_org(db_session):
     user = User(
         username="orphan",
         email="orphan@example.com",
-        tenant_key="test_tenant"
+        tenant_key="test_tenant",
         # No org_id - allowed after 0424m
     )
     db_session.add(user)

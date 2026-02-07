@@ -11,14 +11,14 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock
-from uuid import uuid4
 
-from src.giljo_mcp.services.message_service import MessageService
+import pytest
+
 from src.giljo_mcp.models import Message, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.services.message_service import MessageService
 
 
 class TestMessageServiceSending:
@@ -46,11 +46,13 @@ class TestMessageServiceSending:
         mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
 
         # First call for project lookup, then for each agent resolution
-        session.execute = AsyncMock(side_effect=[
-            mock_project_result,
-            mock_exec_result,  # First agent resolution
-            mock_exec_result,  # Second agent resolution
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                mock_project_result,
+                mock_exec_result,  # First agent resolution
+                mock_exec_result,  # Second agent resolution
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
@@ -60,7 +62,7 @@ class TestMessageServiceSending:
             content="Review code changes",
             project_id="project-id",
             priority="high",
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -85,12 +87,10 @@ class TestMessageServiceSending:
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service.send_message(
-                to_agents=["impl-1"],
-                content="test",
-                project_id="nonexistent",
-                tenant_key="test-tenant"
+                to_agents=["impl-1"], content="test", project_id="nonexistent", tenant_key="test-tenant"
             )
 
         assert "not found" in str(exc_info.value).lower()
@@ -135,21 +135,19 @@ class TestMessageServiceSending:
         mock_exec_result2 = Mock()
         mock_exec_result2.scalar_one_or_none = Mock(return_value=mock_execution2)
 
-        session.execute = AsyncMock(side_effect=[
-            mock_jobs_result,      # Get agent jobs for broadcast
-            mock_project_result,   # Get project
-            mock_exec_result1,     # Resolve first agent name
-            mock_exec_result2,     # Resolve second agent name
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                mock_jobs_result,  # Get agent jobs for broadcast
+                mock_project_result,  # Get project
+                mock_exec_result1,  # Resolve first agent name
+                mock_exec_result2,  # Resolve second agent name
+            ]
+        )
 
         service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
-        result = await service.broadcast(
-            content="Project status update",
-            project_id="project-id",
-            priority="high"
-        )
+        result = await service.broadcast(content="Project status update", project_id="project-id", priority="high")
 
         # Assert
         assert result["success"] is True
@@ -169,11 +167,9 @@ class TestMessageServiceSending:
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.broadcast(
-                content="test",
-                project_id="project-id"
-            )
+            await service.broadcast(content="test", project_id="project-id")
 
         assert "No agent jobs found" in str(exc_info.value)
 
@@ -213,10 +209,7 @@ class TestMessageServiceRetrieval:
         service = MessageService(db_manager, mock_tenant_manager)
 
         # Act
-        result = await service.get_messages(
-            agent_name="impl-1",
-            project_id="project-id"
-        )
+        result = await service.get_messages(agent_name="impl-1", project_id="project-id")
 
         # Assert
         assert result["success"] is True
@@ -316,22 +309,20 @@ class TestMessageServiceRetrieval:
         # 3. Get messages
         # 4. Counter update for decrement_waiting_increment_read (in loop)
         # 5. Get counter stats for WebSocket event
-        session.execute = AsyncMock(side_effect=[
-            mock_exec_result,       # Get execution
-            mock_job_result,        # Get job
-            mock_messages_result,   # Get messages
-            mock_counter_update,    # Counter update in loop
-            mock_exec_result,       # Get counter stats (re-fetch execution)
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                mock_exec_result,  # Get execution
+                mock_job_result,  # Get job
+                mock_messages_result,  # Get messages
+                mock_counter_update,  # Counter update in loop
+                mock_exec_result,  # Get counter stats (re-fetch execution)
+            ]
+        )
 
         service = MessageService(db_manager, tenant_manager)
 
         # Act
-        result = await service.receive_messages(
-            agent_id="agent-123",
-            limit=5,
-            tenant_key="test-tenant"
-        )
+        result = await service.receive_messages(agent_id="agent-123", limit=5, tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -351,6 +342,7 @@ class TestMessageServiceRetrieval:
 
         # Act & Assert - should raise ValidationError
         from src.giljo_mcp.exceptions import ValidationError
+
         with pytest.raises(ValidationError) as exc_info:
             await service.receive_messages(agent_id="agent-123")
 
@@ -382,9 +374,7 @@ class TestMessageServiceStatusUpdates:
 
         # Act
         result = await service.complete_message(
-            message_id="msg-id",
-            agent_name="impl-1",
-            result="Task completed successfully"
+            message_id="msg-id", agent_name="impl-1", result="Task completed successfully"
         )
 
         # Assert
@@ -411,12 +401,9 @@ class TestMessageServiceStatusUpdates:
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.complete_message(
-                message_id="nonexistent",
-                agent_name="impl-1",
-                result="test"
-            )
+            await service.complete_message(message_id="nonexistent", agent_name="impl-1", result="test")
 
         assert "not found" in str(exc_info.value).lower()
 
@@ -432,12 +419,10 @@ class TestMessageServiceErrorHandling:
 
         # Act & Assert - should raise BaseGiljoException
         from src.giljo_mcp.exceptions import BaseGiljoException
+
         with pytest.raises((BaseGiljoException, Exception)) as exc_info:
             await service.send_message(
-                to_agents=["impl-1"],
-                content="test",
-                project_id="project-id",
-                tenant_key="test-tenant"
+                to_agents=["impl-1"], content="test", project_id="project-id", tenant_key="test-tenant"
             )
 
         assert "Connection lost" in str(exc_info.value)
@@ -450,6 +435,7 @@ class TestMessageServiceErrorHandling:
 
         # Act & Assert - should raise BaseGiljoException
         from src.giljo_mcp.exceptions import BaseGiljoException
+
         with pytest.raises((BaseGiljoException, Exception)) as exc_info:
             await service.get_messages(agent_name="impl-1")
 
@@ -463,11 +449,8 @@ class TestMessageServiceErrorHandling:
 
         # Act & Assert - should raise BaseGiljoException
         from src.giljo_mcp.exceptions import BaseGiljoException
+
         with pytest.raises((BaseGiljoException, Exception)) as exc_info:
-            await service.complete_message(
-                message_id="msg-id",
-                agent_name="impl-1",
-                result="test"
-            )
+            await service.complete_message(message_id="msg-id", agent_name="impl-1", result="test")
 
         assert "Connection lost" in str(exc_info.value)

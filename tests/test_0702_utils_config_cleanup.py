@@ -29,7 +29,7 @@ def test_path_normalizer_class_name():
 
 def test_path_normalizer_convenience_functions():
     """Test that convenience functions exist and work"""
-    from src.giljo_mcp.utils.path_normalizer import normalize_path, join_paths, resolve_relative_path
+    from src.giljo_mcp.utils.path_normalizer import join_paths, normalize_path, resolve_relative_path
 
     # Test normalize_path
     result = normalize_path(r"C:\Windows\System32")

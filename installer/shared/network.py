@@ -179,8 +179,17 @@ def get_network_adapters() -> List[dict]:
 
         # Patterns for virtual/loopback interfaces to deprioritize
         virtual_patterns = [
-            "docker", "veth", "br-", "vmnet", "vboxnet",
-            "virbr", "tun", "tap", "vEthernet", "Hyper-V", "WSL"
+            "docker",
+            "veth",
+            "br-",
+            "vmnet",
+            "vboxnet",
+            "virbr",
+            "tun",
+            "tap",
+            "vEthernet",
+            "Hyper-V",
+            "WSL",
         ]
         loopback_patterns = ["lo", "Loopback"]
 
@@ -204,11 +213,7 @@ def get_network_adapters() -> List[dict]:
                 if address.family == 2:  # socket.AF_INET
                     ip = address.address
                     if ip and ip != "127.0.0.1" and not ip.startswith("127."):
-                        adapters.append({
-                            "name": interface_name,
-                            "ip": ip,
-                            "is_virtual": is_virtual
-                        })
+                        adapters.append({"name": interface_name, "ip": ip, "is_virtual": is_virtual})
 
         # Sort: physical adapters first, then virtual
         adapters.sort(key=lambda x: (x["is_virtual"], x["name"]))

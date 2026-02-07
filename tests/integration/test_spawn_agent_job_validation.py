@@ -15,21 +15,18 @@ Test Coverage:
 """
 
 import uuid
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.tools.agent_discovery import get_available_agents
 from src.giljo_mcp.tools.orchestration import (
     get_orchestrator_instructions,
     spawn_agent_job,
 )
-from src.giljo_mcp.tools.agent_discovery import get_available_agents
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
@@ -289,9 +286,7 @@ class TestInvalidAgentTypeRejection:
         db_result = await db_session.execute(stmt)
         agent_job = db_result.scalar_one_or_none()
 
-        assert agent_job is None, (
-            "Invalid agent type should NOT create database entry"
-        )
+        assert agent_job is None, "Invalid agent type should NOT create database entry"
 
     @pytest.mark.asyncio
     async def test_spawn_descriptive_name_as_type_rejected(
@@ -343,9 +338,7 @@ class TestInvalidAgentTypeRejection:
 
         # ASSERTION: Error shows correct case
         error_msg = result["error"]
-        assert "implementer" in error_msg, (
-            "Error should show correct lowercase version"
-        )
+        assert "implementer" in error_msg, "Error should show correct lowercase version"
 
 
 # ============================================================================
@@ -442,8 +435,7 @@ class TestOrchestratorConstraintIntegration:
         expected_types = {"implementer", "tester", "reviewer"}
 
         assert allowed_types == expected_types, (
-            f"Constraint should match active templates. "
-            f"Expected: {expected_types}, Got: {allowed_types}"
+            f"Constraint should match active templates. Expected: {expected_types}, Got: {allowed_types}"
         )
 
     @pytest.mark.asyncio
@@ -463,9 +455,7 @@ class TestOrchestratorConstraintIntegration:
         constraint_types = set(orch_result["agent_spawning_constraint"]["allowed_agent_display_names"])
 
         # Get available agents directly
-        agents_result = await get_available_agents(
-            db_session, validation_tenant, depth="type_only"
-        )
+        agents_result = await get_available_agents(db_session, validation_tenant, depth="type_only")
 
         available_types = {agent["name"] for agent in agents_result["data"]["agents"]}
 
@@ -504,9 +494,7 @@ class TestErrorMessageQuality:
 
         # ASSERTION: All valid types mentioned
         for template in validation_templates:
-            assert template.name in error_msg, (
-                f"Error should list all valid types. Missing: {template.name}"
-            )
+            assert template.name in error_msg, f"Error should list all valid types. Missing: {template.name}"
 
     @pytest.mark.asyncio
     async def test_hint_guides_orchestrator_to_fix(
@@ -584,9 +572,7 @@ class TestInactiveTemplateHandling:
 
         # ASSERTION: Error does NOT list inactive template
         error_msg = result["error"]
-        assert "deprecated" not in error_msg, (
-            "Error should NOT list inactive templates as valid options"
-        )
+        assert "deprecated" not in error_msg, "Error should NOT list inactive templates as valid options"
 
     @pytest.mark.asyncio
     async def test_orchestrator_constraint_excludes_inactive_templates(
@@ -619,6 +605,4 @@ class TestInactiveTemplateHandling:
         allowed_types = constraint["allowed_agent_display_names"]
 
         # ASSERTION: Inactive template NOT in allowed types
-        assert "old_agent" not in allowed_types, (
-            "Inactive templates must NOT be in allowed_agent_display_names"
-        )
+        assert "old_agent" not in allowed_types, "Inactive templates must NOT be in allowed_agent_display_names"

@@ -39,7 +39,7 @@ class TestGenericAgentTemplate:
             job_id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
-            tenant_key="test_tenant"
+            tenant_key="test_tenant",
         )
         assert rendered is not None
         assert isinstance(rendered, str)
@@ -56,11 +56,7 @@ class TestGenericAgentTemplate:
         tenant_key = "test_tenant_xyz"
 
         rendered = template.render(
-            agent_id=agent_id,
-            job_id=job_id,
-            product_id=product_id,
-            project_id=project_id,
-            tenant_key=tenant_key
+            agent_id=agent_id, job_id=job_id, product_id=product_id, project_id=project_id, tenant_key=tenant_key
         )
 
         assert agent_id in rendered
@@ -77,7 +73,7 @@ class TestGenericAgentTemplate:
             job_id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
-            tenant_key="test_tenant"
+            tenant_key="test_tenant",
         )
 
         assert "get_agent_mission" in rendered
@@ -91,7 +87,7 @@ class TestGenericAgentTemplate:
             job_id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
-            tenant_key="test_tenant"
+            tenant_key="test_tenant",
         )
 
         # Mission + protocol wiring
@@ -109,7 +105,7 @@ class TestGenericAgentTemplate:
             job_id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
-            tenant_key="test_tenant"
+            tenant_key="test_tenant",
         )
 
         estimated_tokens = len(rendered) // 4
@@ -149,7 +145,7 @@ class TestGenericAgentTemplateMCPTool:
             job_id=str(uuid4()),
             product_id=str(uuid4()),
             project_id=str(uuid4()),
-            tenant_key=test_tenant
+            tenant_key=test_tenant,
         )
 
         assert result["success"] is True
@@ -173,7 +169,7 @@ class TestGenericAgentTemplateMCPTool:
             job_id=job_id,
             product_id=product_id,
             project_id=project_id,
-            tenant_key=test_tenant
+            tenant_key=test_tenant,
         )
 
         assert result["variables_injected"]["agent_id"] == agent_id
@@ -191,11 +187,11 @@ class TestGenericAgentTemplateMCPTool:
         for agent_display_name in agent_display_names:
             result = await get_generic_agent_template(
                 session=db_session,
-                agent_id=f"{agent_display_name}-{str(uuid4())}",
+                agent_id=f"{agent_display_name}-{uuid4()!s}",
                 job_id=str(uuid4()),
                 product_id=str(uuid4()),
                 project_id=str(uuid4()),
-                tenant_key=test_tenant
+                tenant_key=test_tenant,
             )
 
             assert result["success"] is True, f"Failed for {agent_display_name}"

@@ -10,14 +10,13 @@ Tests verify that ProductService emits correct WebSocket events when:
 PRODUCTION-GRADE: Validates real-time event delivery with tenant isolation.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product
 
 
 @pytest.fixture
@@ -62,11 +61,7 @@ class TestProductMemoryWebSocketEvents:
     """
 
     async def test_update_product_memory_emits_websocket_event(
-        self,
-        db_session,
-        tenant_key,
-        product_service_with_websocket,
-        mock_websocket_manager
+        self, db_session, tenant_key, product_service_with_websocket, mock_websocket_manager
     ):
         """
         PRODUCTION-GRADE: Verify product:memory:updated event emission
@@ -79,8 +74,7 @@ class TestProductMemoryWebSocketEvents:
         service = product_service_with_websocket
 
         create_result = await service.create_product(
-            name="WebSocket Test Product",
-            description="Testing WebSocket events"
+            name="WebSocket Test Product", description="Testing WebSocket events"
         )
         assert create_result["success"] is True
         product_id = create_result["product_id"]
@@ -92,13 +86,10 @@ class TestProductMemoryWebSocketEvents:
         updated_memory = {
             "github": {"enabled": True, "repo_url": "https://github.com/test/repo"},
             "learnings": [{"sequence": 1, "summary": "Initial learning"}],
-            "context": {"summary": "Updated context"}
+            "context": {"summary": "Updated context"},
         }
 
-        update_result = await service.update_product(
-            product_id=product_id,
-            product_memory=updated_memory
-        )
+        update_result = await service.update_product(product_id=product_id, product_memory=updated_memory)
 
         # ASSERT: Update succeeded
         assert update_result["success"] is True
@@ -119,10 +110,7 @@ class TestProductMemoryWebSocketEvents:
         assert "timestamp" in event_data
 
     async def test_update_product_memory_event_contains_correct_data(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Validate event payload structure and content
@@ -140,16 +128,9 @@ class TestProductMemoryWebSocketEvents:
         mock_websocket_manager.broadcast_to_tenant.reset_mock()
 
         # ACT
-        updated_memory = {
-            "github": {"enabled": False},
-            "learnings": [],
-            "context": {"token_count": 5000}
-        }
+        updated_memory = {"github": {"enabled": False}, "learnings": [], "context": {"token_count": 5000}}
 
-        await service.update_product(
-            product_id=product_id,
-            product_memory=updated_memory
-        )
+        await service.update_product(product_id=product_id, product_memory=updated_memory)
 
         # ASSERT: Event payload structure
         call_args = mock_websocket_manager.broadcast_to_tenant.call_args
@@ -177,12 +158,7 @@ class TestProductMemoryWebSocketEvents:
     """
 
     async def test_add_learning_emits_websocket_event(
-        self,
-        db_session,
-        db_manager,
-        tenant_key,
-        product_service_with_websocket,
-        mock_websocket_manager
+        self, db_session, db_manager, tenant_key, product_service_with_websocket, mock_websocket_manager
     ):
         """
         PRODUCTION-GRADE: Verify product:learning:added event emission
@@ -205,15 +181,13 @@ class TestProductMemoryWebSocketEvents:
             "project_id": str(uuid4()),
             "summary": "Implemented authentication system",
             "key_outcomes": ["JWT auth", "Role-based access"],
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Use internal helper method (via session)
         async with db_manager.get_session_async() as session:
             product = await service.add_learning_to_product_memory(
-                session=session,
-                product_id=product_id,
-                learning_entry=learning_entry
+                session=session, product_id=product_id, learning_entry=learning_entry
             )
             await session.commit()
 
@@ -233,12 +207,7 @@ class TestProductMemoryWebSocketEvents:
         assert event_data["learning"]["sequence"] == 1  # Auto-assigned
 
     async def test_add_learning_event_includes_sequence_number(
-        self,
-        db_session,
-        db_manager,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, db_session, db_manager, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Verify learning event includes auto-incremented sequence
@@ -261,14 +230,12 @@ class TestProductMemoryWebSocketEvents:
                 learning_entry = {
                     "type": "project_closeout",
                     "project_id": str(uuid4()),
-                    "summary": f"Learning {i+1}",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "summary": f"Learning {i + 1}",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
                 await service.add_learning_to_product_memory(
-                    session=session,
-                    product_id=product_id,
-                    learning_entry=learning_entry
+                    session=session, product_id=product_id, learning_entry=learning_entry
                 )
                 await session.commit()
 
@@ -287,10 +254,7 @@ class TestProductMemoryWebSocketEvents:
     """
 
     async def test_websocket_events_respect_tenant_isolation(
-        self,
-        db_session,
-        product_service_with_websocket,
-        mock_websocket_manager
+        self, db_session, product_service_with_websocket, mock_websocket_manager
     ):
         """
         PRODUCTION-GRADE: Verify WebSocket events respect multi-tenant isolation
@@ -314,8 +278,8 @@ class TestProductMemoryWebSocketEvents:
             product_memory={
                 "github": {},
                 "learnings": [{"sequence": 1, "summary": "Tenant A learning"}],
-                "context": {}
-            }
+                "context": {},
+            },
         )
 
         # ASSERT: Event broadcast to correct tenant
@@ -332,10 +296,7 @@ class TestProductMemoryWebSocketEvents:
     """
 
     async def test_memory_updated_event_payload_schema(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Validate product:memory:updated event schema
@@ -368,13 +329,10 @@ class TestProductMemoryWebSocketEvents:
         updated_memory = {
             "github": {"enabled": True},
             "learnings": [{"sequence": 1, "summary": "Test"}],
-            "context": {"summary": "Test context"}
+            "context": {"summary": "Test context"},
         }
 
-        await service.update_product(
-            product_id=product_id,
-            product_memory=updated_memory
-        )
+        await service.update_product(product_id=product_id, product_memory=updated_memory)
 
         # ASSERT: Schema validation
         call_args = mock_websocket_manager.broadcast_to_tenant.call_args
@@ -400,12 +358,7 @@ class TestProductMemoryWebSocketEvents:
         assert isinstance(event_data["product_memory"]["context"], dict)
 
     async def test_learning_added_event_payload_schema(
-        self,
-        db_session,
-        db_manager,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, db_session, db_manager, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Validate product:learning:added event schema
@@ -437,13 +390,11 @@ class TestProductMemoryWebSocketEvents:
                 "type": "project_closeout",
                 "project_id": str(uuid4()),
                 "summary": "Schema validation test",
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             await service.add_learning_to_product_memory(
-                session=session,
-                product_id=product_id,
-                learning_entry=learning_entry
+                session=session, product_id=product_id, learning_entry=learning_entry
             )
             await session.commit()
 
@@ -472,10 +423,7 @@ class TestProductMemoryWebSocketEvents:
     """
 
     async def test_websocket_failure_does_not_block_update(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Verify operations succeed even if WebSocket fails
@@ -496,11 +444,7 @@ class TestProductMemoryWebSocketEvents:
         # ACT: Update should succeed despite WebSocket failure
         update_result = await service.update_product(
             product_id=product_id,
-            product_memory={
-                "github": {},
-                "learnings": [{"sequence": 1, "summary": "Resilience test"}],
-                "context": {}
-            }
+            product_memory={"github": {}, "learnings": [{"sequence": 1, "summary": "Resilience test"}], "context": {}},
         )
 
         # ASSERT: Database update succeeded
@@ -514,12 +458,7 @@ class TestProductMemoryWebSocketEvents:
 class TestWebSocketEventEdgeCases:
     """Edge cases and error scenarios for WebSocket events"""
 
-    async def test_no_websocket_manager_does_not_crash(
-        self,
-        db_session,
-        db_manager,
-        tenant_key
-    ):
+    async def test_no_websocket_manager_does_not_crash(self, db_session, db_manager, tenant_key):
         """
         PRODUCTION-GRADE: Verify service works without WebSocket manager
 
@@ -538,22 +477,14 @@ class TestWebSocketEventEdgeCases:
         product_id = create_result["product_id"]
 
         update_result = await service.update_product(
-            product_id=product_id,
-            product_memory={
-                "github": {},
-                "learnings": [],
-                "context": {"summary": "Test"}
-            }
+            product_id=product_id, product_memory={"github": {}, "learnings": [], "context": {"summary": "Test"}}
         )
 
         # ASSERT: Operations succeed
         assert update_result["success"] is True
 
     async def test_empty_product_memory_update_emits_event(
-        self,
-        product_service_with_websocket,
-        mock_websocket_manager,
-        tenant_key
+        self, product_service_with_websocket, mock_websocket_manager, tenant_key
     ):
         """
         PRODUCTION-GRADE: Verify event emission for empty memory structure
@@ -570,8 +501,8 @@ class TestWebSocketEventEdgeCases:
             product_memory={
                 "github": {"enabled": True},
                 "learnings": [{"sequence": 1, "summary": "Test"}],
-                "context": {"summary": "Test"}
-            }
+                "context": {"summary": "Test"},
+            },
         )
         product_id = create_result["product_id"]
 
@@ -579,12 +510,7 @@ class TestWebSocketEventEdgeCases:
 
         # ACT: Clear memory
         await service.update_product(
-            product_id=product_id,
-            product_memory={
-                "github": {},
-                "learnings": [],
-                "context": {}
-            }
+            product_id=product_id, product_memory={"github": {}, "learnings": [], "context": {}}
         )
 
         # ASSERT: Event emitted

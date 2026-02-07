@@ -13,12 +13,12 @@ Target Metrics (from Handover 0129b):
 """
 
 import asyncio
-import time
-import statistics
-import uuid
-from typing import List, Dict, Any
-from datetime import datetime
 import json
+import statistics
+import time
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List
 
 import pytest
 import websockets
@@ -58,7 +58,7 @@ class WebSocketBenchmarks:
             "max": max(timings),
             "p95": self._percentile(timings, 95),
             "p99": self._percentile(timings, 99),
-            "iterations": iterations
+            "iterations": iterations,
         }
 
     @staticmethod
@@ -75,20 +75,18 @@ class WebSocketBenchmarks:
         return {
             "websocket_benchmarks": self.results,
             "timestamp": datetime.now().isoformat(),
-            "tenant_key": self.tenant_key
+            "tenant_key": self.tenant_key,
         }
 
 
 # Benchmark functions
 
+
 async def benchmark_connection_setup(ws_url: str, tenant_key: str):
     """Benchmark WebSocket connection establishment."""
     async with websockets.connect(ws_url) as ws:
         # Send authentication
-        await ws.send(json.dumps({
-            "type": "auth",
-            "tenant_key": tenant_key
-        }))
+        await ws.send(json.dumps({"type": "auth", "tenant_key": tenant_key}))
 
         # Wait for auth response
         response = await ws.recv()
@@ -101,10 +99,7 @@ async def benchmark_message_latency(ws: WebSocketClientProtocol):
     message_id = str(uuid.uuid4())
 
     # Send ping
-    await ws.send(json.dumps({
-        "type": "ping",
-        "message_id": message_id
-    }))
+    await ws.send(json.dumps({"type": "ping", "message_id": message_id}))
 
     # Wait for pong
     response = await ws.recv()
@@ -116,19 +111,12 @@ async def benchmark_message_latency(ws: WebSocketClientProtocol):
 
 async def benchmark_message_send(ws: WebSocketClientProtocol, tenant_key: str):
     """Benchmark sending a message (no response expected)."""
-    await ws.send(json.dumps({
-        "type": "status_update",
-        "tenant_key": tenant_key,
-        "status": "active"
-    }))
+    await ws.send(json.dumps({"type": "status_update", "tenant_key": tenant_key, "status": "active"}))
 
 
 async def benchmark_subscribe_channel(ws: WebSocketClientProtocol, channel: str):
     """Benchmark subscribing to a channel."""
-    await ws.send(json.dumps({
-        "type": "subscribe",
-        "channel": channel
-    }))
+    await ws.send(json.dumps({"type": "subscribe", "channel": channel}))
 
     # Wait for subscription confirmation
     response = await ws.recv()
@@ -153,19 +141,13 @@ async def benchmark_broadcast_latency(ws_url: str, tenant_key: str, num_clients:
             ws = await websockets.connect(ws_url)
 
             # Authenticate
-            await ws.send(json.dumps({
-                "type": "auth",
-                "tenant_key": tenant_key
-            }))
+            await ws.send(json.dumps({"type": "auth", "tenant_key": tenant_key}))
 
             # Wait for auth response
             await ws.recv()
 
             # Subscribe to broadcast channel
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "channel": "updates"
-            }))
+            await ws.send(json.dumps({"type": "subscribe", "channel": "updates"}))
 
             clients.append(ws)
 
@@ -174,11 +156,7 @@ async def benchmark_broadcast_latency(ws_url: str, tenant_key: str, num_clients:
 
         # Trigger broadcast by sending a message to first client
         # (In production, this would be triggered by server-side event)
-        broadcast_message = {
-            "type": "broadcast",
-            "channel": "updates",
-            "message": f"Broadcast test {uuid.uuid4()}"
-        }
+        broadcast_message = {"type": "broadcast", "channel": "updates", "message": f"Broadcast test {uuid.uuid4()}"}
 
         await clients[0].send(json.dumps(broadcast_message))
 
@@ -194,6 +172,7 @@ async def benchmark_broadcast_latency(ws_url: str, tenant_key: str, num_clients:
 
 
 # Test class
+
 
 class TestWebSocketPerformance:
     """WebSocket performance benchmark tests."""
@@ -220,34 +199,23 @@ class TestWebSocketPerformance:
         # Benchmark 1: Connection setup
         print("Benchmarking WebSocket connection setup...")
         await benchmarks.run_benchmark(
-            "connection_setup",
-            lambda: benchmark_connection_setup(ws_url, test_tenant.tenant_key),
-            iterations=50
+            "connection_setup", lambda: benchmark_connection_setup(ws_url, test_tenant.tenant_key), iterations=50
         )
 
         # For remaining benchmarks, maintain a single connection
         async with websockets.connect(ws_url) as ws:
             # Authenticate
-            await ws.send(json.dumps({
-                "type": "auth",
-                "tenant_key": test_tenant.tenant_key
-            }))
+            await ws.send(json.dumps({"type": "auth", "tenant_key": test_tenant.tenant_key}))
             await ws.recv()  # Wait for auth response
 
             # Benchmark 2: Message round-trip latency
             print("Benchmarking message round-trip latency (ping-pong)...")
-            await benchmarks.run_benchmark(
-                "message_latency",
-                lambda: benchmark_message_latency(ws),
-                iterations=100
-            )
+            await benchmarks.run_benchmark("message_latency", lambda: benchmark_message_latency(ws), iterations=100)
 
             # Benchmark 3: Message send (one-way)
             print("Benchmarking one-way message send...")
             await benchmarks.run_benchmark(
-                "message_send",
-                lambda: benchmark_message_send(ws, test_tenant.tenant_key),
-                iterations=100
+                "message_send", lambda: benchmark_message_send(ws, test_tenant.tenant_key), iterations=100
             )
 
             # Benchmark 4: Channel subscription
@@ -255,7 +223,7 @@ class TestWebSocketPerformance:
             await benchmarks.run_benchmark(
                 "subscribe_channel",
                 lambda: benchmark_subscribe_channel(ws, f"test_channel_{uuid.uuid4()}"),
-                iterations=50
+                iterations=50,
             )
 
         # Benchmark 5: Broadcast to 10 clients
@@ -263,7 +231,7 @@ class TestWebSocketPerformance:
         await benchmarks.run_benchmark(
             "broadcast_10_clients",
             lambda: benchmark_broadcast_latency(ws_url, test_tenant.tenant_key, 10),
-            iterations=10  # Fewer iterations for multi-client tests
+            iterations=10,  # Fewer iterations for multi-client tests
         )
 
         # Benchmark 6: Broadcast to 50 clients
@@ -271,7 +239,7 @@ class TestWebSocketPerformance:
         await benchmarks.run_benchmark(
             "broadcast_50_clients",
             lambda: benchmark_broadcast_latency(ws_url, test_tenant.tenant_key, 50),
-            iterations=5  # Even fewer for larger client counts
+            iterations=5,  # Even fewer for larger client counts
         )
 
         # Generate report
@@ -290,17 +258,21 @@ class TestWebSocketPerformance:
             print(f"  Max:    {metrics['max']:.2f}ms")
 
         # Assertions against acceptable targets
-        assert report["websocket_benchmarks"]["connection_setup"]["mean"] < 200, \
+        assert report["websocket_benchmarks"]["connection_setup"]["mean"] < 200, (
             f"Connection setup exceeds acceptable target (200ms): {report['websocket_benchmarks']['connection_setup']['mean']:.2f}ms"
+        )
 
-        assert report["websocket_benchmarks"]["message_latency"]["mean"] < 100, \
+        assert report["websocket_benchmarks"]["message_latency"]["mean"] < 100, (
             f"Message latency exceeds acceptable target (100ms): {report['websocket_benchmarks']['message_latency']['mean']:.2f}ms"
+        )
 
-        assert report["websocket_benchmarks"]["broadcast_10_clients"]["mean"] < 200, \
+        assert report["websocket_benchmarks"]["broadcast_10_clients"]["mean"] < 200, (
             f"Broadcast (10 clients) exceeds acceptable target (200ms): {report['websocket_benchmarks']['broadcast_10_clients']['mean']:.2f}ms"
+        )
 
-        assert report["websocket_benchmarks"]["broadcast_50_clients"]["mean"] < 500, \
+        assert report["websocket_benchmarks"]["broadcast_50_clients"]["mean"] < 500, (
             f"Broadcast (50 clients) exceeds acceptable target (500ms): {report['websocket_benchmarks']['broadcast_50_clients']['mean']:.2f}ms"
+        )
 
         print("\n✅ All WebSocket benchmarks completed successfully!\n")
 
@@ -314,12 +286,13 @@ class TestWebSocketPerformance:
             "message_send": 50,
             "subscribe_channel": 100,
             "broadcast_10_clients": 100,
-            "broadcast_50_clients": 500
+            "broadcast_50_clients": 500,
         }
         return targets.get(benchmark_name, 100)
 
 
 # Fixtures
+
 
 @pytest.fixture
 def websocket_server_url():

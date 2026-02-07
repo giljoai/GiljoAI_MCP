@@ -19,10 +19,8 @@ Handover 0289: Message Routing Architecture Fix
 Phase: RED (Failing Tests)
 """
 
-import asyncio
 from datetime import datetime, timezone
-from typing import Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -114,9 +112,7 @@ async def message_service(db_manager, db_session, tenant_manager, mock_websocket
 
     # MessageService now accepts websocket_manager parameter (GREEN phase implemented)
     service = MessageService(
-        db_manager=db_manager,
-        tenant_manager=tenant_manager,
-        websocket_manager=mock_websocket_manager
+        db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=mock_websocket_manager
     )
     return service
 
@@ -128,10 +124,7 @@ async def message_service(db_manager, db_session, tenant_manager, mock_websocket
 
 @pytest.mark.asyncio
 async def test_direct_message_emits_websocket_event(
-    message_service,
-    test_project_a,
-    test_tenant_a,
-    mock_websocket_manager
+    message_service, test_project_a, test_tenant_a, mock_websocket_manager
 ):
     """
     RED PHASE TEST: Direct message should emit WebSocket 'message:sent' event
@@ -160,11 +153,10 @@ async def test_direct_message_emits_websocket_event(
 
     # Assert: WebSocket broadcast_message_sent was called
     # THIS WILL FAIL - MessageService does NOT have websocket_manager attribute yet
-    assert hasattr(message_service, '_websocket_manager'), \
-        "MessageService should have _websocket_manager attribute"
+    assert hasattr(message_service, "_websocket_manager"), "MessageService should have _websocket_manager attribute"
 
     # If websocket_manager exists, verify it was called
-    if hasattr(message_service, '_websocket_manager') and message_service._websocket_manager:
+    if hasattr(message_service, "_websocket_manager") and message_service._websocket_manager:
         mock_websocket_manager.broadcast_message_sent.assert_called_once()
 
         # Assert: WebSocket call had correct parameters
@@ -172,7 +164,7 @@ async def test_direct_message_emits_websocket_event(
         assert call_args is not None
 
         # Verify event payload structure
-        kwargs = call_args.kwargs if hasattr(call_args, 'kwargs') else {}
+        kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
         assert kwargs.get("from_agent") == "orchestrator"
         assert "implementer-1" in (kwargs.get("to_agent") or kwargs.get("to_agents") or [])
         assert kwargs.get("message_type") == "direct"
@@ -186,11 +178,7 @@ async def test_direct_message_emits_websocket_event(
 
 @pytest.mark.asyncio
 async def test_broadcast_message_emits_websocket_event(
-    message_service,
-    test_project_a,
-    test_tenant_a,
-    mock_websocket_manager,
-    db_session
+    message_service, test_project_a, test_tenant_a, mock_websocket_manager, db_session
 ):
     """
     RED PHASE TEST: Broadcast message should emit WebSocket 'message:new' event
@@ -204,7 +192,7 @@ async def test_broadcast_message_emits_websocket_event(
     EXPECTED TO FAIL: MessageService currently does NOT emit WebSocket events
     """
     # Arrange: Create agent jobs in project (simulating active agents)
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution
 
     agent_jobs = [
         AgentExecution(
@@ -228,7 +216,7 @@ async def test_broadcast_message_emits_websocket_event(
         content="Project status update: All tests passing",
         project_id=str(test_project_a.id),
         priority="normal",
-        from_agent="orchestrator"
+        from_agent="orchestrator",
     )
 
     # Assert: Broadcast successful
@@ -237,14 +225,16 @@ async def test_broadcast_message_emits_websocket_event(
 
     # Assert: WebSocket manager attribute exists
     # THIS WILL FAIL - MessageService does NOT have websocket_manager attribute yet
-    assert hasattr(message_service, '_websocket_manager'), \
+    assert hasattr(message_service, "_websocket_manager"), (
         "MessageService should have _websocket_manager attribute for WebSocket emissions"
+    )
 
     # If websocket_manager exists, verify it was called
-    if hasattr(message_service, '_websocket_manager') and message_service._websocket_manager:
+    if hasattr(message_service, "_websocket_manager") and message_service._websocket_manager:
         # Assert: WebSocket broadcast_job_message was called for each recipient
-        assert mock_websocket_manager.broadcast_job_message.call_count >= 1, \
+        assert mock_websocket_manager.broadcast_job_message.call_count >= 1, (
             "WebSocket broadcast_job_message should be called for broadcast messages"
+        )
 
 
 # ============================================================================
@@ -254,11 +244,7 @@ async def test_broadcast_message_emits_websocket_event(
 
 @pytest.mark.asyncio
 async def test_message_acknowledgment_emits_websocket_event(
-    message_service,
-    test_project_a,
-    test_tenant_a,
-    mock_websocket_manager,
-    db_session
+    message_service, test_project_a, test_tenant_a, mock_websocket_manager, db_session
 ):
     """
     RED PHASE TEST: Message acknowledgment should emit WebSocket event
@@ -290,10 +276,7 @@ async def test_message_acknowledgment_emits_websocket_event(
     await db_session.refresh(message)
 
     # Act: Acknowledge the message
-    result = await message_service.acknowledge_message(
-        message_id=str(message.id),
-        agent_name="implementer-1"
-    )
+    result = await message_service.acknowledge_message(message_id=str(message.id), agent_name="implementer-1")
 
     # Assert: Acknowledgment successful
     assert result["success"] is True
@@ -301,11 +284,12 @@ async def test_message_acknowledgment_emits_websocket_event(
 
     # Assert: WebSocket manager attribute exists
     # THIS WILL FAIL - MessageService does NOT have websocket_manager attribute yet
-    assert hasattr(message_service, '_websocket_manager'), \
+    assert hasattr(message_service, "_websocket_manager"), (
         "MessageService should have _websocket_manager attribute for WebSocket emissions"
+    )
 
     # If websocket_manager exists, verify it was called
-    if hasattr(message_service, '_websocket_manager') and message_service._websocket_manager:
+    if hasattr(message_service, "_websocket_manager") and message_service._websocket_manager:
         mock_websocket_manager.broadcast_message_acknowledged.assert_called_once()
 
         # Assert: WebSocket call had correct parameters
@@ -313,7 +297,7 @@ async def test_message_acknowledgment_emits_websocket_event(
         assert call_args is not None
 
         # Verify event payload structure
-        kwargs = call_args.kwargs if hasattr(call_args, 'kwargs') else {}
+        kwargs = call_args.kwargs if hasattr(call_args, "kwargs") else {}
         assert kwargs.get("message_id") == str(message.id)
         assert kwargs.get("tenant_key") == test_tenant_a
 
@@ -325,13 +309,7 @@ async def test_message_acknowledgment_emits_websocket_event(
 
 @pytest.mark.asyncio
 async def test_multi_tenant_message_isolation(
-    message_service,
-    test_project_a,
-    test_project_b,
-    test_tenant_a,
-    test_tenant_b,
-    mock_websocket_manager,
-    db_session
+    message_service, test_project_a, test_project_b, test_tenant_a, test_tenant_b, mock_websocket_manager, db_session
 ):
     """
     RED PHASE TEST: Messages in tenant A should NOT be visible to tenant B
@@ -378,17 +356,11 @@ async def test_multi_tenant_message_isolation(
     await db_session.commit()
 
     # Act: Query messages for each tenant
-    query_a = select(Message).where(
-        Message.tenant_key == test_tenant_a,
-        Message.project_id == str(test_project_a.id)
-    )
+    query_a = select(Message).where(Message.tenant_key == test_tenant_a, Message.project_id == str(test_project_a.id))
     result_a = await db_session.execute(query_a)
     messages_a = result_a.scalars().all()
 
-    query_b = select(Message).where(
-        Message.tenant_key == test_tenant_b,
-        Message.project_id == str(test_project_b.id)
-    )
+    query_b = select(Message).where(Message.tenant_key == test_tenant_b, Message.project_id == str(test_project_b.id))
     result_b = await db_session.execute(query_b)
     messages_b = result_b.scalars().all()
 
@@ -406,8 +378,9 @@ async def test_multi_tenant_message_isolation(
 
     # Assert: WebSocket manager attribute exists (needed for real-time isolation verification)
     # THIS WILL FAIL - MessageService does NOT have websocket_manager attribute yet
-    assert hasattr(message_service, '_websocket_manager'), \
+    assert hasattr(message_service, "_websocket_manager"), (
         "MessageService should have _websocket_manager attribute for tenant-isolated broadcasts"
+    )
 
 
 # ============================================================================
@@ -417,11 +390,7 @@ async def test_multi_tenant_message_isolation(
 
 @pytest.mark.asyncio
 async def test_message_completion_emits_websocket_event(
-    message_service,
-    test_project_a,
-    test_tenant_a,
-    mock_websocket_manager,
-    db_session
+    message_service, test_project_a, test_tenant_a, mock_websocket_manager, db_session
 ):
     """
     RED PHASE TEST: Message completion should trigger appropriate WebSocket events
@@ -454,9 +423,7 @@ async def test_message_completion_emits_websocket_event(
 
     # Act: Complete the message
     result = await message_service.complete_message(
-        message_id=str(message.id),
-        agent_name="implementer-1",
-        result="Successfully deployed to staging environment"
+        message_id=str(message.id), agent_name="implementer-1", result="Successfully deployed to staging environment"
     )
 
     # Assert: Completion successful
@@ -476,5 +443,6 @@ async def test_message_completion_emits_websocket_event(
 
     # Assert: WebSocket manager attribute exists
     # THIS WILL FAIL - MessageService does NOT have websocket_manager attribute yet
-    assert hasattr(message_service, '_websocket_manager'), \
+    assert hasattr(message_service, "_websocket_manager"), (
         "MessageService should have _websocket_manager attribute for completion event emissions"
+    )

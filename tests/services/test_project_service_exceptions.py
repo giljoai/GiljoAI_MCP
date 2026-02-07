@@ -5,14 +5,15 @@ Verifies that ProjectService raises appropriate exceptions instead of
 returning {"success": False, ...} dicts.
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
-    ProjectStateError,
-    BaseGiljoException,
 )
 from src.giljo_mcp.services.project_service import ProjectService
 
@@ -21,9 +22,7 @@ class TestProjectServiceExceptions:
     """Test exception raising in ProjectService methods"""
 
     @pytest.mark.asyncio
-    async def test_get_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_get_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test get_project raises ResourceNotFoundError for non-existent project"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.get_project("nonexistent-id", test_tenant_key)
@@ -41,14 +40,10 @@ class TestProjectServiceExceptions:
         assert "tenant_key" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_update_project_mission_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_update_project_mission_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test update_project_mission raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await project_service.update_project_mission(
-                "nonexistent-id", "New mission", test_tenant_key
-            )
+            await project_service.update_project_mission("nonexistent-id", "New mission", test_tenant_key)
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -59,9 +54,7 @@ class TestProjectServiceExceptions:
     # Tenant context is managed internally and cannot be manipulated for testing this way
 
     @pytest.mark.asyncio
-    async def test_activate_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_activate_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test activate_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.activate_project("nonexistent-id", test_tenant_key)
@@ -73,9 +66,7 @@ class TestProjectServiceExceptions:
     # "active" status is allowed (idempotent operation)
 
     @pytest.mark.asyncio
-    async def test_deactivate_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_deactivate_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test deactivate_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.deactivate_project("nonexistent-id", test_tenant_key)
@@ -93,17 +84,11 @@ class TestProjectServiceExceptions:
         assert "cannot deactivate" in exc_info.value.message.lower()
 
     @pytest.mark.asyncio
-    async def test_complete_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_complete_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test complete_project raises BaseGiljoException (wraps ResourceNotFoundError)"""
         with pytest.raises(BaseGiljoException) as exc_info:
             await project_service.complete_project(
-                "nonexistent-id",
-                "Summary",
-                key_outcomes=[],
-                decisions_made=[],
-                tenant_key=test_tenant_key
+                "nonexistent-id", "Summary", key_outcomes=[], decisions_made=[], tenant_key=test_tenant_key
             )
 
         assert "not found" in exc_info.value.message.lower()
@@ -115,19 +100,13 @@ class TestProjectServiceExceptions:
         """Test complete_project raises ValidationError when summary is missing"""
         with pytest.raises(ValidationError) as exc_info:
             await project_service.complete_project(
-                active_project.id,
-                "",
-                key_outcomes=[],
-                decisions_made=[],
-                tenant_key=test_tenant_key
+                active_project.id, "", key_outcomes=[], decisions_made=[], tenant_key=test_tenant_key
             )
 
         assert "summary" in exc_info.value.message.lower()
 
     @pytest.mark.asyncio
-    async def test_cancel_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_cancel_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test cancel_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.cancel_project("nonexistent-id", test_tenant_key)
@@ -135,9 +114,7 @@ class TestProjectServiceExceptions:
         assert "not found" in exc_info.value.message.lower()
 
     @pytest.mark.asyncio
-    async def test_restore_project_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_restore_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test restore_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.restore_project("nonexistent-id")
@@ -148,9 +125,7 @@ class TestProjectServiceExceptions:
     # REMOVED: resume_project method doesn't exist in ProjectService
 
     @pytest.mark.asyncio
-    async def test_cancel_staging_raises_not_found(
-        self, project_service: ProjectService, test_tenant_key: str
-    ):
+    async def test_cancel_staging_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test cancel_staging raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await project_service.cancel_staging("nonexistent-id", test_tenant_key)
@@ -169,7 +144,6 @@ async def project_service(project_service_with_session):
 @pytest.fixture
 async def active_project(db_session, test_tenant_key):
     """Create an active project for testing"""
-    from uuid import uuid4
     from src.giljo_mcp.models.projects import Project
 
     project = Project(
@@ -178,7 +152,7 @@ async def active_project(db_session, test_tenant_key):
         mission="Test mission",
         description="Test description",
         tenant_key=test_tenant_key,
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -189,7 +163,6 @@ async def active_project(db_session, test_tenant_key):
 @pytest.fixture
 async def inactive_project(db_session, test_tenant_key):
     """Create an inactive project for testing"""
-    from uuid import uuid4
     from src.giljo_mcp.models.projects import Project
 
     project = Project(
@@ -198,7 +171,7 @@ async def inactive_project(db_session, test_tenant_key):
         mission="Test mission",
         description="Test description",
         tenant_key=test_tenant_key,
-        status="inactive"
+        status="inactive",
     )
     db_session.add(project)
     await db_session.commit()
@@ -209,7 +182,6 @@ async def inactive_project(db_session, test_tenant_key):
 @pytest.fixture
 async def staged_project(db_session, test_tenant_key):
     """Create a staged project for testing"""
-    from uuid import uuid4
     from src.giljo_mcp.models.projects import Project
 
     project = Project(
@@ -219,7 +191,7 @@ async def staged_project(db_session, test_tenant_key):
         description="Test description",
         tenant_key=test_tenant_key,
         status="inactive",
-        staging_status="staged"
+        staging_status="staged",
     )
     db_session.add(project)
     await db_session.commit()

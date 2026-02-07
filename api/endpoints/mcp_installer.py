@@ -37,7 +37,7 @@ router = APIRouter()
 SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY", "giljo-mcp-installer-default-dev-key")
 
 # Warn if using default secret in production
-if SECRET_KEY == "giljo-mcp-installer-default-dev-key":  # noqa: S105 - Comparing against default constant, not exposing secret
+if SECRET_KEY == "giljo-mcp-installer-default-dev-key":
     logger.warning(
         "Using default MCP installer secret key. Set MCP_INSTALLER_SECRET_KEY environment variable for production."
     )

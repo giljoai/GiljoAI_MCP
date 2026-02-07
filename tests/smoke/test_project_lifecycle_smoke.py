@@ -1,4 +1,5 @@
 """Smoke test: Project lifecycle (create → activate → launch → deactivate)."""
+
 from __future__ import annotations
 
 import pytest
@@ -63,4 +64,3 @@ async def test_project_lifecycle_smoke(authenticated_client, smoke_product: dict
     assert response.status_code == 200, "Project deactivation failed"
 
     print("✓ Project lifecycle workflow: PASS")
-

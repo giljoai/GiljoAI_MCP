@@ -7,15 +7,13 @@ Verifies tenant isolation, CRUD operations, history management, and deletion.
 Uses mocked database for isolation from PostgreSQL dependency.
 """
 
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.giljo_mcp.models.agent_identity import AgentJob
+import pytest
+
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.services.template_service import TemplateService
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.tenant import TenantManager
 
 
 # Test Fixtures
@@ -105,9 +103,7 @@ async def test_get_template_by_id_success(template_service, tenant_key, sample_t
         session.add(sample_template)
         await session.commit()
 
-        result = await template_service.get_template_by_id(
-            session, sample_template.id, tenant_key
-        )
+        result = await template_service.get_template_by_id(session, sample_template.id, tenant_key)
 
         assert result is not None
         assert result.id == sample_template.id
@@ -121,9 +117,7 @@ async def test_get_template_by_id_wrong_tenant(template_service, tenant_key, oth
         session.add(sample_template)
         await session.commit()
 
-        result = await template_service.get_template_by_id(
-            session, sample_template.id, other_tenant_key
-        )
+        result = await template_service.get_template_by_id(session, sample_template.id, other_tenant_key)
 
         assert result is None
 
@@ -135,9 +129,7 @@ async def test_list_templates_with_filters_no_filters(template_service, tenant_k
         session.add(sample_template)
         await session.commit()
 
-        results = await template_service.list_templates_with_filters(
-            session, tenant_key
-        )
+        results = await template_service.list_templates_with_filters(session, tenant_key)
 
         assert len(results) == 1
         assert results[0].id == sample_template.id
@@ -162,9 +154,7 @@ async def test_list_templates_with_filters_role_filter(template_service, tenant_
         session.add(other_template)
         await session.commit()
 
-        results = await template_service.list_templates_with_filters(
-            session, tenant_key, role="analyzer"
-        )
+        results = await template_service.list_templates_with_filters(session, tenant_key, role="analyzer")
 
         assert len(results) == 1
         assert results[0].role == "analyzer"
@@ -190,9 +180,7 @@ async def test_list_templates_with_filters_is_active_filter(template_service, te
         session.add(inactive_template)
         await session.commit()
 
-        results = await template_service.list_templates_with_filters(
-            session, tenant_key, is_active=True
-        )
+        results = await template_service.list_templates_with_filters(session, tenant_key, is_active=True)
 
         assert len(results) == 1
         assert results[0].is_active is True
@@ -205,9 +193,7 @@ async def test_check_template_name_exists_true(template_service, tenant_key, sam
         session.add(sample_template)
         await session.commit()
 
-        exists = await template_service.check_template_name_exists(
-            session, tenant_key, "test-analyzer"
-        )
+        exists = await template_service.check_template_name_exists(session, tenant_key, "test-analyzer")
 
         assert exists is True
 
@@ -216,9 +202,7 @@ async def test_check_template_name_exists_true(template_service, tenant_key, sam
 async def test_check_template_name_exists_false(template_service, tenant_key):
     """Test checking if template name exists (returns False)"""
     async with template_service.db_manager.get_session_async() as session:
-        exists = await template_service.check_template_name_exists(
-            session, tenant_key, "nonexistent-template"
-        )
+        exists = await template_service.check_template_name_exists(session, tenant_key, "nonexistent-template")
 
         assert exists is False
 
@@ -240,9 +224,7 @@ async def test_get_default_templates_by_role(template_service, tenant_key, produ
         session.add(default_template)
         await session.commit()
 
-        results = await template_service.get_default_templates_by_role(
-            session, tenant_key, "orchestrator", product_id
-        )
+        results = await template_service.get_default_templates_by_role(session, tenant_key, "orchestrator", product_id)
 
         assert len(results) == 1
         assert results[0].is_default is True
@@ -257,9 +239,7 @@ async def test_get_active_user_managed_count(template_service, tenant_key, sampl
         session.add(sample_template)
         await session.commit()
 
-        count = await template_service.get_active_user_managed_count(
-            session, tenant_key
-        )
+        count = await template_service.get_active_user_managed_count(session, tenant_key)
 
         assert count == 1
 
@@ -281,9 +261,7 @@ async def test_get_active_user_managed_count_excludes_system_roles(template_serv
         session.add(orchestrator_template)
         await session.commit()
 
-        count = await template_service.get_active_user_managed_count(
-            session, tenant_key
-        )
+        count = await template_service.get_active_user_managed_count(session, tenant_key)
 
         assert count == 0  # System role not counted
 
@@ -300,16 +278,12 @@ async def test_hard_delete_template_success(template_service, tenant_key, sample
         session.add(sample_template)
         await session.commit()
 
-        deleted = await template_service.hard_delete_template(
-            session, sample_template.id, tenant_key
-        )
+        deleted = await template_service.hard_delete_template(session, sample_template.id, tenant_key)
 
         assert deleted is True
 
         # Verify template is deleted
-        result = await session.execute(
-            select(AgentTemplate).where(AgentTemplate.id == sample_template.id)
-        )
+        result = await session.execute(select(AgentTemplate).where(AgentTemplate.id == sample_template.id))
         assert result.scalar_one_or_none() is None
 
 
@@ -348,9 +322,7 @@ async def test_hard_delete_template_cascades(template_service, tenant_key, sampl
         await session.commit()
 
         # Delete template
-        deleted = await template_service.hard_delete_template(
-            session, sample_template.id, tenant_key
-        )
+        deleted = await template_service.hard_delete_template(session, sample_template.id, tenant_key)
 
         assert deleted is True
 
@@ -375,16 +347,12 @@ async def test_hard_delete_template_wrong_tenant(template_service, tenant_key, o
         session.add(sample_template)
         await session.commit()
 
-        deleted = await template_service.hard_delete_template(
-            session, sample_template.id, other_tenant_key
-        )
+        deleted = await template_service.hard_delete_template(session, sample_template.id, other_tenant_key)
 
         assert deleted is False
 
         # Verify template still exists
-        result = await session.execute(
-            select(AgentTemplate).where(AgentTemplate.id == sample_template.id)
-        )
+        result = await session.execute(select(AgentTemplate).where(AgentTemplate.id == sample_template.id))
         assert result.scalar_one_or_none() is not None
 
 
@@ -431,9 +399,7 @@ async def test_get_template_history(template_service, tenant_key, sample_templat
 
         await session.commit()
 
-        history = await template_service.get_template_history(
-            session, sample_template.id, tenant_key
-        )
+        history = await template_service.get_template_history(session, sample_template.id, tenant_key)
 
         assert len(history) == 2
         # Should be ordered by archived_at desc (most recent first)
@@ -463,9 +429,7 @@ async def test_get_archive_by_id_success(template_service, tenant_key, sample_te
         session.add(archive)
         await session.commit()
 
-        result = await template_service.get_archive_by_id(
-            session, archive.id, sample_template.id, tenant_key
-        )
+        result = await template_service.get_archive_by_id(session, archive.id, sample_template.id, tenant_key)
 
         assert result is not None
         assert result.id == archive.id
@@ -480,11 +444,7 @@ async def test_create_template_archive(template_service, sample_template):
         await session.commit()
 
         archive = await template_service.create_template_archive(
-            session,
-            sample_template,
-            archive_reason="Test archive",
-            archive_type="manual",
-            archived_by="test-user"
+            session, sample_template, archive_reason="Test archive", archive_type="manual", archived_by="test-user"
         )
 
         assert archive.template_id == sample_template.id
@@ -518,9 +478,7 @@ async def test_restore_template_from_archive(template_service, sample_template):
         session.add(archive)
         await session.commit()
 
-        await template_service.restore_template_from_archive(
-            session, sample_template, archive
-        )
+        await template_service.restore_template_from_archive(session, sample_template, archive)
 
         assert sample_template.system_instructions == "Archived content"
         assert sample_template.variables == ["var1", "var2"]
@@ -577,9 +535,7 @@ async def test_check_cross_tenant_template_exists_true(template_service, tenant_
         session.add(sample_template)
         await session.commit()
 
-        exists = await template_service.check_cross_tenant_template_exists(
-            session, sample_template.id
-        )
+        exists = await template_service.check_cross_tenant_template_exists(session, sample_template.id)
 
         assert exists is True
 
@@ -588,9 +544,7 @@ async def test_check_cross_tenant_template_exists_true(template_service, tenant_
 async def test_check_cross_tenant_template_exists_false(template_service):
     """Test checking if template exists across tenants (returns False)"""
     async with template_service.db_manager.get_session_async() as session:
-        exists = await template_service.check_cross_tenant_template_exists(
-            session, str(uuid4())
-        )
+        exists = await template_service.check_cross_tenant_template_exists(session, str(uuid4()))
 
         assert exists is False
 
@@ -619,9 +573,7 @@ async def test_tenant_isolation_list_templates(template_service, tenant_key, oth
         await session.commit()
 
         # List templates for tenant_key
-        results = await template_service.list_templates_with_filters(
-            session, tenant_key
-        )
+        results = await template_service.list_templates_with_filters(session, tenant_key)
 
         assert len(results) == 1
         assert results[0].tenant_key == tenant_key
@@ -667,9 +619,7 @@ async def test_tenant_isolation_get_template_history(template_service, tenant_ke
 
         await session.commit()
 
-        history = await template_service.get_template_history(
-            session, sample_template.id, tenant_key
-        )
+        history = await template_service.get_template_history(session, sample_template.id, tenant_key)
 
         assert len(history) == 1
         assert history[0].tenant_key == tenant_key

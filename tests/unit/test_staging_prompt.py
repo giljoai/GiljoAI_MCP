@@ -18,9 +18,10 @@ Date: 2025-11-24
 Handover: 0246a
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -56,10 +57,7 @@ def mock_project():
 @pytest.fixture
 def prompt_generator(mock_db_session):
     """Create ThinClientPromptGenerator instance."""
-    generator = ThinClientPromptGenerator(
-        db=mock_db_session,
-        tenant_key="test-tenant-123"
-    )
+    generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant-123")
     return generator
 
 
@@ -69,8 +67,7 @@ class TestGenerateStagingPromptExists:
     @pytest.mark.asyncio
     async def test_method_exists(self, prompt_generator):
         """Verify generate_staging_prompt method exists."""
-        assert hasattr(prompt_generator, 'generate_staging_prompt'), \
-            "generate_staging_prompt method must exist"
+        assert hasattr(prompt_generator, "generate_staging_prompt"), "generate_staging_prompt method must exist"
 
 
 class TestStagingPromptStructure:
@@ -80,15 +77,15 @@ class TestStagingPromptStructure:
     async def test_all_7_tasks_present(self, prompt_generator, mock_project, mock_product):
         """Verify all 8 startup steps are present in staging prompt."""
         # Setup mocks
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             orchestrator_id = str(uuid4())
             project_id = mock_project.id
 
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=orchestrator_id,
-                project_id=project_id
+                orchestrator_id=orchestrator_id, project_id=project_id
             )
 
             # All 8 numbered steps must be present in STARTUP SEQUENCE
@@ -105,12 +102,12 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_1_identity_verification(self, prompt_generator, mock_project, mock_product):
         """Verify IDENTITY section contains required fields."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "IDENTITY" in prompt.upper(), "Must include IDENTITY section"
@@ -121,12 +118,12 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_2_mcp_health_check(self, prompt_generator, mock_project, mock_product):
         """Verify Step 1 contains MCP health check instructions."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "MCP CONNECTION:" in prompt, "Must include MCP CONNECTION section"
@@ -136,27 +133,29 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_3_environment_understanding(self, prompt_generator, mock_project, mock_product):
         """Verify Step 2 contains context fetching instructions."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "2. Fetch context:" in prompt, "Step 2 must fetch context"
             assert "get_orchestrator_instructions" in prompt, "Step 2 must call get_orchestrator_instructions()"
-            assert "Project description" in prompt or "Product context" in prompt, "Step 2 must mention context retrieval"
+            assert "Project description" in prompt or "Product context" in prompt, (
+                "Step 2 must mention context retrieval"
+            )
 
     @pytest.mark.asyncio
     async def test_task_4_agent_discovery(self, prompt_generator, mock_project, mock_product):
         """Verify Step 2 returns available agent templates."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Step 2 returns available agent templates via get_orchestrator_instructions
@@ -166,12 +165,12 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_5_context_prioritization(self, prompt_generator, mock_project, mock_product):
         """Verify Steps 3-4 contain mission creation and persistence."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "3. CREATE MISSION:" in prompt, "Step 3 must create mission"
@@ -181,12 +180,12 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_6_agent_job_spawning(self, prompt_generator, mock_project, mock_product):
         """Verify Step 5 contains agent job spawning instructions."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "5. SPAWN AGENTS:" in prompt, "Step 5 must spawn agents"
@@ -196,12 +195,12 @@ class TestStagingPromptStructure:
     @pytest.mark.asyncio
     async def test_task_7_activation(self, prompt_generator, mock_project, mock_product):
         """Verify Step 7 contains staging complete signal."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             assert "7. SIGNAL COMPLETE:" in prompt, "Step 7 must signal completion"
@@ -215,13 +214,13 @@ class TestProductIdentityInclusion:
     @pytest.mark.asyncio
     async def test_product_id_in_prompt(self, prompt_generator, mock_project, mock_product):
         """Verify IDENTITY section contains orchestrator, project, and tenant info."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             orchestrator_id = str(uuid4())
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=orchestrator_id,
-                project_id=mock_project.id
+                orchestrator_id=orchestrator_id, project_id=mock_project.id
             )
 
             # Current implementation includes these in IDENTITY section
@@ -232,35 +231,31 @@ class TestProductIdentityInclusion:
     @pytest.mark.asyncio
     async def test_project_id_in_prompt(self, prompt_generator, mock_project, mock_product):
         """Verify Project ID is in identity section."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             project_id = mock_project.id
-            prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=project_id
-            )
+            prompt = await prompt_generator.generate_staging_prompt(orchestrator_id=str(uuid4()), project_id=project_id)
 
-            assert "Project ID" in prompt or "PROJECT ID" in prompt, \
-                "Prompt must include Project ID label"
-            assert project_id in prompt, \
-                f"Prompt must include actual project ID: {project_id}"
+            assert "Project ID" in prompt or "PROJECT ID" in prompt, "Prompt must include Project ID label"
+            assert project_id in prompt, f"Prompt must include actual project ID: {project_id}"
 
     @pytest.mark.asyncio
     async def test_tenant_key_in_prompt(self, prompt_generator, mock_project, mock_product):
         """Verify Tenant Key is in identity section."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
-            assert "Tenant" in prompt or "TENANT" in prompt, \
-                "Prompt must include Tenant Key label"
-            assert prompt_generator.tenant_key in prompt, \
+            assert "Tenant" in prompt or "TENANT" in prompt, "Prompt must include Tenant Key label"
+            assert prompt_generator.tenant_key in prompt, (
                 f"Prompt must include tenant key: {prompt_generator.tenant_key}"
+            )
 
 
 class TestMCPToolCalls:
@@ -269,22 +264,21 @@ class TestMCPToolCalls:
     @pytest.mark.asyncio
     async def test_get_available_agents_call_instruction(self, prompt_generator, mock_project, mock_product):
         """Verify instructions call get_orchestrator_instructions() MCP tool."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             orchestrator_id = str(uuid4())
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=orchestrator_id,
-                project_id=mock_project.id
+                orchestrator_id=orchestrator_id, project_id=mock_project.id
             )
 
             # Current implementation uses get_orchestrator_instructions (Step 2)
-            assert "get_orchestrator_instructions" in prompt, \
+            assert "get_orchestrator_instructions" in prompt, (
                 "Prompt must include get_orchestrator_instructions() MCP tool call"
-            assert orchestrator_id in prompt, \
-                "Prompt must include orchestrator_id for tool call"
-            assert prompt_generator.tenant_key in prompt, \
-                "Prompt must include tenant_key for tool call"
+            )
+            assert orchestrator_id in prompt, "Prompt must include orchestrator_id for tool call"
+            assert prompt_generator.tenant_key in prompt, "Prompt must include tenant_key for tool call"
 
 
 class TestNoEmbeddedAgentTemplates:
@@ -293,25 +287,23 @@ class TestNoEmbeddedAgentTemplates:
     @pytest.mark.asyncio
     async def test_no_embedded_templates(self, prompt_generator, mock_project, mock_product):
         """Verify agent templates are NOT embedded in prompt."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Should NOT contain hardcoded agent template section
-            assert "AGENT_TEMPLATES" not in prompt, \
-                "Prompt must NOT contain embedded AGENT_TEMPLATES section"
+            assert "AGENT_TEMPLATES" not in prompt, "Prompt must NOT contain embedded AGENT_TEMPLATES section"
 
             # Should NOT list multiple agents inline (would inflate token count)
             # Allow a few mentions (in instructions) but not extensive listings
             agent_keywords = ["implementer", "tester", "architect", "reviewer"]
             for keyword in agent_keywords:
                 count = prompt.lower().count(keyword)
-                assert count < 5, \
-                    f"Prompt should not extensively list '{keyword}' agent (found {count} times)"
+                assert count < 5, f"Prompt should not extensively list '{keyword}' agent (found {count} times)"
 
 
 class TestTokenBudget:
@@ -320,39 +312,38 @@ class TestTokenBudget:
     @pytest.mark.asyncio
     async def test_token_count_under_budget(self, prompt_generator, mock_project, mock_product):
         """Verify prompt stays under 1200 token budget."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Token estimation: len(prompt) // 4 (conservative estimate)
             estimated_tokens = len(prompt) // 4
 
-            assert estimated_tokens < 1200, \
-                f"Token count {estimated_tokens} exceeds budget of 1200 tokens"
+            assert estimated_tokens < 1200, f"Token count {estimated_tokens} exceeds budget of 1200 tokens"
 
     @pytest.mark.asyncio
     async def test_token_count_target_range(self, prompt_generator, mock_project, mock_product):
         """Verify prompt is in target range of 800-1000 tokens."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Token estimation: len(prompt) // 4 (conservative estimate)
             estimated_tokens = len(prompt) // 4
 
             # Target range: 800-1000 tokens (allow some flexibility)
-            assert estimated_tokens >= 600, \
-                f"Token count {estimated_tokens} is too low (target: 800-1000)"
-            assert estimated_tokens <= 1200, \
+            assert estimated_tokens >= 600, f"Token count {estimated_tokens} is too low (target: 800-1000)"
+            assert estimated_tokens <= 1200, (
                 f"Token count {estimated_tokens} exceeds maximum (target: 800-1000, max: 1200)"
+            )
 
 
 class TestVersionChecking:
@@ -361,21 +352,20 @@ class TestVersionChecking:
     @pytest.mark.asyncio
     async def test_version_checking_instructions(self, prompt_generator, mock_project, mock_product):
         """Verify role section defines staging vs execution clearly."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Current implementation has "YOUR ROLE: PROJECT STAGING (NOT EXECUTION)"
-            assert "YOUR ROLE:" in prompt, \
-                "Prompt must define orchestrator role"
-            assert "STAGING" in prompt.upper(), \
-                "Prompt must mention staging phase"
-            assert "NOT EXECUTION" in prompt.upper() or "not execution" in prompt.lower(), \
+            assert "YOUR ROLE:" in prompt, "Prompt must define orchestrator role"
+            assert "STAGING" in prompt.upper(), "Prompt must mention staging phase"
+            assert "NOT EXECUTION" in prompt.upper() or "not execution" in prompt.lower(), (
                 "Prompt must clarify this is staging, not execution"
+            )
 
 
 class TestExecutionModeHandling:
@@ -390,13 +380,13 @@ class TestExecutionModeHandling:
     @pytest.mark.asyncio
     async def test_staging_prompt_is_mode_agnostic(self, prompt_generator, mock_project, mock_product):
         """Verify staging prompt is mode-agnostic (doesn't require claude_code_mode parameter)."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             # Generate prompt without claude_code_mode parameter
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Verify the prompt is generated successfully
@@ -414,20 +404,22 @@ class TestWebSocketStatus:
     @pytest.mark.asyncio
     async def test_websocket_status_in_prompt(self, prompt_generator, mock_project, mock_product):
         """Verify messaging and monitoring instructions are included."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Current implementation mentions messaging and monitoring
-            assert "send_message" in prompt or "receive_messages" in prompt, \
+            assert "send_message" in prompt or "receive_messages" in prompt, (
                 "Prompt must include messaging instructions"
+            )
             # Handover 0382: Step 8 now marked as context for planning only
-            assert "8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING:" in prompt, \
+            assert "8. [CONTEXT FOR PLANNING ONLY] EXECUTION PHASE MONITORING:" in prompt, (
                 "Prompt must include execution phase monitoring step (marked as planning context)"
+            )
 
 
 class TestOutdatedReferencesRemoved:
@@ -436,16 +428,14 @@ class TestOutdatedReferencesRemoved:
     @pytest.mark.asyncio
     async def test_0106b_reference_not_in_prompt(self, prompt_generator, mock_project, mock_product):
         """Verify outdated 'Handover 0106b' reference is not in staging prompt."""
-        with patch.object(prompt_generator, '_fetch_project', return_value=mock_project), \
-             patch.object(prompt_generator, '_fetch_product', return_value=mock_product):
-
+        with (
+            patch.object(prompt_generator, "_fetch_project", return_value=mock_project),
+            patch.object(prompt_generator, "_fetch_product", return_value=mock_product),
+        ):
             prompt = await prompt_generator.generate_staging_prompt(
-                orchestrator_id=str(uuid4()),
-                project_id=mock_project.id
+                orchestrator_id=str(uuid4()), project_id=mock_project.id
             )
 
             # Verify no outdated handover references
-            assert "0106b" not in prompt, \
-                "Staging prompt must NOT contain outdated '0106b' reference"
-            assert "Handover 0106b" not in prompt, \
-                "Staging prompt must NOT contain 'Handover 0106b' reference"
+            assert "0106b" not in prompt, "Staging prompt must NOT contain outdated '0106b' reference"
+            assert "Handover 0106b" not in prompt, "Staging prompt must NOT contain 'Handover 0106b' reference"

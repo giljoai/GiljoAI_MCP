@@ -4,8 +4,9 @@ Shared pytest fixtures for unit tests (Handover 0605-0608)
 Provides correctly configured mocks for async database operations.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 
 @pytest.fixture

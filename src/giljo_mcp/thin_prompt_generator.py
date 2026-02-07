@@ -53,7 +53,9 @@ from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ThinPromptResponse:
@@ -66,6 +68,7 @@ class ThinPromptResponse:
     estimated_prompt_tokens: int
     mcp_tool_name: str
     instructions_stored: bool
+
 
 class ThinClientPromptGenerator:
     """

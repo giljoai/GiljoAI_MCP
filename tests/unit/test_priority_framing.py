@@ -14,7 +14,9 @@ Priority Scale (v2.0):
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
+
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project
 
@@ -34,10 +36,7 @@ class TestPriorityFramingHelper:
         content = "Product name: GiljoAI MCP\nDescription: Agent orchestration system"
 
         result = mission_planner._apply_priority_framing(
-            section_name="Product Context",
-            content=content,
-            priority=1,
-            category_key="product_core"
+            section_name="Product Context", content=content, priority=1, category_key="product_core"
         )
 
         # Assert CRITICAL framing elements
@@ -53,10 +52,7 @@ class TestPriorityFramingHelper:
         content = "# Vision Document\n\nBuild an AI agent orchestration platform..."
 
         result = mission_planner._apply_priority_framing(
-            section_name="Vision Documents",
-            content=content,
-            priority=2,
-            category_key="vision_documents"
+            section_name="Vision Documents", content=content, priority=2, category_key="vision_documents"
         )
 
         # Assert IMPORTANT framing elements
@@ -73,10 +69,7 @@ class TestPriorityFramingHelper:
         content = "## Architecture\n\nMicroservices with event-driven design..."
 
         result = mission_planner._apply_priority_framing(
-            section_name="Architecture",
-            content=content,
-            priority=3,
-            category_key="project_description"
+            section_name="Architecture", content=content, priority=3, category_key="project_description"
         )
 
         # Assert REFERENCE framing elements
@@ -93,10 +86,7 @@ class TestPriorityFramingHelper:
         content = "Git commit history data..."
 
         result = mission_planner._apply_priority_framing(
-            section_name="Git History",
-            content=content,
-            priority=4,
-            category_key="git_history"
+            section_name="Git History", content=content, priority=4, category_key="git_history"
         )
 
         # Priority 4 = EXCLUDED - should return empty string
@@ -116,10 +106,7 @@ class TestPriorityFramingHelper:
 
         for section_name, priority, category_key in test_cases:
             result = mission_planner._apply_priority_framing(
-                section_name=section_name,
-                content="Test content",
-                priority=priority,
-                category_key=category_key
+                section_name=section_name, content="Test content", priority=priority, category_key=category_key
             )
 
             # Verify section name appears in result
@@ -143,10 +130,7 @@ def test():
 """
 
         result = mission_planner._apply_priority_framing(
-            section_name="Test Section",
-            content=original_content,
-            priority=2,
-            category_key="test"
+            section_name="Test Section", content=original_content, priority=2, category_key="test"
         )
 
         # Original content should be preserved exactly
@@ -181,24 +165,22 @@ class TestPriorityFramingIntegration:
         product.tenant_key = "test-tenant"
         product.name = "GiljoAI MCP"
         product.description = "Multi-tenant agent orchestration system"
-        product.primary_vision_text = "Build an AI orchestration platform with context prioritization and orchestration."
+        product.primary_vision_text = (
+            "Build an AI orchestration platform with context prioritization and orchestration."
+        )
         product.vision_documents = []  # Empty for simplicity
         product.config_data = {
             "tech_stack": {
                 "backend": ["Python", "FastAPI"],
                 "frontend": ["Vue3", "Vuetify"],
-                "database": ["PostgreSQL"]
+                "database": ["PostgreSQL"],
             },
             "architecture": "Microservices with event-driven design",
             "test_methodology": "TDD with pytest",
         }
         product.product_memory = {
             "sequential_history": [
-                {
-                    "sequence": 1,
-                    "type": "project_closeout",
-                    "summary": "Implemented context management v2.0"
-                }
+                {"sequence": 1, "type": "project_closeout", "summary": "Implemented context management v2.0"}
             ]
         }
         return product
@@ -227,13 +209,18 @@ class TestPriorityFramingIntegration:
             "git_history": 1,
         }
 
-        with patch.object(mission_planner, '_extract_testing_config', new_callable=AsyncMock, return_value="## Testing\nTDD with pytest"):
+        with patch.object(
+            mission_planner,
+            "_extract_testing_config",
+            new_callable=AsyncMock,
+            return_value="## Testing\nTDD with pytest",
+        ):
             result = await mission_planner._build_context_with_priorities(
                 product=sample_product,
                 project=sample_project,
                 field_priorities=field_priorities,
                 user_id="test-user-id",
-                include_serena=False
+                include_serena=False,
             )
 
         # All non-excluded sections should have CRITICAL framing
@@ -250,22 +237,27 @@ class TestPriorityFramingIntegration:
     async def test_mixed_priorities(self, mission_planner, sample_product, sample_project):
         """Test multiple contexts with different priority levels."""
         field_priorities = {
-            "product_core": 1,        # CRITICAL
-            "product_vision": 2,       # IMPORTANT
-            "tech_stack": 2,           # IMPORTANT
+            "product_core": 1,  # CRITICAL
+            "product_vision": 2,  # IMPORTANT
+            "tech_stack": 2,  # IMPORTANT
             "config_data.architecture": 3,  # REFERENCE
-            "testing_config": 3,       # REFERENCE
+            "testing_config": 3,  # REFERENCE
             "product_memory.sequential_history": 3,  # REFERENCE
-            "git_history": 4,          # EXCLUDED
+            "git_history": 4,  # EXCLUDED
         }
 
-        with patch.object(mission_planner, '_extract_testing_config', new_callable=AsyncMock, return_value="## Testing\nTDD with pytest"):
+        with patch.object(
+            mission_planner,
+            "_extract_testing_config",
+            new_callable=AsyncMock,
+            return_value="## Testing\nTDD with pytest",
+        ):
             result = await mission_planner._build_context_with_priorities(
                 product=sample_product,
                 project=sample_project,
                 field_priorities=field_priorities,
                 user_id="test-user-id",
-                include_serena=False
+                include_serena=False,
             )
 
         # Verify CRITICAL framing (Priority 1)
@@ -289,7 +281,7 @@ class TestPriorityFramingIntegration:
         field_priorities = {
             "product_core": 1,
             "product_vision": 4,  # EXCLUDED - vision should not appear
-            "tech_stack": 4,      # EXCLUDED - tech stack should not appear
+            "tech_stack": 4,  # EXCLUDED - tech stack should not appear
         }
 
         result = await mission_planner._build_context_with_priorities(
@@ -297,7 +289,7 @@ class TestPriorityFramingIntegration:
             project=sample_project,
             field_priorities=field_priorities,
             user_id="test-user-id",
-            include_serena=False
+            include_serena=False,
         )
 
         # Product name should still appear (always mandatory)
@@ -321,7 +313,7 @@ class TestPriorityFramingIntegration:
             project=sample_project,
             field_priorities=field_priorities,
             user_id="test-user-id",
-            include_serena=False
+            include_serena=False,
         )
 
         # Result should be valid markdown text
@@ -338,13 +330,15 @@ class TestPriorityFramingIntegration:
         # Pass empty dict - should use defaults
         field_priorities = {}
 
-        with patch.object(mission_planner, '_extract_testing_config', new_callable=AsyncMock, return_value="## Testing\nTDD"):
+        with patch.object(
+            mission_planner, "_extract_testing_config", new_callable=AsyncMock, return_value="## Testing\nTDD"
+        ):
             result = await mission_planner._build_context_with_priorities(
                 product=sample_product,
                 project=sample_project,
                 field_priorities=field_priorities,
                 user_id="test-user-id",
-                include_serena=False
+                include_serena=False,
             )
 
         # Should have framing based on default priorities
@@ -376,7 +370,7 @@ class TestPriorityFramingSectionNames:
         ]
 
         # Check if SECTION_NAMES attribute exists and has expected keys
-        if hasattr(mission_planner, 'SECTION_NAMES'):
+        if hasattr(mission_planner, "SECTION_NAMES"):
             section_names = mission_planner.SECTION_NAMES
             for category in expected_categories:
                 assert category in section_names, f"Missing section name mapping for {category}"
@@ -396,7 +390,7 @@ class TestPriorityFramingSectionNames:
             section_name="Product Context",  # Human-readable name
             content="Test content",
             priority=1,
-            category_key="product_core"
+            category_key="product_core",
         )
 
         # Section name should appear in title case with spaces
@@ -457,7 +451,7 @@ class TestBackwardCompatibility:
             project=sample_project,
             field_priorities=field_priorities,
             user_id="test-user-id",
-            include_serena=False
+            include_serena=False,
         )
 
         # Core sections should still exist
@@ -479,7 +473,7 @@ class TestBackwardCompatibility:
             project=sample_project,
             field_priorities=field_priorities,
             user_id="test-user-id",
-            include_serena=False
+            include_serena=False,
         )
 
         # Result should be valid
@@ -496,12 +490,18 @@ class TestBackwardCompatibility:
 
         # tech_stack should exist and be priority 2 (IMPORTANT)
         assert "tech_stack" in DEFAULT_FIELD_PRIORITIES, "tech_stack missing from DEFAULT_FIELD_PRIORITIES"
-        assert DEFAULT_FIELD_PRIORITIES["tech_stack"] == 2, f"tech_stack priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('tech_stack')}"
+        assert DEFAULT_FIELD_PRIORITIES["tech_stack"] == 2, (
+            f"tech_stack priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('tech_stack')}"
+        )
 
         # architecture should exist and be priority 2 (IMPORTANT)
         assert "architecture" in DEFAULT_FIELD_PRIORITIES, "architecture missing from DEFAULT_FIELD_PRIORITIES"
-        assert DEFAULT_FIELD_PRIORITIES["architecture"] == 2, f"architecture priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('architecture')}"
+        assert DEFAULT_FIELD_PRIORITIES["architecture"] == 2, (
+            f"architecture priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('architecture')}"
+        )
 
         # testing should exist and be priority 2 (IMPORTANT)
         assert "testing" in DEFAULT_FIELD_PRIORITIES, "testing missing from DEFAULT_FIELD_PRIORITIES"
-        assert DEFAULT_FIELD_PRIORITIES["testing"] == 2, f"testing priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('testing')}"
+        assert DEFAULT_FIELD_PRIORITIES["testing"] == 2, (
+            f"testing priority should be 2, got {DEFAULT_FIELD_PRIORITIES.get('testing')}"
+        )

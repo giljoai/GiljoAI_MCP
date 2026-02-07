@@ -14,13 +14,14 @@ Test Coverage:
 6. Full mission contains template + work
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch, mock_open
+from unittest.mock import AsyncMock, Mock, mock_open, patch
 from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import AgentJob, AgentTemplate, Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Project, AgentTemplate, AgentJob
 
 
 @pytest.fixture
@@ -151,10 +152,12 @@ async def test_spawn_agent_job_injects_template_for_multi_terminal_mode(
     template_result = AsyncMock()
     template_result.scalar_one_or_none = Mock(return_value=sample_template)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        template_result,
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            template_result,
+        ]
+    )
 
     # Create service instance
     service = OrchestrationService(db_manager, mock_tenant_manager)
@@ -185,8 +188,8 @@ async def test_spawn_agent_job_injects_template_for_multi_terminal_mode(
 
 
 @pytest.mark.asyncio
-async def test_spawn_agent_job_no_injection_for_cli_mode(mock_config_no_serena, 
-    mock_db_manager, mock_tenant_manager, sample_project
+async def test_spawn_agent_job_no_injection_for_cli_mode(
+    mock_config_no_serena, mock_db_manager, mock_tenant_manager, sample_project
 ):
     """
     Test that spawn_agent_job does NOT inject template in CLI mode.
@@ -205,10 +208,12 @@ async def test_spawn_agent_job_no_injection_for_cli_mode(mock_config_no_serena,
     project_result = AsyncMock()
     project_result.scalar_one_or_none = Mock(return_value=sample_project)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        # No template query should be made in CLI mode
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            # No template query should be made in CLI mode
+        ]
+    )
 
     # Create service instance
     service = OrchestrationService(db_manager, mock_tenant_manager)
@@ -236,8 +241,8 @@ async def test_spawn_agent_job_no_injection_for_cli_mode(mock_config_no_serena,
 
 
 @pytest.mark.asyncio
-async def test_template_lookup_uses_agent_name(mock_config_no_serena, 
-    mock_db_manager, mock_tenant_manager, sample_project, sample_template
+async def test_template_lookup_uses_agent_name(
+    mock_config_no_serena, mock_db_manager, mock_tenant_manager, sample_project, sample_template
 ):
     """
     Test that template lookup uses agent_name, not agent_display_name.
@@ -256,10 +261,12 @@ async def test_template_lookup_uses_agent_name(mock_config_no_serena,
     template_result = AsyncMock()
     template_result.scalar_one_or_none = Mock(return_value=sample_template)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        template_result,
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            template_result,
+        ]
+    )
 
     # Create service instance
     service = OrchestrationService(db_manager, mock_tenant_manager)
@@ -282,8 +289,8 @@ async def test_template_lookup_uses_agent_name(mock_config_no_serena,
 
 
 @pytest.mark.asyncio
-async def test_template_not_found_logs_warning_proceeds(mock_config_no_serena, 
-    mock_db_manager, mock_tenant_manager, sample_project
+async def test_template_not_found_logs_warning_proceeds(
+    mock_config_no_serena, mock_db_manager, mock_tenant_manager, sample_project
 ):
     """
     Test that missing template logs warning but proceeds with orchestrator's mission.
@@ -304,10 +311,12 @@ async def test_template_not_found_logs_warning_proceeds(mock_config_no_serena,
     template_result = AsyncMock()
     template_result.scalar_one_or_none = Mock(return_value=None)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        template_result,
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            template_result,
+        ]
+    )
 
     # Create service instance
     service = OrchestrationService(db_manager, mock_tenant_manager)
@@ -333,8 +342,8 @@ async def test_template_not_found_logs_warning_proceeds(mock_config_no_serena,
 
 
 @pytest.mark.asyncio
-async def test_injected_mission_structure(mock_config_no_serena,
-    mock_db_manager, mock_tenant_manager, sample_project, sample_template
+async def test_injected_mission_structure(
+    mock_config_no_serena, mock_db_manager, mock_tenant_manager, sample_project, sample_template
 ):
     """
     Test that injected mission has correct tidy framing structure.
@@ -361,10 +370,12 @@ async def test_injected_mission_structure(mock_config_no_serena,
     template_result = AsyncMock()
     template_result.scalar_one_or_none = Mock(return_value=sample_template)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        template_result,
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            template_result,
+        ]
+    )
 
     # Create service instance
     service = OrchestrationService(db_manager, mock_tenant_manager)
@@ -399,8 +410,8 @@ async def test_injected_mission_structure(mock_config_no_serena,
 
 
 @pytest.mark.asyncio
-async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
-    mock_db_manager, mock_tenant_manager, sample_project, sample_template
+async def test_full_mission_contains_template_plus_work(
+    mock_config_no_serena, mock_db_manager, mock_tenant_manager, sample_project, sample_template
 ):
     """
     Test that full mission contains both template and work in correct order.
@@ -420,10 +431,12 @@ async def test_full_mission_contains_template_plus_work(mock_config_no_serena,
     template_result = AsyncMock()
     template_result.scalar_one_or_none = Mock(return_value=sample_template)
 
-    session.execute = AsyncMock(side_effect=[
-        project_result,
-        template_result,
-    ])
+    session.execute = AsyncMock(
+        side_effect=[
+            project_result,
+            template_result,
+        ]
+    )
 
     work_assignment = "Build authentication module with JWT tokens"
 

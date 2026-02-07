@@ -7,6 +7,7 @@ Full lifecycle test from creation to update to JSONB queries.
 
 import pytest
 from sqlalchemy import select
+
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.product_service import ProductService
 
@@ -36,18 +37,13 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
 
     # ACT - Create product with default memory
     product_data = await product_service.create_product(
-        name="Integration Test Product",
-        description="Testing full memory lifecycle"
+        name="Integration Test Product", description="Testing full memory lifecycle"
     )
 
     # ASSERT - Product created with default structure
     assert product_data["success"] is True
     product_id = product_data["product_id"]
-    assert product_data["product_memory"] == {
-        "github": {},
-        "learnings": [],
-        "context": {}
-    }
+    assert product_data["product_memory"] == {"github": {}, "learnings": [], "context": {}}
 
     # ACT - Add GitHub integration settings
     updated_memory = {
@@ -55,16 +51,13 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
             "enabled": True,
             "repo_url": "https://github.com/test/integration",
             "auto_commit": True,
-            "last_sync": "2025-11-16T10:30:00Z"
+            "last_sync": "2025-11-16T10:30:00Z",
         },
         "learnings": [],
-        "context": {}
+        "context": {},
     }
 
-    update_result = await product_service.update_product(
-        product_id=product_id,
-        product_memory=updated_memory
-    )
+    update_result = await product_service.update_product(product_id=product_id, product_memory=updated_memory)
 
     # ASSERT - GitHub settings persisted
     assert update_result["success"] is True
@@ -82,7 +75,7 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
         "timestamp": "2025-11-16T11:00:00Z",
         "project_id": "proj_integration_001",
         "summary": "Learned to use JSONB for flexible schema",
-        "tags": ["database", "postgresql", "jsonb"]
+        "tags": ["database", "postgresql", "jsonb"],
     }
 
     product.product_memory["learnings"].append(learning_entry)
@@ -98,7 +91,7 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
     product.product_memory["context"] = {
         "last_updated": "2025-11-16T11:00:00Z",
         "token_count": 25000,
-        "summary": "Integration testing framework for GiljoAI MCP"
+        "summary": "Integration testing framework for GiljoAI MCP",
     }
     await db_session.commit()
     await db_session.refresh(product)
@@ -109,8 +102,7 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
 
     # ACT - JSONB path query (GitHub enabled products)
     query = select(Product).where(
-        Product.tenant_key == tenant_key,
-        Product.product_memory["github"]["enabled"].astext == "true"
+        Product.tenant_key == tenant_key, Product.product_memory["github"]["enabled"].astext == "true"
     )
     result = await db_session.execute(query)
     github_products = result.scalars().all()
@@ -125,19 +117,14 @@ async def test_product_memory_lifecycle(db_session, tenant_key):
         name="Other Tenant Product",
         description="Different tenant",
         tenant_key="other_tenant",
-        product_memory={
-            "github": {"enabled": True},
-            "learnings": [],
-            "context": {}
-        }
+        product_memory={"github": {"enabled": True}, "learnings": [], "context": {}},
     )
     db_session.add(other_tenant_product)
     await db_session.commit()
 
     # Query with original tenant key
     isolated_query = select(Product).where(
-        Product.tenant_key == tenant_key,
-        Product.product_memory["github"]["enabled"].astext == "true"
+        Product.tenant_key == tenant_key, Product.product_memory["github"]["enabled"].astext == "true"
     )
     isolated_result = await db_session.execute(isolated_query)
     isolated_products = isolated_result.scalars().all()
@@ -163,17 +150,10 @@ async def test_product_memory_helper_methods(db_session, tenant_key):
         description="Testing helper methods",
         tenant_key=tenant_key,
         product_memory={
-            "github": {
-                "enabled": True,
-                "repo_url": "https://github.com/test/helpers"
-            },
-            "learnings": [
-                {"summary": "First learning", "tags": ["test"]}
-            ],
-            "context": {
-                "summary": "Helper test context"
-            }
-        }
+            "github": {"enabled": True, "repo_url": "https://github.com/test/helpers"},
+            "learnings": [{"summary": "First learning", "tags": ["test"]}],
+            "context": {"summary": "Helper test context"},
+        },
     )
     db_session.add(product)
     await db_session.commit()
@@ -193,7 +173,7 @@ async def test_product_memory_helper_methods(db_session, tenant_key):
         name="Empty Memory Test",
         description="Testing empty memory",
         tenant_key=tenant_key,
-        product_memory={"github": {}, "learnings": [], "context": {}}
+        product_memory={"github": {}, "learnings": [], "context": {}},
     )
     db_session.add(empty_product)
     await db_session.commit()

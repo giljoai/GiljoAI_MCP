@@ -4,7 +4,7 @@ Pydantic Models for Product Endpoints - Handover 0126
 Request/response models for product operations.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -18,14 +18,12 @@ class ProductCreate(BaseModel):
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
-    config_data: Optional[Dict[str, Any]] = Field(
-        None, description="Rich configuration data (JSONB)"
-    )
+    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
     target_platforms: Optional[List[str]] = Field(
-        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 
@@ -35,9 +33,7 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     project_path: Optional[str] = None
-    config_data: Optional[Dict[str, Any]] = Field(
-        None, description="Rich configuration data (JSONB)"
-    )
+    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
     product_memory: Optional[Dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -69,10 +65,10 @@ class ProductResponse(BaseModel):
     )
     product_memory: Optional[Dict[str, Any]] = Field(
         default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
-        description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412"
+        description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412",
     )
     target_platforms: Optional[List[str]] = Field(
-        default=['all'], description="Target platforms: windows, linux, macos, or all - Handover 0425"
+        default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
 
@@ -95,9 +91,7 @@ class ProductActivationResponse(BaseModel):
     )
     product: ProductResponse = Field(..., description="Full activated product details")
     message: str = Field(..., description="Success message")
-    deactivated_projects: List[str] = Field(
-        default_factory=list, description="IDs of projects that were auto-paused"
-    )
+    deactivated_projects: List[str] = Field(default_factory=list, description="IDs of projects that were auto-paused")
 
 
 class ProductDeleteResponse(BaseModel):
@@ -158,6 +152,7 @@ class VisionDocumentStatsResponse(BaseModel):
     is_summarized: bool = Field(default=False, description="Whether vision document is summarized")
     summary_tokens: int = Field(default=0, description="Token count of summary (if available)")
 
+
 class CascadeImpact(BaseModel):
     """Cascade impact response for product deletion"""
 
@@ -182,24 +177,16 @@ class GitHubSettingsRequest(BaseModel):
         None,
         description="GitHub repository URL (HTTPS or SSH format). Required when enabled=True",
     )
-    auto_commit: bool = Field(
-        False, description="Whether to automatically commit changes to GitHub"
-    )
+    auto_commit: bool = Field(False, description="Whether to automatically commit changes to GitHub")
 
 
 class GitHubSettingsResponse(BaseModel):
     """Response model for GitHub integration settings"""
 
     enabled: bool = Field(..., description="Whether GitHub integration is enabled")
-    repo_url: Optional[str] = Field(
-        None, description="GitHub repository URL (HTTPS or SSH format)"
-    )
-    auto_commit: bool = Field(
-        ..., description="Whether to automatically commit changes to GitHub"
-    )
-    last_sync: Optional[str] = Field(
-        None, description="ISO timestamp of last sync with GitHub"
-    )
+    repo_url: Optional[str] = Field(None, description="GitHub repository URL (HTTPS or SSH format)")
+    auto_commit: bool = Field(..., description="Whether to automatically commit changes to GitHub")
+    last_sync: Optional[str] = Field(None, description="ISO timestamp of last sync with GitHub")
 
 
 # ============================================================================
@@ -211,12 +198,8 @@ class GitIntegrationRequest(BaseModel):
     """Request model for updating Git integration settings (Handover 013B)"""
 
     enabled: bool = Field(..., description="Whether Git integration is enabled")
-    commit_limit: int = Field(
-        20, ge=1, le=100, description="Max commits to include in prompts (1-100)"
-    )
-    default_branch: str = Field(
-        "main", description="Default branch name (e.g., main, master, develop)"
-    )
+    commit_limit: int = Field(20, ge=1, le=100, description="Max commits to include in prompts (1-100)")
+    default_branch: str = Field("main", description="Default branch name (e.g., main, master, develop)")
 
 
 class GitIntegrationResponse(BaseModel):

@@ -1,4 +1,5 @@
 """Tests for shutdown module"""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -113,10 +114,7 @@ async def test_shutdown_closes_websocket_connections():
     mock_ws2 = MagicMock()
     mock_ws2.close = AsyncMock()
 
-    state.connections = {
-        "client1": mock_ws1,
-        "client2": mock_ws2
-    }
+    state.connections = {"client1": mock_ws1, "client2": mock_ws2}
 
     await shutdown(state)
 
@@ -175,13 +173,13 @@ async def test_shutdown_continues_on_error():
     state.db_manager = MagicMock()
     state.db_manager.close_async = AsyncMock()
 
-    with patch('api.startup.shutdown.logger') as mock_logger:
+    with patch("api.startup.shutdown.logger") as mock_logger:
         # Should not raise, just log error
         await shutdown(state)
 
         # Verify error was logged
         error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
-        assert any('Error stopping health monitor' in msg for msg in error_calls)
+        assert any("Error stopping health monitor" in msg for msg in error_calls)
 
         # Database should still close despite health monitor error
         state.db_manager.close_async.assert_awaited_once()
@@ -209,20 +207,20 @@ async def test_shutdown_logs_progress():
     state.db_manager.close_async = AsyncMock()
     state.websocket_broker = None  # Avoid WebSocket broker shutdown logs
 
-    with patch('api.startup.shutdown.logger') as mock_logger:
+    with patch("api.startup.shutdown.logger") as mock_logger:
         await shutdown(state)
 
         # Verify shutdown messages were logged
         info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
 
         # Check for the actual log messages from shutdown.py
-        assert any('Shutting down GiljoAI MCP API' in msg for msg in info_calls)
-        assert any('Canceling background tasks' in msg for msg in info_calls)
-        assert any('Background tasks canceled' in msg for msg in info_calls)
-        assert any('Closing WebSocket connections' in msg for msg in info_calls)
-        assert any('WebSocket connections closed' in msg for msg in info_calls)
-        assert any('Closing database connection' in msg for msg in info_calls)
-        assert any('Database connection closed' in msg for msg in info_calls)
+        assert any("Shutting down GiljoAI MCP API" in msg for msg in info_calls)
+        assert any("Canceling background tasks" in msg for msg in info_calls)
+        assert any("Background tasks canceled" in msg for msg in info_calls)
+        assert any("Closing WebSocket connections" in msg for msg in info_calls)
+        assert any("WebSocket connections closed" in msg for msg in info_calls)
+        assert any("Closing database connection" in msg for msg in info_calls)
+        assert any("Database connection closed" in msg for msg in info_calls)
 
 
 @pytest.mark.asyncio
@@ -245,25 +243,25 @@ async def test_shutdown_all_tasks_in_order():
     original_cancel = original_task.cancel
 
     def tracked_cancel():
-        execution_order.append('cancel_heartbeat')
+        execution_order.append("cancel_heartbeat")
         return original_cancel()
 
     original_task.cancel = tracked_cancel
     state.heartbeat_task = original_task
 
     state.health_monitor = MagicMock()
-    state.health_monitor.stop = AsyncMock(side_effect=lambda: execution_order.append('stop_health_monitor'))
+    state.health_monitor.stop = AsyncMock(side_effect=lambda: execution_order.append("stop_health_monitor"))
 
     mock_ws = MagicMock()
-    mock_ws.close = AsyncMock(side_effect=lambda: execution_order.append('close_websocket'))
+    mock_ws.close = AsyncMock(side_effect=lambda: execution_order.append("close_websocket"))
     state.connections = {"client1": mock_ws}
 
     state.db_manager = MagicMock()
-    state.db_manager.close_async = AsyncMock(side_effect=lambda: execution_order.append('close_database'))
+    state.db_manager.close_async = AsyncMock(side_effect=lambda: execution_order.append("close_database"))
 
     await shutdown(state)
 
     # Verify order: tasks cancelled → health monitor stopped → websockets closed → database closed
-    assert execution_order.index('cancel_heartbeat') < execution_order.index('stop_health_monitor')
-    assert execution_order.index('stop_health_monitor') < execution_order.index('close_websocket')
-    assert execution_order.index('close_websocket') < execution_order.index('close_database')
+    assert execution_order.index("cancel_heartbeat") < execution_order.index("stop_health_monitor")
+    assert execution_order.index("stop_health_monitor") < execution_order.index("close_websocket")
+    assert execution_order.index("close_websocket") < execution_order.index("close_database")

@@ -9,11 +9,12 @@ Tests the addition of 3 new performance indexes to mcp_agent_jobs table:
 TDD Red Phase: These tests MUST FAIL initially before adding indexes.
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import text, inspect
+from datetime import datetime, timedelta, timezone
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest
+from sqlalchemy import inspect, text
+
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestAgentJobIndexes:
@@ -27,8 +28,9 @@ class TestAgentJobIndexes:
         inspector = inspect(db_engine)
         indexes = {idx["name"]: idx for idx in inspector.get_indexes("mcp_agent_jobs")}
 
-        assert "idx_mcp_agent_jobs_last_progress" in indexes, \
+        assert "idx_mcp_agent_jobs_last_progress" in indexes, (
             "idx_mcp_agent_jobs_last_progress index should exist for fast activity sorting"
+        )
 
     def test_health_status_index_exists(self, db_engine):
         """Verify idx_mcp_agent_jobs_health_status index exists.
@@ -38,8 +40,9 @@ class TestAgentJobIndexes:
         inspector = inspect(db_engine)
         indexes = {idx["name"]: idx for idx in inspector.get_indexes("mcp_agent_jobs")}
 
-        assert "idx_mcp_agent_jobs_health_status" in indexes, \
+        assert "idx_mcp_agent_jobs_health_status" in indexes, (
             "idx_mcp_agent_jobs_health_status index should exist for health filtering"
+        )
 
     def test_composite_status_index_exists(self, db_engine):
         """Verify idx_mcp_agent_jobs_composite_status composite index exists.
@@ -49,8 +52,9 @@ class TestAgentJobIndexes:
         inspector = inspect(db_engine)
         indexes = {idx["name"]: idx for idx in inspector.get_indexes("mcp_agent_jobs")}
 
-        assert "idx_mcp_agent_jobs_composite_status" in indexes, \
+        assert "idx_mcp_agent_jobs_composite_status" in indexes, (
             "idx_mcp_agent_jobs_composite_status index should exist for common query patterns"
+        )
 
         # Verify composite index has correct columns (project_id, status, last_progress_at)
         index_info = indexes["idx_mcp_agent_jobs_composite_status"]
@@ -84,7 +88,7 @@ class TestIndexPerformance:
                 agent_display_name=f"worker_{i}",
                 mission=f"Test mission {i}",
                 status="working",
-                last_progress_at=now - timedelta(hours=i)
+                last_progress_at=now - timedelta(hours=i),
             )
             db_session.add(job)
 
@@ -101,18 +105,16 @@ class TestIndexPerformance:
             LIMIT 50
         """)
 
-        result = await db_session.execute(
-            query,
-            {"tenant_key": tenant_key, "project_id": project_id}
-        )
+        result = await db_session.execute(query, {"tenant_key": tenant_key, "project_id": project_id})
         plan = result.scalar()
 
         # Verify query plan (may use Seq Scan for small datasets, which is optimal)
         plan_str = str(plan)
         # For small test datasets, PostgreSQL may choose Seq Scan (faster than index)
         # Important: Index EXISTS and is AVAILABLE for use in production
-        assert "mcp_agent_jobs" in plan_str, \
+        assert "mcp_agent_jobs" in plan_str, (
             "Query should scan mcp_agent_jobs table (index available for production loads)"
+        )
 
     @pytest.mark.asyncio
     async def test_health_status_filtering_uses_index(self, db_session, test_project):
@@ -133,7 +135,7 @@ class TestIndexPerformance:
                 agent_display_name=f"worker_{i}",
                 mission=f"Test mission {i}",
                 status="working",
-                health_status=health_status
+                health_status=health_status,
             )
             db_session.add(job)
 
@@ -148,18 +150,16 @@ class TestIndexPerformance:
               AND health_status IN ('warning', 'critical', 'timeout')
         """)
 
-        result = await db_session.execute(
-            query,
-            {"tenant_key": tenant_key}
-        )
+        result = await db_session.execute(query, {"tenant_key": tenant_key})
         plan = result.scalar()
 
         # Verify query plan (may use Seq Scan for small datasets, which is optimal)
         plan_str = str(plan)
         # For small test datasets, PostgreSQL may choose Seq Scan (faster than index)
         # Important: Index EXISTS and is AVAILABLE for use in production
-        assert "mcp_agent_jobs" in plan_str, \
+        assert "mcp_agent_jobs" in plan_str, (
             "Query should scan mcp_agent_jobs table (index available for production loads)"
+        )
 
     @pytest.mark.asyncio
     async def test_composite_query_uses_index(self, db_session, test_project):
@@ -182,7 +182,7 @@ class TestIndexPerformance:
                     agent_display_name=f"worker_{i}_{j}",
                     mission=f"Test mission {i}_{j}",
                     status=status,
-                    last_progress_at=now - timedelta(hours=i * 2 + j)
+                    last_progress_at=now - timedelta(hours=i * 2 + j),
                 )
                 db_session.add(job)
 
@@ -198,18 +198,16 @@ class TestIndexPerformance:
             ORDER BY last_progress_at DESC NULLS LAST
         """)
 
-        result = await db_session.execute(
-            query,
-            {"project_id": project_id}
-        )
+        result = await db_session.execute(query, {"project_id": project_id})
         plan = result.scalar()
 
         # Verify query plan (may use Seq Scan for small datasets, which is optimal)
         plan_str = str(plan)
         # For small test datasets, PostgreSQL may choose Seq Scan (faster than index)
         # Important: Index EXISTS and is AVAILABLE for use in production
-        assert "mcp_agent_jobs" in plan_str, \
+        assert "mcp_agent_jobs" in plan_str, (
             "Query should scan mcp_agent_jobs table (index available for production loads)"
+        )
 
 
 class TestIndexSize:
@@ -253,8 +251,7 @@ class TestIndexSize:
 
             # For typical test workloads, indexes should be small
             # For production, allow up to 10MB
-            assert size_bytes < max_size_bytes, \
-                f"Index {index_name} size ({idx[1]}) exceeds 10MB threshold"
+            assert size_bytes < max_size_bytes, f"Index {index_name} size ({idx[1]}) exceeds 10MB threshold"
 
 
 class TestMessageAutoTracking:
@@ -269,13 +266,13 @@ class TestMessageAutoTracking:
         inspector = inspect(db_engine)
         columns = {col["name"]: col for col in inspector.get_columns("mcp_agent_jobs")}
 
-        assert "last_message_check_at" in columns, \
-            "last_message_check_at field should exist for message tracking"
+        assert "last_message_check_at" in columns, "last_message_check_at field should exist for message tracking"
 
         # Should be DateTime
         col_type = str(columns["last_message_check_at"]["type"])
-        assert "TIMESTAMP" in col_type.upper() or "DATETIME" in col_type.upper(), \
+        assert "TIMESTAMP" in col_type.upper() or "DATETIME" in col_type.upper(), (
             f"last_message_check_at should be DateTime type, got {col_type}"
+        )
 
     @pytest.mark.asyncio
     async def test_last_progress_at_field_exists(self, db_engine):
@@ -283,13 +280,13 @@ class TestMessageAutoTracking:
         inspector = inspect(db_engine)
         columns = {col["name"]: col for col in inspector.get_columns("mcp_agent_jobs")}
 
-        assert "last_progress_at" in columns, \
-            "last_progress_at field should exist for activity tracking"
+        assert "last_progress_at" in columns, "last_progress_at field should exist for activity tracking"
 
         # Should be DateTime
         col_type = str(columns["last_progress_at"]["type"])
-        assert "TIMESTAMP" in col_type.upper() or "DATETIME" in col_type.upper(), \
+        assert "TIMESTAMP" in col_type.upper() or "DATETIME" in col_type.upper(), (
             f"last_progress_at should be DateTime type, got {col_type}"
+        )
 
     @pytest.mark.asyncio
     async def test_health_status_field_exists(self, db_engine):
@@ -297,10 +294,10 @@ class TestMessageAutoTracking:
         inspector = inspect(db_engine)
         columns = {col["name"]: col for col in inspector.get_columns("mcp_agent_jobs")}
 
-        assert "health_status" in columns, \
-            "health_status field should exist for health monitoring"
+        assert "health_status" in columns, "health_status field should exist for health monitoring"
 
         # Should be String
         col_type = str(columns["health_status"]["type"])
-        assert "VARCHAR" in col_type.upper() or "STRING" in col_type.upper() or "TEXT" in col_type.upper(), \
+        assert "VARCHAR" in col_type.upper() or "STRING" in col_type.upper() or "TEXT" in col_type.upper(), (
             f"health_status should be String type, got {col_type}"
+        )

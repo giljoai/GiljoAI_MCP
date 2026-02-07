@@ -2,10 +2,9 @@ import uuid
 
 import pytest
 import pytest_asyncio
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 @pytest_asyncio.fixture
@@ -46,7 +45,8 @@ async def test_orchestrator_execution_0367e(
         agent_id=str(uuid.uuid4()),
         job_id=test_orchestrator_job_0367e.job_id,
         tenant_key=test_tenant_0367e,
-        agent_display_name="orchestrator",        status="working",
+        agent_display_name="orchestrator",
+        status="working",
         progress=10,
         context_used=0,
         context_budget=10000,

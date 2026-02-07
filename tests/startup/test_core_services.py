@@ -1,4 +1,5 @@
 """Tests for core services initialization module"""
+
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,13 +17,14 @@ async def test_init_core_services_initializes_tenant_manager():
     state.db_manager = MagicMock()
     state.config = MagicMock()
 
-    with patch('api.startup.core_services.TenantManager') as mock_tenant_mgr, \
-         patch('api.startup.core_services.WebSocketManager'), \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager'), \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager") as mock_tenant_mgr,
+        patch("api.startup.core_services.WebSocketManager"),
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager"),
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {}, clear=True),
+    ):
         await init_core_services(state)
 
         mock_tenant_mgr.assert_called_once()
@@ -38,13 +40,14 @@ async def test_init_core_services_initializes_websocket_manager():
     state.db_manager = MagicMock()
     state.config = MagicMock()
 
-    with patch('api.startup.core_services.TenantManager'), \
-         patch('api.startup.core_services.WebSocketManager') as mock_ws_mgr, \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager'), \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager"),
+        patch("api.startup.core_services.WebSocketManager") as mock_ws_mgr,
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager"),
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {}, clear=True),
+    ):
         await init_core_services(state)
 
         mock_ws_mgr.assert_called_once()
@@ -60,13 +63,14 @@ async def test_init_core_services_initializes_tool_accessor():
     state.db_manager = MagicMock()
     state.config = MagicMock()
 
-    with patch('api.startup.core_services.TenantManager') as mock_tenant_mgr, \
-         patch('api.startup.core_services.WebSocketManager') as mock_ws_mgr, \
-         patch('api.startup.core_services.ToolAccessor') as mock_tool_accessor, \
-         patch('api.startup.core_services.AuthManager'), \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager") as mock_tenant_mgr,
+        patch("api.startup.core_services.WebSocketManager") as mock_ws_mgr,
+        patch("api.startup.core_services.ToolAccessor") as mock_tool_accessor,
+        patch("api.startup.core_services.AuthManager"),
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {}, clear=True),
+    ):
         mock_tenant_instance = MagicMock()
         mock_tenant_mgr.return_value = mock_tenant_instance
 
@@ -77,9 +81,7 @@ async def test_init_core_services_initializes_tool_accessor():
 
         # Verify ToolAccessor was called with all required dependencies
         mock_tool_accessor.assert_called_once_with(
-            state.db_manager,
-            mock_tenant_instance,
-            websocket_manager=mock_ws_instance
+            state.db_manager, mock_tenant_instance, websocket_manager=mock_ws_instance
         )
         assert state.tool_accessor is not None
 
@@ -93,13 +95,14 @@ async def test_init_core_services_initializes_auth_manager():
     state.db_manager = MagicMock()
     state.config = MagicMock()
 
-    with patch('api.startup.core_services.TenantManager'), \
-         patch('api.startup.core_services.WebSocketManager'), \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager') as mock_auth, \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager"),
+        patch("api.startup.core_services.WebSocketManager"),
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager") as mock_auth,
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {}, clear=True),
+    ):
         await init_core_services(state)
 
         mock_auth.assert_called_once_with(state.config, db=None)
@@ -117,13 +120,14 @@ async def test_init_core_services_loads_api_key_from_env():
 
     api_key = "test_api_key_12345678"
 
-    with patch('api.startup.core_services.TenantManager'), \
-         patch('api.startup.core_services.WebSocketManager'), \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager') as mock_auth, \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {'API_KEY': api_key}):
-
+    with (
+        patch("api.startup.core_services.TenantManager"),
+        patch("api.startup.core_services.WebSocketManager"),
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager") as mock_auth,
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {"API_KEY": api_key}),
+    ):
         mock_auth_instance = MagicMock()
         mock_auth_instance.api_keys = {}
         mock_auth.return_value = mock_auth_instance
@@ -147,13 +151,14 @@ async def test_init_core_services_loads_giljo_mcp_api_key():
 
     api_key = "giljo_key_87654321"
 
-    with patch('api.startup.core_services.TenantManager'), \
-         patch('api.startup.core_services.WebSocketManager'), \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager') as mock_auth, \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {'GILJO_MCP_API_KEY': api_key}):
-
+    with (
+        patch("api.startup.core_services.TenantManager"),
+        patch("api.startup.core_services.WebSocketManager"),
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager") as mock_auth,
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {"GILJO_MCP_API_KEY": api_key}),
+    ):
         mock_auth_instance = MagicMock()
         mock_auth_instance.api_keys = {}
         mock_auth.return_value = mock_auth_instance
@@ -173,13 +178,14 @@ async def test_init_core_services_starts_heartbeat_task():
     state.db_manager = MagicMock()
     state.config = MagicMock()
 
-    with patch('api.startup.core_services.TenantManager'), \
-         patch('api.startup.core_services.WebSocketManager') as mock_ws_mgr, \
-         patch('api.startup.core_services.ToolAccessor'), \
-         patch('api.startup.core_services.AuthManager'), \
-         patch('api.startup.core_services.asyncio.create_task') as mock_create_task, \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager"),
+        patch("api.startup.core_services.WebSocketManager") as mock_ws_mgr,
+        patch("api.startup.core_services.ToolAccessor"),
+        patch("api.startup.core_services.AuthManager"),
+        patch("api.startup.core_services.asyncio.create_task") as mock_create_task,
+        patch.dict(os.environ, {}, clear=True),
+    ):
         mock_ws_instance = MagicMock()
         mock_ws_instance.start_heartbeat = MagicMock(return_value=AsyncMock())
         mock_ws_mgr.return_value = mock_ws_instance
@@ -206,31 +212,32 @@ async def test_init_core_services_correct_initialization_order():
     call_order = []
 
     def track_tenant_mgr():
-        call_order.append('tenant')
+        call_order.append("tenant")
         return MagicMock()
 
     def track_ws_mgr():
-        call_order.append('websocket')
+        call_order.append("websocket")
         return MagicMock()
 
     def track_tool_accessor(*args, **kwargs):
-        call_order.append('tool_accessor')
+        call_order.append("tool_accessor")
         return MagicMock()
 
     def track_auth_mgr(*args, **kwargs):
-        call_order.append('auth')
+        call_order.append("auth")
         mock_auth = MagicMock()
         mock_auth.api_keys = {}
         return mock_auth
 
-    with patch('api.startup.core_services.TenantManager', side_effect=track_tenant_mgr), \
-         patch('api.startup.core_services.WebSocketManager', side_effect=track_ws_mgr), \
-         patch('api.startup.core_services.ToolAccessor', side_effect=track_tool_accessor), \
-         patch('api.startup.core_services.AuthManager', side_effect=track_auth_mgr), \
-         patch('api.startup.core_services.asyncio.create_task'), \
-         patch.dict(os.environ, {}, clear=True):
-
+    with (
+        patch("api.startup.core_services.TenantManager", side_effect=track_tenant_mgr),
+        patch("api.startup.core_services.WebSocketManager", side_effect=track_ws_mgr),
+        patch("api.startup.core_services.ToolAccessor", side_effect=track_tool_accessor),
+        patch("api.startup.core_services.AuthManager", side_effect=track_auth_mgr),
+        patch("api.startup.core_services.asyncio.create_task"),
+        patch.dict(os.environ, {}, clear=True),
+    ):
         await init_core_services(state)
 
         # Verify order
-        assert call_order == ['tenant', 'websocket', 'tool_accessor', 'auth']
+        assert call_order == ["tenant", "websocket", "tool_accessor", "auth"]

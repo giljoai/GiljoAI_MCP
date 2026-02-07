@@ -13,13 +13,10 @@ TDD Approach:
 
 import pytest
 import pytest_asyncio
-from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.hash import bcrypt
 
-from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project, User
 
 
 @pytest.mark.asyncio
@@ -39,7 +36,7 @@ class TestProductConfigExtraction:
             email="tenant_a@test.com",
             password_hash=bcrypt.hash("password123"),
             tenant_key="tenant_a",
-            is_active=True
+            is_active=True,
         )
         db_session.add(user)
         await db_session.commit()
@@ -54,7 +51,7 @@ class TestProductConfigExtraction:
             email="tenant_b@test.com",
             password_hash=bcrypt.hash("password123"),
             tenant_key="tenant_b",
-            is_active=True
+            is_active=True,
         )
         db_session.add(user)
         await db_session.commit()
@@ -74,7 +71,7 @@ class TestProductConfigExtraction:
                 "coding_standards": "PEP 8, type hints required, 100% docstring coverage, comprehensive error handling",
                 "deployment_strategy": "Docker containers deployed via GitHub Actions CI/CD pipeline with automated testing",
                 "agent_execution_methodologies": "Sequential execution with dependency tracking, orchestrator monitors progress",
-            }
+            },
         )
         db_session.add(product)
         await db_session.commit()
@@ -90,14 +87,16 @@ class TestProductConfigExtraction:
             product_id=product_with_config.id,
             tenant_key=product_with_config.tenant_key,
             mission="Test project mission for config extraction",
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.commit()
         await db_session.refresh(project)
         return project
 
-    async def test_extract_test_methodology_field(self, mission_planner, product_with_config, project_basic, tenant_a_user):
+    async def test_extract_test_methodology_field(
+        self, mission_planner, product_with_config, project_basic, tenant_a_user
+    ):
         """
         Test 1: test_methodology field can be prioritized and extracted.
 
@@ -115,7 +114,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=field_priorities,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Verify test methodology appears in context
@@ -142,10 +141,10 @@ class TestProductConfigExtraction:
                     "pattern": "MVC",
                     "api_style": "REST",
                     "design_patterns": "Repository, Factory, Observer",
-                    "notes": "Microservices architecture with event-driven communication"
+                    "notes": "Microservices architecture with event-driven communication",
                 },
-                "test_methodology": "TDD with pytest"
-            }
+                "test_methodology": "TDD with pytest",
+            },
         )
         db_session.add(product)
 
@@ -154,7 +153,7 @@ class TestProductConfigExtraction:
             description="Test project",
             product_id=product.id,
             tenant_key=product.tenant_key,
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.commit()
@@ -168,10 +167,7 @@ class TestProductConfigExtraction:
         }
 
         context = await mission_planner._build_context_with_priorities(
-            product=product,
-            project=project,
-            field_priorities=field_priorities,
-            user_id=str(tenant_a_user.id)
+            product=product, project=project, field_priorities=field_priorities, user_id=str(tenant_a_user.id)
         )
 
         # Verify dict fields combined correctly
@@ -198,7 +194,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=minimal_priorities,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Test abbreviated detail (priority 4-6)
@@ -207,7 +203,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=abbreviated_priorities,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Test full detail (priority 10)
@@ -216,7 +212,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=full_priorities,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Verify detail level progression
@@ -225,8 +221,9 @@ class TestProductConfigExtraction:
         full_tokens = mission_planner._count_tokens(full_context)
 
         # Token counts should increase with detail level
-        assert minimal_tokens < abbreviated_tokens < full_tokens, \
+        assert minimal_tokens < abbreviated_tokens < full_tokens, (
             f"Token progression incorrect: minimal={minimal_tokens}, abbreviated={abbreviated_tokens}, full={full_tokens}"
+        )
 
         # Full detail should contain complete text
         assert "Red-Green-Refactor" in full_context
@@ -247,8 +244,8 @@ class TestProductConfigExtraction:
             tenant_key=tenant_a_user.tenant_key,
             config_data={
                 "test_methodology": "Tenant A uses TDD with pytest",
-                "coding_standards": "Tenant A: PEP 8 strict"
-            }
+                "coding_standards": "Tenant A: PEP 8 strict",
+            },
         )
         db_session.add(product_a)
 
@@ -259,8 +256,8 @@ class TestProductConfigExtraction:
             tenant_key=tenant_b_user.tenant_key,
             config_data={
                 "test_methodology": "Tenant B uses BDD with Cucumber",
-                "coding_standards": "Tenant B: Google Style Guide"
-            }
+                "coding_standards": "Tenant B: Google Style Guide",
+            },
         )
         db_session.add(product_b)
 
@@ -270,7 +267,7 @@ class TestProductConfigExtraction:
             description="Tenant A project",
             product_id=product_a.id,
             tenant_key=product_a.tenant_key,
-            status="active"
+            status="active",
         )
         db_session.add(project_a)
 
@@ -279,7 +276,7 @@ class TestProductConfigExtraction:
             description="Tenant B project",
             product_id=product_b.id,
             tenant_key=product_b.tenant_key,
-            status="active"
+            status="active",
         )
         db_session.add(project_b)
 
@@ -296,17 +293,11 @@ class TestProductConfigExtraction:
         }
 
         context_a = await mission_planner._build_context_with_priorities(
-            product=product_a,
-            project=project_a,
-            field_priorities=field_priorities,
-            user_id=str(tenant_a_user.id)
+            product=product_a, project=project_a, field_priorities=field_priorities, user_id=str(tenant_a_user.id)
         )
 
         context_b = await mission_planner._build_context_with_priorities(
-            product=product_b,
-            project=project_b,
-            field_priorities=field_priorities,
-            user_id=str(tenant_b_user.id)
+            product=product_b, project=project_b, field_priorities=field_priorities, user_id=str(tenant_b_user.id)
         )
 
         # Verify tenant isolation
@@ -331,7 +322,7 @@ class TestProductConfigExtraction:
             config_data={
                 "architecture": "Simple monolithic architecture",
                 # Missing: test_methodology, coding_standards, deployment_strategy
-            }
+            },
         )
         db_session.add(product)
 
@@ -340,7 +331,7 @@ class TestProductConfigExtraction:
             description="Test project",
             product_id=product.id,
             tenant_key=product.tenant_key,
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.commit()
@@ -357,10 +348,7 @@ class TestProductConfigExtraction:
 
         # Should not raise errors
         context = await mission_planner._build_context_with_priorities(
-            product=product,
-            project=project,
-            field_priorities=field_priorities,
-            user_id=str(tenant_a_user.id)
+            product=product, project=project, field_priorities=field_priorities, user_id=str(tenant_a_user.id)
         )
 
         # Verify context contains available field only
@@ -384,7 +372,7 @@ class TestProductConfigExtraction:
             config_data={
                 "custom_workflow": "Use Kanban board with 2-week sprints",
                 "custom_guidelines": "All PRs require 2 approvals",
-            }
+            },
         )
         db_session.add(product)
 
@@ -393,7 +381,7 @@ class TestProductConfigExtraction:
             description="Test project",
             product_id=product.id,
             tenant_key=product.tenant_key,
-            status="active"
+            status="active",
         )
         db_session.add(project)
         await db_session.commit()
@@ -407,17 +395,16 @@ class TestProductConfigExtraction:
         }
 
         context = await mission_planner._build_context_with_priorities(
-            product=product,
-            project=project,
-            field_priorities=field_priorities,
-            user_id=str(tenant_a_user.id)
+            product=product, project=project, field_priorities=field_priorities, user_id=str(tenant_a_user.id)
         )
 
         # Verify custom fields extracted
         assert "Kanban" in context or "workflow" in context.lower()
         assert "PRs" in context or "approvals" in context.lower()
 
-    async def test_architecture_field_still_works(self, mission_planner, product_with_config, project_basic, tenant_a_user):
+    async def test_architecture_field_still_works(
+        self, mission_planner, product_with_config, project_basic, tenant_a_user
+    ):
         """
         Test 7: Existing architecture extraction unchanged (backward compatibility).
 
@@ -439,7 +426,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=field_priorities_old,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Test new key
@@ -447,7 +434,7 @@ class TestProductConfigExtraction:
             product=product_with_config,
             project=project_basic,
             field_priorities=field_priorities_new,
-            user_id=str(tenant_a_user.id)
+            user_id=str(tenant_a_user.id),
         )
 
         # Both should extract architecture

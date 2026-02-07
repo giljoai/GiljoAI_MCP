@@ -3,19 +3,16 @@ Unit tests for Agent Health Monitoring System.
 Following TDD: Tests written BEFORE implementation.
 """
 
-import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from sqlalchemy import select
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models import Project, Product
+import pytest
+
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
-from src.giljo_mcp.monitoring.health_config import (
-    HealthCheckConfig,
-    AgentHealthStatus
-)
+from src.giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
 
 
 class TestHealthCheckConfig:
@@ -59,7 +56,7 @@ class TestHealthCheckConfig:
             scan_interval_seconds=600,
             auto_fail_on_timeout=True,
             notify_orchestrator=False,
-            timeout_overrides={"custom_agent": 30}
+            timeout_overrides={"custom_agent": 30},
         )
 
         assert config.waiting_timeout_minutes == 5
@@ -85,7 +82,7 @@ class TestAgentHealthStatus:
             last_update=now,
             minutes_since_update=6.5,
             issue_description="No progress for 6.5 minutes",
-            recommended_action="Check agent logs"
+            recommended_action="Check agent logs",
         )
 
         assert status.job_id == "test-job-1"
@@ -125,15 +122,13 @@ class TestAgentHealthMonitor:
             active_no_progress_minutes=5,
             heartbeat_timeout_minutes=10,
             scan_interval_seconds=1,  # Fast for testing
-            auto_fail_on_timeout=False
+            auto_fail_on_timeout=False,
         )
 
     @pytest.fixture
     async def monitor(self, mock_db_manager, mock_ws_manager, test_config):
         """Create health monitor instance."""
         return AgentHealthMonitor(mock_db_manager, mock_ws_manager, test_config)
-
-
 
     async def create_test_data(
         self,
@@ -148,16 +143,11 @@ class TestAgentHealthMonitor:
         last_progress_at=None,
         last_message_check_at=None,
         job_metadata=None,
-        project_status: str = "active"
+        project_status: str = "active",
     ):
         """Create test data with proper hierarchy. Handover 0424."""
         # Create Product (use job_id to ensure uniqueness across multiple calls)
-        product = Product(
-            id=f"prod-{job_id}",
-            tenant_key=tenant_key,
-            name="Test Product",
-            description="Test"
-        )
+        product = Product(id=f"prod-{job_id}", tenant_key=tenant_key, name="Test Product", description="Test")
         session.add(product)
         await session.flush()
 
@@ -170,7 +160,7 @@ class TestAgentHealthMonitor:
             description="Test",
             mission="Test mission",
             status=project_status,
-            deleted_at=None
+            deleted_at=None,
         )
         session.add(project)
         await session.flush()
@@ -182,7 +172,7 @@ class TestAgentHealthMonitor:
             project_id=project.id,
             mission="Test mission",
             job_type=agent_display_name,
-            created_at=created_at or datetime.now(timezone.utc)
+            created_at=created_at or datetime.now(timezone.utc),
         )
         session.add(job)
         await session.flush()
@@ -195,7 +185,7 @@ class TestAgentHealthMonitor:
             status=status,
             started_at=started_at,
             last_progress_at=last_progress_at,
-            last_message_check_at=last_message_check_at
+            last_message_check_at=last_message_check_at,
         )
         execution.job = job  # Set relationship
         session.add(execution)
@@ -255,7 +245,7 @@ class TestAgentHealthMonitor:
             job_id="test-job-waiting-1",
             tenant_key="test-tenant",
             status="waiting",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=3)
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=3),
         )
 
         unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
@@ -266,7 +256,6 @@ class TestAgentHealthMonitor:
         assert "never acknowledged" in unhealthy[0].issue_description.lower()
         assert unhealthy[0].minutes_since_update >= 2
 
-
     async def test_no_waiting_timeout_for_recent_jobs(self, monitor, db_session):
         """Test recent waiting jobs are not flagged."""
         session = db_session
@@ -275,13 +264,12 @@ class TestAgentHealthMonitor:
             job_id="test-job-waiting-2",
             tenant_key="test-tenant",
             status="waiting",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=1)
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         )
 
         unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
 
         assert len(unhealthy) == 0
-
 
     async def test_detect_stalled_job_warning(self, monitor, db_session):
         """Test detection of active jobs without progress (warning state)."""
@@ -295,7 +283,7 @@ class TestAgentHealthMonitor:
             created_at=stale_time - timedelta(minutes=1),
             started_at=stale_time,
             updated_at=stale_time,
-            last_progress_at=stale_time
+            last_progress_at=stale_time,
         )
 
         unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
@@ -305,7 +293,6 @@ class TestAgentHealthMonitor:
         assert unhealthy[0].health_state in ["warning", "critical"]
         assert unhealthy[0].minutes_since_update >= 5
         assert "no progress" in unhealthy[0].issue_description.lower()
-
 
     async def test_detect_stalled_job_critical(self, monitor, db_session):
         """Test detection of active jobs without progress (critical state)."""
@@ -319,14 +306,13 @@ class TestAgentHealthMonitor:
             created_at=stale_time - timedelta(minutes=1),
             started_at=stale_time,
             updated_at=stale_time,
-            last_progress_at=stale_time
+            last_progress_at=stale_time,
         )
 
         unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
         assert len(unhealthy) == 1
         assert unhealthy[0].health_state == "critical"
-
 
     async def test_detect_stalled_job_timeout(self, monitor, db_session):
         """Test detection of active jobs without progress (timeout state)."""
@@ -340,14 +326,13 @@ class TestAgentHealthMonitor:
             created_at=stale_time - timedelta(minutes=1),
             started_at=stale_time,
             updated_at=stale_time,
-            last_progress_at=stale_time
+            last_progress_at=stale_time,
         )
 
         unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
         assert len(unhealthy) == 1
         assert unhealthy[0].health_state == "timeout"
-
 
     async def test_no_stalled_detection_for_active_jobs(self, monitor, db_session):
         """Test active jobs with recent progress are not flagged."""
@@ -361,13 +346,12 @@ class TestAgentHealthMonitor:
             created_at=recent_time - timedelta(minutes=1),
             started_at=recent_time,
             updated_at=recent_time,
-            last_progress_at=recent_time
+            last_progress_at=recent_time,
         )
 
         unhealthy = await monitor._detect_stalled_jobs(session, "test-tenant")
 
         assert len(unhealthy) == 0
-
 
     async def test_agent_display_name_specific_timeouts(self, monitor, db_session):
         """Test orchestrators get longer timeout than other agents."""
@@ -383,7 +367,7 @@ class TestAgentHealthMonitor:
             created_at=silent_time - timedelta(minutes=1),
             started_at=silent_time,
             updated_at=silent_time,
-            last_progress_at=silent_time
+            last_progress_at=silent_time,
         )
 
         await self.create_test_data(
@@ -395,7 +379,7 @@ class TestAgentHealthMonitor:
             created_at=silent_time - timedelta(minutes=1),
             started_at=silent_time,
             updated_at=silent_time,
-            last_progress_at=silent_time
+            last_progress_at=silent_time,
         )
 
         unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
@@ -403,7 +387,6 @@ class TestAgentHealthMonitor:
         unhealthy_ids = [h.job_id for h in unhealthy]
         assert "impl-1" in unhealthy_ids
         assert "orch-1" not in unhealthy_ids
-
 
     async def test_detect_heartbeat_failure(self, monitor, db_session):
         """Test detection of jobs with extended silence."""
@@ -416,7 +399,7 @@ class TestAgentHealthMonitor:
             status="working",
             created_at=silent_time - timedelta(minutes=1),
             started_at=silent_time,
-            updated_at=silent_time
+            updated_at=silent_time,
         )
 
         unhealthy = await monitor._detect_heartbeat_failures(session, "test-tenant")
@@ -427,7 +410,6 @@ class TestAgentHealthMonitor:
         assert "silence" in unhealthy[0].issue_description.lower()
         assert unhealthy[0].minutes_since_update >= 10
 
-
     async def test_get_last_progress_time_from_metadata(self, monitor):
         """Test extracting last progress time from job metadata."""
         progress_time = datetime.now(timezone.utc) - timedelta(minutes=5)
@@ -437,7 +419,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             mission="Test mission",
             job_type="implementer",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=10)
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
         )
 
         execution = AgentExecution(
@@ -446,14 +428,13 @@ class TestAgentHealthMonitor:
             agent_display_name="implementer",
             status="working",
             started_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            last_progress_at=progress_time
+            last_progress_at=progress_time,
         )
         execution.job = mock_job
 
         result = monitor._get_last_progress_time(execution)
 
         assert result == progress_time
-
 
     async def test_get_last_progress_time_fallback(self, monitor):
         """Test fallback to started_at when no progress metadata."""
@@ -464,7 +445,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             mission="Test mission",
             job_type="implementer",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=10)
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
         )
 
         execution = AgentExecution(
@@ -473,14 +454,13 @@ class TestAgentHealthMonitor:
             agent_display_name="implementer",
             status="working",
             started_at=started_time,
-            last_progress_at=None
+            last_progress_at=None,
         )
         execution.job = mock_job
 
         result = monitor._get_last_progress_time(execution)
 
         assert result == started_time
-
 
     async def test_get_last_activity_time(self, monitor):
         """Test getting most recent activity timestamp."""
@@ -491,7 +471,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             mission="Test mission",
             job_type="implementer",
-            created_at=now - timedelta(minutes=10)
+            created_at=now - timedelta(minutes=10),
         )
 
         execution = AgentExecution(
@@ -501,7 +481,7 @@ class TestAgentHealthMonitor:
             status="working",
             started_at=now - timedelta(minutes=8),
             last_progress_at=now - timedelta(minutes=5),
-            last_message_check_at=now - timedelta(minutes=6)
+            last_message_check_at=now - timedelta(minutes=6),
         )
         execution.job = mock_job
 
@@ -510,15 +490,11 @@ class TestAgentHealthMonitor:
         # Should return the most recent timestamp (last_progress_at is 5 minutes ago, most recent)
         assert result == execution.last_progress_at
 
-
     async def test_handle_unhealthy_job_warning(self, monitor, mock_ws_manager, db_session):
         """Test handling unhealthy job in warning state."""
         session = db_session
         execution = await self.create_test_data(
-            session,
-            job_id="test-job-warning",
-            tenant_key="test-tenant",
-            status="working"
+            session, job_id="test-job-warning", tenant_key="test-tenant", status="working"
         )
 
         health_status = AgentHealthStatus(
@@ -530,7 +506,7 @@ class TestAgentHealthMonitor:
             last_update=datetime.now(timezone.utc) - timedelta(minutes=6),
             minutes_since_update=6.0,
             issue_description="No progress for 6 minutes",
-            recommended_action="Check agent logs"
+            recommended_action="Check agent logs",
         )
 
         monitor.ws = mock_ws_manager
@@ -545,17 +521,13 @@ class TestAgentHealthMonitor:
 
         mock_ws_manager.broadcast_health_alert.assert_called_once()
 
-
     async def test_handle_unhealthy_job_timeout_no_auto_fail(self, monitor, mock_ws_manager, db_session):
         """Test handling timeout without auto-fail enabled."""
         session = db_session
         monitor.config.auto_fail_on_timeout = False
 
         execution = await self.create_test_data(
-            session,
-            job_id="test-job-timeout-1",
-            tenant_key="test-tenant",
-            status="working"
+            session, job_id="test-job-timeout-1", tenant_key="test-tenant", status="working"
         )
 
         health_status = AgentHealthStatus(
@@ -567,7 +539,7 @@ class TestAgentHealthMonitor:
             last_update=datetime.now(timezone.utc) - timedelta(minutes=15),
             minutes_since_update=15.0,
             issue_description="Timeout",
-            recommended_action="Manual intervention"
+            recommended_action="Manual intervention",
         )
 
         monitor.ws = mock_ws_manager
@@ -582,7 +554,6 @@ class TestAgentHealthMonitor:
         mock_ws_manager.broadcast_health_alert.assert_called_once()
         mock_ws_manager.broadcast_agent_auto_failed.assert_not_called()
 
-
     async def test_auto_fail_on_timeout(self, monitor, mock_ws_manager, db_session):
         """Test auto-fail when configured."""
         session = db_session
@@ -594,7 +565,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             status="working",
             started_at=datetime.now(timezone.utc) - timedelta(minutes=15),
-            updated_at=datetime.now(timezone.utc) - timedelta(minutes=15)
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=15),
         )
 
         health_status = AgentHealthStatus(
@@ -606,7 +577,7 @@ class TestAgentHealthMonitor:
             last_update=execution.started_at,
             minutes_since_update=15.0,
             issue_description="Complete silence for 15 minutes",
-            recommended_action="Auto-fail"
+            recommended_action="Auto-fail",
         )
 
         monitor.ws = mock_ws_manager
@@ -624,7 +595,6 @@ class TestAgentHealthMonitor:
         assert call_args[1]["tenant_key"] == "test-tenant"
         assert call_args[1]["job_id"] == "timeout-job"
 
-
     async def test_multi_tenant_isolation(self, monitor, db_session):
         """Test health checks respect tenant boundaries."""
         session = db_session
@@ -638,7 +608,7 @@ class TestAgentHealthMonitor:
             created_at=stale_time,
             started_at=stale_time,
             updated_at=stale_time,
-            last_progress_at=stale_time
+            last_progress_at=stale_time,
         )
 
         await self.create_test_data(
@@ -649,7 +619,7 @@ class TestAgentHealthMonitor:
             created_at=stale_time,
             started_at=stale_time,
             updated_at=stale_time,
-            last_progress_at=stale_time
+            last_progress_at=stale_time,
         )
 
         unhealthy_a = await monitor._detect_stalled_jobs(session, "tenant-a")
@@ -661,7 +631,6 @@ class TestAgentHealthMonitor:
 
         assert len(unhealthy_b) == 1
         assert unhealthy_b[0].job_id == "job-tenant-b"
-
 
     async def test_monitoring_loop_error_recovery(self, monitor):
         """Test monitoring loop continues after errors."""
@@ -694,12 +663,7 @@ class TestAgentHealthMonitor:
         session = db_session
 
         for i in range(6):
-            await self.create_test_data(
-                session,
-                job_id=f"job-{i}",
-                tenant_key=f"tenant-{i % 3}",
-                status="working"
-            )
+            await self.create_test_data(session, job_id=f"job-{i}", tenant_key=f"tenant-{i % 3}", status="working")
 
         tenants = await monitor._get_all_tenants(session)
 
@@ -708,7 +672,6 @@ class TestAgentHealthMonitor:
         assert "tenant-0" in tenant_set
         assert "tenant-1" in tenant_set
         assert "tenant-2" in tenant_set
-
 
     async def test_scan_tenant_jobs_combines_all_detections(self, monitor, db_session):
         """Test scan combines waiting, stalled, and heartbeat detections."""
@@ -721,7 +684,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             status="waiting",
             created_at=now - timedelta(minutes=3),
-            updated_at=now - timedelta(minutes=3)
+            updated_at=now - timedelta(minutes=3),
         )
 
         await self.create_test_data(
@@ -732,7 +695,7 @@ class TestAgentHealthMonitor:
             created_at=now - timedelta(minutes=7),
             started_at=now - timedelta(minutes=6),
             updated_at=now - timedelta(minutes=6),
-            last_progress_at=now - timedelta(minutes=6)
+            last_progress_at=now - timedelta(minutes=6),
         )
 
         await self.create_test_data(
@@ -744,7 +707,7 @@ class TestAgentHealthMonitor:
             created_at=now - timedelta(minutes=13),
             started_at=now - timedelta(minutes=12),
             updated_at=now - timedelta(minutes=12),
-            last_progress_at=now - timedelta(minutes=12)
+            last_progress_at=now - timedelta(minutes=12),
         )
 
         unhealthy = await monitor._scan_tenant_jobs(session, "test-tenant")
@@ -754,4 +717,3 @@ class TestAgentHealthMonitor:
         assert "waiting-timeout" in job_ids
         assert "stalled-job" in job_ids
         assert "heartbeat-fail" in job_ids
-

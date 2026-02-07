@@ -2,15 +2,16 @@
 Integration test fixtures for Handover 0316
 """
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from httpx import ASGITransport, AsyncClient
-from src.giljo_mcp.models import User, Product, Project
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -54,7 +55,7 @@ async def test_user(db_session: AsyncSession):
         name=f"Test User Org {unique_suffix}",
         slug=f"test-user-org-{unique_suffix}",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(org)
     await db_session.flush()
@@ -93,7 +94,7 @@ async def test_user_2(db_session: AsyncSession):
         name=f"Test User 2 Org {unique_suffix}",
         slug=f"test-user-2-org-{unique_suffix}",
         tenant_key=tenant_key,  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(org)
     await db_session.flush()
@@ -118,10 +119,7 @@ async def auth_headers(test_user: User) -> dict:
     from src.giljo_mcp.auth.jwt_manager import JWTManager
 
     token = JWTManager.create_access_token(
-        user_id=test_user.id,
-        username=test_user.username,
-        role=test_user.role,
-        tenant_key=test_user.tenant_key
+        user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
     )
 
     return {"Authorization": f"Bearer {token}"}
@@ -133,10 +131,7 @@ async def auth_headers_user_2(test_user_2: User) -> dict:
     from src.giljo_mcp.auth.jwt_manager import JWTManager
 
     token = JWTManager.create_access_token(
-        user_id=test_user_2.id,
-        username=test_user_2.username,
-        role=test_user_2.role,
-        tenant_key=test_user_2.tenant_key
+        user_id=test_user_2.id, username=test_user_2.username, role=test_user_2.role, tenant_key=test_user_2.tenant_key
     )
 
     return {"Authorization": f"Bearer {token}"}
@@ -303,7 +298,7 @@ def mock_websocket_manager():
 @pytest_asyncio.fixture
 async def test_api_key(db_session: AsyncSession, test_user: User) -> tuple[str, str]:
     """Create test API key and return (api_key_record, plaintext_key)"""
-    from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
+    from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
     from src.giljo_mcp.models import APIKey
 
     plaintext_key = generate_api_key()
@@ -329,7 +324,9 @@ async def test_api_key(db_session: AsyncSession, test_user: User) -> tuple[str, 
 
 
 @pytest_asyncio.fixture
-async def test_client(db_manager: DatabaseManager, db_session: AsyncSession, test_user: User, test_api_key, mock_websocket_manager):
+async def test_client(
+    db_manager: DatabaseManager, db_session: AsyncSession, test_user: User, test_api_key, mock_websocket_manager
+):
     """Create AsyncClient with authenticated user, tenant context, and WebSocket manager injected."""
     from api.app import app, state
     from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -365,11 +362,8 @@ async def test_client(db_manager: DatabaseManager, db_session: AsyncSession, tes
 
     # Recreate ToolAccessor with WebSocket manager injected
     from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-    state.tool_accessor = ToolAccessor(
-        state.db_manager,
-        state.tenant_manager,
-        websocket_manager=mock_websocket_manager
-    )
+
+    state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager, websocket_manager=mock_websocket_manager)
 
     app.dependency_overrides[get_current_active_user] = mock_get_current_user
     app.dependency_overrides[get_db_session] = mock_get_db_session
@@ -386,7 +380,7 @@ async def test_client(db_manager: DatabaseManager, db_session: AsyncSession, tes
 @pytest_asyncio.fixture
 async def test_project_with_orchestrator(db_session: AsyncSession, test_user: User, test_product: Product):
     """Create test project with orchestrator job"""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution
 
     project = Project(
         name=f"Test Project with Orchestrator {uuid4().hex[:8]}",

@@ -188,7 +188,6 @@ class TestOrchestrationToolsHTTPExposure:
         # Should return structured error, not crash
         assert "error" in result or "job_id" in result
 
-
     @pytest.mark.asyncio
     async def test_get_workflow_status_accessible(self, db_manager):
         """Test get_workflow_status method exists"""
