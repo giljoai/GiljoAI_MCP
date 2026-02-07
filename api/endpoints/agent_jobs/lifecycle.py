@@ -92,7 +92,7 @@ async def spawn_agent_job(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error spawning agent: {e}")
+        logger.exception("Unexpected error spawning agent")
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
     # Broadcast WebSocket event for real-time UI
@@ -175,7 +175,7 @@ async def acknowledge_job(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error acknowledging job: {e}")
+        logger.exception("Unexpected error acknowledging job")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -230,7 +230,7 @@ async def complete_job(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error completing job: {e}")
+        logger.exception("Unexpected error completing job")
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
@@ -283,5 +283,5 @@ async def report_job_error(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error reporting job error: {e}")
+        logger.exception("Unexpected error reporting job error")
         raise HTTPException(status_code=500, detail="Internal server error") from e

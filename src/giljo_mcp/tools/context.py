@@ -75,7 +75,7 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
         return {"success": True, "index": index}
 
     except Exception as e:
-        logger.exception(f"Failed to get vision index: {e}")
+        logger.exception("Failed to get vision index")
         return {"success": False, "error": str(e)}
 
 
@@ -150,7 +150,7 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
             }
 
     except Exception as e:
-        logger.exception(f"Failed to get vision: {e}")
+        logger.exception("Failed to get vision")
         return {"success": False, "error": str(e)}
 
 
@@ -223,7 +223,7 @@ async def get_vision_index() -> dict[str, Any]:
             }
 
     except Exception as e:
-        logger.exception(f"Failed to get vision index: {e}")
+        logger.exception("Failed to get vision index")
         return {"success": False, "error": str(e)}
 
 
@@ -307,7 +307,7 @@ async def fetch_context(
             }
 
     except Exception as e:
-        logger.exception(f"Failed to fetch context: {e}")
+        logger.exception("Failed to fetch context")
         return {"success": False, "error": str(e)}
 
 
@@ -373,7 +373,7 @@ async def get_context_history(
             }
 
     except Exception as e:
-        logger.exception(f"Failed to get context history: {e}")
+        logger.exception("Failed to get context history")
         return {"success": False, "error": str(e)}
 
 
@@ -456,5 +456,5 @@ async def get_succession_context(
             }
 
     except Exception as e:
-        logger.exception(f"Failed to get succession context: {e}")
+        logger.exception("Failed to get succession context")
         return {"success": False, "error": str(e)}

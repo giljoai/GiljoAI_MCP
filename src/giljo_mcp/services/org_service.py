@@ -85,7 +85,7 @@ class OrgService:
             return {"success": True, "data": org}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to create organization: {e}")
+            logger.exception("Failed to create organization")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -110,7 +110,7 @@ class OrgService:
             return {"success": True, "data": org}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to get organization: {e}")
+            logger.exception("Failed to get organization")
             return {"success": False, "error": str(e)}
 
     async def get_organization_by_slug(self, slug: str) -> dict[str, Any]:
@@ -127,7 +127,7 @@ class OrgService:
             return {"success": True, "data": org}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to get organization by slug: {e}")
+            logger.exception("Failed to get organization by slug")
             return {"success": False, "error": str(e)}
 
     async def update_organization(
@@ -154,7 +154,7 @@ class OrgService:
             return await self.get_organization(org_id)
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to update organization: {e}")
+            logger.exception("Failed to update organization")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -175,7 +175,7 @@ class OrgService:
             return {"success": True, "data": {"deleted": True}}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to delete organization: {e}")
+            logger.exception("Failed to delete organization")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -229,7 +229,7 @@ class OrgService:
             return {"success": True, "data": membership}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to invite member: {e}")
+            logger.exception("Failed to invite member")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -252,7 +252,7 @@ class OrgService:
             return {"success": True, "data": {"removed": True}}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to remove member: {e}")
+            logger.exception("Failed to remove member")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -278,7 +278,7 @@ class OrgService:
             return {"success": True, "data": membership}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to change member role: {e}")
+            logger.exception("Failed to change member role")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -306,7 +306,7 @@ class OrgService:
             return {"success": True, "data": {"transferred": True}}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to transfer ownership: {e}")
+            logger.exception("Failed to transfer ownership")
             await self.session.rollback()
             return {"success": False, "error": str(e)}
 
@@ -325,7 +325,7 @@ class OrgService:
             return {"success": True, "data": list(members)}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to list members: {e}")
+            logger.exception("Failed to list members")
             return {"success": False, "error": str(e)}
 
     # =========================================================================
@@ -338,9 +338,7 @@ class OrgService:
             stmt = (
                 select(Organization)
                 .join(OrgMembership, Organization.id == OrgMembership.org_id)
-                .where(
-                    OrgMembership.user_id == user_id, OrgMembership.is_active, Organization.is_active
-                )
+                .where(OrgMembership.user_id == user_id, OrgMembership.is_active, Organization.is_active)
                 .options(selectinload(Organization.members))
             )
 
@@ -350,7 +348,7 @@ class OrgService:
             return {"success": True, "data": list(orgs)}
 
         except SQLAlchemyError as e:
-            logger.error(f"Failed to get user organizations: {e}")
+            logger.exception("Failed to get user organizations")
             return {"success": False, "error": str(e)}
 
     async def get_user_role(self, org_id: str, user_id: str) -> Optional[str]:

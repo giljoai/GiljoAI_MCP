@@ -204,7 +204,7 @@ async def get_network_adapters():
         return NetworkAdaptersResponse(adapters=adapters, recommended=recommended)
 
     except ImportError as e:
-        logger.error("psutil library not available")
+        logger.exception("psutil library not available")
         raise HTTPException(
             status_code=500,
             detail="Network adapter detection requires psutil library. Install with: pip install psutil",

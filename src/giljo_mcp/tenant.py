@@ -222,10 +222,7 @@ class TenantManager:
             Query with tenant filter applied
         """
         # Determine which tenant key to use
-        if tenant_key:
-            key_to_use = tenant_key
-        else:
-            key_to_use = cls.get_current_tenant()
+        key_to_use = tenant_key or cls.get_current_tenant()
 
         # Only apply filter if model has tenant_key and we have a key
         if key_to_use and hasattr(model, "tenant_key"):

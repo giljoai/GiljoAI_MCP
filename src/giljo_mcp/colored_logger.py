@@ -73,10 +73,7 @@ class ColoredFormatter(logging.Formatter):
             Formatted and colored log message
         """
         # Get the color for this log level
-        if record.levelno == self.SUCCESS:
-            color = Fore.GREEN
-        else:
-            color = self.COLORS.get(record.levelno, Fore.WHITE)
+        color = Fore.GREEN if record.levelno == self.SUCCESS else self.COLORS.get(record.levelno, Fore.WHITE)
 
         # Save the original level name
         original_levelname = record.levelname

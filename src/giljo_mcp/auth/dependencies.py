@@ -64,7 +64,7 @@ async def get_db_session(request: Request = None):
         db_manager = request.app.state.api_state.db_manager
     except AttributeError as e:
         # Fallback if app state not available
-        logger.error("db_manager not available in app state")
+        logger.exception("db_manager not available in app state")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database not initialized - system may be in setup mode",
@@ -203,8 +203,8 @@ async def get_current_user(
                     break
 
             logger.warning("Invalid API key provided")
-        except (ValueError, KeyError) as e:
-            logger.error(f"API key authentication error: {e}")
+        except (ValueError, KeyError):
+            logger.exception("API key authentication error")
 
     # No valid authentication found
     logger.error(

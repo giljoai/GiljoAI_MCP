@@ -138,7 +138,7 @@ async def list_templates(
         return [_convert_to_response(t) for t in templates]
 
     except Exception as e:
-        logger.exception(f"Failed to list templates: {e}")
+        logger.exception("Failed to list templates")
         raise HTTPException(status_code=500, detail=f"Failed to list templates: {e!s}") from e
 
 
@@ -236,7 +236,7 @@ async def create_template(
     except HTTPException:
         raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
-        logger.error(f"Failed to create template: {e}")
+        logger.exception("Failed to create template")
         raise HTTPException(status_code=500, detail=f"Failed to create template: {e!s}") from e
 
 
@@ -320,7 +320,7 @@ async def update_template(
     except HTTPException:
         raise  # Re-raise HTTP exceptions (400, 403, 404, 409, etc.) without modification
     except Exception as e:
-        logger.error(f"Failed to update template: {e}")
+        logger.exception("Failed to update template")
         raise HTTPException(status_code=500, detail=f"Failed to update template: {e!s}") from e
 
 
@@ -370,7 +370,7 @@ async def delete_template(
     except HTTPException:
         raise  # Re-raise HTTP exceptions (403, 404, 500, etc.) without modification
     except Exception as e:
-        logger.error(f"Failed to delete template: {e}")
+        logger.exception("Failed to delete template")
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}") from e
 
@@ -398,5 +398,5 @@ async def get_active_count(
         }
 
     except Exception as e:
-        logger.error(f"Failed to get active count: {e}")
+        logger.exception("Failed to get active count")
         raise HTTPException(status_code=500, detail=str(e)) from e

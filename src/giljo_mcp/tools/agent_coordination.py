@@ -15,10 +15,11 @@ Production-grade features:
 import logging
 from typing import Any
 
-from ..database import DatabaseManager
+from src.giljo_mcp.database import DatabaseManager
 
 
 logger = logging.getLogger(__name__)
+
 
 # Module-level state holder
 class _AgentCoordinationState:
@@ -132,7 +133,7 @@ async def spawn_agent(
 
         from sqlalchemy import select
 
-        from ..models.agent_identity import AgentExecution, AgentJob
+        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         # Get database manager
         db_manager = _get_db_manager()
@@ -294,7 +295,7 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
         # Import models
         from sqlalchemy import select
 
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         # Get database manager
         db_manager = _get_db_manager()
@@ -453,8 +454,8 @@ async def get_team_agents(
             }
 
         # Import service and models
-        from ..services.agent_job_manager import AgentJobManager
-        from ..tenant import TenantManager
+        from giljo_mcp.services.agent_job_manager import AgentJobManager
+        from giljo_mcp.tenant import TenantManager
 
         # Get database manager
         db_manager = _get_db_manager()

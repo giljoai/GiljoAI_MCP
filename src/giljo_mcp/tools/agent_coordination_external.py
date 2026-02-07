@@ -29,7 +29,7 @@ from typing import Any
 
 import aiohttp
 
-from ..config_manager import ConfigManager
+from src.giljo_mcp.config_manager import ConfigManager
 
 
 logger = logging.getLogger(__name__)
@@ -132,11 +132,11 @@ class ExternalAgentCoordinationTools:
                     logger.error(f"[_authenticate] Authentication failed: status={resp.status}, error={error_text}")
                     return False
 
-            except aiohttp.ClientConnectorError as e:
-                logger.error(f"[_authenticate] Connection error: {e}")
+            except aiohttp.ClientConnectorError:
+                logger.exception("[_authenticate] Connection error")
                 return False
             except asyncio.TimeoutError:
-                logger.error("[_authenticate] Authentication timeout")
+                logger.exception("[_authenticate] Authentication timeout")
                 return False
             except Exception as e:
                 logger.error(f"[_authenticate] Unexpected error during authentication: {e}", exc_info=True)
@@ -253,7 +253,7 @@ class ExternalAgentCoordinationTools:
                 return {"status": "error", "error": f"HTTP {resp.status}: {error_detail}"}
 
         except aiohttp.ClientConnectorError as e:
-            logger.error(f"[_make_request] Connection error: {e}")
+            logger.exception("[_make_request] Connection error")
 
             # Retry transient connection errors
             if retry_count < self.max_retries:
@@ -269,7 +269,7 @@ class ExternalAgentCoordinationTools:
             return {"status": "error", "error": f"API server unavailable after {self.max_retries} retries: {e!s}"}
 
         except asyncio.TimeoutError:
-            logger.error(f"[_make_request] Request timeout after {self.timeout.total}s")
+            logger.exception(f"[_make_request] Request timeout after {self.timeout.total}s")
             return {"status": "error", "error": f"Request timeout after {self.timeout.total} seconds"}
 
         except Exception as e:

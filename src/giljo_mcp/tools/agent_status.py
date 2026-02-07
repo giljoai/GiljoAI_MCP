@@ -23,7 +23,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from ..models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancel
 
 # Terminal states (cannot transition from these)
 TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
+
 
 # Module-level state holder
 class _AgentStatusState:
@@ -131,7 +132,7 @@ async def set_agent_status(
 
         # Use module-level db_manager (injected by tests or register function)
         if _AgentStatusState.db_manager is None:
-            from ..database import DatabaseManager
+            from giljo_mcp.database import DatabaseManager
 
             db_manager = DatabaseManager()
         else:
@@ -276,7 +277,7 @@ async def report_progress(
 
         # Use module-level db_manager (injected by tests or register function)
         if _AgentStatusState.db_manager is None:
-            from ..database import DatabaseManager
+            from giljo_mcp.database import DatabaseManager
 
             db_manager = DatabaseManager()
         else:

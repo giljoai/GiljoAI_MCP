@@ -232,7 +232,7 @@ async def get_job(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting job: {e}")
+        logger.exception("Unexpected error getting job")
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
@@ -280,5 +280,5 @@ async def get_job_mission(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting job mission: {e}")
+        logger.exception("Unexpected error getting job mission")
         raise HTTPException(status_code=500, detail="Internal server error") from e

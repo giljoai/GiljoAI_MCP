@@ -162,7 +162,7 @@ class AuthManager:
                         self.api_keys = json.loads(api_keys_file.read_text())
                         logger.info("Loaded plaintext API keys - will encrypt on next save")
                     except (OSError, json.JSONDecodeError, ValueError):
-                        logger.error("Could not load API keys from file")
+                        logger.exception("Could not load API keys from file")
                         self.api_keys = {}
 
         # Check if an active key with this name already exists
@@ -213,7 +213,7 @@ class AuthManager:
                         self.api_keys = json.loads(api_keys_file.read_text())
                         logger.info("Loaded plaintext API keys - will encrypt on next save")
                     except (OSError, json.JSONDecodeError, ValueError):
-                        logger.error("Could not load API keys from file")
+                        logger.exception("Could not load API keys from file")
                         self.api_keys = {}
 
         if api_key in self.api_keys:
@@ -292,8 +292,8 @@ class AuthManager:
             password_hash = admin_data.get("password_hash")
             return bcrypt.checkpw(password.encode(), password_hash.encode())
 
-        except (InvalidToken, OSError, json.JSONDecodeError, ValueError, AttributeError) as e:
-            logger.error(f"Failed to validate admin credentials: {e}")
+        except (InvalidToken, OSError, json.JSONDecodeError, ValueError, AttributeError):
+            logger.exception("Failed to validate admin credentials")
             return False
 
     def generate_jwt_token(self, user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600) -> str:

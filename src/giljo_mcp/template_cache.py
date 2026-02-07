@@ -251,7 +251,7 @@ class TemplateCache:
         """
         if tenant_key:
             # Invalidate only templates for specific tenant
-            keys_to_remove = [k for k in self._memory_cache.keys() if f":{tenant_key}:" in k]
+            keys_to_remove = [k for k in self._memory_cache if f":{tenant_key}:" in k]
             for key in keys_to_remove:
                 del self._memory_cache[key]
             logger.info(f"Memory cache cleared for tenant: {tenant_key}")

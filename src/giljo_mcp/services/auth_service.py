@@ -118,7 +118,7 @@ class AuthService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to authenticate user: {e}")
+            self._logger.exception("Failed to authenticate user")
             raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> dict[str, Any]:
@@ -198,7 +198,7 @@ class AuthService:
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update last login: {e}")
+            self._logger.exception("Failed to update last login")
             raise BaseGiljoException(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
 
     async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
@@ -252,7 +252,7 @@ class AuthService:
                 return await self._check_setup_state_impl(session, tenant_key)
 
         except Exception as e:
-            self._logger.exception(f"Failed to check setup state: {e}")
+            self._logger.exception("Failed to check setup state")
             raise BaseGiljoException(
                 message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}
             ) from e
@@ -307,7 +307,7 @@ class AuthService:
                 return await self._list_api_keys_impl(session, user_id, include_revoked)
 
         except Exception as e:
-            self._logger.exception(f"Failed to list API keys: {e}")
+            self._logger.exception("Failed to list API keys")
             raise BaseGiljoException(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
 
     async def _list_api_keys_impl(
@@ -317,11 +317,7 @@ class AuthService:
         if include_revoked:
             stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
         else:
-            stmt = (
-                select(APIKey)
-                .where(APIKey.user_id == user_id, APIKey.is_active)
-                .order_by(APIKey.created_at.desc())
-            )
+            stmt = select(APIKey).where(APIKey.user_id == user_id, APIKey.is_active).order_by(APIKey.created_at.desc())
 
         result = await session.execute(stmt)
         api_keys = result.scalars().all()
@@ -379,7 +375,7 @@ class AuthService:
                 return await self._create_api_key_impl(session, user_id, tenant_key, name, permissions)
 
         except Exception as e:
-            self._logger.exception(f"Failed to create API key: {e}")
+            self._logger.exception("Failed to create API key")
             raise BaseGiljoException(
                 message=f"Failed to create API key: {e!s}", context={"user_id": user_id, "name": name}
             ) from e
@@ -451,7 +447,7 @@ class AuthService:
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to revoke API key: {e}")
+            self._logger.exception("Failed to revoke API key")
             raise BaseGiljoException(
                 message=f"Failed to revoke API key: {e!s}", context={"key_id": key_id, "user_id": user_id}
             ) from e
@@ -532,7 +528,7 @@ class AuthService:
         except ValidationError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to register user: {e}")
+            self._logger.exception("Failed to register user")
             raise BaseGiljoException(message=f"Failed to register user: {e!s}", context={"username": username}) from e
 
     async def _register_user_impl(
@@ -753,7 +749,7 @@ class AuthService:
         except ValidationError:
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to create first admin: {e}")
+            self._logger.exception("Failed to create first admin")
             raise BaseGiljoException(
                 message=f"Failed to create first admin: {e!s}", context={"username": username}
             ) from e

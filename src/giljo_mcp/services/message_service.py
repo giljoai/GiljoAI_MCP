@@ -481,7 +481,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to send message: {e}")
+            self._logger.exception("Failed to send message")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "send_message", "project_id": project_id}
             ) from e
@@ -555,7 +555,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to broadcast message: {e}")
+            self._logger.exception("Failed to broadcast message")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "broadcast", "project_id": project_id}
             ) from e
@@ -632,7 +632,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to broadcast message to project: {e}")
+            self._logger.exception("Failed to broadcast message to project")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "broadcast_to_project", "project_id": project_id}
             ) from e
@@ -700,7 +700,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to get messages: {e}")
+            self._logger.exception("Failed to get messages")
             raise BaseGiljoException(
                 message=str(e),
                 context={"operation": "get_messages", "agent_name": agent_name, "project_id": project_id},
@@ -904,7 +904,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to receive messages: {e}")
+            self._logger.exception("Failed to receive messages")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "receive_messages", "agent_id": agent_id}
             ) from e
@@ -1088,7 +1088,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to list messages: {e}")
+            self._logger.exception("Failed to list messages")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "list_messages", "project_id": project_id, "agent_id": agent_id}
             ) from e
@@ -1162,7 +1162,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to complete message: {e}")
+            self._logger.exception("Failed to complete message")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "complete_message", "message_id": message_id}
             ) from e
@@ -1274,7 +1274,7 @@ class MessageService:
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to acknowledge message: {e}")
+            self._logger.exception("Failed to acknowledge message")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "acknowledge_message", "message_id": message_id}
             ) from e
