@@ -34,7 +34,7 @@ def _bootstrap_dependencies():
     This solves the bootstrap problem where install.py needs these packages
     to run, but is also responsible for installing them.
     """
-    required = ['click', 'colorama']
+    required = ["click", "colorama"]
     missing = []
     for pkg in required:
         try:
@@ -45,9 +45,9 @@ def _bootstrap_dependencies():
     if missing:
         print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
         subprocess.check_call(
-            [sys.executable, '-m', 'pip', 'install', '-q'] + missing,
+            [sys.executable, "-m", "pip", "install", "-q"] + missing,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
         )
 
 
@@ -59,7 +59,7 @@ import platform
 import shutil
 import socket
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -98,37 +98,39 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
     Returns:
         The entered password as a string
     """
-    print(prompt, end='', flush=True)
+    print(prompt, end="", flush=True)
     password = []
 
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         import msvcrt
+
         while True:
             char = msvcrt.getch()
             # Enter key
-            if char in (b'\r', b'\n'):
+            if char in (b"\r", b"\n"):
                 print()
                 break
             # Backspace
-            elif char == b'\x08':
+            if char == b"\x08":
                 if password:
                     password.pop()
                     # Move cursor back, overwrite with space, move back again
-                    print('\b \b', end='', flush=True)
+                    print("\b \b", end="", flush=True)
             # Ctrl+C
-            elif char == b'\x03':
+            elif char == b"\x03":
                 raise KeyboardInterrupt
             # Regular character
             else:
                 try:
-                    password.append(char.decode('utf-8'))
-                    print('*', end='', flush=True)
+                    password.append(char.decode("utf-8"))
+                    print("*", end="", flush=True)
                 except UnicodeDecodeError:
                     pass  # Ignore non-UTF8 characters
     else:
         # Unix/Linux/Mac
         import termios
         import tty
+
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
@@ -136,25 +138,25 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
             while True:
                 char = sys.stdin.read(1)
                 # Enter key
-                if char in ('\r', '\n'):
+                if char in ("\r", "\n"):
                     print()
                     break
                 # Backspace (DEL or BS)
-                elif char in ('\x7f', '\x08'):
+                if char in ("\x7f", "\x08"):
                     if password:
                         password.pop()
-                        print('\b \b', end='', flush=True)
+                        print("\b \b", end="", flush=True)
                 # Ctrl+C
-                elif char == '\x03':
+                elif char == "\x03":
                     raise KeyboardInterrupt
                 # Regular character
                 else:
                     password.append(char)
-                    print('*', end='', flush=True)
+                    print("*", end="", flush=True)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-    return ''.join(password)
+    return "".join(password)
 
 
 class UnifiedInstaller:
@@ -383,6 +385,7 @@ class UnifiedInstaller:
 
         # Detect network adapters (with names for tracking)
         from installer.shared.network import get_network_adapters
+
         network_adapters = get_network_adapters()
 
         # Build options list
@@ -509,7 +512,7 @@ class UnifiedInstaller:
         if network_mode == "auto":
             adapter = self.settings.get("selected_adapter", "unknown")
             print(f"  • Network mode: {Fore.GREEN}Auto-detect{Style.RESET_ALL} ({adapter})")
-            print(f"    → IP will be re-detected on each startup")
+            print("    → IP will be re-detected on each startup")
         elif network_mode == "static":
             adapter = self.settings.get("selected_adapter", "")
             print(f"  • Network mode: Static [{adapter}]")
@@ -576,7 +579,7 @@ class UnifiedInstaller:
             self.settings["postgresql_installation_path"] = (
                 str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == "bin" else str(psql_path_obj.parent)
             )
-            self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+            self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
             self.settings["postgresql_custom_path"] = False
             self.settings["postgresql_discovery_method"] = "PATH"
 
@@ -604,7 +607,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(bin_dir.parent) if bin_dir.name == "bin" else str(bin_dir)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
                 self.settings["postgresql_custom_path"] = False
                 self.settings["postgresql_discovery_method"] = "COMMON_LOCATION"
 
@@ -659,7 +662,7 @@ class UnifiedInstaller:
                 self.settings["postgresql_installation_path"] = (
                     str(custom_path_obj.parent) if custom_path_obj.name == "bin" else str(custom_path_obj)
                 )
-                self.settings["postgresql_discovered_at"] = datetime.now().isoformat()
+                self.settings["postgresql_discovered_at"] = datetime.now(timezone.utc).isoformat()
                 self.settings["postgresql_custom_path"] = True
                 self.settings["postgresql_discovery_method"] = "CUSTOM"
 
@@ -1034,17 +1037,16 @@ class UnifiedInstaller:
             # Add src to path
             sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+            # Get database URL from environment
+            import os
             from datetime import datetime, timedelta, timezone
             from uuid import uuid4
 
-            from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+            from dotenv import load_dotenv
             from sqlalchemy import select
 
-            # Get database URL from environment
-            import os
-
-            from dotenv import load_dotenv
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
             load_dotenv(override=True)
             db_url = os.getenv("DATABASE_URL")
@@ -1087,51 +1089,24 @@ class UnifiedInstaller:
 
                 # Create first execution (completed after reaching 85% context)
                 first_agent_id = str(uuid4())
-                first_execution = AgentExecution(
+                # Create orchestrator execution (active)
+                orchestrator_execution = AgentExecution(
                     agent_id=first_agent_id,
                     job_id=job_id,
                     tenant_key=tenant_key,
                     agent_display_name="orchestrator",
-                    instance_number=1,
-                    status="complete",
-                    started_at=datetime.now(timezone.utc) - timedelta(hours=2),
-                    completed_at=datetime.now(timezone.utc) - timedelta(hours=1),
-                    progress=100,
-                    current_task="Completed initial project analysis and spawned implementation agents",
-                    context_used=85000,
-                    context_budget=100000,
-                    succession_reason="Approaching context limit (85%)",
-                    health_status="healthy",
-                    agent_name="Orchestrator Instance #1",
-                    handover_summary={
-                        "phase": "implementation",
-                        "agents_spawned": ["implementer", "tester"],
-                        "decisions": ["Chose microservices architecture", "Selected PostgreSQL for database"],
-                    },
-                )
-                session.add(first_execution)
-
-                # Create second execution (active, successor)
-                second_agent_id = str(uuid4())
-                second_execution = AgentExecution(
-                    agent_id=second_agent_id,
-                    job_id=job_id,
-                    tenant_key=tenant_key,
-                    agent_display_name="orchestrator",
-                    instance_number=2,
                     status="working",
                     started_at=datetime.now(timezone.utc) - timedelta(hours=1),
                     completed_at=None,
-                    spawned_by=first_agent_id,  # Links to first execution
                     progress=35,
                     current_task="Monitoring implementation agents and coordinating integration testing",
                     context_used=35000,
                     context_budget=100000,
                     health_status="healthy",
                     last_progress_at=datetime.now(timezone.utc),  # Current time to avoid immediate staleness alert
-                    agent_name="Orchestrator Instance #2",
+                    agent_name="Orchestrator",
                 )
-                session.add(second_execution)
+                session.add(orchestrator_execution)
 
                 # Update first execution to point to successor
                 first_execution.succeeded_by = second_agent_id
@@ -1416,7 +1391,7 @@ class UnifiedInstaller:
             # Log attempt
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n{'=' * 70}\n")
-                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now().isoformat()}\n")
+                f.write(f"Attempt {attempt + 1}/{max_retries} - {datetime.now(timezone.utc).isoformat()}\n")
                 f.write(f"Command: {' '.join(npm_cmd)}\n")
                 f.write(f"{'=' * 70}\n\n")
 
@@ -1848,8 +1823,9 @@ class UnifiedInstaller:
             async def check_and_stamp_base():
                 """Check if alembic_version table exists, create and stamp if needed."""
                 try:
-                    from giljo_mcp.database import DatabaseManager
                     from sqlalchemy import text
+
+                    from giljo_mcp.database import DatabaseManager
 
                     db_url = os.getenv("DATABASE_URL")
                     if not db_url:
@@ -1903,7 +1879,8 @@ class UnifiedInstaller:
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout
-                cwd=str(cwd)  # Ensure correct working directory
+                cwd=str(cwd),
+                check=False,  # Ensure correct working directory
             )
 
             if proc.returncode == 0:
@@ -1912,8 +1889,8 @@ class UnifiedInstaller:
                 result["output"] = proc.stdout
 
                 # Parse output to see which migrations ran
-                for line in proc.stdout.split('\n'):
-                    if 'Running upgrade' in line:
+                for line in proc.stdout.split("\n"):
+                    if "Running upgrade" in line:
                         result["migrations_applied"].append(line.strip())
 
                 if result["migrations_applied"]:
@@ -1959,6 +1936,7 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_error(f"Database migration error: {e}")
             import traceback
+
             traceback.print_exc()
             result["error"] = str(e)
 
@@ -1997,8 +1975,9 @@ class UnifiedInstaller:
         try:
             import os
 
-            from giljo_mcp.database import DatabaseManager
             from sqlalchemy import text
+
+            from giljo_mcp.database import DatabaseManager
 
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
@@ -2096,7 +2075,8 @@ except Exception as e:
                 [str(python_executable), "-c", nltk_code],
                 capture_output=True,
                 text=True,
-                timeout=60,  # 1 minute timeout
+                timeout=60,
+                check=False,  # 1 minute timeout
             )
 
             if process_result.returncode == 0:

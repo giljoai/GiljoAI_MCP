@@ -18,15 +18,16 @@ import logging
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+import yaml
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-import yaml
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ def get_database_url() -> str:
     # Try using ConfigManager (preferred method)
     try:
         from src.giljo_mcp.config_manager import get_config
+
         config = get_config()
         url = config.get_database_url()
         # Ensure asyncpg driver for async support
@@ -83,10 +85,7 @@ async def create_org_for_user(session: AsyncSession, user) -> "Organization":
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
     # Check if user already has an org as owner
-    stmt = select(OrgMembership).where(
-        OrgMembership.user_id == user.id,
-        OrgMembership.role == "owner"
-    )
+    stmt = select(OrgMembership).where(OrgMembership.user_id == user.id, OrgMembership.role == "owner")
     result = await session.execute(stmt)
     existing = result.scalar_one_or_none()
 
@@ -112,19 +111,12 @@ async def create_org_for_user(session: AsyncSession, user) -> "Organization":
         slug = f"{original_slug}-{counter}"
         counter += 1
 
-    org = Organization(
-        name=f"{user.username}'s Workspace",
-        slug=slug
-    )
+    org = Organization(name=f"{user.username}'s Workspace", slug=slug)
     session.add(org)
     await session.flush()  # Get org.id
 
     # Create owner membership
-    membership = OrgMembership(
-        org_id=org.id,
-        user_id=user.id,
-        role="owner"
-    )
+    membership = OrgMembership(org_id=org.id, user_id=user.id, role="owner")
     session.add(membership)
 
     logger.info(f"Created org '{org.slug}' for user '{user.username}'")
@@ -132,18 +124,18 @@ async def create_org_for_user(session: AsyncSession, user) -> "Organization":
     return org
 
 
-async def assign_products_to_org(
-    session: AsyncSession,
-    user,
-    org
-) -> int:
+async def assign_products_to_org(session: AsyncSession, user, org) -> int:
     """Assign user's products to their organization."""
     from src.giljo_mcp.models.products import Product
 
-    stmt = update(Product).where(
-        Product.tenant_key == user.tenant_key,
-        Product.org_id.is_(None)  # Only update if not already set
-    ).values(org_id=org.id)
+    stmt = (
+        update(Product)
+        .where(
+            Product.tenant_key == user.tenant_key,
+            Product.org_id.is_(None),  # Only update if not already set
+        )
+        .values(org_id=org.id)
+    )
 
     result = await session.execute(stmt)
     count = result.rowcount
@@ -154,18 +146,15 @@ async def assign_products_to_org(
     return count
 
 
-async def assign_templates_to_org(
-    session: AsyncSession,
-    user,
-    org
-) -> int:
+async def assign_templates_to_org(session: AsyncSession, user, org) -> int:
     """Assign user's templates to their organization."""
     from src.giljo_mcp.models.templates import AgentTemplate
 
-    stmt = update(AgentTemplate).where(
-        AgentTemplate.tenant_key == user.tenant_key,
-        AgentTemplate.org_id.is_(None)
-    ).values(org_id=org.id)
+    stmt = (
+        update(AgentTemplate)
+        .where(AgentTemplate.tenant_key == user.tenant_key, AgentTemplate.org_id.is_(None))
+        .values(org_id=org.id)
+    )
 
     result = await session.execute(stmt)
     count = result.rowcount
@@ -176,18 +165,11 @@ async def assign_templates_to_org(
     return count
 
 
-async def assign_tasks_to_org(
-    session: AsyncSession,
-    user,
-    org
-) -> int:
+async def assign_tasks_to_org(session: AsyncSession, user, org) -> int:
     """Assign user's tasks to their organization."""
     from src.giljo_mcp.models.tasks import Task
 
-    stmt = update(Task).where(
-        Task.tenant_key == user.tenant_key,
-        Task.org_id.is_(None)
-    ).values(org_id=org.id)
+    stmt = update(Task).where(Task.tenant_key == user.tenant_key, Task.org_id.is_(None)).values(org_id=org.id)
 
     result = await session.execute(stmt)
     count = result.rowcount
@@ -198,11 +180,7 @@ async def assign_tasks_to_org(
     return count
 
 
-async def populate_user_org_id(
-    session: AsyncSession,
-    user,
-    org
-) -> bool:
+async def populate_user_org_id(session: AsyncSession, user, org) -> bool:
     """Populate User.org_id from OrgMembership (Handover 0424j - GREEN phase)."""
     from src.giljo_mcp.models.auth import User
 
@@ -210,9 +188,7 @@ async def populate_user_org_id(
         logger.info(f"User '{user.username}' already has org_id set - skipping")
         return False
 
-    stmt = update(User).where(
-        User.id == user.id
-    ).values(org_id=org.id)
+    stmt = update(User).where(User.id == user.id).values(org_id=org.id)
 
     await session.execute(stmt)
     logger.info(f"Set org_id={org.id} for user '{user.username}'")
@@ -225,7 +201,7 @@ async def run_migration():
     from src.giljo_mcp.models.auth import User
 
     db_url = get_database_url()
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
 
     engine = create_async_engine(db_url, echo=False)
     async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -240,7 +216,14 @@ async def run_migration():
 
         if len(users) == 0:
             logger.warning("No users found - nothing to migrate")
-            return {"users_processed": 0, "orgs_created": 0, "products_assigned": 0, "templates_assigned": 0, "tasks_assigned": 0, "user_org_ids_set": 0}
+            return {
+                "users_processed": 0,
+                "orgs_created": 0,
+                "products_assigned": 0,
+                "templates_assigned": 0,
+                "tasks_assigned": 0,
+                "user_org_ids_set": 0,
+            }
 
         stats = {
             "users_processed": 0,
@@ -248,7 +231,7 @@ async def run_migration():
             "products_assigned": 0,
             "templates_assigned": 0,
             "tasks_assigned": 0,
-            "user_org_ids_set": 0
+            "user_org_ids_set": 0,
         }
 
         for user in users:
@@ -288,8 +271,8 @@ async def verify_migration():
     from src.giljo_mcp.models.auth import User
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
     from src.giljo_mcp.models.products import Product
-    from src.giljo_mcp.models.templates import AgentTemplate
     from src.giljo_mcp.models.tasks import Task
+    from src.giljo_mcp.models.templates import AgentTemplate
 
     db_url = get_database_url()
     engine = create_async_engine(db_url, echo=False)
@@ -298,36 +281,24 @@ async def verify_migration():
     async with async_session_maker() as session:
         # Check users without orgs
         users_without_orgs = await session.execute(
-            select(User).where(
-                ~User.id.in_(
-                    select(OrgMembership.user_id).where(OrgMembership.role == "owner")
-                )
-            )
+            select(User).where(~User.id.in_(select(OrgMembership.user_id).where(OrgMembership.role == "owner")))
         )
         orphan_users = users_without_orgs.scalars().all()
 
         # Check users with NULL org_id (Handover 0424j verification)
-        users_with_null_org_id = await session.execute(
-            select(User).where(User.org_id.is_(None))
-        )
+        users_with_null_org_id = await session.execute(select(User).where(User.org_id.is_(None)))
         null_org_id_users = users_with_null_org_id.scalars().all()
 
         # Check products without org_id
-        orphan_products = await session.execute(
-            select(Product).where(Product.org_id.is_(None))
-        )
+        orphan_products = await session.execute(select(Product).where(Product.org_id.is_(None)))
         orphan_products_count = len(orphan_products.scalars().all())
 
         # Check templates without org_id
-        orphan_templates = await session.execute(
-            select(AgentTemplate).where(AgentTemplate.org_id.is_(None))
-        )
+        orphan_templates = await session.execute(select(AgentTemplate).where(AgentTemplate.org_id.is_(None)))
         orphan_templates_count = len(orphan_templates.scalars().all())
 
         # Check tasks without org_id
-        orphan_tasks = await session.execute(
-            select(Task).where(Task.org_id.is_(None))
-        )
+        orphan_tasks = await session.execute(select(Task).where(Task.org_id.is_(None)))
         orphan_tasks_count = len(orphan_tasks.scalars().all())
 
         # Count orgs and memberships
@@ -343,12 +314,17 @@ async def verify_migration():
         print(f"Templates without org_id: {orphan_templates_count}")
         print(f"Tasks without org_id: {orphan_tasks_count}")
 
-        if len(orphan_users) == 0 and len(null_org_id_users) == 0 and orphan_products_count == 0 and orphan_templates_count == 0 and orphan_tasks_count == 0:
+        if (
+            len(orphan_users) == 0
+            and len(null_org_id_users) == 0
+            and orphan_products_count == 0
+            and orphan_templates_count == 0
+            and orphan_tasks_count == 0
+        ):
             print("\nMIGRATION SUCCESSFUL - All data assigned to organizations!")
             return True
-        else:
-            print("\nWARNING: Some data not migrated. Check above for details.")
-            return False
+        print("\nWARNING: Some data not migrated. Check above for details.")
+        return False
 
     await engine.dispose()
 

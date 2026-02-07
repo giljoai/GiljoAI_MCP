@@ -121,7 +121,7 @@ class TestAgentTemplatesDownloadIntegration:
                 name="orchestrator",
                 role="orchestrator",
                 description="Orchestrates the development workflow",
-                template_content="You are the orchestrator agent responsible for coordinating development.",
+                system_instructions="You are the orchestrator agent responsible for coordinating development.",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -132,7 +132,7 @@ class TestAgentTemplatesDownloadIntegration:
                 name="implementor",
                 role="implementor",
                 description="Implements features",
-                template_content="You are the implementor agent responsible for writing code.",
+                system_instructions="You are the implementor agent responsible for writing code.",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -141,7 +141,7 @@ class TestAgentTemplatesDownloadIntegration:
                 name="tester",
                 role="tester",
                 description="Tests implementations",
-                template_content="You are the tester agent responsible for verifying code.",
+                system_instructions="You are the tester agent responsible for verifying code.",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -201,7 +201,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="active_agent",
                 role="active",
-                template_content="Active template",
+                system_instructions="Active template",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -209,7 +209,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="inactive_agent",
                 role="inactive",
-                template_content="Inactive template",
+                system_instructions="Inactive template",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=False,
@@ -252,7 +252,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="my_template_1",
                 role="role1",
-                template_content="My content 1",
+                system_instructions="My content 1",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -260,7 +260,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="my_template_2",
                 role="role2",
-                template_content="My content 2",
+                system_instructions="My content 2",
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,
@@ -273,7 +273,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="other_template_1",
                 role="role3",
-                template_content="Other content 1",
+                system_instructions="Other content 1",
                 tool="claude",
                 tenant_key=other_tenant_key,
                 is_active=True,
@@ -281,7 +281,7 @@ class TestAgentTemplatesDownloadIntegration:
             AgentTemplate(
                 name="other_template_2",
                 role="role4",
-                template_content="Other content 2",
+                system_instructions="Other content 2",
                 tool="claude",
                 tenant_key=other_tenant_key,
                 is_active=True,
@@ -469,7 +469,7 @@ class TestPerformanceAndIntegrity:
         template = AgentTemplate(
             name="test_agent",
             role="tester",
-            template_content="Test content " * 1000,  # Large content
+            system_instructions="Test content " * 1000,  # Large content
             tool="claude",
             tenant_key=test_user.tenant_key,
             is_active=True,
@@ -506,7 +506,7 @@ class TestPerformanceAndIntegrity:
         template = AgentTemplate(
             name="unicode_agent",
             role="unicode_tester",
-            template_content="Unicode test: 测试 🚀 العربية Ελληνικά",
+            system_instructions="Unicode test: 测试 🚀 العربية Ελληνικά",
             tool="claude",
             tenant_key=test_user.tenant_key,
             is_active=True,
@@ -539,7 +539,7 @@ class TestPerformanceAndIntegrity:
             AgentTemplate(
                 name=f"agent_{i}",
                 role=f"role_{i}",
-                template_content=f"Content for agent {i}" * 100,
+                system_instructions=f"Content for agent {i}" * 100,
                 tool="claude",
                 tenant_key=test_user.tenant_key,
                 is_active=True,

@@ -19,13 +19,14 @@ BEHAVIOR TESTS (TDD):
 6. Invalid repo URLs are rejected
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, MagicMock
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
-from src.giljo_mcp.services.product_service import ProductService
+import pytest
+
 from src.giljo_mcp.models import Product
+from src.giljo_mcp.services.product_service import ProductService
 
 
 @pytest.fixture
@@ -64,18 +65,13 @@ class TestGitHubIntegrationSettings:
         product.product_memory = {"github": {}, "learnings": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
         result = await service.update_github_settings(
-            product_id=product.id,
-            enabled=True,
-            repo_url="https://github.com/user/repo",
-            auto_commit=True
+            product_id=product.id, enabled=True, repo_url="https://github.com/user/repo", auto_commit=True
         )
 
         # Assert
@@ -104,17 +100,13 @@ class TestGitHubIntegrationSettings:
         product.product_memory = {"github": {"enabled": False}, "learnings": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
         result = await service.update_github_settings(
-            product_id=product.id,
-            enabled=True,
-            repo_url="https://github.com/patrik-giljoai/GiljoAI_MCP"
+            product_id=product.id, enabled=True, repo_url="https://github.com/patrik-giljoai/GiljoAI_MCP"
         )
 
         # Assert
@@ -140,17 +132,13 @@ class TestGitHubIntegrationSettings:
         product.product_memory = {"github": {"enabled": False}, "learnings": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
         result = await service.update_github_settings(
-            product_id=product.id,
-            enabled=True,
-            repo_url="git@github.com:patrik-giljoai/GiljoAI_MCP.git"
+            product_id=product.id, enabled=True, repo_url="git@github.com:patrik-giljoai/GiljoAI_MCP.git"
         )
 
         # Assert
@@ -174,27 +162,18 @@ class TestGitHubIntegrationSettings:
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
         product.product_memory = {
-            "github": {
-                "enabled": True,
-                "repo_url": "https://github.com/user/repo",
-                "auto_commit": True
-            },
+            "github": {"enabled": True, "repo_url": "https://github.com/user/repo", "auto_commit": True},
             "learnings": [],
-            "context": {}
+            "context": {},
         }
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.update_github_settings(
-            product_id=product.id,
-            enabled=False
-        )
+        result = await service.update_github_settings(product_id=product.id, enabled=False)
 
         # Assert
         assert result["success"] is True
@@ -220,18 +199,12 @@ class TestGitHubIntegrationSettings:
         product.product_memory = {"github": {}, "learnings": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.update_github_settings(
-            product_id=product.id,
-            enabled=True,
-            repo_url="not-a-valid-url"
-        )
+        result = await service.update_github_settings(product_id=product.id, enabled=True, repo_url="not-a-valid-url")
 
         # Assert
         assert result["success"] is False
@@ -259,10 +232,10 @@ class TestGitHubIntegrationSettings:
                 "enabled": True,
                 "repo_url": "https://github.com/user/repo",
                 "auto_commit": False,
-                "last_sync": datetime.now(timezone.utc).isoformat()
+                "last_sync": datetime.now(timezone.utc).isoformat(),
             },
             "learnings": [],
-            "context": {}
+            "context": {},
         }
         product.primary_vision_path = None
         product.project_path = None
@@ -273,9 +246,7 @@ class TestGitHubIntegrationSettings:
         product.deleted_at = None
         product.vision_documents = []
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -300,17 +271,13 @@ class TestGitHubIntegrationSettings:
         db_manager, session = mock_db_manager
 
         # Product not found for tenant B (different tenant)
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "tenant-b")
 
         # Act
         result = await service.update_github_settings(
-            product_id="product-owned-by-tenant-a",
-            enabled=True,
-            repo_url="https://github.com/user/repo"
+            product_id="product-owned-by-tenant-a", enabled=True, repo_url="https://github.com/user/repo"
         )
 
         # Assert
@@ -335,9 +302,7 @@ class TestGitHubIntegrationSettings:
         product.product_memory = {"github": {}, "learnings": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -345,7 +310,7 @@ class TestGitHubIntegrationSettings:
         result = await service.update_github_settings(
             product_id=product.id,
             enabled=True,
-            repo_url=None  # Missing repo_url
+            repo_url=None,  # Missing repo_url
         )
 
         # Assert
@@ -368,19 +333,13 @@ class TestGitHubIntegrationSettings:
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
         product.product_memory = {
-            "github": {
-                "enabled": True,
-                "repo_url": "https://github.com/user/repo",
-                "auto_commit": False
-            },
+            "github": {"enabled": True, "repo_url": "https://github.com/user/repo", "auto_commit": False},
             "learnings": [],
-            "context": {}
+            "context": {},
         }
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -389,7 +348,7 @@ class TestGitHubIntegrationSettings:
             product_id=product.id,
             enabled=True,
             repo_url="https://github.com/user/repo",
-            auto_commit=True  # Toggle auto_commit
+            auto_commit=True,  # Toggle auto_commit
         )
 
         # Assert

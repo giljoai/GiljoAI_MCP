@@ -14,7 +14,6 @@ Project 0036: Cookie domain whitelist management for cross-port authentication.
 import logging
 import re
 from pathlib import Path
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -27,7 +26,6 @@ from src.giljo_mcp.models import User
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-
 # Pydantic Models
 
 
@@ -38,7 +36,7 @@ class CookieDomainsResponse(BaseModel):
         json_schema_extra={"example": {"domains": ["localhost", "example.com", "subdomain.example.com"]}}
     )
 
-    domains: List[str] = Field(description="List of whitelisted cookie domains")
+    domains: list[str] = Field(description="List of whitelisted cookie domains")
 
 
 class AddCookieDomainRequest(BaseModel):
@@ -143,15 +141,15 @@ def _read_config() -> dict:
         return config
 
     except yaml.YAMLError as e:
-        logger.error(f"Failed to parse config.yaml: {e}")
+        logger.exception("Failed to parse config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration file is malformed: {e!s}"
-        )
+        ) from e
     except Exception as e:
-        logger.error(f"Failed to read config.yaml: {e}")
+        logger.exception("Failed to read config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
-        )
+        ) from e
 
 
 def _write_config(config: dict) -> None:
@@ -181,13 +179,13 @@ def _write_config(config: dict) -> None:
         logger.info("config.yaml updated successfully")
 
     except Exception as e:
-        logger.error(f"Failed to write config.yaml: {e}")
+        logger.exception("Failed to write config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
-        )
+        ) from e
 
 
-def _get_cookie_domains(config: dict) -> List[str]:
+def _get_cookie_domains(config: dict) -> list[str]:
     """
     Extract cookie domain whitelist from config.
 
@@ -200,7 +198,7 @@ def _get_cookie_domains(config: dict) -> List[str]:
     return config.get("security", {}).get("cookie_domain_whitelist", [])
 
 
-def _set_cookie_domains(config: dict, domains: List[str]) -> None:
+def _set_cookie_domains(config: dict, domains: list[str]) -> None:
     """
     Update cookie domain whitelist in config.
 

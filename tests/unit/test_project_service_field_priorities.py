@@ -13,13 +13,12 @@ Author: TDD Implementor Agent
 Date: 2025-11-30
 """
 
-import pytest
-from datetime import datetime
 from unittest.mock import AsyncMock, Mock
-from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import AgentExecution, Project, User
 from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.models import Project, AgentExecution, User
 
 
 @pytest.fixture
@@ -75,14 +74,14 @@ class TestProjectServiceFieldPriorities:
                 "tech_stack": 2,
                 "architecture": 3,
                 "360_memory": 3,
-                "git_history": 4
+                "git_history": 4,
             }
         }
         mock_user.depth_config = {
             "vision_chunking": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,
-            "agent_template_detail": "standard"
+            "agent_template_detail": "standard",
         }
 
         # Mock orchestrator job that will be created
@@ -100,17 +99,15 @@ class TestProjectServiceFieldPriorities:
 
         # Configure session execute to return project, user, and instance number
         call_count = [0]
+
         async def mock_execute_side_effect(*args, **kwargs):
             call_count[0] += 1
             # Call 1: Fetch project (in launch_project)
             if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
             # Call 2: Fetch user
-            elif call_count[0] == 2:
+            if call_count[0] == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_user))
-            # Call 3: Get max instance number (func.max/coalesce query)
-            elif call_count[0] == 3:
-                return Mock(scalar=Mock(return_value=0))  # Return 0 so instance_number becomes 1
             # Default: return None (for any other queries)
             return Mock(scalar_one_or_none=Mock(return_value=None))
 
@@ -118,12 +115,13 @@ class TestProjectServiceFieldPriorities:
 
         # Mock session.add to capture the job being created
         created_jobs = []
+
         def capture_job(job):
             created_jobs.append(job)
             # Simulate database setting the job_id
-            if not hasattr(job, 'job_id') or not job.job_id:
+            if not hasattr(job, "job_id") or not job.job_id:
                 job.job_id = "orchestrator-job-123"
-            if not hasattr(job, 'id') or not job.id:
+            if not hasattr(job, "id") or not job.id:
                 job.id = "orchestrator-job-123"
 
         session.add = Mock(side_effect=capture_job)
@@ -134,10 +132,7 @@ class TestProjectServiceFieldPriorities:
         service.activate_project = mock_activate
 
         # Act - Pass user_id as parameter (like API endpoints do)
-        result = await service.launch_project(
-            project_id="test-project-id",
-            user_id="test-user-id"
-        )
+        result = await service.launch_project(project_id="test-project-id", user_id="test-user-id")
 
         # Assert
         assert result["success"] is True, f"Expected success, got: {result}"
@@ -147,20 +142,20 @@ class TestProjectServiceFieldPriorities:
 
         # CRITICAL ASSERTIONS: Verify field_priorities and user_id in job_metadata
         assert orchestrator_job.job_metadata is not None, "job_metadata should not be None"
-        assert "field_priorities" in orchestrator_job.job_metadata, \
-            "job_metadata must contain 'field_priorities'"
-        assert "user_id" in orchestrator_job.job_metadata, \
-            "job_metadata must contain 'user_id'"
+        assert "field_priorities" in orchestrator_job.job_metadata, "job_metadata must contain 'field_priorities'"
+        assert "user_id" in orchestrator_job.job_metadata, "job_metadata must contain 'user_id'"
 
         # Verify the actual field priorities match the user's config
         expected_priorities = mock_user.field_priority_config["priorities"]
         actual_priorities = orchestrator_job.job_metadata["field_priorities"]
-        assert actual_priorities == expected_priorities, \
+        assert actual_priorities == expected_priorities, (
             f"Expected priorities {expected_priorities}, got {actual_priorities}"
+        )
 
         # Verify user_id matches
-        assert orchestrator_job.job_metadata["user_id"] == "test-user-id", \
+        assert orchestrator_job.job_metadata["user_id"] == "test-user-id", (
             "user_id in job_metadata should match the current user"
+        )
 
         # Verify depth_config is also passed
         if "depth_config" in orchestrator_job.job_metadata:
@@ -194,24 +189,26 @@ class TestProjectServiceFieldPriorities:
 
         # Configure session execute
         call_count = [0]
+
         async def mock_execute_side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
-            elif call_count[0] == 2:
+            if call_count[0] == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_user))
-            elif call_count[0] == 3:
+            if call_count[0] == 3:
                 return Mock(scalar=Mock(return_value=0))
             return Mock(scalar_one_or_none=Mock(return_value=None))
 
         session.execute = AsyncMock(side_effect=mock_execute_side_effect)
 
         created_jobs = []
+
         def capture_job(job):
             created_jobs.append(job)
-            if not hasattr(job, 'job_id') or not job.job_id:
+            if not hasattr(job, "job_id") or not job.job_id:
                 job.job_id = "orchestrator-job-123"
-            if not hasattr(job, 'id') or not job.id:
+            if not hasattr(job, "id") or not job.id:
                 job.id = "orchestrator-job-123"
 
         session.add = Mock(side_effect=capture_job)
@@ -222,13 +219,11 @@ class TestProjectServiceFieldPriorities:
         async def mock_activate_2(*args, **kwargs):
             mock_project.status = "active"
             return {"success": True}
+
         service.activate_project = mock_activate_2
 
         # Act - Pass user_id as parameter
-        result = await service.launch_project(
-            project_id="test-project-id",
-            user_id="test-user-id"
-        )
+        result = await service.launch_project(project_id="test-project-id", user_id="test-user-id")
 
         # Assert
         assert result["success"] is True

@@ -20,9 +20,7 @@ Integration:
 import asyncio
 import logging
 import time
-from typing import List
 
-from .services.agent_job_manager import AgentJobManager
 from .job_coordinator import JobCoordinator
 from .orchestration_types import (
     StageResult,
@@ -30,9 +28,14 @@ from .orchestration_types import (
     WorkflowStage,
 )
 from .repositories.agent_job_repository import AgentJobRepository
+from .services.agent_job_manager import AgentJobManager
 
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowStageFailureError(Exception):
+    """Raised when a workflow stage has failed jobs."""
 
 
 class WorkflowEngine:
@@ -69,7 +72,7 @@ class WorkflowEngine:
     async def execute_workflow(
         self,
         workflow_type: str,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -120,7 +123,7 @@ class WorkflowEngine:
 
     async def _execute_waterfall(
         self,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -141,8 +144,8 @@ class WorkflowEngine:
         Returns:
             WorkflowResult with execution status
         """
-        completed_stages: List[StageResult] = []
-        failed_stages: List[str] = []
+        completed_stages: list[StageResult] = []
+        failed_stages: list[str] = []
 
         # Handle empty stages
         if not stages:
@@ -167,8 +170,8 @@ class WorkflowEngine:
                 completed_stages.append(stage_result)
                 logger.info(f"Stage {stage.name} completed successfully")
 
-            except Exception as e:
-                logger.error(f"Stage {stage.name} failed: {e}")
+            except (RuntimeError, ValueError, KeyError) as e:
+                logger.exception("Stage {stage.name} failed")
                 failed_stages.append(stage.name)
 
                 # Handle failure
@@ -176,7 +179,7 @@ class WorkflowEngine:
 
                 # Stop on critical failure
                 if stage.critical:
-                    logger.error(f"Critical stage {stage.name} failed, stopping workflow")
+                    logger.exception(f"Critical stage {stage.name} failed, stopping workflow")
                     break
                 logger.warning(f"Non-critical stage {stage.name} failed, continuing workflow")
 
@@ -197,7 +200,7 @@ class WorkflowEngine:
 
     async def _execute_parallel(
         self,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -234,8 +237,8 @@ class WorkflowEngine:
             stage_tasks.append((stage, task))
 
         # Execute all stages concurrently and gather results
-        completed_stages: List[StageResult] = []
-        failed_stages: List[str] = []
+        completed_stages: list[StageResult] = []
+        failed_stages: list[str] = []
 
         results = await asyncio.gather(
             *[task for _, task in stage_tasks],
@@ -299,7 +302,7 @@ class WorkflowEngine:
 
                 return await self._execute_stage(stage, tenant_key, project_id)
 
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:  # noqa: PERF203 - Retry loop: continue attempts on failure
                 last_error = e
                 if attempt < stage.max_retries:
                     # Exponential backoff
@@ -307,7 +310,7 @@ class WorkflowEngine:
                     logger.warning(f"Stage {stage.name} attempt {attempt + 1} failed, retrying in {delay}s: {e}")
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(f"Stage {stage.name} failed after {max_attempts} attempts")
+                    logger.exception(f"Stage {stage.name} failed after {max_attempts} attempts")
 
         # All retries exhausted
         raise last_error
@@ -341,7 +344,7 @@ class WorkflowEngine:
         logger.info(f"Executing stage: {stage.name} with {len(stage.agents)} agents")
 
         start_time = time.time()
-        job_ids: List[str] = []
+        job_ids: list[str] = []
 
         # Spawn jobs for all agents in the stage
         for agent_config in stage.agents:
@@ -370,7 +373,7 @@ class WorkflowEngine:
 
         # Check for failures
         if wait_result["failed"] > 0:
-            raise Exception(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
+            raise WorkflowStageFailureError(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
 
         # Aggregate results from all jobs
         aggregated = await self.job_coordinator.aggregate_child_results(
@@ -393,7 +396,7 @@ class WorkflowEngine:
     async def _dependencies_met(
         self,
         stage: WorkflowStage,
-        completed_stages: List[StageResult],
+        completed_stages: list[StageResult],
     ) -> bool:
         """
         Check if stage dependencies are satisfied.

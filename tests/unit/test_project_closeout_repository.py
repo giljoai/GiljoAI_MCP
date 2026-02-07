@@ -9,15 +9,15 @@ TESTING STRATEGY:
 - Test all field mappings to repository
 """
 
-import pytest
 from datetime import datetime, timezone
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
 
 def create_mock_db_session(project_mock, product_mock):
@@ -32,17 +32,17 @@ def create_mock_db_session(project_mock, product_mock):
     mock_db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
 
     # Mock database queries to return actual objects (not coroutines)
-    call_counter = {'count': 0}
+    call_counter = {"count": 0}
 
     async def mock_execute_side_effect(*args, **kwargs):
         mock_result = MagicMock()  # Use MagicMock not AsyncMock for result
         # Track which call this is (project, then product)
-        if call_counter['count'] == 0:
+        if call_counter["count"] == 0:
             mock_result.scalar_one_or_none.return_value = project_mock
         else:
             mock_result.scalar_one_or_none.return_value = product_mock
 
-        call_counter['count'] += 1
+        call_counter["count"] += 1
         return mock_result
 
     mock_session.execute.side_effect = mock_execute_side_effect
@@ -83,7 +83,7 @@ def mock_product(sample_product_id, tenant_key):
             "enabled": False,
         },
         "sequential_history": [],  # Should NOT be mutated
-        "context": {}
+        "context": {},
     }
     product.updated_at = datetime.now(timezone.utc)
     return product
@@ -121,9 +121,7 @@ class TestRepositoryIntegration:
     """Test integration with ProductMemoryRepository"""
 
     @pytest.mark.asyncio
-    async def test_uses_repository_get_next_sequence(
-        self, mock_product, mock_project, tenant_key, mock_memory_entry
-    ):
+    async def test_uses_repository_get_next_sequence(self, mock_product, mock_project, tenant_key, mock_memory_entry):
         """
         BEHAVIOR: Uses repository.get_next_sequence() for atomic sequence generation
 
@@ -151,17 +149,12 @@ class TestRepositoryIntegration:
             )
 
             # Verify repository was used
-            mock_repo.get_next_sequence.assert_called_once_with(
-                session=mock_session,
-                product_id=mock_product.id
-            )
+            mock_repo.get_next_sequence.assert_called_once_with(session=mock_session, product_id=mock_product.id)
             assert result["success"] is True
             assert result["sequence_number"] == 5
 
     @pytest.mark.asyncio
-    async def test_uses_repository_create_entry(
-        self, mock_product, mock_project, tenant_key, mock_memory_entry
-    ):
+    async def test_uses_repository_create_entry(self, mock_product, mock_project, tenant_key, mock_memory_entry):
         """
         BEHAVIOR: Uses repository.create_entry() to insert into table
 
@@ -248,9 +241,7 @@ class TestRepositoryIntegration:
             assert len(mock_product.product_memory["sequential_history"]) == 0
 
     @pytest.mark.asyncio
-    async def test_return_includes_entry_id(
-        self, mock_product, mock_project, tenant_key
-    ):
+    async def test_return_includes_entry_id(self, mock_product, mock_project, tenant_key):
         """
         BEHAVIOR: Return format includes entry_id from repository
 
@@ -287,9 +278,7 @@ class TestRepositoryIntegration:
             assert result["sequence_number"] == 1
 
     @pytest.mark.asyncio
-    async def test_all_field_mappings_preserved(
-        self, mock_product, mock_project, tenant_key, mock_memory_entry
-    ):
+    async def test_all_field_mappings_preserved(self, mock_product, mock_project, tenant_key, mock_memory_entry):
         """
         BEHAVIOR: All field mappings from old format are preserved
 
@@ -310,9 +299,7 @@ class TestRepositoryIntegration:
 
         with patch("src.giljo_mcp.tools.project_closeout.ProductMemoryRepository") as mock_repo_class:
             with patch("src.giljo_mcp.tools.project_closeout._fetch_github_commits") as mock_fetch:
-                mock_fetch.return_value = [
-                    {"sha": "abc123", "message": "Test commit", "date": "2025-11-15T10:00:00Z"}
-                ]
+                mock_fetch.return_value = [{"sha": "abc123", "message": "Test commit", "date": "2025-11-15T10:00:00Z"}]
 
                 mock_repo = MagicMock()
                 mock_repo_class.return_value = mock_repo
@@ -357,9 +344,7 @@ class TestRepositoryIntegration:
                 assert len(call_kwargs["tags"]) > 0
 
     @pytest.mark.asyncio
-    async def test_git_commits_empty_when_disabled(
-        self, mock_product, mock_project, tenant_key, mock_memory_entry
-    ):
+    async def test_git_commits_empty_when_disabled(self, mock_product, mock_project, tenant_key, mock_memory_entry):
         """
         BEHAVIOR: git_commits is empty array when GitHub disabled
 

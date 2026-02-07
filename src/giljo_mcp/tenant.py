@@ -10,7 +10,7 @@ import secrets
 import string
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 
 # Thread-safe context variable for current tenant
@@ -34,8 +34,8 @@ class TenantManager:
     KEY_ALPHABET = string.ascii_letters + string.digits
 
     # Validation cache to avoid repeated checks
-    _validation_cache: dict[str, bool] = {}
-    _cache_max_size = 1000  # Limit cache size to prevent memory issues
+    _validation_cache: ClassVar[dict[str, bool]] = {}
+    _cache_max_size: ClassVar[int] = 1000  # Limit cache size to prevent memory issues
 
     @classmethod
     def generate_tenant_key(cls, project_name: Optional[str] = None) -> str:
@@ -222,10 +222,7 @@ class TenantManager:
             Query with tenant filter applied
         """
         # Determine which tenant key to use
-        if tenant_key:
-            key_to_use = tenant_key
-        else:
-            key_to_use = cls.get_current_tenant()
+        key_to_use = tenant_key or cls.get_current_tenant()
 
         # Only apply filter if model has tenant_key and we have a key
         if key_to_use and hasattr(model, "tenant_key"):

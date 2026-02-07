@@ -6,13 +6,9 @@ Achieves context prioritization and orchestration through intelligent context fi
 
 Phase 1 Implementation: Template-based analysis (no LLM calls)
 
-⚠️  IMPORTANT - Product Vision Field Migration (Handover 0128e):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This file has been migrated to use Product.vision_documents relationship.
-DO NOT use deprecated Product fields (vision_path, vision_document, vision_type, chunked).
-✅ Use: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
+Product Vision: Uses Product.vision_documents relationship (Handover 0128e).
+Access via: product.primary_vision_text, product.primary_vision_path, product.vision_is_chunked
 See: src/giljo_mcp/models/products.py for helper properties
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import logging
@@ -21,6 +17,7 @@ from typing import Any, ClassVar, Optional
 
 import tiktoken
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config.defaults import DEFAULT_FIELD_PRIORITY
@@ -95,7 +92,7 @@ class MissionPlanner:
         # Initialize tokenizer (cl100k_base encoding for GPT-4/Claude)
         try:
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
+        except (KeyError, ValueError, OSError) as e:
             logger.warning(f"Failed to load tiktoken encoding: {e}. Using fallback.")
             self.tokenizer = None
 
@@ -279,7 +276,7 @@ class MissionPlanner:
         if self.tokenizer:
             try:
                 return len(self.tokenizer.encode(text))
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError) as e:
                 logger.warning(f"Token counting failed: {e}. Using fallback.")
 
         # Fallback: rough estimate (1 token ≈ 4 characters)
@@ -449,7 +446,7 @@ Success Criteria:
         # For now, return analysis results as this method seems to be called
         # before full mission generation. This allows the orchestrator to proceed.
         # The full generate_missions method will be called later in the workflow.
-        analysis = await self.analyze_requirements(product, project_description)
+        await self.analyze_requirements(product, project_description)
 
         # Return empty missions dict for now - the orchestrator will call
         # generate_missions later with full context
@@ -495,7 +492,7 @@ Success Criteria:
                     "token_budget": token_budget,
                     "serena_enabled": serena_enabled,
                 }
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Failed to fetch user configuration: {e}")
 
         return {"field_priority_config": None, "token_budget": 2000, "serena_enabled": False}
@@ -531,18 +528,7 @@ Success Criteria:
             )
             return ""
 
-            # Future implementation:
-            # from src.giljo_mcp.mcp_client import MCPClient
-            #
-            # mcp_client = MCPClient()
-            # result = await mcp_client.call_tool(
-            #     tool_name="serena__get_symbols_overview",
-            #     arguments={"relative_path": "."}
-            # )
-            #
-            # return result.get("content", "")
-
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - Serena context resilience: optional feature, return empty on any error
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
                 extra={"project_id": project_id, "tenant_key": tenant_key},
@@ -586,27 +572,25 @@ Success Criteria:
         if priority <= 4:
             if priority == 1:
                 return "full"  # CRITICAL - always include
-            elif priority == 2:
+            if priority == 2:
                 return "moderate"  # IMPORTANT - include if budget allows
-            elif priority == 3:
+            if priority == 3:
                 return "abbreviated"  # NICE_TO_HAVE - include if space remains
-            elif priority == 4:
+            if priority == 4:
                 return "exclude"  # EXCLUDED - never include
-            else:
-                return "exclude"  # Priority 0 or negative = exclude
+            return "exclude"  # Priority 0 or negative = exclude
 
         # v1.0 legacy support (0-10 scale)
         # Keep for backward compatibility during transition period
-        elif priority >= 10:
+        if priority >= 10:
             return "full"  # 0% context prioritization
-        elif priority >= 7:
+        if priority >= 7:
             return "moderate"  # 25% context prioritization
-        elif priority >= 4:
+        if priority >= 4:
             return "abbreviated"  # 50% context prioritization
-        elif priority >= 1:
+        if priority >= 1:
             return "minimal"  # 80% context prioritization
-        else:
-            return "exclude"  # 100% context prioritization (omitted)  # 100% context prioritization (omitted)
+        return "exclude"  # 100% context prioritization (omitted)  # 100% context prioritization (omitted)
 
     def _should_include_field(self, priority: int) -> bool:
         """
@@ -722,15 +706,12 @@ Success Criteria:
             }
         """
         # Query chunk metadata only (not content) for efficiency
-        stmt = (
-            select(
-                func.count(MCPContextIndex.id).label("chunk_count"),
-                func.sum(MCPContextIndex.token_count).label("total_tokens"),
-            )
-            .where(
-                MCPContextIndex.tenant_key == product.tenant_key,
-                MCPContextIndex.product_id == product.id,
-            )
+        stmt = select(
+            func.count(MCPContextIndex.id).label("chunk_count"),
+            func.sum(MCPContextIndex.token_count).label("total_tokens"),
+        ).where(
+            MCPContextIndex.tenant_key == product.tenant_key,
+            MCPContextIndex.product_id == product.id,
         )
         result = await session.execute(stmt)
         row = result.one()
@@ -743,12 +724,10 @@ Success Criteria:
         return {
             "total_chunks": row.chunk_count,
             "total_tokens": total_tokens,
-            "fetch_instruction": f"You have {row.chunk_count} vision chunks (~{total_tokens:,} tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": f"You have {row.chunk_count} vision chunks (~{total_tokens:,} tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-    async def _get_relevant_vision_chunks(
-        self, session, product, project, max_tokens: int | None = None
-    ) -> list[dict]:
+    async def _get_relevant_vision_chunks(self, session, product, project, max_tokens: int | None = None) -> list[dict]:
         """
         Retrieve vision chunks, optionally ranked by relevance to project description.
 
@@ -1149,7 +1128,7 @@ Success Criteria:
         return "\n".join(formatted_lines)
 
     # Section name mapping for human-readable priority framing
-    SECTION_NAMES = {
+    SECTION_NAMES: ClassVar[dict[str, str]] = {
         "product_core": "Product Context",
         "vision_documents": "Product Vision",
         "project_description": "Project Description",
@@ -1207,7 +1186,7 @@ Success Criteria:
 """
 
         # Priority 2 = IMPORTANT
-        elif priority == 2:
+        if priority == 2:
             return f"""## **IMPORTANT: {section_name}** (Priority 2)
 **High priority context**
 
@@ -1215,7 +1194,7 @@ Success Criteria:
 """
 
         # Priority 3 = REFERENCE
-        elif priority == 3:
+        if priority == 3:
             return f"""## {section_name} (Priority 3 - REFERENCE)
 **Supplemental information**
 
@@ -1237,29 +1216,26 @@ Success Criteria:
         """
         async with self.db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             from src.giljo_mcp.models.products import VisionDocument
 
             # Get active vision document
             # Order by display_order first, then created_at DESC (consistent with existing logic)
-            stmt = select(VisionDocument).where(
-                VisionDocument.product_id == product.id,
-                VisionDocument.tenant_key == product.tenant_key,
-                VisionDocument.is_active == True
-            ).order_by(
-                VisionDocument.display_order,
-                VisionDocument.created_at.desc()
-            ).limit(1)
+            stmt = (
+                select(VisionDocument)
+                .where(
+                    VisionDocument.product_id == product.id,
+                    VisionDocument.tenant_key == product.tenant_key,
+                    VisionDocument.is_active,
+                )
+                .order_by(VisionDocument.display_order, VisionDocument.created_at.desc())
+                .limit(1)
+            )
 
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def _get_memory_summary(
-        self,
-        session,
-        product_id: str,
-        tenant_key: str,
-        max_entries: int = 3
-    ) -> dict:
+    async def _get_memory_summary(self, session, product_id: str, tenant_key: str, max_entries: int = 3) -> dict:
         """
         Get brief summary of 360 memory for reference tier (Handover 0347b).
 
@@ -1289,11 +1265,7 @@ Success Criteria:
         total_projects = len(recent_projects)
 
         if total_projects == 0:
-            return {
-                "total_projects": 0,
-                "summary": "No project history available",
-                "fetch_tool": None
-            }
+            return {"total_projects": 0, "summary": "No project history available", "fetch_tool": None}
 
         return {
             "total_projects": total_projects,
@@ -1431,14 +1403,14 @@ Partial reading defeats the purpose of this configuration."""
             >>> "MUST" in frame["instruction"]
             True
         """
-        PRIORITY_FRAMES = {
+        priority_frames = {
             1: {
                 "level": 1,
                 "tier": "critical",
                 "label": "CRITICAL",
                 "instruction": f"🔴 CRITICAL: '{field_name}' is essential context. You MUST read and internalize this before creating your mission plan.",
                 "action": "MUST_READ_IMMEDIATELY",
-                "skip_allowed": False
+                "skip_allowed": False,
             },
             2: {
                 "level": 2,
@@ -1446,7 +1418,7 @@ Partial reading defeats the purpose of this configuration."""
                 "label": "IMPORTANT",
                 "instruction": f"🟡 IMPORTANT: '{field_name}' contains high-priority context. Read this for informed decision-making.",
                 "action": "SHOULD_READ",
-                "skip_allowed": False
+                "skip_allowed": False,
             },
             3: {
                 "level": 3,
@@ -1454,18 +1426,14 @@ Partial reading defeats the purpose of this configuration."""
                 "label": "REFERENCE",
                 "instruction": f"🟢 REFERENCE: '{field_name}' is available for deeper context. Fetch on-demand when needed.",
                 "action": "FETCH_IF_NEEDED",
-                "skip_allowed": True
-            }
+                "skip_allowed": True,
+            },
         }
 
-        return PRIORITY_FRAMES.get(priority, PRIORITY_FRAMES[3])
+        return priority_frames.get(priority, priority_frames[3])
 
     def _add_to_tier_by_priority(
-        self, 
-        builder: "JSONContextBuilder", 
-        field_name: str, 
-        priority: int, 
-        content: dict
+        self, builder: "JSONContextBuilder", field_name: str, priority: int, content: dict
     ) -> None:
         """
         Add field to appropriate tier based on priority value (Handover 0347 fix).
@@ -1485,10 +1453,7 @@ Partial reading defeats the purpose of this configuration."""
             # Field is now in critical tier with priority framing
         """
         # Add priority framing to content
-        framed_content = {
-            "_priority_frame": self._create_priority_frame(priority, field_name),
-            **content
-        }
+        framed_content = {"_priority_frame": self._create_priority_frame(priority, field_name), **content}
 
         if priority == 1:
             builder.add_critical(field_name)
@@ -1499,7 +1464,6 @@ Partial reading defeats the purpose of this configuration."""
         elif priority == 3:
             builder.add_reference(field_name)
             builder.add_reference_content(field_name, framed_content)
-
 
     def _get_tier_framing(self, tier: str, base_framing: str) -> str:
         """
@@ -1721,31 +1685,37 @@ Partial reading defeats the purpose of this configuration."""
             Type-only mode should NOT call this function
         """
         from sqlalchemy import and_, select
+
         from src.giljo_mcp.models import AgentTemplate
 
         # Query active agent templates for tenant
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,
+        stmt = (
+            select(AgentTemplate)
+            .where(
+                and_(
+                    AgentTemplate.tenant_key == tenant_key,
+                    AgentTemplate.is_active,
+                )
             )
-        ).order_by(AgentTemplate.name)
+            .order_by(AgentTemplate.name)
+        )
 
         result = await session.execute(stmt)
         templates = result.scalars().all()
 
         # Convert to dict format with all fields
-        template_dicts = []
-        for template in templates:
-            template_dicts.append({
+        template_dicts = [
+            {
                 "name": template.name,
                 "role": template.role,
                 "description": template.description or "",
-                "content": template.template_content or "",  # Full prompt content
+                "content": template.system_instructions or "",  # Full prompt content
                 "cli_tool": template.cli_tool or "claude-code",
                 "background_color": template.background_color or "#808080",
                 "category": template.category or "general",
-            })
+            }
+            for template in templates
+        ]
 
         logger.debug(
             f"Fetched {len(template_dicts)} full agent templates",
@@ -1856,16 +1826,15 @@ Partial reading defeats the purpose of this configuration."""
             product_core_content = {
                 "name": product.name,
                 "description": product.description or "",
-                "tenant_key": product.tenant_key
+                "tenant_key": product.tenant_key,
             }
             self._add_to_tier_by_priority(builder, "product_core", product_core_priority, product_core_content)
 
         # Project Description (MANDATORY - always included)
         builder.add_critical("project_description")
-        builder.add_critical_content("project_description", {
-            "name": project.name,
-            "description": project.description or ""
-        })
+        builder.add_critical_content(
+            "project_description", {"name": project.name, "description": project.description or ""}
+        )
 
         # Tech Stack
         tech_stack_priority = effective_priorities.get("tech_stack", 2)
@@ -1895,7 +1864,7 @@ Partial reading defeats the purpose of this configuration."""
                 arch_content = {
                     "summary": arch_text[:500] + "..." if len(arch_text) > 500 else arch_text,
                     "fetch_tool": "fetch_architecture(product_id)",
-                    "detail_level": "condensed"
+                    "detail_level": "condensed",
                 }
                 self._add_to_tier_by_priority(builder, "architecture", arch_priority, arch_content)
 
@@ -1905,12 +1874,14 @@ Partial reading defeats the purpose of this configuration."""
         if testing_priority in [1, 2, 3] and product.config_data:  # Process unless EXCLUDED (4)
             testing_data = product.config_data.get("test_config", {})
             # Check if any testing fields have content
-            has_testing_content = any([
-                testing_data.get("quality_standards"),
-                testing_data.get("strategy"),
-                testing_data.get("frameworks"),
-                testing_data.get("coverage_target")
-            ])
+            has_testing_content = any(
+                [
+                    testing_data.get("quality_standards"),
+                    testing_data.get("strategy"),
+                    testing_data.get("frameworks"),
+                    testing_data.get("coverage_target"),
+                ]
+            )
             if testing_data and has_testing_content:
                 testing_content = {
                     "quality_standards": testing_data.get("quality_standards", ""),
@@ -1918,7 +1889,7 @@ Partial reading defeats the purpose of this configuration."""
                     "frameworks": testing_data.get("frameworks", ""),
                     "coverage_target": testing_data.get("coverage_target", 80),
                     "fetch_tool": "fetch_testing_config(product_id)",
-                    "detail_level": "condensed"
+                    "detail_level": "condensed",
                 }
                 self._add_to_tier_by_priority(builder, "testing", testing_priority, testing_content)
 
@@ -1937,7 +1908,7 @@ Partial reading defeats the purpose of this configuration."""
                     "agent_depth": agent_depth,
                     "depth_config_input": depth_config,
                     "effective_depth": agent_depth,
-                }
+                },
             )
 
             # Fetch templates from database
@@ -1952,7 +1923,7 @@ Partial reading defeats the purpose of this configuration."""
                     "templates": full_templates,
                     "instruction": "All agent templates included with full prompts for nuanced task assignment.",
                     "token_impact": f"~{len(full_templates) * 2500} tokens (full prompts)",
-                    "usage_note": "Review agent capabilities before spawning. Match task requirements to agent strengths."
+                    "usage_note": "Review agent capabilities before spawning. Match task requirements to agent strengths.",
                 }
 
                 logger.info(
@@ -1962,7 +1933,7 @@ Partial reading defeats the purpose of this configuration."""
                         "depth": "full",
                         "priority": agent_templates_priority,
                         "estimated_tokens": len(full_templates) * 2500,
-                    }
+                    },
                 )
             else:
                 # Type-only mode (default): Minimal metadata only (~50 tokens/agent)
@@ -1971,11 +1942,13 @@ Partial reading defeats the purpose of this configuration."""
                     desc = template.get("description", "")
                     truncated_desc = desc[:200] + "..." if len(desc) > 200 else desc
 
-                    minimal_templates.append({
-                        "name": template["name"],
-                        "role": template["role"],
-                        "description": truncated_desc,
-                    })
+                    minimal_templates.append(
+                        {
+                            "name": template["name"],
+                            "role": template["role"],
+                            "description": truncated_desc,
+                        }
+                    )
 
                 agent_content = {
                     "depth": "type_only",
@@ -1983,7 +1956,7 @@ Partial reading defeats the purpose of this configuration."""
                     "templates": minimal_templates,
                     "fetch_tool": "get_available_agents(tenant_key, active_only=True)",
                     "instruction": "Agent templates listed with basic metadata. Call get_available_agents() for complete details if needed.",
-                    "token_impact": f"~{len(minimal_templates) * 50} tokens (type only)"
+                    "token_impact": f"~{len(minimal_templates) * 50} tokens (type only)",
                 }
 
                 logger.info(
@@ -1993,7 +1966,7 @@ Partial reading defeats the purpose of this configuration."""
                         "depth": "type_only",
                         "priority": agent_templates_priority,
                         "estimated_tokens": len(minimal_templates) * 50,
-                    }
+                    },
                 )
 
             # Add to appropriate tier based on user's priority setting
@@ -2031,10 +2004,10 @@ Partial reading defeats the purpose of this configuration."""
                         "when_to_fetch": [
                             "When you need detailed product vision context",
                             "When project requirements reference vision elements",
-                            "When making architecture decisions aligned with vision"
+                            "When making architecture decisions aligned with vision",
                         ],
                         "note": "Reading is OPTIONAL. Only fetch if task requires vision document details.",
-                        "depth": "optional"
+                        "depth": "optional",
                     }
 
                 elif vision_depth == "light":
@@ -2053,7 +2026,7 @@ Partial reading defeats the purpose of this configuration."""
                             "summary_tokens": summary_tokens,
                             "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                             "note": "This is a 33% SUMY summary. Use fetch_vision_document() for complete content.",
-                            "depth": "light"
+                            "depth": "light",
                         }
                     else:
                         # Fallback if summary not yet generated
@@ -2064,7 +2037,7 @@ Partial reading defeats the purpose of this configuration."""
                             "chunk_count": vision_doc.chunk_count or 0,
                             "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                             "note": "Light summary not yet generated. Use fetch_vision_document() to read full content.",
-                            "depth": "light"
+                            "depth": "light",
                         }
 
                 elif vision_depth == "medium":
@@ -2083,7 +2056,7 @@ Partial reading defeats the purpose of this configuration."""
                             "summary_tokens": summary_tokens,
                             "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                             "note": "This is a 66% SUMY summary. Use fetch_vision_document() for complete content.",
-                            "depth": "medium"
+                            "depth": "medium",
                         }
                     else:
                         # Fallback if summary not yet generated
@@ -2094,7 +2067,7 @@ Partial reading defeats the purpose of this configuration."""
                             "chunk_count": vision_doc.chunk_count or 0,
                             "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
                             "note": "Medium summary not yet generated. Use fetch_vision_document() to read full content.",
-                            "depth": "medium"
+                            "depth": "medium",
                         }
 
                 elif vision_depth == "full":
@@ -2112,14 +2085,14 @@ Partial reading defeats the purpose of this configuration."""
                         "fetch_commands": fetch_commands,
                         "warning": "User explicitly configured FULL depth. You MUST fetch ALL chunks before proceeding.",
                         "reading_sequence": f"Execute fetch commands in order: chunks 0 to {(vision_doc.chunk_count or 1) - 1}",
-                        "depth": "full"
+                        "depth": "full",
                     }
 
                 else:
                     # Unknown depth - fallback to optional
                     logger.warning(
                         f"Unknown vision depth '{vision_depth}', falling back to 'optional'",
-                        extra={"vision_depth": vision_depth, "product_id": str(product.id)}
+                        extra={"vision_depth": vision_depth, "product_id": str(product.id)},
                     )
                     vision_content_data = {
                         "status": "AVAILABLE_ON_REQUEST",
@@ -2127,7 +2100,7 @@ Partial reading defeats the purpose of this configuration."""
                         "total_tokens": vision_doc.original_token_count or 0,
                         "chunk_count": vision_doc.chunk_count or 0,
                         "fetch_tool": "fetch_vision_document(product_id, offset, limit)",
-                        "depth": "optional"
+                        "depth": "optional",
                     }
 
                 # Add to appropriate tier based on user's priority setting
@@ -2141,7 +2114,7 @@ Partial reading defeats the purpose of this configuration."""
                             "priority": vision_priority,
                             "chunk_count": vision_doc.chunk_count or 0,
                             "total_tokens": vision_doc.original_token_count or 0,
-                        }
+                        },
                     )
 
         # 360 Memory
@@ -2150,10 +2123,7 @@ Partial reading defeats the purpose of this configuration."""
         if memory_priority in [1, 2, 3]:  # Process unless EXCLUDED (4)
             memory_depth = depth_config.get("memory_360", 5)
             memory_summary = await self._get_memory_summary(
-                session=session,
-                product_id=str(product.id),
-                tenant_key=product.tenant_key,
-                max_entries=memory_depth
+                session=session, product_id=str(product.id), tenant_key=product.tenant_key, max_entries=memory_depth
             )
 
             # Add depth information to the summary
@@ -2177,7 +2147,7 @@ Partial reading defeats the purpose of this configuration."""
                 "commit_limit": git_depth,
                 "repository": git_config.get("repository", ""),
                 "fetch_tool": "fetch_git_history(product_id, limit)",
-                "instruction": f"Call fetch_git_history() to get last {git_depth} commits"
+                "instruction": f"Call fetch_git_history() to get last {git_depth} commits",
             }
 
             self._add_to_tier_by_priority(builder, "git_history", git_priority, git_content)
@@ -2189,16 +2159,20 @@ Partial reading defeats the purpose of this configuration."""
             )
             if serena_context:
                 builder.add_critical("serena_context")
-                builder.add_critical_content("serena_context", {
-                    "summary": serena_context[:1000] + "..." if len(serena_context) > 1000 else serena_context,
-                    "full_content_chars": len(serena_context)
-                })
+                builder.add_critical_content(
+                    "serena_context",
+                    {
+                        "summary": serena_context[:1000] + "..." if len(serena_context) > 1000 else serena_context,
+                        "full_content_chars": len(serena_context),
+                    },
+                )
 
         # Build final JSON structure
         result = builder.build()
 
         # Calculate token estimate
         import json
+
         json_str = json.dumps(result)
         estimated_tokens = len(json_str) // 4
 
@@ -2228,7 +2202,7 @@ Partial reading defeats the purpose of this configuration."""
         tenant_key: str,
         priority: int,
         max_entries: int = 10,
-        product: Optional[Product] = None
+        product: Optional[Product] = None,
     ) -> str:
         """
         Extract project history from product_memory_entries table with priority-based detail levels.
@@ -2295,8 +2269,7 @@ Partial reading defeats the purpose of this configuration."""
         # Build formatted context - historical entries first
         sections = ["## Historical Context (360 Memory)\n"]
         sections.append(
-            f"Product has {len(history)} previous project(s) in history. "
-            f"Showing {len(history)} most recent:\n"
+            f"Product has {len(history)} previous project(s) in history. Showing {len(history)} most recent:\n"
         )
 
         # Format each history entry
@@ -2315,8 +2288,7 @@ Partial reading defeats the purpose of this configuration."""
                 outcomes = entry.get("key_outcomes", [])
                 if outcomes:
                     sections.append("**Key Outcomes:**")
-                    for outcome in outcomes:
-                        sections.append(f"- {outcome}")
+                    sections.extend([f"- {outcome}" for outcome in outcomes])
                     sections.append("")
 
             # Add decisions for full detail level only
@@ -2324,8 +2296,7 @@ Partial reading defeats the purpose of this configuration."""
                 decisions = entry.get("decisions_made", [])
                 if decisions:
                     sections.append("**Decisions Made:**")
-                    for decision in decisions:
-                        sections.append(f"- {decision}")
+                    sections.extend([f"- {decision}" for decision in decisions])
                     sections.append("")
 
         # Add memory instructions from MemoryInstructionGenerator
@@ -2517,7 +2488,7 @@ Partial reading defeats the purpose of this configuration."""
                 user = result.scalar_one_or_none()
                 if user and user.field_priority_config:
                     return user.field_priority_config
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.warning(f"Failed to load user field priority config: {e}")
 
         return DEFAULT_FIELD_PRIORITY
@@ -2672,7 +2643,7 @@ Complexity: {analysis.complexity}
 
         # Add config_data section with priority (Handover 0048)
         if remaining_budget > 0:
-            config_section, config_tokens = self._build_config_data_section(product, priority_config, remaining_budget)
+            config_section, _config_tokens = self._build_config_data_section(product, priority_config, remaining_budget)
             mission_content += config_section
         else:
             logger.warning(
@@ -2781,9 +2752,12 @@ Complexity: {analysis.complexity}
             for match in matches:
                 # Check if match is an agent role (or close match)
                 for role in all_agent_roles:
-                    if role.lower() in match.lower() or match.lower() in role.lower():
-                        if role != agent_role and role not in dependencies:
-                            dependencies.append(role)
+                    if (
+                        (role.lower() in match.lower() or match.lower() in role.lower())
+                        and role != agent_role
+                        and role not in dependencies
+                    ):
+                        dependencies.append(role)
 
         logger.debug(
             f"Detected dependencies for {agent_role}: {dependencies}",
@@ -2800,7 +2774,7 @@ Complexity: {analysis.complexity}
 
         This adds explicit coordination code that:
         1. Checks for COMPLETE messages from dependencies
-        2. Waits up to 5 minutes (10 checks × 30 seconds)
+        2. Waits up to 5 minutes (10 checks x 30 seconds)
         3. Escalates to orchestrator if timeout
 
         Args:
@@ -2836,7 +2810,7 @@ Complexity: {analysis.complexity}
 ```python
 # Dependency coordination for {agent_role}
 dependencies_met = False
-max_checks = 10  # 5 minutes total (30 sec × 10)
+max_checks = 10  # 5 minutes total (30 sec x 10)
 check_count = 0
 required_deps = {deps_set_str}
 completed_deps = set()
@@ -3001,7 +2975,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                             limit=10,
                         )
                         vision_chunks = [chunk.content for chunk in chunks]
-            except Exception as e:
+            except SQLAlchemyError as e:
                 logger.warning(f"Failed to fetch context chunks: {e}. Using vision document.")
                 vision_chunks = []
 
@@ -3030,7 +3004,7 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                 with open(config_path, encoding="utf-8") as f:
                     config_data = yaml.safe_load(f) or {}
                 serena_enabled = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-        except Exception as e:
+        except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Failed to read Serena config: {e}")
             serena_enabled = False
 
@@ -3170,5 +3144,5 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                         }
                         session.commit()
 
-        except Exception as e:
-            logger.error(f"Failed to store token metrics: {e}")
+        except SQLAlchemyError:
+            logger.exception("Failed to store token metrics")

@@ -5,9 +5,11 @@ Handover 0135: 360 Memory Management - Database Schema
 Tests written FIRST following TDD principles - these will FAIL until implementation complete.
 """
 
-import pytest
 import uuid
+
+import pytest
 from sqlalchemy import select
+
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.product_service import ProductService
 
@@ -38,8 +40,7 @@ class TestProductMemory:
             # ACT
             unique_name = f"Test Product {uuid.uuid4().hex[:8]}"
             product_data = await product_service.create_product(
-                name=unique_name,
-                description="Test description for default memory structure"
+                name=unique_name, description="Test description for default memory structure"
             )
 
             # ASSERT
@@ -85,29 +86,27 @@ class TestProductMemory:
                     "enabled": True,
                     "repo_url": "https://github.com/test/repo",
                     "auto_commit": False,
-                    "last_sync": "2025-11-16T10:00:00Z"
+                    "last_sync": "2025-11-16T10:00:00Z",
                 },
                 "learnings": [
                     {
                         "timestamp": "2025-11-15T14:30:00Z",
                         "project_id": "proj_123",
                         "summary": "Database migration best practices",
-                        "tags": ["database", "alembic", "postgresql"]
+                        "tags": ["database", "alembic", "postgresql"],
                     }
                 ],
                 "context": {
                     "last_updated": "2025-11-16T10:00:00Z",
                     "token_count": 15000,
-                    "summary": "Product focused on AI orchestration"
-                }
+                    "summary": "Product focused on AI orchestration",
+                },
             }
 
             # ACT
             unique_name = f"Memory Test Product {uuid.uuid4().hex[:8]}"
             product_data = await product_service.create_product(
-                name=unique_name,
-                description="Testing complex memory storage",
-                product_memory=complex_memory
+                name=unique_name, description="Testing complex memory storage", product_memory=complex_memory
             )
 
             # ASSERT
@@ -143,39 +142,24 @@ class TestProductMemory:
             {
                 "name": "GitHub Enabled Product",
                 "github_enabled": True,
-                "product_memory": {
-                    "github": {"enabled": True},
-                    "learnings": [],
-                    "context": {}
-                }
+                "product_memory": {"github": {"enabled": True}, "learnings": [], "context": {}},
             },
             {
                 "name": "GitHub Disabled Product",
                 "github_enabled": False,
-                "product_memory": {
-                    "github": {"enabled": False},
-                    "learnings": [],
-                    "context": {}
-                }
+                "product_memory": {"github": {"enabled": False}, "learnings": [], "context": {}},
             },
             {
                 "name": "No GitHub Product",
                 "github_enabled": None,
-                "product_memory": {
-                    "github": {},
-                    "learnings": [],
-                    "context": {}
-                }
-            }
+                "product_memory": {"github": {}, "learnings": [], "context": {}},
+            },
         ]
 
         # Create products directly in database
         for data in products_data:
             product = Product(
-                name=data["name"],
-                description="Test",
-                tenant_key=tenant_key,
-                product_memory=data["product_memory"]
+                name=data["name"], description="Test", tenant_key=tenant_key, product_memory=data["product_memory"]
             )
             db_session.add(product)
 
@@ -183,8 +167,7 @@ class TestProductMemory:
 
         # ACT - Use JSONB path query
         query = select(Product).where(
-            Product.tenant_key == tenant_key,
-            Product.product_memory["github"]["enabled"].astext == "true"
+            Product.tenant_key == tenant_key, Product.product_memory["github"]["enabled"].astext == "true"
         )
         result = await db_session.execute(query)
         enabled_products = result.scalars().all()
@@ -209,22 +192,16 @@ class TestProductMemory:
         memory_template = {
             "github": {"enabled": True, "repo_url": "https://github.com/test/shared"},
             "learnings": [],
-            "context": {}
+            "context": {},
         }
 
         # Create products for two different tenants
         tenant_a_product = Product(
-            name="Tenant A Product",
-            description="Tenant A",
-            tenant_key="tenant_a",
-            product_memory=memory_template
+            name="Tenant A Product", description="Tenant A", tenant_key="tenant_a", product_memory=memory_template
         )
 
         tenant_b_product = Product(
-            name="Tenant B Product",
-            description="Tenant B",
-            tenant_key="tenant_b",
-            product_memory=memory_template
+            name="Tenant B Product", description="Tenant B", tenant_key="tenant_b", product_memory=memory_template
         )
 
         db_session.add_all([tenant_a_product, tenant_b_product])
@@ -232,8 +209,7 @@ class TestProductMemory:
 
         # ACT
         query = select(Product).where(
-            Product.tenant_key == "tenant_a",
-            Product.product_memory["github"]["enabled"].astext == "true"
+            Product.tenant_key == "tenant_a", Product.product_memory["github"]["enabled"].astext == "true"
         )
         result = await db_session.execute(query)
         tenant_a_products = result.scalars().all()
@@ -266,12 +242,8 @@ class TestProductMemory:
             name="Rollback Test Product",
             description="Testing migration rollback",
             tenant_key=tenant_key,
-            product_memory={
-                "github": {"enabled": True},
-                "learnings": [],
-                "context": {}
-            },
-            config_data={"some": "config"}
+            product_memory={"github": {"enabled": True}, "learnings": [], "context": {}},
+            config_data={"some": "config"},
         )
         db_session.add(product)
         await db_session.commit()

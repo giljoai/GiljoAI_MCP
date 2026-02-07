@@ -13,33 +13,30 @@ This test suite covers the 5 new TaskService methods + 2 permission helpers:
 Coverage Target: >80%
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+import pytest_asyncio
 from passlib.hash import bcrypt
 from sqlalchemy import select
 
+from src.giljo_mcp.exceptions import AuthorizationError, ResourceNotFoundError
 from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.exceptions import (
-    ResourceNotFoundError,
-    ValidationError,
-    AuthorizationError
-)
+
 
 # Use existing fixtures from base_fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_tenant_key():
@@ -63,7 +60,7 @@ async def test_product(db_session, test_tenant_key):
         description="Test product for task service tests",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(product)
     await db_session.commit()
@@ -82,7 +79,7 @@ async def test_project(db_session, test_tenant_key, test_product):
         product_id=test_product.id,
         tenant_key=test_tenant_key,
         status="active",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
     await db_session.commit()
@@ -102,7 +99,7 @@ async def test_user(db_session, test_tenant_key):
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -122,7 +119,7 @@ async def admin_user(db_session, test_tenant_key):
         role="admin",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(admin)
     await db_session.commit()
@@ -142,7 +139,7 @@ async def other_tenant_user(db_session, other_tenant_key):
         role="developer",
         tenant_key=other_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -164,7 +161,7 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
         status="waiting",
         priority="medium",
         created_by_user_id=test_user.id,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(task)
     await db_session.commit()
@@ -183,7 +180,7 @@ async def other_tenant_task(db_session, other_tenant_key, other_tenant_user):
         status="waiting",
         priority="medium",
         created_by_user_id=other_tenant_user.id,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(task)
     await db_session.commit()
@@ -201,13 +198,14 @@ async def task_service(db_manager, db_session, test_tenant_key):
     return TaskService(
         db_manager=db_manager,
         tenant_manager=mock_tenant_manager,
-        session=db_session  # ADD THIS - Shared Session Pattern (Handover 0324)
+        session=db_session,  # ADD THIS - Shared Session Pattern (Handover 0324)
     )
 
 
 # ============================================================================
 # TEST: get_task
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_task_success(task_service, test_task):
@@ -252,13 +250,11 @@ async def test_get_task_tenant_isolation(task_service, other_tenant_task):
 # TEST: delete_task
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_delete_task_success_as_creator(task_service, test_task, test_user, db_session):
     """Test successful task deletion by creator"""
-    result = await task_service.delete_task(
-        task_id=str(test_task.id),
-        user_id=str(test_user.id)
-    )
+    result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(test_user.id))
 
     # Service still returns dict for success cases
     assert result["success"] is True
@@ -273,10 +269,7 @@ async def test_delete_task_success_as_creator(task_service, test_task, test_user
 @pytest.mark.asyncio
 async def test_delete_task_success_as_admin(task_service, test_task, admin_user, db_session):
     """Test successful task deletion by admin"""
-    result = await task_service.delete_task(
-        task_id=str(test_task.id),
-        user_id=str(admin_user.id)
-    )
+    result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(admin_user.id))
 
     # Service still returns dict for success cases
     assert result["success"] is True
@@ -299,16 +292,13 @@ async def test_delete_task_permission_denied(task_service, test_task, db_session
         password_hash=bcrypt.hash("Password123"),
         role="developer",
         tenant_key=test_tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()
 
     with pytest.raises(AuthorizationError) as exc_info:
-        await task_service.delete_task(
-            task_id=str(test_task.id),
-            user_id=str(other_user.id)
-        )
+        await task_service.delete_task(task_id=str(test_task.id), user_id=str(other_user.id))
 
     assert "permission" in str(exc_info.value).lower() or "not authorized" in str(exc_info.value).lower()
 
@@ -316,6 +306,7 @@ async def test_delete_task_permission_denied(task_service, test_task, db_session
 # ============================================================================
 # TEST: convert_to_project
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_convert_to_project_basic(task_service, test_task, test_user, db_session, test_product):
@@ -325,7 +316,7 @@ async def test_convert_to_project_basic(task_service, test_task, test_user, db_s
         project_name="New Project from Task",
         strategy="create_new",
         include_subtasks=False,
-        user_id=str(test_user.id)
+        user_id=str(test_user.id),
     )
 
     # Service still returns dict for success cases
@@ -344,7 +335,9 @@ async def test_convert_to_project_basic(task_service, test_task, test_user, db_s
 
 
 @pytest.mark.asyncio
-async def test_convert_to_project_with_subtasks(task_service, test_task, test_user, db_session, test_tenant_key, test_product, test_project):
+async def test_convert_to_project_with_subtasks(
+    task_service, test_task, test_user, db_session, test_tenant_key, test_product, test_project
+):
     """Test task → project conversion with subtask handling"""
     # Create subtasks
     subtask1 = Task(
@@ -357,7 +350,7 @@ async def test_convert_to_project_with_subtasks(task_service, test_task, test_us
         description="First subtask",
         status="waiting",
         priority="low",
-        created_by_user_id=test_user.id
+        created_by_user_id=test_user.id,
     )
     subtask2 = Task(
         id=str(uuid4()),
@@ -369,7 +362,7 @@ async def test_convert_to_project_with_subtasks(task_service, test_task, test_us
         description="Second subtask",
         status="waiting",
         priority="low",
-        created_by_user_id=test_user.id
+        created_by_user_id=test_user.id,
     )
     db_session.add_all([subtask1, subtask2])
     await db_session.commit()
@@ -379,7 +372,7 @@ async def test_convert_to_project_with_subtasks(task_service, test_task, test_us
         project_name="Project with Subtasks",
         strategy="create_new",
         include_subtasks=True,
-        user_id=str(test_user.id)
+        user_id=str(test_user.id),
     )
 
     # Service still returns dict for success cases
@@ -400,7 +393,7 @@ async def test_convert_to_project_permission_denied(task_service, test_task, db_
         password_hash=bcrypt.hash("Password123"),
         role="developer",
         tenant_key=test_tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -411,7 +404,7 @@ async def test_convert_to_project_permission_denied(task_service, test_task, db_
             project_name="Unauthorized Project",
             strategy="create_new",
             include_subtasks=False,
-            user_id=str(other_user.id)
+            user_id=str(other_user.id),
         )
 
     assert "permission" in str(exc_info.value).lower() or "not authorized" in str(exc_info.value).lower()
@@ -421,15 +414,13 @@ async def test_convert_to_project_permission_denied(task_service, test_task, db_
 # TEST: change_status
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_change_status_to_in_progress(task_service, test_task, db_session):
     """Test status change to 'in_progress' sets started_at"""
     assert test_task.started_at is None  # Initially None
 
-    result = await task_service.change_status(
-        task_id=str(test_task.id),
-        new_status="in_progress"
-    )
+    result = await task_service.change_status(task_id=str(test_task.id), new_status="in_progress")
 
     # Service still returns dict for success cases
     assert result["success"] is True
@@ -445,10 +436,7 @@ async def test_change_status_to_completed(task_service, test_task, db_session):
     """Test status change to 'completed' sets completed_at"""
     assert test_task.completed_at is None  # Initially None
 
-    result = await task_service.change_status(
-        task_id=str(test_task.id),
-        new_status="completed"
-    )
+    result = await task_service.change_status(task_id=str(test_task.id), new_status="completed")
 
     # Service still returns dict for success cases
     assert result["success"] is True
@@ -464,10 +452,7 @@ async def test_change_status_to_cancelled(task_service, test_task, db_session):
     """Test status change to 'cancelled' sets completed_at"""
     assert test_task.completed_at is None
 
-    result = await task_service.change_status(
-        task_id=str(test_task.id),
-        new_status="cancelled"
-    )
+    result = await task_service.change_status(task_id=str(test_task.id), new_status="cancelled")
 
     # Service still returns dict for success cases
     assert result["success"] is True
@@ -481,10 +466,7 @@ async def test_change_status_to_cancelled(task_service, test_task, db_session):
 @pytest.mark.asyncio
 async def test_change_status_invalid(task_service, test_task):
     """Test invalid status handling"""
-    result = await task_service.change_status(
-        task_id=str(test_task.id),
-        new_status="invalid_status_xyz"
-    )
+    result = await task_service.change_status(task_id=str(test_task.id), new_status="invalid_status_xyz")
 
     # Service accepts any status (validation should be at schema level)
     # For now, expect it to succeed
@@ -496,8 +478,11 @@ async def test_change_status_invalid(task_service, test_task):
 # TEST: get_summary
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_get_summary_all_products(task_service, db_session, test_tenant_key, test_product, test_project, test_user):
+async def test_get_summary_all_products(
+    task_service, db_session, test_tenant_key, test_product, test_project, test_user
+):
     """Test task summary aggregation across all products"""
     # Create tasks with different statuses
     tasks_data = [
@@ -517,7 +502,7 @@ async def test_get_summary_all_products(task_service, db_session, test_tenant_ke
             description=f"Task with status {task_data['status']}",
             status=task_data["status"],
             priority=task_data["priority"],
-            created_by_user_id=test_user.id
+            created_by_user_id=test_user.id,
         )
         db_session.add(task)
 
@@ -531,7 +516,9 @@ async def test_get_summary_all_products(task_service, db_session, test_tenant_ke
 
 
 @pytest.mark.asyncio
-async def test_get_summary_filtered_by_product(task_service, db_session, test_tenant_key, test_product, test_project, test_user):
+async def test_get_summary_filtered_by_product(
+    task_service, db_session, test_tenant_key, test_product, test_project, test_user
+):
     """Test task summary filtered by specific product"""
     # Create tasks
     task1 = Task(
@@ -543,7 +530,7 @@ async def test_get_summary_filtered_by_product(task_service, db_session, test_te
         description="Task for specific product",
         status="waiting",
         priority="high",
-        created_by_user_id=test_user.id
+        created_by_user_id=test_user.id,
     )
     db_session.add(task1)
     await db_session.commit()
@@ -557,6 +544,7 @@ async def test_get_summary_filtered_by_product(task_service, db_session, test_te
 # ============================================================================
 # TEST: Permission Helpers
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_can_modify_task_as_creator(task_service, test_task, test_user):
@@ -582,7 +570,7 @@ async def test_can_modify_task_denied(task_service, test_task, db_session, test_
         password_hash=bcrypt.hash("Password123"),
         role="developer",
         tenant_key=test_tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -615,7 +603,7 @@ async def test_can_delete_task_denied(task_service, test_task, db_session, test_
         password_hash=bcrypt.hash("Password123"),
         role="developer",
         tenant_key=test_tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()

@@ -11,11 +11,10 @@ import logging
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
 
 from .dependencies import get_template_service
@@ -40,19 +39,7 @@ async def get_template_diff(
     """
     logger.info(f"User {current_user.username} requesting diff for template {template_id}")
 
-    # ORIGINAL QUERY: preview.py line 42-49 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     and_(
-    #         AgentTemplate.id == template_id,
-    #         AgentTemplate.tenant_key == current_user.tenant_key,
-    #     )
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
-    template = await template_service.get_template_by_id(
-        session, template_id, current_user.tenant_key
-    )
+    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -88,19 +75,7 @@ async def preview_template(
     """
     logger.info(f"User {current_user.username} previewing template {template_id}")
 
-    # ORIGINAL QUERY: preview.py line 82-89 (replaced with service call)
-    # stmt = select(AgentTemplate).where(
-    #     and_(
-    #         AgentTemplate.id == template_id,
-    #         AgentTemplate.tenant_key == current_user.tenant_key,
-    #     )
-    # )
-    # result = await session.execute(stmt)
-    # template = result.scalar_one_or_none()
-
-    template = await template_service.get_template_by_id(
-        session, template_id, current_user.tenant_key
-    )
+    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -109,7 +84,7 @@ async def preview_template(
     name = template.name
     description = template.description or ""
     model = template.model or "sonnet"
-    system_text = template.system_instructions or template.template_content or ""
+    system_text = template.system_instructions or ""
     user_text = template.user_instructions or ""
 
     # Apply variable substitutions for preview
@@ -164,6 +139,5 @@ async def preview_template(
         template_id=str(template.id),
         cli_tool=cli_tool,
         preview=preview_text,
-        mission=None,
-        variables_used=list({v for v in variables_used}),
+        variables_used=list(set(variables_used)),
     )

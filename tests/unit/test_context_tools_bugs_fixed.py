@@ -10,10 +10,12 @@ Bug 2: get_architecture.py accessed product.architecture_notes (non-existent)
 Both should access product.config_data JSONB.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, Mock
-from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+
+import pytest
+
 from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 
 
 @pytest.mark.asyncio
@@ -28,7 +30,7 @@ async def test_get_tech_stack_from_config_data():
             "backend": ["FastAPI"],
             "database": ["PostgreSQL"],
             "infrastructure": ["Docker"],
-            "dev_tools": ["Git"]
+            "dev_tools": ["Git"],
         }
     }
 
@@ -47,10 +49,7 @@ async def test_get_tech_stack_from_config_data():
 
     # Call the function (sections="all")
     result = await get_tech_stack(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        sections="all",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", sections="all", db_manager=mock_db_manager
     )
 
     # Verify correct data extraction from config_data
@@ -72,7 +71,7 @@ async def test_get_tech_stack_required_sections():
             "languages": ["Python"],
             "frontend": ["Vue 3"],
             "backend": ["FastAPI"],
-            "database": ["PostgreSQL"]
+            "database": ["PostgreSQL"],
         }
     }
 
@@ -88,10 +87,7 @@ async def test_get_tech_stack_required_sections():
 
     # Call with sections="required"
     result = await get_tech_stack(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        sections="required",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", sections="required", db_manager=mock_db_manager
     )
 
     # Should only return required fields
@@ -121,10 +117,7 @@ async def test_get_tech_stack_empty_config_data():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_tech_stack(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        sections="all",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", sections="all", db_manager=mock_db_manager
     )
 
     # Should return empty lists, not crash
@@ -151,10 +144,7 @@ async def test_get_tech_stack_missing_tech_stack_key():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_tech_stack(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        sections="all",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", sections="all", db_manager=mock_db_manager
     )
 
     # Should return empty lists
@@ -163,6 +153,7 @@ async def test_get_tech_stack_missing_tech_stack_key():
 
 
 # ========== Architecture Tests ==========
+
 
 @pytest.mark.asyncio
 async def test_get_architecture_from_config_data():
@@ -173,7 +164,7 @@ async def test_get_architecture_from_config_data():
             "pattern": "Microservices",
             "design_patterns": "Repository, Service Layer",
             "api_style": "RESTful",
-            "notes": "Full architecture notes here with detailed explanation..."
+            "notes": "Full architecture notes here with detailed explanation...",
         }
     }
 
@@ -188,10 +179,7 @@ async def test_get_architecture_from_config_data():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="detailed",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="detailed", db_manager=mock_db_manager
     )
 
     # Verify correct data extraction
@@ -215,7 +203,7 @@ async def test_get_architecture_overview_truncation():
             "pattern": "Microservices",
             "design_patterns": long_design_patterns,
             "api_style": "RESTful",
-            "notes": long_notes
+            "notes": long_notes,
         }
     }
 
@@ -230,10 +218,7 @@ async def test_get_architecture_overview_truncation():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="overview",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="overview", db_manager=mock_db_manager
     )
 
     # Verify truncation occurred
@@ -261,10 +246,7 @@ async def test_get_architecture_empty_config_data():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="detailed",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="detailed", db_manager=mock_db_manager
     )
 
     # Should return empty strings, not crash
@@ -292,10 +274,7 @@ async def test_get_architecture_missing_architecture_key():
     mock_db_manager.get_session_async = Mock(return_value=mock_session)
 
     result = await get_architecture(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="detailed",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="detailed", db_manager=mock_db_manager
     )
 
     # Should return empty strings

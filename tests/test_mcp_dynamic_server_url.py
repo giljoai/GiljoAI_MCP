@@ -5,9 +5,8 @@ Tests the fix for using client-accessible server URLs instead of bind addresses 
 Validates that download URLs are generated using the actual server URL from HTTP request headers.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from fastapi import Request
 
 
@@ -114,7 +113,6 @@ class TestToolAccessorUsesServerURL:
 
     # Note: Tests removed - setup_slash_commands() and get_agent_download_url()
     # MCP tools have been deprecated and removed from the codebase.
-    pass
 
 
 class TestDownloadURLGeneration:

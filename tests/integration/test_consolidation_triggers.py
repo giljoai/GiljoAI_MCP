@@ -6,7 +6,7 @@ Tests automatic consolidation when vision documents are uploaded, updated, or de
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from src.giljo_mcp.models import Product, VisionDocument
 from tests.fixtures.vision_document_fixtures import VisionDocumentTestData
@@ -65,7 +65,6 @@ class TestConsolidationTriggers:
         6. Verify consolidated_at timestamp is set
         """
         # GIVEN: Product with no vision documents
-        from sqlalchemy import select, func
 
         tenant_key = tenant_manager.generate_tenant_key("test-upload")
         test_product = Product(
@@ -108,10 +107,7 @@ class TestConsolidationTriggers:
 
         consolidation_service = ConsolidatedVisionService()
         result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
 
         # THEN: Consolidation service ran successfully
@@ -152,7 +148,7 @@ class TestConsolidationTriggers:
             product_id=test_product.id,
             session=db_session,
             tenant_key=test_product.tenant_key,
-            force=True  # Force initial consolidation
+            force=True,  # Force initial consolidation
         )
         assert initial_result["success"] is True
 
@@ -170,17 +166,14 @@ class TestConsolidationTriggers:
         delete_result = await vision_repo.delete(
             session=db_session,
             tenant_key=test_product.tenant_key,
-            document_id=docs[1].id  # Delete middle document
+            document_id=docs[1].id,  # Delete middle document
         )
         assert delete_result["success"] is True
         await db_session.flush()
 
         # Manually trigger consolidation (simulating endpoint behavior)
         updated_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
 
         # THEN: Consolidation ran and hash changed
@@ -212,10 +205,7 @@ class TestConsolidationTriggers:
 
         consolidation_service = ConsolidatedVisionService()
         initial_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=True
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=True
         )
         assert initial_result["success"] is True
 
@@ -230,20 +220,14 @@ class TestConsolidationTriggers:
         new_content = VisionDocumentTestData.generate_markdown_content(8000)  # Different size
 
         updated_doc = await vision_repo.update_content(
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            document_id=docs[0].id,
-            new_content=new_content
+            session=db_session, tenant_key=test_product.tenant_key, document_id=docs[0].id, new_content=new_content
         )
         assert updated_doc is not None
         await db_session.flush()
 
         # Manually trigger consolidation (simulating endpoint behavior)
         updated_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
 
         # THEN: Consolidation ran and hash changed
@@ -274,10 +258,7 @@ class TestConsolidationTriggers:
 
         consolidation_service = ConsolidatedVisionService()
         first_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
         assert first_result["success"] is True
 
@@ -286,10 +267,7 @@ class TestConsolidationTriggers:
 
         # WHEN: Run consolidation again without any changes
         second_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
 
         # THEN: Second consolidation skipped (no changes detected)
@@ -317,10 +295,7 @@ class TestConsolidationTriggers:
 
         consolidation_service = ConsolidatedVisionService()
         first_result = await consolidation_service.consolidate_vision_documents(
-            product_id=test_product.id,
-            session=db_session,
-            tenant_key=test_product.tenant_key,
-            force=False
+            product_id=test_product.id, session=db_session, tenant_key=test_product.tenant_key, force=False
         )
         assert first_result["success"] is True
 
@@ -333,7 +308,7 @@ class TestConsolidationTriggers:
             product_id=test_product.id,
             session=db_session,
             tenant_key=test_product.tenant_key,
-            force=True  # Force regeneration
+            force=True,  # Force regeneration
         )
 
         # THEN: Consolidation ran (not skipped)
@@ -393,7 +368,7 @@ class TestConsolidationTriggers:
             product_id=product_a.id,
             session=db_session,
             tenant_key=tenant_b_key,  # Wrong tenant!
-            force=False
+            force=False,
         )
 
         # THEN: Consolidation fails (tenant isolation)

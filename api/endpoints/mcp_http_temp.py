@@ -23,7 +23,7 @@ Authentication:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -33,30 +33,29 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
 # Pydantic models for JSON-RPC 2.0
 
 
 class JSONRPCRequest(BaseModel):
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     method: str = Field(..., description="Method name")
-    params: Optional[Dict[str, Any]] = Field(None, description="Method parameters")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    params: dict[str, Any | None] = Field(None, description="Method parameters")
+    id: str | int | None = Field(None, description="Request ID")
 
 
 class JSONRPCResponse(BaseModel):
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     result: Any = Field(..., description="Result data")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    id: str | int | None = Field(None, description="Request ID")
 
 
 class JSONRPCError(BaseModel):
     code: int = Field(..., description="Error code")
     message: str = Field(..., description="Error message")
-    data: Optional[Any] = Field(None, description="Additional error data")
+    data: Any | None = Field(None, description="Additional error data")
 
 
 class JSONRPCErrorResponse(BaseModel):
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     error: JSONRPCError = Field(..., description="Error details")
-    id: Optional[str | int] = Field(None, description="Request ID")
+    id: str | int | None = Field(None, description="Request ID")

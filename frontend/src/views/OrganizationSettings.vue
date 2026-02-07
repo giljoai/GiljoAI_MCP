@@ -36,8 +36,8 @@
                 v-if="isAdmin"
                 color="primary"
                 :loading="saving"
-                @click="saveOrgDetails"
                 data-test="save-org-btn"
+                @click="saveOrgDetails"
               >
                 Save Changes
               </v-btn>
@@ -55,8 +55,8 @@
                 v-if="canManageMembers"
                 color="primary"
                 size="small"
-                @click="showInviteDialog = true"
                 data-test="invite-btn"
+                @click="showInviteDialog = true"
               >
                 <v-icon start>mdi-account-plus</v-icon>
                 Invite
@@ -85,8 +85,8 @@
               <v-btn
                 color="error"
                 variant="outlined"
-                @click="showDeleteDialog = true"
                 data-test="delete-org-btn"
+                @click="showDeleteDialog = true"
               >
                 Delete Organization
               </v-btn>
@@ -121,8 +121,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showDeleteDialog = false" data-test="delete-cancel">Cancel</v-btn>
-          <v-btn color="error" @click="deleteOrg" data-test="delete-confirm">Delete</v-btn>
+          <v-btn data-test="delete-cancel" @click="showDeleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" data-test="delete-confirm" @click="deleteOrg">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

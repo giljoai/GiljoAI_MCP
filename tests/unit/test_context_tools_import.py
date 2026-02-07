@@ -13,7 +13,6 @@ and prevent regression.
 """
 
 import pytest
-from typing import Callable
 
 
 class TestContextToolsImportStructure:
@@ -37,12 +36,12 @@ class TestContextToolsImportStructure:
         Verifies the __init__.py exports are correct after directory rename.
         """
         from src.giljo_mcp.tools.context_tools import (
-            get_vision_document,
             get_360_memory,
-            get_git_history,
             get_agent_templates,
-            get_tech_stack,
             get_architecture,
+            get_git_history,
+            get_tech_stack,
+            get_vision_document,
         )
 
         # Verify all tools are callable functions
@@ -66,12 +65,12 @@ class TestContextToolsImportStructure:
         Verifies the internal module structure is correct.
         """
         # Import each tool from its specific module
-        from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
         from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
-        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
         from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
-        from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
         from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
+        from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
+        from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+        from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
         # Verify each tool is callable
         assert callable(get_vision_document)
@@ -100,8 +99,7 @@ class TestContextToolsImportStructure:
         # Verify old context/ directory does NOT exist
         if context_dir.exists():
             assert not context_dir.is_dir(), (
-                "context/ directory should not exist (causes namespace collision). "
-                "Use context_tools/ instead."
+                "context/ directory should not exist (causes namespace collision). Use context_tools/ instead."
             )
 
     def test_context_tools_directory_structure(self):
@@ -177,6 +175,7 @@ class TestContextToolsImportStructure:
         """
         try:
             import structlog
+
             assert structlog is not None
         except ImportError as e:
             pytest.fail(f"structlog should be importable (added to requirements.txt): {e}")
@@ -187,32 +186,31 @@ class TestContextToolsFunctionSignatures:
 
     def test_get_vision_document_is_async(self):
         """Test that get_vision_document is an async function."""
-        from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
         import inspect
 
-        assert inspect.iscoroutinefunction(get_vision_document), (
-            "get_vision_document should be an async function"
-        )
+        from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+
+        assert inspect.iscoroutinefunction(get_vision_document), "get_vision_document should be an async function"
 
     def test_get_360_memory_is_async(self):
         """Test that get_360_memory is an async function."""
-        from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
         import inspect
 
-        assert inspect.iscoroutinefunction(get_360_memory), (
-            "get_360_memory should be an async function"
-        )
+        from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
+
+        assert inspect.iscoroutinefunction(get_360_memory), "get_360_memory should be an async function"
 
     def test_all_context_tools_are_async(self):
         """Test that all 6 context tools are async functions."""
         import inspect
+
         from src.giljo_mcp.tools.context_tools import (
-            get_vision_document,
             get_360_memory,
-            get_git_history,
             get_agent_templates,
-            get_tech_stack,
             get_architecture,
+            get_git_history,
+            get_tech_stack,
+            get_vision_document,
         )
 
         tools = [

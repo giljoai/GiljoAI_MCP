@@ -7,14 +7,15 @@ These tests will FAIL initially (RED phase) until implementation is complete.
 Handover: 0305 - Integrate Vision Document Chunking with Context Generation
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.mission_planner import MissionPlanner
+from src.giljo_mcp.models.context import MCPContextIndex
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.context import MCPContextIndex
 
 
 @pytest.mark.asyncio
@@ -132,15 +133,15 @@ async def test_get_relevant_chunks_returns_top_chunks():
 
     # Assert: Most relevant chunks come first (auth-related)
     # Chunk 1 and 3 should rank highest (authentication + API keywords)
-    top_chunk_content = relevant_chunks[0]['content']
-    assert 'authentication' in top_chunk_content.lower() or 'api' in top_chunk_content.lower()
+    top_chunk_content = relevant_chunks[0]["content"]
+    assert "authentication" in top_chunk_content.lower() or "api" in top_chunk_content.lower()
 
     # Assert: Each chunk has required fields
     for chunk in relevant_chunks:
-        assert 'content' in chunk
-        assert 'relevance_score' in chunk
-        assert 'chunk_id' in chunk
-        assert chunk['relevance_score'] >= 0
+        assert "content" in chunk
+        assert "relevance_score" in chunk
+        assert "chunk_id" in chunk
+        assert chunk["relevance_score"] >= 0
 
 
 @pytest.mark.asyncio
@@ -180,7 +181,7 @@ async def test_get_relevant_chunks_respects_token_budget():
         mock_chunks.append(
             MCPContextIndex(
                 id=i + 1,
-                chunk_id=f"chunk-{i+1}",
+                chunk_id=f"chunk-{i + 1}",
                 tenant_key="test-tenant",
                 product_id="product-456",
                 vision_document_id="vision-doc-456",
@@ -219,7 +220,7 @@ async def test_get_relevant_chunks_respects_token_budget():
     )
 
     # Assert: Total tokens should not exceed budget
-    total_tokens = sum(chunk.get('tokens', 0) for chunk in relevant_chunks)
+    total_tokens = sum(chunk.get("tokens", 0) for chunk in relevant_chunks)
     assert total_tokens <= 500
 
     # Assert: Should return fewer chunks due to budget constraint
@@ -336,18 +337,18 @@ def test_rank_chunk_relevance_keyword_matching():
     assert len(ranked_chunks) == 4
 
     # Assert: Top chunk should have highest relevance
-    assert ranked_chunks[0]['relevance_score'] > 0
+    assert ranked_chunks[0]["relevance_score"] > 0
 
     # Assert: Chunk 1 (auth + JWT + API) should rank highest
     # Chunk 3 (API + auth) should rank second
     # Chunk 2 and 4 should rank lower (no matching keywords)
     top_chunk = ranked_chunks[0]
-    assert 'authentication' in top_chunk['content'].lower()
-    assert 'jwt' in top_chunk['content'].lower() or 'api' in top_chunk['content'].lower()
+    assert "authentication" in top_chunk["content"].lower()
+    assert "jwt" in top_chunk["content"].lower() or "api" in top_chunk["content"].lower()
 
     # Assert: Scores decrease monotonically
     for i in range(len(ranked_chunks) - 1):
-        assert ranked_chunks[i]['relevance_score'] >= ranked_chunks[i + 1]['relevance_score']
+        assert ranked_chunks[i]["relevance_score"] >= ranked_chunks[i + 1]["relevance_score"]
 
 
 @pytest.mark.asyncio
@@ -445,8 +446,8 @@ async def test_multi_tenant_chunk_isolation():
     # Assert: Only tenant-alpha chunks returned
     assert len(relevant_chunks) > 0
     for chunk in relevant_chunks:
-        assert 'alpha' in chunk['content'].lower()
-        assert 'beta' not in chunk['content'].lower()
+        assert "alpha" in chunk["content"].lower()
+        assert "beta" not in chunk["content"].lower()
 
     # Verify the query filtered by tenant_key
     # (Check that execute was called with proper WHERE clause)

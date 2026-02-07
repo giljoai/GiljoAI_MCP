@@ -12,10 +12,10 @@ Tests:
 - Database error handling
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
-from uuid import uuid4
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -34,9 +34,7 @@ class TestListTemplates:
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
-            self.project = await ToolsTestHelper.create_test_project(
-                session, "ListTemplates Test Project"
-            )
+            self.project = await ToolsTestHelper.create_test_project(session, "ListTemplates Test Project")
             self.tenant_key = self.project.tenant_key
             self.tenant_manager.set_current_tenant(self.tenant_key)
 
@@ -64,7 +62,7 @@ class TestListTemplates:
                 name="test_orchestrator",
                 category="role",
                 role="orchestrator",
-                template_content="Test mission for orchestrator",
+                system_instructions="Test mission for orchestrator",
                 cli_tool="claude",
                 background_color="#FF5733",
                 tool="claude",
@@ -100,7 +98,7 @@ class TestListTemplates:
                     name="orchestrator",
                     category="role",
                     role="orchestrator",
-                    template_content="Orchestrator mission",
+                    system_instructions="Orchestrator mission",
                     cli_tool="claude",
                     background_color="#FF5733",
                     tool="claude",
@@ -111,7 +109,7 @@ class TestListTemplates:
                     name="analyzer",
                     category="role",
                     role="analyzer",
-                    template_content="Analyzer mission",
+                    system_instructions="Analyzer mission",
                     cli_tool="codex",
                     background_color="#00FF00",
                     tool="claude",
@@ -122,7 +120,7 @@ class TestListTemplates:
                     name="developer",
                     category="role",
                     role="developer",
-                    template_content="Developer mission",
+                    system_instructions="Developer mission",
                     cli_tool="gemini",
                     background_color="#0000FF",
                     tool="claude",
@@ -162,7 +160,7 @@ class TestListTemplates:
                 name="orchestrator",
                 category="role",
                 role="orchestrator",
-                template_content="Tenant 1 mission",
+                system_instructions="Tenant 1 mission",
                 cli_tool="claude",
                 background_color="#FF5733",
                 tool="claude",
@@ -173,9 +171,7 @@ class TestListTemplates:
         # Create second tenant and its templates
         tenant2_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
-            tenant2_project = await ToolsTestHelper.create_test_project(
-                session, "Tenant 2 Project"
-            )
+            tenant2_project = await ToolsTestHelper.create_test_project(session, "Tenant 2 Project")
             tenant2_key = tenant2_project.tenant_key
 
             template2 = AgentTemplate(
@@ -184,7 +180,7 @@ class TestListTemplates:
                 name="analyzer",
                 category="role",
                 role="analyzer",
-                template_content="Tenant 2 mission",
+                system_instructions="Tenant 2 mission",
                 cli_tool="codex",
                 background_color="#00FF00",
                 tool="claude",
@@ -234,7 +230,7 @@ class TestListTemplates:
                 name="complete_template",
                 category="role",
                 role="orchestrator",
-                template_content="Complete template content",
+                system_instructions="Complete template content",
                 cli_tool="claude",
                 background_color="#ABCDEF",
                 tool="claude",
@@ -291,7 +287,7 @@ class TestListTemplates:
                 name="minimal",
                 category="role",
                 role="developer",
-                template_content="Minimal content",
+                system_instructions="Minimal content",
                 cli_tool="claude",
                 background_color=None,  # Optional field
                 tool="claude",

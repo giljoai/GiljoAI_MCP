@@ -123,19 +123,19 @@ def migrate_from_env():
         config.database.type = env_vars["DB_TYPE"]
 
     if "DB_HOST" in env_vars:
-        config.database.pg_host = env_vars["DB_HOST"]
+        config.database.host = env_vars["DB_HOST"]
 
     if "DB_PORT" in env_vars:
-        config.database.pg_port = int(env_vars["DB_PORT"])
+        config.database.port = int(env_vars["DB_PORT"])
 
     if "DB_NAME" in env_vars:
-        config.database.pg_database = env_vars["DB_NAME"]
+        config.database.database_name = env_vars["DB_NAME"]
 
     if "DB_USER" in env_vars:
-        config.database.pg_user = env_vars["DB_USER"]
+        config.database.username = env_vars["DB_USER"]
 
     if "DB_PASSWORD" in env_vars:
-        config.database.pg_password = env_vars["DB_PASSWORD"]
+        config.database.password = env_vars["DB_PASSWORD"]
 
     if "GILJO_MCP_API_KEY" in env_vars:
         config.server.api_key = env_vars["GILJO_MCP_API_KEY"]

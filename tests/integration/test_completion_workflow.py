@@ -1,6 +1,5 @@
 import pytest
 from fastapi import status
-from types import SimpleNamespace
 
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.tenant import TenantManager

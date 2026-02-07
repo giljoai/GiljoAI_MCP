@@ -11,13 +11,14 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import Product
 from src.giljo_mcp.services.product_service import ProductService
-from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
 
 @pytest.fixture
@@ -58,9 +59,7 @@ class TestProductServiceCRUD:
 
         # Act
         result = await service.create_product(
-            name="Test Product",
-            description="Test description",
-            project_path="/test/path"
+            name="Test Product", description="Test description", project_path="/test/path"
         )
 
         # Assert
@@ -77,19 +76,15 @@ class TestProductServiceCRUD:
 
         # Mock existing product with same name
         existing_product = Mock()
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=existing_product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=existing_product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act & Assert - should raise ValidationError
         from src.giljo_mcp.exceptions import ValidationError
+
         with pytest.raises(ValidationError) as exc_info:
-            await service.create_product(
-                name="Duplicate Product",
-                description="Test"
-            )
+            await service.create_product(name="Duplicate Product", description="Test")
         assert "already exists" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -110,11 +105,7 @@ class TestProductServiceCRUD:
         product.created_at = datetime.now(timezone.utc)
         product.updated_at = datetime.now(timezone.utc)
         product.primary_vision_path = None
-        product.product_memory = {
-            "git_integration": {},
-            "sequential_history": [],
-            "context": {}
-        }
+        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
 
         # Mock execute calls: 1) get product, 2) get product memory entries
         execute_mock = AsyncMock()
@@ -142,14 +133,13 @@ class TestProductServiceCRUD:
         # Arrange
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service.get_product("nonexistent-id")
         assert "not found" in str(exc_info.value).lower()
@@ -172,11 +162,9 @@ class TestProductServiceCRUD:
         product1.created_at = datetime.now(timezone.utc)
         product1.updated_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(
-                all=Mock(return_value=[product1])
-            ))
-        ))
+        session.execute = AsyncMock(
+            return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[product1]))))
+        )
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -200,9 +188,7 @@ class TestProductServiceCRUD:
         product.name = "Old Name"
         product.description = "Old Description"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
         session.add = Mock()
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
@@ -210,11 +196,7 @@ class TestProductServiceCRUD:
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.update_product(
-            "test-id",
-            name="New Name",
-            description="New Description"
-        )
+        result = await service.update_product("test-id", name="New Name", description="New Description")
 
         # Assert
         assert result["success"] is True
@@ -244,11 +226,13 @@ class TestProductServiceLifecycle:
         active_product.is_active = True
 
         # Mock execute calls: 1) get target product, 2) get active products, 3) deactivate projects in deactivated products
-        session.execute = AsyncMock(side_effect=[
-            Mock(scalar_one_or_none=Mock(return_value=product)),  # Get target product
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[active_product])))),  # Get active products
-            Mock(),  # Bulk deactivate projects in deactivated products
-        ])
+        session.execute = AsyncMock(
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=product)),  # Get target product
+                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[active_product])))),  # Get active products
+                Mock(),  # Bulk deactivate projects in deactivated products
+            ]
+        )
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
         session.flush = AsyncMock()
@@ -275,9 +259,7 @@ class TestProductServiceLifecycle:
         product.name = "Test Product"
         product.is_active = True
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
 
@@ -302,9 +284,7 @@ class TestProductServiceLifecycle:
         product.deleted_at = None
         product.is_active = True
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
         session.commit = AsyncMock()
 
         service = ProductService(db_manager, "test-tenant")
@@ -329,9 +309,7 @@ class TestProductServiceLifecycle:
         product.name = "Test Product"
         product.deleted_at = datetime.now(timezone.utc)
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
 
@@ -406,8 +384,8 @@ class TestProductServiceMetrics:
             call_count[0] += 1
             if call_count[0] == 1:  # First call: get product
                 return Mock(scalar_one_or_none=Mock(return_value=product))
-            else:  # Subsequent calls: count queries
-                return Mock(scalar=Mock(return_value=5))
+            # Subsequent calls: count queries
+            return Mock(scalar=Mock(return_value=5))
 
         session.execute = mock_execute
 
@@ -479,8 +457,8 @@ class TestProductServiceMetrics:
             call_count[0] += 1
             if call_count[0] == 1:  # First call: get active product
                 return Mock(scalar_one_or_none=Mock(return_value=product))
-            else:  # Subsequent calls: metrics
-                return Mock(scalar=Mock(return_value=0))
+            # Subsequent calls: metrics
+            return Mock(scalar=Mock(return_value=0))
 
         session.execute = mock_execute
 
@@ -500,9 +478,7 @@ class TestProductServiceMetrics:
         # Arrange
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -536,11 +512,9 @@ class TestProductServiceErrorHandling:
 
         # Act & Assert - should raise BaseGiljoException
         from src.giljo_mcp.exceptions import BaseGiljoException
+
         with pytest.raises(BaseGiljoException) as exc_info:
-            await service.create_product(
-                name="Test",
-                description="Test"
-            )
+            await service.create_product(name="Test", description="Test")
         assert "Database error" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -549,18 +523,16 @@ class TestProductServiceErrorHandling:
         # Arrange
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service.activate_product("nonexistent-id")
         assert "not found" in str(exc_info.value).lower()
-
 
 
 class TestProductServiceConfigData:
@@ -587,14 +559,12 @@ class TestProductServiceConfigData:
         config = {
             "api_key": "test-key-123",
             "settings": {"debug": True, "timeout": 30},
-            "tech_stack": {"python": "3.11", "framework": "FastAPI"}
+            "tech_stack": {"python": "3.11", "framework": "FastAPI"},
         }
 
         # Act
         result = await service.create_product(
-            name="Test Product",
-            description="Product with config",
-            config_data=config
+            name="Test Product", description="Product with config", config_data=config
         )
 
         # Assert
@@ -624,9 +594,7 @@ class TestProductServiceConfigData:
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.create_product(
-            name="Test Product No Config"
-        )
+        result = await service.create_product(name="Test Product No Config")
 
         # Assert
         assert result["success"] is True
@@ -646,19 +614,14 @@ class TestProductServiceConfigData:
         existing_product.config_data = {"version": "1.0"}
         existing_product.updated_at = datetime.now(timezone.utc)
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=existing_product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=existing_product)))
 
         service = ProductService(db_manager, "test-tenant")
-        
+
         # Act
         updated_config = {"version": "2.0", "new_field": "value"}
-        result = await service.update_product(
-            product_id=existing_product.id,
-            config_data=updated_config
-        )
-        
+        result = await service.update_product(product_id=existing_product.id, config_data=updated_config)
+
         # Assert
         assert result["success"] is True
         assert existing_product.config_data == updated_config
@@ -679,12 +642,10 @@ class TestProductServiceVisionUpload:
         product.id = str(uuid4())
         product.name = "Test Product"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         # Mock vision document creation - patch at the source module (lazy import)
-        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockRepo:
+        with patch("src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository") as MockRepo:
             mock_repo_instance = Mock()
             MockRepo.return_value = mock_repo_instance
 
@@ -694,14 +655,16 @@ class TestProductServiceVisionUpload:
             mock_repo_instance.create = AsyncMock(return_value=mock_doc)
 
             # Mock chunker - patch at source module (lazy import in context_management)
-            with patch('src.giljo_mcp.context_management.chunker.VisionDocumentChunker') as MockChunker:
+            with patch("src.giljo_mcp.context_management.chunker.VisionDocumentChunker") as MockChunker:
                 mock_chunker_instance = Mock()
                 MockChunker.return_value = mock_chunker_instance
-                mock_chunker_instance.chunk_vision_document = AsyncMock(return_value={
-                    "success": True,
-                    "chunks_created": 1,
-                    "total_tokens": 150,
-                })
+                mock_chunker_instance.chunk_vision_document = AsyncMock(
+                    return_value={
+                        "success": True,
+                        "chunks_created": 1,
+                        "total_tokens": 150,
+                    }
+                )
 
                 service = ProductService(db_manager, "test-tenant")
 
@@ -709,7 +672,7 @@ class TestProductServiceVisionUpload:
                 result = await service.upload_vision_document(
                     product_id=product.id,
                     content="# Vision Document\n\nThis is a small vision document.",
-                    filename="vision.md"
+                    filename="vision.md",
                 )
 
         # Assert
@@ -725,20 +688,15 @@ class TestProductServiceVisionUpload:
         db_manager, session = mock_db_manager
 
         # Mock product not found
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act & Assert - should raise ResourceNotFoundError
         from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.upload_vision_document(
-                product_id="non-existent-id",
-                content="# Vision",
-                filename="vision.md"
-            )
+            await service.upload_vision_document(product_id="non-existent-id", content="# Vision", filename="vision.md")
         assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
@@ -751,12 +709,10 @@ class TestProductServiceVisionUpload:
         product = Mock(spec=Product)
         product.id = str(uuid4())
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         # Mock vision document creation - patch at source module (lazy import)
-        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockRepo:
+        with patch("src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository") as MockRepo:
             mock_repo_instance = Mock()
             MockRepo.return_value = mock_repo_instance
 
@@ -772,7 +728,7 @@ class TestProductServiceVisionUpload:
                 product_id=product.id,
                 content="# Vision Document\n\nNo chunking.",
                 filename="vision_no_chunk.md",
-                auto_chunk=False
+                auto_chunk=False,
             )
 
         # Assert
@@ -811,16 +767,9 @@ class TestProductServiceProductMemory:
         session.execute = execute_mock
 
         custom_memory = {
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 20,
-                "default_branch": "main"
-            },
+            "git_integration": {"enabled": True, "commit_limit": 20, "default_branch": "main"},
             "sequential_history": [],  # Will be populated from table, not JSONB
-            "context": {
-                "summary": "Custom product context",
-                "token_count": 5000
-            }
+            "context": {"summary": "Custom product context", "token_count": 5000},
         }
 
         service = ProductService(db_manager, "test-tenant")
@@ -829,7 +778,7 @@ class TestProductServiceProductMemory:
         result = await service.create_product(
             name="Custom Memory Product",
             description="Testing custom memory initialization",
-            product_memory=custom_memory
+            product_memory=custom_memory,
         )
 
         # ASSERT
@@ -868,7 +817,7 @@ class TestProductServiceProductMemory:
         # ACT
         result = await service.create_product(
             name="Default Memory Product",
-            description="Testing default memory initialization"
+            description="Testing default memory initialization",
             # Note: No product_memory parameter provided
         )
 
@@ -876,11 +825,7 @@ class TestProductServiceProductMemory:
         assert result is not None
         assert "product_memory" in result
         # Default structure matches ProductService implementation
-        assert result["product_memory"] == {
-            "git_integration": {},
-            "sequential_history": [],
-            "context": {}
-        }
+        assert result["product_memory"] == {"git_integration": {}, "sequential_history": [], "context": {}}
 
     @pytest.mark.asyncio
     async def test_update_product_product_memory(self, mock_db_manager):
@@ -901,11 +846,7 @@ class TestProductServiceProductMemory:
         existing_product.name = "Existing Product"
         existing_product.description = "Test"
         existing_product.tenant_key = "test-tenant"
-        existing_product.product_memory = {
-            "git_integration": {},
-            "sequential_history": [],
-            "context": {}
-        }
+        existing_product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         existing_product.config_data = {}
         existing_product.is_active = False
         existing_product.deleted_at = None
@@ -924,22 +865,13 @@ class TestProductServiceProductMemory:
 
         # Updated memory with GitHub integration
         updated_memory = {
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 30,
-                "default_branch": "develop"
-            },
+            "git_integration": {"enabled": True, "commit_limit": 30, "default_branch": "develop"},
             "sequential_history": [],
-            "context": {
-                "summary": "Updated context"
-            }
+            "context": {"summary": "Updated context"},
         }
 
         # ACT
-        result = await service.update_product(
-            product_id=product_id,
-            product_memory=updated_memory
-        )
+        result = await service.update_product(product_id=product_id, product_memory=updated_memory)
 
         # ASSERT
         assert result is not None
@@ -982,10 +914,7 @@ class TestProductServiceTargetPlatforms:
         service = ProductService(db_manager, "test-tenant")
 
         # ACT
-        result = await service.create_product(
-            name="Test Product",
-            description="Testing default target_platforms"
-        )
+        result = await service.create_product(name="Test Product", description="Testing default target_platforms")
 
         # ASSERT
         assert result["success"] is True
@@ -1016,9 +945,7 @@ class TestProductServiceTargetPlatforms:
 
         # ACT
         result = await service.create_product(
-            name="Windows Product",
-            description="Windows-only product",
-            target_platforms=["windows"]
+            name="Windows Product", description="Windows-only product", target_platforms=["windows"]
         )
 
         # ASSERT
@@ -1050,7 +977,7 @@ class TestProductServiceTargetPlatforms:
         result = await service.create_product(
             name="Multi-Platform Product",
             description="Cross-platform product",
-            target_platforms=["windows", "linux", "macos"]
+            target_platforms=["windows", "linux", "macos"],
         )
 
         # ASSERT
@@ -1073,11 +1000,10 @@ class TestProductServiceTargetPlatforms:
 
         # Act & Assert - should raise ValidationError
         from src.giljo_mcp.exceptions import ValidationError
+
         with pytest.raises(ValidationError) as exc_info:
             await service.create_product(
-                name="Invalid Platform Product",
-                description="Testing validation",
-                target_platforms=["all", "windows"]
+                name="Invalid Platform Product", description="Testing validation", target_platforms=["all", "windows"]
             )
         assert "all" in str(exc_info.value).lower()
 
@@ -1097,11 +1023,10 @@ class TestProductServiceTargetPlatforms:
 
         # Act & Assert - should raise ValidationError
         from src.giljo_mcp.exceptions import ValidationError
+
         with pytest.raises(ValidationError) as exc_info:
             await service.create_product(
-                name="Invalid Platform Product",
-                description="Testing validation",
-                target_platforms=["invalid"]
+                name="Invalid Platform Product", description="Testing validation", target_platforms=["invalid"]
             )
         assert "invalid" in str(exc_info.value).lower()
 
@@ -1128,17 +1053,12 @@ class TestProductServiceTargetPlatforms:
         existing_product.config_data = {}
         existing_product.updated_at = datetime.now(timezone.utc)
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=existing_product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=existing_product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # ACT
-        result = await service.update_product(
-            product_id=product_id,
-            target_platforms=["linux", "macos"]
-        )
+        result = await service.update_product(product_id=product_id, target_platforms=["linux", "macos"])
 
         # ASSERT
         assert result["success"] is True

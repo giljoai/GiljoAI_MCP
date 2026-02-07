@@ -99,7 +99,6 @@ const createMockMessage = (from, content, overrides = {}) => ({
   content: content,
   timestamp: new Date().toISOString(),
   agent_display_name: from === 'agent' ? 'orchestrator' : null,
-  instance_number: 1,
   ...overrides,
 })
 
@@ -811,7 +810,7 @@ describe('JobsTab Component', () => {
     })
 
     it('handles very long project IDs gracefully', () => {
-      const longId = 'proj-' + 'x'.repeat(200)
+      const longId = `proj-${  'x'.repeat(200)}`
 
       wrapper = mount(JobsTab, {
         props: {

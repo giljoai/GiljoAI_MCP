@@ -7,7 +7,7 @@
           <v-card-title class="text-center pa-6">
             <div class="d-flex flex-column align-center w-100">
               <v-img
-                :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
+                src="/Giljo_YW.svg"
                 alt="GiljoAI MCP"
                 height="50"
                 width="auto"
@@ -56,12 +56,12 @@
                 :disabled="loading"
                 autocomplete="current-password"
                 class="mb-4"
-                @click:append-inner="showCurrentPassword = !showCurrentPassword"
-                @input="error = ''"
                 aria-label="Enter your current password"
                 aria-required="true"
                 hint="Enter the temporary password you used to log in"
                 persistent-hint
+                @click:append-inner="showCurrentPassword = !showCurrentPassword"
+                @input="error = ''"
               />
 
               <!-- New Password -->
@@ -76,10 +76,10 @@
                 :disabled="loading"
                 autocomplete="new-password"
                 class="mb-4"
-                @click:append-inner="showNewPassword = !showNewPassword"
-                @input="error = ''"
                 aria-label="Enter your new password"
                 aria-required="true"
+                @click:append-inner="showNewPassword = !showNewPassword"
+                @input="error = ''"
               />
 
               <!-- Confirm Password -->
@@ -94,10 +94,10 @@
                 :disabled="loading"
                 autocomplete="new-password"
                 class="mb-4"
-                @click:append-inner="showConfirmPassword = !showConfirmPassword"
-                @input="error = ''"
                 aria-label="Confirm your new password"
                 aria-required="true"
+                @click:append-inner="showConfirmPassword = !showConfirmPassword"
+                @input="error = ''"
               />
 
               <!-- Password Strength Indicator -->
@@ -154,11 +154,11 @@
                 :disabled="loading"
                 autocomplete="off"
                 class="mb-4"
-                @keypress="onlyNumbers"
                 aria-label="Enter your 4-digit recovery PIN"
                 aria-required="true"
                 hint="Enter 4 digits (example: 1234)"
                 persistent-hint
+                @keypress="onlyNumbers"
               />
 
               <!-- Confirm PIN -->
@@ -174,9 +174,9 @@
                 :disabled="loading"
                 autocomplete="off"
                 class="mb-4"
-                @keypress="onlyNumbers"
                 aria-label="Confirm your 4-digit recovery PIN"
                 aria-required="true"
+                @keypress="onlyNumbers"
               />
 
               <!-- Security Warning -->
@@ -196,7 +196,7 @@
                 class="mt-4"
                 aria-label="Complete setup and continue to dashboard"
               >
-                <v-icon start v-if="!loading">mdi-check-circle</v-icon>
+                <v-icon v-if="!loading" start>mdi-check-circle</v-icon>
                 {{ loading ? 'Setting up...' : 'Complete Setup' }}
               </v-btn>
             </v-form>
@@ -377,11 +377,6 @@ async function handleSubmit() {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .first-login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
-}
-
-/* Light theme adjustments */
-:deep(.v-theme--light) .first-login-container {
-  background: linear-gradient(135deg, rgb(240, 244, 248) 0%, rgb(220, 230, 240) 100%);
 }
 
 /* Accessibility: Focus indicators */

@@ -11,10 +11,8 @@ All operations use ProjectService (no direct DB access where possible).
 """
 
 import logging
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
@@ -61,7 +59,6 @@ async def create_project(
         product_id=project.product_id,
         tenant_key=current_user.tenant_key,
         status=project.status,
-        context_budget=project.context_budget,
     )
 
     logger.info(f"Created project {result['project_id']} for tenant {current_user.tenant_key}")
@@ -79,7 +76,7 @@ async def create_project(
         created_at=result.get("created_at"),
         updated_at=result.get("updated_at"),
         completed_at=None,
-        context_budget=project.context_budget,
+        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=0,
         agent_count=0,
         message_count=0,
@@ -88,12 +85,12 @@ async def create_project(
     )
 
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("/", response_model=list[ProjectResponse])
 async def list_projects(
-    status_filter: Optional[str] = None,
+    status_filter: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> List[ProjectResponse]:
+) -> list[ProjectResponse]:
     """
     List all projects for current tenant.
 
@@ -108,10 +105,7 @@ async def list_projects(
     logger.debug(f"User {current_user.username} listing projects (status={status_filter})")
 
     # List projects via ProjectService (raises exceptions on error)
-    projects = await project_service.list_projects(
-        status=status_filter,
-        tenant_key=current_user.tenant_key
-    )
+    projects = await project_service.list_projects(status=status_filter, tenant_key=current_user.tenant_key)
 
     logger.info(f"Found {len(projects)} projects for tenant {current_user.tenant_key}")
 
@@ -141,11 +135,11 @@ async def list_projects(
     ]
 
 
-@router.get("/deleted", response_model=List[ProjectResponse])
+@router.get("/deleted", response_model=list[ProjectResponse])
 async def get_deleted_projects(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> List[ProjectResponse]:
+) -> list[ProjectResponse]:
     """
     Get soft-deleted projects for recovery (Handover 0070).
 
@@ -189,17 +183,17 @@ async def get_deleted_projects(
             agent_count=proj.get("agent_count", 0),
             message_count=proj.get("message_count", 0),
             execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-            agents=[]
+            agents=[],
         )
         for proj in projects
     ]
 
 
-@router.get("/active", response_model=Optional[ProjectResponse])
+@router.get("/active", response_model=ProjectResponse | None)
 async def get_active_project(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> Optional[ProjectResponse]:
+) -> ProjectResponse | None:
     """
     Get the currently active project for the user's tenant.
 
@@ -296,7 +290,7 @@ async def get_project(
         agent_count=proj.get("agent_count", len(agents_from_service)),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-        agents=agents_from_service  # Fixed: Use agents from ProjectService, not hardcoded []
+        agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
 
@@ -336,10 +330,7 @@ async def update_project(
         proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
     else:
         # Update via ProjectService (raises exceptions on error)
-        proj = await project_service.update_project(
-            project_id=project_id,
-            updates=update_dict
-        )
+        proj = await project_service.update_project(project_id=project_id, updates=update_dict)
 
     logger.info(f"Updated project {project_id}")
 
@@ -360,5 +351,5 @@ async def update_project(
         agent_count=proj.get("agent_count", 0),
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
-        agents=[]
+        agents=[],
     )

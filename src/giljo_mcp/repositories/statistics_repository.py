@@ -5,16 +5,14 @@ Handover 1011: Migrates all statistics queries from api/endpoints/statistics.py
 to follow the repository pattern with CRITICAL tenant isolation.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Message, Project, Task
-from ..models.agent_identity import AgentExecution, AgentJob
-from ..models.config import ApiMetrics
-from .base import BaseRepository
+from src.giljo_mcp.models import Message, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.config import ApiMetrics
 
 
 class StatisticsRepository:
@@ -42,7 +40,7 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> Optional[ApiMetrics]:
+    ) -> ApiMetrics | None:
         """
         Get API call metrics for tenant.
 
@@ -76,9 +74,7 @@ class StatisticsRepository:
         Returns:
             Total project count
         """
-        result = await session.scalar(
-            select(func.count(Project.id)).where(Project.tenant_key == tenant_key)
-        )
+        result = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key))
         return result or 0
 
     async def count_projects_by_status(
@@ -99,10 +95,7 @@ class StatisticsRepository:
             Project count for status
         """
         result = await session.scalar(
-            select(func.count(Project.id)).where(
-                Project.tenant_key == tenant_key,
-                Project.status == status
-            )
+            select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == status)
         )
         return result or 0
 
@@ -110,7 +103,7 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> Tuple[float, int]:
+    ) -> tuple[float, int]:
         """
         Get average and peak context usage across all projects.
 
@@ -121,13 +114,13 @@ class StatisticsRepository:
         Returns:
             Tuple of (average_context_used, peak_context_used)
         """
-        avg_context = await session.scalar(
-            select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)
-        ) or 0.0
+        avg_context = (
+            await session.scalar(select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0.0
+        )
 
-        peak_context = await session.scalar(
-            select(func.max(Project.context_used)).where(Project.tenant_key == tenant_key)
-        ) or 0
+        peak_context = (
+            await session.scalar(select(func.max(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
+        )
 
         return (float(avg_context), peak_context)
 
@@ -135,10 +128,10 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Project]:
+    ) -> list[Project]:
         """
         Get projects with optional status filter and pagination.
 
@@ -184,7 +177,7 @@ class StatisticsRepository:
             .where(
                 AgentJob.project_id == project_id,
                 AgentJob.tenant_key == tenant_key,
-                AgentExecution.tenant_key == tenant_key
+                AgentExecution.tenant_key == tenant_key,
             )
         )
         return result or 0
@@ -207,10 +200,7 @@ class StatisticsRepository:
             Message count for project
         """
         result = await session.scalar(
-            select(func.count(Message.id)).where(
-                Message.project_id == project_id,
-                Message.tenant_key == tenant_key
-            )
+            select(func.count(Message.id)).where(Message.project_id == project_id, Message.tenant_key == tenant_key)
         )
         return result or 0
 
@@ -232,10 +222,7 @@ class StatisticsRepository:
             Task count for project
         """
         result = await session.scalar(
-            select(func.count(Task.id)).where(
-                Task.project_id == project_id,
-                Task.tenant_key == tenant_key
-            )
+            select(func.count(Task.id)).where(Task.project_id == project_id, Task.tenant_key == tenant_key)
         )
         return result or 0
 
@@ -258,9 +245,7 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.count(Task.id)).where(
-                Task.project_id == project_id,
-                Task.tenant_key == tenant_key,
-                Task.status == "completed"
+                Task.project_id == project_id, Task.tenant_key == tenant_key, Task.status == "completed"
             )
         )
         return result or 0
@@ -270,7 +255,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         project_id: str,
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """
         Get timestamp of last message activity for a project.
 
@@ -284,8 +269,7 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.max(Message.created_at)).where(
-                Message.project_id == project_id,
-                Message.tenant_key == tenant_key
+                Message.project_id == project_id, Message.tenant_key == tenant_key
             )
         )
         return result
@@ -310,9 +294,7 @@ class StatisticsRepository:
             Total agent execution count
         """
         result = await session.scalar(
-            select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == tenant_key
-            )
+            select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key)
         )
         return result or 0
 
@@ -333,8 +315,7 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status.in_(["waiting", "working"])
+                AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(["waiting", "working"])
             )
         )
         return result or 0
@@ -356,8 +337,7 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == tenant_key,
-                AgentExecution.status == "complete"
+                AgentExecution.tenant_key == tenant_key, AgentExecution.status == "complete"
             )
         )
         return result or 0
@@ -366,10 +346,10 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
+        project_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[AgentExecution]:
+    ) -> list[AgentExecution]:
         """
         Get agent executions with optional filters.
 
@@ -388,10 +368,7 @@ class StatisticsRepository:
         # Join through AgentJob if filtering by project
         if project_id:
             query = query.join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            query = query.where(
-                AgentJob.project_id == project_id,
-                AgentJob.tenant_key == tenant_key
-            )
+            query = query.where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
 
         if status:
             # Map legacy status to AgentExecution status
@@ -424,8 +401,7 @@ class StatisticsRepository:
         # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
             select(func.count(Message.id)).where(
-                Message.meta_data.op('->>')('_from_agent') == agent_name,
-                Message.tenant_key == tenant_key
+                Message.meta_data.op("->>")("_from_agent") == agent_name, Message.tenant_key == tenant_key
             )
         )
         return result or 0
@@ -449,8 +425,7 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.count(Message.id)).where(
-                Message.to_agents.contains([agent_name]),
-                Message.tenant_key == tenant_key
+                Message.to_agents.contains([agent_name]), Message.tenant_key == tenant_key
             )
         )
         return result or 0
@@ -460,7 +435,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         agent_name: str,
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """
         Get timestamp of last message sent by agent.
 
@@ -475,8 +450,7 @@ class StatisticsRepository:
         # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
             select(func.max(Message.created_at)).where(
-                Message.meta_data.op('->>')('_from_agent') == agent_name,
-                Message.tenant_key == tenant_key
+                Message.meta_data.op("->>")("_from_agent") == agent_name, Message.tenant_key == tenant_key
             )
         )
         return result
@@ -486,7 +460,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional[AgentJob]:
+    ) -> AgentJob | None:
         """
         Get AgentJob by job_id for project lookup.
 
@@ -499,10 +473,7 @@ class StatisticsRepository:
             AgentJob instance or None if not found
         """
         result = await session.execute(
-            select(AgentJob).where(
-                AgentJob.job_id == job_id,
-                AgentJob.tenant_key == tenant_key
-            )
+            select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
         )
         return result.scalar_one_or_none()
 
@@ -525,9 +496,7 @@ class StatisticsRepository:
         Returns:
             Total message count
         """
-        result = await session.scalar(
-            select(func.count(Message.id)).where(Message.tenant_key == tenant_key)
-        )
+        result = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
         return result or 0
 
     async def count_messages_by_status(
@@ -548,10 +517,7 @@ class StatisticsRepository:
             Message count for status
         """
         result = await session.scalar(
-            select(func.count(Message.id)).where(
-                Message.tenant_key == tenant_key,
-                Message.status == status
-            )
+            select(func.count(Message.id)).where(Message.tenant_key == tenant_key, Message.status == status)
         )
         return result or 0
 
@@ -559,8 +525,8 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        since: Optional[datetime] = None,
+        project_id: str | None = None,
+        since: datetime | None = None,
     ) -> int:
         """
         Count messages with optional filters.
@@ -590,8 +556,8 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         status: str,
-        project_id: Optional[str] = None,
-        since: Optional[datetime] = None,
+        project_id: str | None = None,
+        since: datetime | None = None,
     ) -> int:
         """
         Count messages by status with optional filters.
@@ -606,10 +572,7 @@ class StatisticsRepository:
         Returns:
             Message count matching filters
         """
-        query = select(func.count(Message.id)).where(
-            Message.tenant_key == tenant_key,
-            Message.status == status
-        )
+        query = select(func.count(Message.id)).where(Message.tenant_key == tenant_key, Message.status == status)
 
         if project_id:
             query = query.where(Message.project_id == project_id)
@@ -639,9 +602,7 @@ class StatisticsRepository:
         Returns:
             Total task count
         """
-        result = await session.scalar(
-            select(func.count(Task.id)).where(Task.tenant_key == tenant_key)
-        )
+        result = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key))
         return result or 0
 
     async def count_completed_tasks(
@@ -660,10 +621,7 @@ class StatisticsRepository:
             Completed task count
         """
         result = await session.scalar(
-            select(func.count(Task.id)).where(
-                Task.tenant_key == tenant_key,
-                Task.status == "completed"
-            )
+            select(func.count(Task.id)).where(Task.tenant_key == tenant_key, Task.status == "completed")
         )
         return result or 0
 
@@ -687,5 +645,5 @@ class StatisticsRepository:
         try:
             await session.execute(select(1))
             return True
-        except Exception:
+        except (RuntimeError, OSError):
             return False

@@ -4,18 +4,19 @@ DatabaseManager for GiljoAI MCP with PostgreSQL support.
 Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from .logging import get_logger, ErrorCode
+from .logging import ErrorCode, get_logger
 from .models import Base
 from .tenant import TenantManager
+
 
 logger = get_logger(__name__)
 
@@ -146,7 +147,7 @@ class DatabaseManager:
         try:
             yield session
             session.commit()
-        except Exception:
+        except (RuntimeError, OSError):
             session.rollback()
             raise
         finally:
@@ -176,11 +177,9 @@ class DatabaseManager:
         except GeneratorExit:
             # GeneratorExit is BaseException (not Exception) - raised by FastAPI
             # when HTTPException occurs or client disconnects
-            if hasattr(session, 'is_active') and session.is_active:
-                try:
+            if hasattr(session, "is_active") and session.is_active:
+                with suppress(RuntimeError, OSError):
                     await session.rollback()
-                except Exception:
-                    pass  # Suppress rollback errors during cleanup  # nosec B110
             raise
         except Exception:
             # Regular exceptions - rollback and re-raise
@@ -196,14 +195,12 @@ class DatabaseManager:
             raise
         finally:
             # Always close session - but check state first to prevent IllegalStateChangeError
-            if hasattr(session, 'is_active') and session.is_active:
-                try:
+            if hasattr(session, "is_active") and session.is_active:
+                with suppress(RuntimeError, OSError):
                     await session.rollback()
-                except Exception:
-                    pass  # Suppress rollback errors during cleanup  # nosec B110
             try:
                 await session.close()
-            except Exception as close_error:
+            except (RuntimeError, OSError) as close_error:
                 logger.debug(f"Session close during cleanup: {close_error}")
 
     def close(self):
@@ -330,30 +327,6 @@ class DatabaseManager:
                 session.info["tenant_key"] = tenant_key
                 yield session
 
-    def query_with_tenant(self, session: Session, model: Any, tenant_key: Optional[str] = None):
-        """
-        Create a select statement with automatic tenant filtering.
-
-        DEPRECATED: Use select(model).where() directly with async sessions.
-        This method is kept for backward compatibility with sync sessions.
-
-        Args:
-            session: Database session
-            model: Model to query
-            tenant_key: Tenant key (uses current context if None)
-
-        Returns:
-            Select statement with tenant filter pre-applied
-        """
-        # For SQLAlchemy 2.0 compatibility, return select statement
-        stmt = select(model)
-        if hasattr(model, "tenant_key"):
-            if tenant_key is None:
-                tenant_key = TenantManager.get_current_tenant()
-            if tenant_key:
-                stmt = stmt.where(model.tenant_key == tenant_key)
-        return stmt
-
     def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
         """
         Validate a tenant key using TenantManager.
@@ -379,8 +352,21 @@ class DatabaseManager:
         return TenantManager.generate_tenant_key(project_name)
 
 
-# Global instance for convenience (can be overridden)
-_db_manager: Optional[DatabaseManager] = None
+# Module-level database manager holder
+class _DatabaseManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[DatabaseManager] = None
+
+    @classmethod
+    def get_instance(cls, database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
+        if cls._instance is None or (database_url and cls._instance.database_url != database_url):
+            cls._instance = DatabaseManager(database_url, is_async)
+        return cls._instance
+
+    @classmethod
+    def set_instance(cls, manager: DatabaseManager):
+        cls._instance = manager
 
 
 def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
@@ -394,18 +380,12 @@ def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -
     Returns:
         DatabaseManager instance
     """
-    global _db_manager
-
-    if _db_manager is None or (database_url and _db_manager.database_url != database_url):
-        _db_manager = DatabaseManager(database_url, is_async)
-
-    return _db_manager
+    return _DatabaseManagerHolder.get_instance(database_url, is_async)
 
 
 def set_db_manager(manager: DatabaseManager):
     """Set the global DatabaseManager instance."""
-    global _db_manager
-    _db_manager = manager
+    _DatabaseManagerHolder.set_instance(manager)
 
 
 async def init_db(database_url: Optional[str] = None) -> DatabaseManager:

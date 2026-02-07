@@ -23,8 +23,8 @@
         density="comfortable"
         hide-details
         :disabled="disabled"
-        @keydown="handleKeydown"
         aria-label="Message input"
+        @keydown="handleKeydown"
       />
 
       <!-- "To" dropdown -->
@@ -50,9 +50,9 @@
         color="primary"
         size="large"
         :disabled="!canSend"
-        @click="handleSubmit"
         :aria-label="`Send message to ${getRecipientLabel(recipient)}`"
         :title="`Send message to ${getRecipientLabel(recipient)}`"
+        @click="handleSubmit"
       >
         <v-icon icon="mdi-chevron-left" size="28" />
       </v-btn>
@@ -105,7 +105,7 @@ const props = defineProps({
   },
   /**
    * Array of active agents
-   * Each agent: { agent_id, agent_display_name, instance_number }
+   * Each agent: { agent_id, agent_display_name }
    */
   agents: {
     type: Array,
@@ -127,15 +127,15 @@ const recipient = ref('broadcast')
 
 /**
  * Recipient dropdown options (computed dynamically from agents prop)
+ * Handover 0700i: Removed instance_number display
  */
 const recipientOptions = computed(() => {
   const options = [{ label: 'Broadcast', value: 'broadcast' }]
 
   props.agents.forEach((agent) => {
-    const instanceNum = agent.instance_number || 1
     const displayName = agent.agent_display_name || 'Unknown'
-    const truncatedId = agent.agent_id ? agent.agent_id.slice(0, 8) + '...' : 'unknown'
-    const label = `${displayName} (Instance ${instanceNum}) - ${truncatedId}`
+    const truncatedId = agent.agent_id ? `${agent.agent_id.slice(0, 8)  }...` : 'unknown'
+    const label = `${displayName} - ${truncatedId}`
     options.push({ label, value: agent.agent_id })
   })
 
@@ -381,19 +381,6 @@ function handleSubmit() {
     &__textarea:deep(.v-field),
     &__recipient:deep(.v-field) {
       background: var(--color-bg-elevated);
-    }
-  }
-}
-
-/* Light theme optimization */
-.v-theme--light {
-  .message-input {
-    background: var(--color-bg-primary);
-    border-top-color: var(--color-border);
-
-    &__textarea:deep(.v-field),
-    &__recipient:deep(.v-field) {
-      background: #f8f9fa;
     }
   }
 }

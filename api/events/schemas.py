@@ -30,7 +30,7 @@ Example Usage:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -100,9 +100,7 @@ class ProjectMissionUpdatedData(BaseModel):
         default="orchestrator", description="Source of mission generation"
     )
     user_config_applied: bool = Field(default=False, description="Whether user configuration was applied")
-    field_priorities: Optional[Dict[str, int]] = Field(
-        None, description="Field priorities used in generation (1-5 scale)"
-    )
+    field_priorities: dict[str, int | None] = Field(None, description="Field priorities used in generation (1-5 scale)")
 
 
 class ProjectMissionUpdatedEvent(BaseModel):
@@ -152,11 +150,11 @@ class AgentCreatedData(BaseModel):
 
     project_id: str = Field(..., description="Project UUID as string")
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
-    agent: Dict[str, Any] = Field(..., description="Complete agent job data")
+    agent: dict[str, Any] = Field(..., description="Complete agent job data")
 
     @field_validator("agent")
     @classmethod
-    def validate_agent_data(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_agent_data(cls, v: dict[str, Any]) -> dict[str, Any]:
         """
         Validate agent data contains minimum required fields.
 
@@ -220,12 +218,12 @@ class AgentStatusChangedData(BaseModel):
     """
 
     job_id: str = Field(..., description="Agent job UUID as string")
-    project_id: Optional[str] = Field(None, description="Project UUID if applicable")
+    project_id: str | None = Field(None, description="Project UUID if applicable")
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
     old_status: str = Field(..., min_length=1, description="Previous status")
     new_status: str = Field(..., min_length=1, description="New status")
     agent_display_name: str = Field(..., min_length=1, description="Human-readable display name for UI")
-    duration_seconds: Optional[float] = Field(None, ge=0, description="Job duration for completed/failed status")
+    duration_seconds: float | None = Field(None, ge=0, description="Job duration for completed/failed status")
 
     @field_validator("new_status")
     @classmethod
@@ -293,8 +291,8 @@ class MessageSentData(BaseModel):
     message_id: str = Field(..., description="Unique message identifier")
     job_id: str = Field(..., description="Sender job_id (legacy)")
     project_id: str = Field(..., description="Project UUID as string")
-    from_agent: Optional[str] = Field(default=None, description="Sender label (legacy)")
-    to_agent: Optional[str] = Field(default=None, description="Recipient label (legacy)")
+    from_agent: str | None = Field(default=None, description="Sender label (legacy)")
+    to_agent: str | None = Field(default=None, description="Recipient label (legacy)")
     message_type: str = Field(..., description="Message type (task, info, error, etc.)")
 
     # Compatibility aliases for content preview fields
@@ -305,8 +303,8 @@ class MessageSentData(BaseModel):
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
 
     # Counter values (Handover 0387g)
-    sender_sent_count: Optional[int] = Field(default=None, description="Sender's total messages sent count")
-    recipient_waiting_count: Optional[int] = Field(default=None, description="Recipient's messages waiting count")
+    sender_sent_count: int | None = Field(default=None, description="Sender's total messages sent count")
+    recipient_waiting_count: int | None = Field(default=None, description="Recipient's messages waiting count")
     priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
     timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
 
@@ -330,7 +328,7 @@ class MessageReceivedData(BaseModel):
     message_id: str = Field(..., description="Unique message identifier")
     job_id: str = Field(..., description="Sender job_id (legacy)")
     project_id: str = Field(..., description="Project UUID as string")
-    from_agent: Optional[str] = Field(default=None, description="Sender label (legacy)")
+    from_agent: str | None = Field(default=None, description="Sender label (legacy)")
     to_agent_ids: list[str] = Field(default_factory=list, description="Recipient agent IDs (legacy)")
     message_type: str = Field(..., description="Message type (task, info, error, etc.)")
 
@@ -342,7 +340,7 @@ class MessageReceivedData(BaseModel):
     tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
 
     # Counter values (Handover 0387g)
-    waiting_count: Optional[int] = Field(default=None, description="Recipient's messages waiting count")
+    waiting_count: int | None = Field(default=None, description="Recipient's messages waiting count")
     priority: int = Field(default=1, ge=0, le=2, description="Message priority (0-2)")
     timestamp: str = Field(..., description="Message timestamp (ISO 8601)")
 
@@ -375,8 +373,8 @@ class MessageAcknowledgedData(BaseModel):
     to_job_ids: list[str] = Field(default_factory=list, description="Target agent job IDs")
 
     # Counter values (Handover 0387g)
-    waiting_count: Optional[int] = Field(default=None, description="Acknowledging agent's messages waiting count")
-    read_count: Optional[int] = Field(default=None, description="Acknowledging agent's messages read count")
+    waiting_count: int | None = Field(default=None, description="Acknowledging agent's messages waiting count")
+    read_count: int | None = Field(default=None, description="Acknowledging agent's messages read count")
 
 
 class MessageAcknowledgedEvent(BaseModel):
@@ -392,19 +390,17 @@ class MessageAcknowledgedEvent(BaseModel):
 # Event Type Union
 # ============================================================================
 
-
-WebSocketEvent = Union[
-    ProjectMissionUpdatedEvent,
-    AgentCreatedEvent,
-    AgentStatusChangedEvent,
-    MessageSentEvent,
-    MessageReceivedEvent,
-    MessageAcknowledgedEvent,
-]
+WebSocketEvent = (
+    ProjectMissionUpdatedEvent
+    | AgentCreatedEvent
+    | AgentStatusChangedEvent
+    | MessageSentEvent
+    | MessageReceivedEvent
+    | MessageAcknowledgedEvent
+)
 # Union type of all WebSocket events for validation.
 #
 # Use this for type hints when accepting any WebSocket event.
-
 
 # ============================================================================
 # Event Factory
@@ -429,7 +425,7 @@ class EventFactory:
     def tenant_envelope(
         event_type: str,
         tenant_key: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         schema_version: str = "1.0",
     ) -> dict:
         """Create a canonical tenant-scoped event envelope."""
@@ -451,12 +447,12 @@ class EventFactory:
 
     @staticmethod
     def project_mission_updated(
-        project_id: Union[str, UUID],
+        project_id: str | UUID,
         tenant_key: str,
         mission: str,
         generated_by: Literal["orchestrator", "user"] = "orchestrator",
         user_config_applied: bool = False,
-        field_priorities: Optional[Dict[str, int]] = None,
+        field_priorities: dict[str, int | None] = None,
     ) -> dict:
         """
         Create project:mission_updated event.
@@ -499,9 +495,9 @@ class EventFactory:
 
     @staticmethod
     def agent_created(
-        project_id: Union[str, UUID],
+        project_id: str | UUID,
         tenant_key: str,
-        agent: Dict[str, Any],
+        agent: dict[str, Any],
     ) -> dict:
         """
         Create agent:created event.
@@ -545,13 +541,13 @@ class EventFactory:
 
     @staticmethod
     def agent_status_changed(
-        job_id: Union[str, UUID],
+        job_id: str | UUID,
         tenant_key: str,
         old_status: str,
         new_status: str,
         agent_display_name: str,
-        project_id: Optional[Union[str, UUID]] = None,
-        duration_seconds: Optional[float] = None,
+        project_id: str | UUID | None = None,
+        duration_seconds: float | None = None,
     ) -> dict:
         """
         Create agent:status_changed event.
@@ -603,18 +599,18 @@ class EventFactory:
     @staticmethod
     def message_sent(
         message_id: str,
-        project_id: Union[str, UUID],
+        project_id: str | UUID,
         tenant_key: str,
         from_job_id: str,
         to_job_ids: list[str],
-        from_agent: Optional[str],
-        to_agent: Optional[str],
+        from_agent: str | None,
+        to_agent: str | None,
         message_type: str,
         content_preview: str,
         priority: int,
-        message_timestamp: Optional[datetime] = None,
-        sender_sent_count: Optional[int] = None,
-        recipient_waiting_count: Optional[int] = None,
+        message_timestamp: datetime | None = None,
+        sender_sent_count: int | None = None,
+        recipient_waiting_count: int | None = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -647,17 +643,17 @@ class EventFactory:
     @staticmethod
     def message_received(
         message_id: str,
-        project_id: Union[str, UUID],
+        project_id: str | UUID,
         tenant_key: str,
         from_job_id: str,
         to_job_ids: list[str],
-        from_agent: Optional[str],
+        from_agent: str | None,
         to_agent_ids: list[str],
         message_type: str,
         content_preview: str,
         priority: int,
-        message_timestamp: Optional[datetime] = None,
-        waiting_count: Optional[int] = None,
+        message_timestamp: datetime | None = None,
+        waiting_count: int | None = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -689,14 +685,14 @@ class EventFactory:
     @staticmethod
     def message_acknowledged(
         message_id: str,
-        project_id: Union[str, UUID],
+        project_id: str | UUID,
         tenant_key: str,
         from_job_id: str,
         to_job_ids: list[str],
         agent_id: str,
         message_ids: list[str],
-        waiting_count: Optional[int] = None,
-        read_count: Optional[int] = None,
+        waiting_count: int | None = None,
+        read_count: int | None = None,
     ) -> dict:
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
@@ -722,19 +718,18 @@ class EventFactory:
 # Public API
 # ============================================================================
 
-
 __all__ = [
-    # Event Models
-    "ProjectMissionUpdatedEvent",
-    "ProjectMissionUpdatedData",
-    "AgentCreatedEvent",
     "AgentCreatedData",
-    "AgentStatusChangedEvent",
+    "AgentCreatedEvent",
     "AgentStatusChangedData",
+    "AgentStatusChangedEvent",
     # Factory
     "EventFactory",
-    # Type Unions
-    "WebSocketEvent",
     # Metadata
     "EventMetadata",
+    "ProjectMissionUpdatedData",
+    # Event Models
+    "ProjectMissionUpdatedEvent",
+    # Type Unions
+    "WebSocketEvent",
 ]

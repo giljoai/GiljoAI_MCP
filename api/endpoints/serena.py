@@ -7,10 +7,10 @@ Removed advanced settings for 99% token reduction.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 
@@ -20,6 +20,7 @@ router = APIRouter()
 
 class SerenaToggleRequest(BaseModel):
     """Request model for Serena toggle"""
+
     use_in_prompts: bool
 
 
@@ -28,7 +29,7 @@ def get_config_path() -> Path:
     return Path.cwd() / "config.yaml"
 
 
-def read_config() -> Dict[str, Any]:
+def read_config() -> dict[str, Any]:
     """Read config.yaml."""
     config_path = get_config_path()
     if not config_path.exists():
@@ -37,20 +38,20 @@ def read_config() -> Dict[str, Any]:
     try:
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception as e:
-        logger.error(f"Failed to read config: {e}")
+    except (OSError, ValueError):
+        logger.exception("Failed to read config")
         return {}
 
 
-def write_config(config: Dict[str, Any]) -> None:
+def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except Exception as e:
-        logger.error(f"Failed to write config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except (OSError, ValueError) as e:
+        logger.exception("Failed to write config")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/settings")
@@ -64,12 +65,10 @@ async def get_serena_settings():
         config = read_config()
         serena = config.get("features", {}).get("serena_mcp", {})
 
-        return {
-            "use_in_prompts": bool(serena.get("use_in_prompts", False))
-        }
-    except Exception as e:
+        return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
+    except (OSError, ValueError) as e:
         logger.exception("Failed to get Serena settings")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/toggle")
@@ -100,12 +99,12 @@ async def toggle_serena(request: SerenaToggleRequest):
             "success": True,
             "enabled": request.use_in_prompts,
             "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
-            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}"
+            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
         }
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.exception("Failed to toggle Serena")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/status")
@@ -116,6 +115,6 @@ async def get_serena_status():
         enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
         return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.exception("Failed to get Serena status")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

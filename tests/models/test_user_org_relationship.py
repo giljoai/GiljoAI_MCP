@@ -10,6 +10,7 @@ These tests verify:
 - Organization.users backref returns users
 - org_id FK constraint enforces referential integrity
 """
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
@@ -27,7 +28,7 @@ async def test_org(db_session, test_tenant_key):
     org = Organization(
         name="Test Organization",
         slug=f"test-org-{generate_uuid()[:8]}",  # Unique slug
-        tenant_key=test_tenant_key  # 0424m: Required NOT NULL
+        tenant_key=test_tenant_key,  # 0424m: Required NOT NULL
     )
     db_session.add(org)
     await db_session.commit()
@@ -70,7 +71,7 @@ async def test_user_organization_relationship(db_session, test_org, test_tenant_
         tenant_key=test_tenant_key,
         role="developer",
         org_id=test_org.id,
-        is_active=True
+        is_active=True,
     )
     db_session.add(user)
     await db_session.commit()
@@ -97,7 +98,7 @@ async def test_user_allows_null_org_id(db_session, test_tenant_key):
         password_hash="hashed_password",
         tenant_key=test_tenant_key,
         role="developer",
-        is_active=True
+        is_active=True,
         # No org_id - allowed after 0424m
     )
     db_session.add(user)
@@ -120,7 +121,7 @@ async def test_organization_users_backref(db_session, test_org, test_tenant_key)
             tenant_key=test_tenant_key,
             role="developer",
             org_id=test_org.id,
-            is_active=True
+            is_active=True,
         )
         db_session.add(user)
     await db_session.commit()
@@ -147,7 +148,7 @@ async def test_user_org_id_fk_constraint(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         role="developer",
         org_id="00000000-0000-0000-0000-000000000000",  # Non-existent org
-        is_active=True
+        is_active=True,
     )
     db_session.add(user)
 

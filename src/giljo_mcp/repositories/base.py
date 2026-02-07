@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Base repository with automatic tenant filtering.
 
@@ -7,13 +5,15 @@ Handover 0017: Provides foundation for all repository classes with CRITICAL tena
 Every database operation MUST filter by tenant_key for security.
 """
 
-from typing import Generic, List, Optional, TypeVar
+from __future__ import annotations
+
+from typing import Generic, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..database import DatabaseManager
+from src.giljo_mcp.database import DatabaseManager
 
 
 T = TypeVar("T")
@@ -55,7 +55,7 @@ class BaseRepository(Generic[T]):
         session.flush()
         return entity
 
-    async def get_by_id(self, session: AsyncSession, tenant_key: str, entity_id: str) -> Optional[T]:
+    async def get_by_id(self, session: AsyncSession, tenant_key: str, entity_id: str) -> T | None:
         """
         Get entity by ID with tenant filter.
 
@@ -70,13 +70,11 @@ class BaseRepository(Generic[T]):
             Entity instance or None if not found
         """
         result = await session.execute(
-            select(self.model_class).where(
-                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
-            )
+            select(self.model_class).where(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
         )
         return result.scalar_one_or_none()
 
-    async def list_all(self, session: AsyncSession, tenant_key: str) -> List[T]:
+    async def list_all(self, session: AsyncSession, tenant_key: str) -> list[T]:
         """
         List all entities for tenant.
 
@@ -141,8 +139,6 @@ class BaseRepository(Generic[T]):
             True if entity exists for tenant, False otherwise
         """
         result = await session.execute(
-            select(self.model_class).where(
-                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
-            )
+            select(self.model_class).where(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
         )
         return result.scalar_one_or_none() is not None

@@ -196,6 +196,9 @@ export const api = {
     getGitIntegration: (id) => apiClient.get(`/api/v1/products/${id}/git-integration`),
     updateGitIntegration: (id, settings) =>
       apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
+    // 360 Memory endpoints (Handover 0490)
+    getMemoryEntries: (productId, params) =>
+      apiClient.get(`/api/v1/products/${productId}/memory-entries`, { params }),
   },
 
   // Projects
@@ -232,87 +235,10 @@ export const api = {
     getCloseoutData: (id) => apiClient.get(`/api/v1/projects/${id}/closeout`),
     completeWithData: (id, data) => apiClient.post(`/api/v1/projects/${id}/complete`, data),
     archive: (id) => apiClient.post(`/api/v1/projects/${id}/archive`),  // Handover 0412: Simple archive
+    // Implementation phase gate (Handover 0709)
+    launchImplementation: (id) => apiClient.patch(`/api/agent-jobs/projects/${id}/launch-implementation`),
   },
 
-  // DEPRECATED: Legacy agent endpoints removed in Handover 0116
-  // Migration: Use agentJobs.* methods instead (Handover 0119 Phase 1)
-  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
-  agents: {
-    list: () => {
-      console.error('DEPRECATED: api.agents.list() is removed. Use api.agentJobs.list() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    get: () => {
-      console.error('DEPRECATED: api.agents.get() is removed. Use api.agentJobs.get() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    create: () => {
-      console.error(
-        'DEPRECATED: api.agents.create() is removed. Use api.agentJobs.spawn() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    health: () => {
-      console.error(
-        'DEPRECATED: api.agents.health() is removed. Use api.agentJobs.status() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    assign: () => {
-      console.error('DEPRECATED: api.agents.assign() is removed. Use agentJobs.spawn() instead.')
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    decommission: () => {
-      console.error(
-        'DEPRECATED: api.agents.decommission() is removed. Use api.agentJobs.terminate() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    tree: () => {
-      console.error(
-        'DEPRECATED: api.agents.tree() is removed. Use api.agentJobs.hierarchy() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-    metrics: () => {
-      console.error(
-        'DEPRECATED: api.agents.metrics() is removed. Use api.agentJobs.metrics() instead.',
-      )
-      return Promise.reject(
-        new Error(
-          'Agent API removed in v3.0. Use agentJobs API. See Handover 0119 for migration guide.',
-        ),
-      )
-    },
-  },
 
   // Messages
   messages: {
@@ -397,15 +323,6 @@ export const api = {
     getChunks: (documentId) => apiClient.get(`/api/vision-documents/${documentId}/chunks`),
   },
 
-  // Legacy Vision API (Single Document - Deprecated)
-  vision: {
-    get: () => apiClient.get('/api/v1/context/vision/'),
-    getChunk: (part, maxTokens = 20000) =>
-      apiClient.get('/api/v1/context/vision/', {
-        params: { part, max_tokens: maxTokens },
-      }),
-    getIndex: () => apiClient.get('/api/v1/context/vision/index/'),
-  },
 
   // Context & Discovery
   context: {
@@ -551,13 +468,9 @@ export const api = {
     // Mission update endpoint (Handover 0244b)
     updateMission: (jobId, data) => apiClient.patch(`/api/agent-jobs/${jobId}/mission`, data),
 
-    // Orchestrator succession endpoints (Handover 0507)
-    triggerSuccession: (jobId, reason = 'manual', notes = null) =>
-      apiClient.post(`/api/agent-jobs/${jobId}/trigger-succession`, { reason, notes }),
-    checkSuccessionStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/succession-status`),
-    // Handover 0506: Initiate handover - returns prompt for retiring orchestrator
-    initiateHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/initiate-handover`),
     // Handover 0461d: Simple handover - reset context and get continuation prompt
+    // NOTE: Legacy succession endpoints (triggerSuccession, checkSuccessionStatus, initiateHandover)
+    // removed in Handover 0700d. Use simpleHandover instead.
     simpleHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/simple-handover`),
     // Get all executions for a job (succession history)
     getExecutions: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/executions`),
@@ -582,11 +495,6 @@ export const api = {
         from_agent: data.from_agent || 'user',
       }),
 
-    // Legacy aliases for backward compatibility (deprecated but functional)
-    getJob: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
-    listJobs: (projectId, params = {}) =>
-      apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
-    getStatus: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
   },
 
   // Organizations (Handover 0424 - gap fix)
@@ -620,10 +528,6 @@ export const api = {
   prompts: {
     staging: (projectId, params) =>
       apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),
-    execution: (orchestratorJobId, claudeCodeMode) =>
-      apiClient.get(`/api/v1/prompts/execution/${orchestratorJobId}`, {
-        params: { claude_code_mode: claudeCodeMode },
-      }),
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
     // Handover 0344: CLI mode implementation prompt for orchestrator play button
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),

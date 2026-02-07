@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+
 from src.giljo_mcp.colored_logger import get_colored_logger
 from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
 
@@ -129,9 +129,6 @@ async def get_call_counts(request: Request):
     if state.db_manager:
         stats_repo = StatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            # ORIGINAL: stmt = select(ApiMetrics).where(ApiMetrics.tenant_key == tenant_key)
-            # ORIGINAL: result = await session.execute(stmt)
-            # ORIGINAL: metrics = result.scalar_one_or_none()
             metrics = await stats_repo.get_api_metrics(session, tenant_key)
             if metrics:
                 db_api_calls = metrics.total_api_calls
@@ -162,62 +159,41 @@ async def get_system_statistics(request: Request):
     try:
         stats_repo = StatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            # Get project stats
-            # ORIGINAL: total_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key))
             total_projects = await stats_repo.count_total_projects(session, tenant_key)
             logger.info(f"[STATS DEBUG] total_projects: {total_projects}")
 
-            # ORIGINAL: active_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "active"))
             active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
             logger.info(f"[STATS DEBUG] active_projects: {active_projects}")
 
-            # ORIGINAL: completed_projects = await session.scalar(select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == "completed"))
             completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
             logger.info(f"[STATS DEBUG] completed_projects: {completed_projects}")
 
-            # Get agent stats (using AgentExecution)
-            # ORIGINAL: total_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
             total_agents = await stats_repo.count_total_agents(session, tenant_key)
             logger.info(f"[STATS DEBUG] total_agents: {total_agents}")
 
-            # ORIGINAL: active_agents = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status.in_(["waiting", "working"])))
             active_agents = await stats_repo.count_active_agents(session, tenant_key)
             logger.info(f"[STATS DEBUG] active_agents: {active_agents}")
 
-            # Get message stats
-            # ORIGINAL: total_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key))
             total_messages = await stats_repo.count_total_messages(session, tenant_key)
             logger.info(f"[STATS DEBUG] total_messages: {total_messages}")
 
-            # ORIGINAL: pending_messages = await session.scalar(select(func.count(Message.id)).where(Message.tenant_key == tenant_key, Message.status == "pending"))
             pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
             logger.info(f"[STATS DEBUG] pending_messages: {pending_messages}")
 
-            # Get task stats
-            # ORIGINAL: total_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key))
             total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
             logger.info(f"[STATS DEBUG] total_tasks: {total_tasks}")
 
-            # ORIGINAL: completed_tasks = await session.scalar(select(func.count(Task.id)).where(Task.tenant_key == tenant_key, Task.status == "completed"))
             completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
             logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
-            # Get context usage stats
-            # ORIGINAL: avg_context = await session.scalar(select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
-            # ORIGINAL: peak_context = await session.scalar(select(func.max(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
             avg_context, peak_context = await stats_repo.get_project_context_stats(session, tenant_key)
 
-            # Get database size (approximate)
             db_size = 0
 
-            # Calculate uptime
             uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
 
-            # New metrics (using AgentExecution)
-            # ORIGINAL: total_agents_spawned = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key))
             total_agents_spawned = await stats_repo.count_total_agents(session, tenant_key)
 
-            # ORIGINAL: total_jobs_completed = await session.scalar(select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == tenant_key, AgentExecution.status == "complete"))
             total_jobs_completed = await stats_repo.count_completed_agents(session, tenant_key)
 
             return SystemStatsResponse(
@@ -239,8 +215,8 @@ async def get_system_statistics(request: Request):
                 total_jobs_completed=total_jobs_completed,
             )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/projects", response_model=list[ProjectStatsResponse])
@@ -264,43 +240,31 @@ async def get_project_statistics(
     try:
         stats_repo = StatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            # Build query with tenant filtering
-            # ORIGINAL: query = select(Project)
-            # ORIGINAL: if status: query = query.where(Project.status == status)
-            # ORIGINAL: query = query.offset(offset).limit(limit)
-            # ORIGINAL: result = await session.execute(query)
-            # ORIGINAL: projects = result.scalars().all()
             projects = await stats_repo.get_projects_with_pagination(
                 session, tenant_key, status=status, limit=limit, offset=offset
             )
 
             stats = []
             for project in projects:
-                # Get related counts (using AgentExecution joined to AgentJob)
-                # ORIGINAL: agent_count = await session.scalar(select(func.count(AgentExecution.agent_id)).join(AgentJob, ...).where(...))
                 agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
 
-                # ORIGINAL: message_count = await session.scalar(select(func.count(Message.id)).where(Message.project_id == project.id))
                 message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
 
-                # ORIGINAL: task_count = await session.scalar(select(func.count(Task.id)).where(Task.project_id == project.id))
                 task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
 
-                # ORIGINAL: completed_task_count = await session.scalar(select(func.count(Task.id)).where(and_(Task.project_id == project.id, Task.status == "completed")))
-                completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+                completed_task_count = await stats_repo.count_completed_tasks_for_project(
+                    session, tenant_key, project.id
+                )
 
-                # Get last activity
-                # ORIGINAL: last_message = await session.scalar(select(func.max(Message.created_at)).where(Message.project_id == project.id))
                 last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
 
                 # Calculate duration
                 end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
                 duration = (end_time - project.created_at).total_seconds()
 
-                # Calculate context usage
-                context_percent = (
-                    (project.context_used / project.context_budget * 100) if project.context_budget > 0 else 0
-                )
+                # Calculate context usage (hardcoded default budget)
+                context_budget = 150000  # Hardcoded default (Project.context_budget removed)
+                context_percent = (project.context_used / context_budget * 100) if context_budget > 0 else 0
 
                 stats.append(
                     ProjectStatsResponse(
@@ -313,7 +277,7 @@ async def get_project_statistics(
                         task_count=task_count,
                         completed_tasks=completed_task_count,
                         context_used=project.context_used,
-                        context_budget=project.context_budget,
+                        context_budget=context_budget,
                         context_usage_percent=context_percent,
                         last_activity=last_message or project.updated_at,
                     )
@@ -321,15 +285,13 @@ async def get_project_statistics(
 
             return stats
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/project/{project_id}", response_model=ProjectStatsResponse)
 async def get_project_statistics_by_id(request: Request, project_id: str):
     """Get statistics for a specific project"""
-    # CRITICAL: Add tenant_key for security (MISSING IN ORIGINAL!)
-    # ORIGINAL: Called get_project_statistics without passing request - security vulnerability!
     stats = await get_project_statistics(request, limit=1)
     for stat in stats:
         if stat.project_id == project_id:
@@ -358,52 +320,34 @@ async def get_agent_statistics(
     try:
         stats_repo = StatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            # Build query (using AgentExecution)
-            # ORIGINAL: query = select(AgentExecution)
-            # ORIGINAL: if project_id: query = query.join(AgentJob, ...).where(...)
-            # ORIGINAL: if status: query = query.where(...)
-            # ORIGINAL: query = query.limit(limit)
-            # ORIGINAL: result = await session.execute(query)
-            # ORIGINAL: agent_executions = result.scalars().all()
             agent_executions = await stats_repo.get_agent_executions_with_filters(
                 session, tenant_key, project_id=project_id, status=status, limit=limit
             )
 
             stats = []
             for agent_execution in agent_executions:
-                # Get message counts (using agent_name from AgentExecution)
-                # ORIGINAL: sent_count = await session.scalar(select(func.count(Message.id)).where(Message.from_agent == agent_execution.agent_name))
                 sent_count = await stats_repo.count_messages_sent_by_agent(
                     session, tenant_key, agent_execution.agent_name
                 )
 
-                # ORIGINAL: received_count = await session.scalar(select(func.count(Message.id)).where(Message.to_agents.contains([agent_execution.agent_name])))
                 received_count = await stats_repo.count_messages_received_by_agent(
                     session, tenant_key, agent_execution.agent_name
                 )
 
-                # Get task counts from counter fields (Handover 0387f)
-                # Note: These counters track messages, not tasks. For actual task counts,
-                # we should query the Task table. Using message counters as placeholder.
                 task_count = agent_execution.messages_sent_count
                 completed_count = agent_execution.messages_read_count
 
-                # Calculate average response time (simplified)
-                avg_response_time = 30.0  # Default 30 seconds
+                avg_response_time = 30.0
 
-                # Get last activity
-                # ORIGINAL: last_sent = await session.scalar(select(func.max(Message.created_at)).where(Message.from_agent == agent_execution.agent_name))
                 last_sent = await stats_repo.get_last_message_sent_by_agent(
                     session, tenant_key, agent_execution.agent_name
                 )
 
-                # Get project_id by joining to AgentJob
-                # ORIGINAL: agent_job = await session.scalar(select(AgentJob).where(AgentJob.job_id == agent_execution.job_id))
-                agent_job = await stats_repo.get_agent_job_by_job_id(
-                    session, tenant_key, agent_execution.job_id
-                )
+                agent_job = await stats_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
 
-                created_ts = agent_execution.started_at or (agent_execution.job.created_at if agent_job else agent_execution.started_at)
+                created_ts = agent_execution.started_at or (
+                    agent_execution.job.created_at if agent_job else agent_execution.started_at
+                )
 
                 stats.append(
                     AgentStatsResponse(
@@ -424,8 +368,8 @@ async def get_agent_statistics(
 
             return stats
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/messages", response_model=MessageStatsResponse)
@@ -448,7 +392,6 @@ async def get_message_statistics(
     try:
         stats_repo = StatisticsRepository(state.db_manager)
         async with state.db_manager.get_session_async() as session:
-            # Calculate time filter
             now = datetime.now(timezone.utc)
             if time_range == "1h":
                 since = now - timedelta(hours=1)
@@ -461,45 +404,32 @@ async def get_message_statistics(
             else:
                 since = None
 
-            # Build base query
-            # ORIGINAL: base_query = select(Message)
-            # ORIGINAL: if project_id: base_query = base_query.where(Message.project_id == project_id)
-            # ORIGINAL: if since: base_query = base_query.where(Message.created_at >= since)
-            # ORIGINAL: total = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()))
             total = await stats_repo.count_messages_with_filters(
                 session, tenant_key, project_id=project_id, since=since
             )
 
-            # Get counts by status
-            # ORIGINAL: pending = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "pending"))
             pending = await stats_repo.count_messages_by_status_with_filters(
                 session, tenant_key, status="pending", project_id=project_id, since=since
             )
 
-            # ORIGINAL: acknowledged = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "acknowledged"))
             acknowledged = await stats_repo.count_messages_by_status_with_filters(
                 session, tenant_key, status="acknowledged", project_id=project_id, since=since
             )
 
-            # ORIGINAL: completed = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "completed"))
             completed = await stats_repo.count_messages_by_status_with_filters(
                 session, tenant_key, status="completed", project_id=project_id, since=since
             )
 
-            # ORIGINAL: failed = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "failed"))
             failed = await stats_repo.count_messages_by_status_with_filters(
                 session, tenant_key, status="failed", project_id=project_id, since=since
             )
 
-            # Calculate processing time (simplified)
-            avg_processing_time = 45.0  # Default 45 seconds
+            avg_processing_time = 45.0
 
-            # Calculate messages per hour
             hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
             messages_per_hour = total / hours_in_range
 
-            # Find peak hour (simplified)
-            peak_hour_messages = int(messages_per_hour * 1.5)  # Estimate
+            peak_hour_messages = int(messages_per_hour * 1.5)
 
             return MessageStatsResponse(
                 total_messages=total,
@@ -512,8 +442,8 @@ async def get_message_statistics(
                 peak_hour_messages=peak_hour_messages,
             )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/performance", response_model=PerformanceMetricsResponse)
@@ -549,14 +479,12 @@ async def get_performance_metrics():
         # Calculate error rate (simplified)
         error_rate = 0.1  # 0.1% error rate
 
-        # Measure database query time
         db_query_time = 0
         if state.db_manager:
             stats_repo = StatisticsRepository(state.db_manager)
             db_start = time.time()
             try:
                 async with state.db_manager.get_session_async() as session:
-                    # ORIGINAL: await session.execute(select(1))
                     await stats_repo.execute_health_check(session)
                 db_query_time = (time.time() - db_start) * 1000
             except Exception:
@@ -577,8 +505,8 @@ async def get_performance_metrics():
             error_rate_percent=error_rate,
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/timeseries/{metric}", response_model=TimeSeriesResponse)
@@ -622,22 +550,22 @@ async def get_timeseries_data(
             timestamp = now - (interval * (points - i - 1))
 
             if metric == "messages":
-                value = random.randint(10, 100)  # nosec B311
+                value = random.randint(10, 100)
             elif metric == "agents":
-                value = random.randint(1, 10)  # nosec B311
+                value = random.randint(1, 10)
             elif metric == "tasks":
-                value = random.randint(5, 50)  # nosec B311
+                value = random.randint(5, 50)
             elif metric == "context_usage":
-                value = random.randint(1000, 150000)  # nosec B311
+                value = random.randint(1000, 150000)
             else:  # errors
-                value = random.randint(0, 5)  # nosec B311
+                value = random.randint(0, 5)
 
             data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
 
         return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/health/detailed")
@@ -654,16 +582,14 @@ async def get_detailed_health():
     }
     health["checks_passed"] += 1
 
-    # Check database
     if state.db_manager:
         stats_repo = StatisticsRepository(state.db_manager)
         try:
             async with state.db_manager.get_session_async() as session:
-                # ORIGINAL: await session.execute(select(1))
                 await stats_repo.execute_health_check(session)
             health["components"]["database"] = {"status": "healthy"}
             health["checks_passed"] += 1
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             health["components"]["database"] = {"status": "unhealthy", "error": str(e)}
             health["checks_failed"] += 1
             health["overall"] = "degraded"

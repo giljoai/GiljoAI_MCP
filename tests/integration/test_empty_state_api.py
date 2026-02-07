@@ -169,9 +169,7 @@ class TestEmptyStateEdgeCases:
         Expected: Returns empty array with appropriate pagination metadata.
         """
         response = await async_client.get(
-            "/api/v1/messages/",
-            params={"skip": 0, "limit": 10},
-            cookies=auth_headers_developer
+            "/api/v1/messages/", params={"skip": 0, "limit": 10}, cookies=auth_headers_developer
         )
 
         assert response.status_code == 200
@@ -182,7 +180,6 @@ class TestEmptyStateEdgeCases:
         elif isinstance(data, dict):
             assert data.get("items", data.get("messages", [])) == []
 
-
     @pytest.mark.asyncio
     async def test_list_jobs_with_filters_empty(self, async_client: AsyncClient, auth_headers_developer):
         """
@@ -192,9 +189,7 @@ class TestEmptyStateEdgeCases:
         Expected: Returns empty result set with 200 OK.
         """
         response = await async_client.get(
-            "/api/agent-jobs/",
-            params={"status": "active"},
-            cookies=auth_headers_developer
+            "/api/agent-jobs/", params={"status": "active"}, cookies=auth_headers_developer
         )
 
         assert response.status_code == 200
@@ -202,7 +197,6 @@ class TestEmptyStateEdgeCases:
         assert isinstance(data, dict)
         assert data.get("jobs") == []
         assert data.get("total") == 0
-
 
     @pytest.mark.asyncio
     async def test_stats_with_date_range_empty(self, async_client: AsyncClient, auth_headers_developer):
@@ -220,7 +214,7 @@ class TestEmptyStateEdgeCases:
         response = await async_client.get(
             "/api/v1/stats/projects",
             params={"start_date": start_date, "end_date": end_date},
-            cookies=auth_headers_developer
+            cookies=auth_headers_developer,
         )
 
         assert response.status_code == 200

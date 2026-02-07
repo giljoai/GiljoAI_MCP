@@ -26,7 +26,6 @@ Files Covered:
 
 import ast
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -83,9 +82,7 @@ async def test_agent_job_0367b(db_session, test_project_0367b, test_tenant_0367b
 
 
 @pytest_asyncio.fixture
-async def test_agent_execution_0367b(
-    db_session, test_agent_job_0367b, test_tenant_0367b
-) -> AgentExecution:
+async def test_agent_execution_0367b(db_session, test_agent_job_0367b, test_tenant_0367b) -> AgentExecution:
     """Create test AgentExecution (executor)."""
     execution = AgentExecution(
         agent_id=str(uuid.uuid4()),
@@ -93,7 +90,6 @@ async def test_agent_execution_0367b(
         tenant_key=test_tenant_0367b,
         agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
-        instance_number=1,
         status="working",
         progress=50,
         messages_sent_count=0,
@@ -128,7 +124,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         if not file_path.exists():
             pytest.skip(f"File not found: {file_path}")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         tree = ast.parse(source)
@@ -139,15 +135,11 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
                 if node.names:
                     for alias in node.names:
                         if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(
-                                f"from {node.module} import MCPAgentJob (line {node.lineno})"
-                            )
+                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob (line {node.lineno})")
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     if "MCPAgentJob" in alias.name:
-                        mcp_agent_job_imports.append(
-                            f"import {alias.name} (line {node.lineno})"
-                        )
+                        mcp_agent_job_imports.append(f"import {alias.name} (line {node.lineno})")
 
         return mcp_agent_job_imports
 
@@ -160,9 +152,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/prompts.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"prompts.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "prompts.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_statistics_py_no_mcpagentjob_import(self):
         """
@@ -173,9 +163,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/statistics.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"statistics.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "statistics.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_filters_py_no_mcpagentjob_import(self):
         """
@@ -186,9 +174,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/agent_jobs/filters.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"filters.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "filters.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_table_view_py_no_mcpagentjob_import(self):
         """
@@ -199,9 +185,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/agent_jobs/table_view.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"table_view.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "table_view.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_succession_py_no_mcpagentjob_import(self):
         """
@@ -212,9 +196,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/agent_jobs/succession.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"succession.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "succession.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_operations_py_no_mcpagentjob_import(self):
         """
@@ -225,9 +207,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/agent_jobs/operations.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"operations.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "operations.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
     def test_projects_status_py_no_mcpagentjob_import(self):
         """
@@ -238,9 +218,7 @@ class TestNoMCPAgentJobImportInAPIEndpoints:
         file_path = Path("api/endpoints/projects/status.py")
         imports = self._check_file_for_mcpagentjob_imports(file_path)
 
-        assert len(imports) == 0, (
-            f"projects/status.py still imports MCPAgentJob:\n" + "\n".join(imports)
-        )
+        assert len(imports) == 0, "projects/status.py still imports MCPAgentJob:\n" + "\n".join(imports)
 
 
 # ============================================================================
@@ -264,7 +242,7 @@ class TestNoMCPAgentJobUsageInAPIEndpoints:
         if not file_path.exists():
             pytest.skip(f"File not found: {file_path}")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             lines = f.readlines()
 
         usages = []
@@ -286,63 +264,49 @@ class TestNoMCPAgentJobUsageInAPIEndpoints:
         file_path = Path("api/endpoints/prompts.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"prompts.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "prompts.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_statistics_py_no_mcpagentjob_usage(self):
         """statistics.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/statistics.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"statistics.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "statistics.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_filters_py_no_mcpagentjob_usage(self):
         """filters.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/agent_jobs/filters.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"filters.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "filters.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_table_view_py_no_mcpagentjob_usage(self):
         """table_view.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/agent_jobs/table_view.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"table_view.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "table_view.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_succession_py_no_mcpagentjob_usage(self):
         """succession.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/agent_jobs/succession.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"succession.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "succession.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_operations_py_no_mcpagentjob_usage(self):
         """operations.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/agent_jobs/operations.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"operations.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "operations.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
     def test_projects_status_py_no_mcpagentjob_usage(self):
         """projects/status.py should not use MCPAgentJob in queries."""
         file_path = Path("api/endpoints/projects/status.py")
         usages = self._check_file_for_mcpagentjob_usage(file_path)
 
-        assert len(usages) == 0, (
-            f"projects/status.py still uses MCPAgentJob:\n" + "\n".join(usages)
-        )
+        assert len(usages) == 0, "projects/status.py still uses MCPAgentJob:\n" + "\n".join(usages)
 
 
 # ============================================================================
@@ -381,12 +345,11 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="implementor",
             agent_name="Implementor #1",
-            instance_number=1,
             status="complete",
             progress=100,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution2)
 
@@ -396,34 +359,29 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="tester",
             agent_name="Tester #1",
-            instance_number=1,
             status="waiting",
             progress=0,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution3)
         await db_session.commit()
 
         # Verify counts via direct query (simulating endpoint logic)
         total_agents = await db_session.scalar(
-            select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b
-            )
+            select(func.count(AgentExecution.agent_id)).where(AgentExecution.tenant_key == test_tenant_0367b)
         )
 
         active_agents = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status.in_(["waiting", "working"])
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status.in_(["waiting", "working"])
             )
         )
 
         completed_agents = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "complete"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "complete"
             )
         )
 
@@ -450,12 +408,11 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
-            instance_number=1,
             status="working",
             progress=50,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution1)
 
@@ -465,12 +422,11 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="architect",
             agent_name="Architect #1",
-            instance_number=1,
             status="complete",
             progress=100,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution2)
         await db_session.commit()
@@ -483,7 +439,7 @@ class TestStatisticsEndpointBehavior:
             .where(
                 AgentJob.project_id == test_project_0367b.id,
                 AgentJob.tenant_key == test_tenant_0367b,
-                AgentExecution.tenant_key == test_tenant_0367b
+                AgentExecution.tenant_key == test_tenant_0367b,
             )
         )
 
@@ -509,12 +465,11 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
-            instance_number=1,
             status="working",
             progress=50,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution1)
 
@@ -524,12 +479,11 @@ class TestStatisticsEndpointBehavior:
             tenant_key=test_tenant_0367b,
             agent_display_name="implementor",
             agent_name="Implementor #1",
-            instance_number=1,
             status="waiting",
             progress=0,
             messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
         db_session.add(execution2)
         await db_session.commit()
@@ -537,16 +491,14 @@ class TestStatisticsEndpointBehavior:
         # Simulate agent stats query (filter by status)
         working_agents = await db_session.execute(
             select(AgentExecution).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "working"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "working"
             )
         )
         working_list = working_agents.scalars().all()
 
         waiting_agents = await db_session.execute(
             select(AgentExecution).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "waiting"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "waiting"
             )
         )
         waiting_list = waiting_agents.scalars().all()
@@ -557,9 +509,7 @@ class TestStatisticsEndpointBehavior:
         assert waiting_list[0].agent_display_name == "implementor"
 
     @pytest.mark.asyncio
-    async def test_agent_stats_status_filter_mapping(
-        self, db_session, test_agent_job_0367b, test_tenant_0367b
-    ):
+    async def test_agent_stats_status_filter_mapping(self, db_session, test_agent_job_0367b, test_tenant_0367b):
         """
         Agent stats status filter should map to AgentExecution statuses.
 
@@ -580,12 +530,11 @@ class TestStatisticsEndpointBehavior:
                 tenant_key=test_tenant_0367b,
                 agent_display_name="test-agent",
                 agent_name=f"Agent {status}",
-                instance_number=1,
                 status=status,
                 progress=0,
                 messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
+                messages_waiting_count=0,
+                messages_read_count=0,
             )
             db_session.add(execution)
         await db_session.commit()
@@ -593,8 +542,7 @@ class TestStatisticsEndpointBehavior:
         # Test "active" filter (waiting + working)
         active_count = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status.in_(["waiting", "working"])
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status.in_(["waiting", "working"])
             )
         )
         assert active_count == 2, "Active should count waiting + working"
@@ -602,8 +550,7 @@ class TestStatisticsEndpointBehavior:
         # Test "idle" filter (waiting only)
         idle_count = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "waiting"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "waiting"
             )
         )
         assert idle_count == 1, "Idle should count waiting only"
@@ -611,8 +558,7 @@ class TestStatisticsEndpointBehavior:
         # Test "working" filter
         working_count = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "working"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "working"
             )
         )
         assert working_count == 1, "Working should count working only"
@@ -620,8 +566,7 @@ class TestStatisticsEndpointBehavior:
         # Test "decommissioned" filter
         decom_count = await db_session.scalar(
             select(func.count(AgentExecution.agent_id)).where(
-                AgentExecution.tenant_key == test_tenant_0367b,
-                AgentExecution.status == "decommissioned"
+                AgentExecution.tenant_key == test_tenant_0367b, AgentExecution.status == "decommissioned"
             )
         )
         assert decom_count == 1, "Should count decommissioned agents"

@@ -5,14 +5,13 @@ Tests that websocket_manager is properly injected and broadcast methods are call
 This is a unit test focusing on the core behavior without HTTP layer complexity.
 """
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import Project
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.models import Project, Message
-from sqlalchemy import select
 
 
 @pytest.mark.asyncio
@@ -25,6 +24,7 @@ async def test_message_service_websocket_injection(db_session, db_manager, tenan
     """
     # Create a test tenant key
     from src.giljo_mcp.tenant import TenantManager
+
     tenant_key = TenantManager.generate_tenant_key()
 
     # Create a test project in the database
@@ -57,7 +57,7 @@ async def test_message_service_websocket_injection(db_session, db_manager, tenan
     message_service = MessageService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
-        websocket_manager=mock_ws_manager  # This is the fix we're testing
+        websocket_manager=mock_ws_manager,  # This is the fix we're testing
     )
 
     # Send a message
@@ -66,7 +66,7 @@ async def test_message_service_websocket_injection(db_session, db_manager, tenan
         content="STAGING_COMPLETE: Mission created, 3 agents spawned",
         project_id=project.id,
         message_type="broadcast",
-        from_agent="orchestrator"
+        from_agent="orchestrator",
     )
 
     # Assert message was sent successfully
@@ -94,6 +94,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
     """
     # Create a test tenant key
     from src.giljo_mcp.tenant import TenantManager
+
     tenant_key = TenantManager.generate_tenant_key()
 
     # Create a test project
@@ -121,7 +122,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
     # Create MessageService WITHOUT websocket_manager (old behavior)
     message_service = MessageService(
         db_manager=db_manager,
-        tenant_manager=tenant_manager
+        tenant_manager=tenant_manager,
         # websocket_manager NOT provided
     )
 
@@ -131,7 +132,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
         content="Test message",
         project_id=project.id,
         message_type="broadcast",
-        from_agent="test_agent"
+        from_agent="test_agent",
     )
 
     # Assert message was sent successfully (no crash even without websocket_manager)

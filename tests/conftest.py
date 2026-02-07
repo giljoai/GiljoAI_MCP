@@ -21,6 +21,9 @@ os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 
 from src.giljo_mcp.config_manager import get_config
+
+# Import Product model for test_product fixture
+from src.giljo_mcp.models import Product
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
@@ -35,9 +38,6 @@ from tests.fixtures.base_fixtures import (
     test_messages,
     test_project,
 )
-
-# Import Product model for test_product fixture
-from src.giljo_mcp.models import Product
 from tests.helpers.async_helpers import AsyncMockManager, DatabaseTestHelper, TimeoutHelper
 from tests.helpers.mock_servers import ExternalServiceMocks
 
@@ -103,6 +103,7 @@ async def setup_agent_coordination(db_manager, db_session):
     session isolation (Handover 0366c).
     """
     from src.giljo_mcp.tools import agent_coordination
+
     agent_coordination.init_for_testing(db_manager, db_session)
     yield
 
@@ -115,6 +116,7 @@ async def setup_agent_job_status(db_manager, db_session, tenant_manager):
     This allows get_job_status() and get_agent_status() to work in tests (Handover 0366c).
     """
     from src.giljo_mcp.tools import agent_job_status
+
     agent_job_status.init_for_testing(db_manager, db_session, tenant_manager)
     yield
 
@@ -128,6 +130,7 @@ async def setup_project_tools(db_manager, db_session):
     preventing session isolation issues (Handover 0366c GREEN phase).
     """
     from src.giljo_mcp.tools import project
+
     project.init_for_testing(db_manager, db_session)
     yield
 
@@ -142,6 +145,7 @@ async def setup_context_module(db_manager):
     Note: update_context_usage() was removed in Handover 0422 (dead token budget cleanup).
     """
     import src.giljo_mcp.database as db_module
+
     db_module.set_db_manager(db_manager)
     yield
 
@@ -154,6 +158,7 @@ async def setup_agent_status(db_manager):
     This allows set_agent_status() and report_progress() to work in tests (Handover 0366c).
     """
     from src.giljo_mcp.tools import agent_status
+
     agent_status.init_for_testing(db_manager)
     yield
 
@@ -210,14 +215,15 @@ def test_config():
     config.database.database_url = PostgreSQLTestHelper.get_test_db_url()
     # Note: config object may not have api/websocket attributes in newer versions
     # Only set if they exist
-    if hasattr(config, 'api'):
+    if hasattr(config, "api"):
         config.api.port = 7000  # Use different port for tests
-    if hasattr(config, 'websocket'):
+    if hasattr(config, "websocket"):
         config.websocket.port = 7001
     return config
 
 
 # Note: db_manager fixture is imported from base_fixtures.py above
+
 
 # Serena MCP test fixtures
 @pytest.fixture
@@ -291,6 +297,7 @@ def api_client():
 async def test_tenant_key():
     """Generate a test tenant key"""
     from src.giljo_mcp.tenant import TenantManager
+
     return TenantManager.generate_tenant_key()
 
 
@@ -327,7 +334,7 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
     import uuid
     from datetime import datetime, timezone
 
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     # Create AgentJob (work order)
     job = AgentJob(
@@ -350,7 +357,6 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
         tenant_key=test_tenant_key,
         agent_display_name="worker",
         agent_name="Test Worker Agent",
-        instance_number=1,
         status="waiting",  # AgentExecution: 7 statuses
         progress=0,
         messages_sent_count=0,
@@ -728,6 +734,7 @@ async def async_client(db_manager):
         app.dependency_overrides[get_db_session] = mock_get_db_session
 
         from httpx import ASGITransport
+
         async with HTTPXAsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
 
@@ -758,21 +765,20 @@ def pytest_configure(config):
     db_url = os.environ.get("DATABASE_URL", "")
     if db_url and "/giljo_mcp" in db_url and "/giljo_mcp_test" not in db_url:
         import warnings
+
         warnings.warn(
             f"WARNING: DATABASE_URL appears to point to production database!\n"
             f"Tests should use giljo_mcp_test, not giljo_mcp.\n"
             f"Current DATABASE_URL: {db_url[:50]}...",
-            UserWarning
+            UserWarning,
         )
 
     # Register custom markers
     config.addinivalue_line(
-        "markers",
-        "tenant_isolation: marks tests for tenant isolation verification (Handover 0325)"
+        "markers", "tenant_isolation: marks tests for tenant isolation verification (Handover 0325)"
     )
     config.addinivalue_line(
-        "markers",
-        "production_safe: marks tests that have been verified safe from production DB access"
+        "markers", "production_safe: marks tests that have been verified safe from production DB access"
     )
 
     # Check if we're only running smoke tests

@@ -9,16 +9,15 @@ from typing import Any
 
 from sqlalchemy import (
     ARRAY,
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -43,7 +42,6 @@ class Product(Base):
     - chunked: Has vision been chunked into mcp_context_index
 
     Handover 0316: Added quality_standards field for testing expectations.
-    Note: Project.context_budget is soft deprecated (kept for backward compatibility).
     """
 
     __tablename__ = "products"
@@ -66,18 +64,14 @@ class Product(Base):
     )
 
     # Handover 0316: Quality standards for testing expectations
-    quality_standards = Column(
-        Text,
-        nullable=True,
-        comment="Quality standards and testing expectations"
-    )
+    quality_standards = Column(Text, nullable=True, comment="Quality standards and testing expectations")
 
     # Handover 0425: Target platforms for product deployment
     target_platforms = Column(
         ARRAY(String),
         nullable=False,
         server_default=text("'{all}'::text[]"),
-        comment="Target platforms: windows, linux, macos, or all"
+        comment="Target platforms: windows, linux, macos, or all",
     )
 
     # ✅ Handover 0128e Complete: Deprecated vision fields removed
@@ -115,48 +109,34 @@ class Product(Base):
         comment="Rich project configuration: architecture, tech_stack, features, etc.",
     )
 
-    # 360 Memory Management storage (Handover 0135)
+    # 360 Memory Management storage (Handover 0135, updated 0700c)
+    # Note: sequential_history removed in 0700c - use product_memory_entries table
     product_memory = Column(
         JSONB,
         nullable=False,
-        server_default=text("'{\"github\": {}, \"sequential_history\": [], \"context\": {}}'::jsonb"),
-        comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED "
-            "as of v3.3 (Handover 0390). Use product_memory_entries table instead. "
-            "Only 'git_integration' config remains in use. "
-            "WILL BE MODIFIED in v4.0 to remove sequential_history.",
+        server_default=text('\'{"github": {}, "context": {}}\'::jsonb'),
+        comment="Product memory config storage. Contains git_integration settings only.",
     )
 
     # Consolidated vision summaries (Handover 0377)
     # These store pre-computed summaries aggregated from ALL active vision documents
     consolidated_vision_light = Column(
-        Text,
-        nullable=True,
-        comment="33% summary of all active vision documents (consolidated)"
+        Text, nullable=True, comment="33% summary of all active vision documents (consolidated)"
     )
     consolidated_vision_light_tokens = Column(
-        Integer,
-        nullable=True,
-        comment="Token count of consolidated light summary"
+        Integer, nullable=True, comment="Token count of consolidated light summary"
     )
     consolidated_vision_medium = Column(
-        Text,
-        nullable=True,
-        comment="66% summary of all active vision documents (consolidated)"
+        Text, nullable=True, comment="66% summary of all active vision documents (consolidated)"
     )
     consolidated_vision_medium_tokens = Column(
-        Integer,
-        nullable=True,
-        comment="Token count of consolidated medium summary"
+        Integer, nullable=True, comment="Token count of consolidated medium summary"
     )
     consolidated_vision_hash = Column(
-        String(64),
-        nullable=True,
-        comment="SHA-256 hash of aggregated vision documents (for change detection)"
+        String(64), nullable=True, comment="SHA-256 hash of aggregated vision documents (for change detection)"
     )
     consolidated_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp when consolidated summaries were last generated"
+        DateTime(timezone=True), nullable=True, comment="Timestamp when consolidated summaries were last generated"
     )
 
     # Relationships
@@ -180,7 +160,9 @@ class Product(Base):
         Index("idx_products_org", "org_id"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
-        Index("idx_product_memory_gin", "product_memory", postgresql_using="gin"),  # Handover 0135: GIN index for product_memory
+        Index(
+            "idx_product_memory_gin", "product_memory", postgresql_using="gin"
+        ),  # Handover 0135: GIN index for product_memory
         Index(
             "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
         ),  # Soft delete support
@@ -189,11 +171,11 @@ class Product(Base):
         # Handover 0425: Validate target_platforms field
         CheckConstraint(
             "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'all']::VARCHAR[]",
-            name="ck_product_target_platforms_valid"
+            name="ck_product_target_platforms_valid",
         ),
         CheckConstraint(
             "NOT ('all' = ANY(target_platforms) AND array_length(target_platforms, 1) > 1)",
-            name="ck_product_target_platforms_all_exclusive"
+            name="ck_product_target_platforms_all_exclusive",
         ),
         # Handover 0050: Enforce single active product per tenant (defense in depth)
         Index(
@@ -238,10 +220,10 @@ class Product(Base):
         if not self.product_memory:
             return False
         # Consider it populated if any top-level key has data beyond empty defaults
+        # Note: sequential_history moved to product_memory_entries table (0700c)
         has_github = bool(self.product_memory.get("github", {}))
-        has_history = len(self.product_memory.get("sequential_history", [])) > 0
         has_context = bool(self.product_memory.get("context", {}))
-        return has_github or has_history or has_context
+        return has_github or has_context
 
     def get_memory_field(self, field_path: str, default: Any = None) -> Any:
         """
@@ -259,8 +241,8 @@ class Product(Base):
             True
             >>> product.get_memory_field('github.repo_url')
             'https://github.com/user/repo'
-            >>> product.get_memory_field('sequential_history')
-            [{"timestamp": "...", "summary": "..."}]
+            >>> product.get_memory_field('context.summary')
+            'A product management system'
         """
         if not self.product_memory:
             return default
@@ -367,6 +349,9 @@ class Product(Base):
             return "none"
         return doc.storage_type
 
+    def __repr__(self) -> str:
+        return f"<Product(id={self.id}, name='{self.name}', tenant_key='{self.tenant_key}')>"
+
 
 class VisionDocument(Base):
     """
@@ -435,24 +420,14 @@ class VisionDocument(Base):
     is_summarized = Column(
         Boolean, default=False, nullable=False, comment="Has document been summarized using LSA algorithm"
     )
-    original_token_count = Column(
-        Integer, nullable=True, comment="Original document token count before summarization"
-    )
+    original_token_count = Column(Integer, nullable=True, comment="Original document token count before summarization")
 
     # Multi-level summaries (Handover 0345e, simplified in 0246b, cleaned in 0374)
     # Handover 0374: 3-tier system (light=33%, medium=66%, full=original)
-    summary_light = Column(
-        Text, nullable=True, comment="Light summary (~33% of original, ~13K tokens for 40K doc)"
-    )
-    summary_medium = Column(
-        Text, nullable=True, comment="Medium summary (~66% of original, ~26K tokens for 40K doc)"
-    )
-    summary_light_tokens = Column(
-        Integer, nullable=True, comment="Actual token count in light summary"
-    )
-    summary_medium_tokens = Column(
-        Integer, nullable=True, comment="Actual token count in medium summary"
-    )
+    summary_light = Column(Text, nullable=True, comment="Light summary (~33% of original, ~13K tokens for 40K doc)")
+    summary_medium = Column(Text, nullable=True, comment="Medium summary (~66% of original, ~26K tokens for 40K doc)")
+    summary_light_tokens = Column(Integer, nullable=True, comment="Actual token count in light summary")
+    summary_medium_tokens = Column(Integer, nullable=True, comment="Actual token count in medium summary")
 
     # Versioning and integrity
     version = Column(String(50), default="1.0.0", nullable=False, comment="Document version using semantic versioning")
@@ -542,7 +517,7 @@ class VisionDocument(Base):
                 path = Path(self.vision_path)
                 if path.exists():
                     content = path.read_text(encoding="utf-8")
-            except Exception:
+            except (OSError, UnicodeDecodeError):
                 return True
         elif self.storage_type == "inline" and self.vision_document:
             content = self.vision_document
@@ -555,7 +530,7 @@ class VisionDocument(Base):
                     path = Path(self.vision_path)
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
-                except Exception:
+                except (OSError, UnicodeDecodeError):
                     pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document
@@ -581,7 +556,7 @@ class VisionDocument(Base):
                 path = Path(self.vision_path)
                 if path.exists():
                     content = path.read_text(encoding="utf-8")
-            except Exception:
+            except (OSError, UnicodeDecodeError):
                 pass  # nosec B110 - file read fallback
         elif self.storage_type == "inline" and self.vision_document:
             content = self.vision_document
@@ -594,13 +569,16 @@ class VisionDocument(Base):
                     path = Path(self.vision_path)
                     if path.exists():
                         content += path.read_text(encoding="utf-8")
-                except Exception:
+                except (OSError, UnicodeDecodeError):
                     pass  # nosec B110 - file read fallback
             if self.vision_document:
                 content += self.vision_document
 
         self.content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return self.content_hash
+
+    def __repr__(self) -> str:
+        return f"<VisionDocument(id={self.id}, name='{self.document_name}', product_id='{self.product_id}')>"
 
 
 class Vision(Base):
@@ -639,3 +617,6 @@ class Vision(Base):
         Index("idx_vision_project", "project_id"),
         Index("idx_vision_document", "document_name"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Vision(id={self.id}, product_id='{self.project_id}')>"

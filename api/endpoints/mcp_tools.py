@@ -62,7 +62,6 @@ async def execute_mcp_tool(request: MCPToolRequest):
             # Project tools
             "list_projects": state.tool_accessor.list_projects,
             "get_project": state.tool_accessor.get_project,
-            "close_project": state.tool_accessor.close_project,
             "close_project_and_update_memory": state.tool_accessor.close_project_and_update_memory,
             "update_project_mission": state.tool_accessor.update_project_mission,
             # Message tools
@@ -140,19 +139,6 @@ async def list_mcp_tools():
                 "examples": [
                     {
                         "description": "Get project details",
-                        "payload": {"project_id": "proj-abc123-def456"},
-                    },
-                ],
-            },
-            {
-                "name": "close_project",
-                "description": "Close/archive a project and deactivate associated agents",
-                "arguments": {
-                    "project_id": "string (UUID) REQUIRED - Project ID to close",
-                },
-                "examples": [
-                    {
-                        "description": "Close completed project",
                         "payload": {"project_id": "proj-abc123-def456"},
                     },
                 ],

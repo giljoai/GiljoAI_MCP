@@ -8,7 +8,8 @@ Handover 0271: Testing Configuration Context Integration
 """
 
 import logging
-from typing import Dict, Optional, Any
+from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +18,7 @@ class TestingConfigGenerator:
     """Generate testing configuration context based on priority and agent type."""
 
     @classmethod
-    def generate_context(
-        cls,
-        testing_config: Optional[Dict[str, Any]],
-        priority: int = 1
-    ) -> str:
+    def generate_context(cls, testing_config: dict[str, Any | None], priority: int = 1) -> str:
         """
         Generate testing configuration context.
 
@@ -41,16 +38,14 @@ class TestingConfigGenerator:
         if testing_config is None:
             return ""
 
-        # Generate based on priority level
         if priority == 1:
             return cls._generate_full_config(testing_config)
-        elif priority == 2:
+        if priority == 2:
             return cls._generate_standards_only(testing_config)
-        else:  # priority == 3
-            return cls._generate_summary(testing_config)
+        return cls._generate_summary(testing_config)
 
     @classmethod
-    def _generate_full_config(cls, config: Dict[str, Any]) -> str:
+    def _generate_full_config(cls, config: dict[str, Any]) -> str:
         """
         Generate full testing configuration (Priority 1 - CRITICAL).
 
@@ -154,7 +149,7 @@ class Calculator:
 """
 
     @classmethod
-    def _generate_standards_only(cls, config: Dict[str, Any]) -> str:
+    def _generate_standards_only(cls, config: dict[str, Any]) -> str:
         """
         Generate standards and frameworks only (Priority 2 - IMPORTANT).
 
@@ -172,7 +167,7 @@ class Calculator:
         frameworks_list = []
         if frameworks:
             if isinstance(frameworks, dict):
-                for platform, libs in frameworks.items():
+                for libs in frameworks.values():
                     if libs:
                         frameworks_list.extend(libs)
             else:
@@ -195,7 +190,7 @@ Use TDD (Test-Driven Development): Write tests first, then implement code to mak
 """
 
     @classmethod
-    def _generate_summary(cls, config: Dict[str, Any]) -> str:
+    def _generate_summary(cls, config: dict[str, Any]) -> str:
         """
         Generate summary only (Priority 3 - NICE_TO_HAVE).
 
@@ -214,11 +209,7 @@ Apply TDD approach: Write tests first, then implement code.
 """
 
     @classmethod
-    def generate_for_agent(
-        cls,
-        testing_config: Optional[Dict[str, Any]],
-        agent_display_name: str
-    ) -> str:
+    def generate_for_agent(cls, testing_config: dict[str, Any | None], agent_display_name: str) -> str:
         """
         Generate agent-specific testing guidance.
 
@@ -232,19 +223,18 @@ Apply TDD approach: Write tests first, then implement code.
         if agent_display_name in ["tester", "implementer"]:
             # Full config for testing-focused agents
             return cls.generate_context(testing_config, priority=1)
-        elif agent_display_name in ["reviewer"]:
+        if agent_display_name in ["reviewer"]:
             # Standards only for reviewers
             return cls.generate_context(testing_config, priority=2)
-        else:
-            # Summary for others (architect, documenter, etc.)
-            return cls.generate_context(testing_config, priority=3)
+        # Summary for others (architect, documenter, etc.)
+        return cls.generate_context(testing_config, priority=3)
 
 
 class TestingConfigValidator:
     """Validate testing configuration structure."""
 
     @staticmethod
-    def validate(config: Optional[Dict[str, Any]]) -> bool:
+    def validate(config: dict[str, Any | None]) -> bool:
         """
         Validate testing configuration.
 
@@ -288,9 +278,8 @@ class TestingConfigValidator:
 
         # Validate requirements if present
         requirements = config.get("requirements")
-        if requirements is not None:
-            if not isinstance(requirements, (list, tuple)):
-                logger.warning("Requirements must be list/tuple")
-                return False
+        if requirements is not None and not isinstance(requirements, (list, tuple)):
+            logger.warning("Requirements must be list/tuple")
+            return False
 
         return True

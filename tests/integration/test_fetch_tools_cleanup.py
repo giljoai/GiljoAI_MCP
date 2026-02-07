@@ -9,9 +9,11 @@ Tests that:
 
 Handover 0281: Complete fetch_* tool cleanup after monolithic context migration.
 """
-import pytest
-from pathlib import Path
+
 import re
+from pathlib import Path
+
+import pytest
 
 
 class TestFetchToolsCleanup:
@@ -42,8 +44,7 @@ class TestFetchToolsCleanup:
         for tool_name in fetch_tools:
             # Look for function definition (async def fetch_...)
             pattern = rf"async\s+def\s+{tool_name}\s*\("
-            assert not re.search(pattern, content), \
-                f"Found {tool_name} definition in context.py - should be removed"
+            assert not re.search(pattern, content), f"Found {tool_name} definition in context.py - should be removed"
 
     def test_no_fetch_tools_in_mcp_tool_catalog(self):
         """Verify mcp_tool_catalog.py has no fetch_* tool definitions."""
@@ -55,16 +56,20 @@ class TestFetchToolsCleanup:
         content = catalog_file.read_text(encoding="utf-8")
 
         # Should NOT have fetch_product_context or fetch_architecture in TOOLS dict
-        assert '"fetch_product_context"' not in content, \
+        assert '"fetch_product_context"' not in content, (
             "fetch_product_context found in mcp_tool_catalog.py - should be removed"
-        assert '"fetch_architecture"' not in content, \
+        )
+        assert '"fetch_architecture"' not in content, (
             "fetch_architecture found in mcp_tool_catalog.py - should be removed"
+        )
 
         # Should NOT have fetch_* in agent mappings
-        assert '"context.fetch_product_context"' not in content, \
+        assert '"context.fetch_product_context"' not in content, (
             "context.fetch_product_context found in agent mappings - should be removed"
-        assert '"context.fetch_architecture"' not in content, \
+        )
+        assert '"context.fetch_architecture"' not in content, (
             "context.fetch_architecture found in agent mappings - should be removed"
+        )
 
     def test_no_fetch_tool_imports_in_orchestrator_priority_filtering_test(self):
         """Verify test file does not import fetch_* tools."""
@@ -87,8 +92,7 @@ class TestFetchToolsCleanup:
         for tool_name in fetch_tools:
             # Look for import statement
             pattern = rf"from\s+src\.giljo_mcp\.tools\.context\s+import.*{tool_name}"
-            assert not re.search(pattern, content), \
-                f"Found import of {tool_name} in test file - should be removed"
+            assert not re.search(pattern, content), f"Found import of {tool_name} in test file - should be removed"
 
     def test_no_fetch_test_functions_in_orchestrator_priority_filtering_test(self):
         """Verify test file has no test functions for fetch_* tools."""
@@ -100,10 +104,12 @@ class TestFetchToolsCleanup:
         content = test_file.read_text(encoding="utf-8")
 
         # Should NOT have test functions for fetch_* tools
-        assert "test_fetch_vision_excluded_when_priority_4" not in content, \
+        assert "test_fetch_vision_excluded_when_priority_4" not in content, (
             "Found test_fetch_vision_excluded_when_priority_4 - should be removed"
-        assert "test_fetch_360_excluded_when_priority_4" not in content, \
+        )
+        assert "test_fetch_360_excluded_when_priority_4" not in content, (
             "Found test_fetch_360_excluded_when_priority_4 - should be removed"
+        )
 
     def test_context_tools_documentation_deprecated_or_deleted(self):
         """Verify context_tools.md is either deleted or shows deprecation notice."""
@@ -116,10 +122,12 @@ class TestFetchToolsCleanup:
         content = docs_file.read_text(encoding="utf-8")
 
         # If file exists, it MUST have deprecation notice
-        assert "DEPRECATED" in content, \
+        assert "DEPRECATED" in content, (
             "context_tools.md exists but has no DEPRECATED notice - either delete file or add deprecation"
-        assert "Handover 0280" in content or "Handover 0281" in content, \
+        )
+        assert "Handover 0280" in content or "Handover 0281" in content, (
             "context_tools.md deprecation notice missing handover reference"
+        )
 
     def test_grep_returns_zero_fetch_tool_references(self):
         """
@@ -140,25 +148,19 @@ class TestFetchToolsCleanup:
         ]
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
 
             # Filter out lines with "# DEPRECATED" or ".pyc" or comments
             lines = [
-                line for line in result.stdout.splitlines()
-                if "# DEPRECATED" not in line
-                and ".pyc" not in line
-                and "# NOTE:" not in line
-                and "REMOVED" not in line
+                line
+                for line in result.stdout.splitlines()
+                if "# DEPRECATED" not in line and ".pyc" not in line and "# NOTE:" not in line and "REMOVED" not in line
             ]
 
             # Should have ZERO results in source code
-            assert len(lines) == 0, \
-                f"Found {len(lines)} fetch_* tool references in source code:\n" + "\n".join(lines[:10])
+            assert len(lines) == 0, f"Found {len(lines)} fetch_* tool references in source code:\n" + "\n".join(
+                lines[:10]
+            )
 
         except FileNotFoundError:
             pytest.skip("grep command not available")

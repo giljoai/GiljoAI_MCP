@@ -11,13 +11,11 @@ Features:
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from src.giljo_mcp.context_management.indexer import ContextIndexer
 
 
 logger = logging.getLogger(__name__)
-
 
 # Agent role patterns for chunk selection
 ROLE_PATTERNS = {
@@ -49,7 +47,7 @@ class DynamicContextLoader:
 
         logger.info("DynamicContextLoader initialized")
 
-    def calculate_relevance_score(self, chunk, query: str, role: Optional[str] = None) -> float:
+    def calculate_relevance_score(self, chunk, query: str, role: str | None = None) -> float:
         """
         Calculate relevance score for a chunk.
 
@@ -86,10 +84,10 @@ class DynamicContextLoader:
         tenant_key: str,
         product_id: str,
         query: str,
-        role: Optional[str] = None,
+        role: str | None = None,
         max_tokens: int = 10000,
         limit: int = 20,
-    ) -> List[Dict[str, any]]:
+    ) -> list[dict[str, any]]:
         """
         Load relevant chunks with role-based filtering.
 

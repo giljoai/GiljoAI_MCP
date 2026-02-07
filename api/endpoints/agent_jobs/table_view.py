@@ -17,15 +17,16 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.dependencies import get_db
 from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
-from sqlalchemy.orm import joinedload, selectinload
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 router = APIRouter()
 
@@ -34,8 +35,10 @@ router = APIRouter()
 # RESPONSE MODELS
 # ============================================================================
 
+
 class TodoItemData(BaseModel):
     """Individual TODO item for Plan tab display - Handover 0423"""
+
     content: str
     status: str  # pending, in_progress, completed
 
@@ -77,8 +80,7 @@ class TableRowData(BaseModel):
     # Mission tracking (Handover 0233)
     mission_acknowledged_at: Optional[datetime] = None
 
-    # Instance tracking (orchestrator succession)
-    instance_number: int
+    # Agent role tracking
     is_orchestrator: bool
 
     # TODO-style steps summary for dashboard Steps column (Handover 0297)
@@ -103,6 +105,7 @@ class TableViewResponse(BaseModel):
 # ============================================================================
 # ENDPOINT
 # ============================================================================
+
 
 @router.get("/table-view", response_model=TableViewResponse)
 async def get_agent_jobs_table_view(
@@ -141,9 +144,7 @@ async def get_agent_jobs_table_view(
     # Handover 0423: Load todo_items relationship for Plan tab display
     query = (
         select(AgentExecution)
-        .options(
-            joinedload(AgentExecution.job).selectinload(AgentJob.todo_items)
-        )
+        .options(joinedload(AgentExecution.job).selectinload(AgentJob.todo_items))
         .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
         .where(
             and_(
@@ -209,7 +210,9 @@ async def get_agent_jobs_table_view(
         # Use counter fields instead of iterating messages
         unread_count = execution.messages_waiting_count
         acknowledged_count = execution.messages_read_count
-        total_messages = execution.messages_sent_count + execution.messages_waiting_count + execution.messages_read_count
+        total_messages = (
+            execution.messages_sent_count + execution.messages_waiting_count + execution.messages_read_count
+        )
 
         # Calculate staleness
         minutes_since_progress = None
@@ -223,9 +226,6 @@ async def get_agent_jobs_table_view(
             terminal_states = {"complete", "failed", "cancelled", "decommissioned"}
             if minutes_since_progress > 10 and execution.status not in terminal_states:
                 is_stale = True
-
-        # Determine instance number (orchestrator succession)
-        instance_number = execution.instance_number
 
         # Derive steps summary from execution metadata (note: in new model, metadata is on job)
         steps_total = None
@@ -243,7 +243,7 @@ async def get_agent_jobs_table_view(
             ):
                 steps_total = total_steps
                 steps_completed = completed_steps
-        except Exception:
+        except (ValueError, KeyError, TypeError):
             # Keep table view robust even if metadata is malformed
             steps_total = None
             steps_completed = None
@@ -274,17 +274,13 @@ async def get_agent_jobs_table_view(
                 started_at=execution.started_at,
                 completed_at=execution.completed_at,
                 mission_acknowledged_at=execution.mission_acknowledged_at,  # Handover 0233
-                instance_number=instance_number,
                 is_orchestrator=(execution.agent_display_name == "orchestrator"),
                 steps_total=steps_total,
                 steps_completed=steps_completed,
                 # Handover 0423: Include todo_items for Plan tab display
                 todo_items=[
                     TodoItemData(content=item.content, status=item.status)
-                    for item in sorted(
-                        execution.job.todo_items if execution.job else [],
-                        key=lambda x: x.sequence
-                    )
+                    for item in sorted(execution.job.todo_items if execution.job else [], key=lambda x: x.sequence)
                 ],
             )
         )

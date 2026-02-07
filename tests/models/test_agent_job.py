@@ -9,15 +9,15 @@ AgentJob represents the persistent work order:
 - Tracks job-level status (active, completed, cancelled)
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # These imports will FAIL until GREEN phase
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 class TestAgentJobCreation:
@@ -32,7 +32,7 @@ class TestAgentJobCreation:
             project_id="project-456",
             mission="Build authentication system with OAuth2 support",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -53,7 +53,7 @@ class TestAgentJobCreation:
             tenant_key="tenant-abc",
             project_id="project-456",
             job_type="orchestrator",
-            status="active"
+            status="active",
             # mission missing - should FAIL on commit
         )
         db_session.add(job)
@@ -71,7 +71,7 @@ class TestAgentJobCreation:
             tenant_key="tenant-abc",
             project_id="project-456",
             mission="Test mission",
-            status="active"
+            status="active",
             # job_type missing - should FAIL
         )
         db_session.add(job)
@@ -89,7 +89,7 @@ class TestAgentJobCreation:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
             # tenant_key missing - should FAIL
         )
         db_session.add(job)
@@ -107,7 +107,7 @@ class TestAgentJobCreation:
             project_id="project-456",
             mission="Test mission",
             job_type="analyzer",
-            status="active"
+            status="active",
             # job_id NOT provided - should auto-generate
         )
         db_session.add(job)
@@ -129,7 +129,7 @@ class TestAgentJobStatusConstraint:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -145,7 +145,7 @@ class TestAgentJobStatusConstraint:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="completed"
+            status="completed",
         )
         db_session.add(job)
         await db_session.commit()
@@ -161,7 +161,7 @@ class TestAgentJobStatusConstraint:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="cancelled"
+            status="cancelled",
         )
         db_session.add(job)
         await db_session.commit()
@@ -177,7 +177,7 @@ class TestAgentJobStatusConstraint:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="invalid_status"  # NOT in allowed list
+            status="invalid_status",  # NOT in allowed list
         )
         db_session.add(job)
 
@@ -200,13 +200,13 @@ class TestAgentJobRelationships:
             project_id="project-456",
             mission="Build auth system",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
 
         # Relationship should exist (even if empty)
-        assert hasattr(job, 'executions')
+        assert hasattr(job, "executions")
         assert job.executions == []  # No executions yet
 
     @pytest.mark.asyncio
@@ -218,7 +218,7 @@ class TestAgentJobRelationships:
             project_id="project-456",
             mission="Build auth system",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -229,8 +229,7 @@ class TestAgentJobRelationships:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
-            status="complete"
+            status="complete",
         )
         db_session.add(exec1)
         await db_session.commit()
@@ -241,8 +240,7 @@ class TestAgentJobRelationships:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
-            status="working"
+            status="working",
         )
         db_session.add(exec2)
         await db_session.commit()
@@ -269,11 +267,7 @@ class TestAgentJobMetadata:
             mission="Test mission",
             job_type="orchestrator",
             status="active",
-            job_metadata={
-                "priority": "high",
-                "estimated_duration_hours": 8,
-                "tags": ["auth", "security"]
-            }
+            job_metadata={"priority": "high", "estimated_duration_hours": 8, "tags": ["auth", "security"]},
         )
         db_session.add(job)
         await db_session.commit()
@@ -294,7 +288,7 @@ class TestAgentJobMetadata:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
             # job_metadata NOT provided
         )
         db_session.add(job)
@@ -318,15 +312,13 @@ class TestAgentJobIndexes:
                 project_id="project-456",
                 mission=f"Test mission {i}",
                 job_type="orchestrator",
-                status="active"
+                status="active",
             )
             db_session.add(job)
         await db_session.commit()
 
         # Query by tenant_key (should use index)
-        result = await db_session.execute(
-            select(AgentJob).filter(AgentJob.tenant_key == "tenant-abc")
-        )
+        result = await db_session.execute(select(AgentJob).filter(AgentJob.tenant_key == "tenant-abc"))
         jobs = result.scalars().all()
 
         assert len(jobs) == 5
@@ -340,15 +332,13 @@ class TestAgentJobIndexes:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
 
         # Query by project_id (should use index)
-        result = await db_session.execute(
-            select(AgentJob).filter(AgentJob.project_id == "project-456")
-        )
+        result = await db_session.execute(select(AgentJob).filter(AgentJob.project_id == "project-456"))
         jobs = result.scalars().all()
 
         assert len(jobs) >= 1
@@ -366,7 +356,7 @@ class TestAgentJobLifecycle:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -384,7 +374,7 @@ class TestAgentJobLifecycle:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -406,7 +396,7 @@ class TestAgentJobLifecycle:
             project_id="project-456",
             mission="Test mission",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()

@@ -137,7 +137,7 @@ const showCloseConfirmation = ref(false)
 const truncatedMission = computed(() => {
   const mission = props.orchestrator.mission_summary || ''
   if (mission.length <= 150) return mission
-  return mission.substring(0, 150) + '...'
+  return `${mission.substring(0, 150)  }...`
 })
 
 const unreadMessageCount = computed(() =>

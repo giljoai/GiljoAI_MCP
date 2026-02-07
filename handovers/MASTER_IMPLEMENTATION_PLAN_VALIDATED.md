@@ -15,7 +15,7 @@ This Master Implementation Plan consolidates and validates work across multiple 
 - Frontend API pattern fixes (REAL bugs discovered)
 - Vision consolidation (NOT STARTED - previous claims incorrect)
 - Database schema enhancements (organization hierarchy, project taxonomy)
-- Code cleanup series (0700-0711 - NOT STARTED)
+- Code cleanup series (0700-0708 - NOT STARTED)
 - WebSocket & message system polish
 - MCP tools enhancements
 
@@ -298,7 +298,7 @@ This Master Implementation Plan consolidates and validates work across multiple 
 | **0706** | Models Agents Cleanup | 8-12h | ❌ NOT STARTED | 🔴 CRITICAL |
 | **0707** | Services Leaf Cleanup | 4-6h | ❌ NOT STARTED | 🟡 MEDIUM |
 | **0708** | Services Core Cleanup | 6-8h | ❌ NOT STARTED | 🔴 HIGH |
-| **0711** | API MCP Cleanup | 8-10h | ❌ NOT STARTED | 🔴 CRITICAL |
+| **0489** | API MCP Cleanup (moved from 0711) | 8-10h | ❌ NOT STARTED | 🔴 CRITICAL |
 
 **Total 0700 Series**: 51-71 hours
 
@@ -361,7 +361,7 @@ This Master Implementation Plan consolidates and validates work across multiple 
 - [ ] Integration test: Create job → Send message → Verify counters increment
 - [ ] Performance test: Query 1000 agents in <100ms
 
-### 4.4 0711 API MCP Cleanup (8-10h) - CRITICAL PATH
+### 4.4 0489 API MCP Cleanup (8-10h) - CRITICAL PATH
 
 **Priority**: 🔴 CRITICAL (affects all MCP tool calls)
 
@@ -566,7 +566,7 @@ This Master Implementation Plan consolidates and validates work across multiple 
 
 ### Sprint 2: Code Cleanup (Week 2-3) - 51-71h
 6. 🔴 **Phase 4.3**: 0706 Models Agents Cleanup (8-12h) - Critical path
-7. 🔴 **Phase 4.4**: 0711 API MCP Cleanup (8-10h) - Critical path
+7. 🔴 **Phase 4.4**: 0489 API MCP Cleanup (8-10h) - Critical path
 8. 🔴 **Phase 4.2**: 0704 Models Base Cleanup (6-8h)
 9. 🔴 **Phase 4.2**: 0705 Models Core Cleanup (6-8h)
 10. 🔴 **Phase 4.2**: 0708 Services Core Cleanup (6-8h)
@@ -612,7 +612,7 @@ This Master Implementation Plan consolidates and validates work across multiple 
 │                      SPRINT 2 (CRITICAL)                    │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   │
 │  │  Phase 4.3   │──▶│  Phase 4.4   │──▶│  Phase 4.2   │   │
-│  │  0706 Models │   │  0711 MCP    │   │  0704-0708   │   │
+│  │  0706 Models │   │  0489 MCP    │   │  0704-0708   │   │
 │  │  (8-12h)     │   │  (8-10h)     │   │  (33-47h)    │   │
 │  └──────────────┘   └──────────────┘   └──────────────┘   │
 │         │                                      │            │

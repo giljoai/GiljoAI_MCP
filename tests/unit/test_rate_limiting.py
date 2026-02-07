@@ -13,9 +13,8 @@ Rate limiting requirements:
 - Log rate limit violations for monitoring
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -58,7 +57,7 @@ class TestRateLimitingBasics:
         # Make 3 requests (under the limit of 5)
         for i in range(3):
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
-            assert is_allowed, f"Request {i+1}/3 should be allowed (under limit of 5)"
+            assert is_allowed, f"Request {i + 1}/3 should be allowed (under limit of 5)"
 
     def test_login_at_rate_limit_succeeds(self, rate_limiter, mock_request):
         """
@@ -73,7 +72,7 @@ class TestRateLimitingBasics:
         # Make exactly 5 requests (at the limit)
         for i in range(5):
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
-            assert is_allowed, f"Request {i+1}/5 should be allowed (at limit)"
+            assert is_allowed, f"Request {i + 1}/5 should be allowed (at limit)"
 
     def test_login_over_rate_limit_returns_429(self, rate_limiter, mock_request):
         """
@@ -89,7 +88,7 @@ class TestRateLimitingBasics:
         # Make 5 successful requests (at limit)
         for i in range(5):
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
-            assert is_allowed, f"Request {i+1}/5 should be allowed"
+            assert is_allowed, f"Request {i + 1}/5 should be allowed"
 
         # 6th request should be blocked
         with pytest.raises(HTTPException) as exc_info:
@@ -100,8 +99,8 @@ class TestRateLimitingBasics:
 
         # Check for Retry-After header in exception
         # (Implementation should add this to headers dict)
-        assert hasattr(exc_info.value, 'headers')
-        assert 'Retry-After' in exc_info.value.headers
+        assert hasattr(exc_info.value, "headers")
+        assert "Retry-After" in exc_info.value.headers
 
 
 class TestRateLimitingCooldown:
@@ -124,7 +123,7 @@ class TestRateLimitingCooldown:
 
         # Mock time passage (61 seconds)
         # Implementation should use time.time() for tracking
-        with patch('api.middleware.rate_limit.time') as mock_time:
+        with patch("api.middleware.rate_limit.time") as mock_time:
             # Simulate current time + 61 seconds
             original_time = time.time()
             mock_time.time.return_value = original_time + 61
@@ -161,12 +160,12 @@ class TestRateLimitingIsolation:
         # IP1 makes 5 requests (at limit)
         for i in range(5):
             is_allowed = rate_limiter.check_rate_limit(request_ip1, limit=5, window=60)
-            assert is_allowed, f"IP1 request {i+1}/5 should be allowed"
+            assert is_allowed, f"IP1 request {i + 1}/5 should be allowed"
 
         # IP2 makes 5 requests (should also succeed - separate counter)
         for i in range(5):
             is_allowed = rate_limiter.check_rate_limit(request_ip2, limit=5, window=60)
-            assert is_allowed, f"IP2 request {i+1}/5 should be allowed (separate limit)"
+            assert is_allowed, f"IP2 request {i + 1}/5 should be allowed (separate limit)"
 
         # IP1 should be blocked on 6th request
         with pytest.raises(HTTPException) as exc_info:
@@ -190,7 +189,7 @@ class TestRateLimitingEndpointSpecific:
         # Make 3 successful requests (at limit)
         for i in range(3):
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=3, window=60)
-            assert is_allowed, f"Request {i+1}/3 should be allowed"
+            assert is_allowed, f"Request {i + 1}/3 should be allowed"
 
         # 4th request should be blocked
         with pytest.raises(HTTPException) as exc_info:
@@ -210,7 +209,7 @@ class TestRateLimitingEndpointSpecific:
         # Make 3 successful requests (at limit)
         for i in range(3):
             is_allowed = rate_limiter.check_rate_limit(mock_request, limit=3, window=60)
-            assert is_allowed, f"Request {i+1}/3 should be allowed"
+            assert is_allowed, f"Request {i + 1}/3 should be allowed"
 
         # 4th request should be blocked
         with pytest.raises(HTTPException) as exc_info:
@@ -236,7 +235,7 @@ class TestRateLimitingLogging:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
 
         # Mock logger to capture violation
-        with patch('api.middleware.rate_limit.logger') as mock_logger:
+        with patch("api.middleware.rate_limit.logger") as mock_logger:
             # 6th request should trigger logging
             try:
                 rate_limiter.check_rate_limit(mock_request, limit=5, window=60, raise_on_limit=True)
@@ -269,7 +268,7 @@ class TestRateLimitingRetryAfterHeader:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
 
         # Mock time passage (20 seconds into window)
-        with patch('api.middleware.rate_limit.time') as mock_time:
+        with patch("api.middleware.rate_limit.time") as mock_time:
             original_time = time.time()
             mock_time.time.return_value = original_time + 20
 
@@ -278,7 +277,7 @@ class TestRateLimitingRetryAfterHeader:
                 rate_limiter.check_rate_limit(mock_request, limit=5, window=60, raise_on_limit=True)
 
             # Retry-After should be approximately 40 seconds (60 - 20)
-            retry_after = int(exc_info.value.headers['Retry-After'])
+            retry_after = int(exc_info.value.headers["Retry-After"])
             assert 35 <= retry_after <= 45, f"Retry-After should be ~40 seconds, got {retry_after}"
 
 
@@ -342,16 +341,16 @@ class TestRateLimitingEdgeCases:
             rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
 
         # Mock time passage (past window)
-        with patch('api.middleware.rate_limit.time') as mock_time:
+        with patch("api.middleware.rate_limit.time") as mock_time:
             original_time = time.time()
             mock_time.time.return_value = original_time + 120  # 2 minutes later
 
             # Trigger cleanup (implementation-specific method)
-            if hasattr(rate_limiter, 'cleanup_expired'):
+            if hasattr(rate_limiter, "cleanup_expired"):
                 rate_limiter.cleanup_expired()
 
             # New request should succeed (old entries cleaned)
             # Make 5 new requests
             for i in range(5):
                 is_allowed = rate_limiter.check_rate_limit(mock_request, limit=5, window=60)
-                assert is_allowed, f"Request {i+1}/5 should be allowed after cleanup"
+                assert is_allowed, f"Request {i + 1}/5 should be allowed after cleanup"

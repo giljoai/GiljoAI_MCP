@@ -21,13 +21,14 @@ Author: TDD Implementor Agent
 Date: 2025-11-16
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
-from src.giljo_mcp.services.product_service import ProductService
+import pytest
+
 from src.giljo_mcp.models import Product
+from src.giljo_mcp.services.product_service import ProductService
 
 
 @pytest.fixture
@@ -66,18 +67,13 @@ class TestSimplifiedGitIntegration:
         product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act - Enable git integration WITHOUT repo_url
         result = await service.update_git_integration(
-            product_id=product.id,
-            enabled=True,
-            commit_limit=20,
-            default_branch="main"
+            product_id=product.id, enabled=True, commit_limit=20, default_branch="main"
         )
 
         # Assert
@@ -109,19 +105,13 @@ class TestSimplifiedGitIntegration:
         product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act - Enable git integration and verify no HTTP calls
         with patch("httpx.AsyncClient") as mock_http_client:
-            result = await service.update_git_integration(
-                product_id=product.id,
-                enabled=True,
-                commit_limit=30
-            )
+            result = await service.update_git_integration(product_id=product.id, enabled=True, commit_limit=30)
 
             # Assert - No HTTP client should be instantiated
             mock_http_client.assert_not_called()
@@ -145,17 +135,12 @@ class TestSimplifiedGitIntegration:
         product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act - Enable without explicit config
-        result = await service.update_git_integration(
-            product_id=product.id,
-            enabled=True
-        )
+        result = await service.update_git_integration(product_id=product.id, enabled=True)
 
         # Assert - Defaults applied
         assert result["success"] is True
@@ -179,27 +164,18 @@ class TestSimplifiedGitIntegration:
         product.id = str(uuid4())
         product.tenant_key = "test-tenant"
         product.product_memory = {
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 20,
-                "default_branch": "main"
-            },
+            "git_integration": {"enabled": True, "commit_limit": 20, "default_branch": "main"},
             "sequential_history": [],
-            "context": {}
+            "context": {},
         }
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act - Disable integration
-        result = await service.update_git_integration(
-            product_id=product.id,
-            enabled=False
-        )
+        result = await service.update_git_integration(product_id=product.id, enabled=False)
 
         # Assert - Config cleared
         assert result["success"] is True
@@ -225,17 +201,12 @@ class TestSimplifiedGitIntegration:
         product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act - Enable without any URL (should succeed)
-        result = await service.update_git_integration(
-            product_id=product.id,
-            enabled=True
-        )
+        result = await service.update_git_integration(product_id=product.id, enabled=True)
 
         # Assert - No validation errors
         assert result["success"] is True
@@ -262,13 +233,11 @@ class TestSimplifiedGitIntegration:
         product.product_memory = {
             "git_integration": {"enabled": True, "commit_limit": 20},
             "sequential_history": [],
-            "context": {}
+            "context": {},
         }
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -276,15 +245,13 @@ class TestSimplifiedGitIntegration:
             "type": "project_closeout",
             "project_id": str(uuid4()),
             "summary": "Implemented auth feature",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Act - Add learning and verify no HTTP calls
         with patch("httpx.AsyncClient") as mock_http_client:
             updated_product = await service.add_learning_to_product_memory(
-                session=session,
-                product_id=product.id,
-                learning_entry=learning_entry
+                session=session, product_id=product.id, learning_entry=learning_entry
             )
 
             # Assert - No HTTP client should be instantiated
@@ -316,9 +283,7 @@ class TestGitIntegrationWebSocketEvents:
         product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
         product.deleted_at = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=product)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -326,11 +291,7 @@ class TestGitIntegrationWebSocketEvents:
         service._emit_websocket_event = AsyncMock()
 
         # Act
-        result = await service.update_git_integration(
-            product_id=product.id,
-            enabled=True,
-            commit_limit=25
-        )
+        result = await service.update_git_integration(product_id=product.id, enabled=True, commit_limit=25)
 
         # Assert
         assert result["success"] is True

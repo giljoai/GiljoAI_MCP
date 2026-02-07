@@ -13,11 +13,10 @@ Test Organization:
 - TestProductionCodeReferenceCount: Verify zero code references
 - TestTableReferenceValidation: Verify no mcp_agent_jobs table queries
 """
+
 import ast
-import os
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -112,7 +111,6 @@ class TestMCPAgentJobRemovalValidation:
         src_dir = PROJECT_ROOT / "src" / "giljo_mcp"
         orchestrator_files = [
             src_dir / "orchestrator.py",
-            src_dir / "orchestrator_succession.py",
             src_dir / "staging_rollback.py",
             src_dir / "thin_prompt_generator.py",
         ]
@@ -245,7 +243,6 @@ class TestProductionCodeReferenceCount:
         src_dir = PROJECT_ROOT / "src" / "giljo_mcp"
         orchestrator_files = [
             src_dir / "orchestrator.py",
-            src_dir / "orchestrator_succession.py",
             src_dir / "staging_rollback.py",
             src_dir / "thin_prompt_generator.py",
         ]

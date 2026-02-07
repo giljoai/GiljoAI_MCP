@@ -295,15 +295,17 @@ const loadMemoryEntries = async () => {
   memoryEntries.value = []
 
   try {
-    // Fetch product data to get 360 memory
-    const response = await api.products.get(props.productId)
-    const productMemory = response.data.product_memory || {}
-    const sequentialHistory = productMemory.sequential_history || []
+    // Handover 0490: Fetch memory entries from normalized table via new API endpoint
+    const response = await api.products.getMemoryEntries(
+      props.productId,
+      {
+        project_id: props.projectId,
+        limit: 10
+      }
+    )
 
-    // Filter entries for this project
-    memoryEntries.value = sequentialHistory
-      .filter((entry) => entry.project_id === props.projectId)
-      .sort((a, b) => (b.sequence || 0) - (a.sequence || 0)) // Sort by sequence descending (newest first)
+    // API returns structured response: { success, entries, total_count, filtered_count }
+    memoryEntries.value = response.data.entries || []
 
     console.log(
       `[CloseoutModal] Loaded ${memoryEntries.value.length} memory entries for project ${props.projectId}`,

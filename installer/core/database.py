@@ -44,10 +44,10 @@ class DatabaseInstaller:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.pg_host = settings.get("pg_host", "localhost")
-        self.pg_port = settings.get("pg_port", 5432)
-        self.pg_password = settings.get("pg_password")
-        self.pg_user = settings.get("pg_user", "postgres")
+        self.host = settings.get("host", "localhost")
+        self.port = settings.get("port", 5432)
+        self.password = settings.get("password")
+        self.username = settings.get("username", "postgres")
         self.db_name = "giljo_mcp"
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -67,7 +67,7 @@ class DatabaseInstaller:
         try:
             # Check PostgreSQL availability
             self.logger.info("Checking PostgreSQL connection...")
-            if not check_postgresql_connection(self.pg_host, self.pg_port):
+            if not check_postgresql_connection(self.host, self.port):
                 result["errors"].append("Cannot connect to PostgreSQL")
                 result["postgresql_guide"] = self.get_postgresql_install_guide()
                 return result
@@ -135,11 +135,11 @@ class DatabaseInstaller:
         try:
             # Try to connect and get version
             conn = psycopg2.connect(
-                host=self.pg_host,
-                port=self.pg_port,
+                host=self.host,
+                port=self.port,
                 database="postgres",
-                user=self.pg_user,
-                password=self.pg_password,
+                user=self.username,
+                password=self.password,
                 connect_timeout=5,
             )
 
@@ -197,11 +197,11 @@ class DatabaseInstaller:
 
             # Connect to PostgreSQL as admin
             conn = psycopg2.connect(
-                host=self.pg_host,
-                port=self.pg_port,
+                host=self.host,
+                port=self.port,
                 database="postgres",
-                user=self.pg_user,
-                password=self.pg_password,
+                user=self.username,
+                password=self.password,
                 connect_timeout=10,
             )
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -269,11 +269,11 @@ class DatabaseInstaller:
             # Connect to the database and setup permissions
             self.logger.info("Setting up database permissions...")
             conn_db = psycopg2.connect(
-                host=self.pg_host,
-                port=self.pg_port,
+                host=self.host,
+                port=self.port,
                 database=self.db_name,
-                user=self.pg_user,
-                password=self.pg_password,
+                user=self.username,
+                password=self.password,
             )
             conn_db.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
@@ -448,9 +448,9 @@ Write-Host "====================================================================
 Write-Host ""
 
 # Configuration (pre-filled by installer)
-$PgHost = "{self.pg_host}"
-$PgPort = {self.pg_port}
-$PgUser = "{self.pg_user}"
+$PgHost = "{self.host}"
+$PgPort = {self.port}
+$PgUser = "{self.username}"
 $DbName = "{self.db_name}"
 $OwnerRole = "giljo_owner"
 $UserRole = "giljo_user"
@@ -625,9 +625,9 @@ echo "====================================================================="
 echo ""
 
 # Configuration (pre-filled by installer)
-PG_HOST="{self.pg_host}"
-PG_PORT={self.pg_port}
-PG_USER="{self.pg_user}"
+PG_HOST="{self.host}"
+PG_PORT={self.port}
+PG_USER="{self.username}"
 DB_NAME="{self.db_name}"
 OWNER_ROLE="giljo_owner"
 USER_ROLE="giljo_user"
@@ -800,8 +800,8 @@ echo ""
         if psycopg2:
             try:
                 conn = psycopg2.connect(
-                    host=self.pg_host,
-                    port=self.pg_port,
+                    host=self.host,
+                    port=self.port,
                     database=self.db_name,
                     user="giljo_user",
                     password=self.user_password,
@@ -838,8 +838,8 @@ echo ""
 
             # Connect to giljo_mcp database
             conn = psycopg2.connect(
-                host=self.pg_host,
-                port=self.pg_port,
+                host=self.host,
+                port=self.port,
                 database=self.db_name,
                 user="giljo_owner",
                 password=self.owner_password,
@@ -933,8 +933,8 @@ echo ""
 # KEEP THIS FILE SECURE!
 
 DATABASE_NAME={self.db_name}
-DATABASE_HOST={self.pg_host}
-DATABASE_PORT={self.pg_port}
+DATABASE_HOST={self.host}
+DATABASE_PORT={self.port}
 
 OWNER_ROLE=giljo_owner
 OWNER_PASSWORD={self.owner_password}
@@ -943,8 +943,8 @@ USER_ROLE=giljo_user
 USER_PASSWORD={self.user_password}
 
 # Connection strings:
-OWNER_URL=postgresql://giljo_owner:{self.owner_password}@{self.pg_host}:{self.pg_port}/{self.db_name}
-USER_URL=postgresql://giljo_user:{self.user_password}@{self.pg_host}:{self.pg_port}/{self.db_name}
+OWNER_URL=postgresql://giljo_owner:{self.owner_password}@{self.host}:{self.port}/{self.db_name}
+USER_URL=postgresql://giljo_user:{self.user_password}@{self.host}:{self.port}/{self.db_name}
 """
 
         self.credentials_file.write_text(content)
@@ -1060,7 +1060,7 @@ After installation, return here and run the installer again
             from src.giljo_mcp.models import Base
 
             # Create database manager
-            db_url = f"postgresql://giljo_owner:{self.owner_password}@{self.pg_host}:{self.pg_port}/{self.db_name}"
+            db_url = f"postgresql://giljo_owner:{self.owner_password}@{self.host}:{self.port}/{self.db_name}"
             db_manager = DatabaseManager(db_url)
 
             # Create all tables (DEPRECATED - for test compatibility only)
@@ -1127,7 +1127,7 @@ After installation, return here and run the installer again
             alembic_cfg = Config(str(alembic_ini_path))
 
             # Set the database URL (use owner credentials for migrations)
-            db_url = f"postgresql://{self.settings.get('pg_user', 'giljo_owner')}:{self.owner_password}@{self.pg_host}:{self.pg_port}/{self.db_name}"
+            db_url = f"postgresql://{self.settings.get('pg_user', 'giljo_owner')}:{self.owner_password}@{self.host}:{self.port}/{self.db_name}"
             alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
             # Run migrations to head

@@ -135,7 +135,7 @@ describe('AgentDetailsModal Component', () => {
           name: 'Implementer Template',
           role: 'implementer',
           description: 'Test implementer template description',
-          template_content: 'You are an implementer agent...\n\nFollow TDD principles.',
+          system_instructions: 'You are an implementer agent...\n\nFollow TDD principles.',
           variables: ['project_name', 'tech_stack'],
           model: 'sonnet',
           tools: ['bash', 'read', 'write'],
@@ -365,7 +365,7 @@ describe('AgentDetailsModal Component', () => {
     beforeEach(() => {
       api.templates.get.mockResolvedValue({
         data: {
-          template_content:
+          system_instructions:
             'Line 1\nLine 2\nLine 3\n\n# Section\n\nMore content with **markdown**',
         },
       })
@@ -458,7 +458,7 @@ describe('AgentDetailsModal Component', () => {
     it('handles empty template content', async () => {
       api.templates.get.mockResolvedValue({
         data: {
-          template_content: '',
+          system_instructions: '',
         },
       })
 
@@ -478,7 +478,7 @@ describe('AgentDetailsModal Component', () => {
     it('handles template with no variables', async () => {
       api.templates.get.mockResolvedValue({
         data: {
-          template_content: 'Simple template',
+          system_instructions: 'Simple template',
           variables: [],
         },
       })
@@ -499,7 +499,7 @@ describe('AgentDetailsModal Component', () => {
     it('handles template with no tools', async () => {
       api.templates.get.mockResolvedValue({
         data: {
-          template_content: 'Simple template',
+          system_instructions: 'Simple template',
           tools: [],
         },
       })
@@ -522,7 +522,7 @@ describe('AgentDetailsModal Component', () => {
     beforeEach(() => {
       api.templates.get.mockResolvedValue({
         data: {
-          template_content: 'Test template content for copying',
+          system_instructions: 'Test template content for copying',
         },
       })
 

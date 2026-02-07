@@ -8,12 +8,15 @@ Usage:
     locust -f tests/load/scenarios/websocket_load.py --host=http://localhost:7272 \
            --headless -u 50 -r 10 -t 5m
 """
-import time
+
 import json
-import websocket
-from locust import User, task, between, events
-from locust.exception import LocustError
 import logging
+import time
+
+import websocket
+from locust import User, between, events, task
+from locust.exception import LocustError
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +42,11 @@ class WebSocketClient:
 
         start_time = time.time()
         try:
-            self.ws = websocket.create_connection(
-                ws_url,
-                timeout=10
-            )
+            self.ws = websocket.create_connection(ws_url, timeout=10)
             self.connected = True
 
             # Authenticate
-            auth_message = {
-                "type": "auth",
-                "tenant_key": self.tenant_key
-            }
+            auth_message = {"type": "auth", "tenant_key": self.tenant_key}
             self.ws.send(json.dumps(auth_message))
 
             # Wait for auth response
@@ -62,7 +59,7 @@ class WebSocketClient:
                 response_time=total_time,
                 response_length=len(response),
                 exception=None,
-                context={}
+                context={},
             )
 
             logger.info(f"WebSocket connected in {total_time}ms")
@@ -70,12 +67,7 @@ class WebSocketClient:
         except Exception as e:
             total_time = int((time.time() - start_time) * 1000)
             events.request.fire(
-                request_type="WSS",
-                name="connect",
-                response_time=total_time,
-                response_length=0,
-                exception=e,
-                context={}
+                request_type="WSS", name="connect", response_time=total_time, response_length=0, exception=e, context={}
             )
             logger.error(f"WebSocket connection failed: {e}")
             raise
@@ -100,7 +92,7 @@ class WebSocketClient:
                 response_time=total_time,
                 response_length=len(response),
                 exception=None,
-                context={}
+                context={},
             )
 
             return json.loads(response)
@@ -113,7 +105,7 @@ class WebSocketClient:
                 response_time=total_time,
                 response_length=0,
                 exception=LocustError("WebSocket timeout"),
-                context={}
+                context={},
             )
             logger.error("WebSocket message timeout")
             return None
@@ -126,25 +118,19 @@ class WebSocketClient:
                 response_time=total_time,
                 response_length=0,
                 exception=e,
-                context={}
+                context={},
             )
             logger.error(f"WebSocket send failed: {e}")
             raise
 
     def subscribe(self, channel: str):
         """Subscribe to a channel."""
-        message = {
-            "type": "subscribe",
-            "channel": channel
-        }
+        message = {"type": "subscribe", "channel": channel}
         return self.send_message(message)
 
     def unsubscribe(self, channel: str):
         """Unsubscribe from a channel."""
-        message = {
-            "type": "unsubscribe",
-            "channel": channel
-        }
+        message = {"type": "unsubscribe", "channel": channel}
         return self.send_message(message)
 
     def ping(self):
@@ -169,6 +155,7 @@ class WebSocketUser(User):
 
     Simulates user maintaining WebSocket connection and receiving updates.
     """
+
     abstract = True
     wait_time = between(1, 3)
 
@@ -243,6 +230,7 @@ class NormalWebSocketUser(WebSocketUser):
 
     Maintains connection, periodic pings, occasional subscriptions.
     """
+
     wait_time = between(2, 5)
 
 
@@ -252,6 +240,7 @@ class StressWebSocketUser(WebSocketUser):
 
     Rapid message sending to test throughput and connection stability.
     """
+
     wait_time = between(0.5, 1)
 
     @task(10)
@@ -288,6 +277,7 @@ class LongLivedWebSocketUser(WebSocketUser):
     Maintains connection with minimal activity to test connection stability
     and detect memory leaks.
     """
+
     wait_time = between(10, 30)  # Long wait times
 
     @task(10)
@@ -313,4 +303,3 @@ class LongLivedWebSocketUser(WebSocketUser):
 # Default user for general WebSocket testing
 class DefaultWebSocketUser(NormalWebSocketUser):
     """Default WebSocket user for load testing."""
-    pass

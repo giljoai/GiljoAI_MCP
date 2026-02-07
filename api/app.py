@@ -7,10 +7,9 @@ import asyncio
 import logging
 import os
 import sys
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
-from datetime import datetime, timezone
 
 
 # Set up logging early to catch import issues
@@ -27,7 +26,6 @@ try:
     from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import WebSocketException
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
     from sqlalchemy import select, text
 
     logger.info("FastAPI and core dependencies loaded successfully")
@@ -55,7 +53,6 @@ logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
 try:
     from src.giljo_mcp.auth import AuthManager
-    from src.giljo_mcp.config_manager import get_config
     from src.giljo_mcp.database import DatabaseManager
     from src.giljo_mcp.models import Project
     from src.giljo_mcp.system_prompts import SystemPromptService
@@ -65,7 +62,7 @@ try:
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import GiljoAI MCP modules: {e}", exc_info=True)
-    logger.error("Make sure the src/giljo_mcp package is properly installed")
+    logger.exception("Make sure the src/giljo_mcp package is properly installed")
     raise
 
 try:
@@ -93,10 +90,10 @@ try:
         prompts,
         serena,
         settings,
-        system_prompts,
         setup_security,
         slash_commands,
         statistics,
+        system_prompts,
         tasks,
         templates,
         user_settings,
@@ -104,17 +101,18 @@ try:
         vision_documents,
         websocket_bridge,
     )
-    from .endpoints.organizations import crud as org_crud, members as org_members
+    from .endpoints.organizations import crud as org_crud
+    from .endpoints.organizations import members as org_members
+    from .exception_handlers import register_exception_handlers
     from .middleware import (
         APIMetricsMiddleware,
         AuthMiddleware,
-        RateLimitMiddleware,
-        SecurityHeadersMiddleware,
         InputValidationMiddleware,
         # CSRFProtectionMiddleware,  # Optional - requires frontend integration
+        RateLimitMiddleware,
+        SecurityHeadersMiddleware,
     )
     from .websocket import WebSocketManager
-    from .exception_handlers import register_exception_handlers
 
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
@@ -243,7 +241,6 @@ def create_app() -> FastAPI:
                 "name": "projects",
                 "description": "Project management operations - create, update, and monitor AI development projects",
             },
-            # {"name": "agents", "description": "DEPRECATED - Use agent-jobs instead"},
             {
                 "name": "Agent Management",
                 "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
@@ -290,7 +287,7 @@ def create_app() -> FastAPI:
 
                 if cors_origins:
                     logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Could not load CORS config from config.yaml: {e}")
 
     # Fallback to environment variable (for backwards compatibility)
@@ -302,10 +299,8 @@ def create_app() -> FastAPI:
                 # JSON array format from installer
                 import json
 
-                try:
+                with suppress(json.JSONDecodeError):
                     cors_origins = json.loads(cors_origins_str)
-                except json.JSONDecodeError:
-                    pass
             else:
                 # Comma-separated format
                 cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
@@ -337,6 +332,7 @@ def create_app() -> FastAPI:
             if current_ip:
                 # Add adapter IP to CORS origins (whether changed or not)
                 frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+                api_port = config.get("services", {}).get("api", {}).get("port", 7272)
                 adapter_origins = [
                     f"http://{current_ip}:{frontend_port}",
                     f"http://{current_ip}:{api_port}",  # API port for direct access
@@ -359,7 +355,7 @@ def create_app() -> FastAPI:
 
         except ImportError:
             logger.debug("Network detector not available - skipping dynamic IP detection")
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, KeyError) as e:
             logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
 
     logger.info(f"Configuring CORS with origins: {cors_origins}")
@@ -394,10 +390,6 @@ def create_app() -> FastAPI:
 
     # CSRF protection middleware (optional - requires frontend integration)
     # Handover 0129c: Uncomment when frontend is ready to send X-CSRF-Token headers
-    # app.add_middleware(
-    #     CSRFProtectionMiddleware,
-    #     exempt_paths=["/api/auth/login", "/api/auth/signup", "/api/health", "/api/metrics"]
-    # )
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
@@ -491,8 +483,8 @@ def create_app() -> FastAPI:
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
-            except (ConnectionError, TimeoutError, Exception) as e:
-                # Catching Exception is needed here for any database errors
+            except (ConnectionError, TimeoutError, RuntimeError, OSError) as e:
+                # Database errors from connection/query
                 checks["database"] = f"unhealthy: {e!s}"
 
         # Check WebSocket manager
@@ -620,12 +612,11 @@ def create_app() -> FastAPI:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
             logger.info(f"WebSocket disconnected: {client_id}")
-        except Exception:
-            logger.exception(f"WebSocket error for {client_id}")
+        except (RuntimeError, ValueError, KeyError):
+            logger.exception("WebSocket error for {client_id}")
             state.websocket_manager.disconnect(client_id)
             if client_id in state.connections:
                 del state.connections[client_id]
-
 
     # Register global exception handlers (Handover 0480a)
     register_exception_handlers(app)

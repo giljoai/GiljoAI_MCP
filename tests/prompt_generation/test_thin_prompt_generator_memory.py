@@ -7,28 +7,23 @@ instead of JSONB column, while maintaining identical output format.
 Handover: 0390b Phase 4
 """
 
-import pytest
 from datetime import datetime, timezone
-from uuid import uuid4
 
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+import pytest
+
 from src.giljo_mcp.models import Product, ProductMemoryEntry
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 @pytest.fixture
 async def product_with_memory(db_session, test_tenant_key):
     """Product with memory in table."""
     product = Product(
-        
         tenant_key=test_tenant_key,
         name="Memory Product",
         description="Has memory entries",
-        product_memory={
-            "context": {
-                "objectives": ["Build MVP", "Launch beta"]
-            }
-        },  # Some JSONB data that's still used
+        product_memory={"context": {"objectives": ["Build MVP", "Launch beta"]}},  # Some JSONB data that's still used
     )
     db_session.add(product)
     await db_session.flush()
@@ -36,7 +31,6 @@ async def product_with_memory(db_session, test_tenant_key):
     # Add memory entries to table
     entries = [
         ProductMemoryEntry(
-
             product_id=str(product.id),
             tenant_key=test_tenant_key,
             sequence=1,
@@ -50,7 +44,6 @@ async def product_with_memory(db_session, test_tenant_key):
             timestamp=datetime(2025, 1, 12, 8, 0, 0, tzinfo=timezone.utc),
         ),
         ProductMemoryEntry(
-
             product_id=str(product.id),
             tenant_key=test_tenant_key,
             sequence=2,
@@ -78,7 +71,6 @@ async def product_with_memory(db_session, test_tenant_key):
 async def product_no_history(db_session, test_tenant_key):
     """Product with no memory entries."""
     product = Product(
-        
         tenant_key=test_tenant_key,
         name="New Product",
         description="Fresh start",
@@ -94,9 +86,7 @@ async def product_no_history(db_session, test_tenant_key):
 class TestThinPromptGeneratorMemoryIntegration:
     """Test ThinClientPromptGenerator reads from product_memory_entries table."""
 
-    async def test_inject_360_memory_uses_repository(
-        self, db_session, product_with_memory, test_tenant_key
-    ):
+    async def test_inject_360_memory_uses_repository(self, db_session, product_with_memory, test_tenant_key):
         """
         _inject_360_memory should read from table, not JSONB.
 
@@ -118,9 +108,7 @@ class TestThinPromptGeneratorMemoryIntegration:
         assert "2 previous project history entries" in result
         assert "Review these to inform decisions" in result
 
-    async def test_inject_360_memory_no_history(
-        self, db_session, product_no_history, test_tenant_key
-    ):
+    async def test_inject_360_memory_no_history(self, db_session, product_no_history, test_tenant_key):
         """Should handle products with no memory entries."""
         generator = ThinClientPromptGenerator()
 
@@ -134,9 +122,7 @@ class TestThinPromptGeneratorMemoryIntegration:
         assert "## 360 Memory System" in result
         assert "No previous project history" in result or "starting fresh" in result.lower()
 
-    async def test_inject_360_memory_preserves_objectives(
-        self, db_session, product_with_memory, test_tenant_key
-    ):
+    async def test_inject_360_memory_preserves_objectives(self, db_session, product_with_memory, test_tenant_key):
         """
         Should still read objectives from product_memory JSONB.
 
@@ -159,9 +145,7 @@ class TestThinPromptGeneratorMemoryIntegration:
         assert "Build MVP" in result
         assert "Launch beta" in result
 
-    async def test_inject_360_memory_formats_correctly(
-        self, db_session, product_with_memory, test_tenant_key
-    ):
+    async def test_inject_360_memory_formats_correctly(self, db_session, product_with_memory, test_tenant_key):
         """Output format should match previous JSONB-based format."""
         generator = ThinClientPromptGenerator()
 
@@ -186,9 +170,7 @@ class TestGitInstructionsCompatibility:
     not moving to table in this handover.
     """
 
-    async def test_inject_git_instructions_unchanged(
-        self, db_session, test_tenant_key
-    ):
+    async def test_inject_git_instructions_unchanged(self, db_session, test_tenant_key):
         """
         _inject_git_instructions should still read from JSONB.
 
@@ -196,7 +178,6 @@ class TestGitInstructionsCompatibility:
         """
         # Create product with git integration enabled
         product = Product(
-            
             tenant_key=test_tenant_key,
             name="Git Product",
             description="Has git integration",
@@ -224,9 +205,7 @@ class TestGitInstructionsCompatibility:
 class TestRepositoryIntegration:
     """Test direct repository usage in prompt generation."""
 
-    async def test_repository_get_entries_for_context(
-        self, db_session, product_with_memory, test_tenant_key
-    ):
+    async def test_repository_get_entries_for_context(self, db_session, product_with_memory, test_tenant_key):
         """Repository should return lightweight dict format for prompts."""
         repo = ProductMemoryRepository()
 
@@ -251,14 +230,11 @@ class TestRepositoryIntegration:
         assert "decisions_made" in entry
         assert "timestamp" in entry
 
-    async def test_repository_respects_tenant_isolation(
-        self, db_session, product_with_memory, test_tenant_key
-    ):
+    async def test_repository_respects_tenant_isolation(self, db_session, product_with_memory, test_tenant_key):
         """Repository should filter by tenant_key."""
         # Create entry for different tenant
         other_tenant = "tenant_other"
         other_entry = ProductMemoryEntry(
-            
             product_id=str(product_with_memory.id),
             tenant_key=other_tenant,  # Different tenant
             sequence=999,

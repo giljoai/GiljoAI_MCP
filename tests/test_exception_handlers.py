@@ -16,8 +16,9 @@ Test Structure:
 Created as part of Handover 0480a: Exception Hierarchy Foundation
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
@@ -25,6 +26,7 @@ from fastapi.testclient import TestClient
 # ============================================================================
 # TEST CLASS 1: BaseGiljoException Core Behavior
 # ============================================================================
+
 
 class TestBaseGiljoException:
     """Tests for BaseGiljoException base class."""
@@ -110,6 +112,7 @@ class TestBaseGiljoException:
 # TEST CLASS 2: HTTP Status Code Mapping
 # ============================================================================
 
+
 class TestHTTPStatusCodeMapping:
     """Tests for HTTP status code mapping on exception classes."""
 
@@ -174,6 +177,7 @@ class TestHTTPStatusCodeMapping:
 # TEST CLASS 3: Exception Handler Integration
 # ============================================================================
 
+
 class TestExceptionHandlerIntegration:
     """Integration tests for global exception handlers."""
 
@@ -181,10 +185,11 @@ class TestExceptionHandlerIntegration:
     def app(self):
         """Create test app with exception handlers."""
         from src.giljo_mcp.exceptions import (
-            ValidationError,
-            ResourceNotFoundError,
             AuthenticationError,
+            ResourceNotFoundError,
+            ValidationError,
         )
+
         # Import handler registration - this will be created by system-architect
         try:
             from api.exception_handlers import register_exception_handlers
@@ -270,6 +275,7 @@ class TestExceptionHandlerIntegration:
 # TEST CLASS 4: Legacy HTTPException Compatibility
 # ============================================================================
 
+
 class TestLegacyHTTPExceptionCompatibility:
     """Tests for backward compatibility with HTTPException."""
 
@@ -339,6 +345,7 @@ class TestLegacyHTTPExceptionCompatibility:
 # TEST CLASS 5: Exception Context Handling
 # ============================================================================
 
+
 class TestExceptionContextHandling:
     """Tests for exception context handling."""
 
@@ -349,12 +356,8 @@ class TestExceptionContextHandling:
         context = {
             "field": "email",
             "value": "invalid@",
-            "constraints": {
-                "min_length": 5,
-                "max_length": 100,
-                "pattern": r"^[\w\.-]+@[\w\.-]+\.\w+$"
-            },
-            "errors": ["Invalid format", "Missing domain"]
+            "constraints": {"min_length": 5, "max_length": 100, "pattern": r"^[\w\.-]+@[\w\.-]+\.\w+$"},
+            "errors": ["Invalid format", "Missing domain"],
         }
 
         exc = ValidationError("Validation failed", context=context)
@@ -390,19 +393,20 @@ class TestExceptionContextHandling:
 # TEST CLASS 6: Exception Inheritance Behavior
 # ============================================================================
 
+
 class TestExceptionInheritanceBehavior:
     """Tests for exception class inheritance."""
 
     def test_validation_error_is_base_exception(self):
         """ValidationError should be instance of BaseGiljoException."""
-        from src.giljo_mcp.exceptions import ValidationError, BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoException, ValidationError
 
         exc = ValidationError("test")
         assert isinstance(exc, BaseGiljoException)
 
     def test_resource_not_found_is_base_exception(self):
         """ResourceNotFoundError should be instance of BaseGiljoException."""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError, BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoException, ResourceNotFoundError
 
         exc = ResourceNotFoundError("test")
         assert isinstance(exc, BaseGiljoException)
@@ -411,9 +415,9 @@ class TestExceptionInheritanceBehavior:
         """All custom exceptions should be Python exceptions."""
         from src.giljo_mcp.exceptions import (
             BaseGiljoException,
-            ValidationError,
-            ResourceNotFoundError,
             DatabaseError,
+            ResourceNotFoundError,
+            ValidationError,
         )
 
         assert issubclass(BaseGiljoException, Exception)
@@ -423,7 +427,7 @@ class TestExceptionInheritanceBehavior:
 
     def test_exception_can_be_caught_as_base_type(self):
         """Specific exceptions should be catchable as BaseGiljoException."""
-        from src.giljo_mcp.exceptions import ValidationError, BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoException, ValidationError
 
         try:
             raise ValidationError("test")
@@ -437,6 +441,7 @@ class TestExceptionInheritanceBehavior:
 # INTEGRATION TESTS: Real-World Scenarios
 # ============================================================================
 
+
 class TestRealWorldScenarios:
     """Integration tests simulating real-world exception scenarios."""
 
@@ -444,9 +449,9 @@ class TestRealWorldScenarios:
     def app_with_realistic_endpoints(self):
         """Create app with realistic endpoints."""
         from src.giljo_mcp.exceptions import (
-            ValidationError,
-            ResourceNotFoundError,
             DatabaseError,
+            ResourceNotFoundError,
+            ValidationError,
         )
 
         try:
@@ -460,28 +465,19 @@ class TestRealWorldScenarios:
         @app.post("/api/users")
         async def create_user(email: str):
             if "@" not in email:
-                raise ValidationError(
-                    "Invalid email format",
-                    context={"field": "email", "value": email}
-                )
+                raise ValidationError("Invalid email format", context={"field": "email", "value": email})
             return {"id": "123", "email": email}
 
         @app.get("/api/users/{user_id}")
         async def get_user(user_id: str):
             if user_id == "999":
-                raise ResourceNotFoundError(
-                    "User not found",
-                    context={"user_id": user_id}
-                )
+                raise ResourceNotFoundError("User not found", context={"user_id": user_id})
             return {"id": user_id, "name": "Test User"}
 
         @app.get("/api/health/db")
         async def check_database():
             # Simulate database connection failure
-            raise DatabaseError(
-                "Database connection failed",
-                context={"host": "localhost", "port": 5432}
-            )
+            raise DatabaseError("Database connection failed", context={"host": "localhost", "port": 5432})
 
         return app
 
@@ -520,6 +516,7 @@ class TestRealWorldScenarios:
 # TEST CLASS 7: AuthService Exception Migration Tests (Handover 0480b)
 # ============================================================================
 
+
 class TestAuthServiceExceptionMigration:
     """
     Tests for AuthService migration to exception-based error handling.
@@ -538,17 +535,15 @@ class TestAuthServiceExceptionMigration:
     async def auth_service(self, db_manager, db_session):
         """Create AuthService instance for testing"""
         from src.giljo_mcp.services.auth_service import AuthService
-        return AuthService(
-            db_manager=db_manager,
-            websocket_manager=None,
-            session=db_session
-        )
+
+        return AuthService(db_manager=db_manager, websocket_manager=None, session=db_session)
 
     @pytest.fixture
     async def test_user(self, db_session):
         """Create test user with known credentials"""
-        from src.giljo_mcp.models.auth import User
         from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models.auth import User
 
         password = "Test1234!"
         user = User(
@@ -570,8 +565,9 @@ class TestAuthServiceExceptionMigration:
     @pytest.fixture
     async def test_inactive_user(self, db_session):
         """Create inactive test user"""
-        from src.giljo_mcp.models.auth import User
         from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models.auth import User
 
         password = "Inactive1234!"
         user = User(
@@ -592,8 +588,9 @@ class TestAuthServiceExceptionMigration:
     @pytest.fixture
     async def existing_user(self, db_session):
         """Create user for duplicate testing"""
-        from src.giljo_mcp.models.auth import User
         from passlib.hash import bcrypt
+
+        from src.giljo_mcp.models.auth import User
 
         user = User(
             id="existing-user-001",
@@ -690,7 +687,7 @@ class TestAuthServiceExceptionMigration:
                 email="newemail@example.com",
                 password="NewPassword1234!",
                 role="developer",
-                requesting_admin_id="admin-001"
+                requesting_admin_id="admin-001",
             )
 
         assert "already exists" in exc_info.value.message.lower()
@@ -708,7 +705,7 @@ class TestAuthServiceExceptionMigration:
                 email=existing_user.email,  # Duplicate!
                 password="NewPassword1234!",
                 role="developer",
-                requesting_admin_id="admin-001"
+                requesting_admin_id="admin-001",
             )
 
         assert "already exists" in exc_info.value.message.lower()
@@ -724,10 +721,7 @@ class TestAuthServiceExceptionMigration:
 
         with pytest.raises(ValidationError) as exc_info:
             await auth_service.create_first_admin(
-                username="admin",
-                email="admin@example.com",
-                password="AdminPassword123!",
-                full_name="Administrator"
+                username="admin", email="admin@example.com", password="AdminPassword123!", full_name="Administrator"
             )
 
         assert "already exists" in exc_info.value.message.lower()
@@ -741,10 +735,11 @@ class TestAuthServiceExceptionMigration:
         NOTE: This test may be skipped if there are already users in the database.
         The "admin already exists" check runs before password validation.
         """
+        from sqlalchemy import func, select
+
         from src.giljo_mcp.exceptions import ValidationError
-        from src.giljo_mcp.services.auth_service import AuthService
-        from sqlalchemy import select, func
         from src.giljo_mcp.models.auth import User
+        from src.giljo_mcp.services.auth_service import AuthService
 
         # Check if users exist (to explain skip)
         async with db_manager.get_session_async() as session:
@@ -763,7 +758,7 @@ class TestAuthServiceExceptionMigration:
                 username="admin",
                 email="admin@example.com",
                 password="short",  # Too short!
-                full_name="Administrator"
+                full_name="Administrator",
             )
 
         assert "password" in exc_info.value.message.lower()
@@ -777,10 +772,11 @@ class TestAuthServiceExceptionMigration:
         NOTE: This test may be skipped if there are already users in the database.
         The "admin already exists" check runs before password validation.
         """
+        from sqlalchemy import func, select
+
         from src.giljo_mcp.exceptions import ValidationError
-        from src.giljo_mcp.services.auth_service import AuthService
-        from sqlalchemy import select, func
         from src.giljo_mcp.models.auth import User
+        from src.giljo_mcp.services.auth_service import AuthService
 
         # Check if users exist (to explain skip)
         async with db_manager.get_session_async() as session:
@@ -799,7 +795,7 @@ class TestAuthServiceExceptionMigration:
                 username="admin",
                 email="admin@example.com",
                 password="alllowercase12",  # No uppercase, no special!
-                full_name="Administrator"
+                full_name="Administrator",
             )
 
         assert "password" in exc_info.value.message.lower()

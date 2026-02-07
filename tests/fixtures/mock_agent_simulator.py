@@ -266,7 +266,9 @@ class MockAgentSimulator:
             Result dictionary
         """
         try:
-            self._logger.info(f"Reporting progress: {progress.get('phase', 'unknown')} - {progress.get('completion', 0)}%")
+            self._logger.info(
+                f"Reporting progress: {progress.get('phase', 'unknown')} - {progress.get('completion', 0)}%"
+            )
 
             response = await self._make_mcp_request(
                 method="mcp__giljo-mcp__report_progress",
@@ -381,7 +383,11 @@ class MockAgentSimulator:
 
 # Standalone execution helper for testing
 async def run_mock_agent(
-    job_id: str, tenant_key: str, api_key: str, agent_display_name: str = "implementer", api_url: str = "http://localhost:7272/mcp"
+    job_id: str,
+    tenant_key: str,
+    api_key: str,
+    agent_display_name: str = "implementer",
+    api_url: str = "http://localhost:7272/mcp",
 ) -> None:
     """
     Standalone function to run a mock agent.

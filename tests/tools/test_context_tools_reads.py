@@ -6,15 +6,10 @@ Handover 0390b Phase 2: Verify get_360_memory and get_git_history use ProductMem
 
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any
 
-import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
 from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
@@ -40,12 +35,9 @@ async def test_product_with_table_data(db_manager, db_session):
         name="Test Product",
         description="Test product with table-based memory",
         product_memory={
-            "git_integration": {
-                "enabled": True,
-                "repo_url": "https://github.com/test/repo"
-            }
+            "git_integration": {"enabled": True, "repo_url": "https://github.com/test/repo"}
             # Note: sequential_history is DEPRECATED - not populated
-        }
+        },
     )
     db_session.add(product)
     await db_session.flush()
@@ -72,9 +64,11 @@ async def test_product_with_table_data(db_manager, db_session):
                     "sha": f"abc{i}23",
                     "message": f"feat: Add feature {i}",
                     "author": "test@example.com",
-                    "date": f"2025-01-{i:02d}T10:00:00Z"
+                    "date": f"2025-01-{i:02d}T10:00:00Z",
                 }
-            ] if i <= 3 else [],  # Only first 3 have commits
+            ]
+            if i <= 3
+            else [],  # Only first 3 have commits
             priority=3,
             significance_score=0.5,
             token_estimate=100 * i,
@@ -174,7 +168,7 @@ class Test360MemoryReadsFromTable:
             tenant_key=tenant_key,
             name="Empty Product",
             description="Product with no memory",
-            product_memory={}
+            product_memory={},
         )
         db_session.add(product)
         await db_session.flush()
@@ -251,11 +245,7 @@ class TestGitHistoryReadsFromTable:
             tenant_key=tenant_key,
             name="No Git Product",
             description="Product with git disabled",
-            product_memory={
-                "git_integration": {
-                    "enabled": False
-                }
-            }
+            product_memory={"git_integration": {"enabled": False}},
         )
         db_session.add(product)
         await db_session.flush()
@@ -302,11 +292,7 @@ class TestGitHistoryReadsFromTable:
             tenant_key=tenant_key,
             name="No Commits Product",
             description="Product with entries but no commits",
-            product_memory={
-                "git_integration": {
-                    "enabled": True
-                }
-            }
+            product_memory={"git_integration": {"enabled": True}},
         )
         db_session.add(product)
         await db_session.flush()

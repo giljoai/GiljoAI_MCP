@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Configuration, ContextIndex, Message, Project, Task, Vision
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 

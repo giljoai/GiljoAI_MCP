@@ -15,7 +15,7 @@ from unittest.mock import Mock, PropertyMock
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from tests.fixtures.base_test import BaseAsyncTest
 
 

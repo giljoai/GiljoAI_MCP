@@ -11,11 +11,14 @@ Protects against:
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 """
-import re
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Any
+
 import logging
+import re
+from typing import Any, Callable, ClassVar
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,35 +37,35 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     """
 
     # Dangerous SQL injection patterns to block
-    SQL_INJECTION_PATTERNS = [
+    SQL_INJECTION_PATTERNS: ClassVar[list[str]] = [
         r"(\bUNION\b.*\bSELECT\b)",  # UNION SELECT attacks
-        r"(\bDROP\b.*\bTABLE\b)",    # DROP TABLE attacks
-        r"(\bEXEC\b.*\()",           # EXEC() function calls
-        r"(--|#|\/\*|\*\/)",         # SQL comment markers
-        r"(\bOR\b.*=.*)",            # OR 1=1 attacks
-        r"(\bAND\b.*=.*)",           # AND 1=1 attacks
-        r"(\bINSERT\b.*\bINTO\b)",   # INSERT attacks
-        r"(\bUPDATE\b.*\bSET\b)",    # UPDATE attacks
-        r"(\bDELETE\b.*\bFROM\b)",   # DELETE attacks
+        r"(\bDROP\b.*\bTABLE\b)",  # DROP TABLE attacks
+        r"(\bEXEC\b.*\()",  # EXEC() function calls
+        r"(--|#|\/\*|\*\/)",  # SQL comment markers
+        r"(\bOR\b.*=.*)",  # OR 1=1 attacks
+        r"(\bAND\b.*=.*)",  # AND 1=1 attacks
+        r"(\bINSERT\b.*\bINTO\b)",  # INSERT attacks
+        r"(\bUPDATE\b.*\bSET\b)",  # UPDATE attacks
+        r"(\bDELETE\b.*\bFROM\b)",  # DELETE attacks
     ]
 
     # XSS (Cross-Site Scripting) patterns to block
-    XSS_PATTERNS = [
+    XSS_PATTERNS: ClassVar[list[str]] = [
         r"<script[^>]*>.*?</script>",  # <script> tags
-        r"javascript:",                 # javascript: protocol
-        r"onerror\s*=",                # onerror event handler
-        r"onload\s*=",                 # onload event handler
-        r"onclick\s*=",                # onclick event handler
-        r"onmouseover\s*=",            # onmouseover event handler
-        r"<iframe[^>]*>",              # iframe injection
-        r"<embed[^>]*>",               # embed injection
-        r"<object[^>]*>",              # object injection
+        r"javascript:",  # javascript: protocol
+        r"onerror\s*=",  # onerror event handler
+        r"onload\s*=",  # onload event handler
+        r"onclick\s*=",  # onclick event handler
+        r"onmouseover\s*=",  # onmouseover event handler
+        r"<iframe[^>]*>",  # iframe injection
+        r"<embed[^>]*>",  # embed injection
+        r"<object[^>]*>",  # object injection
     ]
 
     # Path traversal patterns to block
-    PATH_TRAVERSAL_PATTERNS = [
-        r"\.\./",    # ../ (Unix)
-        r"\.\.\\"   # ..\ (Windows)
+    PATH_TRAVERSAL_PATTERNS: ClassVar[list[str]] = [
+        r"\.\./",  # ../ (Unix)
+        r"\.\.\\",  # ..\ (Windows)
     ]
 
     def __init__(self, app, strict_mode: bool = False):
@@ -98,10 +101,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                     f"Blocked unsafe query parameter: {key}={value[:50]}... "
                     f"from IP: {request.client.host if request.client else 'unknown'}"
                 )
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid input detected in query parameter: {key}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid input detected in query parameter: {key}")
 
         # Validate path for path traversal
         path = request.url.path
@@ -110,10 +110,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                 f"Blocked path traversal attempt: {path} "
                 f"from IP: {request.client.host if request.client else 'unknown'}"
             )
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid path - path traversal detected"
-            )
+            raise HTTPException(status_code=400, detail="Invalid path - path traversal detected")
 
         # Note: Request body validation happens in endpoints via Pydantic models
         # This middleware provides an additional safety layer for query/path params
@@ -198,8 +195,7 @@ class RequestSanitizer:
 
         # Escape HTML special characters to prevent XSS
         value = (
-            value
-            .replace("&", "&amp;")   # Must be first
+            value.replace("&", "&amp;")  # Must be first
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;")
@@ -267,12 +263,11 @@ class RequestSanitizer:
         """
         if isinstance(data, str):
             return self.sanitize_string(data)
-        elif isinstance(data, dict):
+        if isinstance(data, dict):
             return self.sanitize_dict(data)
-        elif isinstance(data, list):
+        if isinstance(data, list):
             return self.sanitize_list(data)
-        else:
-            return data
+        return data
 
 
 # Convenience function for quick sanitization

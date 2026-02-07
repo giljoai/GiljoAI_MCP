@@ -15,9 +15,9 @@ Handover: 0360 - Medium Priority Tool Enhancements
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
 
 
@@ -30,7 +30,7 @@ async def test_project_0360(db_session):
         name="Test Project Message Filtering",
         description="Test project for message filtering",
         mission="Test message filtering",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -46,7 +46,7 @@ async def agent_a(db_session, test_project_0360):
         project_id="project-0360",
         mission="Test agent A",
         job_type="tdd-implementor",
-        status="active"
+        status="active",
     )
     db_session.add(job)
 
@@ -56,7 +56,6 @@ async def agent_a(db_session, test_project_0360):
         tenant_key="tenant-0360",
         agent_display_name="tdd-implementor",
         status="working",
-        instance_number=1
     )
     db_session.add(execution)
     await db_session.commit()
@@ -72,7 +71,7 @@ async def agent_b(db_session, test_project_0360):
         project_id="project-0360",
         mission="Test agent B",
         job_type="database-expert",
-        status="active"
+        status="active",
     )
     db_session.add(job)
 
@@ -82,7 +81,6 @@ async def agent_b(db_session, test_project_0360):
         tenant_key="tenant-0360",
         agent_display_name="database-expert",
         status="working",
-        instance_number=1
     )
     db_session.add(execution)
     await db_session.commit()
@@ -245,9 +243,7 @@ async def test_receive_messages_exclude_progress_false_includes_all(
 
 
 @pytest.mark.asyncio
-async def test_receive_messages_filter_by_message_types(
-    db_session, db_manager, tenant_manager, agent_a, agent_b
-):
+async def test_receive_messages_filter_by_message_types(db_session, db_manager, tenant_manager, agent_a, agent_b):
     """Test that message_types filter allows only specified types."""
     # Create messages of different types
     for msg_type in ["direct", "broadcast", "progress", "status"]:
@@ -278,9 +274,7 @@ async def test_receive_messages_filter_by_message_types(
 
 
 @pytest.mark.asyncio
-async def test_receive_messages_combined_filters(
-    db_session, db_manager, tenant_manager, agent_a, agent_b
-):
+async def test_receive_messages_combined_filters(db_session, db_manager, tenant_manager, agent_a, agent_b):
     """Test that multiple filters work together correctly."""
     # Create test messages
     test_messages = [
@@ -326,9 +320,7 @@ async def test_receive_messages_combined_filters(
 
 
 @pytest.mark.asyncio
-async def test_receive_messages_backward_compatible_defaults(
-    db_session, db_manager, tenant_manager, agent_a, agent_b
-):
+async def test_receive_messages_backward_compatible_defaults(db_session, db_manager, tenant_manager, agent_a, agent_b):
     """Test that existing callers without new params get sane defaults."""
     # Create messages of various types
     test_messages = [

@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from api.app import create_app
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 # Test Fixtures
@@ -208,7 +208,9 @@ async def test_create_job_admin_only(api_client: AsyncClient, regular_user: User
 
     app.dependency_overrides[get_current_active_user] = override_current_user(regular_user)
 
-    response = await api_client.post("/api/agent-jobs", json={"agent_display_name": "implementer", "mission": "Test mission"})
+    response = await api_client.post(
+        "/api/agent-jobs", json={"agent_display_name": "implementer", "mission": "Test mission"}
+    )
 
     assert response.status_code == 403
     assert "Admin access required" in response.json()["detail"]
@@ -253,7 +255,9 @@ async def test_list_jobs_filter_by_status(authenticated_client: tuple[AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_agent_display_name(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
+async def test_list_jobs_filter_by_agent_display_name(
+    authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution
+):
     """Test filtering jobs by agent type."""
     client, user = authenticated_client
 
@@ -355,7 +359,9 @@ async def test_multi_tenant_isolation_list_jobs(
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_get_job(api_client: AsyncClient, other_tenant_user: User, test_job: AgentExecution):
+async def test_multi_tenant_isolation_get_job(
+    api_client: AsyncClient, other_tenant_user: User, test_job: AgentExecution
+):
     """Test cannot access job from different tenant."""
     # Override with other tenant user
     from api.app import app

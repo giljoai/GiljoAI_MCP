@@ -10,12 +10,13 @@ Tests core functionality after orchestrator.py consolidation:
 
 All tests use real database integration (db_manager fixture).
 """
+
 import uuid
+
 import pytest
-from datetime import datetime, timezone
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product, Project, AgentJob, AgentExecution, AgentTemplate
+from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -78,7 +79,7 @@ async def test_agent_template(db_manager: DatabaseManager, test_product: dict):
             name="implementer",
             role="implementer",
             description="Implementation specialist",
-            template_content="# Implementer\nImplements features according to specifications.",
+            system_instructions="# Implementer\nImplements features according to specifications.",
             is_active=True,
         )
         session.add(template)
@@ -155,16 +156,13 @@ class TestSpawnAgentJob:
             assert job.status == "active"
 
             # Verify execution exists
-            exec_query = select(AgentExecution).where(
-                AgentExecution.job_id == result["job_id"]
-            )
+            exec_query = select(AgentExecution).where(AgentExecution.job_id == result["job_id"])
             exec_result = await session.execute(exec_query)
             execution = exec_result.scalar_one_or_none()
 
             assert execution is not None
             assert execution.agent_display_name == "implementer"
             assert execution.status == "waiting"
-            assert execution.instance_number == 1
 
     @pytest.mark.asyncio
     async def test_spawn_routes_correctly(
@@ -234,36 +232,19 @@ class TestSuccession:
             from sqlalchemy import select
 
             # Get all executions for this job
-            exec_query = (
-                select(AgentExecution)
-                .where(AgentExecution.job_id == original_job_id)
-                .order_by(AgentExecution.instance_number)
-            )
+            exec_query = select(AgentExecution).where(AgentExecution.job_id == original_job_id)
             exec_result = await session.execute(exec_query)
             executions = exec_result.scalars().all()
 
             assert len(executions) == 2, "Should have 2 executions after succession"
 
             # First execution should be decommissioned
-            assert executions[0].instance_number == 1
             assert executions[0].status == "decommissioned"
             assert executions[0].succeeded_by == executions[1].agent_id
 
             # Second execution should be active
-            assert executions[1].instance_number == 2
             assert executions[1].status == "waiting"
             assert executions[1].spawned_by == executions[0].agent_id
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Test removed in Handover 0461a - check_succession_status() deleted (manual succession only)")
-    async def test_check_succession_status_at_threshold(
-        self,
-        orchestration_service: OrchestrationService,
-        test_project: dict,
-        db_manager: DatabaseManager,
-    ):
-        """DEPRECATED: check_succession_status() removed in Handover 0461a."""
-        pass
 
 
 class TestMultiTenantIsolation:

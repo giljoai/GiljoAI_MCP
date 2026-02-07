@@ -24,9 +24,6 @@ Usage:
     # Validate token
     is_valid = await manager.validate_token(token, tenant_key)
 
-    # Mark as used
-    await manager.mark_as_used(token)
-
     # Cleanup expired
     deleted_count = await manager.cleanup_expired_tokens()
 """
@@ -37,6 +34,7 @@ from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import DownloadToken
@@ -112,14 +110,14 @@ class TokenManager:
 
             return token_record.token
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             await self.db_session.rollback()
-            logger.error(f"Failed to generate download token: {e}")
+            logger.exception("Failed to generate download token")
             from fastapi import HTTPException, status
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate download token"
-            )
+            ) from e
 
     async def validate_token(self, token: str, tenant_key: str) -> bool:
         """
@@ -145,11 +143,6 @@ class TokenManager:
                 logger.debug(f"Token not found or tenant mismatch: {token}")
                 return False
 
-            # Check if already used
-            if token_record.is_used:
-                logger.debug(f"Token already used: {token}")
-                return False
-
             # Check if expired
             if token_record.is_expired:
                 logger.debug(f"Token expired: {token}")
@@ -158,45 +151,8 @@ class TokenManager:
             logger.debug(f"Token validated successfully: {token}")
             return True
 
-        except Exception as e:
-            logger.error(f"Error validating token: {e}")
-            return False
-
-    async def mark_as_used(self, token: str) -> bool:
-        """
-        Mark a token as used (one-time use enforcement).
-
-        Updates the token record to set is_used=True and records
-        the download timestamp. Token cannot be used again.
-
-        Args:
-            token: UUID token string
-
-        Returns:
-            bool: True if successfully marked, False otherwise
-        """
-        try:
-            # Query token
-            stmt = select(DownloadToken).where(DownloadToken.token == token)
-            result = await self.db_session.execute(stmt)
-            token_record = result.scalar_one_or_none()
-
-            if not token_record:
-                logger.warning(f"Cannot mark non-existent token as used: {token}")
-                return False
-
-            # Mark as used
-            token_record.is_used = True
-            token_record.downloaded_at = datetime.now(timezone.utc)
-
-            await self.db_session.commit()
-
-            logger.info(f"Token marked as used: {token}")
-            return True
-
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"Error marking token as used: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error validating token")
             return False
 
     async def cleanup_expired_tokens(self) -> int:
@@ -224,9 +180,9 @@ class TokenManager:
 
             return deleted_count
 
-        except Exception as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error cleaning up expired tokens: {e}")
+            logger.exception("Error cleaning up expired tokens")
             return 0
 
     async def get_token_info(self, token: str, tenant_key: str) -> Optional[dict]:
@@ -253,19 +209,19 @@ class TokenManager:
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
                 "metadata": token_record.meta_data,
-                "is_used": token_record.is_used,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
-                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat()
+                if token_record.last_downloaded_at
+                else None,
             }
 
-        except Exception as e:
-            logger.error(f"Error retrieving token info: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error retrieving token info")
             return None
 
     async def get_token_info_by_token(self, token: str) -> Optional[dict]:
@@ -292,19 +248,19 @@ class TokenManager:
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
                 "metadata": token_record.meta_data,
-                "is_used": token_record.is_used,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "downloaded_at": token_record.downloaded_at.isoformat() if token_record.downloaded_at else None,
-                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat()
+                if token_record.last_downloaded_at
+                else None,
             }
 
-        except Exception as e:
-            logger.error(f"Error retrieving token info: {e}")
+        except SQLAlchemyError:
+            logger.exception("Error retrieving token info")
             return None
 
     async def mark_failed(self, token: str, error_message: str) -> bool:
@@ -340,9 +296,9 @@ class TokenManager:
             logger.info(f"Token marked as failed: {token}, error: {error_message}")
             return True
 
-        except Exception as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error marking token as failed: {e}")
+            logger.exception("Error marking token as failed")
             return False
 
     async def mark_ready(self, token: str) -> bool:
@@ -377,9 +333,9 @@ class TokenManager:
             logger.info(f"Token marked as ready: {token}")
             return True
 
-        except Exception as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error marking token as ready: {e}")
+            logger.exception("Error marking token as ready")
             return False
 
     async def increment_download_count(self, token: str) -> bool:
@@ -414,7 +370,7 @@ class TokenManager:
             logger.info(f"Download count incremented for token: {token}, new count: {token_record.download_count}")
             return True
 
-        except Exception as e:
+        except SQLAlchemyError:
             await self.db_session.rollback()
-            logger.error(f"Error incrementing download count: {e}")
+            logger.exception("Error incrementing download count")
             return False

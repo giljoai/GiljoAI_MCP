@@ -72,13 +72,9 @@ class MessageRepository:
         result = await session.execute(stmt)
 
         if result.rowcount == 0:
-            self._logger.warning(
-                f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}"
-            )
+            self._logger.warning(f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}")
         else:
-            self._logger.debug(
-                f"Incremented sent_count for agent {agent_id} by {increment}"
-            )
+            self._logger.debug(f"Incremented sent_count for agent {agent_id} by {increment}")
 
     async def increment_waiting_count(
         self,
@@ -114,13 +110,9 @@ class MessageRepository:
         result = await session.execute(stmt)
 
         if result.rowcount == 0:
-            self._logger.warning(
-                f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}"
-            )
+            self._logger.warning(f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}")
         else:
-            self._logger.debug(
-                f"Incremented waiting_count for agent {agent_id} by {increment}"
-            )
+            self._logger.debug(f"Incremented waiting_count for agent {agent_id} by {increment}")
 
     async def decrement_waiting_increment_read(
         self,
@@ -161,13 +153,9 @@ class MessageRepository:
         result = await session.execute(stmt)
 
         if result.rowcount == 0:
-            self._logger.warning(
-                f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}"
-            )
+            self._logger.warning(f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}")
         else:
-            self._logger.debug(
-                f"Decremented waiting_count and incremented read_count for agent {agent_id}"
-            )
+            self._logger.debug(f"Decremented waiting_count and incremented read_count for agent {agent_id}")
 
     async def get_counter_stats(
         self,

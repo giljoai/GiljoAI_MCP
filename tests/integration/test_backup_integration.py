@@ -16,6 +16,8 @@ Following TDD methodology - these tests define expected behavior.
 """
 
 import pytest
+
+
 pytest.skip("TODO(0127a-2): Comprehensive refactoring needed for MCPAgentJob model", allow_module_level=True)
 import asyncio
 import time
@@ -28,6 +30,7 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # TODO(0127a): from src.giljo_mcp.models import Agent, Project, User
 # from src.giljo_mcp.models import MCPAgentJob  # Use this instead

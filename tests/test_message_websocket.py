@@ -3,16 +3,15 @@ Integration tests for WebSocket message events
 Tests real-time message broadcasts via WebSocket
 """
 
-import pytest
-import asyncio
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.tenant import TenantManager
+import pytest
+
 from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.mark.asyncio
@@ -34,7 +33,7 @@ async def test_websocket_message_broadcast(db_manager, test_project):
         content="WebSocket test message",
         project_id=test_project.id,
         message_type="direct",
-        priority="normal"
+        priority="normal",
     )
 
     assert result["success"] is True
@@ -49,8 +48,8 @@ async def test_websocket_message_broadcast(db_manager, test_project):
             "to_agents": ["test-agent"],
             "content": "WebSocket test message",
             "priority": "normal",
-            "status": "pending"
-        }
+            "status": "pending",
+        },
     )
 
     # Verify broadcast was called
@@ -75,7 +74,7 @@ async def test_websocket_acknowledge_event(db_manager, test_project, db_session)
         project_id=test_project.id,
         to_agents=["test-agent"],
         content="Message to acknowledge via WebSocket",
-        status="waiting"
+        status="waiting",
     )
     db_session.add(message)
     await db_session.commit()
@@ -86,10 +85,7 @@ async def test_websocket_acknowledge_event(db_manager, test_project, db_session)
     tenant_manager.set_current_tenant(test_project.tenant_key)
 
     service = MessageService(db_manager, tenant_manager)
-    result = await service.acknowledge_message(
-        message_id=message.id,
-        agent_name="test-agent"
-    )
+    result = await service.acknowledge_message(message_id=message.id, agent_name="test-agent")
 
     assert result["success"] is True
 
@@ -101,8 +97,8 @@ async def test_websocket_acknowledge_event(db_manager, test_project, db_session)
         message_data={
             "status": "acknowledged",
             "acknowledged_by": ["test-agent"],
-            "acknowledged_at": datetime.now(timezone.utc).isoformat()
-        }
+            "acknowledged_at": datetime.now(timezone.utc).isoformat(),
+        },
     )
 
     # Verify broadcast was called
@@ -128,7 +124,7 @@ async def test_websocket_complete_event(db_manager, test_project, db_session):
         to_agents=["test-agent"],
         content="Message to complete via WebSocket",
         status="acknowledged",
-        acknowledged_by=["test-agent"]
+        acknowledged_by=["test-agent"],
     )
     db_session.add(message)
     await db_session.commit()
@@ -140,9 +136,7 @@ async def test_websocket_complete_event(db_manager, test_project, db_session):
 
     service = MessageService(db_manager, tenant_manager)
     result = await service.complete_message(
-        message_id=message.id,
-        agent_name="test-agent",
-        result_data={"status": "success", "output": "Task completed"}
+        message_id=message.id, agent_name="test-agent", result_data={"status": "success", "output": "Task completed"}
     )
 
     assert result["success"] is True
@@ -156,8 +150,8 @@ async def test_websocket_complete_event(db_manager, test_project, db_session):
             "status": "completed",
             "completed_by": ["test-agent"],
             "completed_at": datetime.now(timezone.utc).isoformat(),
-            "result_data": {"status": "success", "output": "Task completed"}
-        }
+            "result_data": {"status": "success", "output": "Task completed"},
+        },
     )
 
     # Verify broadcast was called
@@ -176,7 +170,7 @@ async def test_websocket_broadcast_to_specific_project(db_manager, test_project,
     ws_manager = AsyncMock(spec=WebSocketManager)
     ws_manager.project_connections = {
         test_project.id: [MagicMock(), MagicMock()],  # 2 connections for this project
-        str(uuid4()): [MagicMock()]  # 1 connection for another project
+        str(uuid4()): [MagicMock()],  # 1 connection for another project
     }
 
     # Create and broadcast message
@@ -185,9 +179,7 @@ async def test_websocket_broadcast_to_specific_project(db_manager, test_project,
 
     service = MessageService(db_manager, tenant_manager)
     result = await service.send_message(
-        to_agents=["test-agent"],
-        content="Project-scoped message",
-        project_id=test_project.id
+        to_agents=["test-agent"], content="Project-scoped message", project_id=test_project.id
     )
 
     # Broadcast to specific project
@@ -195,7 +187,7 @@ async def test_websocket_broadcast_to_specific_project(db_manager, test_project,
         message_id=result["message_id"],
         project_id=test_project.id,
         update_type="new",
-        message_data={"content": "Project-scoped message"}
+        message_data={"content": "Project-scoped message"},
     )
 
     # Verify broadcast was called with correct project_id
@@ -255,10 +247,7 @@ async def test_websocket_message_priority_broadcast(db_manager, test_project):
 
     # Send high priority message
     result = await service.send_message(
-        to_agents=["test-agent"],
-        content="High priority message",
-        project_id=test_project.id,
-        priority="high"
+        to_agents=["test-agent"], content="High priority message", project_id=test_project.id, priority="high"
     )
 
     # Broadcast with priority
@@ -266,10 +255,7 @@ async def test_websocket_message_priority_broadcast(db_manager, test_project):
         message_id=result["message_id"],
         project_id=test_project.id,
         update_type="new",
-        message_data={
-            "content": "High priority message",
-            "priority": "high"
-        }
+        message_data={"content": "High priority message", "priority": "high"},
     )
 
     # Verify priority is included in broadcast
@@ -293,9 +279,7 @@ async def test_websocket_broadcast_message_batch(db_manager, test_project):
     message_ids = []
     for i in range(5):
         result = await service.send_message(
-            to_agents=[f"agent-{i}"],
-            content=f"Batch message {i}",
-            project_id=test_project.id
+            to_agents=[f"agent-{i}"], content=f"Batch message {i}", project_id=test_project.id
         )
         message_ids.append(result["message_id"])
 
@@ -304,7 +288,7 @@ async def test_websocket_broadcast_message_batch(db_manager, test_project):
             message_id=result["message_id"],
             project_id=test_project.id,
             update_type="new",
-            message_data={"content": f"Batch message {i}"}
+            message_data={"content": f"Batch message {i}"},
         )
 
     # Verify all broadcasts were called
@@ -327,7 +311,7 @@ async def test_websocket_reconnection_handling(test_project):
     connection_pool[connection_id] = {
         "websocket": mock_websocket,
         "project_id": test_project.id,
-        "connected_at": datetime.now(timezone.utc)
+        "connected_at": datetime.now(timezone.utc),
     }
 
     # Simulate disconnection
@@ -338,7 +322,7 @@ async def test_websocket_reconnection_handling(test_project):
     connection_pool[new_connection_id] = {
         "websocket": mock_websocket,
         "project_id": test_project.id,
-        "connected_at": datetime.now(timezone.utc)
+        "connected_at": datetime.now(timezone.utc),
     }
 
     # Verify reconnection
@@ -359,11 +343,7 @@ async def test_websocket_error_handling(db_manager, test_project):
 
     service = MessageService(db_manager, tenant_manager)
 
-    result = await service.send_message(
-        to_agents=["test-agent"],
-        content="Test message",
-        project_id=test_project.id
-    )
+    result = await service.send_message(to_agents=["test-agent"], content="Test message", project_id=test_project.id)
 
     # Try to broadcast - should handle error gracefully
     try:
@@ -371,7 +351,7 @@ async def test_websocket_error_handling(db_manager, test_project):
             message_id=result["message_id"],
             project_id=test_project.id,
             update_type="new",
-            message_data={"content": "Test message"}
+            message_data={"content": "Test message"},
         )
         error_raised = False
     except Exception:
@@ -393,10 +373,7 @@ async def test_websocket_tenant_isolation(db_session):
     tenant2_key = f"tk_test_{uuid4().hex[:16]}"
 
     # Mock connection pools per tenant
-    tenant_connections = {
-        tenant1_key: [MagicMock(), MagicMock()],
-        tenant2_key: [MagicMock()]
-    }
+    tenant_connections = {tenant1_key: [MagicMock(), MagicMock()], tenant2_key: [MagicMock()]}
 
     # Simulate broadcast to tenant 1 only
     def broadcast_to_tenant(tenant_key: str, message_data: dict):

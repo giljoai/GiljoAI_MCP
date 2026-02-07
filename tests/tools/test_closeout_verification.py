@@ -26,12 +26,10 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.tools.write_360_memory import write_360_memory
 
 
@@ -116,7 +114,6 @@ async def test_orchestrator_execution(db_session, tenant_key, test_orchestrator_
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
         agent_name="Test Orchestrator",
-        instance_number=1,
         status="working",
         progress=90,
         messages_sent_count=0,
@@ -167,7 +164,6 @@ async def create_test_agent(
         tenant_key=tenant_key,
         agent_display_name=job_type,
         agent_name=agent_name,
-        instance_number=1,
         status=status,
         progress=100 if status == "complete" else 50,
         messages_sent_count=0,
@@ -197,8 +193,14 @@ class TestCloseoutVerificationBlocking:
 
     @pytest.mark.asyncio
     async def test_blocks_when_agent_still_working(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should block closeout if any agent is still working."""
         # Create agent with status='working'
@@ -227,18 +229,21 @@ class TestCloseoutVerificationBlocking:
         assert len(result["blockers"]) >= 1
 
         # Find the blocker for our agent
-        blocker = next(
-            (b for b in result["blockers"] if b.get("agent_name") == "implementer-auth"),
-            None
-        )
+        blocker = next((b for b in result["blockers"] if b.get("agent_name") == "implementer-auth"), None)
         assert blocker is not None
         assert blocker["issue_type"] == "still_working"
         assert blocker["status"] == "working"
 
     @pytest.mark.asyncio
     async def test_blocks_when_unread_messages(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should block closeout if any agent has unread messages."""
         # Create completed agent with unread messages
@@ -266,18 +271,21 @@ class TestCloseoutVerificationBlocking:
         assert result["error"] == "CLOSEOUT_BLOCKED"
         assert "blockers" in result
 
-        blocker = next(
-            (b for b in result["blockers"] if b.get("agent_name") == "tester-unit"),
-            None
-        )
+        blocker = next((b for b in result["blockers"] if b.get("agent_name") == "tester-unit"), None)
         assert blocker is not None
         assert blocker["issue_type"] == "unread_messages"
         assert blocker["messages_waiting"] == 3
 
     @pytest.mark.asyncio
     async def test_blocks_when_incomplete_todos(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should block closeout if any agent has incomplete todos."""
         # Create completed agent
@@ -323,10 +331,7 @@ class TestCloseoutVerificationBlocking:
         assert result["error"] == "CLOSEOUT_BLOCKED"
         assert "blockers" in result
 
-        blocker = next(
-            (b for b in result["blockers"] if b.get("agent_name") == "reviewer-code"),
-            None
-        )
+        blocker = next((b for b in result["blockers"] if b.get("agent_name") == "reviewer-code"), None)
         assert blocker is not None
         assert blocker["issue_type"] == "incomplete_todos"
         assert blocker["pending_count"] == 1
@@ -336,8 +341,14 @@ class TestCloseoutVerificationBlocking:
 
     @pytest.mark.asyncio
     async def test_blocks_when_orchestrator_has_incomplete_todos(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should block closeout if orchestrator has incomplete todos."""
         # Add incomplete todo for orchestrator
@@ -366,17 +377,20 @@ class TestCloseoutVerificationBlocking:
         assert result["error"] == "CLOSEOUT_BLOCKED"
         assert "blockers" in result
 
-        blocker = next(
-            (b for b in result["blockers"] if b.get("issue_type") == "orchestrator_incomplete_todos"),
-            None
-        )
+        blocker = next((b for b in result["blockers"] if b.get("issue_type") == "orchestrator_incomplete_todos"), None)
         assert blocker is not None
         assert "Final verification" in blocker["incomplete_items"]
 
     @pytest.mark.asyncio
     async def test_multiple_blockers_reported(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should report multiple blockers when multiple issues exist."""
         # Agent 1: Still working
@@ -429,8 +443,14 @@ class TestCloseoutVerificationSuccess:
 
     @pytest.mark.asyncio
     async def test_succeeds_when_all_ready(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should succeed when all agents complete, no unread, all todos done."""
         # Create completed agent with no issues
@@ -484,8 +504,14 @@ class TestCloseoutVerificationSuccess:
 
     @pytest.mark.asyncio
     async def test_succeeds_with_no_agents(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should succeed when project has no spawned agents (only orchestrator)."""
         # Add completed todo for orchestrator
@@ -515,8 +541,14 @@ class TestCloseoutVerificationSuccess:
 
     @pytest.mark.asyncio
     async def test_includes_verification_summary_on_success(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Success response should include verification summary."""
         # Create 2 completed agents
@@ -556,8 +588,14 @@ class TestCloseoutVerificationEdgeCases:
 
     @pytest.mark.asyncio
     async def test_skips_decommissioned_agents(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should skip decommissioned agents in verification."""
         # Create decommissioned agent (should be ignored)
@@ -594,8 +632,14 @@ class TestCloseoutVerificationEdgeCases:
 
     @pytest.mark.asyncio
     async def test_skips_cancelled_agents(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should skip cancelled agents in verification."""
         # Create cancelled agent (should be ignored)
@@ -623,8 +667,14 @@ class TestCloseoutVerificationEdgeCases:
 
     @pytest.mark.asyncio
     async def test_completed_todos_do_not_block(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Completed todos should not cause blocking."""
         # Create completed agent
@@ -672,8 +722,15 @@ class TestCloseoutVerificationTenantIsolation:
 
     @pytest.mark.asyncio
     async def test_ignores_other_tenant_agents(
-        self, db_session, db_manager, tenant_key, other_tenant_key,
-        test_project, test_product, test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        other_tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Should not consider agents from other tenants."""
         # Create "problem" agent in OTHER tenant (should be ignored)
@@ -743,8 +800,14 @@ class TestCloseoutBlockedResponseSchema:
 
     @pytest.mark.asyncio
     async def test_blocked_response_contains_action_required(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Blocked response should contain action_required guidance."""
         await create_test_agent(
@@ -771,8 +834,14 @@ class TestCloseoutBlockedResponseSchema:
 
     @pytest.mark.asyncio
     async def test_blocked_response_contains_message(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Blocked response should contain descriptive message."""
         await create_test_agent(
@@ -799,8 +868,14 @@ class TestCloseoutBlockedResponseSchema:
 
     @pytest.mark.asyncio
     async def test_blocker_contains_job_id(
-        self, db_session, db_manager, tenant_key, test_project, test_product,
-        test_orchestrator_job, test_orchestrator_execution
+        self,
+        db_session,
+        db_manager,
+        tenant_key,
+        test_project,
+        test_product,
+        test_orchestrator_job,
+        test_orchestrator_execution,
     ):
         """Each blocker should contain job_id for reference."""
         job, execution = await create_test_agent(
@@ -836,9 +911,7 @@ class TestCloseoutBackwardCompatibility:
     """Tests to ensure no breaking changes to existing functionality."""
 
     @pytest.mark.asyncio
-    async def test_still_validates_required_fields(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_still_validates_required_fields(self, db_session, db_manager, tenant_key, test_project):
         """Should still validate required fields before verification."""
         # Missing summary should still fail with validation error, not CLOSEOUT_BLOCKED
         result = await write_360_memory(

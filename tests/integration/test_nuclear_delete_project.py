@@ -12,15 +12,14 @@ Tests verify that nuclear delete:
 
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Task, Message
+from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -138,12 +137,8 @@ async def test_nuclear_delete_removes_all_related_data(
     agent_count = await db_session.scalar(
         select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
-    task_count = await db_session.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    )
-    message_count = await db_session.scalar(
-        select(func.count(Message.id)).where(Message.project_id == project_id)
-    )
+    task_count = await db_session.scalar(select(func.count(Task.id)).where(Task.project_id == project_id))
+    message_count = await db_session.scalar(select(func.count(Message.id)).where(Message.project_id == project_id))
     ctx_index_count = await db_session.scalar(
         select(func.count(ContextIndex.id)).where(ContextIndex.project_id == project_id)
     )
@@ -172,18 +167,12 @@ async def test_nuclear_delete_removes_all_related_data(
     # Verify all data is gone
     db_session.expire_all()  # Clear SQLAlchemy cache (not async)
 
-    project_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_id)
-    )
+    project_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_id))
     agents_exist = await db_session.scalar(
         select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
-    tasks_exist = await db_session.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    )
-    messages_exist = await db_session.scalar(
-        select(func.count(Message.id)).where(Message.project_id == project_id)
-    )
+    tasks_exist = await db_session.scalar(select(func.count(Task.id)).where(Task.project_id == project_id))
+    messages_exist = await db_session.scalar(select(func.count(Message.id)).where(Message.project_id == project_id))
     ctx_indexes_exist = await db_session.scalar(
         select(func.count(ContextIndex.id)).where(ContextIndex.project_id == project_id)
     )
@@ -226,9 +215,7 @@ async def test_nuclear_delete_active_project_deactivates_first(
 
     # Verify project is gone (not just deactivated)
     db_session.expire_all()  # Not async
-    project_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_id)
-    )
+    project_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_id))
     assert project_exists == 0
 
 
@@ -274,15 +261,11 @@ async def test_nuclear_delete_multi_tenant_isolation(
 
     # Verify tenant A project is deleted
     db_session.expire_all()  # Not async
-    project_a_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_a.id)
-    )
+    project_a_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_a.id))
     assert project_a_exists == 0
 
     # Verify tenant B project still exists
-    project_b_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_b.id)
-    )
+    project_b_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_b.id))
     assert project_b_exists == 1
 
     # Try to delete tenant B project while in tenant A context (should fail)
@@ -292,9 +275,7 @@ async def test_nuclear_delete_multi_tenant_isolation(
 
     # Verify tenant B project still exists
     db_session.expire_all()  # Not async
-    project_b_still_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_b.id)
-    )
+    project_b_still_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_b.id))
     assert project_b_still_exists == 1
 
 
@@ -351,9 +332,7 @@ async def test_nuclear_delete_transaction_rollback_on_error(
     initial_agent_count = await db_session.scalar(
         select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
-    initial_task_count = await db_session.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    )
+    initial_task_count = await db_session.scalar(select(func.count(Task.id)).where(Task.project_id == project_id))
 
     # Simulate error during deletion by raising exception
     original_delete = db_session.delete
@@ -378,12 +357,8 @@ async def test_nuclear_delete_transaction_rollback_on_error(
     final_agent_count = await db_session.scalar(
         select(func.count(AgentExecution.agent_id)).where(AgentExecution.project_id == project_id)
     )
-    final_task_count = await db_session.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    )
-    project_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project_id)
-    )
+    final_task_count = await db_session.scalar(select(func.count(Task.id)).where(Task.project_id == project_id))
+    project_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project_id))
 
     assert final_agent_count == initial_agent_count
     assert final_task_count == initial_task_count
@@ -427,7 +402,5 @@ async def test_nuclear_delete_empty_project(
 
     # Verify project is deleted
     db_session.expire_all()  # Not async
-    project_exists = await db_session.scalar(
-        select(func.count(Project.id)).where(Project.id == project.id)
-    )
+    project_exists = await db_session.scalar(select(func.count(Project.id)).where(Project.id == project.id))
     assert project_exists == 0

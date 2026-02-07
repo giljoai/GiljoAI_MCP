@@ -7,8 +7,10 @@ three compression levels (light/moderate/heavy) in a single pass.
 Handover 0345e: Sumy Semantic Compression Levels
 """
 
-import pytest
 import time
+
+import pytest
+
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -30,19 +32,15 @@ def generate_test_document(tokens: int) -> str:
         "The system architecture follows a microservices pattern with independent services. "
         "Each service communicates via REST APIs and message queues for async operations. "
         "This design enables horizontal scaling and independent deployment of components.",
-
         "Frontend components are built using Vue 3 with TypeScript and Vuetify. "
         "The application uses a reactive state management system with Pinia stores. "
         "Real-time updates are handled through WebSocket connections to the backend.",
-
         "Database operations use SQLAlchemy ORM with PostgreSQL 18 as the primary store. "
         "Multi-tenant isolation is enforced at the query level using tenant_key filters. "
         "Connection pooling and async operations ensure optimal database performance.",
-
         "Authentication implements JWT tokens with refresh token rotation for security. "
         "Password hashing uses bcrypt with configurable work factors. "
         "Rate limiting protects against brute force attacks on authentication endpoints.",
-
         "Testing strategy includes unit tests with pytest and integration tests for APIs. "
         "Frontend uses Vitest for component testing and end-to-end tests with Cypress. "
         "Code coverage targets exceed 80 percent across all critical paths.",
@@ -58,7 +56,7 @@ def generate_test_document(tokens: int) -> str:
     for i in range(repetitions):
         for j, para in enumerate(paragraphs):
             # Add semantic variety with section numbers
-            result.append(f"Section {i+1}.{j+1}: {para}")
+            result.append(f"Section {i + 1}.{j + 1}: {para}")
 
     return "\n\n".join(result)
 
@@ -94,12 +92,14 @@ class TestMultiLevelSummarization:
         result = summarizer.summarize_multi_level(text)
 
         # Light: ~33% of original (~16.5K tokens, allow 13K-20K)
-        assert 13000 <= result["light"]["tokens"] <= 20000, \
+        assert 13000 <= result["light"]["tokens"] <= 20000, (
             f"Light summary has {result['light']['tokens']} tokens, expected 13K-20K"
+        )
 
         # Medium: ~66% of original (~33K tokens, allow 26K-40K)
-        assert 26000 <= result["medium"]["tokens"] <= 40000, \
+        assert 26000 <= result["medium"]["tokens"] <= 40000, (
             f"Medium summary has {result['medium']['tokens']} tokens, expected 26K-40K"
+        )
 
         # NOTE: Full depth (100%) is NOT a summary - it returns the original document
 
@@ -111,8 +111,9 @@ class TestMultiLevelSummarization:
         result = summarizer.summarize_multi_level(text)
 
         # Light should be shorter than medium
-        assert result["light"]["tokens"] < result["medium"]["tokens"], \
+        assert result["light"]["tokens"] < result["medium"]["tokens"], (
             f"Light ({result['light']['tokens']}) should be < Medium ({result['medium']['tokens']})"
+        )
 
         # NOTE: Full depth would be the original document (not a summary)
 
@@ -126,8 +127,9 @@ class TestMultiLevelSummarization:
         elapsed = time.time() - start
 
         assert elapsed < 15.0, f"Processing took {elapsed:.2f}s, expected <15s"
-        assert result["processing_time_ms"] < 15000, \
+        assert result["processing_time_ms"] < 15000, (
             f"Reported time {result['processing_time_ms']}ms, expected <15000ms"
+        )
 
     def test_multi_level_includes_original_tokens_and_timing(self):
         """Result should include original_tokens and processing_time_ms."""
@@ -184,12 +186,12 @@ class TestMultiLevelSummarization:
         result = summarizer.summarize_multi_level(text)
 
         # Split original into sentences for verification
-        original_sentences = [s.strip() for s in text.split('.') if s.strip()]
+        original_sentences = [s.strip() for s in text.split(".") if s.strip()]
 
         # Check that summary sentences come from original
         for level in ["light", "medium"]:
             summary = result[level]["summary"]
-            summary_sentences = [s.strip() for s in summary.split('.') if s.strip()]
+            summary_sentences = [s.strip() for s in summary.split(".") if s.strip()]
 
             # At least some sentences should match original (extractive property)
             # Allow for slight variations in punctuation/whitespace
@@ -203,8 +205,7 @@ class TestMultiLevelSummarization:
 
             # At least 80% of summary sentences should come from original
             match_ratio = matches / max(len(summary_sentences), 1)
-            assert match_ratio >= 0.8, \
-                f"{level} summary appears non-extractive (only {match_ratio*100:.0f}% matches)"
+            assert match_ratio >= 0.8, f"{level} summary appears non-extractive (only {match_ratio * 100:.0f}% matches)"
 
     def test_default_levels_when_none_provided(self):
         """Should use default levels (33%/66%) when levels parameter is None."""
@@ -224,9 +225,7 @@ class TestMultiLevelSummarization:
 class TestUploadWithMultiLevelSummaries:
     """Test vision document upload with multi-level summarization."""
 
-    async def test_upload_stores_three_summaries(
-        self, db_session_async, test_product, test_tenant
-    ):
+    async def test_upload_stores_three_summaries(self, db_session_async, test_product, test_tenant):
         """Upload should populate all three summary columns."""
         from src.giljo_mcp.services.product_service import ProductService
 
@@ -239,13 +238,14 @@ class TestUploadWithMultiLevelSummaries:
             product_id=test_product["id"],
             content=large_document,
             filename="test_vision.md",
-            auto_chunk=False  # Skip chunking for this test
+            auto_chunk=False,  # Skip chunking for this test
         )
 
         assert result["success"] is True
 
         # Verify database record has all three summaries
         from sqlalchemy import select
+
         from src.giljo_mcp.models.products import VisionDocument
 
         stmt = select(VisionDocument).where(VisionDocument.id == result["document_id"])
@@ -282,43 +282,33 @@ class TestContextRetrievalWithDepth:
     ):
         """Should return light summary when depth='light'."""
         from src.giljo_mcp.mission_planner import MissionPlanner
-        from src.giljo_mcp.services.settings_service import SettingsService
 
         # Upload vision document with summaries
         from src.giljo_mcp.services.product_service import ProductService
-        product_service = ProductService(
-            session=db_session_async,
-            tenant_key=test_tenant["key"]
-        )
+        from src.giljo_mcp.services.settings_service import SettingsService
+
+        product_service = ProductService(session=db_session_async, tenant_key=test_tenant["key"])
 
         large_document = generate_test_document(tokens=50000)
         await product_service.upload_vision_document(
-            product_id=test_product["id"],
-            content=large_document,
-            filename="test_vision.md",
-            auto_chunk=False
+            product_id=test_product["id"], content=large_document, filename="test_vision.md", auto_chunk=False
         )
 
         # Set depth config to 'light'
-        settings_service = SettingsService(
-            session=db_session_async,
-            tenant_key=test_tenant["key"]
-        )
-        await settings_service.save_depth_config({
-            "vision_documents": "light"
-        })
+        settings_service = SettingsService(session=db_session_async, tenant_key=test_tenant["key"])
+        await settings_service.save_depth_config({"vision_documents": "light"})
 
         # Build context with mission planner
         planner = MissionPlanner(
             db_manager=None,  # Will use session directly
-            tenant_key=test_tenant["key"]
+            tenant_key=test_tenant["key"],
         )
 
         context = await planner._build_context_with_priorities(
             product=test_product,
             project=test_project,
             field_priorities={"vision_documents": 2},  # IMPORTANT priority
-            user_id=test_tenant["user_id"]
+            user_id=test_tenant["user_id"],
         )
 
         # Verify context contains vision content
@@ -329,56 +319,41 @@ class TestContextRetrievalWithDepth:
 
         # Should be approximately 5K tokens (light level) ± tolerance
         # Allow wider range since context includes other fields
-        assert 4000 <= estimated_tokens <= 10000, \
-            f"Expected ~5K tokens for light depth, got {estimated_tokens}"
+        assert 4000 <= estimated_tokens <= 10000, f"Expected ~5K tokens for light depth, got {estimated_tokens}"
 
-    async def test_full_depth_returns_original_chunks(
-        self, db_session_async, test_product, test_project, test_tenant
-    ):
+    async def test_full_depth_returns_original_chunks(self, db_session_async, test_product, test_project, test_tenant):
         """'Full' depth should bypass summaries and return original chunks."""
         from src.giljo_mcp.mission_planner import MissionPlanner
-        from src.giljo_mcp.services.settings_service import SettingsService
         from src.giljo_mcp.services.product_service import ProductService
+        from src.giljo_mcp.services.settings_service import SettingsService
 
         # Upload and chunk vision document
-        product_service = ProductService(
-            session=db_session_async,
-            tenant_key=test_tenant["key"]
-        )
+        product_service = ProductService(session=db_session_async, tenant_key=test_tenant["key"])
 
         large_document = generate_test_document(tokens=50000)
         await product_service.upload_vision_document(
             product_id=test_product["id"],
             content=large_document,
             filename="test_vision.md",
-            auto_chunk=True  # Enable chunking for full depth test
+            auto_chunk=True,  # Enable chunking for full depth test
         )
 
         # Set depth config to 'full'
-        settings_service = SettingsService(
-            session=db_session_async,
-            tenant_key=test_tenant["key"]
-        )
-        await settings_service.save_depth_config({
-            "vision_documents": "full"
-        })
+        settings_service = SettingsService(session=db_session_async, tenant_key=test_tenant["key"])
+        await settings_service.save_depth_config({"vision_documents": "full"})
 
         # Build context
-        planner = MissionPlanner(
-            db_manager=None,
-            tenant_key=test_tenant["key"]
-        )
+        planner = MissionPlanner(db_manager=None, tenant_key=test_tenant["key"])
 
         context = await planner._build_context_with_priorities(
             product=test_product,
             project=test_project,
             field_priorities={"vision_documents": 2},
-            user_id=test_tenant["user_id"]
+            user_id=test_tenant["user_id"],
         )
 
         # Full depth should include more content than summaries
         estimated_tokens = len(context) // 4
 
         # Should be close to original 50K tokens (allow 40K-60K range)
-        assert 30000 <= estimated_tokens <= 70000, \
-            f"Expected ~50K tokens for full depth, got {estimated_tokens}"
+        assert 30000 <= estimated_tokens <= 70000, f"Expected ~50K tokens for full depth, got {estimated_tokens}"

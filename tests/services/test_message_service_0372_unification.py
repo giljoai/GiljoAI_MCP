@@ -9,28 +9,29 @@ Tests for Handover 0372: MessageService Unification
 These tests follow TDD RED phase - they should FAIL until implementation is complete.
 """
 
-import pytest
 from datetime import datetime, timezone
-from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+
+# Import models using modular imports
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_websocket_manager():
@@ -111,8 +112,7 @@ async def test_project_with_agents(
             agent_id=str(uuid4()),  # Explicit agent_id for executor identity
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
-            status="waiting",
-            instance_number=1,  # Must be >= 1 per check constraint
+            status="waiting",  # Must be >= 1 per check constraint
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -157,6 +157,7 @@ async def message_service(
 # Handover 0372 Tests - Agent-ID Routing
 # ============================================================================
 
+
 class TestMessageService0372AgentIDRouting:
     """Test agent-ID routing for succession support (Handover 0372)."""
 
@@ -189,16 +190,15 @@ class TestMessageService0372AgentIDRouting:
         message_id = result["data"]["message_id"]
 
         # Assert: Message exists in database
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
 
         # Assert: Message routes to agent_id (not job_id)
         # The resolved agent should be the agent_id from AgentExecution
-        assert recipient.agent_id in db_message.to_agents, \
+        assert recipient.agent_id in db_message.to_agents, (
             f"Expected agent_id {recipient.agent_id} in to_agents, got {db_message.to_agents}"
+        )
 
     @pytest.mark.asyncio
     async def test_succession_routing_delivers_to_new_executor(
@@ -211,8 +211,8 @@ class TestMessageService0372AgentIDRouting:
         HANDOVER 0372 TEST: Verify messages route to NEW orchestrator after succession.
 
         Scenario:
-        1. Original orchestrator exists (instance_number=0)
-        2. Succession creates new orchestrator (instance_number=1)
+        1. Original orchestrator exists
+        2. Succession creates new orchestrator
         3. Send message to "orchestrator" type
         4. Verify message routes to NEW orchestrator (latest instance)
         """
@@ -225,8 +225,7 @@ class TestMessageService0372AgentIDRouting:
             agent_id=str(uuid4()),  # Different executor
             tenant_key=project.tenant_key,
             agent_display_name="orchestrator",
-            status="working",
-            instance_number=2,  # Higher instance number (old was 1)
+            status="working",  # Higher instance number (old was 1)
             messages=[],
         )
         db_session.add(new_orchestrator)
@@ -250,18 +249,18 @@ class TestMessageService0372AgentIDRouting:
         message_id = result["data"]["message_id"]
 
         # Assert: Message routes to NEW orchestrator (agent_id)
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
-        assert new_orchestrator.agent_id in db_message.to_agents, \
+        assert new_orchestrator.agent_id in db_message.to_agents, (
             f"Message should route to NEW orchestrator agent_id {new_orchestrator.agent_id}, got {db_message.to_agents}"
+        )
 
 
 # ============================================================================
 # Handover 0372 Tests - Filtering Parameters
 # ============================================================================
+
 
 class TestMessageService0372Filtering:
     """Test filtering parameters in receive_messages() (Handover 0372)."""
@@ -308,8 +307,9 @@ class TestMessageService0372Filtering:
         # Assert: Orchestrator should NOT see their own broadcast
         for msg in messages:
             from_agent = msg.get("meta_data", {}).get("_from_agent", "")
-            assert from_agent != orchestrator.agent_id, \
+            assert from_agent != orchestrator.agent_id, (
                 f"exclude_self should filter out own messages, but found message from {from_agent}"
+            )
 
     @pytest.mark.asyncio
     async def test_receive_messages_exclude_progress_filters_progress_type(
@@ -362,8 +362,7 @@ class TestMessageService0372Filtering:
         # Assert: No progress messages in results
         for msg in messages:
             msg_type = msg.get("message_type", msg.get("type", ""))
-            assert msg_type != "progress", \
-                f"exclude_progress should filter out progress messages, but found {msg_type}"
+            assert msg_type != "progress", f"exclude_progress should filter out progress messages, but found {msg_type}"
 
     @pytest.mark.asyncio
     async def test_receive_messages_message_types_allowlist_works(
@@ -422,13 +421,13 @@ class TestMessageService0372Filtering:
         assert len(messages) >= 1, "Should have at least one direct message"
         for msg in messages:
             msg_type = msg.get("message_type", msg.get("type", ""))
-            assert msg_type == "direct", \
-                f"message_types allowlist should only return 'direct', but found {msg_type}"
+            assert msg_type == "direct", f"message_types allowlist should only return 'direct', but found {msg_type}"
 
 
 # ============================================================================
 # Handover 0372 Tests - New Methods
 # ============================================================================
+
 
 class TestMessageService0372NewMethods:
     """Test new methods from 0366b (Handover 0372)."""
@@ -507,9 +506,7 @@ class TestMessageService0372NewMethods:
         assert ack_result["message_id"] == message_id
 
         # Assert: Message status updated
-        msg_result = await db_session.execute(
-            select(Message).where(Message.id == message_id)
-        )
+        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
         assert db_message.status == "acknowledged"

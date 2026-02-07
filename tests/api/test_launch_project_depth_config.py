@@ -22,22 +22,18 @@ Expected Behavior:
 Test Status: GREEN (tests now check correct architecture)
 """
 
-import pytest
-from httpx import AsyncClient
 from unittest.mock import AsyncMock
 from uuid import uuid4
+
+import pytest
+from httpx import AsyncClient
 
 
 class TestLaunchProjectPassesUserIdToService:
     """Test that launch_project endpoint passes user_id to service layer"""
 
     @pytest.mark.asyncio
-    async def test_launch_project_passes_user_id_to_service(
-        self,
-        api_client: AsyncClient,
-        db_manager,
-        test_user
-    ):
+    async def test_launch_project_passes_user_id_to_service(self, api_client: AsyncClient, db_manager, test_user):
         """
         Test: When user launches a project, their user_id should be passed to service.
 
@@ -46,8 +42,8 @@ class TestLaunchProjectPassesUserIdToService:
         - Endpoint calls ProjectService.launch_project(project_id, user_id=current_user.id, ...)
         - Service uses user_id to fetch depth_config from database
         """
-        from src.giljo_mcp.models import Product, Project, AgentTemplate
         from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from src.giljo_mcp.models import AgentTemplate, Product, Project
 
         # Setup: Create product, project, and at least one agent template
         async with db_manager.get_session_async() as session:
@@ -56,7 +52,7 @@ class TestLaunchProjectPassesUserIdToService:
                 name="Test Product",
                 description="Test product for launch",
                 tenant_key=test_user.tenant_key,
-                is_active=True
+                is_active=True,
             )
             session.add(product)
 
@@ -67,7 +63,7 @@ class TestLaunchProjectPassesUserIdToService:
                 mission="Test mission",
                 status="inactive",
                 tenant_key=test_user.tenant_key,
-                product_id=product.id
+                product_id=product.id,
             )
             session.add(project)
 
@@ -79,9 +75,9 @@ class TestLaunchProjectPassesUserIdToService:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Test template content for implementer agent",
+                system_instructions="Test template content for implementer agent",
                 is_active=True,
-                category="role"
+                category="role",
             )
             session.add(template)
 
@@ -91,27 +87,26 @@ class TestLaunchProjectPassesUserIdToService:
 
         # Create auth token for test user
         token = JWTManager.create_access_token(
-            user_id=test_user.id,
-            username=test_user.username,
-            role=test_user.role,
-            tenant_key=test_user.tenant_key
+            user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
         )
 
         # Create mock service to capture launch_project arguments
         mock_service = AsyncMock()
-        mock_service.launch_project = AsyncMock(return_value={
-            "success": True,
-            "data": {
-                "project_id": project_id,
-                "orchestrator_job_id": str(uuid4()),
-                "launch_prompt": "Mock prompt",
-                "status": "active"
+        mock_service.launch_project = AsyncMock(
+            return_value={
+                "success": True,
+                "data": {
+                    "project_id": project_id,
+                    "orchestrator_job_id": str(uuid4()),
+                    "launch_prompt": "Mock prompt",
+                    "status": "active",
+                },
             }
-        })
+        )
 
         # Override the dependency to inject our mock
-        from api.endpoints.projects.dependencies import get_project_service
         from api.app import app
+        from api.endpoints.projects.dependencies import get_project_service
 
         def override_project_service():
             return mock_service
@@ -120,10 +115,7 @@ class TestLaunchProjectPassesUserIdToService:
 
         try:
             # Act: Launch project as authenticated user
-            response = await api_client.post(
-                f"/api/v1/projects/{project_id}/launch",
-                cookies={"access_token": token}
-            )
+            response = await api_client.post(f"/api/v1/projects/{project_id}/launch", cookies={"access_token": token})
 
             # Assert: Response successful
             assert response.status_code == 200, f"Launch failed: {response.json()}"
@@ -150,10 +142,7 @@ class TestLaunchProjectWithFullAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_launch_with_full_agent_templates_includes_fetch_instruction(
-        self,
-        api_client: AsyncClient,
-        db_manager,
-        test_user
+        self, api_client: AsyncClient, db_manager, test_user
     ):
         """
         Test: When user has depth_config = {"agent_templates": "full"}, orchestrator
@@ -165,10 +154,11 @@ class TestLaunchProjectWithFullAgentTemplates:
         - Orchestrator must call fetch_context(categories=["agent_templates"]) to get full content
         - Minimal inline templates still present in agent_templates list
         """
-        from src.giljo_mcp.models import Product, Project, AgentTemplate
-        from src.giljo_mcp.models.agent_identity import AgentJob
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
         from sqlalchemy import update
+
+        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from src.giljo_mcp.models import AgentTemplate, Product, Project
+        from src.giljo_mcp.models.agent_identity import AgentJob
 
         # Setup: Update test user's depth_config to request full agent templates
         async with db_manager.get_session_async() as session:
@@ -177,12 +167,14 @@ class TestLaunchProjectWithFullAgentTemplates:
             await session.execute(
                 update(User)
                 .where(User.id == test_user.id)
-                .values(depth_config={
-                    "vision_documents": "medium",
-                    "memory_360": 3,
-                    "git_history": 25,
-                    "agent_templates": "full",  # USER WANTS FULL TEMPLATES
-                })
+                .values(
+                    depth_config={
+                        "vision_documents": "medium",
+                        "memory_360": 3,
+                        "git_history": 25,
+                        "agent_templates": "full",  # USER WANTS FULL TEMPLATES
+                    }
+                )
             )
             await session.commit()
 
@@ -192,7 +184,7 @@ class TestLaunchProjectWithFullAgentTemplates:
                 name="Test Product",
                 description="Test product",
                 tenant_key=test_user.tenant_key,
-                is_active=True
+                is_active=True,
             )
             session.add(product)
 
@@ -203,7 +195,7 @@ class TestLaunchProjectWithFullAgentTemplates:
                 mission="Test mission",
                 status="inactive",
                 tenant_key=test_user.tenant_key,
-                product_id=product.id
+                product_id=product.id,
             )
             session.add(project)
 
@@ -215,9 +207,9 @@ class TestLaunchProjectWithFullAgentTemplates:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist for TDD workflows",
-                template_content="# Test Implementer Agent\n\nYou are a test implementation specialist...",
+                system_instructions="# Test Implementer Agent\n\nYou are a test implementation specialist...",
                 is_active=True,
-                category="role"
+                category="role",
             )
             session.add(template)
 
@@ -227,17 +219,11 @@ class TestLaunchProjectWithFullAgentTemplates:
 
         # Create auth token
         token = JWTManager.create_access_token(
-            user_id=test_user.id,
-            username=test_user.username,
-            role=test_user.role,
-            tenant_key=test_user.tenant_key
+            user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
         )
 
         # Act: Launch project
-        response = await api_client.post(
-            f"/api/v1/projects/{project_id}/launch",
-            cookies={"access_token": token}
-        )
+        response = await api_client.post(f"/api/v1/projects/{project_id}/launch", cookies={"access_token": token})
 
         # Assert: Launch successful
         assert response.status_code == 200, f"Launch failed: {response.json()}"
@@ -249,9 +235,7 @@ class TestLaunchProjectWithFullAgentTemplates:
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            result = await session.execute(
-                select(AgentJob).where(AgentJob.job_id == orchestrator_job_id)
-            )
+            result = await session.execute(select(AgentJob).where(AgentJob.job_id == orchestrator_job_id))
             orchestrator_job = result.scalar_one_or_none()
 
             assert orchestrator_job is not None, "Orchestrator job not created"
@@ -265,20 +249,16 @@ class TestLaunchProjectWithFullAgentTemplates:
             assert job_metadata["user_id"] == test_user.id
 
             # Get orchestrator instructions via ToolAccessor (simulates MCP tool call)
-            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
             tenant_manager = TenantManager()
             tenant_manager.set_current_tenant(test_user.tenant_key)
 
-            tool_accessor = ToolAccessor(
-                db_manager=db_manager,
-                tenant_manager=tenant_manager
-            )
+            tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
             instructions = await tool_accessor.get_orchestrator_instructions(
-                job_id=orchestrator_job_id,
-                tenant_key=test_user.tenant_key
+                job_id=orchestrator_job_id, tenant_key=test_user.tenant_key
             )
 
             # Assert: Minimal inline templates should always be present
@@ -292,7 +272,7 @@ class TestLaunchProjectWithFullAgentTemplates:
                 assert "role" in template
                 assert "description" in template
                 # Should NOT have full content in inline version
-                assert "template_content" not in template
+                assert "system_instructions" not in template
 
             # Assert: context_fetch_instructions should include agent_templates
             fetch_instructions = instructions.get("context_fetch_instructions", {})
@@ -327,10 +307,7 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_launch_with_type_only_agent_templates_skips_fetch(
-        self,
-        api_client: AsyncClient,
-        db_manager,
-        test_user
+        self, api_client: AsyncClient, db_manager, test_user
     ):
         """
         Test: When user has depth_config = {"agent_templates": "type_only"}, orchestrator
@@ -341,9 +318,10 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
         - context_fetch_instructions does NOT include agent_templates
         - Minimal inline templates still present (sufficient for type_only)
         """
-        from src.giljo_mcp.models import Product, Project, AgentTemplate
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
         from sqlalchemy import update
+
+        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from src.giljo_mcp.models import AgentTemplate, Product, Project
 
         # Setup: Update test user's depth_config to request type_only
         async with db_manager.get_session_async() as session:
@@ -352,12 +330,14 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
             await session.execute(
                 update(User)
                 .where(User.id == test_user.id)
-                .values(depth_config={
-                    "vision_documents": "medium",
-                    "memory_360": 3,
-                    "git_history": 25,
-                    "agent_templates": "type_only",  # USER WANTS MINIMAL TEMPLATES
-                })
+                .values(
+                    depth_config={
+                        "vision_documents": "medium",
+                        "memory_360": 3,
+                        "git_history": 25,
+                        "agent_templates": "type_only",  # USER WANTS MINIMAL TEMPLATES
+                    }
+                )
             )
             await session.commit()
 
@@ -367,7 +347,7 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
                 name="Test Product",
                 description="Test product",
                 tenant_key=test_user.tenant_key,
-                is_active=True
+                is_active=True,
             )
             session.add(product)
 
@@ -378,7 +358,7 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
                 mission="Test mission",
                 status="inactive",
                 tenant_key=test_user.tenant_key,
-                product_id=product.id
+                product_id=product.id,
             )
             session.add(project)
 
@@ -390,9 +370,9 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Full template content here",
+                system_instructions="Full template content here",
                 is_active=True,
-                category="role"
+                category="role",
             )
             session.add(template)
 
@@ -402,17 +382,11 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
 
         # Create auth token
         token = JWTManager.create_access_token(
-            user_id=test_user.id,
-            username=test_user.username,
-            role=test_user.role,
-            tenant_key=test_user.tenant_key
+            user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
         )
 
         # Act: Launch project
-        response = await api_client.post(
-            f"/api/v1/projects/{project_id}/launch",
-            cookies={"access_token": token}
-        )
+        response = await api_client.post(f"/api/v1/projects/{project_id}/launch", cookies={"access_token": token})
 
         # Assert: Launch successful
         assert response.status_code == 200, f"Launch failed: {response.json()}"
@@ -422,20 +396,16 @@ class TestLaunchProjectWithTypeOnlyAgentTemplates:
 
         # Verify orchestrator instructions
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
             tenant_manager = TenantManager()
             tenant_manager.set_current_tenant(test_user.tenant_key)
 
-            tool_accessor = ToolAccessor(
-                db_manager=db_manager,
-                tenant_manager=tenant_manager
-            )
+            tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
             instructions = await tool_accessor.get_orchestrator_instructions(
-                job_id=orchestrator_job_id,
-                tenant_key=test_user.tenant_key
+                job_id=orchestrator_job_id, tenant_key=test_user.tenant_key
             )
 
             # Assert: Minimal inline templates should be present
@@ -472,12 +442,7 @@ class TestLaunchProjectRespectsUserDepthConfig:
     """Test that user's depth config overrides system defaults"""
 
     @pytest.mark.asyncio
-    async def test_user_full_overrides_default_type_only(
-        self,
-        api_client: AsyncClient,
-        db_manager,
-        test_user
-    ):
+    async def test_user_full_overrides_default_type_only(self, api_client: AsyncClient, db_manager, test_user):
         """
         Test: User's depth_config should override DEFAULT_DEPTH_CONFIG.
 
@@ -486,9 +451,10 @@ class TestLaunchProjectRespectsUserDepthConfig:
         - User sets agent_templates = "full"
         - Fetch instructions should include agent_templates (user override applied)
         """
-        from src.giljo_mcp.models import Product, Project, AgentTemplate
-        from src.giljo_mcp.auth.jwt_manager import JWTManager
         from sqlalchemy import update
+
+        from src.giljo_mcp.auth.jwt_manager import JWTManager
+        from src.giljo_mcp.models import AgentTemplate, Product, Project
 
         # Setup: Set user's preference to FULL (opposite of default)
         async with db_manager.get_session_async() as session:
@@ -496,6 +462,7 @@ class TestLaunchProjectRespectsUserDepthConfig:
 
             # Verify default is "type_only"
             from src.giljo_mcp.tools.context_tools.fetch_context import DEFAULT_DEPTHS
+
             assert DEFAULT_DEPTHS.get("agent_templates") == "type_only", (
                 "Test assumption broken: DEFAULT_DEPTHS changed"
             )
@@ -504,12 +471,14 @@ class TestLaunchProjectRespectsUserDepthConfig:
             await session.execute(
                 update(User)
                 .where(User.id == test_user.id)
-                .values(depth_config={
-                    "vision_documents": "medium",
-                    "memory_360": 3,
-                    "git_history": 25,
-                    "agent_templates": "full",  # OVERRIDE DEFAULT
-                })
+                .values(
+                    depth_config={
+                        "vision_documents": "medium",
+                        "memory_360": 3,
+                        "git_history": 25,
+                        "agent_templates": "full",  # OVERRIDE DEFAULT
+                    }
+                )
             )
             await session.commit()
 
@@ -519,7 +488,7 @@ class TestLaunchProjectRespectsUserDepthConfig:
                 name="Test Product",
                 description="Test product",
                 tenant_key=test_user.tenant_key,
-                is_active=True
+                is_active=True,
             )
             session.add(product)
 
@@ -530,7 +499,7 @@ class TestLaunchProjectRespectsUserDepthConfig:
                 mission="Test mission",
                 status="inactive",
                 tenant_key=test_user.tenant_key,
-                product_id=product.id
+                product_id=product.id,
             )
             session.add(project)
 
@@ -542,9 +511,9 @@ class TestLaunchProjectRespectsUserDepthConfig:
                 name="test-implementer",
                 role="implementer",
                 description="Test implementation specialist",
-                template_content="Full template content for testing",
+                system_instructions="Full template content for testing",
                 is_active=True,
-                category="role"
+                category="role",
             )
             session.add(template)
 
@@ -554,17 +523,11 @@ class TestLaunchProjectRespectsUserDepthConfig:
 
         # Create auth token
         token = JWTManager.create_access_token(
-            user_id=test_user.id,
-            username=test_user.username,
-            role=test_user.role,
-            tenant_key=test_user.tenant_key
+            user_id=test_user.id, username=test_user.username, role=test_user.role, tenant_key=test_user.tenant_key
         )
 
         # Act: Launch project
-        response = await api_client.post(
-            f"/api/v1/projects/{project_id}/launch",
-            cookies={"access_token": token}
-        )
+        response = await api_client.post(f"/api/v1/projects/{project_id}/launch", cookies={"access_token": token})
 
         # Assert: Launch successful
         assert response.status_code == 200, f"Launch failed: {response.json()}"
@@ -574,20 +537,16 @@ class TestLaunchProjectRespectsUserDepthConfig:
 
         # Verify user's setting was applied (not default)
         async with db_manager.get_session_async() as session:
-            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
             from src.giljo_mcp.tenant import TenantManager
+            from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
             tenant_manager = TenantManager()
             tenant_manager.set_current_tenant(test_user.tenant_key)
 
-            tool_accessor = ToolAccessor(
-                db_manager=db_manager,
-                tenant_manager=tenant_manager
-            )
+            tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
             instructions = await tool_accessor.get_orchestrator_instructions(
-                job_id=orchestrator_job_id,
-                tenant_key=test_user.tenant_key
+                job_id=orchestrator_job_id, tenant_key=test_user.tenant_key
             )
 
             # Assert: Should use user's "full" setting (not default "type_only")

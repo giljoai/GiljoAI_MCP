@@ -8,7 +8,6 @@ CRITICAL SAFETY: This module includes guards to prevent accidental production da
 """
 
 import asyncio
-import os
 import re
 from typing import Optional
 
@@ -74,7 +73,7 @@ def validate_connection_string(url: str) -> None:
     # Extract database name from URL patterns like:
     # postgresql://user:pass@host:port/dbname
     # postgresql+asyncpg://user:pass@host:port/dbname
-    match = re.search(r'/([^/?]+)(?:\?|$)', url)
+    match = re.search(r"/([^/?]+)(?:\?|$)", url)
     if match:
         db_name = match.group(1)
         validate_database_name(db_name)
@@ -125,11 +124,15 @@ class PostgreSQLTestHelper:
         config["database"] = database
 
         url = (
-            f"postgresql+asyncpg://{config['username']}:{config['password']}"
-            f"@{config['host']}:{config['port']}/{config['database']}"
-        ) if async_driver else (
-            f"postgresql://{config['username']}:{config['password']}"
-            f"@{config['host']}:{config['port']}/{config['database']}"
+            (
+                f"postgresql+asyncpg://{config['username']}:{config['password']}"
+                f"@{config['host']}:{config['port']}/{config['database']}"
+            )
+            if async_driver
+            else (
+                f"postgresql://{config['username']}:{config['password']}"
+                f"@{config['host']}:{config['port']}/{config['database']}"
+            )
         )
 
         return url
