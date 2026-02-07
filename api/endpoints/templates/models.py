@@ -31,8 +31,8 @@ class TemplateCreate(BaseModel):
     behavioral_rules: Optional[list[str]] = Field(default_factory=list)
     success_criteria: Optional[list[str]] = Field(default_factory=list)
     tags: Optional[list[str]] = Field(default_factory=list)
-    is_default: bool = Field(False, description="Set as default for this role")
-    is_active: bool = Field(False, description="Set template as active")
+    is_default: bool = Field(default=False, description="Set as default for this role")
+    is_active: bool = Field(default=False, description="Set template as active")
     # Legacy fields
     category: Optional[str] = Field(None, description="Template category (deprecated)")
     project_type: Optional[str] = Field(None, description="Project type (deprecated)")
@@ -102,8 +102,8 @@ class TemplateResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     # Export tracking (Handover 0335)
-    last_exported_at: Optional[datetime] = Field(None, description="Timestamp of last export to CLI")
-    may_be_stale: bool = Field(False, description="True if template modified after last export")
+    last_exported_at: Optional[datetime] = Field(default=None, description="Timestamp of last export to CLI")
+    may_be_stale: bool = Field(default=False, description="True if template modified after last export")
     # Legacy fields
     category: Optional[str] = None
     project_type: Optional[str] = None
@@ -113,7 +113,7 @@ class TemplateResponse(BaseModel):
     avg_generation_ms: Optional[float] = None
     created_by: Optional[str] = None
     preferred_tool: str = "claude"
-    is_system_role: bool = Field(False, description="True when template is system managed")
+    is_system_role: bool = Field(default=False, description="True when template is system managed")
 
 
 class TemplateHistoryResponse(BaseModel):

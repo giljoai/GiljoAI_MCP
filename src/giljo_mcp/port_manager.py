@@ -147,22 +147,19 @@ class PortManager:
                 services = data["services"]
 
                 # API port from services.api.port
-                if "api" in services and isinstance(services["api"], dict):
-                    if "port" in services["api"]:
-                        self.config.api_port = services["api"]["port"]
-                        logger.debug(f"Loaded API port from services config: {self.config.api_port}")
+                if "api" in services and isinstance(services["api"], dict) and "port" in services["api"]:
+                    self.config.api_port = services["api"]["port"]
+                    logger.debug(f"Loaded API port from services config: {self.config.api_port}")
 
                 # Frontend port from services.frontend.port
-                if "frontend" in services and isinstance(services["frontend"], dict):
-                    if "port" in services["frontend"]:
-                        self.config.frontend_port = services["frontend"]["port"]
-                        logger.debug(f"Loaded frontend port from services config: {self.config.frontend_port}")
+                if "frontend" in services and isinstance(services["frontend"], dict) and "port" in services["frontend"]:
+                    self.config.frontend_port = services["frontend"]["port"]
+                    logger.debug(f"Loaded frontend port from services config: {self.config.frontend_port}")
 
                 # PostgreSQL port from database.port (if in services section)
-                if "database" in data and isinstance(data["database"], dict):
-                    if "port" in data["database"]:
-                        self.config.postgres_port = data["database"]["port"]
-                        logger.debug(f"Loaded PostgreSQL port from database config: {self.config.postgres_port}")
+                if "database" in data and isinstance(data["database"], dict) and "port" in data["database"]:
+                    self.config.postgres_port = data["database"]["port"]
+                    logger.debug(f"Loaded PostgreSQL port from database config: {self.config.postgres_port}")
 
                 logger.info(f"Loaded port configuration from {self.config_path}")
                 return True
@@ -185,9 +182,8 @@ class PortManager:
                 # Frontend port
                 if "frontend_port" in server:
                     self.config.frontend_port = server["frontend_port"]
-                elif "dashboard" in server and isinstance(server["dashboard"], dict):
-                    if "port" in server["dashboard"]:
-                        self.config.frontend_port = server["dashboard"]["port"]
+                elif "dashboard" in server and isinstance(server["dashboard"], dict) and "port" in server["dashboard"]:
+                    self.config.frontend_port = server["dashboard"]["port"]
 
                 logger.info(f"Loaded port configuration from {self.config_path}")
                 return True

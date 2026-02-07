@@ -100,13 +100,11 @@ def configure_logging(
 
     # Production: JSON output
     if environment == "production" or force_json:
-        processors = shared_processors + [
-            structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer(),
-        ]
+        processors = [*shared_processors, structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
     # Development: Console output with colors
     else:
-        processors = shared_processors + [
+        processors = [
+            *shared_processors,
             structlog.processors.format_exc_info,
             structlog.dev.ConsoleRenderer(colors=True),
         ]

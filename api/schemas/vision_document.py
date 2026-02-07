@@ -31,11 +31,11 @@ class VisionDocumentCreate(BaseModel):
         "vision",
         description="Document category: vision, architecture, features, setup, api, testing, deployment, custom",
     )
-    content: str | None = Field(None, description="Inline document content (for inline or hybrid storage)")
-    storage_type: str = Field("inline", description="Storage mode: file, inline, hybrid")
-    auto_chunk: bool = Field(True, description="Automatically chunk document after creation")
-    display_order: int = Field(0, description="Display order in UI (lower numbers first)")
-    version: str = Field("1.0.0", description="Semantic version")
+    content: str | None = Field(default=None, description="Inline document content (for inline or hybrid storage)")
+    storage_type: str = Field(default="inline", description="Storage mode: file, inline, hybrid")
+    auto_chunk: bool = Field(default=True, description="Automatically chunk document after creation")
+    display_order: int = Field(default=0, description="Display order in UI (lower numbers first)")
+    version: str = Field(default="1.0.0", description="Semantic version")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,7 +51,7 @@ class VisionDocumentUpdate(BaseModel):
     """
 
     content: str = Field(..., description="New document content")
-    auto_rechunk: bool = Field(True, description="Automatically re-chunk after update")
+    auto_rechunk: bool = Field(default=True, description="Automatically re-chunk after update")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -88,13 +88,13 @@ class VisionDocumentResponse(BaseModel):
     meta_data: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     # Summary fields (Handover 0246b: light/medium only, percentage-based)
-    is_summarized: bool = Field(False, description="Whether summaries have been generated")
-    summary_light: str | None = Field(None, description="Light summary (33% of original)")
-    summary_medium: str | None = Field(None, description="Medium summary (66% of original)")
-    summary_light_tokens: int | None = Field(None, description="Token count for light summary")
-    summary_medium_tokens: int | None = Field(None, description="Token count for medium summary")
-    original_token_count: int | None = Field(None, description="Original document token count")
-    has_summaries: bool = Field(False, description="Whether summaries have been generated (computed)")
+    is_summarized: bool = Field(default=False, description="Whether summaries have been generated")
+    summary_light: str | None = Field(default=None, description="Light summary (33% of original)")
+    summary_medium: str | None = Field(default=None, description="Medium summary (66% of original)")
+    summary_light_tokens: int | None = Field(default=None, description="Token count for light summary")
+    summary_medium_tokens: int | None = Field(default=None, description="Token count for medium summary")
+    original_token_count: int | None = Field(default=None, description="Original document token count")
+    has_summaries: bool = Field(default=False, description="Whether summaries have been generated (computed)")
 
     model_config = ConfigDict(from_attributes=True)
 
