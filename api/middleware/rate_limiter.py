@@ -35,7 +35,7 @@ class RateLimiter:
         """
         self.requests_per_minute = requests_per_minute
         self.window_size = 60  # 1 minute in seconds
-        self.requests: Dict[str, Deque[float]] = defaultdict(deque)
+        self.requests: dict[str, deque[float]] = defaultdict(deque)
         logger.debug(f"RateLimiter initialized: {requests_per_minute} req/min")
 
     def is_allowed(self, key: str) -> bool:

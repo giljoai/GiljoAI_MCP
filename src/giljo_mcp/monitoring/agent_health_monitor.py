@@ -111,7 +111,7 @@ class AgentHealthMonitor:
 
         logger.debug("Health check cycle completed")
 
-    async def _scan_tenant_jobs(self, session: AsyncSession, tenant_key: str) -> List[AgentHealthStatus]:
+    async def _scan_tenant_jobs(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Scan all jobs for a tenant and detect unhealthy states.
 
@@ -138,7 +138,7 @@ class AgentHealthMonitor:
 
         return unhealthy
 
-    async def _detect_waiting_timeouts(self, session: AsyncSession, tenant_key: str) -> List[AgentHealthStatus]:
+    async def _detect_waiting_timeouts(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find jobs stuck in 'waiting' state.
 
@@ -215,7 +215,7 @@ class AgentHealthMonitor:
             for execution in executions
         ]
 
-    async def _detect_stalled_jobs(self, session: AsyncSession, tenant_key: str) -> List[AgentHealthStatus]:
+    async def _detect_stalled_jobs(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find active jobs without progress updates.
 
@@ -302,7 +302,7 @@ class AgentHealthMonitor:
 
         return stalled
 
-    async def _detect_heartbeat_failures(self, session: AsyncSession, tenant_key: str) -> List[AgentHealthStatus]:
+    async def _detect_heartbeat_failures(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find jobs with extended silence (heartbeat timeout).
 
@@ -484,7 +484,7 @@ class AgentHealthMonitor:
         valid_timestamps = [ts for ts in candidates if ts is not None]
         return max(valid_timestamps) if valid_timestamps else datetime.now(timezone.utc)
 
-    async def _get_all_tenants(self, session: AsyncSession) -> List[str]:
+    async def _get_all_tenants(self, session: AsyncSession) -> list[str]:
         """
         Get list of all tenant keys.
 

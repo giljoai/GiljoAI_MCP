@@ -28,18 +28,18 @@ class PromptRecord:
 
     content: str
     is_override: bool
-    updated_at: Optional[datetime]
-    updated_by: Optional[str]
+    updated_at: datetime | None
+    updated_by: str | None
 
 
 class SystemPromptService:
     """Provide default + override-aware access to system prompts."""
 
-    def __init__(self, db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, db_manager: DatabaseManager | None = None):
         self.db_manager = db_manager
-        self._default_orchestrator_prompt: Optional[str] = None
+        self._default_orchestrator_prompt: str | None = None
 
-    async def get_orchestrator_prompt(self, session: Optional[AsyncSession] = None) -> PromptRecord:
+    async def get_orchestrator_prompt(self, session: AsyncSession | None = None) -> PromptRecord:
         """
         Fetch orchestrator prompt with override metadata.
 
@@ -70,7 +70,7 @@ class SystemPromptService:
         )
 
     async def update_orchestrator_prompt(
-        self, *, content: str, updated_by: str, session: Optional[AsyncSession] = None
+        self, *, content: str, updated_by: str, session: AsyncSession | None = None
     ) -> PromptRecord:
         """Persist an administrator override for the orchestrator prompt."""
         self._ensure_db_manager()
@@ -91,7 +91,7 @@ class SystemPromptService:
             await self._upsert_override(db_session, payload)
             return await self.get_orchestrator_prompt(session=db_session)
 
-    async def reset_orchestrator_prompt(self, session: Optional[AsyncSession] = None) -> PromptRecord:
+    async def reset_orchestrator_prompt(self, session: AsyncSession | None = None) -> PromptRecord:
         """Delete any existing override and return the default prompt."""
         self._ensure_db_manager()
 
@@ -114,7 +114,7 @@ class SystemPromptService:
         if len(content.encode("utf-8")) > MAX_PROMPT_BYTES:
             raise ValueError(f"Prompt content exceeds {MAX_PROMPT_BYTES / 1024:.0f}KB limit")
 
-    async def _fetch_override(self, session: AsyncSession) -> Optional[dict]:
+    async def _fetch_override(self, session: AsyncSession) -> dict | None:
         stmt = select(Configuration).where(
             Configuration.tenant_key.is_(None), Configuration.key == DEFAULT_ORCHESTRATOR_CONFIG_KEY
         )

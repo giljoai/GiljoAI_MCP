@@ -575,9 +575,11 @@
       ],
       "scope": "Auto-fix 708 lint issues, then manual cleanup: ERA001 (commented code), BLE001 (blind except), B904 (raise from), T201 (prints)",
       "started_at": "2026-02-07T04:00:00Z",
-      "completed_at": "2026-02-07T04:33:00Z",
+      "completed_at": "2026-02-07T04:32:54Z",
       "worker_session_id": "current",
-      "docs_updated": [".ruff.toml"],
+      "docs_updated": [
+        ".ruff.toml"
+      ],
       "spec_file": "handovers/0700_series/0707_LINT.md",
       "kickoff_file": "handovers/0700_series/kickoff_prompts/0707_LINT_kickoff.md",
       "validation_required": true,
@@ -590,11 +592,11 @@
       },
       "actual_results": {
         "auto_fixed": 734,
-        "era001_reduced": "278 → 20 (93%)",
-        "ble001_reduced": "233 → 0 (100%)",
-        "b904_reduced": "152 → 0 (100%)",
-        "t201_reduced": "37 → 0 (100%)",
-        "total_reduction": "700 → 20 (97%)",
+        "era001_reduced": "278 \u00e2\u2020\u2019 20 (93%)",
+        "ble001_reduced": "233 \u00e2\u2020\u2019 0 (100%)",
+        "b904_reduced": "152 \u00e2\u2020\u2019 0 (100%)",
+        "t201_reduced": "37 \u00e2\u2020\u2019 0 (100%)",
+        "total_reduction": "700 \u00e2\u2020\u2019 20 (97%)",
         "files_modified": 86,
         "commits": [
           "2f9c9ae0 - Auto-fix lint issues",
@@ -605,14 +607,14 @@
     {
       "id": "0708-TYPES",
       "title": "Type Hint Modernization",
-      "status": "pending",
+      "status": "in_progress",
       "effort_hours": "3-4",
       "priority": "MEDIUM",
       "dependencies": [
         "0707-LINT"
       ],
       "scope": "PEP 585+ annotations (List->list), remove deprecated typing imports, add return types, mypy prep",
-      "started_at": null,
+      "started_at": "2026-02-07T04:35:00Z",
       "completed_at": null,
       "worker_session_id": null,
       "docs_updated": [],

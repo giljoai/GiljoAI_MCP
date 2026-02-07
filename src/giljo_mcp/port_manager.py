@@ -36,8 +36,8 @@ class PortConfiguration:
     postgres_port: int = 5432
 
     # Alternative ports if preferred are occupied
-    api_alternatives: List[int] = None
-    frontend_alternatives: List[int] = None
+    api_alternatives: list[int] = None
+    frontend_alternatives: list[int] = None
 
     def __post_init__(self):
         """Initialize default alternatives if not provided"""
@@ -92,7 +92,7 @@ class PortManager:
             return False
 
     @staticmethod
-    def find_available_port(preferred: int, alternatives: Optional[List[int]] = None) -> int:
+    def find_available_port(preferred: int, alternatives: Optional[list[int]] = None) -> int:
         """
         Find an available port, starting with preferred.
 
@@ -323,7 +323,7 @@ class PortManager:
         """
         return self.config.postgres_port
 
-    def validate_ports(self) -> List[str]:
+    def validate_ports(self) -> list[str]:
         """
         Validate port configuration for conflicts and issues.
 

@@ -94,7 +94,7 @@ class SerenaOptimizer:
         self.token_tracker = TokenUsageTracker()
         self.default_rules = self._create_default_rules()
 
-    def _create_default_rules(self) -> Dict[OperationType, OptimizationRule]:
+    def _create_default_rules(self) -> dict[OperationType, OptimizationRule]:
         """Create default optimization rules"""
 
         return {
@@ -163,7 +163,7 @@ Only use read_file() for:
             ),
         }
 
-    async def get_optimization_rules(self) -> Dict[OperationType, OptimizationRule]:
+    async def get_optimization_rules(self) -> dict[OperationType, OptimizationRule]:
         """
         Get optimization rules, preferring database rules with default fallback
         """
@@ -204,8 +204,8 @@ Only use read_file() for:
             return self.default_rules.copy()
 
     def adjust_rules_for_context(
-        self, rules: Dict[OperationType, OptimizationRule], context_data: Dict[str, Any]
-    ) -> Dict[OperationType, OptimizationRule]:
+        self, rules: dict[OperationType, OptimizationRule], context_data: dict[str, Any]
+    ) -> dict[OperationType, OptimizationRule]:
         """
         Adjust optimization rules based on project context
         """
@@ -240,7 +240,7 @@ Only use read_file() for:
 
         return adjusted_rules
 
-    async def create_optimization_augmentation(self, role: str, context_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_optimization_augmentation(self, role: str, context_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create template augmentation with optimization rules
         """
@@ -274,7 +274,7 @@ Only use read_file() for:
             }
 
     def _generate_optimization_content(
-        self, rules: Dict[OperationType, OptimizationRule], context_data: Dict[str, Any]
+        self, rules: dict[OperationType, OptimizationRule], context_data: dict[str, Any]
     ) -> str:
         """Generate optimization guidance content"""
 
@@ -376,7 +376,7 @@ ALWAYS prefer this workflow:
             logger.error(f"Failed to record optimization operation: {e}")
             # Don't raise - tracking failures shouldn't break operations
 
-    async def generate_savings_report(self, agent_id: str) -> Dict[str, Any]:
+    async def generate_savings_report(self, agent_id: str) -> dict[str, Any]:
         """Generate comprehensive context-usage analytics report for agent"""
 
         try:

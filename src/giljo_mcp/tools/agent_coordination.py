@@ -73,7 +73,7 @@ async def spawn_agent(
     agent_display_name: str,
     tenant_key: str,
     spawned_by_agent_id: str = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Spawn NEW executor for EXISTING job (Handover 0366c).
 
@@ -241,7 +241,7 @@ async def spawn_agent(
         }
 
 
-async def get_agent_status(agent_id: str, tenant_key: str) -> Dict[str, Any]:
+async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
     """
     Get status for SPECIFIC executor instance (Handover 0366c).
 
@@ -384,7 +384,7 @@ async def get_team_agents(
     job_id: str,
     tenant_key: str,
     include_inactive: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     List agent executions (teammates) associated with this job.
 

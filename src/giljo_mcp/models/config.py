@@ -363,7 +363,7 @@ class SetupState(Base):
         ),
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize SetupState to dictionary.
 

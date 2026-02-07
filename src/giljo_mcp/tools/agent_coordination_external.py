@@ -146,10 +146,10 @@ class ExternalAgentCoordinationTools:
         self,
         method: str,
         endpoint: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         retry_count: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Make HTTP request with authentication and retry logic.
 
@@ -282,9 +282,9 @@ class ExternalAgentCoordinationTools:
         self,
         agent_display_name: str,
         mission: str,
-        context_chunks: Optional[List[str]] = None,
+        context_chunks: Optional[list[str]] = None,
         spawned_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new agent job via POST /api/agent-jobs.
 
@@ -339,8 +339,8 @@ class ExternalAgentCoordinationTools:
         return response
 
     async def send_agent_message(
-        self, job_id: str, role: str, message_type: str, content: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, job_id: str, role: str, message_type: str, content: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Send message to agent job via POST /api/agent-jobs/{job_id}/messages.
 
@@ -391,7 +391,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def get_agent_job_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_agent_job_status(self, job_id: str) -> dict[str, Any]:
         """
         Get agent job status via GET /api/agent-jobs/{job_id}.
 
@@ -431,7 +431,7 @@ class ExternalAgentCoordinationTools:
             return {"status": "success", "job": response}
         return response
 
-    async def acknowledge_agent_job(self, job_id: str) -> Dict[str, Any]:
+    async def acknowledge_agent_job(self, job_id: str) -> dict[str, Any]:
         """
         Acknowledge agent job via POST /api/agent-jobs/{job_id}/acknowledge.
 
@@ -474,7 +474,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def complete_agent_job(self, job_id: str, result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def complete_agent_job(self, job_id: str, result: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Complete agent job via POST /api/agent-jobs/{job_id}/complete.
 
@@ -521,7 +521,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def fail_agent_job(self, job_id: str, error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def fail_agent_job(self, job_id: str, error: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Fail agent job via POST /api/agent-jobs/{job_id}/fail.
 
@@ -565,7 +565,7 @@ class ExternalAgentCoordinationTools:
 
     async def list_active_agent_jobs(
         self, status: Optional[str] = None, agent_display_name: Optional[str] = None, limit: int = 100
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         List active agent jobs via GET /api/agent-jobs.
 

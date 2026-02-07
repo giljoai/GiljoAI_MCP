@@ -41,14 +41,14 @@ class AIToolConfigResponse(BaseModel):
     config_format: str = Field(..., description="Configuration format (json/yaml)")
     config_content: str = Field(..., description="Configuration content as string")
     file_location: str = Field(..., description="Where to save the config file")
-    instructions: List[str] = Field(..., description="Step-by-step setup instructions")
+    instructions: list[str] = Field(..., description="Step-by-step setup instructions")
     download_filename: str = Field(..., description="Filename for markdown guide download")
 
 
 class SupportedToolsResponse(BaseModel):
     """Response listing all supported AI tools."""
 
-    tools: List[AIToolInfo]
+    tools: list[AIToolInfo]
 
 
 # Configuration Templates
@@ -106,7 +106,7 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     return f'gemini mcp add -t http -H "X-API-Key: {api_key}" giljo-mcp {server_url}/mcp'
 
 
-def get_http_tool_instructions(tool_id: str) -> List[str]:
+def get_http_tool_instructions(tool_id: str) -> list[str]:
     """
     Get HTTP transport setup instructions for a specific tool.
 

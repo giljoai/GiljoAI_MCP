@@ -69,7 +69,7 @@ class WorkflowEngine:
     async def execute_workflow(
         self,
         workflow_type: str,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -120,7 +120,7 @@ class WorkflowEngine:
 
     async def _execute_waterfall(
         self,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -141,8 +141,8 @@ class WorkflowEngine:
         Returns:
             WorkflowResult with execution status
         """
-        completed_stages: List[StageResult] = []
-        failed_stages: List[str] = []
+        completed_stages: list[StageResult] = []
+        failed_stages: list[str] = []
 
         # Handle empty stages
         if not stages:
@@ -197,7 +197,7 @@ class WorkflowEngine:
 
     async def _execute_parallel(
         self,
-        stages: List[WorkflowStage],
+        stages: list[WorkflowStage],
         tenant_key: str,
         project_id: str,
     ) -> WorkflowResult:
@@ -234,8 +234,8 @@ class WorkflowEngine:
             stage_tasks.append((stage, task))
 
         # Execute all stages concurrently and gather results
-        completed_stages: List[StageResult] = []
-        failed_stages: List[str] = []
+        completed_stages: list[StageResult] = []
+        failed_stages: list[str] = []
 
         results = await asyncio.gather(
             *[task for _, task in stage_tasks],
@@ -341,7 +341,7 @@ class WorkflowEngine:
         logger.info(f"Executing stage: {stage.name} with {len(stage.agents)} agents")
 
         start_time = time.time()
-        job_ids: List[str] = []
+        job_ids: list[str] = []
 
         # Spawn jobs for all agents in the stage
         for agent_config in stage.agents:
@@ -393,7 +393,7 @@ class WorkflowEngine:
     async def _dependencies_met(
         self,
         stage: WorkflowStage,
-        completed_stages: List[StageResult],
+        completed_stages: list[StageResult],
     ) -> bool:
         """
         Check if stage dependencies are satisfied.

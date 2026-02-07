@@ -81,7 +81,7 @@ class AuthService:
     # Authentication Methods
     # ============================================================================
 
-    async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
+    async def authenticate_user(self, username: str, password: str) -> dict[str, Any]:
         """
         Authenticate user and return user dict + JWT token.
 
@@ -121,7 +121,7 @@ class AuthService:
             self._logger.exception(f"Failed to authenticate user: {e}")
             raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
-    async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> Dict[str, Any]:
+    async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Find user by username
         stmt = select(User).where(User.username == username)
@@ -221,7 +221,7 @@ class AuthService:
     # Setup State Methods
     # ============================================================================
 
-    async def check_setup_state(self, tenant_key: str) -> Optional[Dict[str, Any]]:
+    async def check_setup_state(self, tenant_key: str) -> Optional[dict[str, Any]]:
         """
         Check setup state for tenant.
 
@@ -255,7 +255,7 @@ class AuthService:
             self._logger.exception(f"Failed to check setup state: {e}")
             raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}) from e
 
-    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> Optional[Dict[str, Any]]:
+    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> Optional[dict[str, Any]]:
         """Implementation that uses provided session"""
         stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         result = await session.execute(stmt)
@@ -274,7 +274,7 @@ class AuthService:
     # API Key Methods
     # ============================================================================
 
-    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> List[Dict[str, Any]]:
+    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> list[dict[str, Any]]:
         """
         List API keys for user.
 
@@ -310,7 +310,7 @@ class AuthService:
 
     async def _list_api_keys_impl(
         self, session: AsyncSession, user_id: str, include_revoked: bool
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Implementation that uses provided session"""
         if include_revoked:
             stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
@@ -340,7 +340,7 @@ class AuthService:
 
         return keys_list
 
-    async def create_api_key(self, user_id: str, tenant_key: str, name: str, permissions: List[str]) -> Dict[str, Any]:
+    async def create_api_key(self, user_id: str, tenant_key: str, name: str, permissions: list[str]) -> dict[str, Any]:
         """
         Create new API key for user.
 
@@ -383,8 +383,8 @@ class AuthService:
             ) from e
 
     async def _create_api_key_impl(
-        self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: List[str]
-    ) -> Dict[str, Any]:
+        self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: list[str]
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Generate new API key
         api_key = generate_api_key()
@@ -486,7 +486,7 @@ class AuthService:
         password: str,
         role: str,
         requesting_admin_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Register new user (admin-only operation).
 
@@ -543,7 +543,7 @@ class AuthService:
         requesting_admin_id: str,
         org_id: Optional[str] = None,
         org_role: str = "member",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         # Check for duplicate username
         stmt = select(User).where(User.username == username)
@@ -624,7 +624,7 @@ class AuthService:
 
     async def create_user_in_org(
         self, session: AsyncSession, admin_user_id: str, username: str, email: str, role: str, initial_password: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create user within admin's organization (Handover 0424g).
 
@@ -704,7 +704,7 @@ class AuthService:
         password: str,
         full_name: Optional[str],
         org_name: Optional[str] = "My Organization",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create first administrator account (fresh install only).
 
@@ -762,7 +762,7 @@ class AuthService:
         password: str,
         full_name: Optional[str],
         org_name: Optional[str] = "My Organization",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Implementation that uses provided session (Handover 0424h: accepts org_name)"""
         # Check if users already exist (must be fresh install)
         user_count_stmt = select(func.count(User.id))

@@ -27,7 +27,7 @@ def estimate_tokens(data: Any) -> int:
     return len(text) // 4
 
 
-async def get_testing(product_id: str, tenant_key: str, db_manager: Optional[DatabaseManager] = None) -> Dict[str, Any]:
+async def get_testing(product_id: str, tenant_key: str, db_manager: Optional[DatabaseManager] = None) -> dict[str, Any]:
     """
     Fetch testing strategy and quality standards (Testing).
 

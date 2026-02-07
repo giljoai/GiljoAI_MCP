@@ -124,7 +124,7 @@ class JSONRPCRequest(BaseModel):
 
     jsonrpc: str = Field("2.0", description="JSON-RPC version")
     method: str = Field(..., description="Method name")
-    params: Optional[Dict[str, Any]] = Field(None, description="Method parameters")
+    params: Optional[dict[str, Any]] = Field(None, description="Method parameters")
     id: Optional[str | int] = Field(None, description="Request ID")
 
 
@@ -156,8 +156,8 @@ class JSONRPCErrorResponse(BaseModel):
 
 
 async def handle_initialize(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+) -> dict[str, Any]:
     """
     Handle MCP initialize request
 
@@ -194,8 +194,8 @@ HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
 
 
 async def handle_tools_list(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+) -> dict[str, Any]:
     """
     Handle tools/list request
 
@@ -650,8 +650,8 @@ async def handle_tools_list(
 
 
 async def handle_tools_call(
-    params: Dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
-) -> Dict[str, Any]:
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
+) -> dict[str, Any]:
     """
     Handle tools/call request
 

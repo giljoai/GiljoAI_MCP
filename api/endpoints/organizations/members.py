@@ -35,7 +35,7 @@ def get_org_service(db: AsyncSession = Depends(get_db_session)) -> OrgService:
     return OrgService(db)
 
 
-@router.get("/{org_id}/members", response_model=List[MemberResponse])
+@router.get("/{org_id}/members", response_model=list[MemberResponse])
 async def list_members(
     org_id: str,
     current_user: User = Depends(get_current_active_user),

@@ -18,8 +18,8 @@ router = APIRouter()
 class OrchestratorPromptResponse(BaseModel):
     content: str = Field(..., description="Full orchestrator prompt content")
     is_override: bool = Field(..., description="True when an admin override is active")
-    updated_at: Optional[datetime] = Field(None, description="Override timestamp (if applicable)")
-    updated_by: Optional[str] = Field(None, description="Identifier for the admin who last updated the prompt")
+    updated_at: datetime | None = Field(None, description="Override timestamp (if applicable)")
+    updated_by: str | None = Field(None, description="Identifier for the admin who last updated the prompt")
 
 
 class OrchestratorPromptUpdateRequest(BaseModel):
