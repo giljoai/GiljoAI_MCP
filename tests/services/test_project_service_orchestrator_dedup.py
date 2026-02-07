@@ -5,12 +5,14 @@ Verifies that when a project is reactivated, the system does NOT create duplicat
 orchestrators if one already exists in a non-failed state (complete, blocked, etc.).
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.giljo_mcp.models import Project, AgentJob, AgentExecution, Product, User
+
+from src.giljo_mcp.models import AgentExecution, AgentJob, Product, Project, User
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
@@ -27,7 +29,7 @@ async def test_user(db_session: AsyncSession):
         name=f"Test User Org {unique_suffix}",
         slug=f"test-user-org-{unique_suffix}",
         tenant_key=tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(org)
     await db_session.flush()
@@ -50,9 +52,7 @@ class TestOrchestratorDeduplication:
     """Test orchestrator deduplication when reactivating projects"""
 
     @pytest.mark.asyncio
-    async def test_ensure_fixture_finds_completed_orchestrator(
-        self, db_session, test_user
-    ):
+    async def test_ensure_fixture_finds_completed_orchestrator(self, db_session, test_user):
         """
         Test that _ensure_orchestrator_fixture() finds a "complete" orchestrator
         and does NOT create a new one (Fix 1).
@@ -95,15 +95,16 @@ class TestOrchestratorDeduplication:
             job_id=job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="complete",  # COMPLETE status - should be found
+            agent_name="orchestrator",
+            status="complete",  # COMPLETE status - should be found
             progress=100,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
         # Create ProjectService
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         @asynccontextmanager
         async def mock_get_session():
@@ -149,9 +150,7 @@ class TestOrchestratorDeduplication:
         assert executions[0].job_id == job_id
 
     @pytest.mark.asyncio
-    async def test_ensure_fixture_finds_blocked_orchestrator(
-        self, db_session, test_user
-    ):
+    async def test_ensure_fixture_finds_blocked_orchestrator(self, db_session, test_user):
         """
         Test that _ensure_orchestrator_fixture() finds a "blocked" orchestrator
         and does NOT create a new one (Fix 1).
@@ -194,15 +193,16 @@ class TestOrchestratorDeduplication:
             job_id=job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="blocked",  # BLOCKED status - should be found
+            agent_name="orchestrator",
+            status="blocked",  # BLOCKED status - should be found
             progress=50,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
         # Create ProjectService
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         @asynccontextmanager
         async def mock_get_session():
@@ -247,9 +247,7 @@ class TestOrchestratorDeduplication:
         assert executions[0].status == "blocked"
 
     @pytest.mark.asyncio
-    async def test_ensure_fixture_creates_when_failed(
-        self, db_session, test_user
-    ):
+    async def test_ensure_fixture_creates_when_failed(self, db_session, test_user):
         """
         Test that _ensure_orchestrator_fixture() DOES create a new orchestrator
         when the existing one has "failed" status (Fix 1).
@@ -292,15 +290,16 @@ class TestOrchestratorDeduplication:
             job_id=failed_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="failed",  # FAILED status - should NOT be found
+            agent_name="orchestrator",
+            status="failed",  # FAILED status - should NOT be found
             progress=25,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
         # Create ProjectService
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         @asynccontextmanager
         async def mock_get_session():
@@ -352,9 +351,7 @@ class TestOrchestratorDeduplication:
         assert "waiting" in statuses  # New orchestrator should be "waiting"
 
     @pytest.mark.asyncio
-    async def test_launch_project_skips_existing_orchestrator(
-        self, db_session, test_user
-    ):
+    async def test_launch_project_skips_existing_orchestrator(self, db_session, test_user):
         """
         Test that launch_project() does NOT create a duplicate orchestrator
         if one already exists for the project (Fix 3).
@@ -397,15 +394,16 @@ class TestOrchestratorDeduplication:
             job_id=existing_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="working",  # WORKING status - should be found
+            agent_name="orchestrator",
+            status="working",  # WORKING status - should be found
             progress=75,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
         # Create ProjectService
-        from unittest.mock import MagicMock
         from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
 
         @asynccontextmanager
         async def mock_get_session():

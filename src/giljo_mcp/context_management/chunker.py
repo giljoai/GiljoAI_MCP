@@ -20,7 +20,9 @@ import tiktoken
 
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
+
 logger = logging.getLogger(__name__)
+
 
 class VisionDocumentChunker:
     """

@@ -16,6 +16,7 @@ import pytest
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -201,7 +202,8 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         agent_name="impl-worker-1",
         status="working",
         started_at=started_at,
-        completed_at=None,        progress=0,
+        completed_at=None,
+        progress=0,
     )
     job = SimpleNamespace(
         job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None
@@ -221,9 +223,9 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
-        unread_result,       # unread messages (empty list)
-        todo_result,         # todo items (empty list)
-        other_active_result, # other active executions (empty list)
+        unread_result,  # unread messages (empty list)
+        todo_result,  # todo items (empty list)
+        other_active_result,  # other active executions (empty list)
     ]
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)
@@ -255,12 +257,13 @@ async def test_report_progress_fallback_emits_message_new_event(
         agent_name="impl-worker-1",
         status="working",
         started_at=datetime.now(timezone.utc),
-        mission_acknowledged_at=datetime.now(timezone.utc),    )
+        mission_acknowledged_at=datetime.now(timezone.utc),
+    )
     job = SimpleNamespace(
         job_id=job_id,
         tenant_key=tenant_key,
         project_id=str(uuid4()),
-        job_metadata={}  # Required for websocket broadcast
+        job_metadata={},  # Required for websocket broadcast
     )
 
     # report_progress uses 2 session contexts with 3 total execute calls:

@@ -7,8 +7,9 @@ Validates that:
 3. Code properly uses exception-based flow
 """
 
-import pytest
 import inspect
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -31,8 +32,8 @@ async def test_auth_endpoint_does_not_check_dict_success():
     assert 'result.get("success")' not in source, "Login endpoint still checking dict['success']"
 
     # Check that we DO have exception-based flow
-    assert 'await auth_service.authenticate_user' in source, "Login endpoint not calling service"
-    assert 'auth_result' in source, "Login endpoint not using result variable"
+    assert "await auth_service.authenticate_user" in source, "Login endpoint not calling service"
+    assert "auth_result" in source, "Login endpoint not using result variable"
 
     print("[PASS] Login endpoint does NOT check dict['success']")
 
@@ -70,8 +71,9 @@ async def test_auth_endpoint_updated_comment():
     source = inspect.getsource(auth_module.login)
 
     # Check for 0480 migration comment
-    assert "0480 migration" in source or "Service raises AuthenticationError on failure" in source, \
+    assert "0480 migration" in source or "Service raises AuthenticationError on failure" in source, (
         "Login endpoint missing 0480 migration documentation"
+    )
 
     print("[PASS] Login endpoint has 0480 migration documentation")
 

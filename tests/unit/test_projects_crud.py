@@ -6,7 +6,6 @@ Tests create, list, get, and update endpoints using ProjectService.
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -36,22 +35,15 @@ class TestCreateProject:
             "mission": "Test mission",
             "description": "Test description",
             "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc)
+            "updated_at": datetime.now(timezone.utc),
         }
 
         request = ProjectCreate(
-            name="Test Project",
-            mission="Test mission",
-            description="Test description",
-            status="inactive"
+            name="Test Project", mission="Test mission", description="Test description", status="inactive"
         )
 
         # Call endpoint
-        response = await crud.create_project(
-            project=request,
-            current_user=mock_user,
-            project_service=mock_service
-        )
+        response = await crud.create_project(project=request, current_user=mock_user, project_service=mock_service)
 
         # Assertions
         assert isinstance(response, ProjectResponse)
@@ -67,23 +59,13 @@ class TestCreateProject:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.create_project.return_value = {
-            "success": False,
-            "error": "Failed to create project"
-        }
+        mock_service.create_project.return_value = {"success": False, "error": "Failed to create project"}
 
-        request = ProjectCreate(
-            name="Test Project",
-            mission="Test mission"
-        )
+        request = ProjectCreate(name="Test Project", mission="Test mission")
 
         # Should raise 400
         with pytest.raises(HTTPException) as exc_info:
-            await crud.create_project(
-                project=request,
-                current_user=mock_user,
-                project_service=mock_service
-            )
+            await crud.create_project(project=request, current_user=mock_user, project_service=mock_service)
 
         assert exc_info.value.status_code == 400
 
@@ -114,16 +96,12 @@ class TestListProjects:
                     "context_budget": 150000,
                     "context_used": 0,
                     "agent_count": 0,
-                    "message_count": 0
+                    "message_count": 0,
                 }
-            ]
+            ],
         }
 
-        response = await crud.list_projects(
-            status_filter=None,
-            current_user=mock_user,
-            project_service=mock_service
-        )
+        response = await crud.list_projects(status_filter=None, current_user=mock_user, project_service=mock_service)
 
         assert len(response) == 1
         assert response[0].id == "proj-1"
@@ -155,15 +133,11 @@ class TestGetProject:
                 "context_budget": 150000,
                 "context_used": 0,
                 "agent_count": 0,
-                "message_count": 0
-            }
+                "message_count": 0,
+            },
         }
 
-        response = await crud.get_project(
-            project_id="proj-123",
-            current_user=mock_user,
-            project_service=mock_service
-        )
+        response = await crud.get_project(project_id="proj-123", current_user=mock_user, project_service=mock_service)
 
         assert response.id == "proj-123"
         assert response.name == "Test Project"
@@ -176,17 +150,10 @@ class TestGetProject:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.get_project.return_value = {
-            "success": False,
-            "error": "Project not found"
-        }
+        mock_service.get_project.return_value = {"success": False, "error": "Project not found"}
 
         with pytest.raises(HTTPException) as exc_info:
-            await crud.get_project(
-                project_id="proj-123",
-                current_user=mock_user,
-                project_service=mock_service
-            )
+            await crud.get_project(project_id="proj-123", current_user=mock_user, project_service=mock_service)
 
         assert exc_info.value.status_code == 404
 
@@ -202,9 +169,7 @@ class TestUpdateProject:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.update_project_mission.return_value = {
-            "success": True
-        }
+        mock_service.update_project_mission.return_value = {"success": True}
         mock_service.get_project.return_value = {
             "success": True,
             "project": {
@@ -219,17 +184,14 @@ class TestUpdateProject:
                 "context_budget": 150000,
                 "context_used": 0,
                 "agent_count": 0,
-                "message_count": 0
-            }
+                "message_count": 0,
+            },
         }
 
         updates = ProjectUpdate(mission="Updated mission")
 
         response = await crud.update_project(
-            project_id="proj-123",
-            updates=updates,
-            current_user=mock_user,
-            project_service=mock_service
+            project_id="proj-123", updates=updates, current_user=mock_user, project_service=mock_service
         )
 
         assert response.mission == "Updated mission"

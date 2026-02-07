@@ -14,12 +14,15 @@ from pydantic import BaseModel
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp.auth.dependencies import get_current_user
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 def get_config_path() -> Path:
     """Get path to config.yaml."""
     return Path.cwd() / "config.yaml"
+
 
 def read_config() -> dict[str, Any]:
     """Read config.yaml."""
@@ -34,6 +37,7 @@ def read_config() -> dict[str, Any]:
         logger.error(f"Failed to read config: {e}")
         return {}
 
+
 def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
@@ -44,10 +48,12 @@ def write_config(config: dict[str, Any]) -> None:
         logger.error(f"Failed to write config: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 class GitToggleRequest(BaseModel):
     """Request to toggle Git integration."""
 
     enabled: bool
+
 
 class GitSettingsRequest(BaseModel):
     """Request to update Git advanced settings."""
@@ -57,6 +63,7 @@ class GitSettingsRequest(BaseModel):
     max_commits: int | None = 50
     branch_strategy: str | None = "main"
 
+
 class GitToggleResponse(BaseModel):
     """Response from toggling Git integration."""
 
@@ -64,6 +71,7 @@ class GitToggleResponse(BaseModel):
     enabled: bool
     message: str
     settings: dict[str, Any]
+
 
 @router.post("/toggle", response_model=GitToggleResponse)
 async def toggle_git_integration(
@@ -124,6 +132,7 @@ async def toggle_git_integration(
         logger.error(f"Failed to toggle Git integration: {e!s}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @router.post("/settings", response_model=GitToggleResponse)
 async def update_git_settings(
     request: GitSettingsRequest, current_user: dict = Depends(get_current_user)
@@ -162,6 +171,7 @@ async def update_git_settings(
     except (OSError, ValueError) as e:
         logger.error(f"Failed to update Git settings: {e!s}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/settings")
 async def get_git_settings(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:

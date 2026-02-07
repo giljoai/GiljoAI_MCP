@@ -19,7 +19,6 @@ from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Configuration, Job, Message, Project, Task, Vision
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

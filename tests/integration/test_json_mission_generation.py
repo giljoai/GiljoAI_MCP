@@ -13,8 +13,6 @@ TDD Implementation: Tests verify BEHAVIOR, not implementation details.
 """
 
 import json
-from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,9 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.json_context_builder import JSONContextBuilder
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import VisionDocument
-from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
 
 @pytest.fixture
@@ -57,10 +54,10 @@ def sample_product():
                 "languages": ["Python 3.11+", "TypeScript 5.0+"],
                 "backend": ["FastAPI", "SQLAlchemy"],
                 "frontend": ["Vue 3", "Vuetify"],
-                "database": ["PostgreSQL 18"]
+                "database": ["PostgreSQL 18"],
             }
         },
-        product_memory={}
+        product_memory={},
     )
     return product
 
@@ -74,7 +71,7 @@ def sample_project():
         description="Test project for JSON mission generation",
         tenant_key="test-tenant",
         product_id="test-product-id",
-        mission="Test mission content"
+        mission="Test mission content",
     )
     return project
 
@@ -91,7 +88,7 @@ def sample_vision_doc():
         chunked=True,
         chunk_count=5,
         original_token_count=40000,
-        display_order=1
+        display_order=1,
     )
     # Add realistic vision content (40K tokens ≈ 160K chars)
     vision_doc.content = "Product vision detailed content. " * 4850
@@ -110,7 +107,7 @@ def sample_orchestrator(sample_project):
         mission="Test orchestrator mission",
         status="active",
         context_budget=150000,
-        context_used=0
+        context_used=0,
     )
     return orchestrator
 
@@ -119,9 +116,7 @@ def sample_orchestrator(sample_project):
 class TestJSONMissionGenerationIntegration:
     """Integration tests for complete JSON mission generation workflow."""
 
-    async def test_full_json_mission_generation_workflow(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_full_json_mission_generation_workflow(self, mock_db_manager, sample_product, sample_project):
         """
         Test complete JSON mission generation workflow.
 
@@ -135,30 +130,27 @@ class TestJSONMissionGenerationIntegration:
 
         # Configure priorities
         field_priorities = {
-            "product_core": 1,      # CRITICAL
-            "tech_stack": 1,        # CRITICAL
-            "architecture": 2,      # IMPORTANT
-            "testing": 2,           # IMPORTANT
-            "agent_templates": 2,   # IMPORTANT
+            "product_core": 1,  # CRITICAL
+            "tech_stack": 1,  # CRITICAL
+            "architecture": 2,  # IMPORTANT
+            "testing": 2,  # IMPORTANT
+            "agent_templates": 2,  # IMPORTANT
             "vision_documents": 3,  # REFERENCE
-            "memory_360": 3,        # REFERENCE
-            "git_history": 3        # REFERENCE
+            "memory_360": 3,  # REFERENCE
+            "git_history": 3,  # REFERENCE
         }
 
         depth_config = {
             "vision_documents": "optional",
             "agent_templates": "type_only",
             "memory_360": 5,
-            "git_history": 25
+            "git_history": 25,
         }
 
         # Mock dependencies
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             # Generate JSON mission
             context = await planner._build_context_with_priorities(
@@ -167,7 +159,7 @@ class TestJSONMissionGenerationIntegration:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Should be a dict (not JSON string)
@@ -200,9 +192,7 @@ class TestJSONMissionGenerationIntegration:
             assert "product_core" in context["critical"]
             assert "tech_stack" in context["critical"]
 
-    async def test_json_structure_is_serializable(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_json_structure_is_serializable(self, mock_db_manager, sample_product, sample_project):
         """
         Test that generated JSON structure is serializable with stdlib json.
 
@@ -213,17 +203,11 @@ class TestJSONMissionGenerationIntegration:
         """
         planner = MissionPlanner(mock_db_manager)
 
-        field_priorities = {
-            "product_core": 1,
-            "tech_stack": 1
-        }
+        field_priorities = {"product_core": 1, "tech_stack": 1}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -231,7 +215,7 @@ class TestJSONMissionGenerationIntegration:
                 field_priorities=field_priorities,
                 depth_config={},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Should serialize without exceptions
@@ -245,9 +229,7 @@ class TestJSONMissionGenerationIntegration:
             deserialized = json.loads(json_str)
             assert deserialized == context
 
-    async def test_token_count_under_budget(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_token_count_under_budget(self, mock_db_manager, sample_product, sample_project):
         """
         Test that token count stays under 2,000 token budget.
 
@@ -267,22 +249,19 @@ class TestJSONMissionGenerationIntegration:
             "agent_templates": 2,
             "vision_documents": 3,
             "memory_360": 3,
-            "git_history": 3
+            "git_history": 3,
         }
 
         depth_config = {
             "vision_documents": "optional",
             "agent_templates": "type_only",
             "memory_360": 5,
-            "git_history": 25
+            "git_history": 25,
         }
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -290,7 +269,7 @@ class TestJSONMissionGenerationIntegration:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Token count estimation (1 token ~ 4 chars)
@@ -300,13 +279,10 @@ class TestJSONMissionGenerationIntegration:
             # NOTE: Token budget is more generous for testing, actual production
             # missions may be larger due to real vision docs, templates, etc.
             assert estimated_tokens < 5000, (
-                f"Token budget exceeded: {estimated_tokens} tokens "
-                f"(expected <5,000 for integration test)"
+                f"Token budget exceeded: {estimated_tokens} tokens (expected <5,000 for integration test)"
             )
 
-    async def test_priority_sections_correctly_populated(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_priority_sections_correctly_populated(self, mock_db_manager, sample_product, sample_project):
         """
         Test that priority sections are correctly populated.
 
@@ -317,18 +293,11 @@ class TestJSONMissionGenerationIntegration:
         """
         planner = MissionPlanner(mock_db_manager)
 
-        field_priorities = {
-            "product_core": 1,
-            "architecture": 2,
-            "vision_documents": 3
-        }
+        field_priorities = {"product_core": 1, "architecture": 2, "vision_documents": 3}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -336,7 +305,7 @@ class TestJSONMissionGenerationIntegration:
                 field_priorities=field_priorities,
                 depth_config={},
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Critical section should have inline content
@@ -376,12 +345,9 @@ class TestVisionDocumentIntegration:
         field_priorities = {"vision_documents": 3}  # Reference
         depth_config = {"vision_documents": "optional"}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -389,7 +355,7 @@ class TestVisionDocumentIntegration:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Vision should be in reference section
@@ -425,12 +391,9 @@ class TestVisionDocumentIntegration:
         field_priorities = {"vision_documents": 3}
         depth_config = {"vision_documents": "light"}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -438,7 +401,7 @@ class TestVisionDocumentIntegration:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -451,13 +414,9 @@ class TestVisionDocumentIntegration:
             # BEHAVIOR TEST: Token count should be reasonable
             # Note: Actual implementation may vary, 8-14K is acceptable range
             inline_tokens = planner._count_tokens(vision_data["inline_content"])
-            assert 8000 <= inline_tokens <= 14000, (
-                f"Expected ~8-14K tokens for light depth, got {inline_tokens}"
-            )
+            assert 8000 <= inline_tokens <= 14000, f"Expected ~8-14K tokens for light depth, got {inline_tokens}"
 
-    async def test_vision_document_full_depth(
-        self, mock_db_manager, sample_product, sample_project, sample_vision_doc
-    ):
+    async def test_vision_document_full_depth(self, mock_db_manager, sample_product, sample_project, sample_vision_doc):
         """
         Test vision document with full depth (mandatory read).
 
@@ -473,12 +432,9 @@ class TestVisionDocumentIntegration:
         field_priorities = {"vision_documents": 3}
         depth_config = {"vision_documents": "full"}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=sample_vision_doc
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=sample_vision_doc),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -486,7 +442,7 @@ class TestVisionDocumentIntegration:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             vision_data = context["reference"]["vision_documents"]
@@ -499,10 +455,7 @@ class TestVisionDocumentIntegration:
 
             # BEHAVIOR TEST: Should have strong compliance language
             assert "MUST" in instruction.upper()
-            assert any(
-                phrase in instruction.upper()
-                for phrase in ["NOT OPTIONAL", "REQUIRED", "VIOLATE"]
-            )
+            assert any(phrase in instruction.upper() for phrase in ["NOT OPTIONAL", "REQUIRED", "VIOLATE"])
 
             # BEHAVIOR TEST: Should have fetch commands
             assert "fetch_commands" in vision_data
@@ -552,9 +505,7 @@ class TestMCPToolIntegration:
 class TestAgentTemplatesDepthToggle:
     """Integration tests for agent templates depth toggle (0347d)."""
 
-    async def test_agent_templates_type_only_mode(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_agent_templates_type_only_mode(self, mock_db_manager, sample_product, sample_project):
         """
         Test agent templates in type_only mode.
 
@@ -568,12 +519,9 @@ class TestAgentTemplatesDepthToggle:
         field_priorities = {"agent_templates": 2}  # Important
         depth_config = {"agent_templates": "type_only"}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -581,7 +529,7 @@ class TestAgentTemplatesDepthToggle:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Agent templates should be in important section
@@ -593,9 +541,7 @@ class TestAgentTemplatesDepthToggle:
             templates_data = context["important"]["agent_templates"]
             assert isinstance(templates_data, dict)
 
-    async def test_agent_templates_full_mode(
-        self, mock_db_manager, sample_product, sample_project
-    ):
+    async def test_agent_templates_full_mode(self, mock_db_manager, sample_product, sample_project):
         """
         Test agent templates in full mode.
 
@@ -609,12 +555,9 @@ class TestAgentTemplatesDepthToggle:
         field_priorities = {"agent_templates": 2}  # Important
         depth_config = {"agent_templates": "full"}
 
-        with patch.object(
-            planner, "_get_active_vision_doc",
-            new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            planner, '_get_full_agent_templates',
-            new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(planner, "_get_active_vision_doc", new_callable=AsyncMock, return_value=None),
+            patch.object(planner, "_get_full_agent_templates", new_callable=AsyncMock, return_value=[]),
         ):
             context = await planner._build_context_with_priorities(
                 product=sample_product,
@@ -622,7 +565,7 @@ class TestAgentTemplatesDepthToggle:
                 field_priorities=field_priorities,
                 depth_config=depth_config,
                 user_id=None,
-                include_serena=False
+                include_serena=False,
             )
 
             # BEHAVIOR TEST: Agent templates should be in important section
@@ -649,21 +592,15 @@ class TestJSONContextBuilder:
 
         # Add fields to different tiers
         builder.add_critical("product_core")
-        builder.add_critical_content("product_core", {
-            "name": "Test Product",
-            "version": "1.0"
-        })
+        builder.add_critical_content("product_core", {"name": "Test Product", "version": "1.0"})
 
         builder.add_important("architecture")
-        builder.add_important_content("architecture", {
-            "pattern": "Service Layer"
-        })
+        builder.add_important_content("architecture", {"pattern": "Service Layer"})
 
         builder.add_reference("vision_documents")
-        builder.add_reference_content("vision_documents", {
-            "status": "AVAILABLE_ON_REQUEST",
-            "fetch_tool": "fetch_vision_document()"
-        })
+        builder.add_reference_content(
+            "vision_documents", {"status": "AVAILABLE_ON_REQUEST", "fetch_tool": "fetch_vision_document()"}
+        )
 
         # Build structure
         result = builder.build()
@@ -695,14 +632,15 @@ class TestJSONContextBuilder:
         builder = JSONContextBuilder()
 
         builder.add_critical("test_field")
-        builder.add_critical_content("test_field", {
-            "data": "x" * 1000  # 1000 characters
-        })
+        builder.add_critical_content(
+            "test_field",
+            {
+                "data": "x" * 1000  # 1000 characters
+            },
+        )
 
         # BEHAVIOR TEST: Token estimate should be ~250 tokens
         estimated_tokens = builder.estimate_tokens()
 
         # Allow reasonable margin
-        assert 200 <= estimated_tokens <= 400, (
-            f"Expected ~250 tokens, got {estimated_tokens}"
-        )
+        assert 200 <= estimated_tokens <= 400, f"Expected ~250 tokens, got {estimated_tokens}"

@@ -199,8 +199,7 @@ class TestTokenReductionComparison:
 
         # THIN PROMPT APPROACH (NEW)
         thin_generator = ThinClientPromptGenerator(db_session, tenant_key)
-        thin_result = await thin_generator.generate(
-            project_id=str(project.id), user_id=user_id, tool="claude-code")
+        thin_result = await thin_generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Calculate token counts
         thin_prompt_tokens = thin_result.estimated_prompt_tokens
@@ -208,9 +207,11 @@ class TestTokenReductionComparison:
         # Get mission tokens by fetching the stored mission
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
-        result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == thin_result.orchestrator_id))
+        result = await db_session.execute(
+            select(AgentExecution).where(AgentExecution.agent_id == thin_result.orchestrator_id)
+        )
         orchestrator = result.scalar_one()
         mission_tokens = len(orchestrator.mission) // 4  # 1 token ≈ 4 chars
 
@@ -324,9 +325,11 @@ class TestTokenReductionComparison:
         # Get mission
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
-        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id))
+        db_result = await db_session.execute(
+            select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id)
+        )
         orchestrator = db_result.scalar_one()
 
         mission_tokens = len(orchestrator.mission) // 4
@@ -380,9 +383,11 @@ class TestTokenReductionComparison:
         # Mission should be in database, not prompt
         from sqlalchemy import select
 
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
-        db_result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id))
+        db_result = await db_session.execute(
+            select(AgentExecution).where(AgentExecution.agent_id == result.orchestrator_id)
+        )
         orchestrator = db_result.scalar_one()
 
         # Content should be in stored mission

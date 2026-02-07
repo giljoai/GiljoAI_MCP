@@ -30,16 +30,15 @@ Test Coverage:
 7. Multi-tenant isolation for all agent operations
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 
 
 # ========================================================================
@@ -140,7 +139,8 @@ async def test_agent_execution(db_session, tenant_key, test_agent_job):
         agent_id=str(uuid4()),
         job_id=test_agent_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="backend-implementor",        status="waiting",
+        agent_display_name="backend-implementor",
+        status="waiting",
         agent_name="Backend Implementor #1",
         context_used=0,
         context_budget=50000,
@@ -463,7 +463,8 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
         agent_id=str(uuid4()),
         job_id=test_agent_job.job_id,  # SAME job (work order)
         tenant_key=tenant_key,
-        agent_display_name="backend-implementor",        status="waiting",
+        agent_display_name="backend-implementor",
+        status="waiting",
         agent_name="backend-implementor #2",
         context_used=0,
         context_budget=50000,
@@ -638,10 +639,10 @@ async def test_full_agent_lifecycle_workflow(db_session, tenant_key, test_projec
     - Functions use MCPAgentJob instead of dual-model
     """
     from src.giljo_mcp.tools.agent import (
-        _ensure_agent_with_session,
-        launch_agent,
-        _get_agent_health_with_session,
         _decommission_agent_with_session,
+        _ensure_agent_with_session,
+        _get_agent_health_with_session,
+        launch_agent,
     )
 
     # Step 1: Ensure agent (create AgentJob + AgentExecution)

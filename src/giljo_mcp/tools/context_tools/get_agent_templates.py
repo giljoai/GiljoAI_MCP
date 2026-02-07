@@ -19,7 +19,9 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 
+
 logger = structlog.get_logger(__name__)
+
 
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
@@ -27,6 +29,7 @@ def estimate_tokens(data: Any) -> int:
 
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
+
 
 async def get_agent_templates(
     product_id: str,

@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator, ThinPromptResponse
 
 
@@ -72,8 +72,7 @@ class TestThinClientGeneratorBasic:
 
         # Generate thin prompt
         generator = ThinClientPromptGenerator(db_session, tenant_key)
-        result = await generator.generate(
-            project_id=str(project.id), user_id=user_id, tool="claude-code")
+        result = await generator.generate(project_id=str(project.id), user_id=user_id, tool="claude-code")
 
         # Verify response structure
         assert isinstance(result, ThinPromptResponse)
@@ -471,9 +470,7 @@ class TestThinClientGeneratorPromptContent:
 
         # Generate staging prompt (claude_code_mode=True to use staging prompt)
         staging_prompt = await generator.generate_staging_prompt(
-            orchestrator_id=str(uuid4()),
-            project_id=str(project.id),
-            claude_code_mode=True
+            orchestrator_id=str(uuid4()), project_id=str(project.id), claude_code_mode=True
         )
 
         # Verify execution plan instruction is present

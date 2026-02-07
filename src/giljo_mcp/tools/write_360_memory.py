@@ -29,6 +29,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
+
 logger = logging.getLogger(__name__)
 
 # Field length constraints
@@ -38,6 +39,7 @@ MAX_DECISIONS_MADE = 100
 
 # Statuses to skip during verification (they don't block closeout)
 SKIP_STATUSES = {"decommissioned", "cancelled", "failed"}
+
 
 async def _check_closeout_readiness(
     session: AsyncSession,
@@ -193,6 +195,7 @@ async def _check_closeout_readiness(
             "agents_checked": summary["agents_checked"],
         }
     }
+
 
 async def write_360_memory(
     project_id: str,
@@ -448,6 +451,7 @@ async def write_360_memory(
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
 
+
 async def _emit_websocket_event(
     event_type: str,
     tenant_key: str,
@@ -482,12 +486,14 @@ async def _emit_websocket_event(
     except (RuntimeError, ValueError, KeyError) as exc:
         logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
+
 def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
     git_cfg = product_memory.get("git_integration") or product_memory.get("github") or {}
     return git_cfg if isinstance(git_cfg, dict) else {}
+
 
 async def _fetch_github_commits(
     repo_name: str | None,

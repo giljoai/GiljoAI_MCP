@@ -7,6 +7,7 @@ These tests can run without full test fixtures by directly importing the endpoin
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -59,7 +60,7 @@ def test_all_tools_have_enhanced_metadata():
                 example_count = len(tool["examples"])
                 print(f"    [OK] Has {example_count} examples")
             else:
-                print(f"    [MISSING] No examples")
+                print("    [MISSING] No examples")
 
             # Check for enhanced argument descriptions
             if "arguments" in tool:
@@ -81,11 +82,11 @@ def test_all_tools_have_enhanced_metadata():
 
                 if enhanced:
                     tools_with_enhanced_args += 1
-                    print(f"    [OK] All arguments enhanced")
+                    print("    [OK] All arguments enhanced")
             else:
-                print(f"    (No arguments)")
+                print("    (No arguments)")
 
-    print(f"\n--- Summary ---")
+    print("\n--- Summary ---")
     print(f"Total tools checked: {total_tools_checked}")
     print(f"Tools with examples: {tools_with_examples} / {total_tools_checked}")
     print(f"Tools with enhanced args: {tools_with_enhanced_args} / {total_tools_checked}")
@@ -117,11 +118,11 @@ def test_send_message_array_notation():
 
     print("\n--- send_message Tool ---")
     print(f"Description: {send_message_tool.get('description', 'N/A')}")
-    print(f"\nArguments:")
+    print("\nArguments:")
     for arg, desc in send_message_tool.get("arguments", {}).items():
         print(f"  {arg}: {desc}")
 
-    print(f"\nExamples:")
+    print("\nExamples:")
     for i, example in enumerate(send_message_tool.get("examples", []), 1):
         print(f"  Example {i}: {example.get('description', 'N/A')}")
         print(f"    Payload: {example.get('payload', {})}")

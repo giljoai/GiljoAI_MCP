@@ -31,8 +31,10 @@ from .models import (
     PurgedProject,
 )
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @router.post("/{project_id}/activate", response_model=ProjectResponse)
 async def activate_project(
@@ -91,6 +93,7 @@ async def activate_project(
         agents=[],
     )
 
+
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
 async def deactivate_project(
     project_id: str,
@@ -144,6 +147,7 @@ async def deactivate_project(
         agents=[],
     )
 
+
 @router.post("/{project_id}/cancel", response_model=ProjectResponse)
 async def cancel_project(
     project_id: str,
@@ -195,6 +199,7 @@ async def cancel_project(
         agents=[],
     )
 
+
 @router.post("/{project_id}/restore", response_model=ProjectResponse)
 async def restore_project(
     project_id: str,
@@ -243,6 +248,7 @@ async def restore_project(
         message_count=proj.get("message_count", 0),
         agents=[],
     )
+
 
 @router.post("/{project_id}/cancel-staging", response_model=ProjectResponse)
 async def cancel_project_staging(
@@ -298,6 +304,7 @@ async def cancel_project_staging(
         agents=[],
     )
 
+
 @router.delete("/deleted", response_model=ProjectPurgeResponse)
 async def purge_all_deleted_projects(
     current_user: User = Depends(get_current_active_user),
@@ -318,6 +325,7 @@ async def purge_all_deleted_projects(
         projects=projects,
         message="Deleted projects purged successfully",
     )
+
 
 @router.delete("/{project_id}/purge", response_model=ProjectPurgeResponse)
 async def purge_deleted_project(
@@ -350,6 +358,7 @@ async def purge_deleted_project(
         projects=[PurgedProject(**project_info)],
         message=f"Project permanently deleted. Removed: {result.get('deleted_counts', {})}",
     )
+
 
 @router.post("/{project_id}/archive", response_model=ProjectResponse)
 async def archive_project(
@@ -414,6 +423,7 @@ async def archive_project(
         agents=[],
     )
 
+
 @router.delete("/{project_id}", response_model=ProjectDeleteResponse)
 async def delete_project(
     project_id: str,
@@ -436,6 +446,7 @@ async def delete_project(
         message=result.get("message", "Project deleted successfully"),
         deleted_at=result.get("deleted_at"),
     )
+
 
 @router.post("/{project_id}/launch", response_model=ProjectLaunchResponse)
 async def launch_project(
@@ -473,6 +484,7 @@ async def launch_project(
     logger.info(f"Launched project {project_id}")
 
     return ProjectLaunchResponse(**launch_data)
+
 
 @router.post("/{project_id}/continue", response_model=ProjectLaunchResponse)
 async def continue_project(

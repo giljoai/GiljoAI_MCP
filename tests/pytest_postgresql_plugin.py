@@ -25,7 +25,6 @@ SAFETY_ENV_VAR = "GILJO_TEST_SAFE"
 
 class ProductionDatabaseProtectionError(Exception):
     """Raised when tests might accidentally hit production database."""
-    pass
 
 
 def _check_database_safety() -> tuple[bool, str]:
@@ -57,6 +56,7 @@ def _check_database_safety() -> tuple[bool, str]:
     # Check 3: Verify test helper defaults are correct
     try:
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
         default_db = PostgreSQLTestHelper.DEFAULT_CONFIG.get("database", "")
         if default_db != TEST_DB_NAME:
             return False, (
@@ -143,12 +143,12 @@ def pytest_configure(config):
         # ABORT THE TEST SESSION
         raise ProductionDatabaseProtectionError(
             f"\n\n"
-            f"{'='*70}\n"
+            f"{'=' * 70}\n"
             f"TESTS ABORTED: Production database protection triggered!\n"
-            f"{'='*70}\n\n"
+            f"{'=' * 70}\n\n"
             f"{message}\n\n"
             f"This is a safety feature to prevent accidental data loss.\n"
-            f"{'='*70}\n"
+            f"{'=' * 70}\n"
         )
 
 

@@ -10,12 +10,13 @@ Tests core functionality after orchestrator.py consolidation:
 
 All tests use real database integration (db_manager fixture).
 """
+
 import uuid
+
 import pytest
-from datetime import datetime, timezone
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product, Project, AgentJob, AgentExecution, AgentTemplate
+from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -155,9 +156,7 @@ class TestSpawnAgentJob:
             assert job.status == "active"
 
             # Verify execution exists
-            exec_query = select(AgentExecution).where(
-                AgentExecution.job_id == result["job_id"]
-            )
+            exec_query = select(AgentExecution).where(AgentExecution.job_id == result["job_id"])
             exec_result = await session.execute(exec_query)
             execution = exec_result.scalar_one_or_none()
 
@@ -233,11 +232,7 @@ class TestSuccession:
             from sqlalchemy import select
 
             # Get all executions for this job
-            exec_query = (
-                select(AgentExecution)
-                .where(AgentExecution.job_id == original_job_id)
-                
-            )
+            exec_query = select(AgentExecution).where(AgentExecution.job_id == original_job_id)
             exec_result = await session.execute(exec_query)
             executions = exec_result.scalars().all()
 
@@ -250,7 +245,6 @@ class TestSuccession:
             # Second execution should be active
             assert executions[1].status == "waiting"
             assert executions[1].spawned_by == executions[0].agent_id
-
 
 
 class TestMultiTenantIsolation:

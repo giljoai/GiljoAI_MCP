@@ -7,9 +7,10 @@ This module tests both direct mode (with flags) and interactive mode
 TDD Red Phase: These tests should FAIL initially.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 class TestGilTaskDirectMode:
@@ -92,7 +93,7 @@ class TestGilTaskDirectMode:
     async def test_direct_mode_requires_name_flag(self):
         """Direct mode fails if --name flag is missing."""
         # Arrange
-        arguments = '--priority high --category backend'
+        arguments = "--priority high --category backend"
 
         # Act & Assert
         with pytest.raises(ValueError, match="--name is required"):
@@ -113,10 +114,12 @@ class TestGilTaskInteractiveMode:
         arguments = ""  # No arguments = interactive mode
 
         # Mock conversation summary
-        mock_summarizer = MagicMock(return_value={
-            "title": "Refactor authentication service to use JWT tokens",
-            "description": "Refactor the authentication service to implement JWT token-based authentication for improved security",
-        })
+        mock_summarizer = MagicMock(
+            return_value={
+                "title": "Refactor authentication service to use JWT tokens",
+                "description": "Refactor the authentication service to implement JWT token-based authentication for improved security",
+            }
+        )
 
         # Act
         with patch("summarize_conversation", mock_summarizer):
@@ -192,9 +195,7 @@ class TestGilTaskInteractiveMode:
 
         # Act
         with patch("mcp__giljo-mcp__create_task", mock_create_task):
-            result = await execute_gil_task_command(
-                arguments, conversation_context, user_responses
-            )
+            result = await execute_gil_task_command(arguments, conversation_context, user_responses)
 
         # Assert
         mock_create_task.assert_called_once()
@@ -232,9 +233,7 @@ class TestGilTaskMCPIntegration:
         """Verify error handling when MCP tool fails."""
         # Arrange
         arguments = '--name "Test Task"'
-        mock_create_task = AsyncMock(
-            return_value={"success": False, "error": "Database connection failed"}
-        )
+        mock_create_task = AsyncMock(return_value={"success": False, "error": "Database connection failed"})
 
         # Act
         with patch("mcp__giljo-mcp__create_task", mock_create_task):

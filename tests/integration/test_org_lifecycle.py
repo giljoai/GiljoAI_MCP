@@ -10,12 +10,13 @@ These tests verify end-to-end organization workflows:
 - Data migration verification (products/templates/tasks have org_id)
 """
 
+from unittest.mock import MagicMock
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from uuid import uuid4
 from passlib.hash import bcrypt
-from unittest.mock import MagicMock
 
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models.auth import User
@@ -26,6 +27,7 @@ from src.giljo_mcp.tenant import TenantManager
 # ============================================================================
 # API Client Fixture - Required for endpoint testing
 # ============================================================================
+
 
 @pytest_asyncio.fixture(scope="function")
 async def api_client(db_manager):
@@ -49,10 +51,12 @@ async def api_client(db_manager):
     mock_config.jwt.secret_key = "test_secret_key"
     mock_config.jwt.algorithm = "HS256"
     mock_config.jwt.expiration_minutes = 30
-    mock_config.get = MagicMock(side_effect=lambda key, default=None: {
-        "security.auth_enabled": True,
-        "security.api_keys_required": False,
-    }.get(key, default))
+    mock_config.get = MagicMock(
+        side_effect=lambda key, default=None: {
+            "security.auth_enabled": True,
+            "security.api_keys_required": False,
+        }.get(key, default)
+    )
 
     state.config = mock_config
     app.state.config = mock_config
@@ -60,12 +64,7 @@ async def api_client(db_manager):
     state.auth = app.state.auth
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-        cookies=None,
-        follow_redirects=True
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://test", cookies=None, follow_redirects=True) as client:
         client.cookies.clear()
         yield client
         client.cookies.clear()
@@ -79,6 +78,7 @@ async def api_client(db_manager):
 async def auth_headers(db_manager, api_client) -> dict:
     """Create authentication headers for API tests."""
     import os
+
     os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
     async with db_manager.get_session_async() as session:
@@ -90,7 +90,7 @@ async def auth_headers(db_manager, api_client) -> dict:
             name=f"Test User Org {unique_suffix}",
             slug=f"test-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -120,6 +120,7 @@ async def auth_headers(db_manager, api_client) -> dict:
 # FIXTURES - Multi-user setup for lifecycle tests
 # ============================================================================
 
+
 @pytest.fixture
 async def lifecycle_user_data(db_manager) -> dict:
     """Create owner user for lifecycle tests, return ID and headers."""
@@ -132,7 +133,7 @@ async def lifecycle_user_data(db_manager) -> dict:
             name=f"Owner User Org {unique_suffix}",
             slug=f"owner-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -144,24 +145,17 @@ async def lifecycle_user_data(db_manager) -> dict:
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id  # Required after 0424j
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {
-            "id": user.id,
-            "headers": {"Cookie": f"access_token={token}"},
-            "tenant_key": user.tenant_key
-        }
+        return {"id": user.id, "headers": {"Cookie": f"access_token={token}"}, "tenant_key": user.tenant_key}
 
 
 @pytest.fixture
@@ -176,7 +170,7 @@ async def invited_user_data(db_manager) -> dict:
             name=f"Invited User Org {unique_suffix}",
             slug=f"invited-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -188,24 +182,17 @@ async def invited_user_data(db_manager) -> dict:
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id  # Required after 0424j
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {
-            "id": user.id,
-            "headers": {"Cookie": f"access_token={token}"},
-            "tenant_key": user.tenant_key
-        }
+        return {"id": user.id, "headers": {"Cookie": f"access_token={token}"}, "tenant_key": user.tenant_key}
 
 
 @pytest.fixture
@@ -220,7 +207,7 @@ async def viewer_user_data(db_manager) -> dict:
             name=f"Viewer User Org {unique_suffix}",
             slug=f"viewer-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -232,24 +219,17 @@ async def viewer_user_data(db_manager) -> dict:
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id  # Required after 0424j
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {
-            "id": user.id,
-            "headers": {"Cookie": f"access_token={token}"},
-            "tenant_key": user.tenant_key
-        }
+        return {"id": user.id, "headers": {"Cookie": f"access_token={token}"}, "tenant_key": user.tenant_key}
 
 
 @pytest.fixture
@@ -264,7 +244,7 @@ async def member_user_data(db_manager) -> dict:
             name=f"Member User Org {unique_suffix}",
             slug=f"member-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -276,24 +256,17 @@ async def member_user_data(db_manager) -> dict:
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id  # Required after 0424j
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {
-            "id": user.id,
-            "headers": {"Cookie": f"access_token={token}"},
-            "tenant_key": user.tenant_key
-        }
+        return {"id": user.id, "headers": {"Cookie": f"access_token={token}"}, "tenant_key": user.tenant_key}
 
 
 @pytest.fixture
@@ -308,7 +281,7 @@ async def admin_user_data(db_manager) -> dict:
             name=f"Admin User Org {unique_suffix}",
             slug=f"admin-user-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -320,40 +293,29 @@ async def admin_user_data(db_manager) -> dict:
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id  # Required after 0424j
+            org_id=org.id,  # Required after 0424j
         )
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {
-            "id": user.id,
-            "headers": {"Cookie": f"access_token={token}"},
-            "tenant_key": user.tenant_key
-        }
+        return {"id": user.id, "headers": {"Cookie": f"access_token={token}"}, "tenant_key": user.tenant_key}
 
 
 # ============================================================================
 # Organization Lifecycle Tests
 # ============================================================================
 
+
 class TestOrgLifecycle:
     """End-to-end tests for organization operations."""
 
     @pytest.mark.asyncio
-    async def test_complete_org_workflow(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        invited_user_data
-    ):
+    async def test_complete_org_workflow(self, api_client: AsyncClient, lifecycle_user_data, invited_user_data):
         """Test complete org lifecycle: create -> invite -> manage -> delete."""
         auth_headers = lifecycle_user_data["headers"]
         other_user_id = invited_user_data["id"]
@@ -362,9 +324,7 @@ class TestOrgLifecycle:
         # Step 1: Create organization
         unique_slug = f"lifecycle-test-{uuid4().hex[:8]}"
         create_response = await api_client.post(
-            "/api/organizations",
-            headers=auth_headers,
-            json={"name": "Lifecycle Test Org", "slug": unique_slug}
+            "/api/organizations", headers=auth_headers, json={"name": "Lifecycle Test Org", "slug": unique_slug}
         )
         assert create_response.status_code == 201, f"Create failed: {create_response.text}"
         org = create_response.json()
@@ -378,52 +338,37 @@ class TestOrgLifecycle:
         invite_response = await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": other_user_id, "role": "admin"}
+            json={"user_id": other_user_id, "role": "admin"},
         )
         assert invite_response.status_code == 201, f"Invite failed: {invite_response.text}"
 
         # Step 4: Verify invited user can access org
-        access_response = await api_client.get(
-            f"/api/organizations/{org_id}",
-            headers=other_user_headers
-        )
+        access_response = await api_client.get(f"/api/organizations/{org_id}", headers=other_user_headers)
         assert access_response.status_code == 200, f"Access check failed: {access_response.text}"
 
         # Step 5: Change member role
         role_response = await api_client.put(
-            f"/api/organizations/{org_id}/members/{other_user_id}",
-            headers=auth_headers,
-            json={"role": "viewer"}
+            f"/api/organizations/{org_id}/members/{other_user_id}", headers=auth_headers, json={"role": "viewer"}
         )
         assert role_response.status_code == 200, f"Role change failed: {role_response.text}"
         assert role_response.json()["role"] == "viewer"
 
         # Step 6: Remove member
         remove_response = await api_client.delete(
-            f"/api/organizations/{org_id}/members/{other_user_id}",
-            headers=auth_headers
+            f"/api/organizations/{org_id}/members/{other_user_id}", headers=auth_headers
         )
         assert remove_response.status_code == 200, f"Remove failed: {remove_response.text}"
 
         # Step 7: Verify removed user cannot access
-        denied_response = await api_client.get(
-            f"/api/organizations/{org_id}",
-            headers=other_user_headers
-        )
+        denied_response = await api_client.get(f"/api/organizations/{org_id}", headers=other_user_headers)
         assert denied_response.status_code == 403, f"Should be denied: {denied_response.text}"
 
         # Step 8: Delete organization
-        delete_response = await api_client.delete(
-            f"/api/organizations/{org_id}",
-            headers=auth_headers
-        )
+        delete_response = await api_client.delete(f"/api/organizations/{org_id}", headers=auth_headers)
         assert delete_response.status_code == 200, f"Delete failed: {delete_response.text}"
 
         # Step 9: Verify org no longer accessible
-        gone_response = await api_client.get(
-            f"/api/organizations/{org_id}",
-            headers=auth_headers
-        )
+        gone_response = await api_client.get(f"/api/organizations/{org_id}", headers=auth_headers)
         assert gone_response.status_code == 404, f"Should be 404: {gone_response.text}"
 
 
@@ -432,11 +377,7 @@ class TestOrgPermissions:
 
     @pytest.mark.asyncio
     async def test_viewer_cannot_invite(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        viewer_user_data,
-        member_user_data
+        self, api_client: AsyncClient, lifecycle_user_data, viewer_user_data, member_user_data
     ):
         """Test that viewer role cannot invite members."""
         auth_headers = lifecycle_user_data["headers"]
@@ -447,9 +388,7 @@ class TestOrgPermissions:
         # Setup: Create org and add viewer
         unique_slug = f"perm-test-{uuid4().hex[:8]}"
         org_response = await api_client.post(
-            "/api/organizations",
-            headers=auth_headers,
-            json={"name": "Perm Test", "slug": unique_slug}
+            "/api/organizations", headers=auth_headers, json={"name": "Perm Test", "slug": unique_slug}
         )
         assert org_response.status_code == 201
         org_id = org_response.json()["id"]
@@ -457,25 +396,21 @@ class TestOrgPermissions:
         await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": viewer_user_id, "role": "viewer"}
+            json={"user_id": viewer_user_id, "role": "viewer"},
         )
 
         # Test: Viewer tries to invite
         response = await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=viewer_user_headers,
-            json={"user_id": third_user_id, "role": "member"}
+            json={"user_id": third_user_id, "role": "member"},
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_member_cannot_change_roles(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        member_user_data,
-        viewer_user_data
+        self, api_client: AsyncClient, lifecycle_user_data, member_user_data, viewer_user_data
     ):
         """Test that member role cannot change other members' roles."""
         auth_headers = lifecycle_user_data["headers"]
@@ -486,9 +421,7 @@ class TestOrgPermissions:
         # Setup: Create org with member and another user
         unique_slug = f"member-perm-{uuid4().hex[:8]}"
         org_response = await api_client.post(
-            "/api/organizations",
-            headers=auth_headers,
-            json={"name": "Member Perm Test", "slug": unique_slug}
+            "/api/organizations", headers=auth_headers, json={"name": "Member Perm Test", "slug": unique_slug}
         )
         assert org_response.status_code == 201
         org_id = org_response.json()["id"]
@@ -496,30 +429,23 @@ class TestOrgPermissions:
         await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": member_user_id, "role": "member"}
+            json={"user_id": member_user_id, "role": "member"},
         )
         await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": other_user_id, "role": "viewer"}
+            json={"user_id": other_user_id, "role": "viewer"},
         )
 
         # Test: Member tries to promote viewer
         response = await api_client.put(
-            f"/api/organizations/{org_id}/members/{other_user_id}",
-            headers=member_user_headers,
-            json={"role": "admin"}
+            f"/api/organizations/{org_id}/members/{other_user_id}", headers=member_user_headers, json={"role": "admin"}
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_only_owner_can_delete_org(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        admin_user_data
-    ):
+    async def test_only_owner_can_delete_org(self, api_client: AsyncClient, lifecycle_user_data, admin_user_data):
         """Test that only owner can delete organization."""
         auth_headers = lifecycle_user_data["headers"]
         admin_user_id = admin_user_data["id"]
@@ -528,9 +454,7 @@ class TestOrgPermissions:
         # Setup: Create org with admin
         unique_slug = f"delete-perm-{uuid4().hex[:8]}"
         org_response = await api_client.post(
-            "/api/organizations",
-            headers=auth_headers,
-            json={"name": "Delete Test", "slug": unique_slug}
+            "/api/organizations", headers=auth_headers, json={"name": "Delete Test", "slug": unique_slug}
         )
         assert org_response.status_code == 201
         org_id = org_response.json()["id"]
@@ -538,14 +462,11 @@ class TestOrgPermissions:
         await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": admin_user_id, "role": "admin"}
+            json={"user_id": admin_user_id, "role": "admin"},
         )
 
         # Test: Admin tries to delete
-        response = await api_client.delete(
-            f"/api/organizations/{org_id}",
-            headers=admin_user_headers
-        )
+        response = await api_client.delete(f"/api/organizations/{org_id}", headers=admin_user_headers)
 
         assert response.status_code == 403
 
@@ -554,12 +475,7 @@ class TestOrgOwnershipTransfer:
     """Tests for ownership transfer."""
 
     @pytest.mark.asyncio
-    async def test_transfer_ownership(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        invited_user_data
-    ):
+    async def test_transfer_ownership(self, api_client: AsyncClient, lifecycle_user_data, invited_user_data):
         """Test transferring org ownership."""
         auth_headers = lifecycle_user_data["headers"]
         other_user_id = invited_user_data["id"]
@@ -568,9 +484,7 @@ class TestOrgOwnershipTransfer:
         # Create org
         unique_slug = f"transfer-test-{uuid4().hex[:8]}"
         org_response = await api_client.post(
-            "/api/organizations",
-            headers=auth_headers,
-            json={"name": "Transfer Test", "slug": unique_slug}
+            "/api/organizations", headers=auth_headers, json={"name": "Transfer Test", "slug": unique_slug}
         )
         assert org_response.status_code == 201
         org_id = org_response.json()["id"]
@@ -579,28 +493,20 @@ class TestOrgOwnershipTransfer:
         await api_client.post(
             f"/api/organizations/{org_id}/members",
             headers=auth_headers,
-            json={"user_id": other_user_id, "role": "admin"}
+            json={"user_id": other_user_id, "role": "admin"},
         )
 
         # Transfer ownership
         transfer_response = await api_client.post(
-            f"/api/organizations/{org_id}/transfer",
-            headers=auth_headers,
-            json={"new_owner_id": other_user_id}
+            f"/api/organizations/{org_id}/transfer", headers=auth_headers, json={"new_owner_id": other_user_id}
         )
         assert transfer_response.status_code == 200
 
         # Verify: New owner can delete, old owner cannot
-        old_owner_delete = await api_client.delete(
-            f"/api/organizations/{org_id}",
-            headers=auth_headers
-        )
+        old_owner_delete = await api_client.delete(f"/api/organizations/{org_id}", headers=auth_headers)
         assert old_owner_delete.status_code == 403
 
-        new_owner_delete = await api_client.delete(
-            f"/api/organizations/{org_id}",
-            headers=other_user_headers
-        )
+        new_owner_delete = await api_client.delete(f"/api/organizations/{org_id}", headers=other_user_headers)
         assert new_owner_delete.status_code == 200
 
 
@@ -608,11 +514,7 @@ class TestDataMigration:
     """Tests for data migration verification."""
 
     @pytest.mark.asyncio
-    async def test_user_has_default_org_after_migration(
-        self,
-        api_client: AsyncClient,
-        auth_headers
-    ):
+    async def test_user_has_default_org_after_migration(self, api_client: AsyncClient, auth_headers):
         """Test that user can list their organizations."""
         response = await api_client.get("/api/organizations", headers=auth_headers)
 
@@ -625,6 +527,7 @@ class TestDataMigration:
     async def test_products_have_org_id(self, db_manager):
         """Test that all products have org_id after migration (if migration ran)."""
         from sqlalchemy import select
+
         from src.giljo_mcp.models.products import Product
 
         async with db_manager.get_session_async() as session:
@@ -643,10 +546,7 @@ class TestOrgIsolation:
 
     @pytest.mark.asyncio
     async def test_user_cannot_see_other_user_orgs(
-        self,
-        api_client: AsyncClient,
-        lifecycle_user_data,
-        invited_user_data
+        self, api_client: AsyncClient, lifecycle_user_data, invited_user_data
     ):
         """Test that users cannot see organizations they don't belong to."""
         owner_headers = lifecycle_user_data["headers"]
@@ -655,18 +555,13 @@ class TestOrgIsolation:
         # Owner creates a private org
         unique_slug = f"private-org-{uuid4().hex[:8]}"
         create_response = await api_client.post(
-            "/api/organizations",
-            headers=owner_headers,
-            json={"name": "Private Org", "slug": unique_slug}
+            "/api/organizations", headers=owner_headers, json={"name": "Private Org", "slug": unique_slug}
         )
         assert create_response.status_code == 201
         org_id = create_response.json()["id"]
 
         # Other user tries to access the org directly
-        access_response = await api_client.get(
-            f"/api/organizations/{org_id}",
-            headers=other_headers
-        )
+        access_response = await api_client.get(f"/api/organizations/{org_id}", headers=other_headers)
 
         # Should be denied (403 Forbidden)
         assert access_response.status_code == 403, f"Should deny access: {access_response.text}"

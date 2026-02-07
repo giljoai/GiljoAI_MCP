@@ -9,21 +9,23 @@ Usage:
 If no document-id provided, re-chunks ALL documents >20K tokens without chunks.
 """
 
-import asyncio
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 
 import yaml
+
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy import select
+
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import VisionDocument
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
 
 def load_config():
@@ -31,7 +33,7 @@ def load_config():
     config_path = project_root / "config.yaml"
     if not config_path.exists():
         raise FileNotFoundError(f"config.yaml not found at {config_path}")
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         return yaml.safe_load(f)
 
 
@@ -40,9 +42,7 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
 
     async with db_manager.get_session_async() as session:
         # Build query
-        stmt = select(VisionDocument).where(
-            VisionDocument.is_active == True
-        )
+        stmt = select(VisionDocument).where(VisionDocument.is_active == True)
 
         if document_id:
             stmt = stmt.where(VisionDocument.id == document_id)
@@ -50,7 +50,7 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
             # Find documents >25K tokens without chunks (Handover 0377: updated threshold)
             stmt = stmt.where(
                 VisionDocument.original_token_count > 25000,
-                (VisionDocument.chunk_count == 0) | (VisionDocument.chunk_count == None)
+                (VisionDocument.chunk_count == 0) | (VisionDocument.chunk_count == None),
             )
 
         result = await session.execute(stmt)
@@ -71,9 +71,7 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
             print(f"\nProcessing: {doc.id}")
             try:
                 chunk_result = await chunker.chunk_vision_document(
-                    session=session,
-                    tenant_key=doc.tenant_key,
-                    vision_document_id=str(doc.id)
+                    session=session, tenant_key=doc.tenant_key, vision_document_id=str(doc.id)
                 )
 
                 if chunk_result.get("success"):
@@ -91,15 +89,14 @@ async def rechunk_document(db_manager: DatabaseManager, document_id: str = None)
 
 async def main():
     parser = argparse.ArgumentParser(description="Re-chunk vision documents")
-    parser.add_argument(
-        "--document-id",
-        help="Specific document UUID to re-chunk (optional)"
-    )
+    parser.add_argument("--document-id", help="Specific document UUID to re-chunk (optional)")
     args = parser.parse_args()
 
     # Load .env file
-    from dotenv import load_dotenv
     import os
+
+    from dotenv import load_dotenv
+
     load_dotenv(project_root / ".env")
 
     # Get DATABASE_URL from environment
@@ -112,7 +109,7 @@ async def main():
     if "postgresql://" in db_url and "asyncpg" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
 
-    print(f"Connecting to database...")
+    print("Connecting to database...")
 
     db_manager = DatabaseManager(database_url=db_url, is_async=True)
 

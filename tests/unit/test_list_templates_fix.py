@@ -12,10 +12,10 @@ Tests:
 - Database error handling
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
-from uuid import uuid4
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -34,9 +34,7 @@ class TestListTemplates:
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
-            self.project = await ToolsTestHelper.create_test_project(
-                session, "ListTemplates Test Project"
-            )
+            self.project = await ToolsTestHelper.create_test_project(session, "ListTemplates Test Project")
             self.tenant_key = self.project.tenant_key
             self.tenant_manager.set_current_tenant(self.tenant_key)
 
@@ -173,9 +171,7 @@ class TestListTemplates:
         # Create second tenant and its templates
         tenant2_template_id = str(uuid4())
         async with self.db_manager.get_session_async() as session:
-            tenant2_project = await ToolsTestHelper.create_test_project(
-                session, "Tenant 2 Project"
-            )
+            tenant2_project = await ToolsTestHelper.create_test_project(session, "Tenant 2 Project")
             tenant2_key = tenant2_project.tenant_key
 
             template2 = AgentTemplate(

@@ -9,13 +9,13 @@ Tests cover:
 - Backward compatibility (include_protocol defaults to True)
 """
 
-import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+import pytest
+
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
 @pytest.fixture
@@ -44,10 +44,7 @@ def mock_tenant_manager():
 def orchestration_service(mock_db_manager, mock_tenant_manager):
     """Create OrchestrationService with mocked dependencies."""
     db_manager, _ = mock_db_manager
-    service = OrchestrationService(
-        db_manager=db_manager,
-        tenant_manager=mock_tenant_manager
-    )
+    service = OrchestrationService(db_manager=db_manager, tenant_manager=mock_tenant_manager)
     return service
 
 
@@ -129,10 +126,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify full_protocol field exists
         assert "full_protocol" in response, "Response must include full_protocol field"
@@ -140,9 +134,7 @@ class TestGetAgentMissionFullProtocol:
         assert len(response["full_protocol"]) > 0
 
     @pytest.mark.asyncio
-    async def test_full_protocol_contains_five_phases(
-        self, orchestration_service, mock_db_manager, mock_agent_job
-    ):
+    async def test_full_protocol_contains_five_phases(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol contains all 5 lifecycle phases (Handover 0359)."""
         db_manager, session = mock_db_manager
         job, execution = mock_agent_job
@@ -159,10 +151,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response["full_protocol"]
 
@@ -174,9 +163,7 @@ class TestGetAgentMissionFullProtocol:
         assert "Phase 5" in protocol or "ERROR" in protocol.upper(), "Protocol must include Phase 5 (Error Handling)"
 
     @pytest.mark.asyncio
-    async def test_full_protocol_references_mcp_tools(
-        self, orchestration_service, mock_db_manager, mock_agent_job
-    ):
+    async def test_full_protocol_references_mcp_tools(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol references required MCP tools."""
         db_manager, session = mock_db_manager
         job, execution = mock_agent_job
@@ -193,10 +180,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response["full_protocol"]
 
@@ -205,9 +189,7 @@ class TestGetAgentMissionFullProtocol:
         assert "complete_job" in protocol.lower(), "Protocol must reference complete_job tool"
 
     @pytest.mark.asyncio
-    async def test_full_protocol_includes_job_context(
-        self, orchestration_service, mock_db_manager, mock_agent_job
-    ):
+    async def test_full_protocol_includes_job_context(self, orchestration_service, mock_db_manager, mock_agent_job):
         """Test that full_protocol includes job-specific context."""
         db_manager, session = mock_db_manager
         job, execution = mock_agent_job
@@ -225,10 +207,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response["full_protocol"]
 
@@ -255,10 +234,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify all existing fields are still present
         assert response.get("success") is True
@@ -294,10 +270,7 @@ class TestGetAgentMissionFullProtocol:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         assert response.get("success") is True
         protocol = response.get("full_protocol", "")
@@ -337,10 +310,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.get("full_protocol", "")
 
@@ -350,12 +320,14 @@ class TestAgentProtocolMessageHandlingEnhancements:
         phase2_section = protocol[phase2_start:phase2_end] if phase2_start != -1 and phase2_end != -1 else ""
 
         # BEHAVIOR: Phase 2 must include message check instruction
-        assert "receive_messages()" in phase2_section, \
+        assert "receive_messages()" in phase2_section, (
             "Phase 2 EXECUTION must instruct agents to check messages after each task"
+        )
 
         # BEHAVIOR: Instruction should mention checking after tasks/TodoWrite
-        assert ("after" in phase2_section.lower() or "completing" in phase2_section.lower()), \
+        assert "after" in phase2_section.lower() or "completing" in phase2_section.lower(), (
             "Phase 2 must specify WHEN to check messages (after each task)"
+        )
 
     @pytest.mark.asyncio
     async def test_agent_protocol_phase3_checks_messages_before_reporting(
@@ -382,10 +354,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.get("full_protocol", "")
 
@@ -400,12 +369,14 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
         assert receive_pos != -1, "Phase 3 must include receive_messages() call"
         assert report_pos != -1, "Phase 3 must include report_progress() call"
-        assert receive_pos < report_pos, \
+        assert receive_pos < report_pos, (
             "Phase 3 must check messages BEFORE reporting progress (receive_messages before report_progress)"
+        )
 
         # BEHAVIOR: Should emphasize this is MANDATORY/BEFORE
-        assert ("before" in phase3_section.lower() or "mandatory" in phase3_section.lower()), \
+        assert "before" in phase3_section.lower() or "mandatory" in phase3_section.lower(), (
             "Phase 3 must clearly state messages should be checked BEFORE reporting"
+        )
 
     @pytest.mark.asyncio
     async def test_agent_protocol_phase4_requires_empty_queue_before_completion(
@@ -431,10 +402,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.get("full_protocol", "")
 
@@ -444,15 +412,15 @@ class TestAgentProtocolMessageHandlingEnhancements:
         phase4_section = protocol[phase4_start:phase4_end] if phase4_start != -1 and phase4_end != -1 else ""
 
         # BEHAVIOR: Phase 4 must include receive_messages() instruction
-        assert "receive_messages()" in phase4_section, \
+        assert "receive_messages()" in phase4_section, (
             "Phase 4 COMPLETION must instruct agents to check messages before completing"
+        )
 
         # BEHAVIOR: Should mention queue must be empty or similar gate language
         queue_gate_indicators = ["queue", "empty", "no pending", "clear", "before completing"]
         has_gate_language = any(indicator in phase4_section.lower() for indicator in queue_gate_indicators)
 
-        assert has_gate_language, \
-            "Phase 4 must include gate language requiring empty queue before completion"
+        assert has_gate_language, "Phase 4 must include gate language requiring empty queue before completion"
 
     @pytest.mark.asyncio
     async def test_agent_protocol_includes_when_to_check_messages_guidance(
@@ -479,34 +447,28 @@ class TestAgentProtocolMessageHandlingEnhancements:
             mock_client.__aexit__ = AsyncMock()
             MockHttpxClient.return_value = mock_client
 
-            response = await orchestration_service.get_agent_mission(
-                job_id=job.job_id,
-                tenant_key="tenant-test"
-            )
+            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.get("full_protocol", "")
 
         # BEHAVIOR: Protocol should have guidance section about when to check messages
-        guidance_indicators = [
-            "when to check",
-            "message checking",
-            "check messages in each phase",
-            "across phases"
-        ]
+        guidance_indicators = ["when to check", "message checking", "check messages in each phase", "across phases"]
 
         has_guidance = any(indicator in protocol.lower() for indicator in guidance_indicators)
 
-        assert has_guidance, \
-            "Protocol must include clear guidance on WHEN to check messages across phases"
+        assert has_guidance, "Protocol must include clear guidance on WHEN to check messages across phases"
 
         # BEHAVIOR: Should reference all phases in message handling context
         # Not just Phase 1 startup check - should cover ongoing checking pattern
-        phases_mentioned = sum([
-            "phase 1" in protocol.lower() and "message" in protocol.lower(),
-            "phase 2" in protocol.lower() and "message" in protocol.lower(),
-            "phase 3" in protocol.lower() and "message" in protocol.lower(),
-            "phase 4" in protocol.lower() and "message" in protocol.lower()
-        ])
+        phases_mentioned = sum(
+            [
+                "phase 1" in protocol.lower() and "message" in protocol.lower(),
+                "phase 2" in protocol.lower() and "message" in protocol.lower(),
+                "phase 3" in protocol.lower() and "message" in protocol.lower(),
+                "phase 4" in protocol.lower() and "message" in protocol.lower(),
+            ]
+        )
 
-        assert phases_mentioned >= 3, \
+        assert phases_mentioned >= 3, (
             "Message handling guidance should reference at least 3 phases (startup, execution, completion)"
+        )

@@ -13,14 +13,13 @@ TDD Phase: RED (Tests written BEFORE E2E implementation)
 Expected: Tests MAY FAIL initially until E2E workflow complete
 """
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
 
-from src.giljo_mcp.models import Project, Product, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
+import pytest
+import pytest_asyncio
+
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -32,7 +31,7 @@ async def test_user(db_session):
         email=f"test_{uuid4().hex[:8]}@example.com",
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         role="developer",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db_session.add(user)
     await db_session.commit()
@@ -47,7 +46,7 @@ async def test_product(db_session, test_user):
         name=f"Test Product {uuid4().hex[:8]}",
         description="E2E test product",
         tenant_key=test_user.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -80,7 +79,7 @@ class TestClaudeCodeModeWorkflow:
             product_id=test_product.id,
             status="active",
             mission="Test agent spawning",
-            meta_data={"execution_mode": "claude-code"}
+            meta_data={"execution_mode": "claude-code"},
         )
         db_session.add(project)
         await db_session.commit()
@@ -93,43 +92,35 @@ class TestClaudeCodeModeWorkflow:
             agent_display_name="orchestrator",
             status="active",
             mission="Test agent spawning",
-            job_metadata={
-                "user_id": test_user.id,
-                "execution_mode": "claude-code"
-            }
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
         # Generate prompt
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
-        result = await generator.generate(
-            project_id=str(project.id),
-            user_id=test_user.id,
-            tool="claude-code")
+        result = await generator.generate(project_id=str(project.id), user_id=test_user.id, tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Verify Task tool instructions present
-        assert "Task" in prompt, \
-            "Prompt must reference Task tool for agent spawning"
+        assert "Task" in prompt, "Prompt must reference Task tool for agent spawning"
 
         # Verify agent discovery instructions
-        assert "get_available_agents" in prompt.lower(), \
+        assert "get_available_agents" in prompt.lower(), (
             "Prompt must reference get_available_agents() for dynamic discovery"
+        )
 
         # Claude Code mode should spawn agents like this:
         # Task(description="...", prompt="...", subagent_type="implementer")
-        assert "subagent" in prompt.lower() or "spawn" in prompt.lower(), \
+        assert "subagent" in prompt.lower() or "spawn" in prompt.lower(), (
             "Prompt should include agent spawning instructions"
+        )
 
         print("\n✓ Claude Code mode agent spawning validated:")
-        print(f"  - Uses Task tool: ✓")
-        print(f"  - Discovers agents dynamically: ✓")
-        print(f"  - Includes spawning instructions: ✓")
+        print("  - Uses Task tool: ✓")
+        print("  - Discovers agents dynamically: ✓")
+        print("  - Includes spawning instructions: ✓")
 
     async def test_claude_code_mode_token_efficiency(
         self, db_session, db_manager, tenant_manager, test_user, test_product
@@ -149,7 +140,7 @@ class TestClaudeCodeModeWorkflow:
             product_id=test_product.id,
             status="active",
             mission="Test tokens",
-            meta_data={"execution_mode": "claude-code"}
+            meta_data={"execution_mode": "claude-code"},
         )
         db_session.add(project)
         await db_session.commit()
@@ -162,38 +153,28 @@ class TestClaudeCodeModeWorkflow:
             agent_display_name="orchestrator",
             status="waiting",
             mission="Test",
-            job_metadata={
-                "user_id": test_user.id,
-                "execution_mode": "claude-code"
-            }
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
 
         # Generate prompt
-        generator = ThinClientPromptGenerator(
-            db=db_session,
-            tenant_key=tenant_key
-        )
+        generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
-        result = await generator.generate(
-            project_id=str(project.id),
-            user_id=test_user.id,
-            tool="claude-code")
+        result = await generator.generate(project_id=str(project.id), user_id=test_user.id, tool="claude-code")
         prompt = result["thin_prompt"]
 
         # Token estimation
         token_count = len(prompt) // 4
         reduction_from_old = ((880 - token_count) / 880) * 100  # Old: ~880 tokens
 
-        assert token_count < 600, \
-            f"Token count {token_count} exceeds target (<600)"
+        assert token_count < 600, f"Token count {token_count} exceeds target (<600)"
 
         # Ideally should be around 450 tokens
         is_ideal = 400 <= token_count <= 500
 
         print("\n✓ Claude Code mode token efficiency:")
         print(f"  - Token count: ~{token_count} tokens")
-        print(f"  - Target: <600 tokens")
+        print("  - Target: <600 tokens")
         print(f"  - Ideal range (400-500): {is_ideal}")
         print(f"  - Reduction from old (880): {reduction_from_old:.1f}%")

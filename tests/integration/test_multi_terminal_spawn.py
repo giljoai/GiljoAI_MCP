@@ -5,18 +5,17 @@ Tests end-to-end flow of template injection when spawning agents
 in multi-terminal mode through OrchestrationService.
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Project, AgentTemplate, Product
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_e2e_multi_terminal_spawn_with_template_injection(
-    db_manager, tenant_manager, test_user
-):
+async def test_e2e_multi_terminal_spawn_with_template_injection(db_manager, tenant_manager, test_user):
     """
     End-to-end test: Spawn agent in multi-terminal mode with template injection.
 
@@ -110,11 +109,10 @@ You are a specialist in integration testing.
     # Verify mission was injected
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         from src.giljo_mcp.models import AgentJob
 
-        result_query = await session.execute(
-            select(AgentJob).where(AgentJob.job_id == job_id)
-        )
+        result_query = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
         agent_job = result_query.scalar_one()
 
         # Verify tidy framing headers (Handover 0417)
@@ -212,11 +210,10 @@ async def test_e2e_cli_mode_no_injection(db_manager, tenant_manager, test_user):
     # Verify mission was NOT injected
     async with db_manager.get_session_async() as session:
         from sqlalchemy import select
+
         from src.giljo_mcp.models import AgentJob
 
-        result_query = await session.execute(
-            select(AgentJob).where(AgentJob.job_id == job_id)
-        )
+        result_query = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
         agent_job = result_query.scalar_one()
 
         # Verify NO template content

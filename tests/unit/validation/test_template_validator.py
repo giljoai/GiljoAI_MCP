@@ -5,23 +5,18 @@ Following TDD: These tests are written BEFORE implementation.
 They define the expected behavior of the validation system.
 """
 
-import pytest
-import time
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
-import fakeredis
 
-from src.giljo_mcp.validation.template_validator import (
-    TemplateValidator,
-    ValidationError,
-    TemplateValidationResult
-)
+import fakeredis
+import pytest
+
 from src.giljo_mcp.validation.rules import (
+    InjectionDetectionRule,
     MCPToolsPresenceRule,
     PlaceholderVerificationRule,
-    InjectionDetectionRule,
-    ToolUsageBestPracticesRule
+    ToolUsageBestPracticesRule,
 )
+from src.giljo_mcp.validation.template_validator import TemplateValidationResult, TemplateValidator, ValidationError
 
 
 class TestValidationError:
@@ -30,10 +25,7 @@ class TestValidationError:
     def test_validation_error_creation(self):
         """Test creating ValidationError with all fields."""
         error = ValidationError(
-            rule_id="TEST_001",
-            severity="critical",
-            message="Test error message",
-            remediation="Fix by doing X"
+            rule_id="TEST_001", severity="critical", message="Test error message", remediation="Fix by doing X"
         )
 
         assert error.rule_id == "TEST_001"
@@ -44,10 +36,7 @@ class TestValidationError:
     def test_validation_error_to_dict(self):
         """Test ValidationError serialization to dict."""
         error = ValidationError(
-            rule_id="TEST_001",
-            severity="warning",
-            message="Test warning",
-            remediation="Optional fix"
+            rule_id="TEST_001", severity="warning", message="Test warning", remediation="Optional fix"
         )
 
         result = error.to_dict()
@@ -59,11 +48,7 @@ class TestValidationError:
 
     def test_validation_error_without_remediation(self):
         """Test ValidationError without remediation field."""
-        error = ValidationError(
-            rule_id="TEST_002",
-            severity="info",
-            message="Informational message"
-        )
+        error = ValidationError(rule_id="TEST_002", severity="info", message="Informational message")
 
         assert error.remediation is None
         result = error.to_dict()
@@ -75,12 +60,8 @@ class TestTemplateValidationResult:
 
     def test_validation_result_creation(self):
         """Test creating validation result."""
-        errors = [
-            ValidationError("ERR_001", "critical", "Critical error")
-        ]
-        warnings = [
-            ValidationError("WARN_001", "warning", "Warning message")
-        ]
+        errors = [ValidationError("ERR_001", "critical", "Critical error")]
+        warnings = [ValidationError("WARN_001", "warning", "Warning message")]
 
         result = TemplateValidationResult(
             is_valid=False,
@@ -88,7 +69,7 @@ class TestTemplateValidationResult:
             warnings=warnings,
             template_id="template-123",
             validated_at=datetime.now(timezone.utc),
-            validation_duration_ms=5.2
+            validation_duration_ms=5.2,
         )
 
         assert not result.is_valid
@@ -107,21 +88,18 @@ class TestTemplateValidationResult:
             warnings=[ValidationError("W1", "warning", "msg")],
             template_id="t1",
             validated_at=datetime.now(timezone.utc),
-            validation_duration_ms=1.0
+            validation_duration_ms=1.0,
         )
         assert not result1.has_critical_errors
 
         # Has critical errors
         result2 = TemplateValidationResult(
             is_valid=False,
-            errors=[
-                ValidationError("E1", "critical", "msg"),
-                ValidationError("E2", "warning", "msg")
-            ],
+            errors=[ValidationError("E1", "critical", "msg"), ValidationError("E2", "warning", "msg")],
             warnings=[],
             template_id="t2",
             validated_at=datetime.now(timezone.utc),
-            validation_duration_ms=1.0
+            validation_duration_ms=1.0,
         )
         assert result2.has_critical_errors
 
@@ -480,16 +458,12 @@ class TestTemplateValidator:
         """
 
         # First call - should not be cached
-        result1 = validator_with_cache.validate(
-            template, "template-123", "implementer", use_cache=True
-        )
+        result1 = validator_with_cache.validate(template, "template-123", "implementer", use_cache=True)
         assert not result1.cached
         first_duration = result1.validation_duration_ms
 
         # Second call - should be cached
-        result2 = validator_with_cache.validate(
-            template, "template-123", "implementer", use_cache=True
-        )
+        result2 = validator_with_cache.validate(template, "template-123", "implementer", use_cache=True)
         assert result2.cached
         assert result2.validation_duration_ms < 1.0  # Cache hit is very fast
         assert result2.is_valid == result1.is_valid
@@ -509,14 +483,10 @@ class TestTemplateValidator:
         """
 
         # First call with cache
-        result1 = validator_with_cache.validate(
-            template, "template-123", "implementer", use_cache=True
-        )
+        result1 = validator_with_cache.validate(template, "template-123", "implementer", use_cache=True)
 
         # Second call without cache
-        result2 = validator_with_cache.validate(
-            template, "template-123", "implementer", use_cache=False
-        )
+        result2 = validator_with_cache.validate(template, "template-123", "implementer", use_cache=False)
 
         assert not result1.cached
         assert not result2.cached  # Cache was bypassed
@@ -536,14 +506,10 @@ class TestTemplateValidator:
         """
 
         # Cache first template
-        result1 = validator_with_cache.validate(
-            template1, "template-123", "implementer", use_cache=True
-        )
+        result1 = validator_with_cache.validate(template1, "template-123", "implementer", use_cache=True)
 
         # Different content should not use cache
-        result2 = validator_with_cache.validate(
-            template2, "template-123", "implementer", use_cache=True
-        )
+        result2 = validator_with_cache.validate(template2, "template-123", "implementer", use_cache=True)
 
         assert not result1.cached
         assert not result2.cached  # Different content = different cache key

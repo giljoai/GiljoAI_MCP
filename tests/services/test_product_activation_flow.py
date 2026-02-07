@@ -7,9 +7,10 @@ Root Cause: get_active_product() doesn't eager-load vision_documents relationshi
 causing SQLAlchemy async lazy loading errors when accessing primary_vision_path property.
 """
 
+from unittest.mock import AsyncMock, MagicMock, PropertyMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from sqlalchemy.exc import MissingGreenlet
+
 from src.giljo_mcp.models.products import Product, VisionDocument
 
 

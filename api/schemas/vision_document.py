@@ -14,6 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+
 class VisionDocumentCreate(BaseModel):
     """
     Schema for creating a vision document.
@@ -38,6 +39,7 @@ class VisionDocumentCreate(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class VisionDocumentUpdate(BaseModel):
     """
     Schema for updating vision document content.
@@ -52,6 +54,7 @@ class VisionDocumentUpdate(BaseModel):
     auto_rechunk: bool = Field(True, description="Automatically re-chunk after update")
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class VisionDocumentResponse(BaseModel):
     """
@@ -101,6 +104,7 @@ class VisionDocumentResponse(BaseModel):
         self.has_summaries = bool(self.summary_light or self.summary_medium)
         return self
 
+
 class RechunkRequest(BaseModel):
     """
     Schema for triggering re-chunking (POST /vision-documents/{document_id}/rechunk).
@@ -112,6 +116,7 @@ class RechunkRequest(BaseModel):
     """
 
     # No fields - just a trigger endpoint
+
 
 class RechunkResponse(BaseModel):
     """
@@ -126,6 +131,7 @@ class RechunkResponse(BaseModel):
     old_chunks_deleted: int = Field(..., description="Number of old chunks deleted")
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class DeleteResponse(BaseModel):
     """

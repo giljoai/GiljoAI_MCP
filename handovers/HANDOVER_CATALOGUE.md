@@ -112,6 +112,7 @@
 | 0373 | Template Adapter Migration | Ready | Medium | - |
 | 0374 | Vision Summary Field Migration | Ready | Medium | - |
 | 0382 | Orchestrator Prompt Improvements | Ready | Medium | - |
+| **0397** | **Deprecate stdio Proxy for Codex Native HTTP** | **Ready** | **MEDIUM** | Codex v0.44.0+ supports native HTTP, removes mcp security vulnerability |
 | 0408 | Serena Toggle Injection | Ready | Medium | - |
 | 0409 | Unified Client Quick Setup | Ready | Medium | - |
 | 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
@@ -627,7 +628,7 @@ completed/reference/
 **0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
-**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0396 (includes Alpha Trial 0356-0362, 0364-0365)
+**0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397 (includes Alpha Trial 0356-0362, 0364-0365)
 **0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), 0486-0489 (continuation workflow + implementation gates)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
@@ -643,7 +644,7 @@ completed/reference/
 
 ### Current Gaps Available
 - **0317**: Gap in 0301-0400 range
-- **0397-0399**: Gaps in 0301-0400 range (0385-0386 used in git, 0396 now used)
+- **0398-0399**: Gaps in 0301-0400 range (0385-0386 used in git, 0396-0397 now used)
 - **0424+**: Next sequential after current development (0400-0423 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range

@@ -22,32 +22,31 @@ This test suite covers all 16 UserService methods with comprehensive coverage:
 Coverage Target: >80%
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, AsyncMock, patch
 from uuid import uuid4
 
+import pytest
+import pytest_asyncio
 from passlib.hash import bcrypt
-from sqlalchemy import select
 
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.services.user_service import UserService
 from src.giljo_mcp.exceptions import (
-    ResourceNotFoundError,
-    ValidationError,
     AuthenticationError,
     AuthorizationError,
-    BaseGiljoException
+    BaseGiljoException,
+    ResourceNotFoundError,
+    ValidationError,
 )
+from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.services.user_service import UserService
+
 
 # Use existing fixtures from base_fixtures
-from tests.fixtures.base_fixtures import db_manager, db_session
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def test_tenant_key():
@@ -62,7 +61,7 @@ async def user_service(db_manager, db_session, test_tenant_key):
         db_manager=db_manager,
         tenant_key=test_tenant_key,
         websocket_manager=None,  # No WebSocket in tests
-        session=db_session  # SHARED SESSION for test transaction isolation
+        session=db_session,  # SHARED SESSION for test transaction isolation
     )
 
 
@@ -78,7 +77,7 @@ async def test_user(db_session, test_tenant_key):
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
     await db_session.commit()
@@ -98,7 +97,7 @@ async def admin_user(db_session, test_tenant_key):
         role="admin",
         tenant_key=test_tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     db_session.add(admin)
     await db_session.commit()
@@ -109,6 +108,7 @@ async def admin_user(db_session, test_tenant_key):
 # ============================================================================
 # TEST: list_users
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_list_users_returns_users_for_tenant(user_service, db_session, test_user, test_tenant_key):
@@ -136,7 +136,7 @@ async def test_list_users_tenant_isolation(user_service, db_session, test_tenant
         password_hash=bcrypt.hash("OtherPassword123"),
         tenant_key=other_tenant,
         role="developer",
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -160,7 +160,7 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
         password_hash=bcrypt.hash("Password123"),
         tenant_key=test_tenant_key,
         role="developer",
-        is_active=False
+        is_active=False,
     )
     db_session.add(inactive_user)
     await db_session.commit()
@@ -175,6 +175,7 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
 # ============================================================================
 # TEST: get_user
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_user_returns_user_by_id(user_service, test_user):
@@ -211,7 +212,7 @@ async def test_get_user_tenant_isolation(user_service, db_session):
         password_hash=bcrypt.hash("Password123"),
         tenant_key=other_tenant,
         role="developer",
-        is_active=True
+        is_active=True,
     )
     db_session.add(other_user)
     await db_session.commit()
@@ -227,6 +228,7 @@ async def test_get_user_tenant_isolation(user_service, db_session):
 # TEST: create_user
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_create_user_success(user_service, test_tenant_key):
     """Test successful user creation"""
@@ -234,11 +236,7 @@ async def test_create_user_success(user_service, test_tenant_key):
     email = f"new_{uuid4().hex[:6]}@example.com"
 
     result = await user_service.create_user(
-        username=username,
-        email=email,
-        full_name="New User",
-        password="NewPassword123",
-        role="developer"
+        username=username, email=email, full_name="New User", password="NewPassword123", role="developer"
     )
 
     assert result["success"] is True
@@ -257,7 +255,7 @@ async def test_create_user_duplicate_username(user_service, test_user):
             username=test_user.username,  # Duplicate
             email="different@example.com",
             password="Password123",
-            role="developer"
+            role="developer",
         )
 
     error_msg = str(exc_info.value).lower()
@@ -273,7 +271,7 @@ async def test_create_user_duplicate_email(user_service, test_user):
             username=f"newuser_{uuid4().hex[:6]}",
             email=test_user.email,  # Duplicate
             password="Password123",
-            role="developer"
+            role="developer",
         )
 
     error_msg = str(exc_info.value).lower()
@@ -289,7 +287,7 @@ async def test_create_user_default_password(user_service):
     result = await user_service.create_user(
         username=username,
         email=f"new_{uuid4().hex[:6]}@example.com",
-        role="developer"
+        role="developer",
         # No password provided - should default to "GiljoMCP"
     )
 
@@ -301,16 +299,13 @@ async def test_create_user_default_password(user_service):
 # TEST: update_user
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_update_user_success(user_service, test_user):
     """Test successful user update"""
     new_email = f"updated_{uuid4().hex[:6]}@example.com"
 
-    result = await user_service.update_user(
-        user_id=test_user.id,
-        email=new_email,
-        full_name="Updated Name"
-    )
+    result = await user_service.update_user(user_id=test_user.id, email=new_email, full_name="Updated Name")
 
     assert result["success"] is True
     assert result["user"]["email"] == new_email
@@ -323,10 +318,7 @@ async def test_update_user_not_found(user_service):
     fake_id = str(uuid4())
 
     with pytest.raises(ResourceNotFoundError) as exc_info:
-        await user_service.update_user(
-            user_id=fake_id,
-            email="new@example.com"
-        )
+        await user_service.update_user(user_id=fake_id, email="new@example.com")
 
     assert "not found" in str(exc_info.value).lower()
 
@@ -337,7 +329,7 @@ async def test_update_user_duplicate_email(user_service, test_user, admin_user):
     with pytest.raises(ValidationError) as exc_info:
         await user_service.update_user(
             user_id=test_user.id,
-            email=admin_user.email  # Duplicate
+            email=admin_user.email,  # Duplicate
         )
 
     assert "already exists" in str(exc_info.value).lower()
@@ -346,6 +338,7 @@ async def test_update_user_duplicate_email(user_service, test_user, admin_user):
 # ============================================================================
 # TEST: delete_user (soft delete)
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_delete_user_soft_delete(user_service, test_user, db_session):
@@ -374,13 +367,11 @@ async def test_delete_user_not_found(user_service):
 # TEST: change_role
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_change_role_success(user_service, test_user, db_session):
     """Test successful role change"""
-    result = await user_service.change_role(
-        user_id=test_user.id,
-        new_role="viewer"
-    )
+    result = await user_service.change_role(user_id=test_user.id, new_role="viewer")
 
     assert result["success"] is True
     assert result["user"]["role"] == "viewer"
@@ -395,7 +386,7 @@ async def test_change_role_invalid_role(user_service, test_user):
     with pytest.raises(ValidationError) as exc_info:
         await user_service.change_role(
             user_id=test_user.id,
-            new_role="superuser"  # Invalid
+            new_role="superuser",  # Invalid
         )
 
     assert "invalid" in str(exc_info.value).lower()
@@ -405,10 +396,7 @@ async def test_change_role_invalid_role(user_service, test_user):
 async def test_change_role_admin_restriction(user_service, admin_user):
     """Test that last admin cannot be demoted"""
     with pytest.raises(AuthorizationError) as exc_info:
-        await user_service.change_role(
-            user_id=admin_user.id,
-            new_role="developer"
-        )
+        await user_service.change_role(user_id=admin_user.id, new_role="developer")
 
     assert "admin" in str(exc_info.value).lower()
 
@@ -417,15 +405,14 @@ async def test_change_role_admin_restriction(user_service, admin_user):
 # TEST: change_password
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_change_password_success(user_service, test_user, db_session):
     """Test successful password change"""
     new_password = "NewPassword456"
 
     result = await user_service.change_password(
-        user_id=test_user.id,
-        old_password="TestPassword123",
-        new_password=new_password
+        user_id=test_user.id, old_password="TestPassword123", new_password=new_password
     )
 
     assert result["success"] is True
@@ -440,9 +427,7 @@ async def test_change_password_incorrect_old_password(user_service, test_user):
     """Test that change_password rejects incorrect old password"""
     with pytest.raises(AuthenticationError) as exc_info:
         await user_service.change_password(
-            user_id=test_user.id,
-            old_password="WrongPassword",
-            new_password="NewPassword456"
+            user_id=test_user.id, old_password="WrongPassword", new_password="NewPassword456"
         )
 
     assert "incorrect" in str(exc_info.value).lower()
@@ -457,7 +442,7 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
         user_id=test_user.id,
         old_password=None,  # Admin bypass
         new_password=new_password,
-        is_admin=True
+        is_admin=True,
     )
 
     assert result["success"] is True
@@ -469,6 +454,7 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
 # ============================================================================
 # TEST: reset_password
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_reset_password_sets_default(user_service, test_user, db_session):
@@ -485,6 +471,7 @@ async def test_reset_password_sets_default(user_service, test_user, db_session):
 # ============================================================================
 # TEST: check_username_exists
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_check_username_exists_true(user_service, test_user):
@@ -508,6 +495,7 @@ async def test_check_username_exists_false(user_service):
 # TEST: check_email_exists
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_check_email_exists_true(user_service, test_user):
     """Test that check_email_exists detects existing email"""
@@ -530,13 +518,11 @@ async def test_check_email_exists_false(user_service):
 # TEST: verify_password
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_verify_password_correct(user_service, test_user):
     """Test that verify_password returns true for correct password"""
-    result = await user_service.verify_password(
-        user_id=test_user.id,
-        password="TestPassword123"
-    )
+    result = await user_service.verify_password(user_id=test_user.id, password="TestPassword123")
 
     assert result["success"] is True
     assert result["verified"] is True
@@ -545,10 +531,7 @@ async def test_verify_password_correct(user_service, test_user):
 @pytest.mark.asyncio
 async def test_verify_password_incorrect(user_service, test_user):
     """Test that verify_password returns false for incorrect password"""
-    result = await user_service.verify_password(
-        user_id=test_user.id,
-        password="WrongPassword"
-    )
+    result = await user_service.verify_password(user_id=test_user.id, password="WrongPassword")
 
     assert result["success"] is True
     assert result["verified"] is False
@@ -558,17 +541,13 @@ async def test_verify_password_incorrect(user_service, test_user):
 # TEST: get_field_priority_config
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_field_priority_config_custom(user_service, test_user, db_session):
     """Test that get_field_priority_config returns custom config"""
     custom_config = {
         "version": "2.0",
-        "priorities": {
-            "product_core": 1,
-            "vision_documents": 2,
-            "agent_templates": 3,
-            "project_description": 4
-        }
+        "priorities": {"product_core": 1, "vision_documents": 2, "agent_templates": 3, "project_description": 4},
     }
     test_user.field_priority_config = custom_config
     await db_session.commit()
@@ -594,23 +573,16 @@ async def test_get_field_priority_config_defaults(user_service, test_user):
 # TEST: update_field_priority_config
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_update_field_priority_config_success(user_service, test_user, db_session):
     """Test successful field priority config update"""
     new_config = {
         "version": "2.0",
-        "priorities": {
-            "product_core": 1,
-            "vision_documents": 1,
-            "agent_templates": 2,
-            "project_description": 3
-        }
+        "priorities": {"product_core": 1, "vision_documents": 1, "agent_templates": 2, "project_description": 3},
     }
 
-    result = await user_service.update_field_priority_config(
-        user_id=test_user.id,
-        config=new_config
-    )
+    result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
     assert result["success"] is True
 
@@ -625,14 +597,11 @@ async def test_update_field_priority_config_validation(user_service, test_user):
         "version": "2.0",
         "priorities": {
             "product_core": 5  # Invalid priority
-        }
+        },
     }
 
     with pytest.raises(ValidationError) as exc_info:
-        await user_service.update_field_priority_config(
-            user_id=test_user.id,
-            config=invalid_config
-        )
+        await user_service.update_field_priority_config(user_id=test_user.id, config=invalid_config)
 
     assert "invalid" in str(exc_info.value).lower()
 
@@ -640,6 +609,7 @@ async def test_update_field_priority_config_validation(user_service, test_user):
 # ============================================================================
 # TEST: reset_field_priority_config
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_reset_field_priority_config_clears_custom(user_service, test_user, db_session):
@@ -660,14 +630,11 @@ async def test_reset_field_priority_config_clears_custom(user_service, test_user
 # TEST: get_depth_config
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_depth_config_custom(user_service, test_user, db_session):
     """Test that get_depth_config returns custom config"""
-    custom_depth = {
-        "vision_chunking": "full",
-        "memory_last_n_projects": 5,
-        "git_commits": 50
-    }
+    custom_depth = {"vision_chunking": "full", "memory_last_n_projects": 5, "git_commits": 50}
     test_user.depth_config = custom_depth
     await db_session.commit()
 
@@ -691,19 +658,13 @@ async def test_get_depth_config_defaults(user_service, test_user):
 # TEST: update_depth_config
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_update_depth_config_success(user_service, test_user, db_session):
     """Test successful depth config update"""
-    new_depth = {
-        "vision_documents": "full",
-        "memory_last_n_projects": 10,
-        "git_commits": 100
-    }
+    new_depth = {"vision_documents": "full", "memory_last_n_projects": 10, "git_commits": 100}
 
-    result = await user_service.update_depth_config(
-        user_id=test_user.id,
-        config=new_depth
-    )
+    result = await user_service.update_depth_config(user_id=test_user.id, config=new_depth)
 
     assert result["success"] is True
 
@@ -719,10 +680,7 @@ async def test_update_depth_config_validation(user_service, test_user):
     }
 
     with pytest.raises(ValidationError) as exc_info:
-        await user_service.update_depth_config(
-            user_id=test_user.id,
-            config=invalid_depth
-        )
+        await user_service.update_depth_config(user_id=test_user.id, config=invalid_depth)
 
     assert "invalid" in str(exc_info.value).lower()
 
@@ -730,6 +688,7 @@ async def test_update_depth_config_validation(user_service, test_user):
 # ============================================================================
 # TEST: execution_mode persistence
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_execution_mode_default(user_service, test_user):
@@ -770,6 +729,7 @@ async def test_update_execution_mode_validation(user_service, test_user):
 # TEST: Exception Handling & Edge Cases
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_user_service_handles_database_errors(user_service, db_session):
     """Test that UserService handles database errors gracefully"""
@@ -785,6 +745,7 @@ async def test_user_service_handles_database_errors(user_service, db_session):
 async def test_user_service_logging(user_service, test_user, caplog):
     """Test that UserService logs operations"""
     import logging
+
     caplog.set_level(logging.INFO)
 
     await user_service.get_user(test_user.id)

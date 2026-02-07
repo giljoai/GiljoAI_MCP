@@ -5,8 +5,10 @@ Handover 0316: Phase 5 - Service Layer Updates
 Tests written FIRST following TDD discipline (RED → GREEN → REFACTOR).
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from src.giljo_mcp.models.products import Product
 
 
@@ -46,9 +48,7 @@ async def test_update_quality_standards_success(mock_db_manager):
 
     # Update quality_standards
     result = await service.update_quality_standards(
-        product_id="test-product-id",
-        quality_standards="80% coverage, zero critical bugs",
-        tenant_key="test-tenant"
+        product_id="test-product-id", quality_standards="80% coverage, zero critical bugs", tenant_key="test-tenant"
     )
 
     # Verify product updated
@@ -79,7 +79,7 @@ async def test_update_quality_standards_multi_tenant_isolation(mock_db_manager):
         await service.update_quality_standards(
             product_id="test-product-id",
             quality_standards="Standards here",
-            tenant_key="test-tenant"  # Different from product.tenant_key
+            tenant_key="test-tenant",  # Different from product.tenant_key
         )
 
 
@@ -96,9 +96,7 @@ async def test_update_quality_standards_product_not_found(mock_db_manager):
 
     with pytest.raises(ValueError, match="Product .* not found"):
         await service.update_quality_standards(
-            product_id="nonexistent-id",
-            quality_standards="Standards",
-            tenant_key="test-tenant"
+            product_id="nonexistent-id", quality_standards="Standards", tenant_key="test-tenant"
         )
 
 
@@ -122,9 +120,7 @@ async def test_update_quality_standards_emits_websocket_event(mock_db_manager):
     service._emit_websocket_event = AsyncMock()
 
     await service.update_quality_standards(
-        product_id="test-product-id",
-        quality_standards="80% coverage",
-        tenant_key="test-tenant"
+        product_id="test-product-id", quality_standards="80% coverage", tenant_key="test-tenant"
     )
 
     # Verify WebSocket event was called
@@ -157,7 +153,7 @@ async def test_update_quality_standards_updates_existing_value(mock_db_manager):
     result = await service.update_quality_standards(
         product_id="test-product-id",
         quality_standards="New standards: 90% coverage, TDD required",
-        tenant_key="test-tenant"
+        tenant_key="test-tenant",
     )
 
     # Verify old value replaced

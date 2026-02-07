@@ -19,9 +19,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Project, Product
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -179,7 +178,8 @@ async def test_orchestrator_metadata_reuse_updates(
         agent_name="Orchestrator",
         agent_display_name="orchestrator",
         status="waiting",
-        mission="Old orchestrator mission",        context_budget=200000,
+        mission="Old orchestrator mission",
+        context_budget=200000,
         context_used=0,
         tool_type="claude-code",
         job_metadata={},  # OLD: Empty metadata (the bug we're fixing)
@@ -230,9 +230,7 @@ async def test_orchestrator_metadata_reuse_updates(
 
     # CRITICAL BUG FIX: job_metadata must be UPDATED (not left as {})
     assert old_orchestrator.job_metadata is not None
-    assert old_orchestrator.job_metadata != {}, (
-        "BUG NOT FIXED: job_metadata still empty on reuse"
-    )
+    assert old_orchestrator.job_metadata != {}, "BUG NOT FIXED: job_metadata still empty on reuse"
 
     # CRITICAL: Updated field priorities match user's current settings
     assert "field_priorities" in old_orchestrator.job_metadata

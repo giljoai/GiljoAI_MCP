@@ -215,6 +215,7 @@ class TestVisionDocumentSummarizationFix:
 
         This verifies the try-except block in upload_vision_document handles failures.
         """
+
         # Mock VisionDocumentSummarizer to raise exception
         def mock_summarize_multi_level(*args, **kwargs):
             raise RuntimeError("Summarization service unavailable")

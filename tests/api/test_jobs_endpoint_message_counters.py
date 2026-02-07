@@ -6,14 +6,16 @@ for sent, waiting, and read messages.
 
 Backend Integration Testing - TDD Approach
 """
-import pytest
+
 from datetime import datetime, timezone
-from sqlalchemy import select
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -21,6 +23,7 @@ pytestmark = pytest.mark.asyncio
 # ============================================================================
 # TEST FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: TenantManager):
@@ -48,37 +51,73 @@ async def test_project_with_jobs(db_session: AsyncSession, tenant_manager: Tenan
             "job_id": "job-001",
             "agent_name": "Orchestrator",
             "agent_display_name": "orchestrator",
-            "messages": []  # No messages
+            "messages": [],  # No messages
         },
         {
             "job_id": "job-002",
             "agent_name": "Backend Implementer",
             "agent_display_name": "implementer",
             "messages": [
-                {"id": "msg-1", "from": "orchestrator", "to": ["job-002"], "content": "Start coding", "status": "pending"},
-                {"id": "msg-2", "from": "orchestrator", "to": ["job-002"], "content": "Check status", "status": "pending"},
-            ]  # 2 waiting
+                {
+                    "id": "msg-1",
+                    "from": "orchestrator",
+                    "to": ["job-002"],
+                    "content": "Start coding",
+                    "status": "pending",
+                },
+                {
+                    "id": "msg-2",
+                    "from": "orchestrator",
+                    "to": ["job-002"],
+                    "content": "Check status",
+                    "status": "pending",
+                },
+            ],  # 2 waiting
         },
         {
             "job_id": "job-003",
             "agent_name": "Backend Tester",
             "agent_display_name": "tester",
             "messages": [
-                {"id": "msg-3", "from": "orchestrator", "to": ["job-003"], "content": "Write tests", "status": "acknowledged"},
-                {"id": "msg-4", "from": "job-003", "to": ["orchestrator"], "content": "Tests complete", "status": "pending"},
-            ]  # 1 read, 1 sent
+                {
+                    "id": "msg-3",
+                    "from": "orchestrator",
+                    "to": ["job-003"],
+                    "content": "Write tests",
+                    "status": "acknowledged",
+                },
+                {
+                    "id": "msg-4",
+                    "from": "job-003",
+                    "to": ["orchestrator"],
+                    "content": "Tests complete",
+                    "status": "pending",
+                },
+            ],  # 1 read, 1 sent
         },
         {
             "job_id": "job-004",
             "agent_name": "Frontend Developer",
             "agent_display_name": "implementer",
             "messages": [
-                {"id": "msg-5", "from": "orchestrator", "to": ["job-004"], "content": "Build UI", "status": "acknowledged"},
+                {
+                    "id": "msg-5",
+                    "from": "orchestrator",
+                    "to": ["job-004"],
+                    "content": "Build UI",
+                    "status": "acknowledged",
+                },
                 {"id": "msg-6", "from": "orchestrator", "to": ["job-004"], "content": "Add tests", "status": "pending"},
                 {"id": "msg-7", "from": "job-004", "to": ["orchestrator"], "content": "UI done", "status": "pending"},
-                {"id": "msg-8", "from": "job-004", "to": ["orchestrator"], "content": "Tests added", "status": "pending"},
-            ]  # 1 read, 1 waiting, 2 sent
-        }
+                {
+                    "id": "msg-8",
+                    "from": "job-004",
+                    "to": ["orchestrator"],
+                    "content": "Tests added",
+                    "status": "pending",
+                },
+            ],  # 1 read, 1 waiting, 2 sent
+        },
     ]
 
     for job_data in jobs_data:
@@ -137,14 +176,50 @@ async def test_project_with_messages(db_session: AsyncSession, tenant_manager: T
         tool_type="claude-code",
         messages=[
             # Sent messages (from this job to others)
-            {"id": "msg-sent-1", "from": "job-counter-test", "to": ["orchestrator"], "content": "Update 1", "status": "pending"},
-            {"id": "msg-sent-2", "from": "job-counter-test", "to": ["orchestrator"], "content": "Update 2", "status": "pending"},
-            {"id": "msg-sent-3", "from": "job-counter-test", "to": ["orchestrator"], "content": "Update 3", "status": "pending"},
+            {
+                "id": "msg-sent-1",
+                "from": "job-counter-test",
+                "to": ["orchestrator"],
+                "content": "Update 1",
+                "status": "pending",
+            },
+            {
+                "id": "msg-sent-2",
+                "from": "job-counter-test",
+                "to": ["orchestrator"],
+                "content": "Update 2",
+                "status": "pending",
+            },
+            {
+                "id": "msg-sent-3",
+                "from": "job-counter-test",
+                "to": ["orchestrator"],
+                "content": "Update 3",
+                "status": "pending",
+            },
             # Waiting messages (to this job, not acknowledged)
-            {"id": "msg-wait-1", "from": "orchestrator", "to": ["job-counter-test"], "content": "Task 1", "status": "pending"},
-            {"id": "msg-wait-2", "from": "orchestrator", "to": ["job-counter-test"], "content": "Task 2", "status": "pending"},
+            {
+                "id": "msg-wait-1",
+                "from": "orchestrator",
+                "to": ["job-counter-test"],
+                "content": "Task 1",
+                "status": "pending",
+            },
+            {
+                "id": "msg-wait-2",
+                "from": "orchestrator",
+                "to": ["job-counter-test"],
+                "content": "Task 2",
+                "status": "pending",
+            },
             # Read messages (to this job, acknowledged)
-            {"id": "msg-read-1", "from": "orchestrator", "to": ["job-counter-test"], "content": "Task 0", "status": "acknowledged"},
+            {
+                "id": "msg-read-1",
+                "from": "orchestrator",
+                "to": ["job-counter-test"],
+                "content": "Task 0",
+                "status": "acknowledged",
+            },
         ],
         created_at=datetime.now(timezone.utc),
     )
@@ -160,7 +235,7 @@ async def test_project_with_messages(db_session: AsyncSession, tenant_manager: T
                 "waiting": 2,
                 "read": 1,
             }
-        }
+        },
     }
 
 
@@ -168,19 +243,18 @@ async def test_project_with_messages(db_session: AsyncSession, tenant_manager: T
 # TEST CASES
 # ============================================================================
 
+
 class TestJobsEndpointMessageCounters:
     """Tests for message counters in jobs endpoint."""
 
-    async def test_jobs_endpoint_includes_message_counters(
-        self, db_session: AsyncSession, test_project_with_jobs
-    ):
+    async def test_jobs_endpoint_includes_message_counters(self, db_session: AsyncSession, test_project_with_jobs):
         """Jobs endpoint should include message counters per job."""
-        from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
-        from src.giljo_mcp.auth.dependencies import get_current_user
-        from src.giljo_mcp.models import User
-
         # Create a mock user for authentication with unique email
         from uuid import uuid4
+
+        from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
+        from src.giljo_mcp.models import User
+
         unique_id = uuid4().hex[:8]
         user = User(
             id=f"user-test-0297-{unique_id}",
@@ -232,15 +306,14 @@ class TestJobsEndpointMessageCounters:
                 assert row.unread_count == 3, "Job-004 should have 3 unread messages (1 waiting + 2 sent)"
                 assert row.acknowledged_count == 1, "Job-004 should have 1 acknowledged message"
 
-    async def test_message_counters_reflect_jsonb_state(
-        self, db_session: AsyncSession, test_project_with_messages
-    ):
+    async def test_message_counters_reflect_jsonb_state(self, db_session: AsyncSession, test_project_with_messages):
         """Message counters should reflect the AgentExecution.messages JSONB state."""
+        # Create a mock user for authentication with unique email
+        from uuid import uuid4
+
         from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
         from src.giljo_mcp.models import User
 
-        # Create a mock user for authentication with unique email
-        from uuid import uuid4
         unique_id = uuid4().hex[:8]
         user = User(
             id=f"user-test-0297-b-{unique_id}",
@@ -286,18 +359,17 @@ class TestJobsEndpointMessageCounters:
         # acknowledged_count should be 1
         assert job.acknowledged_count == 1, f"Expected 1 acknowledged message, got {job.acknowledged_count}"
 
-    async def test_job_read_derived_from_waiting_count(
-        self, db_session: AsyncSession, test_project_with_jobs
-    ):
+    async def test_job_read_derived_from_waiting_count(self, db_session: AsyncSession, test_project_with_jobs):
         """Job Read should be True when waiting count is zero."""
         # NOTE: This test will fail because the current endpoint doesn't expose job_read/job_acknowledged
         # This is intentional TDD - we're defining the expected behavior first
 
+        # Create a mock user for authentication with unique email
+        from uuid import uuid4
+
         from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
         from src.giljo_mcp.models import User
 
-        # Create a mock user for authentication with unique email
-        from uuid import uuid4
         unique_id = uuid4().hex[:8]
         user = User(
             id=f"user-test-0297-c-{unique_id}",
@@ -335,17 +407,16 @@ class TestJobsEndpointMessageCounters:
                 # Has pending messages, so NOT read
                 assert row.unread_count > 0, "Job-002 has unread messages"
 
-    async def test_job_acknowledged_derived_from_read_count(
-        self, db_session: AsyncSession, test_project_with_jobs
-    ):
+    async def test_job_acknowledged_derived_from_read_count(self, db_session: AsyncSession, test_project_with_jobs):
         """Job Acknowledged should be True when read count > 0."""
         # NOTE: This test defines expected behavior for frontend logic
+
+        # Create a mock user for authentication with unique email
+        from uuid import uuid4
 
         from api.endpoints.agent_jobs.table_view import get_agent_jobs_table_view
         from src.giljo_mcp.models import User
 
-        # Create a mock user for authentication with unique email
-        from uuid import uuid4
         unique_id = uuid4().hex[:8]
         user = User(
             id=f"user-test-0297-d-{unique_id}",

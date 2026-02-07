@@ -7,15 +7,11 @@ NOTE: ProductService does not exist yet, so these tests verify direct DB logic.
 Future work: Update tests to mock ProductService once it's created.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from unittest.mock import MagicMock
 
 import pytest
-from fastapi import HTTPException
 
-from api.endpoints.products.models import ProductCreate, ProductResponse
-from src.giljo_mcp.models import Product
+from api.endpoints.products.models import ProductCreate
 
 
 class TestCreateProduct:
@@ -30,11 +26,7 @@ class TestCreateProduct:
         mock_user = MagicMock()
         mock_user.tenant_key = "test_tenant"
 
-        request = ProductCreate(
-            name="Test Product",
-            description="Test description",
-            project_path="/path/to/project"
-        )
+        request = ProductCreate(name="Test Product", description="Test description", project_path="/path/to/project")
 
         # TODO: Complete mock implementation once ProductService exists
         # For now, this test demonstrates the expected structure

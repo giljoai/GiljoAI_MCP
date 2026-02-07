@@ -42,7 +42,9 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
+
 
 class ProjectService:
     """
@@ -367,9 +369,7 @@ class ProjectService:
             self._logger.exception(f"Failed to get active project: {e}")
             raise BaseGiljoException(message=f"Failed to get active project: {e!s}", context={}) from e
 
-    async def list_projects(
-        self, status: str | None = None, tenant_key: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
         """
         List all projects with optional filters.
 

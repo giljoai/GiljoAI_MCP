@@ -17,9 +17,9 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.products import VisionDocument
-from src.giljo_mcp.mission_planner import MissionPlanner
 
 
 @pytest.fixture
@@ -62,9 +62,7 @@ async def test_project(db_session: AsyncSession, test_product: Product, test_ten
 
 
 @pytest.fixture
-async def test_vision_document(
-    db_session: AsyncSession, test_product: Product, test_tenant_key: str
-) -> VisionDocument:
+async def test_vision_document(db_session: AsyncSession, test_product: Product, test_tenant_key: str) -> VisionDocument:
     """
     Create test vision document with full content and summaries.
 
@@ -352,7 +350,7 @@ async def test_no_chunks_fetched_for_any_depth(
         call_count["count"] += 1
         return await original_method(*args, **kwargs)
 
-    with patch.object(planner, '_get_relevant_vision_chunks', side_effect=tracked_get_chunks):
+    with patch.object(planner, "_get_relevant_vision_chunks", side_effect=tracked_get_chunks):
         # Test all depth levels
         for depth in ["light", "medium", "full"]:
             call_count["count"] = 0
@@ -367,8 +365,7 @@ async def test_no_chunks_fetched_for_any_depth(
 
             # Verify _get_relevant_vision_chunks was NOT called
             assert call_count["count"] == 0, (
-                f"Depth '{depth}' should NOT call _get_relevant_vision_chunks(). "
-                f"Called {call_count['count']} times."
+                f"Depth '{depth}' should NOT call _get_relevant_vision_chunks(). Called {call_count['count']} times."
             )
 
 

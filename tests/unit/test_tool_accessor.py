@@ -15,10 +15,11 @@ TDD Approach:
 3. REFACTOR: Improve code while keeping tests green
 """
 
+from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock, patch
 
 from src.giljo_mcp.models import AgentTemplate
 
@@ -48,14 +49,14 @@ class TestToolAccessorGetAvailableAgents:
             db_manager=self.db_manager,
             tenant_manager=self.tenant_manager,
             websocket_manager=None,
-            test_session=db_session  # Share transaction for testing
+            test_session=db_session,  # Share transaction for testing
         )
 
     @pytest.mark.asyncio
     async def test_method_exists(self):
         """Verify get_available_agents method exists and is callable"""
         # Will FAIL initially - method doesn't exist yet
-        assert hasattr(self.tool_accessor, 'get_available_agents')
+        assert hasattr(self.tool_accessor, "get_available_agents")
         assert callable(self.tool_accessor.get_available_agents)
 
     @pytest.mark.asyncio
@@ -79,9 +80,7 @@ class TestToolAccessorGetAvailableAgents:
 
         # Call method
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="full"
+            tenant_key=self.tenant_key, active_only=True, depth="full"
         )
 
         # Verify response structure
@@ -112,7 +111,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         template_b = AgentTemplate(
             name="implementer",
@@ -121,7 +120,7 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=other_tenant,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
 
         db_session.add(template_a)
@@ -130,9 +129,7 @@ class TestToolAccessorGetAvailableAgents:
 
         # Fetch agents for test_tenant
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="full"
+            tenant_key=self.tenant_key, active_only=True, depth="full"
         )
 
         # Only test_tenant agent returned
@@ -149,16 +146,14 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         db_session.add(template)
         await db_session.commit()
 
         # Test with type_only depth
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="type_only"
+            tenant_key=self.tenant_key, active_only=True, depth="type_only"
         )
 
         # Verify depth is reflected in response note
@@ -191,9 +186,7 @@ class TestToolAccessorGetAvailableAgents:
         await db_session.commit()
 
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="full"
+            tenant_key=self.tenant_key, active_only=True, depth="full"
         )
 
         # Verify staleness warning present
@@ -223,9 +216,7 @@ class TestToolAccessorGetAvailableAgents:
         await db_session.commit()
 
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="full"
+            tenant_key=self.tenant_key, active_only=True, depth="full"
         )
 
         # Verify staleness_warning NOT present
@@ -235,9 +226,7 @@ class TestToolAccessorGetAvailableAgents:
     async def test_handles_empty_results(self, db_session):
         """Test handles no templates gracefully"""
         result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True,
-            depth="full"
+            tenant_key=self.tenant_key, active_only=True, depth="full"
         )
 
         assert result["success"] is True
@@ -254,16 +243,13 @@ class TestToolAccessorGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         db_session.add(template)
         await db_session.commit()
 
         # Call without depth parameter
-        result = await self.tool_accessor.get_available_agents(
-            tenant_key=self.tenant_key,
-            active_only=True
-        )
+        result = await self.tool_accessor.get_available_agents(tenant_key=self.tenant_key, active_only=True)
 
         # Verify full depth fields are present
         agent = result["data"]["agents"][0]

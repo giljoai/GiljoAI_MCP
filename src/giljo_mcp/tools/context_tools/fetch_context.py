@@ -36,6 +36,7 @@ from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 from src.giljo_mcp.tools.context_tools.get_testing import get_testing
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
+
 logger = structlog.get_logger(__name__)
 
 # Category to internal tool mapping
@@ -67,6 +68,7 @@ DEFAULT_DEPTHS = {
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
+
 
 async def fetch_context(
     product_id: str,
@@ -246,6 +248,7 @@ async def fetch_context(
 
     return response
 
+
 async def _fetch_category(
     category: str,
     product_id: str,
@@ -321,6 +324,7 @@ async def _fetch_category(
         # No depth param for product_core
 
     return await tool_func(**kwargs)
+
 
 def _flatten_results(results: dict[str, Any]) -> dict[str, Any]:
     """

@@ -11,9 +11,9 @@ This test suite covers Sumy LSA integration for vision document summarization:
 Coverage Target: >90%
 """
 
-import pytest
 import time
-from unittest.mock import MagicMock, AsyncMock, patch
+
+import pytest
 
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
@@ -21,6 +21,7 @@ from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def summarizer():
@@ -91,6 +92,7 @@ def generate_test_document(tokens: int = 1000) -> str:
 # UNIT TESTS - VisionDocumentSummarizer
 # ============================================================================
 
+
 def test_summarizer_achieves_70_percent_compression(summarizer):
     """
     LSA should compress 100K tokens to under 50K (50%+ compression).
@@ -139,11 +141,7 @@ def test_summarizer_preserves_key_sentences(summarizer):
     result = summarizer.summarize(text, target_tokens=100)
 
     # Extract sentences from summary
-    summary_sentences = [
-        s.strip() + "."
-        for s in result["summary"].split(".")
-        if s.strip()
-    ]
+    summary_sentences = [s.strip() + "." for s in result["summary"].split(".") if s.strip()]
 
     # Verify every summary sentence exists in original
     for sentence in summary_sentences:
@@ -202,8 +200,7 @@ def test_processing_time_under_5_seconds(summarizer):
     elapsed = time.time() - start
 
     assert elapsed < 5.0, (
-        f"Summarization took {elapsed:.2f}s, exceeds 5s requirement. "
-        f"Document: {result['original_tokens']} tokens."
+        f"Summarization took {elapsed:.2f}s, exceeds 5s requirement. Document: {result['original_tokens']} tokens."
     )
 
     # Verify processing time is tracked
@@ -228,6 +225,7 @@ def test_token_estimation_accuracy(summarizer):
 # ============================================================================
 # INTEGRATION TESTS - ProductService Integration
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_upload_stores_both_original_and_summary():

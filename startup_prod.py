@@ -18,19 +18,16 @@ Usage:
 Cross-platform: Works on Windows, Linux, and macOS
 """
 
-import os
 import platform
-import shutil
-import socket
 import subprocess
 import sys
 import time
 import webbrowser
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import click
-from colorama import Fore, Style, init
+from colorama import init
 
 # Import helper functions from startup.py
 from startup import (
@@ -49,6 +46,7 @@ from startup import (
     run_database_migrations,
     wait_for_api_ready,
 )
+
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)

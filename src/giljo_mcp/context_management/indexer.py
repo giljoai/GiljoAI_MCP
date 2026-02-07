@@ -17,7 +17,9 @@ from typing import Any
 from src.giljo_mcp.models import MCPContextIndex
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 
+
 logger = logging.getLogger(__name__)
+
 
 class ContextIndexer:
     """

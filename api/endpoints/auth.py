@@ -29,6 +29,7 @@ from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -39,11 +40,13 @@ _first_admin_creation_lock = asyncio.Lock()
 
 # Pydantic Models for Request/Response
 
+
 class LoginRequest(BaseModel):
     """Login request with username and password"""
 
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=1)  # Allow default "admin" password (5 chars)
+
 
 class LoginResponse(BaseModel):
     """Login response with user info"""
@@ -54,10 +57,12 @@ class LoginResponse(BaseModel):
     tenant_key: str
     password_change_required: bool | None = None  # v3.0 Unified: UX improvement
 
+
 class LogoutResponse(BaseModel):
     """Logout response"""
 
     message: str
+
 
 class UserProfileResponse(BaseModel):
     """User profile response"""
@@ -76,7 +81,9 @@ class UserProfileResponse(BaseModel):
     org_name: str | None = None  # Handover 0424h: User's organization name
     org_role: str | None = None  # Handover 0424h: User's role in organization
 
+
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
+
 
 class APIKeyResponse(BaseModel):
     """API key response (masked for security)"""
@@ -90,11 +97,13 @@ class APIKeyResponse(BaseModel):
     last_used: str | None
     revoked_at: str | None
 
+
 class APIKeyCreateRequest(BaseModel):
     """Request to create new API key"""
 
     name: str = Field(..., min_length=3, max_length=255, description="Description of API key purpose")
     permissions: list[str] = Field(default=["*"], description="List of permissions (default: all)")
+
 
 class APIKeyCreateResponse(BaseModel):
     """Response after creating API key (includes plaintext key ONCE)"""
@@ -105,12 +114,14 @@ class APIKeyCreateResponse(BaseModel):
     key_prefix: str
     message: str
 
+
 class APIKeyRevokeResponse(BaseModel):
     """Response after revoking API key"""
 
     id: str
     name: str
     message: str
+
 
 class RegisterUserRequest(BaseModel):
     """Request to register new user (admin only)"""
@@ -135,6 +146,7 @@ class RegisterUserRequest(BaseModel):
             raise ValueError("Role must be one of: admin, developer, viewer")
         return v
 
+
 class RegisterUserResponse(BaseModel):
     """Response after registering new user"""
 
@@ -144,6 +156,7 @@ class RegisterUserResponse(BaseModel):
     role: str
     tenant_key: str
     message: str
+
 
 class PasswordChangeRequest(BaseModel):
     """Request to change password from default"""
@@ -168,6 +181,7 @@ class PasswordChangeRequest(BaseModel):
             raise ValueError("Password must contain at least 1 special character")
         return v
 
+
 class PasswordChangeResponse(BaseModel):
     """Response after changing password"""
 
@@ -176,7 +190,9 @@ class PasswordChangeResponse(BaseModel):
     token: str
     user: dict
 
+
 # Auth Endpoints
+
 
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 async def login(
@@ -322,6 +338,7 @@ async def login(
 
     return LoginResponse(**response_data)
 
+
 @router.post("/logout", response_model=LogoutResponse, tags=["auth"])
 async def logout(response: Response):
     """
@@ -341,6 +358,7 @@ async def logout(response: Response):
     logger.info("User logged out successfully")
 
     return LogoutResponse(message="Logout successful")
+
 
 @router.get("/me", tags=["auth"])
 async def get_me(
@@ -430,6 +448,7 @@ async def get_me(
         org_role=org_role,
     )
 
+
 @router.get("/api-keys", response_model=list[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
     include_revoked: bool = Query(False, description="Include revoked keys in results"),
@@ -465,6 +484,7 @@ async def list_api_keys(
         )
         for key in keys
     ]
+
 
 @router.post("/api-keys", response_model=APIKeyCreateResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def create_api_key(
@@ -506,6 +526,7 @@ async def create_api_key(
         message="API key created successfully. Store this key securely - it will not be shown again!",
     )
 
+
 @router.delete("/api-keys/{key_id}", response_model=APIKeyRevokeResponse, tags=["auth"])
 async def revoke_api_key(
     key_id: UUID,
@@ -544,7 +565,9 @@ async def revoke_api_key(
 
     return APIKeyRevokeResponse(id=str(key_id), name=key_name, message="API key revoked successfully")
 
+
 # 0371: Removed duplicate GET /users endpoint - frontend now uses /api/v1/users/
+
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(
@@ -599,6 +622,7 @@ async def register_user(
         tenant_key=user_data["tenant_key"],
         message="User registered successfully",
     )
+
 
 @router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
 async def create_first_admin_user(
@@ -767,6 +791,7 @@ async def create_first_admin_user(
             is_active=admin_data["is_active"],
             message="Administrator account created successfully. Redirecting to dashboard...",
         )
+
 
 # REMOVED (Handover 0034): Legacy password change endpoint
 # Replaced by clean first-admin creation flow via /create-first-admin

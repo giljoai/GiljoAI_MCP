@@ -17,9 +17,10 @@ Test Coverage:
 - Multi-tenant isolation
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 # ============================================================================
@@ -31,6 +32,7 @@ from uuid import uuid4
 async def test_user(db_manager):
     """Create a test user with proper tenant isolation."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -111,8 +113,9 @@ async def test_project(db_manager, test_user, test_product):
 @pytest.fixture
 async def orchestrator_job(db_manager, test_user, test_project):
     """Create an orchestrator job (work order) and execution (executor) for the test project."""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from datetime import datetime, timezone
+
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     async with db_manager.get_session_async() as session:
         # Create the work order (AgentJob) first
@@ -221,8 +224,9 @@ class TestUnifiedMessageSendEndpoint:
         db_manager,
     ):
         """Verify /send endpoint creates Message rows (not just JSONB queue)."""
-        from src.giljo_mcp.models import Message
         from sqlalchemy import select
+
+        from src.giljo_mcp.models import Message
 
         # Send message via unified endpoint
         response = await api_client.post(
@@ -335,6 +339,7 @@ class TestMultiTenantIsolation:
     async def tenant_b_user(self, db_manager):
         """Create a second tenant's user."""
         from passlib.hash import bcrypt
+
         from src.giljo_mcp.models import User
         from src.giljo_mcp.tenant import TenantManager
 

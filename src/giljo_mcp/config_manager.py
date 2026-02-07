@@ -1118,7 +1118,6 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
     Returns:
         Frontend framework name or None
     """
-    import json
 
     package_json = root_path / "package.json"
 

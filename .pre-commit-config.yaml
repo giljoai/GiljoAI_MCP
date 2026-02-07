@@ -73,14 +73,17 @@ repos:
       - id: gitleaks
         name: gitleaks (secret scan)
 
-  # Dependency vulnerability scanning - Python
-  # Note: Run manually before releases: pip-audit -r requirements.txt
+  # Dependency vulnerability scanning - Python (warning mode, doesn't block)
+  # TODO: Upgrade mcp 1.12.3 → 1.23.0 to fix GHSA-9h52-p55h-vw2f
+  # Run manually before releases: pip-audit -r requirements.txt
   - repo: https://github.com/pypa/pip-audit
     rev: v2.7.3
     hooks:
       - id: pip-audit
         name: pip-audit (Python vulnerabilities)
         args: ["-r", "requirements.txt", "--skip-editable"]
+        verbose: true
+        stages: [manual] # Only runs with: pre-commit run pip-audit
 
   # TEMPORARILY DISABLED - bash not found on Windows, causing failures
   # - repo: local

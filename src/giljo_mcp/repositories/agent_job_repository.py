@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ..models.agent_identity import AgentJob
 from .base import BaseRepository
 
+
 class AgentJobRepository:
     """
     Repository for agent job management.

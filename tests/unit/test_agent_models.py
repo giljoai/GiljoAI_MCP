@@ -12,11 +12,12 @@ Tests clean up after themselves by rolling back transactions.
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import Base, MCPContextIndex, MCPContextSummary, Product
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import MCPContextIndex, MCPContextSummary, Product
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 # Use giljo_mcp_test database (tests will rollback changes)
 TEST_DB_URL = "postgresql://postgres:***@localhost:5432/giljo_mcp_test"
@@ -45,6 +46,7 @@ class TestMCPContextIndex:
     def sample_product(self, db_session):
         """Create a sample product for testing."""
         import uuid
+
         product = Product(
             id=str(uuid.uuid4()),
             tenant_key="test-tenant",
@@ -178,6 +180,7 @@ class TestMCPContextSummary:
     def sample_product(self, db_session):
         """Create a sample product for testing."""
         import uuid
+
         product = Product(
             id=str(uuid.uuid4()),
             tenant_key="test-tenant",
@@ -357,10 +360,7 @@ class TestAgentExecution:
 
         # Create execution
         agent_execution = AgentExecution(
-            tenant_key="test-tenant",
-            job_id=job.job_id,
-            agent_display_name="analyzer",
-            status="waiting"
+            tenant_key="test-tenant", job_id=job.job_id, agent_display_name="analyzer", status="waiting"
         )
 
         db_session.add(agent_execution)
@@ -393,32 +393,18 @@ class TestAgentExecution:
         """Test tenant isolation in agent executions."""
         # Create jobs first
         job_a = AgentJob(
-            tenant_key="tenant-a",
-            job_type="implementer",
-            mission="Implement feature for tenant A",
-            status="active"
+            tenant_key="tenant-a", job_type="implementer", mission="Implement feature for tenant A", status="active"
         )
-        job_b = AgentJob(
-            tenant_key="tenant-b",
-            job_type="tester",
-            mission="Test feature for tenant B",
-            status="active"
-        )
+        job_b = AgentJob(tenant_key="tenant-b", job_type="tester", mission="Test feature for tenant B", status="active")
         db_session.add_all([job_a, job_b])
         db_session.commit()
 
         # Create executions
         execution_a = AgentExecution(
-            tenant_key="tenant-a",
-            job_id=job_a.job_id,
-            agent_display_name="implementer",
-            status="waiting"
+            tenant_key="tenant-a", job_id=job_a.job_id, agent_display_name="implementer", status="waiting"
         )
         execution_b = AgentExecution(
-            tenant_key="tenant-b",
-            job_id=job_b.job_id,
-            agent_display_name="tester",
-            status="working"
+            tenant_key="tenant-b", job_id=job_b.job_id, agent_display_name="tester", status="working"
         )
 
         db_session.add_all([execution_a, execution_b])
@@ -442,20 +428,14 @@ class TestAgentExecution:
         """Test agent execution message counter functionality (Handover 0387e)."""
         # Create job first
         job = AgentJob(
-            tenant_key="test-tenant",
-            job_type="orchestrator",
-            mission="Test message handling",
-            status="active"
+            tenant_key="test-tenant", job_type="orchestrator", mission="Test message handling", status="active"
         )
         db_session.add(job)
         db_session.commit()
 
         # Create execution
         agent_execution = AgentExecution(
-            tenant_key="test-tenant",
-            job_id=job.job_id,
-            agent_display_name="orchestrator",
-            status="working"
+            tenant_key="test-tenant", job_id=job.job_id, agent_display_name="orchestrator", status="working"
         )
 
         db_session.add(agent_execution)
@@ -487,10 +467,7 @@ class TestAgentExecution:
         """Test agent execution context tracking for orchestrator."""
         # Create job first
         job = AgentJob(
-            tenant_key="test-tenant",
-            job_type="orchestrator",
-            mission="Analyze with context",
-            status="active"
+            tenant_key="test-tenant", job_type="orchestrator", mission="Analyze with context", status="active"
         )
         db_session.add(job)
         db_session.commit()
@@ -502,7 +479,7 @@ class TestAgentExecution:
             agent_display_name="analyzer",
             status="waiting",
             context_used=0,
-            context_budget=150000
+            context_budget=150000,
         )
 
         db_session.add(agent_execution)
@@ -542,8 +519,9 @@ class TestProductVisionDocumentRelationship:
 
     def test_product_with_vision_documents(self, db_session):
         """Test Product with VisionDocument relationship."""
-        from src.giljo_mcp.models.products import VisionDocument
         import uuid
+
+        from src.giljo_mcp.models.products import VisionDocument
 
         # Create product
         product = Product(

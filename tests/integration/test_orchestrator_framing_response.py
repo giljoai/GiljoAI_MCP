@@ -48,7 +48,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     async def test_response_contains_identity_section(self, tool_accessor):
         """Test that response contains identity section with orchestrator details."""
         # This test will initially fail because the response structure hasn't been updated
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {
                     "orchestrator_id": "test-orch-id",
@@ -79,7 +79,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_contains_project_description_inline(self, tool_accessor):
         """Test that response contains project_description_inline with description and mission."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {
@@ -99,7 +99,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_contains_context_fetch_instructions(self, tool_accessor):
         """Test that response contains context_fetch_instructions with three tiers."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {"description": "", "mission": ""},
@@ -121,7 +121,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_has_architecture_flag_framing_based(self, tool_accessor):
         """Test that response includes architecture='framing_based' flag."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {"description": "", "mission": ""},
@@ -137,7 +137,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_has_thin_client_flag_true(self, tool_accessor):
         """Test that response includes thin_client=True flag."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {"description": "", "mission": ""},
@@ -191,7 +191,12 @@ class TestGetOrchestratorInstructionsFramingResponse:
                     {
                         "field": "memory_360",
                         "tool": "fetch_context",
-                        "params": {"category": "memory_360", "product_id": "xxx", "tenant_key": "tenant_abc", "limit": 5},
+                        "params": {
+                            "category": "memory_360",
+                            "product_id": "xxx",
+                            "tenant_key": "tenant_abc",
+                            "limit": 5,
+                        },
                         "framing": "OPTIONAL: Historical project outcomes.",
                         "estimated_tokens": 2000,
                     }
@@ -217,7 +222,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_includes_mcp_tools_available(self, tool_accessor):
         """Test that response includes list of available MCP tools."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {"description": "", "mission": ""},
@@ -243,7 +248,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
     @pytest.mark.asyncio
     async def test_response_includes_context_budget(self, tool_accessor):
         """Test that response includes context_budget and context_used."""
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {"description": "", "mission": ""},
@@ -268,7 +273,7 @@ class TestGetOrchestratorInstructionsFramingResponse:
         # The old response had a 'mission' field with 4-8K tokens of inline context.
         # The new response should have mission ONLY in project_description_inline (orchestrator's plan),
         # NOT the full inline context.
-        with patch.object(tool_accessor, 'get_orchestrator_instructions') as mock_method:
+        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
             mock_method.return_value = {
                 "identity": {"orchestrator_id": "test"},
                 "project_description_inline": {

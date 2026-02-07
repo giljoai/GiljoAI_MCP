@@ -31,16 +31,15 @@ Test Coverage:
 7. Multi-tenant isolation for all MCP tools
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 
@@ -131,7 +130,8 @@ async def orchestrator_execution(db_session, tenant_key, orchestrator_job):
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",        status="working",
+        agent_display_name="orchestrator",
+        status="working",
         progress=0,
     )
     db_session.add(execution)
@@ -145,6 +145,7 @@ async def tool_accessor(db_manager, db_session, tenant_key):
     """Create ToolAccessor instance with test session for transaction sharing."""
     # Create tenant manager for testing (no validation)
     from src.giljo_mcp.tenant import TenantManager
+
     tenant_manager = TenantManager()
     # Override get_current_tenant to return test tenant
     tenant_manager.get_current_tenant = lambda: tenant_key
@@ -304,9 +305,7 @@ async def test_get_agent_mission_via_agentjob_mission(
 
 
 @pytest.mark.asyncio
-async def test_get_pending_jobs_queries_agentjob_table(
-    db_session, tenant_key, test_project
-):
+async def test_get_pending_jobs_queries_agentjob_table(db_session, tenant_key, test_project):
     """
     Test that pending jobs query uses AgentJob table.
 
@@ -351,13 +350,15 @@ async def test_get_pending_jobs_queries_agentjob_table(
         agent_id=str(uuid4()),
         job_id=job1.job_id,
         tenant_key=tenant_key,
-        agent_display_name="analyzer",        status="waiting",
+        agent_display_name="analyzer",
+        status="waiting",
     )
     exec2 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=job2.job_id,
         tenant_key=tenant_key,
-        agent_display_name="implementer",        status="working",
+        agent_display_name="implementer",
+        status="working",
     )
 
     db_session.add_all([exec1, exec2])
@@ -367,8 +368,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
     from sqlalchemy import select
 
     result = await db_session.execute(
-        select(AgentJob)
-        .where(
+        select(AgentJob).where(
             AgentJob.project_id == test_project.id,
             AgentJob.tenant_key == tenant_key,
             AgentJob.status == "active",
@@ -387,9 +387,7 @@ async def test_get_pending_jobs_queries_agentjob_table(
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation_for_mcp_tools(
-    tool_accessor, db_session, test_project, test_product
-):
+async def test_multi_tenant_isolation_for_mcp_tools(tool_accessor, db_session, test_project, test_product):
     """
     Test that all MCP tools enforce multi-tenant isolation.
 
@@ -416,7 +414,8 @@ async def test_multi_tenant_isolation_for_mcp_tools(
         agent_id=str(uuid4()),
         job_id=job_a.job_id,
         tenant_key=tenant_a,
-        agent_display_name="orchestrator",        status="working",
+        agent_display_name="orchestrator",
+        status="working",
     )
 
     db_session.add_all([job_a, exec_a])
@@ -473,12 +472,10 @@ async def test_succession_preserves_job_id_changes_agent_id(
     # Need to use tool_accessor's test session to see the changes
     # Query all executions for this job
     exec_result = await tool_accessor._test_session.execute(
-        select(AgentExecution)
-        .where(
+        select(AgentExecution).where(
             AgentExecution.job_id == orchestrator_job.job_id,
             AgentExecution.tenant_key == tenant_key,
         )
-        
     )
     executions = exec_result.scalars().all()
 
@@ -501,9 +498,7 @@ async def test_succession_preserves_job_id_changes_agent_id(
 
 
 @pytest.mark.asyncio
-async def test_get_agent_mission_handles_succession(
-    tool_accessor, db_session, orchestrator_job, tenant_key
-):
+async def test_get_agent_mission_handles_succession(tool_accessor, db_session, orchestrator_job, tenant_key):
     """
     Test that get_agent_mission() returns correct mission across succession.
 
@@ -519,13 +514,15 @@ async def test_get_agent_mission_handles_succession(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",        status="decommissioned",
+        agent_display_name="orchestrator",
+        status="decommissioned",
     )
     exec2 = AgentExecution(
         agent_id=str(uuid4()),
         job_id=orchestrator_job.job_id,
         tenant_key=tenant_key,
-        agent_display_name="orchestrator",        status="working",
+        agent_display_name="orchestrator",
+        status="working",
         spawned_by=exec1.agent_id,
     )
 
